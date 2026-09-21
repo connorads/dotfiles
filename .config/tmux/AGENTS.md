@@ -1109,10 +1109,19 @@ before the figure under kernel warn or critical pressure. Change as a set:
   watcher (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
   Every 5 s (`MEMWATCH_INTERVAL`) it reads the pressure level and the four
   compressor counters, derives state and cause through the lib, and on a
-  transition into BUSY/CRITICAL (or once per `MEMWATCH_COOLDOWN`, 600 s while
-  still bad) posts a banner - `slots 62% · segs 27% · swap 6.0G · top: <app>` -
-  and appends `<ts>  state=  cause=  swap=  slots=  segs=  ratio=` plus the
-  top-5 footprint rows to `~/.cache/memwatch.log`. The sleep doubles as a
+  transition into BUSY/CRITICAL posts a banner - `slots 62% (18 to red) · segs
+  27% (43 to amber) · swap 6.0G · top: <app>`, the distance via `mem_arm_gap` -
+  and appends `<ts>  state=  cause=  pressure=  swap=  slots=  segs=  ratio=`
+  plus the top-5 footprint rows to `~/.cache/memwatch.log`. A sustained bad
+  state is re-logged and re-bannered only once per `MEMWATCH_COOLDOWN` (600 s)
+  *and* only when the reading has moved against the last line written: state
+  or cause differs, or either arm by `MEMWATCH_DELTA_PCT` (3) points or more.
+  The reference advances only on a write, so slow drift accumulates rather than
+  hiding under the delta. There is no heartbeat: a quiet log means nothing
+  moved, and the stall probe is the liveness signal. Pressure 2 with both arms
+  under their lines is OK and logs nothing; the `pressure=` key is what shows,
+  after a week, whether warn pressure really is this machine's resting level.
+  The sleep doubles as a
   **liveness probe**: a wake later than `MEMWATCH_STALL_LOG_SECS` (2) logs
   `<ts>  stall=Ns  interval=Ns`, and one later than
   `MEMWATCH_STALL_CRITICAL_SECS` (5) makes the next tick CRITICAL with the

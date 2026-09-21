@@ -146,16 +146,78 @@ STUB
   run_zsh_function "$MEMWATCH" --once
 
   [ "$status" -eq 0 ]
-  grep -Eq '^[0-9T:-]+  state=BUSY  cause=slots  swap=6\.0G  slots=62%  segs=27%  ratio=2\.3$' "$MEMWATCH_LOG"
+  grep -Eq '^[0-9T:-]+  state=BUSY  cause=slots  pressure=1  swap=6\.0G  slots=62%  segs=27%  ratio=2\.3$' "$MEMWATCH_LOG"
 }
 
-@test "the banner names both arms, swap and the top app" {
+@test "the banner names both arms with their distance to the next line, swap and the top app" {
   export FAKE_SLOTS=620 FAKE_SEGS=270 FAKE_SWAP=6144.00M
 
   run_zsh_function "$MEMWATCH" --once
 
   [ "$status" -eq 0 ]
-  grep -q 'display notification "slots 62% · segs 27% · swap 6.0G · top: App6 ≈6M" with title "Memory BUSY"' "$OSASCRIPT_LOG"
+  grep -q 'display notification "slots 62% (18 to red) · segs 27% (43 to amber) · swap 6.0G · top: App6 ≈6M" with title "Memory BUSY"' "$OSASCRIPT_LOG"
+}
+
+@test "warn pressure with a resting compressor logs nothing and posts no banner" {
+  export FAKE_PRESSURE=2 FAKE_SLOTS=300 FAKE_SEGS=300
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$MEMWATCH_LOG" ]
+  [ ! -e "$OSASCRIPT_LOG" ]
+}
+
+@test "critical pressure is CRITICAL with cause pressure and the level in the log" {
+  export FAKE_PRESSURE=4 FAKE_SLOTS=300 FAKE_SEGS=300
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  grep -q '  state=CRITICAL  cause=pressure  pressure=4  ' "$MEMWATCH_LOG"
+  grep -q 'with title "Memory CRITICAL"' "$OSASCRIPT_LOG"
+}
+
+@test "a sustained unchanged reading is logged once, even with the cooldown lapsed" {
+  export FAKE_SLOTS=620 MEMWATCH_TICKS=3 MEMWATCH_INTERVAL=0.1 MEMWATCH_COOLDOWN=0
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '  state=BUSY  ' "$MEMWATCH_LOG")" -eq 1 ]
+  [ "$(grep -c 'display notification' "$OSASCRIPT_LOG")" -eq 1 ]
+}
+
+@test "a sustained reading is re-logged once an arm moves by the delta against the last line" {
+  # The compressor counter is popped from a sequence per gather: 62%, then 62%
+  # again (621 truncates), then 65% - three points past the last logged 62%.
+  export SLOTS_SEQ="$BATS_TEST_TMPDIR/slots.seq"
+  printf '620\n621\n650\n' >"$SLOTS_SEQ"
+  write_stub sysctl <<'STUB'
+#!/usr/bin/env bash
+shift
+for key in "$@"; do
+  case "$key" in
+    kern.memorystatus_vm_pressure_level) echo 1 ;;
+    vm.swapusage) echo "total = 12288.00M  used = 0.00M  free = 100.00M  (encrypted)" ;;
+    vm.compressor.pages_compressed)
+      v=$(head -n1 "$SLOTS_SEQ")
+      [ "$(wc -l <"$SLOTS_SEQ")" -gt 1 ] && sed -i '' 1d "$SLOTS_SEQ"
+      echo "$v" ;;
+    vm.compressor.pages_compressed_limit) echo 1000 ;;
+    vm.compressor.segment.total) echo 0 ;;
+    vm.compressor.segment.limit) echo 1000 ;;
+  esac
+done
+STUB
+  export MEMWATCH_TICKS=3 MEMWATCH_INTERVAL=0.1 MEMWATCH_COOLDOWN=0
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '  state=BUSY  ' "$MEMWATCH_LOG")" -eq 2 ]
+  grep -q '  slots=62%  ' "$MEMWATCH_LOG"
+  grep -q '  slots=65%  ' "$MEMWATCH_LOG"
 }
 
 @test "the log carries the top-5 rows and no leaked parameter echo" {
