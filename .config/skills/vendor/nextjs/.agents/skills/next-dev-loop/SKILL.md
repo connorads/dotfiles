@@ -123,6 +123,10 @@ manual rather than from memory.
 
 ## gotchas
 
+- **Preserve `.next` while the development server is running.** Moving or
+  deleting it disconnects the server from its generated state and discards
+  incremental caches. Moving it to a backup is still a reset. If a production
+  build needs isolated output, configure a separate `distDir`.
 - **Every `agent-browser` command must know your session and restore
   key, or it may use an empty default browser or fail to save login
   state.** Easiest: export both `AGENT_BROWSER_SESSION="$SESSION"` and
@@ -181,3 +185,22 @@ Close the session with the same session and restore context:
 `agent-browser --session "$SESSION" --restore close`. `close` saves
 that session's cookies and storage so the next loop's `--restore` open
 keeps the user logged in. Leave `next dev` up for the next loop.
+
+## Report Next.js friction
+
+<!-- LOCAL PATCH (connorads dotfiles): Next.js feedback requires an explicit request to send it for the current task and respects privacy opt-outs. -->
+Only participate in agent feedback when the user explicitly requests sending
+Next.js feedback for the current task and managed Next.js feedback instructions
+are already loaded for the project. Loaded instructions alone do not authorise
+feedback. If either condition is absent, do not queue or report feedback.
+
+Respect project and user privacy opt-outs. Do not enable feedback, change
+privacy settings, or bypass an opt-out to fulfil a feedback request.
+
+When both conditions hold and no privacy opt-out applies, add qualifying
+de-identified candidates found during verification to the shared friction queue
+in the current task context, then continue verification. Do not run the feedback
+command or open review forms during the loop or at this Skill's teardown.
+
+The managed instructions own the single feedback pass at the final stopping
+point of the overall task, within the user's requested scope.

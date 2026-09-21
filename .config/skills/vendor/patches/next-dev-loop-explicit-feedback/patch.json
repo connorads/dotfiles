@@ -1,0 +1,6 @@
+{
+  "reason": "Next.js feedback requires an explicit request to send it for the current task and respects privacy opt-outs.",
+  "files": [
+    "nextjs/.agents/skills/next-dev-loop/SKILL.md"
+  ]
+}
