@@ -63,14 +63,18 @@ mem_pressure_level() {
 # "pages limit segments seglimit". `sysctl -n` with several keys prints one
 # line per key it knows and nothing for one it does not, so a short answer
 # (Linux, an older kernel) collapses to "0 0 0 0" rather than shifting fields.
+# The split is done on the command substitution itself, never on a parameter
+# holding it: memwatch sources this lib under zsh, which splits an unquoted
+# `$(...)` on IFS but not an unquoted `$var`, and runs with `no_unset`, so the
+# positionals are read with defaults.
 mem_compressor_raw() {
-	_raw=$(sysctl -n vm.compressor.pages_compressed vm.compressor.pages_compressed_limit \
-		vm.compressor.segment.total vm.compressor.segment.limit 2>/dev/null) || _raw=""
-	# shellcheck disable=SC2086  # deliberate split of one-value-per-line output
-	set -- $_raw
-	case "$#:$1$2$3$4" in
-	4:*[!0-9]* | [!4]:*) echo "0 0 0 0" ;;
-	*) echo "$1 $2 $3 $4" ;;
+	# shellcheck disable=SC2046  # deliberate split of one-value-per-line output
+	set -- $(sysctl -n vm.compressor.pages_compressed vm.compressor.pages_compressed_limit \
+		vm.compressor.segment.total vm.compressor.segment.limit 2>/dev/null)
+	case "$#:${1:-}${2:-}${3:-}${4:-}" in
+	4:*[!0-9]*) echo "0 0 0 0" ;;
+	4:*) echo "$1 $2 $3 $4" ;;
+	*) echo "0 0 0 0" ;;
 	esac
 }
 
