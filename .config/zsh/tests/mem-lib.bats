@@ -206,6 +206,14 @@ lib() {
   [ "$(grep -c '^vm.compressor.segment.limit$' "$TEST_LOG")" -eq 1 ]
 }
 
+@test "the gather and derivations hold under zsh with no_unset (memwatch's shell)" {
+  # zsh splits an unquoted $(...) but not an unquoted $var, and memwatch runs
+  # the lib with `setopt no_unset`, so a positional read past $# is fatal there.
+  FAKE_PRESSURE=1 FAKE_SLOTS=620 FAKE_SEGS=270 run zsh --no-rcs -c "emulate -L zsh; setopt no_unset; source '$MEM_LIB'; mem_compressor_raw; mem_state; mem_token"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'620 1000 270 1000\nBUSY\n62%' ]
+}
+
 @test "a short sysctl answer collapses to zeros rather than shifting fields" {
   # Three lines back (one key unknown): treating them positionally would read a
   # limit as a count. Zeros mean OK, never a fabricated percentage.
