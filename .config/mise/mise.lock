@@ -531,6 +531,25 @@ checksum = "sha256:9ee3f4350b321677e5ce291882c6441b153773b32705734d2208f93ac71ce
 url = "https://github.com/jdx/hk/releases/download/v2.0.0/hk-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/jdx/hk/releases/assets/560743972"
 
+[[tools."http:bend"]]
+version = "2.0.25"
+backend = "http:bend"
+
+[tools."http:bend".options]
+strip_components = "1"
+
+[tools."http:bend"."platforms.linux-arm64"]
+checksum = "sha256:c7cce7508fd13201d544180cca531a87a89c41829876c431cdfa0ea7f5308481"
+url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-linux-arm64.tar.gz"
+
+[tools."http:bend"."platforms.linux-x64"]
+checksum = "sha256:91c0e2640f8d2e3e73fd3dd62ed4d178ce9a6f7ce8f8980b4dc4abf7a6f9ccd4"
+url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-linux-x64.tar.gz"
+
+[tools."http:bend"."platforms.macos-arm64"]
+checksum = "sha256:c5bb22ba029d5909da9c6db82aa037278a66d1cf8a5572f433879f7dcd866c31"
+url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-darwin-arm64.tar.gz"
+
 [[tools."http:opencode2"]]
 version = "0.0.0-beta-18684"
 backend = "http:opencode2"
