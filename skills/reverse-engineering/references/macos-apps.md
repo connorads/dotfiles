@@ -30,9 +30,9 @@ attack surface than container-only inspection.
 The bundled helper enforces this boundary and is the default:
 
 ```bash
-python3 scripts/macos_app_triage.py <target> --out /tmp/re-<target>
+python3 scripts/macos_app_triage.py <target> --out /tmp/re-<target>/triage
 python3 scripts/macos_app_triage.py <image.dmg> \
-  --allow-mount --out /tmp/re-<target>
+  --allow-mount --out /tmp/re-<target>/triage
 ```
 
 The first DMG command inspects and verifies the container without mounting it.
@@ -161,6 +161,14 @@ For Objective-C metadata:
 ```bash
 dyld_info -arch <architecture> -objc <binary>
 ```
+
+If `dyld_info -objc` omits selector details, inspect Objective-C stubs:
+
+```bash
+otool -v -s __TEXT __objc_stubs <binary>
+```
+
+Correlate the stub with its call site before claiming behaviour.
 
 Inspect Swift reflection sections such as `__swift5_types`, `__swift5_reflstr`,
 and `__swift5_fieldmd`, plus Objective-C class and selector metadata. Mixed
