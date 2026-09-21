@@ -269,8 +269,11 @@ the directory, so a new asset upstream adds surfaces as untracked for review.
 
 ### Update vendored skills
 
-From `~/.config/skills/vendor`: `skills update -p` (project scope) refreshes **in place**
-against `skills-lock.json`. No global/symlink resurrection problem.
+Use [`update-vendored-skills`](personal/update-vendored-skills/SKILL.md): record one
+Git revision per source/ref, prepare local CLI installations in temporary buckets,
+restore lock provenance, reapply patches, review, then copy and commit one bucket.
+Remote `skills update -p` can mix cached `skills.sh` payloads with Git clones; do
+not use it directly on the installed vendor tree.
 
 ### Promote a bucket group to a set
 
@@ -300,10 +303,10 @@ for m in '==' '!='; do
 done   # first output → $V/$SET/skills-lock.json, second → $V/skills-lock.json
 ```
 
-Carry `computedHash` **verbatim**. It is write-once at add time and never recomputed or
-verified by `skills update`, so recomputing it would be meaningless. It is already stale
-for most bucket entries, which means the first real `skills update -p` per set rewrites
-every entry's hash at once - a large lockfile diff that is not a supply-chain signal.
+Carry `computedHash` **verbatim** during a move. A refresh records the pristine
+upstream folder hash from the CLI before local patches; a move changes neither
+upstream content nor provenance. Hash-only drift during a later refresh still
+needs an explanation, including whether the prior entry came from a cached snapshot.
 
 Re-prefix any patch targeting the group: `files` paths are vendor-root-relative, so
 `.agents/skills/<name>/…` becomes `<set>/.agents/skills/<name>/…`. No hunk body names a
@@ -425,9 +428,10 @@ scope (install into `<cwd>/.agents/skills` + local lock, `update` in place) is t
 CLI-managed way to keep a skill `update`-able *without* autoloading it. Hence
 `vendor/.agents/skills` is a project dir we treat as a catalogue source.
 
-The CLI has **no audit/verify/scan** command and `skills.sh` is discovery-only; `skills add`
-just git-clones. So vendoring is security-sensitive: use fully-qualified names, pin refs,
-and diff-review clones against the prior vetted copy before trusting them.
+The CLI can install either Git content or a cached `skills.sh` payload. Neither
+route proves the instructions safe or the revision consistent across skills. Use
+fully-qualified sources, preserve pins, and follow the recorded-revision preview
+procedure before replacing vetted content.
 
 ## Caveats
 
