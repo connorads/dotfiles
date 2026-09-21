@@ -514,9 +514,10 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
   window `label` from `#{b:pane_current_path}` under `automatic-rename`, tmux's
   default - the "kill shared window everywhere" menu names the wrong branch);
   `agent-hibernate.sh:209` (`#{pane_current_path}` - an empty `paneKey` in the
-  record); and `mem-popup.sh:132` (`#{window_name}`, spelled
+  record); `mem-popup.sh:184` (`#{window_name}`, spelled
   `IFS="$(printf '\t')"` so a grep for the usual form misses it - 0 MB
-  reported). The correct split is `"${(@ps:\t:)rec}"` in zsh and an explicit
+  reported); and `mem-lib.sh:381` (`mem_hibernate_rows`' label, the same
+  spelling, empty when a pane has neither an agent name nor a window name). The correct split is `"${(@ps:\t:)rec}"` in zsh and an explicit
   field walk in bash; the mechanism, the repro and the audit method live in the
   `mechanical-enforcement` skill (`references/shell-quality.md`, `## zsh`).
 - **Park is a key-loop, not a placeholder.** It re-prints the screen, shows
