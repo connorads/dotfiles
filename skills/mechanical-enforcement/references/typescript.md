@@ -164,6 +164,8 @@ There is **no tsc baseline**, so turning on `noUncheckedIndexedAccess` or
 tsc-baseline, typescript-strict-plugin and betterer are all weak. See
 `references/ratcheting.md`.
 
+- **There is no per-diagnostic severity map, and a `plugins` entry is not one.** microsoft/TypeScript#13408 ("Add support for diagnostic severities") is open with no proposal, so a compiler option is on or off and an enabled one reports at error severity. A `compilerOptions.plugins` entry configures a language-service plugin, which the editor honours and `tsc` ignores, so a diagnostics map gated only that way is editor-green and CI-unarmed unless something patches the installed compiler (`effect-tsgo patch` is one such tool), and a patch wired from a `prepare` script never runs under `ignore-scripts`. Canary the gate with a known violation, not the editor. Verified 2026-09-21.
+
 ## Lint families and suppressions
 
 **oxlint's default run is a report, not a gate.** Verified 2026-09-03 against
@@ -274,6 +276,45 @@ pinned to the exact installed oxlint version. Turn `no-unknown-parameters` off
 for `src/boundary/**`: it fires on the `(x: unknown)` type-predicate and parser
 shapes the `typescript` skill prescribes, and 14 of the 15 rules expose no
 options to relax it.
+
+### Authoring a custom rule
+
+Reach for an authored `jsPlugins` rule when the boundary needs call-shape or
+import semantics ast-grep cannot express and the type-aware set has no rule
+for it. Three conventions decide whether a reviewer can trust it.
+
+- **The rule file states its own blind spot.** A syntactic rule matches a
+  literal root identifier, so a value produced by a helper, a renamed
+  namespace import or a different root is missed, and widening needs type
+  information the rule does not have. Write that in the header: what is
+  matched, what is not, and why. Without it every unreported violation reads
+  as "the gate is green" rather than "the gate does not look there", which is
+  the fail-open class [Gate integrity](#gate-integrity) collects.
+- **`meta.messages` names the replacement**, per Principle 7 in `SKILL.md`.
+- **A ported rule carries its provenance on line 1**: upstream repository,
+  file path, release tag, commit and licence, plus "behaviour unchanged, diff
+  against upstream on refresh". A copied rule has no lockfile entry and no
+  update tool, so that line is the only thing that makes a refresh a diff
+  rather than a rewrite; repository and path alone leave nothing to diff
+  against.
+
+Three AST hazards in one line: walk `callee` and `object` down to the root
+identifier before comparing names, stop a return-statement collector at a
+nested function boundary or an inner callback's `return` is attributed to the
+outer function, and skip the `parent` key when recursing over a node's entries
+or the walk cycles. Name each authored rule `"error"` in `rules`: an unlisted
+jsPlugin rule loads and reports nothing.
+
+The config also has a TypeScript form. `oxlint.config.ts` and
+`oxfmt.config.ts` via `defineConfig` exist and make an extended preset a value
+whose arrays are addressable; `extends` does not merge `ignorePatterns`, so
+spread the preset's array by hand (`[...(core.ignorePatterns ?? []), …]`).
+The linter's TypeScript config needs Node `>=22.18.0` or `^20.19.0`, so a
+standalone-binary install stays on the JSON rc. oxc documents that
+`oxfmt.config.ts` and `.oxfmtrc.json` cannot coexist in one directory and does
+not state what happens when they do. Verified 2026-09-21 against
+oxc.rs/docs/guide/usage/linter/config-file-reference.html and
+oxc.rs/docs/guide/usage/formatter/config.html.
 
 ## Formatting
 
@@ -454,6 +495,7 @@ proves it. One line per class, all verified 2026-09-03:
 - **`oxlint -D <unknown-rule>` exits 0 with zero bytes**, as does a typo'd category; the same name in `.oxlintrc.json` aborts the run. Rules belong in the config, never in hook flags.
 - **A type-aware rule with no `options.typeAware`** exits 0 in silence; `--type-check` without it exits 1, so only the config route fails open.
 - **`plugins` replaces the default plugin set**, so listing `["import"]` alone silently disables every `typescript/*` rule; an `import/*` rule with no `plugins` entry is discarded the same way.
+- **An extended preset's `ignorePatterns` is replaced, not merged**, so a hand-written `ignorePatterns` beside `extends` silently drops the preset's `**/node_modules` entry, and oxlint then lints installed packages wherever no VCS ignore file lists them (verified 2026-09-21 against ultracite 7.12.0's 53-entry list). Spread the preset's array.
 - **`overrides[].files` anchors to the config file's directory**, so a config moved one level down matches nothing and exits 0. `--print-config` cannot see it.
 - **An unknown key inside a `no-restricted-imports` pattern object drops the whole rule**, exit 0, and `$schema` does not validate at runtime.
 - **A nested `.oxlintrc.json` overrides the root** and is dropped by `-c`; `oxlintrc.json` and `oxlint.config.mjs` are not discovered at all.
