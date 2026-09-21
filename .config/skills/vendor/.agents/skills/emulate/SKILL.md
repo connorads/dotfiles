@@ -1,6 +1,6 @@
 ---
 name: emulate
-description: Local drop-in API emulator for Vercel, GitHub, Google, Slack, Apple, Microsoft, AWS, Linear, and other developer APIs. Use when the user needs to start emulated services, configure seed data, write tests against local APIs, set up CI without network access, or work with the emulate CLI or programmatic API. Triggers include "start the emulator", "emulate services", "mock API locally", "create emulator config", "test against local API", "npx emulate", or any task requiring local service emulation.
+description: Local drop-in API emulator for Vercel, GitHub, Google, Slack, Apple, Microsoft, AWS, Clerk, Linear, Twilio, and other developer APIs. Use when the user needs to start emulated services, configure seed data, write tests against local APIs, set up CI without network access, or work with the emulate CLI or programmatic API. Triggers include "start the emulator", "emulate services", "mock API locally", "create emulator config", "test against local API", "npx emulate", or any task requiring local service emulation.
 allowed-tools: Bash(npx emulate:*)
 ---
 
@@ -185,6 +185,9 @@ github:
   orgs:
     - login: my-org
       name: My Organization
+      members:
+        - login: octocat
+          role: admin
   repos:
     - owner: octocat
       name: hello-world
@@ -240,11 +243,29 @@ linear:
   teams:
     - key: ENG
       name: Engineering
+      states:
+        - name: Backlog
+          type: backlog
+        - name: Todo
+          type: unstarted
+        - name: In Progress
+          type: started
+        - name: Done
+          type: completed
+  labels:
+    - name: Bug
+      color: "#d92d20"
+      team: ENG
+    - name: Feature
+      color: "#2563eb"
+      team: ENG
   issues:
     - team: ENG
       title: Fix local checkout test
+      description: Reproduce and fix the checkout failure.
       state: Todo
       assignee: dev@example.com
+      labels: [Bug]
   oauth_apps:
     - client_id: lin_example_client_id
       client_secret: example_client_secret
@@ -252,10 +273,12 @@ linear:
       redirect_uris:
         - http://localhost:3000/api/auth/callback/linear
       scopes: [read, write, issues:create, comments:create]
+      actor: user
   tokens:
     - token: lin_test_admin
       user: admin@example.com
       scopes: [read, write, issues:create, comments:create, admin]
+  strict_scopes: false
 
 apple:
   users:
@@ -293,7 +316,114 @@ aws:
         create_access_key: true
     roles:
       - role_name: lambda-execution-role
+        description: Role for Lambda function execution
+
+okta:
+  users:
+    - login: testuser@okta.local
+      email: testuser@okta.local
+      first_name: Test
+      last_name: User
+  groups:
+    - name: Everyone
+      description: All users
+      type: BUILT_IN
+      okta_id: 00g_everyone
+  authorization_servers:
+    - id: default
+      name: default
+      audiences: [api://default]
+  oauth_clients:
+    - client_id: okta-test-client
+      client_secret: okta-test-secret
+      name: Sample OIDC Client
+      redirect_uris:
+        - http://localhost:3000/callback
+      auth_server_id: default
+
+resend:
+  domains:
+    - name: example.com
+      region: us-east-1
+  contacts:
+    - email: test@example.com
+      first_name: Test
+      last_name: User
+
+stripe:
+  customers:
+    - email: test@example.com
+      name: Test Customer
+  products:
+    - name: Pro Plan
+      description: Monthly pro subscription
+  prices:
+    - product_name: Pro Plan
+      currency: usd
+      unit_amount: 2000
+
+mongoatlas:
+  projects:
+    - name: Project0
+  clusters:
+    - name: Cluster0
+      project: Project0
+  database_users:
+    - username: admin
+      project: Project0
+  databases:
+    - cluster: Cluster0
+      name: test
+      collections: [items]
+
+clerk:
+  users:
+    - first_name: Test
+      last_name: User
+      email_addresses: [test@example.com]
+      password: clerk_test_password
+  organizations:
+    - name: My Company
+      slug: my-company
+      members:
+        - email: test@example.com
+          role: admin
+  oauth_applications:
+    - client_id: clerk_emulate_client
+      client_secret: clerk_emulate_secret
+      name: Emulate App
+      redirect_uris:
+        - http://localhost:3000/api/auth/callback/clerk
+
+twilio:
+  account:
+    sid: AC00000000000000000000000000000000
+    auth_token: twilio_test_auth_token
+    friendly_name: Local Twilio Account
+  api_keys:
+    - sid: SK00000000000000000000000000000000
+      secret: twilio_test_api_secret
+      friendly_name: Local API Key
+  phone_numbers:
+    - phone_number: "+15551234567"
+      friendly_name: Local SMS and Voice Number
+      sms_url: http://localhost:3000/api/twilio/sms
+      voice_url: http://localhost:3000/api/twilio/voice
+  messaging_services:
+    - friendly_name: Local Messaging Service
+      phone_numbers: ["+15551234567"]
+  verify_services:
+    - friendly_name: Local Verify Service
+      code: "123456"
+      default_channel: sms
+  conversations:
+    services:
+      - friendly_name: Local Conversations
 ```
+
+GitHub App `private_key` values are intentionally omitted from starter configuration. Programmatic `createEmulator` calls generate an RSA key and expose it through `generatedSecrets`. CLI startup generates omitted keys only when `--generated-secrets-file <path>` is provided; otherwise the seed must contain an explicit, valid private key. Never use a placeholder PEM value.
+
+GitHub organization `members` are optional. Entries reference seeded users by `login`; `role` defaults to `member`, while `admin` creates an organization administrator. Unknown users are ignored.
 
 ### Auth
 

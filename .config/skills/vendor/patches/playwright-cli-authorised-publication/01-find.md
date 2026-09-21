@@ -1,0 +1,1 @@
+`gh` 2.99+ uploads local images and videos with the repeatable `--attach` flag on `gh pr create`, `gh pr comment` and `gh issue comment`. Attach a screenshot or a short video when it saves the reviewer a checkout: a UI fix, a before/after pair, a new user-facing flow, or the failure state in a bug report.

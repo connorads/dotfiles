@@ -1,0 +1,1 @@
+- **(d) Manual:** accept the user's tokens and save them under `Custom tokens` in the named external profile. Select that profile through the project marker; never write the installed `style-guide.md`.

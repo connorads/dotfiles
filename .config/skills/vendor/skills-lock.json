@@ -5,13 +5,13 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": "80161e6836b3b40f4e83730a290deb40ac14d877d38c97ad5f6d71be37ce74c3"
+      "computedHash": "dd491d53824ad9286ec950aee667098446332429a6d41fe28b4ba11f1959264c"
     },
     "agent-device": {
       "source": "callstack/agent-device",
       "sourceType": "github",
       "skillPath": "skills/agent-device/SKILL.md",
-      "computedHash": "0a673fe5ec24469f6ad35596cdf40f9d33076b78d0a929742d9e1de83f97d231"
+      "computedHash": "3187ae73a1a8b055e20630d64c86e5bb7576341b495c9a755f5e3ec7927c0302"
     },
     "caveman": {
       "source": "JuliusBrussee/caveman",
@@ -31,7 +31,7 @@
       "source": "anthropics/skills",
       "sourceType": "github",
       "skillPath": "skills/claude-api/SKILL.md",
-      "computedHash": "4478d226e518204927cabc53f0a6b14ae0fae6f9cc9a73adee84e3306550cef0"
+      "computedHash": "9bfcfccd687695f0fae23c37f63d768d9ce3e9b1ab3dc409ab4de0943178bd2f"
     },
     "cloudflare": {
       "source": "cloudflare/skills",
@@ -68,7 +68,7 @@
       "source": "cathrynlavery/diagram-design",
       "sourceType": "github",
       "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "e01adcceff753d259c534500d993512bf4d37301fa507cd45f2d4c3eaf4c6163"
+      "computedHash": "02da87e79bc19ec9a09931fa998828e30ff63f8512f4d8b453b0a9cd59c94eaa"
     },
     "dream-loop": {
       "source": "achimala/dream-loop",
@@ -86,13 +86,13 @@
       "source": "vercel-labs/emulate",
       "sourceType": "github",
       "skillPath": "skills/emulate/SKILL.md",
-      "computedHash": "613dbaaa41f1f5f3be1c7916d353a23137427a49640ca15b782c7bd642cdca44"
+      "computedHash": "d8d1777a0deeb922b25bc6116e98fbe2af82ca2f412ed13312bb43ff785e8f40"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
-      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
+      "computedHash": "913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396"
     },
     "firecrawl": {
       "source": "firecrawl/cli",
@@ -176,19 +176,19 @@
       "source": "nilbuild/page-mascot",
       "sourceType": "github",
       "skillPath": "skills/page-mascot/SKILL.md",
-      "computedHash": "e41157b77505a36c62f334226df0c1b63538d48671de9a5cc7a1924b522ba2d7"
+      "computedHash": "237b3d9a47a47885e5a12c72c4d6e2c4826a3f472b3be5a24146d76cfeca137b"
     },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "19b6942c9cbcf9b9e3000fc497f8f156b8251d66055de806017e4aaa651e0c7b"
+      "computedHash": "1e6cef0264b72fbf47618ccb82644b9a72934b2eeb35186842332928492a3cd2"
     },
     "portless": {
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "cd93aa3d65f55d8ce528232bd1731c9d18d387ee5869614aa3832f925bc8617a"
+      "computedHash": "167f39fe23acb521875ce1a1c9a4af08ca5a5f5d42fdb380f78f64779d5c03b9"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
@@ -206,19 +206,19 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "abaebe300e512c1bb412a8bfde7650467a8a7a63111554f40b6637b5454cc1a7"
+      "computedHash": "d733df539b855462d037968a8fe6c349072579d9cdfa1151d00cee8d09c1087e"
     },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",
       "skillPath": "skills/security-audit/SKILL.md",
-      "computedHash": "a9e78b86beae8fcb24212824239a4f8a84f5f29748fea90119cb7b52a9244586"
+      "computedHash": "98b97aad2873b3b9a8e064007c25e7827b493ba27fda8bfbdb41dab586767973"
     },
     "show-me": {
       "source": "humanlayer/skills",
       "sourceType": "github",
       "skillPath": "plugins/show-me/skills/show-me/SKILL.md",
-      "computedHash": "de32a72f802801f08a84641b467f2c6306d35a58ce5e59ea607ac3a993a18c91"
+      "computedHash": "43766f53afe7eb9feba0bb7716590c35cbb8d39d4a91eddef50e9566a6f6ae19"
     },
     "skill-creator": {
       "source": "anthropics/skills",
@@ -256,7 +256,7 @@
       "source": "vercel-labs/vgpu",
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
-      "computedHash": "c1fc06bfba28bfee65989e15e49fcf33bfb74648e0e098a17e926b151498305a"
+      "computedHash": "da4c3dfe0af5dd1e2771e6004927f9394aa130bded4bc60f0be21a4f442dd08f"
     },
     "visual-pr": {
       "source": "humanlayer/skills",
@@ -268,7 +268,7 @@
       "source": "vercel-labs/open-agents",
       "sourceType": "github",
       "skillPath": ".agents/skills/web-animation-design/SKILL.md",
-      "computedHash": "dcd3f6da245643cd00ef93ad73ea62edc3ae925c6d7763c0675892441d6ba6c3"
+      "computedHash": "96ae2bb48c111f9318b5c46226417c15b5d2d8f8a8cccf78a3e0549b477e25e0"
     }
   }
 }

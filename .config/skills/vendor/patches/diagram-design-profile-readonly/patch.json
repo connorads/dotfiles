@@ -1,0 +1,6 @@
+{
+  "reason": "profile operations select external profiles through project markers and never mutate the vendored install",
+  "files": [
+    ".agents/skills/diagram-design/references/profiles.md"
+  ]
+}

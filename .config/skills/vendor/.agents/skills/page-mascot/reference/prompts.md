@@ -3,14 +3,23 @@
 Substitute `{DESCRIBE}` with the character description, e.g. *a cute chibi fox with warm
 orange fur, a cream muzzle and dark ear tips*.
 
-Ask for transparency every time. It is the one failure that cannot be repaired
-afterwards.
+Transparency comes from the image tool's own transparent-background setting, not from
+the prompt. The prompts below still say "transparent" so the model does not invent a
+backdrop, but that wording alone gets you a painted grey-and-white checkerboard, not
+alpha. Set the option on the call.
+
+**If your tool has no such option, do not use the prompts below as written** -- asking
+for transparency you cannot receive is exactly what produces the checkerboard, and that
+is unrecoverable. Use *Drawing without transparency* at the bottom instead.
 
 ## Doing it by hand
 
 With no image tool and no API key, paste these into any chat UI that draws images. One
 fresh chat per character, exactly two messages: DIRECTIONS, then EXPRESSIONS with the first
-result attached. Retrying inside a chat that already holds several attempts makes the model
+result attached. Check the first result before going on: if the character sits on a
+grey-and-white checkerboard, that UI cannot produce alpha and no rewording will change it.
+Start again with *Drawing without transparency* below, which works in a chat UI that can
+only return opaque images. Retrying inside a chat that already holds several attempts makes the model
 average over them and the two sheets stop matching; if one needs redoing, start a new chat
 and redo both. Saying up front that a second matching sheet is coming measurably helps.
 
@@ -170,6 +179,53 @@ genuinely transparent, not white.
 Describe the person plainly and only by what is visible — hair, facial hair, glasses, skin
 tone, clothing colour. The EXPRESSIONS sheet then follows exactly as normal, with the
 directions sheet you just made as its reference.
+
+
+---
+
+## Drawing without transparency
+
+For a tool or chat UI that cannot return an alpha channel. Take the DIRECTIONS,
+EXPRESSIONS or REFERENCE prompt above and make these two substitutions, changing nothing
+else:
+
+Replace `fully transparent background` in the LAYOUT block with:
+
+```
+a solid flat pure bright green (#00FF00) background filling the whole cell
+```
+
+Replace the closing two lines (`No text, no labels ... genuinely transparent, not white.`)
+with:
+
+```
+No text, no labels, no borders, no drop shadows. The background is one flat uniform pure
+bright green (#00FF00) covering the entire canvas edge to edge, with no gradient, texture,
+pattern or checkerboard, and nothing else on it. Square image, at least 1024x1024.
+```
+
+For the EXPRESSIONS sheet, add `Draw it on the same solid pure bright green (#00FF00)
+background described below.` after the character description. Its reference sheet arrives
+with the green already removed, and without this the model copies the empty background it
+can see instead of the one it was told to paint.
+
+Then remove the green:
+
+```bash
+python3 <skill-dir>/scripts/key.py characters/<name>/directions.png --in-place
+python3 <skill-dir>/scripts/key.py characters/<name>/reactions.png --in-place
+```
+
+Three things matter here:
+
+- **Every mention of transparency has to go**, in both prompts. Hedging with "use green
+  if you cannot make it transparent" brings the checkerboard straight back.
+- **Use the same route for both sheets of a character.** They are compared against each
+  other, so they have to be the same kind of image.
+- **Swap green for magenta (`#FF00FF`) if the character is itself green.** A green
+  character survives the green key in practice, since its greens are duller than a pure
+  key, but there is no reason to spend the margin. Never use white, grey or black: the
+  character's own pale and dark areas would be removed along with the background.
 
 ---
 

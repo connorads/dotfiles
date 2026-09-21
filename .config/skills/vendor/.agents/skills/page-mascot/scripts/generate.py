@@ -14,8 +14,15 @@ strongest lever available for that.
 """
 import argparse
 import base64
+import io
 import os
+import re
 import sys
+
+import numpy as np
+from PIL import Image
+
+from key import key_file
 
 # The newest image model on the account at the time of writing. Later ones hold a
 # character's markings together far better across the two sheets, which is the thing
@@ -73,6 +80,38 @@ STYLES = {
 TAIL = ('No text, no labels, no borders, no drop shadows, no background colour. '
         'Square image, at least 1024x1024, PNG with alpha transparency.')
 
+# The fallback for a generator that cannot return an alpha channel. Asked for
+# transparency it cannot deliver, a model paints the grey-and-white checkerboard that
+# stands for it, and those squares run under the character's edges where nothing can
+# remove them. So the key prompt does not mention transparency at all -- not even as
+# "use green if you cannot" -- because one mention anywhere brings the checkerboard
+# back. It asks for a solid colour instead, and key.py removes it afterwards.
+KEYS = {'green': ((0, 255, 0), 'pure bright green (#00FF00)'),
+        'magenta': ((255, 0, 255), 'pure magenta (#FF00FF)')}
+
+
+def pick_key(describe):
+    """Green, unless the character is itself green. A character survives its own key
+    colour in practice -- its greens are duller than a pure key -- but there is no
+    reason to spend the margin."""
+    return 'magenta' if re.search(r'green|lime|emerald|olive', describe or '', re.I) else 'green'
+
+
+def rules(key):
+    if not key:
+        return RULES
+    return RULES.replace('fully transparent background',
+                         f'a solid flat {KEYS[key][1]} background filling the whole cell')
+
+
+def tail(key):
+    if not key:
+        return TAIL
+    return ('No text, no labels, no borders, no drop shadows. The background is one flat '
+            f'uniform {KEYS[key][1]} covering the entire canvas edge to edge, with no '
+            'gradient, texture, pattern or checkerboard, and nothing else on it. '
+            'Square image, at least 1024x1024.')
+
 RULES = """LAYOUT: 3 columns by 3 rows, evenly spaced, fully transparent background. Each drawing is head plus upper shoulders, centred in its cell, same character and same head size in all nine cells.
 
 FRAMING: a PORTRAIT BUST. Head, neck and shoulders only. NO arms, NO hands, NO legs, NO lower body. The shoulders are the lowest thing in the cell.
@@ -94,13 +133,13 @@ EXPRESSIONS = """1. Eyes closed as two upward curved arcs. No symbol.
 9. Eyes closed arcs, mouth wide open in a big happy grin."""
 
 
-def directions_prompt(describe, style):
+def directions_prompt(describe, style, key=None):
     return f"""Generate a 3x3 grid sprite sheet of {describe}. {STYLES[style]}
 
 This sheet is NINE HEAD DIRECTIONS, not expressions -- the face keeps the same calm
 expression in every cell and only the direction the head is TURNED changes.
 
-{RULES}
+{rules(key)}
 
 Turn the whole head clearly, do not just move the eyes: looking left swings the nose or
 muzzle left and brings the far ear or cheek into view.
@@ -108,18 +147,22 @@ Row 1: up-left, up, up-right. Row 2: left, straight at the viewer, right.
 Row 3: down-left, down, down-right.
 
 NO hearts, NO sparkles, NO "zzz", NO spiral eyes -- no floating symbols of any kind.
-{TAIL}"""
+{tail(key)}"""
 
 
-def reactions_prompt(describe, style):
+def reactions_prompt(describe, style, key=None):
     # The description is repeated here on purpose. Handing over the first sheet as a
     # reference image is not enough on its own -- the edits endpoint treats it as
     # inspiration and quietly redraws the character, dropping details like whiskers or a
     # belly patch. Restating the colours in words as well as pixels holds it together.
     same = f'The character is {describe}. ' if describe else ''
     look = f'Keep the {style} rendering style of the attached sheet exactly. ' if style != 'colour' else ''
+    # The reference sheet arrives already keyed, so its background is transparent while
+    # this one is being asked for a solid colour. Saying so stops the model copying the
+    # empty background it can see over the instruction it was given.
+    where = f'Draw it on the same solid {KEYS[key][1]} background described below. ' if key else ''
     return f"""The attached image is a 3x3 head-direction sprite sheet. Produce the MATCHING
-EXPRESSIONS sheet for that same character. {same}Copy the character from the attached image
+EXPRESSIONS sheet for that same character. {same}{look}{where}Copy the character from the attached image
 exactly: the same colours, the same markings, the same fur or surface detail, the same line
 weight. Every marking visible in the attached sheet must appear here too. Do not restyle,
 simplify or redraw it.
@@ -140,10 +183,10 @@ and clear empty space below the shoulders.
 The nine expressions, left to right, top to bottom:
 {EXPRESSIONS}
 
-{TAIL}"""
+{tail(key)}"""
 
 
-def reference_prompt(describe, style):
+def reference_prompt(describe, style, key=None):
     # A photograph pulls the model toward photorealism unless it is told, in as many words,
     # to throw the rendering away and keep only the identifying features. Without this the
     # result is a competent portrait illustration that looks nothing like the rest of the set.
@@ -163,14 +206,72 @@ Simplify everything else away. {STYLES[style]}
 The face keeps the same calm friendly expression in every cell; only the direction the head is
 TURNED changes.
 
-{RULES}
+{rules(key)}
 
 Turn the whole head clearly, do not just move the eyes.
 Row 1: up-left, up, up-right. Row 2: left, straight at the viewer, right.
 Row 3: down-left, down, down-right.
 
 NO hearts, NO sparkles, NO "zzz", NO spiral eyes -- no floating symbols of any kind.
-{TAIL}"""
+{tail(key)}"""
+
+
+def draw(api, model, prompt, reference=None, key=None):
+    """One image, as raw bytes. Transparency is a property of this call, not of the
+    prompt: without background='transparent' no wording produces an alpha channel. The
+    key route asks for the opposite in as many words, so that the background it is
+    about to remove is actually painted."""
+    def request(**extra):
+        if reference:
+            with open(reference, 'rb') as handle:
+                return api.images.edit(image=[handle], prompt=prompt, model=model,
+                                       size='1024x1024', **extra)
+        return api.images.generate(prompt=prompt, model=model, size='1024x1024', **extra)
+
+    try:
+        result = request(background='opaque' if key else 'transparent')
+    except Exception as refused:
+        # An older model may not take the parameter at all. Without it the transparent
+        # route cannot work, but sheet() sees that in the result and switches routes.
+        if 'background' not in str(refused):
+            raise
+        print(f'  {model} will not take a background parameter')
+        result = request()
+    return base64.b64decode(result.data[0].b64_json)
+
+
+def transparent(data):
+    image = Image.open(io.BytesIO(data))
+    return 'A' in image.mode and (np.array(image.convert('RGBA'))[..., 3] < 10).mean() > 0.05
+
+
+def sheet(api, model, path, describe, prompt_for, reference=None, key=None):
+    """Draw one sheet, and return the key colour it ended up needing, if any.
+
+    The transparent route is tried first and is what a current model does. A model that
+    cannot return alpha either rejects the parameter or quietly returns an opaque image
+    with a checkerboard painted on it; both mean the same thing, and both are answered
+    by redrawing on a solid colour and keying it out. That costs one extra image, and
+    only on a generator that cannot do the straightforward thing."""
+    if not key:
+        data = draw(api, model, prompt_for(None), reference)
+        if transparent(data):
+            with open(path, 'wb') as handle:
+                handle.write(data)
+            print(f'  {os.path.basename(path)}  {os.path.getsize(path) // 1024} KB')
+            return None
+        key = pick_key(describe)
+        print(f'  {model} returned no alpha channel, redrawing on {key} and keying it out')
+
+    data = draw(api, model, prompt_for(key), reference)
+    with open(path, 'wb') as handle:
+        handle.write(data)
+    try:
+        done = key_file(path, in_place=True) or 'came back with alpha already, nothing keyed'
+    except ValueError as problem:
+        sys.exit(f'{os.path.basename(path)} cannot be used: {problem}.')
+    print(f'  {os.path.basename(path)}  {os.path.getsize(path) // 1024} KB  {done}')
+    return key
 
 
 def client():
@@ -183,12 +284,6 @@ def client():
     return OpenAI()
 
 
-def save(result, path):
-    with open(path, 'wb') as handle:
-        handle.write(base64.b64decode(result.data[0].b64_json))
-    return os.path.getsize(path)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('name')
@@ -199,6 +294,10 @@ def main():
                         help='how the character is drawn; the shape and framing never change')
     parser.add_argument('--only', choices=['directions', 'reactions'],
                         help='regenerate just one sheet, leaving the other alone')
+    parser.add_argument('--key', choices=sorted(KEYS),
+                        help='skip the transparent route and draw on this solid colour, '
+                             'keying it out afterwards. Only for a generator that cannot '
+                             'return an alpha channel; the fallback is automatic anyway')
     args = parser.parse_args()
 
     if not args.describe and not args.reference:
@@ -214,22 +313,24 @@ def main():
     # These models return base64 rather than a URL, and can key out the background
     # instead of painting one in. Override with MASCOT_IMAGE_MODEL.
     model = os.environ.get('MASCOT_IMAGE_MODEL', DEFAULT_MODEL)
-    common = dict(model=model, size='1024x1024', background='transparent')
+    key = args.key
 
     if args.only != 'reactions':
         if args.reference:
-            with open(os.path.expanduser(args.reference), 'rb') as handle:
-                result = api.images.edit(image=[handle], prompt=reference_prompt(args.describe, args.style), **common)
+            key = sheet(api, model, directions, args.describe,
+                        lambda k: reference_prompt(args.describe, args.style, k),
+                        os.path.expanduser(args.reference), key)
         else:
-            result = api.images.generate(prompt=directions_prompt(args.describe, args.style), **common)
-        print(f'  directions.png  {save(result, directions) // 1024} KB')
+            key = sheet(api, model, directions, args.describe,
+                        lambda k: directions_prompt(args.describe, args.style, k), None, key)
 
     if args.only != 'directions':
         if not os.path.exists(directions):
             sys.exit(f'{directions} is missing; generate the directions sheet first.')
-        with open(directions, 'rb') as handle:
-            result = api.images.edit(image=[handle], prompt=reactions_prompt(args.describe, args.style), **common)
-        print(f'  reactions.png   {save(result, reactions) // 1024} KB')
+        # Whatever route the directions sheet took, the expressions sheet takes too: it is
+        # drawn from that sheet, and the two have to end up the same kind of image.
+        sheet(api, model, reactions, args.describe,
+              lambda k: reactions_prompt(args.describe, args.style, k), directions, key)
 
 
 if __name__ == '__main__':

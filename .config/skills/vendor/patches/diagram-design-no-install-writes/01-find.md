@@ -1,1 +1,1 @@
-Never copy a marker-selected profile over the installed working copy.
+First resolve any project `.diagram-design` marker per [`references/profiles.md`](references/profiles.md); a successfully resolved marker selects its profile and bypasses this gate. That reference owns failures, the protected default, and save behavior.

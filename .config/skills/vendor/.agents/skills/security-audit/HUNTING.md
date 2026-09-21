@@ -37,7 +37,8 @@ message brokers, shared services, or other users. Use local dummy data only.
 READ THE CODE AT DEPTH. Follow each assigned input through parsing, identity,
 authorization, normalization, state, derived copies, and the final sink. Read sibling,
 legacy, batch, retry, cancellation, migration, and error paths that produce the same
-effect. Compare what one component guarantees with what the next component assumes.
+effect. Compare sibling controls for equivalence, not only presence, and compare what
+one component guarantees with what the next component assumes.
 
 WORK FROM A CONCRETE INVARIANT:
 1. Name the lower-trust principal and starting capability.
@@ -60,6 +61,12 @@ partially migrated, failed dependency, and rollback state only where the interfa
 accepts them. Compare canonicalization and units at every parser or policy handoff.
 For multi-step issues, treat each output as a prerequisite and do not assume a later
 boundary. If any prerequisite is not established, record a blocker.
+
+When a proposed high or critical candidate reveals a reusable root cause, search paths
+owned by the assigned coverage IDs for lexical, structural, and logical variants.
+Consolidate the same root cause, but establish each variant's conditions and impact
+independently. Do not investigate peer-owned units. Return a variant with no current
+coverage unit as `uncovered`.
 
 USE THE NARROWEST LOCAL CHECK THAT SETTLES THE CLAIM. Target-controlled builds,
 tests, processes, browsers, emulators, fuzzers, and fixture processing may run only

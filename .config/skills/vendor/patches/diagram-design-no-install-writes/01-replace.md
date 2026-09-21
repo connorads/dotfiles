@@ -1,5 +1,5 @@
-A marker-selected profile is never copied over the installed working copy.
+Resolve the project `.diagram-design` marker per [`references/profiles.md`](references/profiles.md); a successfully resolved marker selects its profile and bypasses this gate. That reference owns failures, the protected default, and save behavior.
 
 {{marker}}
 
-**This install is read-only.** It is a vendored copy under version control, refreshed in place by `skills update`, so a write to `references/style-guide.md` is committed to a dotfiles repo *and* clobbered on the next refresh. Every branding route therefore ends at a profile, never at the working copy: save the tokens to `~/.diagram-design/profiles/<slug>.md` and write a `<project-root>/.diagram-design` marker naming that slug. Options (a)-(d) below are all subject to this - leave `references/style-guide.md` byte-for-byte as shipped.
+**This install is read-only.** Every branding route writes a named profile under `~/.diagram-design/profiles/` and selects it through the project's `.diagram-design` marker. Never write tokens or profile headers into the installed `references/style-guide.md`, including save, load, switch, update and reset.

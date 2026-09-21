@@ -1,0 +1,1 @@
+4. For marker-first use, merge missing rows into the in-memory effective guide for this session only. For copy-over load, merge them into the working copy being written. Do not silently rewrite the stored named profile.
