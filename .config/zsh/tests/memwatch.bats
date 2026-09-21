@@ -83,12 +83,43 @@ STUB
 printf '%s\n' "$*" >>"$OSASCRIPT_LOG"
 STUB
 
+  # tmux: the pane list the ranking reads, the shared auto-hibernate mode
+  # (TMUX_MODE), and the per-pane pin mirror for the pane named TMUX_PINNED.
   write_stub tmux <<'STUB'
 #!/usr/bin/env bash
-if [ "$1" = list-panes ]; then
-  printf '%s\n' "${TMUX_PANES:-}"
-fi
+case "$1 $2" in
+  'list-panes '*) printf '%s\n' "${TMUX_PANES:-}" ;;
+  'show-options -gqv') echo "${TMUX_MODE:-observe}" ;;
+  'show-options -pqv')
+    [ "$4" = "${TMUX_PINNED:-}" ] && [ "$5" = @agent_hibernate_pinned ] && echo on
+    ;;
+esac
 STUB
+
+  # The hibernate engine: probe answers with a claude/codex identity keyed by
+  # pane, hibernate logs its argv and exits ENGINE_RC (6 = refused).
+  export ENGINE_LOG="$BATS_TEST_TMPDIR/engine.log"
+  export MEMWATCH_HIBERNATE_SH="$BATS_TEST_TMPDIR/engine"
+  write_executable "$MEMWATCH_HIBERNATE_SH" <<'STUB'
+#!/usr/bin/env bash
+case "$1" in
+  probe)
+    kind=claude
+    [ "$2" = %30 ] && kind=codex
+    printf '{"kind":"%s","sessionId":"sid-%s"}\n' "$kind" "$2"
+    printf 'probe %s\n' "$2" >>"$ENGINE_LOG"
+    ;;
+  hibernate)
+    printf '%s\n' "$*" >>"$ENGINE_LOG"
+    exit "${ENGINE_RC:-0}"
+    ;;
+esac
+STUB
+  export MEMWATCH_LOCK="$BATS_TEST_TMPDIR/auto/tick.lock"
+  export AGENT_AUTO_PINS_FILE="$BATS_TEST_TMPDIR/auto/pins.json"
+  # Three safe panes; with footprint = pid MB and the ps ppid tree above, the
+  # ranking is %30 (300M) > %40 (201M) > %10 (101M).
+  export TMUX_PANES=$'idle\tclaude\tapi\tw1\tdev:1.0\t100\t%10\ndone\tcodex\tother\tw3\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tw4\tdev:4.0\t200\t%40'
 
   # sleep: logs what was asked, then really sleeps that plus SLEEP_EXTRA, so an
   # overrun is produced rather than simulated - the probe measures wall-clock.
@@ -176,4 +207,143 @@ STUB
 
   [ "$status" -eq 0 ]
   [ ! -e "$SLEEP_LOG" ]
+}
+
+# --- the emergency tier --------------------------------------------------------
+
+critical() { export FAKE_SLOTS=820; }
+
+@test "on: CRITICAL hibernates the heaviest idle/done pane once" {
+  critical
+  export TMUX_MODE=on
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = "hibernate %30" ]
+  grep -q '  hibernate %30 (other, 300M, done) rc=0$' "$MEMWATCH_LOG"
+}
+
+@test "observe: logs what it would hibernate and calls nothing" {
+  critical
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ENGINE_LOG" ]
+  grep -q '  would hibernate %30 (other, 300M, done)$' "$MEMWATCH_LOG"
+}
+
+@test "off: does nothing beyond the report" {
+  critical
+  export TMUX_MODE=off
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ENGINE_LOG" ]
+  ! grep -q 'hibernate' "$MEMWATCH_LOG"
+  grep -q '  state=CRITICAL  cause=slots  ' "$MEMWATCH_LOG"
+}
+
+@test "an option-pinned pane is skipped for the next heaviest" {
+  critical
+  export TMUX_MODE=on TMUX_PINNED=%30
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = "hibernate %40" ]
+}
+
+@test "a pane pinned in pins.json is skipped for the next heaviest" {
+  critical
+  export TMUX_MODE=on
+  mkdir -p "$(dirname "$AGENT_AUTO_PINS_FILE")"
+  printf '{"codex:sid-%%30": true}\n' >"$AGENT_AUTO_PINS_FILE"
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  grep -q '^probe %30$' "$ENGINE_LOG"
+  [ "$(grep -c '^hibernate ' "$ENGINE_LOG")" -eq 1 ]
+  grep -q '^hibernate %40$' "$ENGINE_LOG"
+}
+
+@test "a refusal is logged rc=6 and the next tick tries the next pane" {
+  critical
+  export TMUX_MODE=on ENGINE_RC=6 MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = $'hibernate %30\nhibernate %40' ]
+  grep -q '  hibernate %30 (other, 300M, done) rc=6 refused$' "$MEMWATCH_LOG"
+}
+
+@test "a held tick.lock defers the action" {
+  critical
+  export TMUX_MODE=on
+  mkdir -p "$MEMWATCH_LOCK"
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ENGINE_LOG" ]
+  grep -q '  hibernate deferred: tick.lock held$' "$MEMWATCH_LOG"
+  [ -d "$MEMWATCH_LOCK" ]
+}
+
+@test "a stale tick.lock is broken and the action proceeds" {
+  critical
+  export TMUX_MODE=on
+  mkdir -p "$MEMWATCH_LOCK"
+  touch -t 202001010000 "$MEMWATCH_LOCK"
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = "hibernate %30" ]
+  [ ! -d "$MEMWATCH_LOCK" ]
+}
+
+@test "the lock is released after acting" {
+  critical
+  export TMUX_MODE=on
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$MEMWATCH_LOCK" ]
+}
+
+@test "the action cooldown suppresses a second hibernation" {
+  critical
+  export TMUX_MODE=on MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = "hibernate %30" ]
+}
+
+@test "no safe pane logs once per cooldown window" {
+  critical
+  export TMUX_MODE=on TMUX_PANES=$'working\tclaude\tbusy\tw2\tdev:2.0\t200\t%20' MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ENGINE_LOG" ]
+  [ "$(grep -c '  no hibernatable agent pane$' "$MEMWATCH_LOG")" -eq 1 ]
+}
+
+@test "a stall-driven CRITICAL also acts" {
+  export TMUX_MODE=on MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1 SLEEP_EXTRA=1
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ENGINE_LOG")" = "hibernate %30" ]
+  grep -q '  state=CRITICAL  cause=stall  ' "$MEMWATCH_LOG"
 }
