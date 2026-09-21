@@ -1,0 +1,1 @@
+- **JS projects:** Install as a dev dependency — `npm install -D varlock` (or `bun add -D varlock`, `pnpm add -D varlock`)

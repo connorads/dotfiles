@@ -1,0 +1,1 @@
+Your `.env.schema` is committed to version control and safe for agents to read and update. The `varlock` CLI helps load and validate env vars while masking anything sensitive, and can securely inject env vars into commands.

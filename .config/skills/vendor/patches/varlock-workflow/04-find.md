@@ -1,0 +1,1 @@
+**NOTE:** If varlock is installed locally via `package.json` (not as a standalone binary), invoke it via your package manager — e.g., `pnpm exec varlock load`, `bunx varlock load`, `npm exec varlock load`. Check the project's package manager before running CLI commands.

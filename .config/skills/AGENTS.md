@@ -435,6 +435,11 @@ procedure before replacing vetted content.
 
 ## Caveats
 
+- `varlock` is a catalogue-only singleton with the `varlock-workflow` patch.
+  Preserve its local `references/nextjs.md` and `evals/` during preview refreshes,
+  and restore its `LICENSE` from the recorded upstream revision. The lock hash
+  describes the pristine upstream skill, before patches and these additions.
+
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
   dotfiles)` in the file). Two classes: **posture** patches strip upstream directives that
   make agents self-install or refresh skills at task time - which bypasses pin-and-review
