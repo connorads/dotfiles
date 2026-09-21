@@ -1,0 +1,1 @@
+Send feedback only when the user explicitly asks for that report. If telemetry is disabled or the user opted out, do not send it. Search results, a completed render and tool warnings are not requests to send feedback. Prepare and send the report below only after that request.{{marker}}

@@ -1,0 +1,1 @@
+on PATH and project-local `@hyperframes/core@0.8.46`. Install with `pnpm add -D --save-exact @hyperframes/core@0.8.46` under the configured release-age gate and install-script protections. Stop if the package is unavailable or blocked; never bypass those protections. The CLI inlines core, so it cannot supply this dependency.{{marker}}

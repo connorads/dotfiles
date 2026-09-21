@@ -1,3 +1,4 @@
+import { fetchMedia } from "./media-fetch.mjs";
 // Official brand marks — the `logo` type's provider tiers, tried in registry
 // order. Every tier was verified against a 54-brand stress test (2026-07,
 // 100% cascade hit). Hit counts below are a snapshot of that run — they
@@ -105,13 +106,13 @@ export function faviconDomainFor(entity) {
 }
 
 async function fetchJson(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const res = await fetchMedia(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) return null;
   return res.json();
 }
 
 async function urlExists(url) {
-  const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
+  const res = await fetchMedia(url, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
   return res.ok;
 }
 
@@ -196,7 +197,7 @@ export async function faviconSearch(intent, ctx = {}) {
   const url = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
   let body;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetchMedia(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     body = Buffer.from(await res.arrayBuffer());
   } catch {

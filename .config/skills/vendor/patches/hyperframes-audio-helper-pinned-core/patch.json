@@ -1,0 +1,6 @@
+{
+  "reason": "Audio helper diagnostics prescribe exact pnpm dependencies and preserve package protections.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes-audio/scripts/carve.mjs"
+  ]
+}

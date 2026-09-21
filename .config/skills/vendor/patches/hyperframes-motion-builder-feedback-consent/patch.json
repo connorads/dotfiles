@@ -1,0 +1,6 @@
+{
+  "reason": "Motion builders report catalog misses only when the user explicitly requests it and has not opted out.",
+  "files": [
+    "hyperframes/.agents/skills/motion-graphics/agents/builder.md"
+  ]
+}
