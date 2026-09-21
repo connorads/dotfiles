@@ -57,6 +57,7 @@
 
   # -- Homebrew (desktop casks / MAS apps / taps) --
   homebrew = {
+    taps = [ "anomalyco/tap" ];
     casks = [
       # Apps
       "rectangle"
@@ -87,6 +88,7 @@
       "calibre"
       "onedrive"
       "macwhisper"
+      "anomalyco/tap/hex"
       "native-access"
       "google-chrome"
       "google-gemini"
