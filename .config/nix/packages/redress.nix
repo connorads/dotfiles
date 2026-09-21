@@ -1,10 +1,11 @@
 {
   lib,
   fetchFromGitHub,
-  buildGo125Module,
+  buildGoModule,
+  go,
 }:
 
-buildGo125Module rec {
+buildGoModule rec {
   pname = "redress";
   version = "1.2.77";
 
@@ -22,7 +23,7 @@ buildGo125Module rec {
     "-w"
     "-X main.redressVersion=v${version}"
     "-X main.goreVersion=v0.14.1"
-    "-X main.compilerVersion=go1.25"
+    "-X main.compilerVersion=go${go.version}"
   ];
 
   meta = {
