@@ -80,6 +80,16 @@ reference.
    - Rust/C/C++: platform ABI metadata and language/runtime fingerprints without
      a managed payload.
 
+   When a loader references packed assets, trace their path from disk to
+   decoding and loading. A resource extension does not establish that a
+   file is data rather than executable code.
+
+   For recoverable local packing, reconstruct the transform independently
+   without importing or invoking the target's decoder. Hash the input and
+   output, verify available checksums and declared lengths, then repeat
+   static triage on the recovered payload. Record unresolved payloads as
+   coverage gaps.
+
 6. Read the matching reference before deeper analysis:
 
    | Target evidence | Read |
@@ -97,14 +107,15 @@ reference.
 7. Use the bundled static helpers when their target matches:
 
    ```bash
-   python3 scripts/macos_app_triage.py <binary-or-app> --out /tmp/re-<target-name>
+   python3 scripts/macos_app_triage.py <binary-or-app> --out /tmp/re-<target-name>/triage
    python3 scripts/macos_app_triage.py <image.dmg> \
-     --allow-mount --out /tmp/re-<target-name>
+     --allow-mount --out /tmp/re-<target-name>/triage
    python3 scripts/go_binary_triage.py <binary> --out /tmp/re-<target-name>
    ```
 
    `macos_app_triage.py` does not mount a DMG unless `--allow-mount` is present.
-   It never launches the target. `go_binary_triage.py` accepts `--go-cmd` when a
+   Its output directory must not already exist. It never launches the target.
+   `go_binary_triage.py` accepts `--go-cmd` when a
    version manager needs an explicit Go invocation.
 
 8. Recover metadata with at least two independent paths where practical.
@@ -144,6 +155,10 @@ reference.
 
 Never turn linkage, an entitlement, a raw string, or a valid signature into an
 execution claim.
+
+Scope negative capability findings to the inspected component. No direct
+networking imports in a native library does not establish that its Python
+wrapper or dynamically loaded payload is offline.
 
 Static reading and live behaviour disagree more often than either seems to
 warrant. Where a claim is load-bearing, establish it both ways.

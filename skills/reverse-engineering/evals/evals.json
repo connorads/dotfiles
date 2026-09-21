@@ -74,6 +74,19 @@
         "Uses native bridge code and Hermes call sites as independent evidence",
         "Does not reconstruct behaviour from concatenated raw strings alone"
       ]
+    },
+    {
+      "id": 7,
+      "name": "packed-native-wheel-and-wrapper-telemetry",
+      "prompt": "can you check /tmp/fixtures/inference.whl for macOS before i install it? the native loader has no socket imports, so is it offline? there are some opaque .kern files next to it and a python wrapper. inspect everything statically, dont import or run the package",
+      "assertions": [
+        "Traces the loader's packed-asset decoding and loading path instead of treating resource extensions as non-executable data",
+        "Recovers locally decodable payloads with an independent decoder without importing or invoking target code",
+        "Records input and recovered-payload hashes, validates available checksums and declared sizes, and repeats static triage on recovered executable code",
+        "Reports unresolved payloads as coverage gaps rather than evidence of safety",
+        "Inspects the Python wrapper and scopes absence of native networking imports to the inspected component rather than declaring the whole package offline",
+        "Uses a fresh child output directory when invoking the macOS helper inside an existing analysis workspace"
+      ]
     }
   ]
 }
