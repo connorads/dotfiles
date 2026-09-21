@@ -9,12 +9,21 @@ MEM_POPUP="$HOME/.config/tmux/scripts/mem-popup.sh"
 setup() {
   setup_test_home
 
+  # Multi-key loop form (the lib gathers several keys in one fork). Idle
+  # defaults: normal pressure, an empty compressor against limits of 1000.
   write_stub sysctl <<'EOF'
 #!/usr/bin/env bash
-case "$2" in
-  kern.memorystatus_vm_pressure_level) echo 1 ;;
-  vm.swapusage) echo 'total = 4096.00M  used = 0.00M  free = 4096.00M  (encrypted)' ;;
-esac
+shift
+for key in "$@"; do
+  case "$key" in
+    kern.memorystatus_vm_pressure_level) echo "${FAKE_PRESSURE:-1}" ;;
+    vm.swapusage) echo "total = 4096.00M  used = ${FAKE_SWAP:-0.00M}  free = 4096.00M  (encrypted)" ;;
+    vm.compressor.pages_compressed) echo "${FAKE_SLOTS:-0}" ;;
+    vm.compressor.pages_compressed_limit) echo 1000 ;;
+    vm.compressor.segment.total) echo "${FAKE_SEGS:-0}" ;;
+    vm.compressor.segment.limit) echo 1000 ;;
+  esac
+done
 EOF
 
   write_stub vm_stat <<'EOF'

@@ -1014,23 +1014,39 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
 three surfaces speaking one vocabulary - `OK | BUSY | CRITICAL`, encoded as
-colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a set:
+colour plus glyph plus a compressor-fill percentage or a `▲` pressure-cause
+marker. Change as a set:
 
 - [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) - **canonical** thresholds
-  (`MEM_BUSY_SWAP_MB` / `MEM_CRITICAL_SWAP_MB`), state mapping (`mem_state`),
-  the colour/glyph language (`mem_state_colour` / `mem_state_glyph`), and the
-  figure-slot cause logic (`mem_cause` / `mem_token` / `MEM_CAUSE_GLYPH`): when
-  kernel pressure (not swap) drives a non-OK state the pill shows `▲` instead of
-  the swap figure, so amber/red is self-explaining.
-  Swap-used is the primary visible signal; macOS pressure level escalates the
-  state (it often reads normal while actively swapping) and, when it is the
-  driver, names the cause. Sourced, never run.
-  On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
+  (`MEM_BUSY_SLOTS_PCT` 60 / `MEM_CRITICAL_SLOTS_PCT` 80 / `MEM_BUSY_SEGS_PCT`
+  70 / `MEM_CRITICAL_SEGS_PCT` 85), state mapping (`mem_state` /
+  `mem_state_from PRESSURE SLOTS SEGS`), the colour/glyph language
+  (`mem_state_colour` / `mem_state_glyph`), and the figure-slot cause logic
+  (`mem_cause` over `none | pressure | slots | segments`, `mem_token`,
+  `MEM_CAUSE_GLYPH`): when kernel pressure (not fill) drives a non-OK state the
+  pill shows `▲` instead of the percentage, so amber/red is self-explaining.
+  State comes from the compressor's **two ceilings**, both hard kernel limits it
+  panics at: slots (`vm.compressor.pages_compressed` over
+  `.pages_compressed_limit`; a swapout never releases one, only a process free
+  or exit does - the arm the 2026-09-20 panic hit at 100%) and segments
+  (`vm.compressor.segment.total` over `.segment.limit`; relieved by swapout and
+  compaction). Swap tracks the segments arm only, so `mem_swap_*` stays a figure
+  for the popup and the log and is no longer an input to the state. The macOS
+  pressure level escalates the state on its own and, when it is the driver,
+  names the cause. Helpers: `mem_compressor_raw` (four counters, one fork, a
+  short answer collapses to `0 0 0 0` because `sysctl -n` drops a missing key's
+  line rather than printing a placeholder), `mem_pct_from VALUE LIMIT`,
+  `mem_ratio_from PAGES SEGS` (pages per segment; above ~8 slots fill first),
+  `mem_compressor_pcts`, `mem_binding_arm` (the arm at its line binds; both or
+  neither over → the higher percentage, ties to slots). Sourced, never run.
+  On Linux the macOS sysctls are absent → fill 0, pressure 1 → flat `OK`.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) - `mem_segment()`, the
-  quiet-when-healthy pill (width ≥ 80 only). It gathers pressure and swap once,
-  then uses the lib's pure `*_from` derivations. `ram_percentage()` parses one
-  `vm_stat` capture directly on macOS and renders **alongside** it by design -
-  RAM% is the total-used headline, mem_segment the swap/pressure signal.
+  quiet-when-healthy pill (width ≥ 80 only). It gathers pressure and the four
+  compressor counters in one `sysctl` fork (five keys; anything but five lines
+  back zeroes the fill), then uses the lib's pure `*_from` derivations.
+  `ram_percentage()` parses one `vm_stat` capture directly on macOS and renders
+  **alongside** it by design - RAM% is the total-used headline, mem_segment the
+  compressor/pressure signal.
   CPU is stale-while-revalidate: a render returns cached data (or `--%`) at
   once, while one lock-guarded, five-second-bounded sampler writes atomically in
   the background. Fresh data appears on the next native status tick; never force

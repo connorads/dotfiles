@@ -7,35 +7,44 @@
 #
 # Metric note: the jetsam killer (and Activity Monitor's "Memory" column) judge
 # on phys_footprint, NOT RSS — RSS over-counts shared pages. The cheap signals
-# (sysctl pressure level, swap-used) drive the status segment every repaint; the
-# expensive per-process footprint is only sampled by the popup/watcher.
+# (sysctl pressure level, compressor fill) drive the status segment every
+# repaint; the expensive per-process footprint is only sampled by the popup and
+# the watcher.
 #
-# Pressure often reads 1 (normal) while the machine is actively swapping, so
-# swap-used is the primary visible signal and pressure is the colour accent.
-# Pressure also names the figure-slot CAUSE, not only the colour: when pressure
-# (not swap) drives a non-OK state, the pill shows a ▲ cause-marker in place of
-# the swap figure (mem_cause / mem_token below), so amber/red is self-explaining.
+# State comes from three kernel readings: the pressure level and the fill of the
+# compressor's two ceilings. Each ceiling is a hard limit the kernel panics at
+# (`Compressor Info: 100% of compressed pages limit (BAD)`), and a process can
+# stall userspace for minutes before that line is reached, so the fill is the
+# early signal and the pressure level the instant one. Swap tracks the segments
+# arm only (a swapout releases a segment but never a slot), so swap is a figure
+# for the popup and the log, not an input to the state. Pressure escalates the
+# state on its own and, when it is the driver, names the cause: the pill shows
+# a ▲ marker in place of the fill figure (mem_cause / mem_token below).
 #
 # Function-locals are _underscore-prefixed and always assigned before use so
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
 # are bare 6-hex (no leading #), `#`-prefixed at the call site.
 
-# Thresholds — defined once. Swap escalates state even when pressure reads
-# normal (1). Tuned to this 16 GB machine's lived baseline: it idles at ~2.5-3.9 G
-# of swap, so the BUSY line sits clearly ABOVE that resting band (>=5 G) — a
-# swap-driven amber now means a genuine blowout, not the idle band brushing the
-# line — and CRITICAL at >=7 G (working set ~1.5x RAM = real thrashing). The
-# kernel pressure level escalates state independently and instantaneously, so
-# pressure-2 spikes show even below these swap lines; these lines only gate the
-# swap path. Overridable for tests.
-MEM_BUSY_SWAP_MB=${MEM_BUSY_SWAP_MB:-5120}
-MEM_CRITICAL_SWAP_MB=${MEM_CRITICAL_SWAP_MB:-7168}
+# Thresholds — defined once, as a percentage of each ceiling. Slots
+# (`vm.compressor.pages_compressed` over `.pages_compressed_limit`) fill with
+# every page compressed and only empty when the owning process frees or exits,
+# so they climb through a long session and are the arm the panic hit at 100%.
+# Segments (`vm.compressor.segment.total` over `.segment.limit`) are relieved by
+# swapout and compaction, so they sit lower and move faster. On this 16 GB
+# machine ordinary days read 44-56% of slots and kill storms 60-65%; one 98% day
+# survived and 100% did not, so BUSY sits at the storm line and CRITICAL well
+# below the fatal one. The kernel pressure level (2 warn / 4 critical) escalates
+# state independently and instantaneously. Overridable for tests.
+MEM_BUSY_SLOTS_PCT=${MEM_BUSY_SLOTS_PCT:-60}
+MEM_CRITICAL_SLOTS_PCT=${MEM_CRITICAL_SLOTS_PCT:-80}
+MEM_BUSY_SEGS_PCT=${MEM_BUSY_SEGS_PCT:-70}
+MEM_CRITICAL_SEGS_PCT=${MEM_CRITICAL_SEGS_PCT:-85}
 
-# Cause marker shown in the figure slot when kernel pressure (not swap) drives a
-# non-OK state: ▲ (U+25B2) is single-width text-presentation in kitty (unlike ⚠
-# U+26A0, which renders emoji/double-width and would break pill alignment); the
-# filled triangle contrasts the hollow state glyphs ⬡ ⊟ ⊠ and avoids ◆ (the
-# blocked agent-dot, a cross-vocabulary collision).
+# Cause marker shown in the figure slot when kernel pressure (not compressor
+# fill) drives a non-OK state: ▲ (U+25B2) is single-width text-presentation in
+# kitty (unlike ⚠ U+26A0, which renders emoji/double-width and would break pill
+# alignment); the filled triangle contrasts the hollow state glyphs ⬡ ⊟ ⊠ and
+# avoids ◆ (the blocked agent-dot, a cross-vocabulary collision).
 MEM_CAUSE_GLYPH="▲"
 
 # mem_pressure_level — kern.memorystatus_vm_pressure_level normalised to the
@@ -50,8 +59,50 @@ mem_pressure_level() {
 	esac
 }
 
+# mem_compressor_raw — the four compressor counters in one fork:
+# "pages limit segments seglimit". `sysctl -n` with several keys prints one
+# line per key it knows and nothing for one it does not, so a short answer
+# (Linux, an older kernel) collapses to "0 0 0 0" rather than shifting fields.
+mem_compressor_raw() {
+	_raw=$(sysctl -n vm.compressor.pages_compressed vm.compressor.pages_compressed_limit \
+		vm.compressor.segment.total vm.compressor.segment.limit 2>/dev/null) || _raw=""
+	# shellcheck disable=SC2086  # deliberate split of one-value-per-line output
+	set -- $_raw
+	case "$#:$1$2$3$4" in
+	4:*[!0-9]* | [!4]:*) echo "0 0 0 0" ;;
+	*) echo "$1 $2 $3 $4" ;;
+	esac
+}
+
+# mem_pct_from VALUE LIMIT — integer percentage of LIMIT that VALUE fills,
+# truncated. A zero or absent limit reads 0 so an unknown ceiling never alarms.
+mem_pct_from() {
+	awk -v v="${1:-0}" -v l="${2:-0}" 'BEGIN {
+		if (l <= 0) print 0
+		else printf "%d", v * 100 / l
+	}'
+}
+
+# mem_ratio_from PAGES SEGMENTS — compressed pages per segment, one decimal.
+# The two ceilings fill at this ratio to each other: above 8 (the limits'
+# own ratio on this machine) slots reach 100% first. 0.0 when nothing is known.
+mem_ratio_from() {
+	awk -v p="${1:-0}" -v s="${2:-0}" 'BEGIN {
+		if (s <= 0) print "0.0"
+		else printf "%.1f", p / s
+	}'
+}
+
+# mem_compressor_pcts — "SLOTS SEGS" fill percentages from one gather.
+mem_compressor_pcts() {
+	# shellcheck disable=SC2046  # deliberate split of "pages limit segs seglimit"
+	set -- $(mem_compressor_raw)
+	echo "$(mem_pct_from "$1" "$2") $(mem_pct_from "$3" "$4")"
+}
+
 # mem_swap_used_mb — integer MB of swap in use, parsed from vm.swapusage
-# ("total = 4096.00M  used = 3109.69M  free = …"). Absent (Linux) → 0.
+# ("total = 4096.00M  used = 3109.69M  free = …"). Absent (Linux) → 0. A figure
+# for the popup and the watcher's log; it is not an input to the state.
 mem_swap_used_mb() {
 	_su=$(sysctl -n vm.swapusage 2>/dev/null) || _su=""
 	mem_swap_used_mb_from "$_su"
@@ -90,22 +141,26 @@ mem_swap_human() {
 	mem_human_mb "$(mem_swap_used_mb)"
 }
 
-# mem_state — map (pressure, swap) → OK | BUSY | CRITICAL. Pressure 4 or large
-# swap is CRITICAL; pressure 2 (warn) or moderate swap is BUSY; else OK.
+# mem_state — map (pressure, slots%, segments%) → OK | BUSY | CRITICAL.
+# Pressure 4 or either arm at its CRITICAL line is CRITICAL; pressure 2 (warn)
+# or either arm at its BUSY line is BUSY; else OK.
 mem_state() {
-	_lvl=$(mem_pressure_level)
-	_swap=$(mem_swap_used_mb)
-	mem_state_from "$_lvl" "$_swap"
+	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
+	set -- $(mem_pressure_level) $(mem_compressor_pcts)
+	mem_state_from "$1" "$2" "$3"
 }
 
-# mem_state_from PRESSURE SWAP_MB — pure state mapping for callers that gather
-# both kernel values once and reuse them across state, cause and token rendering.
+# mem_state_from PRESSURE SLOTS SEGS — pure state mapping for callers that
+# gather the kernel values once and reuse them across state, cause and token.
 mem_state_from() {
 	_lvl=${1:-1}
-	_swap=${2:-0}
-	if [ "$_lvl" -ge 4 ] || [ "$_swap" -ge "$MEM_CRITICAL_SWAP_MB" ]; then
+	_slots=${2:-0}
+	_segs=${3:-0}
+	if [ "$_lvl" -ge 4 ] || [ "$_slots" -ge "$MEM_CRITICAL_SLOTS_PCT" ] ||
+		[ "$_segs" -ge "$MEM_CRITICAL_SEGS_PCT" ]; then
 		echo CRITICAL
-	elif [ "$_lvl" -ge 2 ] || [ "$_swap" -ge "$MEM_BUSY_SWAP_MB" ]; then
+	elif [ "$_lvl" -ge 2 ] || [ "$_slots" -ge "$MEM_BUSY_SLOTS_PCT" ] ||
+		[ "$_segs" -ge "$MEM_BUSY_SEGS_PCT" ]; then
 		echo BUSY
 	else
 		echo OK
@@ -128,7 +183,7 @@ mem_state_colour() {
 
 # mem_state_glyph STATE — distinct shape per STATE (triple-encoding: colour +
 # glyph + presence-of-number, so the signal survives a colour clash and reads
-# for colour-blind use). Hollow = quiet, boxed-minus = swapping, boxed-x = bad.
+# for colour-blind use). Hollow = quiet, boxed-minus = filling, boxed-x = bad.
 mem_state_glyph() {
 	case "$1" in
 	OK) echo "⬡" ;;
@@ -138,51 +193,88 @@ mem_state_glyph() {
 	esac
 }
 
-# mem_cause — none | pressure | swap for the current reading: which signal
-# drives the active state. Pressure wins only when at/over the *active state's*
-# line (a swap-driven CRITICAL with pressure merely 2 returns swap, since 2 <
-# CRITICAL's line of 4). OK is always cause=none.
-mem_cause() {
-	_lvl=$(mem_pressure_level)
-	_swap=$(mem_swap_used_mb)
-	mem_cause_from "$_lvl" "$_swap"
+# mem_binding_arm SLOTS SLINE SEGS GLINE — slots | segments: which compressor
+# arm the figure slot reports. The arm at or over its line binds; when both or
+# neither are over, the higher percentage binds, ties to slots (the arm that
+# fills first at this machine's ratio and the one the panic hit).
+mem_binding_arm() {
+	_so=0
+	_go=0
+	[ "${1:-0}" -ge "${2:-0}" ] && _so=1
+	[ "${3:-0}" -ge "${4:-0}" ] && _go=1
+	if [ "$_so" -ne "$_go" ]; then
+		if [ "$_so" -eq 1 ]; then echo slots; else echo segments; fi
+	elif [ "${3:-0}" -gt "${1:-0}" ]; then
+		echo segments
+	else
+		echo slots
+	fi
 }
 
-# mem_cause_from PRESSURE SWAP_MB — pure cause mapping over gathered inputs.
+# _mem_arm_for_state STATE SLOTS SEGS — the binding arm judged against the
+# lines of STATE (CRITICAL's lines for CRITICAL, BUSY's for BUSY and OK, so a
+# healthy reading still names the arm nearer its first line).
+_mem_arm_for_state() {
+	case "$1" in
+	CRITICAL) mem_binding_arm "${2:-0}" "$MEM_CRITICAL_SLOTS_PCT" "${3:-0}" "$MEM_CRITICAL_SEGS_PCT" ;;
+	*) mem_binding_arm "${2:-0}" "$MEM_BUSY_SLOTS_PCT" "${3:-0}" "$MEM_BUSY_SEGS_PCT" ;;
+	esac
+}
+
+# mem_cause — none | pressure | slots | segments for the current reading: which
+# signal drives the active state. Pressure wins only when at/over the *active
+# state's* line (a slots-driven CRITICAL with pressure merely 2 returns slots,
+# since 2 < CRITICAL's line of 4). OK is always cause=none.
+mem_cause() {
+	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
+	set -- $(mem_pressure_level) $(mem_compressor_pcts)
+	mem_cause_from "$1" "$2" "$3"
+}
+
+# mem_cause_from PRESSURE SLOTS SEGS — pure cause mapping over gathered inputs.
 mem_cause_from() {
 	_lvl=${1:-1}
-	_swap=${2:-0}
-	case "$(mem_state_from "$_lvl" "$_swap")" in
+	_slots=${2:-0}
+	_segs=${3:-0}
+	_state=$(mem_state_from "$_lvl" "$_slots" "$_segs")
+	case "$_state" in
 	OK) echo none ;;
-	CRITICAL) if [ "$_lvl" -ge 4 ]; then echo pressure; else echo swap; fi ;;
-	BUSY) if [ "$_lvl" -ge 2 ]; then echo pressure; else echo swap; fi ;;
+	CRITICAL) if [ "$_lvl" -ge 4 ]; then echo pressure; else _mem_arm_for_state CRITICAL "$_slots" "$_segs"; fi ;;
+	BUSY) if [ "$_lvl" -ge 2 ]; then echo pressure; else _mem_arm_for_state BUSY "$_slots" "$_segs"; fi ;;
 	esac
 }
 
 # mem_token — figure-slot content: the ▲ cause-marker when pressure drives the
-# state (swap is fine, look elsewhere), else the swap figure (the real cause).
+# state (the compressor is fine, look elsewhere), else the binding arm's fill
+# as `NN%` — shown when OK too, so the resting baseline calibrates the eye.
 mem_token() {
-	_lvl=$(mem_pressure_level)
-	_swap=$(mem_swap_used_mb)
-	mem_token_from "$_lvl" "$_swap"
+	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
+	set -- $(mem_pressure_level) $(mem_compressor_pcts)
+	mem_token_from "$1" "$2" "$3"
 }
 
-# mem_token_from PRESSURE SWAP_MB — pure figure rendering over gathered inputs.
+# mem_token_from PRESSURE SLOTS SEGS — pure figure rendering over gathered inputs.
 mem_token_from() {
 	_lvl=${1:-1}
-	_swap=${2:-0}
-	case "$(mem_cause_from "$_lvl" "$_swap")" in
+	_slots=${2:-0}
+	_segs=${3:-0}
+	_cause=$(mem_cause_from "$_lvl" "$_slots" "$_segs")
+	case "$_cause" in
 	pressure) printf '%s' "$MEM_CAUSE_GLYPH" ;;
-	*) mem_human_mb "$_swap" ;;
+	none) _cause=$(_mem_arm_for_state OK "$_slots" "$_segs") ;;
+	esac
+	case "$_cause" in
+	slots) printf '%s%%' "$_slots" ;;
+	segments) printf '%s%%' "$_segs" ;;
 	esac
 }
 
-# mem_attrs_from PRESSURE SWAP_MB — one status-render payload so callers do not
-# fork once per derived attribute. Output: state<TAB>colour<TAB>glyph<TAB>token.
+# mem_attrs_from PRESSURE SLOTS SEGS — one status-render payload so callers do
+# not fork once per derived attribute. Output: state<TAB>colour<TAB>glyph<TAB>token.
 mem_attrs_from() {
-	_state=$(mem_state_from "${1:-1}" "${2:-0}")
+	_state=$(mem_state_from "${1:-1}" "${2:-0}" "${3:-0}")
 	printf '%s\t%s\t%s\t%s' "$_state" "$(mem_state_colour "$_state")" \
-		"$(mem_state_glyph "$_state")" "$(mem_token_from "${1:-1}" "${2:-0}")"
+		"$(mem_state_glyph "$_state")" "$(mem_token_from "${1:-1}" "${2:-0}" "${3:-0}")"
 }
 
 # mem_parse_mb VALUE UNIT — normalise a footprint value+unit to integer MB.
