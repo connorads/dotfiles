@@ -564,11 +564,30 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
 
 ### Automatic hibernation
 
-[`scripts/agent-autohibernate.sh`](./scripts/agent-autohibernate.sh) is the sole
-automatic policy owner. The sweep invokes it after reconciliation. It acts only
-after sustained `CRITICAL` memory state, requires 24 hours of uninterrupted
-`@agent_idle_since`, and excludes visible, unread, working, blocked, pinned,
-unsupported, unknown, or unresumable panes. Missing macOS pressure telemetry
+Two actors hibernate panes without a hand on the keyboard, under one set of
+controls:
+
+- **The sweep policy**, [`scripts/agent-autohibernate.sh`](./scripts/agent-autohibernate.sh),
+  invoked by the sweep after reconciliation. It acts only after sustained
+  `CRITICAL` memory state, requires 24 hours of uninterrupted
+  `@agent_idle_since`, allows two actions per episode, and excludes visible,
+  unread, working, blocked, pinned, unsupported, unknown, or unresumable panes.
+  It commits through the engine's `--auto`, which re-checks the prepared
+  identity immediately before shutdown.
+- **The emergency tier** in [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch),
+  run on every CRITICAL tick of the 5 s watcher (a reading over the lines, or a
+  scheduler stall). It hibernates the heaviest idle *or* done Claude/Codex pane
+  (`mem_hibernate_rows`, the popup's own ranking), one per tick, with
+  `MEMWATCH_ACTION_COOLDOWN` (30 s) between successes. It calls `hibernate`
+  without `--auto`: that path demands exact idle plus a pre-agreed identity,
+  and an emergency wants any pane it is safe to stop. A refusal (rc 6) leaves
+  the cooldown unarmed and marks the pane, so the next tick tries the next.
+
+Both read the same tmux mode (`on` acts, `observe` logs, `off` nothing), the
+same persisted pins, and the same `tick.lock` in the auto-hibernate state dir
+for mutual exclusion - each skips when the other holds it, neither waits, and
+memwatch breaks a lock older than 120 s. The sweep keeps its own rate rules and
+simply finds fewer candidates once memwatch has acted. Missing macOS telemetry
 reads `OK`, so non-macOS hosts never act automatically.
 
 Pins persist by `kind:session-id`; `@agent_hibernate_pinned` is display-only.
@@ -1080,8 +1099,18 @@ marker. Change as a set:
   userspace stall that a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.
-  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). Reload
-  after edits: `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
+  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). At
+  CRITICAL it runs the emergency hibernation tier described under *Automatic
+  hibernation* above (`MEMWATCH_HIBERNATE_SH`, `MEMWATCH_ACTION_COOLDOWN`,
+  `MEMWATCH_LOCK`, `AGENT_AUTO_PINS_FILE`), logging `would hibernate %N (…)`,
+  `hibernate %N (…) rc=0|rc=6 refused|rc=N failed`, `hibernate deferred:
+  tick.lock held` or `no hibernatable agent pane`. The launchd plist carries
+  the nix profile on `PATH` (tmux, jq and the bash-5 engine live there; with
+  the system PATH alone the action silently never runs) and `LANG=en_GB.UTF-8`
+  (tmux sanitises the tab delimiters outside UTF-8). Reload after edits:
+  `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`; a dry run in
+  the tracked `observe` mode is `MEM_CRITICAL_SLOTS_PCT=1 memwatch --once`,
+  which must log `would hibernate` and touch no pane.
 
 Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary,
 including the gather under zsh with `no_unset`),
@@ -1089,7 +1118,9 @@ including the gather under zsh with `no_unset`),
 the two-arm header and the hibernate flow),
 [`../zsh/tests/memwatch.bats`](../zsh/tests/memwatch.bats) (the watcher: log
 grammar, banner, the top-5 rows with no leaked parameter echo, the stall
-probe against a real overrunning `sleep` stub, `--once`), and the RAM/mem
+probe against a real overrunning `sleep` stub, `--once`, and the emergency
+tier's mode / pins / refusal / lock / cooldown cases against a stub engine),
+and the RAM/mem
 pills in [`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats).
 Keep the gauge legend in [`help.md`](./help.md) in sync with the lib.
 

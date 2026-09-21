@@ -1,4 +1,4 @@
-# memwatch: memory-pressure watcher and edge-triggered notifier (macOS)
+# memwatch: memory-pressure watcher, notifier and emergency actor (macOS)
 # zsh-only: launchd daemon, autoload-only by design
 #
 # The third monitoring surface (after the status gauge and prefix+Alt+m popup):
@@ -9,6 +9,19 @@
 # offender, and appends the reading plus the top-5 footprints to a log for
 # post-event review. Edge-triggered + cooldown-limited so a sustained bad state
 # notifies at most once per cooldown, never per tick.
+#
+# At CRITICAL it also acts: userspace stalled for ~2 minutes before the
+# 2026-09-20 panic, so only a pre-armed automatic action can fire in time. The
+# emergency tier hibernates the heaviest idle/done Claude/Codex pane
+# (mem_hibernate_rows, the popup's own ranking) through agent-hibernate.sh -
+# one pane per tick, MEMWATCH_ACTION_COOLDOWN between successes - under the
+# same controls as the sweep policy in agent-autohibernate.sh: the tmux mode
+# `@agent_auto_hibernate` (`on` acts, `observe` logs what it would do, `off`
+# nothing), the same pins, and the same `tick.lock` for mutual exclusion (each
+# actor skips when the other holds it; neither waits). It calls `hibernate`
+# without `--auto`: that path demands exact idle plus a pre-agreed identity,
+# and an emergency wants idle *or* done. A refusal (rc 6) leaves the cooldown
+# unarmed and marks the pane, so the next tick tries the next pane.
 #
 # The sleep is also a liveness probe. Before the 2026-09-20 panic userspace
 # stalled for ~2 minutes (log persistence died, run loops slipped from 5 s to
@@ -31,7 +44,8 @@
 
 emulate -L zsh
 setopt no_unset
-zmodload zsh/datetime # $EPOCHREALTIME for the stall probe
+zmodload zsh/datetime # $EPOCHREALTIME for the stall probe, $EPOCHSECONDS for cooldowns
+zmodload zsh/stat     # zstat, to age a stale tick.lock
 
 # System tools live outside a login agent's minimal PATH; mem-lib calls sysctl
 # (/usr/sbin), footprint/vm_stat/osascript/ps (/usr/bin, /bin). Appended (not
@@ -61,9 +75,115 @@ local stall_critical_secs=${MEMWATCH_STALL_CRITICAL_SECS:-5}
 local ticks=${MEMWATCH_TICKS:-0} # 0 = run forever
 [[ "${1:-}" == "--once" ]] && ticks=1
 
+# The emergency tier's knobs. Lock and pins are agent-autohibernate.sh's own
+# (same state dir, same override), so the two actors cannot disagree on either.
+local hib=${MEMWATCH_HIBERNATE_SH:-$HOME/.config/tmux/scripts/agent-hibernate.sh}
+local action_cooldown=${MEMWATCH_ACTION_COOLDOWN:-30}
+local auto_state_dir=${AGENT_AUTO_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-autohibernate}
+local lock=${MEMWATCH_LOCK:-$auto_state_dir/tick.lock}
+local pins_file=${AGENT_AUTO_PINS_FILE:-$auto_state_dir/pins.json}
+local lock_stale_secs=120
+
 mkdir -p "${log:h}"
 
 stamp() { date '+%Y-%m-%dT%H:%M:%S'; }
+mw_log() { printf '%s  %s\n' "$(stamp)" "$*" >>"$log"; }
+
+# auto_mode — the shared tmux mode option; anything unknown reads observe
+# (mirrors agent-autohibernate.sh's `mode`).
+auto_mode() {
+	local value
+	value=$(tmux show-options -gqv @agent_auto_hibernate 2>/dev/null) || value=
+	case "$value" in off | observe | on) print -r -- "$value" ;; *) print observe ;; esac
+}
+
+# pane_pinned PANE — true when the pane is protected: the display mirror option
+# is on, or its `kind:sessionId` key is true in the persisted pins. A pane the
+# engine cannot probe is also skipped: `hibernate` would refuse it for the same
+# reason, so attempting it only spends the tick.
+pane_pinned() {
+	local pane=$1 key
+	[[ "$(tmux show-options -pqv -t "$pane" @agent_hibernate_pinned 2>/dev/null)" == on ]] && return 0
+	[[ -s "$pins_file" ]] || return 1
+	key=$("$hib" probe "$pane" 2>/dev/null | jq -er '.kind + ":" + .sessionId' 2>/dev/null) || return 0
+	jq -e --arg key "$key" '.[$key] == true' "$pins_file" >/dev/null 2>&1
+}
+
+# take_lock — mkdir the shared tick.lock; a lock older than lock_stale_secs is
+# a crashed holder's and is broken first. Returns 1 when genuinely held.
+take_lock() {
+	local age
+	mkdir -p "${lock:h}"
+	mkdir "$lock" 2>/dev/null && return 0
+	age=$((EPOCHSECONDS - $(zstat +mtime "$lock" 2>/dev/null || print "$EPOCHSECONDS")))
+	((age > lock_stale_secs)) || return 1
+	rmdir "$lock" 2>/dev/null
+	mkdir "$lock" 2>/dev/null
+}
+
+# act_on_critical — the emergency tier, run every CRITICAL tick. Reads
+# last_action / last_nocand / refused from the enclosing scope and writes them.
+act_on_critical() {
+	local mode now row pane mb label pstate desc rc
+	local -a f
+	mode=$(auto_mode)
+	[[ "$mode" == off ]] && return 0
+	now=$EPOCHSECONDS
+	((now - last_action < action_cooldown)) && return 0
+	if ! command -v jq >/dev/null 2>&1; then
+		if ((now - last_nocand >= action_cooldown)); then
+			mw_log "hibernate skipped: jq missing"
+			last_nocand=$now
+		fi
+		return 0
+	fi
+	if ! take_lock; then
+		mw_log "hibernate deferred: tick.lock held"
+		return 0
+	fi
+	{
+		pane=
+		for row in ${(f)"$(mem_hibernate_rows)"}; do
+			f=("${(@ps:\t:)row}")
+			[[ -n "${f[1]:-}" ]] || continue
+			((${refused[$f[1]]:-0} + action_cooldown > now)) && continue
+			pane_pinned "$f[1]" && continue
+			pane=$f[1] mb=${f[2]:-0} label=${f[3]:-} pstate=${f[4]:-}
+			break
+		done
+		if [[ -z "$pane" ]]; then
+			if ((now - last_nocand >= action_cooldown)); then
+				mw_log "no hibernatable agent pane"
+				last_nocand=$now
+			fi
+			return 0
+		fi
+		desc="$pane ($label, $(mem_human_mb "$mb"), $pstate)"
+		if [[ "$mode" == observe ]]; then
+			mw_log "would hibernate $desc"
+			last_action=$now
+			return 0
+		fi
+		"$hib" hibernate "$pane" >/dev/null 2>&1
+		rc=$?
+		case $rc in
+		0)
+			mw_log "hibernate $desc rc=0"
+			last_action=$now
+			;;
+		6)
+			mw_log "hibernate $desc rc=6 refused"
+			refused[$pane]=$now
+			;;
+		*)
+			mw_log "hibernate $desc rc=$rc failed"
+			refused[$pane]=$now
+			;;
+		esac
+	} always {
+		rmdir "$lock" 2>/dev/null
+	}
+}
 
 # top_apps — top apps by phys_footprint this instant: RSS-rank, footprint the
 # top N, group by app (mem-lib). Serial: only run on a transition, so the ~1.3 s
@@ -86,9 +206,10 @@ top_apps() {
 
 # Hoisted out of the loop for the same zsh `local`-lists-existing-params reason
 # as top_apps above: re-declaring locals each iteration would echo them.
-local prev=OK now=0 last_notify=0 tick=0 stall_s=0
+local prev=OK now=0 last_notify=0 tick=0 stall_s=0 last_action=0 last_nocand=0
 local pressure pages plimit segments slimit slots segs ratio state cause
 local grouped swap hog t0 slip
+local -A refused
 while :; do
 	tick=$((tick + 1))
 	# Two forks, five readings. The lib splits its own gather; the pressure
@@ -104,6 +225,9 @@ while :; do
 		state=CRITICAL
 		cause=stall
 	fi
+
+	# Act before reporting: the banner can wait for a fork, the action cannot.
+	[[ "$state" == CRITICAL ]] && act_on_critical
 
 	if [[ "$state" != OK ]]; then
 		now=$(date +%s)

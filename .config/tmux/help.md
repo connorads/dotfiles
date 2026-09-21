@@ -183,10 +183,12 @@ their ratio, swap, wired, top footprint apps, agents). Press `h` to choose one o
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
 The header shows automatic-hibernation mode. Automatic mode is observe-only by
-default. `agent auto status` explains each exclusion; `agent auto on` enables
-one oldest hidden idle conversation per 15 minutes only while CRITICAL. Use the
-pane right-click menu or `agent pin` to protect a conversation without blocking
-manual hibernation.
+default. `agent auto status` explains each exclusion; `agent auto on` enables both
+automatic tiers: the sweep's one oldest hidden idle conversation per 15 minutes
+while CRITICAL, and `memwatch`'s emergency hibernation of the heaviest idle or
+done pane, one per 5 s tick, the moment a reading or a scheduler stall is
+CRITICAL. Use the pane right-click menu or `agent pin` to protect a
+conversation from both without blocking manual hibernation.
 
 | Pill | State | Meaning |
 |------|-------|---------|
