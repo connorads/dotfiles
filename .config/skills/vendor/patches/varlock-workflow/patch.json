@@ -1,0 +1,6 @@
+{
+  "reason": "Use reviewed skill installs, protected diagnostics and verified framework checks",
+  "files": [
+    ".agents/skills/varlock/SKILL.md"
+  ]
+}

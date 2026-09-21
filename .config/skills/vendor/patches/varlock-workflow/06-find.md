@@ -1,0 +1,1 @@
+- **Safe to read and edit:** `.env.schema` and any other git-committed `.env` files (usually env-specific files like `.env.development`)

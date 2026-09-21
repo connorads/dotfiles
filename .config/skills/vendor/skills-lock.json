@@ -252,6 +252,13 @@
       "skillPath": "pstack/skills/unslop/SKILL.md",
       "computedHash": "bf0fa50406da04d3831e99807c199e392321cfb52c061567e7177b078bda0682"
     },
+    "varlock": {
+      "source": "dmno-dev/varlock",
+      "ref": "varlock@1.20.0",
+      "sourceType": "github",
+      "skillPath": "skills/varlock/SKILL.md",
+      "computedHash": "2fe44911234ed0ac31f10d1127b8b6ea54ee1f51f11da4dfa70050ee4075ca9e"
+    },
     "vgpu": {
       "source": "vercel-labs/vgpu",
       "sourceType": "github",

@@ -1,0 +1,1 @@
+When a framework integration is active, it handles loading and injecting env vars automatically — `varlock run` is **not needed** for the framework's own dev/build commands. Only use `varlock run -- <cmd>` for other scripts or tools that the integration doesn't cover (e.g., one-off migrations, CLI tools, non-JS commands).
