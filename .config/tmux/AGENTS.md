@@ -1066,16 +1066,32 @@ marker. Change as a set:
   selected pane is attempted, and one result line reports hibernated, refused
   and failed counts. `r` refreshes and `q` closes.
 - [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) - launchd
-  notifier (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
-  Banners on sustained pressure; log `~/.cache/memwatch.log`. Reload after edits:
-  `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
+  watcher (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
+  Every 5 s (`MEMWATCH_INTERVAL`) it reads the pressure level and the four
+  compressor counters, derives state and cause through the lib, and on a
+  transition into BUSY/CRITICAL (or once per `MEMWATCH_COOLDOWN`, 600 s while
+  still bad) posts a banner - `slots 62% · segs 27% · swap 6.0G · top: <app>` -
+  and appends `<ts>  state=  cause=  swap=  slots=  segs=  ratio=` plus the
+  top-5 footprint rows to `~/.cache/memwatch.log`. The sleep doubles as a
+  **liveness probe**: a wake later than `MEMWATCH_STALL_LOG_SECS` (2) logs
+  `<ts>  stall=Ns  interval=Ns`, and one later than
+  `MEMWATCH_STALL_CRITICAL_SECS` (5) makes the next tick CRITICAL with the
+  memwatch-local cause `stall`. The 2026-09-20 panic was preceded by ~2 min of
+  userspace stall that a 5 s sleeper sees as it starts; the probe measures
+  memwatch's own scheduling, a proxy for watchdogd's thread and not that
+  thread, so the thresholds sit well inside the kernel's ~90 s deadline.
+  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). Reload
+  after edits: `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
 
-Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary),
-[`../zsh/tests/mem-popup.bats`](../zsh/tests/mem-popup.bats) (bounded summary and
-hibernate flow), and the RAM/mem pills in
-[`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats). Keep the
-gauge legend in [`help.md`](./help.md) in sync with the lib. The `memwatch`
-notifier is not yet unit-tested.
+Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary,
+including the gather under zsh with `no_unset`),
+[`../zsh/tests/mem-popup.bats`](../zsh/tests/mem-popup.bats) (bounded summary,
+the two-arm header and the hibernate flow),
+[`../zsh/tests/memwatch.bats`](../zsh/tests/memwatch.bats) (the watcher: log
+grammar, banner, the top-5 rows with no leaked parameter echo, the stall
+probe against a real overrunning `sleep` stub, `--once`), and the RAM/mem
+pills in [`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats).
+Keep the gauge legend in [`help.md`](./help.md) in sync with the lib.
 
 ## Resurrect save freshness (custom subsystem)
 
