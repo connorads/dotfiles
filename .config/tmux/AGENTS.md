@@ -1035,7 +1035,12 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
 three surfaces speaking one vocabulary - `OK | BUSY | CRITICAL`, encoded as
 colour plus glyph plus a compressor-fill percentage, with a `▲` pressure marker
-before the figure under kernel warn or critical pressure. Change as a set:
+before the figure under kernel warn or critical pressure. Every surface is
+built to answer three questions at a glance - what the number is, how far it
+is from the line that changes the colour, and what lowers it - because a figure
+without its line and its lever is not actionable: the popup marks the lines on
+the bar and names the distance and the action, the banner carries the
+distance, and the help section reads as a procedure. Change as a set:
 
 - [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) - **canonical** thresholds
   (`MEM_BUSY_SLOTS_PCT` 60 / `MEM_CRITICAL_SLOTS_PCT` 80 / `MEM_BUSY_SEGS_PCT`
