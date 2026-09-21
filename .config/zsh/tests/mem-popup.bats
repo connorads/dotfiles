@@ -10,7 +10,8 @@ setup() {
   setup_test_home
 
   # Multi-key loop form (the lib gathers several keys in one fork). Idle
-  # defaults: normal pressure, an empty compressor against limits of 1000.
+  # defaults: normal pressure, slots 26% / segments 27% against limits of 1000,
+  # real page and segment-buffer sizes (FAKE_PAGESIZE / FAKE_SEGBYTES override).
   write_stub sysctl <<'EOF'
 #!/usr/bin/env bash
 shift
@@ -18,10 +19,12 @@ for key in "$@"; do
   case "$key" in
     kern.memorystatus_vm_pressure_level) echo "${FAKE_PRESSURE:-1}" ;;
     vm.swapusage) echo "total = 4096.00M  used = ${FAKE_SWAP:-0.00M}  free = 4096.00M  (encrypted)" ;;
-    vm.compressor.pages_compressed) echo "${FAKE_SLOTS:-0}" ;;
+    vm.compressor.pages_compressed) echo "${FAKE_SLOTS:-260}" ;;
     vm.compressor.pages_compressed_limit) echo 1000 ;;
-    vm.compressor.segment.total) echo "${FAKE_SEGS:-0}" ;;
+    vm.compressor.segment.total) echo "${FAKE_SEGS:-270}" ;;
     vm.compressor.segment.limit) echo 1000 ;;
+    hw.pagesize) echo "${FAKE_PAGESIZE:-16384}" ;;
+    vm.compressor_segment_buffer_size) echo "${FAKE_SEGBYTES:-65536}" ;;
   esac
 done
 EOF
@@ -98,6 +101,27 @@ EOF
   [[ "$output" == *"[k] manage process"* ]]
   [[ "$output" == *"[h] hibernate agents"* ]]
   [[ "$output" == *"Agent auto-hibernate  observe"* ]]
+}
+
+@test "header renders both compressor arms as bars with sizes and the ratio" {
+  # One GiB "pages" and "segments" make the sizes read as the raw counts.
+  export FAKE_SLOTS=770 FAKE_SEGS=100 FAKE_PAGESIZE=1073741824 FAKE_SEGBYTES=1073741824
+
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"BUSY"* ]] || false
+  [[ "$output" == *"Slots  ▓▓▓▓▓▓▓▓▓░░░  770.0 of 1000.0 GiB  77%"* ]] || false
+  [[ "$output" == *"Segs   ▓░░░░░░░░░░░  100.0 of 1000.0 GiB  10%   ratio 7.7 (>8 = slots bind first)"* ]]
+}
+
+@test "header no longer prints the Compressed figure" {
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Slots"* ]] || false
+  [[ "$output" == *"Wired  0M"* ]] || false
+  [[ "$output" != *"Compressed"* ]]
 }
 
 @test "hibernate candidates include safe Claude and Codex panes and rank by footprint" {

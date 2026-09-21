@@ -144,23 +144,50 @@ choose_agents_to_hibernate() {
 	pause_result
 }
 
+# gib_of COUNT BYTES_EACH — COUNT units of BYTES_EACH as GiB, one decimal.
+gib_of() {
+	awk -v n="${1:-0}" -v b="${2:-0}" 'BEGIN { printf "%.1f", n * b / 1073741824 }'
+}
+
+# render_header — state line, then the compressor's two ceilings as bars with
+# their logical sizes (pages × page size; segments × segment buffer size), the
+# pages-per-segment ratio (above 8 slots reach 100% before segments), swap and
+# wired. One gather feeds state and figures alike, so the header never shows a
+# state its own bars contradict.
 render_header() {
-	_state=$(mem_state)
+	# shellcheck disable=SC2046  # deliberate split of "PRESSURE pages limit segs seglimit"
+	set -- $(mem_pressure_level) $(mem_compressor_raw)
+	_level=$1
+	_pages=$2
+	_plimit=$3
+	_segs=$4
+	_slimit=$5
+	_slots_pct=$(mem_pct_from "$_pages" "$_plimit")
+	_segs_pct=$(mem_pct_from "$_segs" "$_slimit")
+	_state=$(mem_state_from "$_level" "$_slots_pct" "$_segs_pct")
+	_pgsz=$(sysctl -n hw.pagesize 2>/dev/null) || _pgsz=""
+	_segb=$(sysctl -n vm.compressor_segment_buffer_size 2>/dev/null) || _segb=""
+	case $_pgsz in '' | *[!0-9]*) _pgsz=16384 ;; esac
+	case $_segb in '' | *[!0-9]*) _segb=65536 ;; esac
 	_auto=$(tmux show-options -gqv @agent_auto_hibernate 2>/dev/null || true)
 	case $_auto in off | observe | on) ;; *) _auto=observe ;; esac
 	_colour=$(mem_state_colour "$_state")
 	_glyph=$(mem_state_glyph "$_state")
-	_level=$(mem_pressure_level)
 	_swap_total_mb=$(sysctl -n vm.swapusage 2>/dev/null | awk '{
 		for (i = 1; i <= NF; i++) if ($i == "total") { v = $(i + 2); break }
 		u = substr(v, length(v), 1); n = substr(v, 1, length(v) - 1) + 0
 		if (u == "G") n = n * 1024; else if (u == "K") n = n / 1024
 		printf "%d", n }')
 	printf '%s %s  Memory   pressure %s/4\n' "$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" "$_state")" "$_level"
+	printf '  Slots  %s  %s of %s GiB  %s%%\n' \
+		"$(mem_bar "$_slots_pct" 100 "$BAR_WIDTH")" \
+		"$(gib_of "$_pages" "$_pgsz")" "$(gib_of "$_plimit" "$_pgsz")" "$_slots_pct"
+	printf '  Segs   %s  %s of %s GiB  %s%%   ratio %s (>8 = slots bind first)\n' \
+		"$(mem_bar "$_segs_pct" 100 "$BAR_WIDTH")" \
+		"$(gib_of "$_segs" "$_segb")" "$(gib_of "$_slimit" "$_segb")" "$_segs_pct" \
+		"$(mem_ratio_from "$_pages" "$_segs")"
 	printf '  Swap   %s used / %s\n' "$(mem_swap_human)" "$(mem_human_mb "${_swap_total_mb:-0}")"
-	printf '  Wired  %s    Compressed %s\n\n' \
-		"$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")" \
-		"$(mem_human_mb "$(vm_stat_mb 'Pages occupied by compressor')")"
+	printf '  Wired  %s\n\n' "$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")"
 	printf '  Agent auto-hibernate  %s\n\n' "$_auto"
 }
 
