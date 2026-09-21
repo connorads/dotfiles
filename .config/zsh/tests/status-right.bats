@@ -170,48 +170,63 @@ EOF
   [[ "$plain" == *"Connors-MacBook-Air"* ]]
 }
 
-@test "healthy memory-pressure pill still shows the swap figure" {
-  # Normal pressure + 2.6G swap (below the 5G / 5120 MB BUSY threshold) → OK
-  # state. The figure is shown even when healthy so the resting baseline stays
-  # visible.
+# mem_sysctl_stub PRESSURE SLOTS SEGS — the five-key sysctl shim mem_segment
+# gathers with; compressor counters are against fixed limits of 1000, so 260
+# reads as 26%. Each key is logged to $TEST_LOG.
+mem_sysctl_stub() {
+  export MEM_STUB_PRESSURE="$1" MEM_STUB_SLOTS="$2" MEM_STUB_SEGS="$3"
   write_stub sysctl <<'EOF'
 #!/usr/bin/env bash
 shift
 for key in "$@"; do
+  echo "$key" >>"$TEST_LOG"
   case "$key" in
-    kern.memorystatus_vm_pressure_level) echo 1 ;;
-    vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M  (encrypted)" ;;
+    kern.memorystatus_vm_pressure_level) echo "$MEM_STUB_PRESSURE" ;;
+    vm.compressor.pages_compressed) echo "$MEM_STUB_SLOTS" ;;
+    vm.compressor.pages_compressed_limit) echo 1000 ;;
+    vm.compressor.segment.total) echo "$MEM_STUB_SEGS" ;;
+    vm.compressor.segment.limit) echo 1000 ;;
   esac
 done
 EOF
-
-  run_status_right 90
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"2.6G"* ]]
 }
 
-@test "pressure-driven memory pill shows the cause marker, not a swap figure" {
-  # Warn pressure + idle-band swap (3G, below the 5G line) → BUSY driven by
-  # pressure. The figure slot shows ▲ (swap is fine, look elsewhere), no G figure.
-  write_stub sysctl <<'EOF'
-#!/usr/bin/env bash
-shift
-for key in "$@"; do
-  case "$key" in
-    kern.memorystatus_vm_pressure_level) echo 2 ;;
-    vm.swapusage) echo "total = 4096.00M  used = 3000.00M  free = 100.00M  (encrypted)" ;;
-  esac
-done
-EOF
+@test "healthy memory pill shows the binding arm's percentage" {
+  # Normal pressure, slots 26% / segments 27%, both under their BUSY lines → OK.
+  # The figure is shown even when healthy so the resting baseline stays
+  # visible, and it is the higher arm's; OK is never bold.
+  mem_sysctl_stub 1 260 270
 
   run_status_right 90
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"▲"* ]] || false
-  [[ "$plain" != *"3.0G"* ]]
+  [[ "$plain" == *"⬡ 27%"* ]] || false
+  [[ "$output" != *"#[bold] ⬡"* ]]
+}
+
+@test "pressure-driven memory pill shows the cause marker, not a percentage" {
+  # Warn pressure + a resting compressor → BUSY driven by pressure. The figure
+  # slot shows ▲ (the compressor is fine, look elsewhere), no percentage.
+  mem_sysctl_stub 2 300 300
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"⊟ ▲"* ]] || false
+  [[ "$plain" != *"⊟ "[0-9]* ]]
+}
+
+@test "slots-driven amber shows the slots percentage in bold" {
+  mem_sysctl_stub 1 620 270
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"⊟ 62%"* ]] || false
+  [[ "$output" == *"#[bold] ⊟ 62%"* ]]
 }
 
 @test "home directory shows bare dotfiles branch" {
@@ -452,24 +467,17 @@ EOF
   [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]
 }
 
-@test "memory status gathers pressure and swap once" {
-  write_stub sysctl <<'EOF'
-#!/usr/bin/env bash
-shift
-for key in "$@"; do
-  echo "$key" >>"$TEST_LOG"
-  case "$key" in
-    kern.memorystatus_vm_pressure_level) echo 1 ;;
-    vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M" ;;
-  esac
-done
-EOF
+@test "memory status gathers pressure and the four compressor counters once each" {
+  mem_sysctl_stub 1 260 270
 
   run_status_right 90
 
   [ "$status" -eq 0 ]
-  [ "$(grep -c '^kern.memorystatus_vm_pressure_level$' "$TEST_LOG")" -eq 1 ]
-  [ "$(grep -c '^vm.swapusage$' "$TEST_LOG")" -eq 1 ]
+  for key in kern.memorystatus_vm_pressure_level vm.compressor.pages_compressed \
+    vm.compressor.pages_compressed_limit vm.compressor.segment.total vm.compressor.segment.limit; do
+    [ "$(grep -c "^$key\$" "$TEST_LOG")" -eq 1 ] || false
+  done
+  ! grep -q '^vm.swapusage$' "$TEST_LOG"
 }
 
 @test "wide status omits AI usage even when caches exist" {

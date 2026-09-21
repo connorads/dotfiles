@@ -173,11 +173,12 @@ popup as `Ctrl+b A`. Disable only this compact fallback with
 
 ## Memory pressure (status bar)
 
-Right-side gauge (macOS, width ≥ 80). Swap-used is shown - including when
-healthy - so the resting baseline stays visible, *unless* kernel pressure is the
-driver, where a `▲` replaces the figure (swap is fine, look elsewhere). Colour +
-glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
-(swap/RAM, top footprint apps, agents). Press `h` to choose one or more
+Right-side gauge (macOS, width ≥ 80). The figure is how full the compressor is,
+as a percentage of whichever of its two ceilings is nearer - shown including
+when healthy, so the resting baseline stays visible - *unless* kernel pressure
+is the driver, where a `▲` replaces the figure (the compressor is fine, look
+elsewhere). Colour + glyph encode state; bold escalates on BUSY/CRITICAL.
+`Ctrl+b Alt+m` drills down (swap/RAM, top footprint apps, agents). Press `h` to choose one or more
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
 The header shows automatic-hibernation mode. Automatic mode is observe-only by
@@ -188,12 +189,16 @@ manual hibernation.
 
 | Pill | State | Meaning |
 |------|-------|---------|
-| `⬡` green | OK | swap below threshold, kernel pressure normal |
-| `⊟` amber (bold) | BUSY | swapping (≥5G) or kernel warn pressure |
-| `⊠` red (bold) | CRITICAL | heavy swap (≥7G) or kernel critical pressure |
+| `⬡` green | OK | slots < 60%, segments < 70%, kernel pressure normal |
+| `⊟` amber (bold) | BUSY | slots ≥ 60% or segments ≥ 70% or kernel warn pressure |
+| `⊠` red (bold) | CRITICAL | slots ≥ 80% or segments ≥ 85% or kernel critical pressure |
 
-`▲` in the figure slot = kernel pressure is the cause (swap itself is below
-threshold); a number = swap worth noting.
+`▲` in the figure slot = kernel pressure is the cause (the compressor is under
+its lines); `NN%` = the fill of the binding arm. Slots are compressed pages
+against the kernel's hard page limit - the ceiling the 2026-09-20 panic hit at
+100% - and only empty when a process frees or exits; segments are compressed
+storage against its limit, relieved by swapout. Swap tracks the segments arm
+only, so it is a figure in the popup and the log, not an input to the state.
 
 ## Caffeine (status bar)
 

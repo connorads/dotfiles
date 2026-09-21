@@ -42,7 +42,8 @@ cpu_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh"
 ram_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/ram_percentage.sh"
 
 # Shared memory-pressure vocabulary (OK/BUSY/CRITICAL → colour + glyph +
-# swap-figure, or a ▲ marker in the figure slot when kernel pressure is the cause).
+# compressor-fill figure, or a ▲ marker in the figure slot when kernel pressure
+# is the cause).
 # RAM-used % from tmux-cpu was dropped: on macOS it reads ~90% when healthy
 # (file cache), so it was learned-to-be-ignored noise. mem-lib reports the
 # jetsam-relevant signal instead. See mem_segment below.
@@ -128,7 +129,8 @@ cpu_percentage() {
 
 # ram_percentage — RAM-used % from tmux-cpu, shown ALONGSIDE mem_segment by
 # design: the two measure different things and both are wanted. ram% is the
-# total-used headline; mem_segment is the jetsam-relevant swap/pressure signal.
+# total-used headline; mem_segment is the jetsam-relevant compressor/pressure
+# signal.
 # Caveat: on macOS ram% over-reads (counts reclaimable inactive pages), so read
 # it as a rough ceiling and trust mem_segment for actual pressure. On Linux
 # mem_segment's sysctls are absent (flat OK), so ram% is the meaningful gauge.
@@ -158,23 +160,30 @@ ram_percentage() {
 
 # mem_segment — memory-pressure gauge in the powerline-pill shape. State is
 # encoded by colour + glyph; bold escalates on BUSY/CRITICAL as the extra
-# non-colour cue. The figure slot shows the swap figure (OK included, so the
-# resting baseline stays visible and calibrates the eye), except when kernel
-# pressure is the cause — there a ▲ marker takes the slot (swap is fine, look
-# elsewhere). See mem_token. Sysctl-only, cheap at the 15 s status-interval, so
-# no caching.
+# non-colour cue. The figure slot shows the binding compressor arm's fill as
+# `NN%` (OK included, so the resting baseline stays visible and calibrates the
+# eye), except when kernel pressure is the cause — there a ▲ marker takes the
+# slot (the compressor is fine, look elsewhere). See mem_token. One sysctl fork
+# for all five keys, cheap at the 15 s status-interval, so no caching. A key the
+# kernel lacks prints no line at all, so anything but five lines zeroes the
+# compressor arms rather than reading a shifted field as a percentage.
 mem_segment() {
-	local reading pressure swap_raw swap state colour glyph token
-	reading="$(sysctl -n kern.memorystatus_vm_pressure_level vm.swapusage 2>/dev/null || true)"
-	pressure="${reading%%$'\n'*}"
+	local reading pressure slots segs state colour glyph token
+	local -a v
+	reading="$(sysctl -n kern.memorystatus_vm_pressure_level \
+		vm.compressor.pages_compressed vm.compressor.pages_compressed_limit \
+		vm.compressor.segment.total vm.compressor.segment.limit 2>/dev/null || true)"
+	mapfile -t v <<<"$reading"
+	pressure="${v[0]:-}"
 	case "$pressure" in 1 | 2 | 4) ;; *) pressure=1 ;; esac
-	if [[ "$reading" == *$'\n'* ]]; then
-		swap_raw="${reading#*$'\n'}"
+	if [ "${#v[@]}" -eq 5 ]; then
+		slots="$(mem_pct_from "${v[1]}" "${v[2]}")"
+		segs="$(mem_pct_from "${v[3]}" "${v[4]}")"
 	else
-		swap_raw=""
+		slots=0
+		segs=0
 	fi
-	swap="$(mem_swap_used_mb_from "$swap_raw")"
-	IFS=$'\t' read -r state colour glyph token <<<"$(mem_attrs_from "$pressure" "$swap")"
+	IFS=$'\t' read -r state colour glyph token <<<"$(mem_attrs_from "$pressure" "$slots" "$segs")"
 	if [ "$state" = "OK" ]; then
 		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
 			"$colour" "$glyph" "$token"
