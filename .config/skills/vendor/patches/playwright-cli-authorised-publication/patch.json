@@ -1,0 +1,6 @@
+{
+  "reason": "visual evidence publication stays within the user-authorised PR or issue task",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}

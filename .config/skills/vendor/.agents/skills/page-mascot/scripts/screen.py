@@ -10,12 +10,19 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
+from key import background, checkerboard, keyable
+
+
 for path in sys.argv[1:]:
     im = Image.open(path)
     fmt, mode = im.format, im.mode
     a = np.array(im.convert('RGBA'))
     W = a.shape[0] // 3
     alpha_ok = fmt == 'PNG' and (a[..., 3] < 10).mean() > 0.05
+    # Only worth asking when there is no alpha: a real transparent sheet often carries
+    # the same periodic pattern in its RGB channels, hidden under alpha 0.
+    painted, square = (0.0, 0) if alpha_ok else checkerboard(a)
+    colour, agree = (None, 0.0) if alpha_ok or painted >= 0.5 else background(a)
     widths, edges, blobs = [], [], []
     for i in range(9):
         c, r = i % 3, i // 3
@@ -53,7 +60,15 @@ for path in sys.argv[1:]:
                else 'GOOD' if spread < 3 else ('marginal' if spread < 8 else 'REJECT'))
     shape = 'GOOD' if ratio < 0.95 else ('marginal' if ratio < 1.10 else 'TOO WIDE')
     print(f'{path.split("/")[-2] if "/" in path else path}  {fmt} {mode} {im.size}')
-    print(f'   alpha: {"ok" if alpha_ok else "MISSING"}   shoulder spread {spread:.1f}% -> {verdict}')
+    if alpha_ok:
+        alpha = 'ok'
+    elif painted >= 0.5:
+        alpha = f'MISSING (painted checkerboard, {square}px squares -- redraw)'
+    elif agree >= 0.9 and keyable(colour):
+        alpha = 'MISSING (solid #%02X%02X%02X background -- key.py can remove it)' % tuple(colour.astype(int))
+    else:
+        alpha = 'MISSING (opaque background)'
+    print(f'   alpha: {alpha}   shoulder spread {spread:.1f}% -> {verdict}')
     print(f'   shoulders/head {ratio:.2f} -> {shape}  (target under 0.95; cat 0.66, panda 0.93)')
     print(f'   mean shoulder width {int(np.mean(widths))}px   blobs per cell {blobs}')
     print(f'   edge contact: {edges or "none"}')

@@ -1,0 +1,1 @@
+- **Install directory is unwritable:** do not claim a copy-over load succeeded. Offer the project-marker flow, which reads the home profile directly.

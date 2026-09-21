@@ -57,10 +57,24 @@ def run(script, *args):
     return result.stdout
 
 
-def screen(name, sheet='directions'):
+def screen(name, sheet='directions', keyed=False):
     """True when the sheet is worth building."""
-    out = run('screen.py', os.path.join(ROOT, 'characters', name, f'{sheet}.png'))
+    path = os.path.join(ROOT, 'characters', name, f'{sheet}.png')
+    out = run('screen.py', path)
     print(out.rstrip())
+    if 'key.py can remove it' in out and not keyed:
+        # Drawn by a tool with no alpha, on the solid colour the key prompt asks for.
+        # Remove it here and judge the sheet on what is left.
+        print(run('key.py', path, '--in-place').rstrip())
+        return screen(name, sheet, keyed=True)
+    if 'painted checkerboard' in out:
+        # The model drew the checkerboard that stands for transparency because the
+        # request never enabled an alpha channel. Wording in the prompt cannot fix it;
+        # only the generator's own transparent-background option can.
+        print(f'  -> {sheet} sheet has a painted checkerboard instead of transparency: the '
+              f'image tool was not asked for a transparent background (the API option, not '
+              f'the prompt)')
+        return False
     if 'alpha: MISSING' in out:
         # Unrecoverable: a flattened background cannot be keyed out afterwards, because
         # the character's own outlines are the same black as the background would be.
@@ -96,6 +110,9 @@ def main():
                         help='how the character is drawn; the framing never changes')
     parser.add_argument('--only', choices=['directions', 'reactions'],
                         help='regenerate just this sheet on the first pass, keeping the other')
+    parser.add_argument('--key', choices=['green', 'magenta'],
+                        help='draw on this solid colour and key it out, for an image '
+                             'generator that cannot return an alpha channel')
     parser.add_argument('--skip-generate', action='store_true',
                         help='use the sheets already in characters/<name>')
     parser.add_argument('--dest', default=os.environ.get('MASCOT_DEST', os.path.join(ROOT, 'public', 'mascots')),
@@ -105,6 +122,8 @@ def main():
     os.environ['MASCOT_DEST'] = args.dest
 
     base = ['generate.py', args.name, '--style', args.style]
+    if args.key:
+        base += ['--key', args.key]
     if args.describe:
         base += ['--describe', args.describe]
     if args.reference:

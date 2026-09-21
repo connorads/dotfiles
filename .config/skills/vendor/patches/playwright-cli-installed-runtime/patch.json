@@ -1,0 +1,6 @@
+{
+  "reason": "new upstream command documentation does not authorise changing the pinned runtime",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}

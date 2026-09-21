@@ -1,6 +1,8 @@
 # Onboarding — generate your skin from a design source
 
-**Goal:** point the skill at a design source — a website, an installed skill, or a local folder — and have it extract the palette + typography, then rewrite `style-guide.md` so every future diagram inherits that skin.
+<!-- LOCAL PATCH (connorads dotfiles): all onboarding routes save external profiles rather than rewriting the installed guide -->
+
+**Goal:** extract palette and typography from a design source, save a named profile under `~/.diagram-design/profiles/`, and select it through the project marker. The installed style guide stays read-only.
 
 Takes about 60 seconds.
 
@@ -25,16 +27,16 @@ Source you provide (URL / skill name / folder path)
       ↓
 [4] propose a style-guide.md diff
       ↓
-[5] write the diff (with your approval)
+[5] save the reviewed tokens as a named client profile
       ↓
-[6] offer to save as a named client profile
+[6] select the profile through the project marker
       ↓
 future diagrams use your tokens
 ```
 
 Gate-only choices use the same finish:
 
-- **(d) Manual:** accept the user's tokens, write them under a new `Custom tokens` section in `style-guide.md`, then offer to save a named profile.
+- **(d) Manual:** accept the user's tokens and save them under `Custom tokens` in the named external profile. Select that profile through the project marker; never write the installed `style-guide.md`.
 - **(e) Default:** proceed with the shipped skin. To persist that choice for this project, offer to write a `.diagram-design` marker containing exactly `profile: default`; write it only with explicit consent.
 
 ---

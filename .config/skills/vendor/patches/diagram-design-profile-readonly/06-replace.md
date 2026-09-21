@@ -1,0 +1,2 @@
+4. Select the profile by writing `<project-root>/.diagram-design` with exactly `profile: <slug>`. Honour the user's authorised load/switch request; if replacing an existing marker is outside that request, obtain consent first. Never copy a profile over the installed guide.
+5. Re-read the marker and named profile, verify the requested slug and body, and report the active profile. If the marker cannot be written, report that selection was not persisted; do not redirect the write into the install.

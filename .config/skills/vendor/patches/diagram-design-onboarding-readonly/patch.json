@@ -1,0 +1,6 @@
+{
+  "reason": "all onboarding routes save external profiles rather than rewriting the installed guide",
+  "files": [
+    ".agents/skills/diagram-design/references/onboarding.md"
+  ]
+}

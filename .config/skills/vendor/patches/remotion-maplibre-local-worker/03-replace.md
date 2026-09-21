@@ -1,0 +1,3 @@
+	interpolate,
+	staticFile,
+	useCurrentFrame,

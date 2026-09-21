@@ -1,0 +1,1 @@
+- **Install directory is read-only:** use the project marker and home profile library for every branding operation, regardless of filesystem permissions.

@@ -1,11 +1,20 @@
 ---
 name: security-audit
-description: Finds, validates, prioritizes, and describes fixes for source-grounded vulnerabilities in a codebase. Use when the user asks for a security audit, security review, or pen test of code, or to find vulnerabilities in web apps, APIs, services, CLI tools, libraries, or daemons.
+description: Security guidance and vulnerability review for codebases, APIs, services, CLI tools, libraries, and daemons. Use for security questions, focused reviews, vulnerability research, security audits, or pen tests. Run the complete workflow only for explicit codebase audit or pen-test requests, full/comprehensive/end-to-end reviews, or requested report artifacts.
 ---
 
 # Security Audit
 
 Find vulnerabilities that violate a real trust boundary, then give owners the source evidence, safe reproduction, priority, and smallest effective fix. This is a defensive, source-first workflow. A candidate without a concrete affected principal, resource, or security outcome is not a confirmed finding.
+
+## Operating modes
+
+This skill is guidance by default. Loading it does not authorize the complete audit workflow or file creation.
+
+- **Guidance mode**: For security questions, focused reviews, methodology, triage, or investigation of specific findings, use only the relevant parts of this skill. Do not automatically run all six phases, create an output directory, or write audit artifacts. You may launch focused agents when useful; they return results to the current task.
+- **Full audit mode**: Use the complete workflow when the user explicitly asks to audit or pen-test a codebase, asks for a full, comprehensive, or end-to-end security review, or requests report artifacts. Run all six phases and write the files defined below.
+
+If the request could mean either mode, ask one focused question before creating files or starting the complete workflow.
 
 ## Platform terminology
 
@@ -19,26 +28,28 @@ This skill is agent-neutral:
 
 Use equivalent platform capabilities while preserving role, write-isolation, prompt, and independence boundaries.
 
-## Setup and execution boundary
+## Universal execution safety
 
-Resolve before reconnaissance:
-
-- **Skill directory**: the absolute directory containing this `SKILL.md`.
-- **Target**: the absolute repository root under review.
-- **Repo name**: a stable repository identifier from the directory or local Git remote.
-- **Output directory**: a new writable directory outside the target, defaulting to `~/security-audit-skill/<repo-name>/run-<N>`, where `<N>` is the next unused integer. Use a directory inside the target only when the user explicitly selects it and the parent verifies that version control ignores the whole directory. Otherwise stop and request an external path.
-- **Source ref**: the reviewed commit and whether the worktree is dirty. Do not treat unreviewed generated or modified files as another revision.
-
-Source inspection is read-only. Run target-controlled builds, tests, processes, browsers, emulators, fuzzers, and fixture processing only inside an OS-enforced sandbox that provides all of these controls:
+These rules apply in both operating modes. Source inspection is read-only. Run target-controlled builds, tests, processes, browsers, emulators, fuzzers, and fixture processing only inside an OS-enforced sandbox that provides all of these controls:
 
 - no external network; use only an isolated loopback namespace when the check needs local client/server traffic;
 - an empty environment populated from an explicit allowlist with safe values, with scratch-local `HOME`, temporary directories, and caches;
 - a read-only target and toolchain, with the target-controlled process able to write only inside its assigned `scratch/` directory; and
 - explicit low CPU, memory, process, file-size, disk, and wall-clock limits.
 
-The agent, outside the target-controlled process, may make a disposable source copy in `scratch/` when a build must write beside source. Only trusted parent-side code may promote the minimum non-secret result to retained `artifacts/` using the procedure under Write isolation. Never expose the output directory (other than the agent's own assigned `scratch/`), another agent's directory, the host home directory, credentials, sockets, or shared services to target code. Do not install dependencies or let builds fetch them. Use only tools and dependencies already available locally. If every control cannot be enforced, do not execute target code: retain a `needs_validation` record with the missing sandbox capability as a blocker and a safe validation plan.
+The agent, outside the target-controlled process, may make a disposable source copy in an assigned `scratch/` directory when a build must write beside source. In guidance mode, do not retain target-controlled files. In full audit mode, only trusted parent-side code may promote the minimum non-secret result to retained `artifacts/` using the procedure under Write isolation. Never expose a retained output directory (other than the agent's own assigned `scratch/`), another agent's directory, the host home directory, credentials, sockets, or shared services to target code. Do not install dependencies or let builds fetch them. Use only tools and dependencies already available locally. If every control cannot be enforced, do not execute target code: report the missing sandbox capability as a needs-validation blocker and give a safe validation plan.
 
-Use dummy principals, fixtures, and secrets. Do not probe deployed endpoints, external services, shared infrastructure, production identities, other users' data, or live control planes. Do not test availability against a live or shared process, publish artifacts, alter releases, spend paid API quota, or continue beyond the minimum local effect needed to establish a defect. If the decisive fact is outside source or the sandboxed fixture, retain a `needs_validation` record.
+Use dummy principals, fixtures, and secrets. Do not probe deployed endpoints, external services, shared infrastructure, production identities, other users' data, or live control planes. Do not test availability against a live or shared process, publish artifacts, alter releases, spend paid API quota, or continue beyond the minimum local effect needed to establish a defect. If the decisive fact is outside source or the sandboxed fixture, report it as needing validation.
+
+## Full audit setup
+
+In full audit mode, resolve these values before reconnaissance:
+
+- **Skill directory**: the absolute directory containing this `SKILL.md`.
+- **Target**: the absolute repository root under review.
+- **Repo name**: a stable repository identifier from the directory or local Git remote.
+- **Output directory**: a new writable directory outside the target, defaulting to `~/security-audit-skill/<repo-name>/run-<N>`, where `<N>` is the next unused integer. Use a directory inside the target only when the user explicitly selects it and the parent verifies that version control ignores the whole directory. Otherwise stop and request an external path.
+- **Source ref**: the reviewed commit and whether the worktree is dirty. Do not treat unreviewed generated or modified files as another revision.
 
 ### Write isolation
 
@@ -74,7 +85,11 @@ For a reproduced check, record the command, exact test input, sandbox limits, an
 
 Before delegation, the parent writes `run-metadata.json` with at least `run_id`, `repo`, `target`, `source_ref`, `profile`, `scope_paths`, `budget` (null if unset), `execution_policy: "sandboxed-source-and-local-only"`, selected companion files, prior-run paths, shared-file owners, and `run_status: "in_progress"`. Update metadata only when those facts change; candidate state belongs in the coverage ledger and `findings.json`.
 
-## Coverage and prior runs
+## Full audit planning
+
+The coverage, prior-run, profile, and budget requirements in this section apply only in full audit mode.
+
+### Coverage and prior runs
 
 No one pass is complete. Build a deterministic coverage plan before hunting and update it after every agent result. [RECONNAISSANCE.md](RECONNAISSANCE.md) defines the stable coverage units and [HUNTING.md](HUNTING.md) defines coverage-critic waves. The parent alone updates the ledger.
 
@@ -89,9 +104,9 @@ If prior runs exist, read every compatible `coverage-ledger.json` and `findings.
 
 If no prior ledger exists, say so in the final coverage statement. Never imply that one run exhausts the target.
 
-## Run profiles and scope
+### Run profiles and scope
 
-Pick a profile during Setup — from the user's request, or by proposing one from the target's size and stakes — and record it in `run-metadata.json` (`profile`, `scope_paths`). State both in the report. The default is `standard`.
+During full audit setup, pick a profile from the user's request or propose one from the target's size and stakes. Record it in `run-metadata.json` (`profile`, `scope_paths`) and state it in the report. The default is `standard`.
 
 - **`quick`** — a bounded pass for small targets, re-runs, or a fast first look. Coarsen ledger units to surface × boundary × attack class (subsystem uses the fixed canonical `profile/quick/all-in-scope-subsystems` identifier), run exactly one hunter wave followed by exactly one final coverage-critic pass, and use one fresh verifier per candidate for both candidate validation and final record verification. Do not launch a follow-up hunter wave: record the critic's accepted discoveries and reassignments as `deferred`.
 - **`standard`** — the workflow as written.
@@ -101,7 +116,7 @@ A **scoped run** audits a subset: named paths, one subsystem, one companion doma
 
 Profiles change breadth and redundancy, never the evidence bar. Do not scale away the candidate gate, the source/local execution boundary, `needs_validation` discipline, schema validation, or independent verification of `confirmed` records.
 
-### Cost budget
+#### Cost budget
 
 The ledger makes spend countable: one unit is roughly one hunter assignment, and one surviving candidate is one or two verifier assignments depending on profile. When the user sets a budget — or the parent proposes one for a large target — record `budget` in `run-metadata.json` as a maximum number of agent invocations across all phases.
 
@@ -150,9 +165,9 @@ The high/medium discriminator: does the demonstrated result fully defeat an expl
 
 For each confirmed finding, identify the invariant the code must enforce and the narrowest source change that enforces it at the last trusted decision point. Prefer specific repository-relative changes and regression tests over generic hardening advice. The audit describes fixes; it does not modify target source.
 
-## Workflow overview
+## Full audit workflow
 
-Follow all six phases in order:
+In full audit mode, follow all six phases in order:
 
 1. **Reconnaissance** — map the source, trust boundaries, local build paths, companion selections, prior evidence, and initial deterministic coverage ledger with [RECONNAISSANCE.md](RECONNAISSANCE.md).
 2. **Coverage-led hunting waves** — assign isolated hunters from the ledger and collect structured candidate results with [HUNTING.md](HUNTING.md), [ATTACK-CLASSES.md](ATTACK-CLASSES.md), and the selected domain companions.

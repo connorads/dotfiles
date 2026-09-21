@@ -1,0 +1,7 @@
+{
+  "reason": "Serve MapLibre worker modules from the locked local package instead of executing CDN JavaScript",
+  "files": [
+    ".agents/skills/remotion-best-practices/remotion-maps/techniques/maplibre/TECHNIQUE.md",
+    ".agents/skills/remotion-best-practices/remotion-markup/remotion-maps/techniques/maplibre/TECHNIQUE.md"
+  ]
+}

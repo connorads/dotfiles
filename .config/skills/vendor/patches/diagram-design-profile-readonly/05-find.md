@@ -1,0 +1,1 @@
+9. When the source was the markerless installed working copy, **Write** the same fresh header above its unchanged body and verify it. This marks the newly saved profile active, so `list` and `show` agree immediately. If the install is unwritable, the library save still succeeds; report that the working copy could not be marked active and offer the marker flow.

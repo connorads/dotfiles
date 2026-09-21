@@ -75,10 +75,14 @@ Two sheets have to be drawn per character, and agents differ in whether they can
 themselves. Check in this order:
 
 1. **You have a built-in image generation tool** (Codex does). Use it directly -- follow
-   *Drawing it yourself* below.
+   *Drawing it yourself* below. Find out first whether it can return a transparent
+   background, because that decides which prompt you send: with the option, ask for
+   transparency and set it; without one, draw on a solid key colour and remove it
+   afterwards. Both are written out under *Transparency*.
 2. **`OPENAI_API_KEY` is set.** Use the API path, which needs no image tool at all --
    follow *Drawing through the API*. This is the route for Claude Code, which has no image
-   tool.
+   tool. `generate.py` asks for transparency through the API's `background` parameter and
+   falls back to the key route on its own if no alpha comes back.
 3. **Neither.** Say plainly that drawing needs either an agent that can generate images or
    an `OPENAI_API_KEY`, and offer two alternatives: one of the fifty-two drawn characters
    (*Use one that is drawn*), or the manual route in `reference/prompts.md`, where the user
@@ -114,14 +118,18 @@ uv run --with-requirements <skill-dir>/scripts/requirements.txt \
 
 Add `--style riso` for a different look, or `--reference ~/photo.jpg` to redraw someone.
 `--only reactions` redraws just the expressions sheet and keeps the directions sheet.
+If the model returns no alpha channel, it redraws that sheet on a solid key colour and
+removes it, which costs one extra image; `--key green` forces that route from the start.
 `requirements.txt` already lists `openai`, so the command above covers it. The image
 model is pinned in `generate.py`; set `MASCOT_IMAGE_MODEL` to use a different one.
 
 ### Drawing it yourself
 
 **1. Draw the directions sheet.** Use your image generation tool with the DIRECTIONS
-prompt from `reference/prompts.md`, substituting the character description. Save it to
-`characters/<name>/directions.png`.
+prompt from `reference/prompts.md`, substituting the character description. If your tool
+cannot return a transparent background, send the key variant of that prompt instead and
+turn the option off -- see *Transparency* below, and send the same variant for both
+sheets. Save it to `characters/<name>/directions.png`.
 
 **2. Draw the expressions sheet.** Use the EXPRESSIONS prompt, and pass the directions
 sheet you just made as a reference image. Save it to `characters/<name>/reactions.png`.
@@ -154,12 +162,50 @@ fixes it.
 
 ### Transparency is the thing that most often goes wrong
 
-The sheets **must** be PNGs with a real alpha channel. Ask for it explicitly every time --
-image tools return an opaque PNG unless told otherwise, nearly every time.
+The sheets **must** end up as PNGs with a real alpha channel, and **the prompt cannot get
+you one**. Transparency is a setting on the image call -- `background: "transparent"` on
+the OpenAI API, the equivalent option on a built-in tool -- not something a model does
+because it was asked in words. Measured over fifteen sheets on `gpt-image-2.5`: with the
+option set, every sheet came back with real alpha whether or not the prompt mentioned
+transparency at all; without it, every sheet came back opaque with a **painted
+grey-and-white checkerboard** behind the character. That includes a prompt demanding "PNG
+WITH A REAL ALPHA CHANNEL... not white" in capitals. Unable to emit alpha, the model draws
+the pattern that stands for it.
 
-If the build reports `alpha: MISSING`, redraw the sheet. There is no recovery: a
-flattened background cannot be keyed out afterwards, because the character's own outlines
-are the same black.
+So there are two prompts, and which one you send depends on the tool, not on the
+character:
+
+- **The tool can return a transparent background.** Set that option, and use the prompts
+  in `reference/prompts.md` as they are.
+- **It cannot.** Then asking for transparency is the one thing you must not do, because
+  that is what summons the checkerboard -- and a checkerboard is unrecoverable, its
+  squares run under the character's edges. Send the **key variant** of the prompt instead
+  (`reference/prompts.md`, *Drawing without transparency*): it asks for a flat pure green
+  background and mentions transparency nowhere. Then remove that green:
+
+  ```bash
+  python3 <skill-dir>/scripts/key.py characters/<name>/directions.png --in-place
+  ```
+
+  `mascot.py` does this for you when it finds a sheet on a solid key colour, so normally
+  you can just run the build and let it happen.
+
+Hedging does not work. A prompt that asks for transparency and adds "use green if you
+cannot" gets the checkerboard, same as before. The two prompts are alternatives, never
+combined.
+
+`screen.py` names which case you are in:
+
+| what it prints | what happened | what to do |
+| --- | --- | --- |
+| `alpha: ok` | real alpha channel | nothing |
+| `alpha: MISSING (solid #02F902 background -- key.py can remove it)` | drawn on the key colour | key it out, or let `mascot.py` do it |
+| `alpha: MISSING (painted checkerboard, 32px squares -- redraw)` | asked for transparency a tool could not give | redraw with the right prompt for your tool |
+| `alpha: MISSING (opaque background)` | flattened onto white or a scene | redraw; nothing can be keyed out of this |
+
+The last two cannot be repaired. A white background cannot be keyed because the
+character's own cream and white areas would go with it, which is also why the key colour
+is a saturated green and never white, grey or black.
 
 ### Writing the description
 

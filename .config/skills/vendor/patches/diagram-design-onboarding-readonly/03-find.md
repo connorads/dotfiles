@@ -1,0 +1,1 @@
+- **(d) Manual:** accept the user's tokens, write them under a new `Custom tokens` section in `style-guide.md`, then offer to save a named profile.

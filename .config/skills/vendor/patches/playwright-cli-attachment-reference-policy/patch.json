@@ -1,0 +1,6 @@
+{
+  "reason": "attachment examples require publication scope and preserve filenames as shell arguments",
+  "files": [
+    ".agents/skills/playwright-cli/references/pr-attachments.md"
+  ]
+}
