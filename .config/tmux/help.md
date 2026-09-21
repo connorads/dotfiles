@@ -178,7 +178,8 @@ as a percentage of whichever of its two ceilings is nearer - shown including
 when healthy, so the resting baseline stays visible - *unless* kernel pressure
 is the driver, where a `▲` replaces the figure (the compressor is fine, look
 elsewhere). Colour + glyph encode state; bold escalates on BUSY/CRITICAL.
-`Ctrl+b Alt+m` drills down (swap/RAM, top footprint apps, agents). Press `h` to choose one or more
+`Ctrl+b Alt+m` drills down (both compressor ceilings as bars with sizes and
+their ratio, swap, wired, top footprint apps, agents). Press `h` to choose one or more
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
 The header shows automatic-hibernation mode. Automatic mode is observe-only by

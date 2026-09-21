@@ -1052,7 +1052,12 @@ marker. Change as a set:
   the background. Fresh data appears on the next native status tick; never force
   a refresh from the sampler.
 - [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) - `prefix + Alt+m` bounded
-  triage (top 5 sampled `phys_footprint` apps + 3 agents). `k` chooses a visible
+  triage (top 5 sampled `phys_footprint` apps + 3 agents). The header gathers
+  the compressor counters once and renders both ceilings as bars with their
+  logical sizes (`x of y GiB`: pages × `hw.pagesize`, segments ×
+  `vm.compressor_segment_buffer_size`, defaults 16384 / 65536) and the
+  pages-per-segment ratio, so which arm will bind first is readable before
+  either is amber; swap and wired follow as figures. `k` chooses a visible
   app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
   sampled-app/all-agent details. `h` opens a multi-select list of idle/done
   Claude panes, ranked by the largest physical footprint in each pane's process
