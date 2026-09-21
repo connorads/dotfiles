@@ -1034,26 +1034,32 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
 three surfaces speaking one vocabulary - `OK | BUSY | CRITICAL`, encoded as
-colour plus glyph plus a compressor-fill percentage or a `▲` pressure-cause
-marker. Change as a set:
+colour plus glyph plus a compressor-fill percentage, with a `▲` pressure marker
+before the figure under kernel warn or critical pressure. Change as a set:
 
 - [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) - **canonical** thresholds
   (`MEM_BUSY_SLOTS_PCT` 60 / `MEM_CRITICAL_SLOTS_PCT` 80 / `MEM_BUSY_SEGS_PCT`
   70 / `MEM_CRITICAL_SEGS_PCT` 85), state mapping (`mem_state` /
   `mem_state_from PRESSURE SLOTS SEGS`), the colour/glyph language
-  (`mem_state_colour` / `mem_state_glyph`), and the figure-slot cause logic
+  (`mem_state_colour` / `mem_state_glyph`), and the figure-slot logic
   (`mem_cause` over `none | pressure | slots | segments`, `mem_token`,
-  `MEM_CAUSE_GLYPH`): when kernel pressure (not fill) drives a non-OK state the
-  pill shows `▲` instead of the percentage, so amber/red is self-explaining.
+  `MEM_CAUSE_GLYPH`): the token is always the binding arm's `NN%`, prefixed
+  with `▲` whenever the kernel pressure level is 2 or 4 (`▲33%`).
   State comes from the compressor's **two ceilings**, both hard kernel limits it
   panics at: slots (`vm.compressor.pages_compressed` over
   `.pages_compressed_limit`; a swapout never releases one, only a process free
   or exit does - the arm the 2026-09-20 panic hit at 100%) and segments
   (`vm.compressor.segment.total` over `.segment.limit`; relieved by swapout and
   compaction). Swap tracks the segments arm only, so `mem_swap_*` stays a figure
-  for the popup and the log and is no longer an input to the state. The macOS
-  pressure level escalates the state on its own and, when it is the driver,
-  names the cause. Helpers: `mem_compressor_raw` (four counters, one fork, a
+  for the popup and the log and is no longer an input to the state. Pressure 4
+  (critical) makes the state CRITICAL on its own and is then the cause;
+  pressure 2 (warn) is this machine's resting level under ordinary load
+  (measured: on all day at 30% fill), so it changes no state and only adds the
+  marker - `pressure` is impossible as a BUSY cause. Per-arm helpers for the
+  popup: `mem_arm_state PCT BUSY CRIT`, `mem_arm_gap PCT BUSY CRIT` (`NN to
+  amber` / `NN to red` / `NN over red`), `mem_bar_marked PCT WIDTH BUSY CRIT`
+  (a `│` tick between cells at each line, so a bar is WIDTH+2 wide and the
+  fill is lossless). Helpers: `mem_compressor_raw` (four counters, one fork, a
   short answer collapses to `0 0 0 0` because `sysctl -n` drops a missing key's
   line rather than printing a placeholder), `mem_pct_from VALUE LIMIT`,
   `mem_ratio_from PAGES SEGS` (pages per segment; above ~8 slots fill first),

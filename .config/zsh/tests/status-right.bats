@@ -205,17 +205,26 @@ EOF
   [[ "$output" != *"#[bold] ⬡"* ]]
 }
 
-@test "pressure-driven memory pill shows the cause marker, not a percentage" {
-  # Warn pressure + a resting compressor → BUSY driven by pressure. The figure
-  # slot shows ▲ (the compressor is fine, look elsewhere), no percentage.
+@test "warn pressure is informational: green pill keeps the figure behind a ▲" {
+  # Warn pressure + a resting compressor → still OK. The marker precedes the
+  # figure rather than replacing it, and the pill is neither amber nor bold.
   mem_sysctl_stub 2 300 300
 
   run_status_right 90
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"⊟ ▲"* ]] || false
-  [[ "$plain" != *"⊟ "[0-9]* ]]
+  [[ "$plain" == *"⬡ ▲30%"* ]] || false
+  [[ "$output" != *"#[bold] ⬡"* ]]
+}
+
+@test "critical pressure is red and bold with the marker before the figure" {
+  mem_sysctl_stub 4 300 300
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"#[bold] ⊠ ▲30%"* ]] || false
 }
 
 @test "slots-driven amber shows the slots percentage in bold" {

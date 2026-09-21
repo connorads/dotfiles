@@ -17,9 +17,10 @@
 # stall userspace for minutes before that line is reached, so the fill is the
 # early signal and the pressure level the instant one. Swap tracks the segments
 # arm only (a swapout releases a segment but never a slot), so swap is a figure
-# for the popup and the log, not an input to the state. Pressure escalates the
-# state on its own and, when it is the driver, names the cause: the pill shows
-# a ▲ marker in place of the fill figure (mem_cause / mem_token below).
+# for the popup and the log, not an input to the state. Pressure 4 (critical)
+# makes the state CRITICAL on its own and names the cause; pressure 2 (warn) is
+# this machine's resting level under ordinary load, so it changes no state and
+# only marks the figure: the pill shows ▲ before the fill (mem_token below).
 #
 # Function-locals are _underscore-prefixed and always assigned before use so
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
@@ -33,18 +34,20 @@
 # swapout and compaction, so they sit lower and move faster. On this 16 GB
 # machine ordinary days read 44-56% of slots and kill storms 60-65%; one 98% day
 # survived and 100% did not, so BUSY sits at the storm line and CRITICAL well
-# below the fatal one. The kernel pressure level (2 warn / 4 critical) escalates
-# state independently and instantaneously. Overridable for tests.
+# below the fatal one. Kernel pressure 4 (critical) escalates to CRITICAL
+# independently and instantaneously; 2 (warn) is informational. Overridable for
+# tests.
 MEM_BUSY_SLOTS_PCT=${MEM_BUSY_SLOTS_PCT:-60}
 MEM_CRITICAL_SLOTS_PCT=${MEM_CRITICAL_SLOTS_PCT:-80}
 MEM_BUSY_SEGS_PCT=${MEM_BUSY_SEGS_PCT:-70}
 MEM_CRITICAL_SEGS_PCT=${MEM_CRITICAL_SEGS_PCT:-85}
 
-# Cause marker shown in the figure slot when kernel pressure (not compressor
-# fill) drives a non-OK state: ▲ (U+25B2) is single-width text-presentation in
-# kitty (unlike ⚠ U+26A0, which renders emoji/double-width and would break pill
-# alignment); the filled triangle contrasts the hollow state glyphs ⬡ ⊟ ⊠ and
-# avoids ◆ (the blocked agent-dot, a cross-vocabulary collision).
+# Pressure marker, printed before the fill figure whenever the kernel pressure
+# level is 2 (warn) or 4 (critical): ▲ (U+25B2) is single-width
+# text-presentation in kitty (unlike ⚠ U+26A0, which renders emoji/double-width
+# and would break pill alignment); the filled triangle contrasts the hollow
+# state glyphs ⬡ ⊟ ⊠ and avoids ◆ (the blocked agent-dot, a cross-vocabulary
+# collision).
 MEM_CAUSE_GLYPH="▲"
 
 # mem_pressure_level — kern.memorystatus_vm_pressure_level normalised to the
@@ -146,8 +149,8 @@ mem_swap_human() {
 }
 
 # mem_state — map (pressure, slots%, segments%) → OK | BUSY | CRITICAL.
-# Pressure 4 or either arm at its CRITICAL line is CRITICAL; pressure 2 (warn)
-# or either arm at its BUSY line is BUSY; else OK.
+# Pressure 4 or either arm at its CRITICAL line is CRITICAL; either arm at its
+# BUSY line is BUSY; else OK. Pressure 2 changes nothing here (see the header).
 mem_state() {
 	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
 	set -- $(mem_pressure_level) $(mem_compressor_pcts)
@@ -163,7 +166,7 @@ mem_state_from() {
 	if [ "$_lvl" -ge 4 ] || [ "$_slots" -ge "$MEM_CRITICAL_SLOTS_PCT" ] ||
 		[ "$_segs" -ge "$MEM_CRITICAL_SEGS_PCT" ]; then
 		echo CRITICAL
-	elif [ "$_lvl" -ge 2 ] || [ "$_slots" -ge "$MEM_BUSY_SLOTS_PCT" ] ||
+	elif [ "$_slots" -ge "$MEM_BUSY_SLOTS_PCT" ] ||
 		[ "$_segs" -ge "$MEM_BUSY_SEGS_PCT" ]; then
 		echo BUSY
 	else
@@ -226,9 +229,9 @@ _mem_arm_for_state() {
 }
 
 # mem_cause — none | pressure | slots | segments for the current reading: which
-# signal drives the active state. Pressure wins only when at/over the *active
-# state's* line (a slots-driven CRITICAL with pressure merely 2 returns slots,
-# since 2 < CRITICAL's line of 4). OK is always cause=none.
+# signal drives the active state. `pressure` is only possible at CRITICAL
+# (level 4); BUSY is always an arm, since warn pressure escalates nothing. OK is
+# always cause=none.
 mem_cause() {
 	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
 	set -- $(mem_pressure_level) $(mem_compressor_pcts)
@@ -244,13 +247,13 @@ mem_cause_from() {
 	case "$_state" in
 	OK) echo none ;;
 	CRITICAL) if [ "$_lvl" -ge 4 ]; then echo pressure; else _mem_arm_for_state CRITICAL "$_slots" "$_segs"; fi ;;
-	BUSY) if [ "$_lvl" -ge 2 ]; then echo pressure; else _mem_arm_for_state BUSY "$_slots" "$_segs"; fi ;;
+	BUSY) _mem_arm_for_state BUSY "$_slots" "$_segs" ;;
 	esac
 }
 
-# mem_token — figure-slot content: the ▲ cause-marker when pressure drives the
-# state (the compressor is fine, look elsewhere), else the binding arm's fill
-# as `NN%` — shown when OK too, so the resting baseline calibrates the eye.
+# mem_token — figure-slot content: the binding arm's fill as `NN%` — shown when
+# OK too, so the resting baseline calibrates the eye — preceded by the ▲
+# pressure marker whenever the kernel pressure level is 2 or 4 (`▲33%`).
 mem_token() {
 	# shellcheck disable=SC2046  # deliberate split of "PRESSURE SLOTS SEGS"
 	set -- $(mem_pressure_level) $(mem_compressor_pcts)
@@ -262,15 +265,39 @@ mem_token_from() {
 	_lvl=${1:-1}
 	_slots=${2:-0}
 	_segs=${3:-0}
-	_cause=$(mem_cause_from "$_lvl" "$_slots" "$_segs")
-	case "$_cause" in
-	pressure) printf '%s' "$MEM_CAUSE_GLYPH" ;;
-	none) _cause=$(_mem_arm_for_state OK "$_slots" "$_segs") ;;
-	esac
-	case "$_cause" in
+	[ "$_lvl" -ge 2 ] && printf '%s' "$MEM_CAUSE_GLYPH"
+	_state=$(mem_state_from "$_lvl" "$_slots" "$_segs")
+	case "$(_mem_arm_for_state "$_state" "$_slots" "$_segs")" in
 	slots) printf '%s%%' "$_slots" ;;
 	segments) printf '%s%%' "$_segs" ;;
 	esac
+}
+
+# mem_arm_state PCT BUSY CRIT — OK | BUSY | CRITICAL for one arm alone, by the
+# same at-or-over rule as mem_state_from, so the popup can colour each arm by
+# its own standing rather than the overall state.
+mem_arm_state() {
+	if [ "${1:-0}" -ge "${3:-0}" ]; then
+		echo CRITICAL
+	elif [ "${1:-0}" -ge "${2:-0}" ]; then
+		echo BUSY
+	else
+		echo OK
+	fi
+}
+
+# mem_arm_gap PCT BUSY CRIT — the distance to the next line that changes the
+# colour, in points of fill: `NN to amber` | `NN to red` | `NN over red`
+# (exactly at the red line reads `0 over red`). Answers "how far from
+# trouble" without the reader knowing the lines.
+mem_arm_gap() {
+	if [ "${1:-0}" -ge "${3:-0}" ]; then
+		echo "$((${1:-0} - ${3:-0})) over red"
+	elif [ "${1:-0}" -ge "${2:-0}" ]; then
+		echo "$((${3:-0} - ${1:-0})) to red"
+	else
+		echo "$((${2:-0} - ${1:-0})) to amber"
+	fi
 }
 
 # mem_attrs_from PRESSURE SLOTS SEGS — one status-render payload so callers do
@@ -346,6 +373,27 @@ mem_bar() {
 		s = ""
 		for (i = 0; i < f; i++) s = s "▓"
 		for (i = f; i < w; i++) s = s "░"
+		printf "%s", s
+	}'
+}
+
+# mem_bar_marked PCT WIDTH BUSY CRIT — mem_bar over 0-100 with a │ (U+2502)
+# tick inserted *between* cells at the amber and red lines (cell index
+# int(line × WIDTH / 100)), so the fill is lossless and the bar is WIDTH+2
+# wide. At 20 wide the lines 60/80 and 70/85 land on whole cells, so a fill at
+# the line touches its tick and the next cell past it shows past the tick.
+mem_bar_marked() {
+	awk -v v="${1:-0}" -v w="${2:-20}" -v a="${3:-0}" -v r="${4:-0}" 'BEGIN {
+		f = int(v / 100 * w + 0.5)
+		if (f > w) f = w
+		if (f < 0) f = 0
+		ai = int(a * w / 100)
+		ri = int(r * w / 100)
+		s = ""
+		for (i = 0; i <= w; i++) {
+			if (i == ai || i == ri) s = s "│"
+			if (i < w) s = s (i < f ? "▓" : "░")
+		}
 		printf "%s", s
 	}'
 }
