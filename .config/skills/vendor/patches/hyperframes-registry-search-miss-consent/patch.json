@@ -1,5 +1,5 @@
 {
-  "reason": "upstream's `feedback --search-miss` sends the user's catalog query with no opt-out caveat; gate it the way the hyperframes-cli skill gates its render-rating sibling.",
+  "reason": "Catalog-gap reports require an explicit user request and respect for opt-outs.",
   "files": [
     "hyperframes/.agents/skills/hyperframes-registry/SKILL.md"
   ]

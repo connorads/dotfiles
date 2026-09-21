@@ -1,0 +1,1 @@
+- **Search first, for every named effect** — `npx hyperframes catalog --query "<the move, in plain English>" --json`, including an effect the user names after the plan is written. It needs nothing installed and no project. Author by hand only after a search came back with nothing that does the job, and report that miss with `npx hyperframes feedback --search-miss`.

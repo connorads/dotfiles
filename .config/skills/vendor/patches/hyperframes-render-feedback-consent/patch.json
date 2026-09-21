@@ -1,0 +1,6 @@
+{
+  "reason": "Render feedback requires an explicit user request and respect for opt-outs.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes-cli/SKILL.md"
+  ]
+}

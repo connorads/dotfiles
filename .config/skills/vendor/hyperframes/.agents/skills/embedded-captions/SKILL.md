@@ -57,13 +57,15 @@ Rail-surface identities build exactly this (rail = `rail.html`, embed = the clim
 
 **One front-end, three engines behind.** The user picks an IDENTITY from [CATALOG.md](CATALOG.md) (35 entries: 10 classic + 25 themed); the engine, compiler and authoring file are derived by lookup from the catalog row. **Never surface "Standard vs Cinematic vs Theme" as a question** — those are backend names (a product has one UX even with several engines). The catalog encodes everything routing needs: reading surface, voice, recommend-for, scene needs, adjacency notes for the genuinely-close pairs (loud↔ordnance, neon↔neonsign, cream↔stardust).
 
-The identity pick is a **preference gate** (`../hyperframes-core/references/brief-contract.md` § 1): in autonomous mode ("surprise me" / "decide for me"), pick from your shortlist yourself and state the one-line why instead of asking.
+The identity pick is a **preference gate** (`../hyperframes/references/brief-contract.md` § 1): in autonomous mode ("surprise me" / "decide for me"), pick from your shortlist yourself and state the one-line why instead of asking.
 
 Procedure: probe the clip → shortlist 2–3 identities from the catalog → recommend ONE with a one-line why → **the user picks** (autonomous mode: you pick, stating the why) → author that identity's file. Identities are engine-locked (no cross combos; opening one is a validation event — see dna/README.md).
 
 **Always present your recommendation and let the user pick before you author.** Don't silently default.
 
 (The full identity table lives in [CATALOG.md](CATALOG.md) — single source of truth for routing. The engine docs below describe each backend's authoring contract.)
+
+**CATALOG.md is the whole answer space here: this workflow does not search the HyperFrames component registry.** The composition workflows run `npx hyperframes catalog` before authoring a named look; this one must not. Its engines are locked compilers that consume `cinematic.json` / `theme.json` and emit the composition themselves, so a registry item — the `caption-*` blocks included — has nothing to mount into. A registry block styles text on a designed canvas; this skill burns captions into somebody's footage through a matte. When no identity fits the ask, say so and pick the nearest, rather than reaching outside the catalog.
 
 **Recommendation heuristic**: use the "Shortlisting heuristics" in [CATALOG.md](CATALOG.md) — they are identity-level (e.g. "炸" shortlists ordnance/stomp/terminal/loud and picks by WHAT should explode), never category-level. Unsure → `anchor`.
 

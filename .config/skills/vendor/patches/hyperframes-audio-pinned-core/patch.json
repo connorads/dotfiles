@@ -1,0 +1,6 @@
+{
+  "reason": "Audio carving uses an exact project-local core dependency through pnpm with quarantine and install-script protections intact.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes-audio/SKILL.md"
+  ]
+}
