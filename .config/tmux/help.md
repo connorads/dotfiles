@@ -173,37 +173,52 @@ popup as `Ctrl+b A`. Disable only this compact fallback with
 
 ## Memory pressure (status bar)
 
-Right-side gauge (macOS, width ≥ 80). The figure is how full the compressor is,
-as a percentage of whichever of its two ceilings is nearer - shown including
-when healthy, so the resting baseline stays visible. A `▲` before the figure
-marks kernel warn or critical pressure. Colour + glyph encode state; bold
-escalates on BUSY/CRITICAL.
-`Ctrl+b Alt+m` drills down: each ceiling as a bar with a tick at its amber and
-red lines, the distance to the next line, what lowers it, the ratio, swap,
-wired, the pane `h` would stop first, top footprint apps, agents. Press `h` to choose one or more
-idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
-hibernates directly; several require confirmation and finish with one summary.
-The header shows automatic-hibernation mode. Automatic mode is observe-only by
-default. `agent auto status` explains each exclusion; `agent auto on` enables both
+The right-side pill (macOS, width ≥ 80) shows how full the memory compressor
+is. The number is a percentage of whichever of its two limits is nearer. It
+shows when healthy too, so you learn the resting level.
+
+The colour changes when the compressor crosses a line:
+
+| Pill | State | When |
+|------|-------|------|
+| `⬡` green | OK | slots under 60% and segments under 70% |
+| `⊟` amber (bold) | BUSY | slots at 60% or over, or segments at 70% or over |
+| `⊠` red (bold) | CRITICAL | slots at 80% or over, segments at 85% or over, or kernel critical pressure |
+
+A `▲` before the number means the kernel reports memory pressure. Warn
+pressure is information only and is normal on this machine. Critical pressure
+makes the pill red on its own.
+
+The compressor has two limits, and the kernel panics at either:
+
+- Slots are compressed pages. They fall only when the process that owns them
+  frees memory or exits. This is the limit the 2026-09-20 panic hit at 100%.
+- Segments are compressed storage. They also fall when the kernel swaps them
+  out, so swap tracks this limit only. Swap is shown as a figure and never
+  changes the colour.
+
+To lower the number:
+
+1. Press `Ctrl+b Alt+m` to open the popup. Its action row names the heaviest
+   idle or done agent pane, and `h` hibernates it. That frees its pages from
+   both limits.
+2. Quit the largest app in the list, or press `k` to end one of its processes.
+3. Reboot. That resets both limits.
+
+The popup shows each limit as a bar with a tick at its amber and red lines,
+the distance to the next line (for example `27 to amber`), what lowers it, the
+ratio that decides which limit fills first, swap and wired memory, the top apps
+by footprint and the agent panes. `h` lists idle or done Claude and Codex
+panes, heaviest first. Choose one or more to hibernate. One selection
+hibernates directly. Several ask for confirmation and end with one summary.
+
+The header also shows the automatic-hibernation mode, `observe` by default.
+`agent auto status` explains each exclusion. `agent auto on` enables both
 automatic tiers: the sweep's one oldest hidden idle conversation per 15 minutes
-while CRITICAL, and `memwatch`'s emergency hibernation of the heaviest idle or
+while CRITICAL, and memwatch's emergency hibernation of the heaviest idle or
 done pane, one per 5 s tick, the moment a reading or a scheduler stall is
 CRITICAL. Use the pane right-click menu or `agent pin` to protect a
-conversation from both without blocking manual hibernation.
-
-| Pill | State | Meaning |
-|------|-------|---------|
-| `⬡` green | OK | slots < 60%, segments < 70%, kernel pressure below critical |
-| `⊟` amber (bold) | BUSY | slots ≥ 60% or segments ≥ 70% |
-| `⊠` red (bold) | CRITICAL | slots ≥ 80% or segments ≥ 85% or kernel critical pressure |
-
-`▲` before the figure = kernel pressure is warn or critical; warn is
-information only, critical is CRITICAL. `NN%` = the fill of the binding arm.
-Slots are compressed pages
-against the kernel's hard page limit - the ceiling the 2026-09-20 panic hit at
-100% - and only empty when a process frees or exits; segments are compressed
-storage against its limit, relieved by swapout. Swap tracks the segments arm
-only, so it is a figure in the popup and the log, not an input to the state.
+conversation from both. Pinning does not block manual hibernation.
 
 ## Caffeine (status bar)
 
