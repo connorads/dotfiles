@@ -63,41 +63,9 @@ vm_stat_mb() {
 		END { if (!found) print 0 }'
 }
 
-heaviest_pid_mb() {
-	_pids=$(ps -axo pid=,ppid= | awk -v root="$1" '
-		{ ppid[$1] = $2 }
-		END {
-			desc[root] = 1; changed = 1
-			while (changed) {
-				changed = 0
-				for (p in ppid) if (!(p in desc) && (ppid[p] in desc)) { desc[p] = 1; changed = 1 }
-			}
-			for (p in desc) print p
-		}')
-	_best=0
-	for _pid in $_pids; do
-		_mb=$(mem_footprint_mb "$_pid")
-		[ "$_mb" -gt "$_best" ] 2>/dev/null && _best=$_mb
-	done
-	printf '%s\n' "$_best"
-}
-
 agent_rows() {
 	tmux list-panes -a -F '#{@agent_state}	#{window_name}	#{pane_pid}' 2>/dev/null |
 		awk -F '\t' '$1 != ""'
-}
-
-hibernate_rows() {
-	tmux list-panes -a -F '#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_id}' 2>/dev/null |
-		awk -F '\t' '$1 ~ /^(idle|done)$/ && $2 ~ /^(claude|codex)$/ {
-			label = $3 == "" ? $4 : $3
-			print $6 "\t" $7 "\t" label "\t" $1 "\t" $5
-		}' |
-		while IFS="$(printf '\t')" read -r _ppid _pane _label _state _loc; do
-			[ -n "$_pane" ] || continue
-			printf '%s\t%s\t%s\t%s\t%s\n' \
-				"$_pane" "$(heaviest_pid_mb "$_ppid")" "$_label" "$_state" "$_loc"
-		done | sort -t "$(printf '\t')" -k2,2nr
 }
 
 hibernate_apply() {
@@ -126,7 +94,7 @@ hibernate_apply() {
 }
 
 choose_agents_to_hibernate() {
-	_rows=$(hibernate_rows)
+	_rows=$(mem_hibernate_rows)
 	if [ -z "$_rows" ]; then
 		printf 'No idle or done Claude or Codex panes are safe to hibernate.\n'
 		pause_result
@@ -215,7 +183,7 @@ render_agents() {
 	printf '%s\n' "$(ansi 89b4fa 'Agents')"
 	printf '%s\n' "$_agents" | head -n "$_limit" | while IFS="$(printf '\t')" read -r _st _win _ppid; do
 		printf '  %s %-22s %s\n' \
-			"$(agent_glyph "$_st")" "$_win" "$(mem_human_mb "$(heaviest_pid_mb "$_ppid")")"
+			"$(agent_glyph "$_st")" "$_win" "$(mem_human_mb "$(mem_heaviest_pid_mb "$_ppid")")"
 	done
 }
 
@@ -297,7 +265,7 @@ _agents)
 	exit 0
 	;;
 _hibernate_rows)
-	hibernate_rows
+	mem_hibernate_rows
 	exit 0
 	;;
 _hibernate_apply)
