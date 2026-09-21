@@ -315,6 +315,33 @@ respawn_wrapped_codex() {
   [ "$(pstate "$p1")" = done ]
 }
 
+@test "sweep ages a done sibling pane of the window you are viewing" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx split-window -t "$win" # p2 becomes active; p1 is an on-screen sibling
+  tx respawn-pane -k -t "$p1" 'sh -c "exec sleep 300"'
+  wait_nonshell "$p1" || skip "pane shell did not yield the foreground in time"
+  attach_client || skip "could not attach a client for the viewing gate"
+  tx set-option -p -t "$p1" @agent_state done
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = idle ]
+}
+
+@test "sweep leaves a done sibling pane unaged behind a zoom" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx split-window -t "$win"
+  tx respawn-pane -k -t "$p1" 'sh -c "exec sleep 300"'
+  wait_nonshell "$p1" || skip "pane shell did not yield the foreground in time"
+  attach_client || skip "could not attach a client for the viewing gate"
+  tx resize-pane -Z # the active pane fills the window; p1 is hidden
+  tx set-option -p -t "$p1" @agent_state done
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
 @test "sweep leaves a done pane unaged when no client is attached" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')

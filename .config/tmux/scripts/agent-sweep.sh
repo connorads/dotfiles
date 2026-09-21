@@ -5,7 +5,9 @@
 #   (2) age a `done` dot you are currently looking at to idle — a backstop for the
 #       focus hooks' `seen`, which the focus events miss under concurrent-agent
 #       churn (you watch one agent while another finishes, then return to it
-#       without a fresh select-pane/window-changed transition);
+#       without a fresh select-pane/window-changed transition). On screen means
+#       any unzoomed pane of the active window of an attached session, so a
+#       finished sibling does not hold the tab dot blue while its neighbours work;
 #   (3) reconcile Codex's OSC title spinner to working/idle.
 #
 # Presence and activity are separate evidence channels. The kernel foreground
@@ -35,18 +37,21 @@ AGENT_SWEEP_DAEMON_VERSION=2
 AGENT_AUTO_HIBERNATE=${AGENT_AUTO_HIBERNATE:-$SELF_DIR/agent-autohibernate.sh}
 
 # sweep_once — reconcile every dot in one pass: read all panes once, clear panes
-# whose agent died (shell foreground), age a `done` dot you are currently looking
-# at to idle, and recompute the rollup for every affected window plus any window
-# still showing a stale @win_agent_state.
+# whose agent died (shell foreground), age a `done` dot that is on screen (an
+# unzoomed pane of the active window of an attached session) to idle, and
+# recompute the rollup for every affected window plus any window still showing a
+# stale @win_agent_state.
 sweep_once() {
 	command -v tmux >/dev/null 2>&1 || return 0
 	tmux list-sessions >/dev/null 2>&1 || return 0
 
 	# @agent_kind and pane_title feed the codex title-spinner reconcile below;
 	# pane_title is last because it is freeform (a stray tab in a title can't then
-	# misalign the earlier columns).
+	# misalign the earlier columns). Field order is load-bearing beyond that: the
+	# awk below addresses pane_id as $3 and pane_pid as $12, so a new field goes
+	# after pane_pid and before pane_title.
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{@agent_idle_since}	#{pane_title}" \
+		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{@agent_idle_since}	#{window_zoomed_flag}	#{pane_title}" \
 		2>/dev/null) || return 0
 
 	# Sanitise the process table immediately: only ids plus an exact argv0 class
@@ -167,6 +172,8 @@ EOF
 		_pane_pid=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_idle_since=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_zoomed=${_line%%"$_tab"*}
 		_ptitle=${_line#*"$_tab"}
 
 		if [ "$_astate" != hibernated ]; then
@@ -241,8 +248,10 @@ EOF
 		fi
 
 		# Agent still present (or conservatively unknown): age a viewed done dot.
+		# The zoom flag is passed so a pane that finished while its window was on
+		# screen ages even when the cursor sits in a sibling pane.
 		if [ -n "$_astate" ] && [ "$_observation" != absent ] &&
-			[ "$_astate" = "done" ] && is_viewing "$_pactive" "$_wactive" "$_sattached"; then
+			[ "$_astate" = "done" ] && is_viewing "$_pactive" "$_wactive" "$_sattached" "$_zoomed"; then
 			agent_set_state "$_pane" idle "$_now" 2>/dev/null || true
 			_astate=idle
 			_windows="$_windows$_win

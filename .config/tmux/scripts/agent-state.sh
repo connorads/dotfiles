@@ -77,15 +77,16 @@ working | idle | hibernated)
 done)
 	# Seen-at-birth: if you are already viewing this pane when it finishes → go
 	# straight to idle; otherwise it is done (finished, unseen) until you focus it.
-	# "Viewing" is the sweep's gate (is_viewing): the active pane of the active
-	# window of an attached session - not window_active alone, so a finish on a
-	# detached or background session correctly stays unread. The focus hooks' seen
-	# and the phase-5 sweep are the backstops when this races (e.g. window_active
-	# momentarily reads 0) or when you were not looking at finish time.
+	# "Viewing" is the sweep's gate (is_viewing): an unzoomed pane of the active
+	# window of an attached session, since tmux draws every pane of that window at
+	# once - not window_active alone, so a finish on a detached or background
+	# session correctly stays unread. The focus hooks' seen and the phase-5 sweep
+	# are the backstops when this races (e.g. window_active momentarily reads 0) or
+	# when you were not looking at finish time.
 	pflags=$(tmux display-message -p -t "$pane" \
-		'#{pane_active} #{window_active} #{session_attached}' 2>/dev/null)
-	# shellcheck disable=SC2086  # deliberate word-split of the three flag fields
-	if is_viewing ${pflags:-0 0 0}; then
+		'#{pane_active} #{window_active} #{session_attached} #{window_zoomed_flag}' 2>/dev/null)
+	# shellcheck disable=SC2086  # deliberate word-split of the four flag fields
+	if is_viewing ${pflags:-0 0 0 1}; then
 		agent_set_state "$pane" idle
 	else
 		agent_set_state "$pane" "done"

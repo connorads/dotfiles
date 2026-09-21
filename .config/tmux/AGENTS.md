@@ -204,9 +204,10 @@ The logic is spread across several files - change them as a set:
   pane, rolls the worst up to `@win_agent_state`. Verbs:
   `working|blocked|done|unread|idle|seen|clear|name|unname`. `unread` is the manual
   inverse of `seen` (force `done` even on the focused window - mark a read tab blue
-  again). `done` is **seen-at-birth**: if you are already viewing the pane when it
-  finishes (`is_viewing` - the sweep's gate: active pane / active window /
-  attached session) it goes straight to idle; otherwise blue until you focus it.
+  again). `done` is **seen-at-birth**: if the pane is already on screen when it
+  finishes (`is_viewing` - the sweep's gate: an unzoomed pane of the active
+  window of an attached session) it goes straight to idle; otherwise blue until
+  you focus it.
   `name`/`unname` set/drop `@agent_name`, a user-set pane label (grammar
   `[a-z][a-z0-9_-]{0,31}`, unique among live agents - enforced by the `agent`
   CLI). Invariant: `@agent_name ⟹ @agent_state` (`name` refuses a stateless
@@ -240,7 +241,10 @@ The logic is spread across several files - change them as a set:
   pane→window and window→session rollups, bell, and `is_viewing` helpers (also
   used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
-  the `done` branch and the sweep), the codex title-spinner pure core
+  the `done` branch, the sweep and auto-hibernation's visibility exemption; its
+  optional 4th argument is the window's zoom flag, defaulting to "hidden" so a
+  3-argument call is the strict active-pane-only rule), the codex title-spinner
+  pure core
   (`has_spinner` + `codex_working_step`, the working↔idle FSM the sweep drives),
   **and the canonical state → glyph + colour mapping**
   (`agent_attrs`/`agent_hex`/`agent_char`/`agent_glyph`). **Shape** encodes state as well as colour so it reads on a
@@ -293,12 +297,15 @@ The logic is spread across several files - change them as a set:
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) - phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
   Three jobs: (1) reconcile Claude/Codex presence from the pane shell's kernel
-  foreground process group; (2) age a `done` dot you are currently viewing
-  (`is_viewing`: active pane, active window, `session_attached>0`) to idle - the
-  deterministic backstop for the `done` branch's seen-at-birth and the focus
-  hooks' `seen`, which they miss when the finish races your focus or you watch one
-  agent while another finishes then return by switching windows (no fresh
-  select-pane/window-changed). The attached-session gate keeps detached sessions
+  foreground process group; (2) age a `done` dot that is on screen
+  (`is_viewing`: an unzoomed pane of the active window, `session_attached>0`) to
+  idle - the deterministic backstop for the `done` branch's seen-at-birth and the
+  focus hooks' `seen`, which they miss when the finish races your focus or you
+  watch one agent while another finishes then return by switching windows (no
+  fresh select-pane/window-changed). tmux draws every pane of the active window
+  at once, so a finished sibling ages without being focused and the tab dot
+  reports what is still running; a zoom hides the siblings, so a `done` pane
+  behind one stays unread. The attached-session gate keeps detached sessions
   unread (nobody looking); (3) **codex title-spinner working detection** - Codex
   has no "model generating" hook event, so a pane the Stop hook aged to idle (or a
   turn resumed without a fresh `UserPromptSubmit`) sits green while actively

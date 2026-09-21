@@ -126,15 +126,22 @@ sync_agent_rollups() {
 		done
 }
 
-# is_viewing PANE_ACTIVE WINDOW_ACTIVE SESSION_ATTACHED — pure predicate: true
-# when these three pane fields together mean a human is demonstrably looking at
-# the pane (the active pane of the active window of an attached session). The
-# single definition of "you are looking at it", shared by the `done` branch
-# (agent-state.sh, seen-at-birth) and the phase-5 sweep (agent-sweep.sh, the
-# viewed-done reconcile) so both age a finished agent identically. Missing/empty
-# fields default to "not viewed" so a failed read never spuriously marks seen.
+# is_viewing PANE_ACTIVE WINDOW_ACTIVE SESSION_ATTACHED [ZOOMED] — pure
+# predicate: true when these pane fields together mean a human is demonstrably
+# looking at the pane. The window must be the active window of an attached
+# session; within it, tmux draws every pane at once, so a *sibling* pane is on
+# screen too — unless the window is zoomed, which genuinely hides the siblings.
+# The single definition of "you are looking at it", shared by three call sites:
+# the `done` branch (agent-state.sh, seen-at-birth) and the phase-5 sweep
+# (agent-sweep.sh, the viewed-done reconcile), which both pass the real ZOOMED
+# flag to opt into the on-screen-sibling rule, and the auto-hibernation
+# visibility exemption (agent-autohibernate.sh), which keeps the strict rule.
+# ZOOMED defaults to 1 ("assume hidden"), so a 3-argument call is the strict
+# active-pane-only rule. Missing/empty fields default to "not viewed" so a
+# failed read never spuriously marks seen.
 is_viewing() {
-	[ "${1:-0}" = 1 ] && [ "${2:-0}" = 1 ] && [ "${3:-0}" != 0 ]
+	[ "${2:-0}" = 1 ] && [ "${3:-0}" != 0 ] &&
+		{ [ "${1:-0}" = 1 ] || [ "${4:-1}" = 0 ]; }
 }
 
 # should_ring PREV — true when this is a fresh entry into blocked (prev was

@@ -408,6 +408,31 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
   ! is_viewing
 }
 
+@test "is_viewing: unzoomed sibling pane of the active window is viewed" {
+  . "$LIB"
+  is_viewing 0 1 1 0
+}
+
+@test "is_viewing: a zoom hides the siblings, so they are not viewed" {
+  . "$LIB"
+  ! is_viewing 0 1 1 1
+}
+
+@test "is_viewing: the active pane of a zoomed window is viewed" {
+  . "$LIB"
+  is_viewing 1 1 1 1
+}
+
+@test "is_viewing: an unzoomed pane of an inactive window is not viewed" {
+  . "$LIB"
+  ! is_viewing 0 0 1 0
+}
+
+@test "is_viewing: an unzoomed pane of a detached session is not viewed" {
+  . "$LIB"
+  ! is_viewing 0 1 0 0
+}
+
 # --- has_spinner: codex title-spinner glyph detection (pure) ---
 
 @test "has_spinner matches every codex spinner glyph phase" {
