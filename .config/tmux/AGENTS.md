@@ -1078,18 +1078,33 @@ before the figure under kernel warn or critical pressure. Change as a set:
   the background. Fresh data appears on the next native status tick; never force
   a refresh from the sampler.
 - [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) - `prefix + Alt+m` bounded
-  triage (top 5 sampled `phys_footprint` apps + 3 agents). The header gathers
-  the compressor counters once and renders both ceilings as bars with their
-  logical sizes (`x of y GiB`: pages × `hw.pagesize`, segments ×
-  `vm.compressor_segment_buffer_size`, defaults 16384 / 65536) and the
-  pages-per-segment ratio, so which arm will bind first is readable before
-  either is amber; swap and wired follow as figures. `k` chooses a visible
-  app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
-  sampled-app/all-agent details. `h` opens a multi-select list of idle/done
-  Claude panes, ranked by the largest physical footprint in each pane's process
-  tree. One selection hibernates directly; several require confirmation. Every
-  selected pane is attempted, and one result line reports hibernated, refused
-  and failed counts. `r` refreshes and `q` closes.
+  triage (top 5 sampled `phys_footprint` apps + 3 agents). The header is
+  built to answer three questions without the docs: what the number is, how
+  far it is from the line that changes colour, and what lowers it. It gathers
+  the compressor counters once, then renders each ceiling through `render_arm`
+  as its own state glyph and figure (coloured by that arm's standing, via
+  `mem_arm_state`, while the header glyph stays the overall state), a 20-wide
+  `mem_bar_marked` bar with a `│` tick at the amber and red lines, the
+  `mem_arm_gap` distance (`27 to amber`, `3 to red`, `2 over red`), and the
+  logical size (`x of y GiB`: pages × `hw.pagesize`, segments ×
+  `vm.compressor_segment_buffer_size`, defaults 16384 / 65536). A gloss under
+  each arm names what it holds and what lowers it; swap sits on the segments
+  gloss because only a swapout releases a segment, wired on the state line
+  beside `pressure N/4` and its `▲ warn` / `▲ critical` marker. The ratio row
+  compares pages-per-segment against the limits' own ratio and says which arm
+  fills first. The `Action` row names the heaviest idle/done pane `h` would
+  stop first, or the `k` fallback. `render_arm` pads only ASCII fields: POSIX
+  printf pads by bytes, so a width on `▓ │ ⬡` or an escape misaligns the row.
+  `render()` gathers `mem_hibernate_rows` in the background alongside the app
+  snapshot, uncapped ("heaviest" needs every candidate measured), into
+  `CURRENT_HIB_ROWS`, which both the action row and `h` read - so the picker
+  opens at once. `k` chooses a visible app then a process before handing to
+  `pclose --pid`; `a`/`g` open scrollable sampled-app/all-agent details. `h`
+  opens a multi-select list of idle/done Claude panes, ranked by the largest
+  physical footprint in each pane's process tree. One selection hibernates
+  directly; several require confirmation. Every selected pane is attempted,
+  and one result line reports hibernated, refused and failed counts. `r`
+  refreshes and `q` closes.
 - [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) - launchd
   watcher (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
   Every 5 s (`MEMWATCH_INTERVAL`) it reads the pressure level and the four

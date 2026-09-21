@@ -17,9 +17,11 @@ TOP_PROCS=${MEM_TOP_PROCS:-15}
 DETAIL_TOP_PROCS=${MEM_DETAIL_TOP_PROCS:-50}
 TOP_APPS=${MEM_TOP_APPS:-5}
 TOP_AGENTS=${MEM_TOP_AGENTS:-3}
-BAR_WIDTH=12
+BAR_WIDTH=12     # app rows: magnitude against the top app
+ARM_BAR_WIDTH=20 # header arms: 60/80 and 70/85 land on whole cells at 20
 CURRENT_ROWS=""
 CURRENT_GROUPED=""
+CURRENT_HIB_ROWS=""
 
 ansi() {
 	_hex=$1
@@ -93,8 +95,10 @@ hibernate_apply() {
 	printf '%s hibernated, %s refused, %s failed\n' "$_ok" "$_refused" "$_failed"
 }
 
+# choose_agents_to_hibernate — the `h` list, read from the rows render() already
+# gathered so the picker opens at once rather than re-footprinting every pane.
 choose_agents_to_hibernate() {
-	_rows=$(mem_hibernate_rows)
+	_rows=$CURRENT_HIB_ROWS
 	if [ -z "$_rows" ]; then
 		printf 'No idle or done Claude or Codex panes are safe to hibernate.\n'
 		pause_result
@@ -117,11 +121,48 @@ gib_of() {
 	awk -v n="${1:-0}" -v b="${2:-0}" 'BEGIN { printf "%.1f", n * b / 1073741824 }'
 }
 
-# render_header — state line, then the compressor's two ceilings as bars with
-# their logical sizes (pages × page size; segments × segment buffer size), the
-# pages-per-segment ratio (above 8 slots reach 100% before segments), swap and
-# wired. One gather feeds state and figures alike, so the header never shows a
-# state its own bars contradict.
+# render_arm GLYPH LABEL PCT BUSY CRIT USED LIMIT — one compressor arm: its
+# own state glyph and figure (coloured by the arm's standing, not the overall
+# state), a bar with a tick at each line, the distance to the next line, and
+# the logical size. POSIX printf pads by bytes, so only ASCII fields take a
+# width; the coloured pieces are pre-rendered and inserted with a bare %s.
+# Every lib-derived value lands in its own _a-name first: the lib assigns
+# `_state` and friends globally, so a nested call would clobber the caller's.
+render_arm() {
+	_a_state=$(mem_arm_state "$3" "$4" "$5")
+	_a_colour=$(mem_state_colour "$_a_state")
+	_a_glyph=$(ansi "$_a_colour" "$(mem_state_glyph "$_a_state")")
+	_a_pct=$(ansi "$_a_colour" "$(printf '%3s%%' "$3")")
+	_a_bar=$(mem_bar_marked "$3" "$ARM_BAR_WIDTH" "$4" "$5")
+	_a_gap=$(mem_arm_gap "$3" "$4" "$5")
+	printf '  %s %-6s %s  %s  %-11s  %s of %s GiB\n' \
+		"$_a_glyph" "$2" "$_a_bar" "$_a_pct" "$_a_gap" "$6" "$7"
+}
+
+# render_action — the lever: the heaviest idle/done agent pane `h` would stop
+# first, from the rows render() gathered, else the `k` fallback. Fields by
+# `cut`, never `IFS=tab read`: the label can be empty, and read would then
+# shift every later field left.
+render_action() {
+	_first=$(printf '%s\n' "$CURRENT_HIB_ROWS" | head -n1)
+	if [ -z "$_first" ]; then
+		printf '  Action   no idle or done agent pane; [k] ends a process (frees both arms)\n'
+		return
+	fi
+	_h_label=$(printf '%s\n' "$_first" | cut -f3 | cut -c1-24)
+	[ -n "$_h_label" ] || _h_label=$(printf '%s\n' "$_first" | cut -f1)
+	printf '  Action   [h] hibernate %s (%s, %s) frees its pages from both arms\n' \
+		"$_h_label" "$(printf '%s\n' "$_first" | cut -f4)" \
+		"$(mem_human_mb "$(printf '%s\n' "$_first" | cut -f2)")"
+}
+
+# render_header — state line (with the pressure level and marker), then the
+# compressor's two ceilings via render_arm with a gloss naming what each holds
+# and what lowers it, the pages-per-segment ratio against the limits' own (so
+# which arm fills first is a sentence, not a rule to remember), and the action.
+# One gather feeds state and figures alike, so the header never shows a state
+# its own bars contradict. Wired sits on the state line; swap sits on the
+# segments gloss because a swapout releases a segment and never a slot.
 render_header() {
 	# shellcheck disable=SC2046  # deliberate split of "PRESSURE pages limit segs seglimit"
 	set -- $(mem_pressure_level) $(mem_compressor_raw)
@@ -146,17 +187,25 @@ render_header() {
 		u = substr(v, length(v), 1); n = substr(v, 1, length(v) - 1) + 0
 		if (u == "G") n = n * 1024; else if (u == "K") n = n / 1024
 		printf "%d", n }')
-	printf '%s %s  Memory   pressure %s/4\n' "$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" "$_state")" "$_level"
-	printf '  Slots  %s  %s of %s GiB  %s%%\n' \
-		"$(mem_bar "$_slots_pct" 100 "$BAR_WIDTH")" \
-		"$(gib_of "$_pages" "$_pgsz")" "$(gib_of "$_plimit" "$_pgsz")" "$_slots_pct"
-	printf '  Segs   %s  %s of %s GiB  %s%%   ratio %s (>8 = slots bind first)\n' \
-		"$(mem_bar "$_segs_pct" 100 "$BAR_WIDTH")" \
-		"$(gib_of "$_segs" "$_segb")" "$(gib_of "$_slimit" "$_segb")" "$_segs_pct" \
-		"$(mem_ratio_from "$_pages" "$_segs")"
-	printf '  Swap   %s used / %s\n' "$(mem_swap_human)" "$(mem_human_mb "${_swap_total_mb:-0}")"
-	printf '  Wired  %s\n\n' "$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")"
-	printf '  Agent auto-hibernate  %s\n\n' "$_auto"
+	case "$_level" in
+	4) _marker=$(ansi f38ba8 ' ▲ critical') ;;
+	2) _marker=$(ansi f9e2af ' ▲ warn') ;;
+	*) _marker="" ;;
+	esac
+	printf '%s %s  Memory   pressure %s/4%s   wired %s\n' \
+		"$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" "$_state")" "$_level" "$_marker" \
+		"$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")"
+	render_arm ⬡ Slots "$_slots_pct" "$MEM_BUSY_SLOTS_PCT" "$MEM_CRITICAL_SLOTS_PCT" \
+		"$(gib_of "$_pages" "$_pgsz")" "$(gib_of "$_plimit" "$_pgsz")"
+	printf '           pages held; fall only when the owning process frees or exits\n'
+	render_arm ⬡ Segs "$_segs_pct" "$MEM_BUSY_SEGS_PCT" "$MEM_CRITICAL_SEGS_PCT" \
+		"$(gib_of "$_segs" "$_segb")" "$(gib_of "$_slimit" "$_segb")"
+	printf '           storage held; also falls by swapout   swap %s of %s\n' \
+		"$(mem_swap_human)" "$(mem_human_mb "${_swap_total_mb:-0}")"
+	awk -v r="$(mem_ratio_from "$_pages" "$_segs")" -v l="$(mem_ratio_from "$_plimit" "$_slimit")" \
+		'BEGIN { printf "  Ratio    %s pages per segment (limits %s): %s fill first\n", r, l, (r > l ? "slots" : "segments") }'
+	render_action
+	printf '\n  Agent auto-hibernate  %s\n\n' "$_auto"
 }
 
 render_apps() {
@@ -187,9 +236,19 @@ render_agents() {
 	done
 }
 
+# render — the hibernate ranking is gathered in the background while the app
+# sample runs, uncapped: "heaviest" needs every candidate measured and the `h`
+# list must be complete, so the cost is hidden behind the snapshot rather
+# than trimmed.
 render() {
+	_hib_file=$(mktemp)
+	mem_hibernate_rows >"$_hib_file" &
+	_hib_pid=$!
 	CURRENT_ROWS=$(snapshot_rows "$TOP_PROCS")
 	CURRENT_GROUPED=$(printf '%s\n' "$CURRENT_ROWS" | group_rows)
+	wait "$_hib_pid"
+	CURRENT_HIB_ROWS=$(cat "$_hib_file")
+	rm -f "$_hib_file"
 	render_header
 	render_apps "$CURRENT_ROWS" "$TOP_APPS"
 	printf '\n  [a] all sampled apps\n\n'

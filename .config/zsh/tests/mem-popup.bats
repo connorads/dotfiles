@@ -103,25 +103,82 @@ EOF
   [[ "$output" == *"Agent auto-hibernate  observe"* ]]
 }
 
-@test "header renders both compressor arms as bars with sizes and the ratio" {
+# plain — the summary with its ANSI colour stripped, so the arm rows can be
+# asserted as exact strings.
+plain() {
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g'
+}
+
+@test "header renders both arms as marked bars with the distance to the next line and the ratio" {
   # One GiB "pages" and "segments" make the sizes read as the raw counts.
   export FAKE_SLOTS=770 FAKE_SEGS=100 FAKE_PAGESIZE=1073741824 FAKE_SEGBYTES=1073741824
 
   run "$MEM_POPUP" _summary
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"BUSY"* ]] || false
-  [[ "$output" == *"Slots  ▓▓▓▓▓▓▓▓▓░░░  770.0 of 1000.0 GiB  77%"* ]] || false
-  [[ "$output" == *"Segs   ▓░░░░░░░░░░░  100.0 of 1000.0 GiB  10%   ratio 7.7 (>8 = slots bind first)"* ]]
+  text=$(plain)
+  [[ "$text" == *"⊟ BUSY  Memory   pressure 1/4   wired 0M"* ]] || false
+  [[ "$text" == *"⊟ Slots  ▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓░│░░░░   77%  3 to red     770.0 of 1000.0 GiB"* ]] || false
+  [[ "$text" == *"⬡ Segs   ▓▓░░░░░░░░░░░░│░░░│░░░   10%  60 to amber  100.0 of 1000.0 GiB"* ]] || false
+  [[ "$text" == *"Ratio    7.7 pages per segment (limits 1.0): slots fill first"* ]] || false
 }
 
-@test "header no longer prints the Compressed figure" {
+@test "each arm is coloured by its own standing, not the overall state" {
+  export FAKE_SLOTS=770
+
   run "$MEM_POPUP" _summary
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Slots"* ]] || false
-  [[ "$output" == *"Wired  0M"* ]] || false
-  [[ "$output" != *"Compressed"* ]]
+  # amber glyph on the slots row, green on the segments row
+  [[ "$output" == *$'\e[38;2;249;226;175m⊟\e[0m Slots'* ]] || false
+  [[ "$output" == *$'\e[38;2;166;227;161m⬡\e[0m Segs'* ]] || false
+}
+
+@test "header glosses each arm with what lowers it, swap beside segments, wired on the state line" {
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  text=$(plain)
+  [[ "$text" == *"⬡ OK  Memory   pressure 1/4   wired 0M"* ]] || false
+  [[ "$text" == *"pages held; fall only when the owning process frees or exits"* ]] || false
+  [[ "$text" == *"storage held; also falls by swapout   swap 0M of 4.0G"* ]] || false
+  [[ "$text" != *"Compressed"* ]]
+}
+
+@test "warn pressure is marked on the state line without changing the state" {
+  export FAKE_PRESSURE=2
+
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  text=$(plain)
+  [[ "$text" == *"⬡ OK  Memory   pressure 2/4 ▲ warn   wired 0M"* ]] || false
+}
+
+@test "critical pressure is marked and makes the state CRITICAL" {
+  export FAKE_PRESSURE=4
+
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  text=$(plain)
+  [[ "$text" == *"⊠ CRITICAL  Memory   pressure 4/4 ▲ critical   wired 0M"* ]] || false
+}
+
+@test "the action line names the heaviest idle or done pane h would stop first" {
+  export TMUX_PANES=$'idle\tclaude\t\tapi\tdev:1.0\t100\t%10\nworking\tclaude\tbusy\tworker\tdev:2.0\t200\t%20\ndone\tcodex\tother\tweb\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tjobs\tdev:4.0\t200\t%40'
+
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Action   [h] hibernate other (done, 300M) frees its pages from both arms"* ]] || false
+}
+
+@test "the action line falls back to k when no pane is safe to hibernate" {
+  run "$MEM_POPUP" _summary
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Action   no idle or done agent pane; [k] ends a process (frees both arms)"* ]] || false
 }
 
 @test "hibernate candidates include safe Claude and Codex panes and rank by footprint" {
