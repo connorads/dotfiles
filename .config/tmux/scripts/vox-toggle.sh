@@ -81,6 +81,10 @@ VOX_BIN=${VOX_BIN:-$HOME/.local/bin/vox}
 
 note() { tmux display-message "$1" 2>/dev/null || true; }
 
+# One wording for both doors. What Esc does differs by door - start: discard,
+# menu: no rename - and is documented at each; the prompt names neither.
+PROMPT='enter name (optional): '
+
 # ask_title PROMPT [CLIENT] — raise the title prompt and wait for its answer.
 # Prints the title (possibly empty) and returns 0 when the prompt was answered
 # with Enter, 1 when it was escaped, 2 when there was no client to ask.
@@ -124,7 +128,7 @@ rename_to() {
 # the capture was not started by this prompt, so it is not this prompt's to end.
 if [ "${1:-}" = prompt ]; then
 	[ -n "${2:-}" ] || exit 0
-	if title=$(ask_title 'title (recording, empty = none)' "${3:-}") && [ -n "$title" ]; then
+	if title=$(ask_title "$PROMPT" "${3:-}") && [ -n "$title" ]; then
 		rename_to "$2" "$title"
 	fi
 	exit 0
@@ -173,7 +177,7 @@ scratch=$(mktemp -d)
 "$VOX_BIN" >"$scratch/dir" 2>"$scratch/err" &
 start_pid=$!
 
-title=$(ask_title 'title · esc discards · enter keeps')
+title=$(ask_title "$PROMPT")
 prompt_rc=$?
 
 wait "$start_pid"

@@ -166,7 +166,7 @@ toggle_answering() {
   # prompt is what makes the key feel instant.
   export VOX_TOGGLE_GATE="$BATS_TEST_TMPDIR/prompt-raised"
 
-  toggle_answering 'esc discards' '' Enter -- "$PANE"
+  toggle_answering 'enter name' '' Enter -- "$PANE"
 
   [ "$status" -eq 0 ]
   [ -f "$VOX_STATEFILE" ]
@@ -187,6 +187,9 @@ toggle_answering() {
   prompt=${line#*-p }
   prompt=${prompt%%set-option*}
   [[ "$line" == *" -l "* ]] || [[ "$prompt" != *,* ]]
+  # The prompt asks for a name and says a blank answer is fine; it does not
+  # say "recording" - the pill and the messages already do.
+  [[ "$prompt" != *recording* ]]
   # No -b: with it the CLI returns before the prompt is dismissed, and Esc could
   # not be told from a prompt still open.
   [[ "$line" != *" -b "* ]]
@@ -200,7 +203,7 @@ toggle_answering() {
 @test "escaping the prompt discards the recording" {
   stub_vox
 
-  toggle_answering 'esc discards' '' Escape -- "$PANE"
+  toggle_answering 'enter name' '' Escape -- "$PANE"
 
   [ "$status" -eq 0 ]
   grep -q '^vox cancel$' "$TEST_LOG"
@@ -212,7 +215,7 @@ toggle_answering() {
 @test "enter with no title keeps the recording at its timestamp" {
   stub_vox
 
-  toggle_answering 'esc discards' '' Enter -- "$PANE"
+  toggle_answering 'enter name' '' Enter -- "$PANE"
 
   [ "$status" -eq 0 ]
   ! grep -q '^vox cancel$' "$TEST_LOG"
@@ -224,7 +227,7 @@ toggle_answering() {
 @test "a title renames the live recording" {
   stub_vox
 
-  toggle_answering 'esc discards' 'Triver Kickoff' Enter -- "$PANE"
+  toggle_answering 'enter name' 'Triver Kickoff' Enter -- "$PANE"
 
   [ "$status" -eq 0 ]
   grep -q "renamed $VOX_STORE/2026-07-28-140312 -> Triver Kickoff" "$TEST_LOG"
@@ -239,7 +242,7 @@ toggle_answering() {
   # Esc and discard the recording.
   title='Nat'"'"'s "call" `id` $HOME; x'
 
-  toggle_answering 'esc discards' "$title" Enter -- "$PANE"
+  toggle_answering 'enter name' "$title" Enter -- "$PANE"
 
   [ "$status" -eq 0 ]
   grep -qF "renamed $VOX_STORE/2026-07-28-140312 -> $title" "$TEST_LOG"
@@ -277,7 +280,7 @@ toggle_answering() {
 @test "prompt renames the recording it was asked about" {
   stub_vox
 
-  toggle_answering 'empty = none' 'Triver Kickoff' Enter -- \
+  toggle_answering 'enter name' 'Triver Kickoff' Enter -- \
     prompt "$VOX_STORE/2026-07-28-140312-standup"
 
   [ "$status" -eq 0 ]
@@ -288,7 +291,7 @@ toggle_answering() {
   stub_vox
   live_capture
 
-  toggle_answering 'empty = none' '' Escape -- prompt "$VOX_STORE/2026-07-28-140312-standup"
+  toggle_answering 'enter name' '' Escape -- prompt "$VOX_STORE/2026-07-28-140312-standup"
 
   # The capture was not started by this prompt, so it is not this prompt's to
   # end: Esc here is "leave the name alone".
@@ -377,7 +380,7 @@ EOF
   # The prompt is already up when the start fails, so its answer is discarded
   # rather than acted on: there is nothing to rename and nothing to cancel.
 
-  toggle_answering 'esc discards' '' Escape -- "$PANE"
+  toggle_answering 'enter name' '' Escape -- "$PANE"
 
   # Exit 0 even so: under `run-shell -b` a non-zero exit makes tmux print
   # `'<cmd>' returned N` over the reason the script just displayed.
