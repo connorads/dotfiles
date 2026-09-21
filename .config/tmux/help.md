@@ -178,8 +178,9 @@ as a percentage of whichever of its two ceilings is nearer - shown including
 when healthy, so the resting baseline stays visible. A `▲` before the figure
 marks kernel warn or critical pressure. Colour + glyph encode state; bold
 escalates on BUSY/CRITICAL.
-`Ctrl+b Alt+m` drills down (both compressor ceilings as bars with sizes and
-their ratio, swap, wired, top footprint apps, agents). Press `h` to choose one or more
+`Ctrl+b Alt+m` drills down: each ceiling as a bar with a tick at its amber and
+red lines, the distance to the next line, what lowers it, the ratio, swap,
+wired, the pane `h` would stop first, top footprint apps, agents. Press `h` to choose one or more
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
 The header shows automatic-hibernation mode. Automatic mode is observe-only by
