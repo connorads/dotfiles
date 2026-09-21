@@ -46,9 +46,12 @@ the process instead would free nothing: a stopped process keeps every page
 it has mapped.
 
 The semantics are an email inbox. *Done* stays blue until I actually look
-at it: focusing the window marks it read and the dot ages to idle. If I was
-already watching the pane when the agent finished, it skips straight to
-idle - no unread badge for something I saw happen. There's even
+at it: focusing the window marks it read and the dot ages to idle. If the
+pane was already on screen when the agent finished, it skips straight to
+idle - no unread badge for something I saw happen. On screen means the
+window, not the cursor: tmux draws every pane of it at once, so one agent
+finishing beside two that are still working no longer paints the tab blue.
+A zoomed pane really does hide its siblings, so a finish behind one waits. There's even
 mark-as-unread (`prefix + Alt+.`) for "I looked, but future-me still needs
 to deal with this". Detached sessions never auto-age - a blue dot on the
 Mac mini stays blue until somebody is genuinely looking. And a background
