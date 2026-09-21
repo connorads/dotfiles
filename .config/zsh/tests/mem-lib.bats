@@ -50,11 +50,11 @@ lib() {
 
 @test "pure memory derivation reuses gathered pressure and compressor fill" {
   lib 'mem_state_from 2 30 30'
-  [ "$output" = "BUSY" ]
+  [ "$output" = "OK" ]
   lib 'mem_cause_from 2 30 30'
-  [ "$output" = "pressure" ]
+  [ "$output" = "none" ]
   lib 'mem_token_from 2 30 30'
-  [ "$output" = "▲" ]
+  [ "$output" = "▲30%" ]
 }
 
 @test "OK when pressure normal and both arms under their BUSY lines" {
@@ -82,9 +82,9 @@ lib() {
   [ "$output" = "CRITICAL" ]
 }
 
-@test "BUSY on warn pressure with an empty compressor" {
+@test "warn pressure alone no longer escalates: OK with an empty compressor" {
   FAKE_PRESSURE=2 lib mem_state
-  [ "$output" = "BUSY" ]
+  [ "$output" = "OK" ]
 }
 
 @test "CRITICAL on critical pressure level" {
@@ -106,9 +106,9 @@ lib() {
   [ "$output" = "none" ]
 }
 
-@test "cause pressure on warn pressure with a resting compressor" {
+@test "cause none on warn pressure with a resting compressor" {
   FAKE_PRESSURE=2 FAKE_SLOTS=300 FAKE_SEGS=300 lib mem_cause
-  [ "$output" = "pressure" ]
+  [ "$output" = "none" ]
 }
 
 @test "cause slots when slots drive BUSY at normal pressure" {
@@ -126,9 +126,9 @@ lib() {
   [ "$output" = "pressure" ]
 }
 
-@test "cause pressure when both fire at BUSY (pressure wins)" {
+@test "cause is the arm at BUSY even under warn pressure" {
   FAKE_PRESSURE=2 FAKE_SLOTS=620 lib mem_cause
-  [ "$output" = "pressure" ]
+  [ "$output" = "slots" ]
 }
 
 @test "cause pressure when both fire at CRITICAL (pressure wins)" {
@@ -158,11 +158,18 @@ lib() {
   [ "$output" = "slots" ]
 }
 
-# --- mem_token: marker when pressure-driven, else the binding arm's fill -----
+# --- mem_token: the binding arm's fill, ▲-prefixed under warn/critical pressure
 
-@test "token is the cause marker when pressure drives the state" {
+@test "token keeps the figure and prefixes the pressure marker on warn pressure" {
   FAKE_PRESSURE=2 FAKE_SLOTS=300 lib mem_token
-  [ "$output" = "▲" ]
+  [ "$output" = "▲30%" ]
+}
+
+@test "token prefixes the marker on critical pressure and on a BUSY arm alike" {
+  lib 'mem_token_from 4 30 30'
+  [ "$output" = "▲30%" ]
+  lib 'mem_token_from 2 62 27'
+  [ "$output" = "▲62%" ]
 }
 
 @test "token is the slots percentage when slots drive the state" {
@@ -212,6 +219,65 @@ lib() {
   FAKE_PRESSURE=1 FAKE_SLOTS=620 FAKE_SEGS=270 run zsh --no-rcs -c "emulate -L zsh; setopt no_unset; source '$MEM_LIB'; mem_compressor_raw; mem_state; mem_token"
   [ "$status" -eq 0 ]
   [ "$output" = $'620 1000 270 1000\nBUSY\n62%' ]
+}
+
+# --- per-arm state, distance to the line, marked bar ------------------------
+
+@test "arm state judges one arm by its own lines" {
+  lib 'mem_arm_state 59 60 80'
+  [ "$output" = "OK" ]
+  lib 'mem_arm_state 60 60 80'
+  [ "$output" = "BUSY" ]
+  lib 'mem_arm_state 79 60 80'
+  [ "$output" = "BUSY" ]
+  lib 'mem_arm_state 80 60 80'
+  [ "$output" = "CRITICAL" ]
+  lib 'mem_arm_state 69 70 85'
+  [ "$output" = "OK" ]
+  lib 'mem_arm_state 85 70 85'
+  [ "$output" = "CRITICAL" ]
+}
+
+@test "arm gap names the distance to the next line, or the overshoot past red" {
+  lib 'mem_arm_gap 59 60 80'
+  [ "$output" = "1 to amber" ]
+  lib 'mem_arm_gap 60 60 80'
+  [ "$output" = "20 to red" ]
+  lib 'mem_arm_gap 79 60 80'
+  [ "$output" = "1 to red" ]
+  lib 'mem_arm_gap 80 60 80'
+  [ "$output" = "0 over red" ]
+  lib 'mem_arm_gap 70 70 85'
+  [ "$output" = "15 to red" ]
+  lib 'mem_arm_gap 84 70 85'
+  [ "$output" = "1 to red" ]
+  lib 'mem_arm_gap 85 70 85'
+  [ "$output" = "0 over red" ]
+}
+
+@test "marked bar inserts the amber and red ticks between cells, fill lossless" {
+  lib 'mem_bar_marked 0 20 60 80'
+  [ "$output" = "░░░░░░░░░░░░│░░░░│░░░░" ]
+  lib 'mem_bar_marked 60 20 60 80'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓│░░░░│░░░░" ]
+  lib 'mem_bar_marked 63 20 60 80'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓│▓░░░│░░░░" ]
+  lib 'mem_bar_marked 77 20 60 80'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓░│░░░░" ]
+  lib 'mem_bar_marked 100 20 60 80'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓▓│▓▓▓▓" ]
+  lib 'mem_bar_marked 10 20 70 85'
+  [ "$output" = "▓▓░░░░░░░░░░░░│░░░│░░░" ]
+  lib 'mem_bar_marked 70 20 70 85'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓▓▓│░░░│░░░" ]
+  lib 'mem_bar_marked 85 20 70 85'
+  [ "$output" = "▓▓▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓│░░░" ]
+}
+
+@test "arm helpers hold under zsh with no_unset" {
+  run zsh --no-rcs -c "emulate -L zsh; setopt no_unset; source '$MEM_LIB'; mem_arm_state 33 60 80; mem_arm_gap 33 60 80; mem_bar_marked 33 20 60 80; echo; mem_token_from 2 33 35"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'OK\n27 to amber\n▓▓▓▓▓▓▓░░░░░│░░░░│░░░░\n▲35%' ]
 }
 
 @test "a short sysctl answer collapses to zeros rather than shifting fields" {

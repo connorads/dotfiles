@@ -162,11 +162,11 @@ ram_percentage() {
 # encoded by colour + glyph; bold escalates on BUSY/CRITICAL as the extra
 # non-colour cue. The figure slot shows the binding compressor arm's fill as
 # `NN%` (OK included, so the resting baseline stays visible and calibrates the
-# eye), except when kernel pressure is the cause — there a ▲ marker takes the
-# slot (the compressor is fine, look elsewhere). See mem_token. One sysctl fork
-# for all five keys, cheap at the 15 s status-interval, so no caching. A key the
-# kernel lacks prints no line at all, so anything but five lines zeroes the
-# compressor arms rather than reading a shifted field as a percentage.
+# eye), prefixed with ▲ under kernel warn or critical pressure. See mem_token.
+# One sysctl fork for all five keys, cheap at the 15 s status-interval, so no
+# caching. A key the kernel lacks prints no line at all, so anything but five
+# lines zeroes the compressor arms rather than reading a shifted field as a
+# percentage.
 mem_segment() {
 	local reading pressure slots segs state colour glyph token
 	local -a v

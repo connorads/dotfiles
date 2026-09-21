@@ -175,9 +175,9 @@ popup as `Ctrl+b A`. Disable only this compact fallback with
 
 Right-side gauge (macOS, width ≥ 80). The figure is how full the compressor is,
 as a percentage of whichever of its two ceilings is nearer - shown including
-when healthy, so the resting baseline stays visible - *unless* kernel pressure
-is the driver, where a `▲` replaces the figure (the compressor is fine, look
-elsewhere). Colour + glyph encode state; bold escalates on BUSY/CRITICAL.
+when healthy, so the resting baseline stays visible. A `▲` before the figure
+marks kernel warn or critical pressure. Colour + glyph encode state; bold
+escalates on BUSY/CRITICAL.
 `Ctrl+b Alt+m` drills down (both compressor ceilings as bars with sizes and
 their ratio, swap, wired, top footprint apps, agents). Press `h` to choose one or more
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
@@ -192,12 +192,13 @@ conversation from both without blocking manual hibernation.
 
 | Pill | State | Meaning |
 |------|-------|---------|
-| `⬡` green | OK | slots < 60%, segments < 70%, kernel pressure normal |
-| `⊟` amber (bold) | BUSY | slots ≥ 60% or segments ≥ 70% or kernel warn pressure |
+| `⬡` green | OK | slots < 60%, segments < 70%, kernel pressure below critical |
+| `⊟` amber (bold) | BUSY | slots ≥ 60% or segments ≥ 70% |
 | `⊠` red (bold) | CRITICAL | slots ≥ 80% or segments ≥ 85% or kernel critical pressure |
 
-`▲` in the figure slot = kernel pressure is the cause (the compressor is under
-its lines); `NN%` = the fill of the binding arm. Slots are compressed pages
+`▲` before the figure = kernel pressure is warn or critical; warn is
+information only, critical is CRITICAL. `NN%` = the fill of the binding arm.
+Slots are compressed pages
 against the kernel's hard page limit - the ceiling the 2026-09-20 panic hit at
 100% - and only empty when a process frees or exits; segments are compressed
 storage against its limit, relieved by swapout. Swap tracks the segments arm
