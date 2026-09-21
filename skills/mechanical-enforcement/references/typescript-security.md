@@ -1,7 +1,8 @@
 # Mechanical Enforcement - TypeScript security
 
 The security-shaped gates for TypeScript: the lint rules worth naming, the runtime controls that hold and the ones that do not, the sinks no linter ships a rule for, and the parity gaps against `references/python.md`. Routed from `references/typescript.md`, section Picks. Verified 2026-09-03 against oxlint 1.80.0 (1.81.0 held back by the release-age quarantine), @biomejs/biome 2.5.11
-(2.5.12 held back), opengrep 1.29.0, typescript 7.0.2 and node 24.19.0.
+(2.5.12 held back), opengrep 1.29.0, typescript 7.0.2 and node 24.19.0; the
+runtime-permission bullets re-verified 2026-09-22 on node 24.21.0.
 
 ## Picks
 
@@ -72,6 +73,8 @@ node --permission --allow-fs-read=./config --allow-fs-write=./dist scripts/build
 
 - **A dropped `=` fails open and green.** `--allow-fs-read scripts/build.mjs` consumes the script path as the flag's value; node then has no entry point, falls back to stdin, and exits 0 with the script never running. Always write the `=` form, and assert the script prints something.
 - **Reject `--permission` around vitest.** vitest 4's default pool is `forks`, and a forked pool cannot start without `--allow-child-process` - granting which hands every test file an unguarded escape, because the permission model does not propagate into the child. The `threads` pool fails closed without `--allow-worker` and fails open *with* it. Neither configuration gates anything. The test-suite equivalents are in `references/typescript-testing.md`, section Runtime backstops.
+- **The child inherits the whole environment, so `--permission` is a fault boundary and not an exfiltration boundary.** Verified on node 24.21.0: `node --permission --input-type=module -e '…'` denies `node:fs` with `ERR_ACCESS_DENIED` while `process.env` carries every inherited variable and `fetch` is a live function. With no `--allow-net` on this major, code inside can read each secret the parent held and post it out. Use the flag for trusted-but-buggy code; for untrusted code the controls are a scrubbed `env` on the spawn and a runtime that can deny network.
+- **`-e` needs no filesystem grant at all.** The implicit read grant covers an entry script; a program passed with `-e` / `--input-type=module` has none, so the tightest configuration carries no `--allow-fs-read`. The natural alternative, writing the program to a temp file and granting a read, hits a macOS trap: `--allow-fs-read` wants the realpath, and `/tmp` is a symlink to `/private/tmp`.
 
 ## `JSON.parse` at the boundary
 
