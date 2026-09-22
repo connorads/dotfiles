@@ -136,7 +136,7 @@ fork_worktree_window() {
 	local path
 	local fork_cmd
 
-	path=$(wt-add "$branch") || soft_fail "wt-add failed for $branch"
+	path=$(wt-add --base HEAD "$branch") || soft_fail "wt-add failed for $branch"
 	fork_cmd=$(codex_fork_cmd "$path" "$sid" "$flags")
 	tmux new-window -c "$path" "$fork_cmd"
 }
