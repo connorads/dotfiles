@@ -188,9 +188,8 @@ url = "https://github.com/bats-core/bats-core/archive/refs/tags/1.14.0.tar.gz"
 url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/1.14.0"
 
 [tools.bats."platforms.macos-arm64"]
-checksum = "blake3:9b3dc5d296f3da85ce1062c7f9648c979cf2b982f0151f785eaa84d448dec779"
-url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
-url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/1.14.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/1.14.0"
 
 [[tools.bun]]
 version = "1.4.2"
@@ -613,6 +612,13 @@ backend = "npm:@elevenlabs/cli"
 version = "0.1.1"
 backend = "npm:@eraserlabs/diagrams-cli"
 
+[[tools."npm:@getpaseo/cli"]]
+version = "0.8.0"
+backend = "npm:@getpaseo/cli"
+
+[tools."npm:@getpaseo/cli".options]
+allow_builds = '["node-pty", "sherpa-onnx-node"]'
+
 [[tools."npm:@kitlangton/ghui"]]
 version = "0.9.1"
 backend = "npm:@kitlangton/ghui"
@@ -639,6 +645,14 @@ backend = "npm:agent-device"
 [[tools."npm:apify-cli"]]
 version = "1.10.0"
 backend = "npm:apify-cli"
+
+[[tools."npm:bb-app"]]
+version = "0.43.1"
+backend = "npm:bb-app"
+
+[tools."npm:bb-app".options]
+allow_builds = '["@parcel/watcher", "better-sqlite3", "fs-native-extensions"]'
+trust_policy_excludes = '["pino@9.14.0"]'
 
 [[tools."npm:cf"]]
 version = "0.10.0"
