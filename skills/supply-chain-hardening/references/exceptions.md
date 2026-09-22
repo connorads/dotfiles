@@ -18,7 +18,11 @@ in the config file is the right place - it travels with the exception):
 
 1. **Scope** - one package (and version range where the vehicle supports
    it), one gate. Never a global disable, never a whole-scope glob unless the
-   scope is genuinely one publisher.
+   scope is genuinely one publisher. Some vehicles refuse ranges and take a
+   bare name or an exact `name@version` only (pnpm's
+   `minimumReleaseAgeExclude` and `trustPolicyExclude` do); pin the exact
+   version there, so the exception expires on the next bump instead of
+   surviving it.
 2. **Reason** - the specific upstream condition, with a link (issue,
    advisory, changelog). "It broke the build" is not a reason; "native module
    needs node-gyp at install; build script reviewed at vX.Y" is.

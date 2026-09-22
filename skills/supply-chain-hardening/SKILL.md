@@ -121,6 +121,21 @@ large majority of malicious packages are pulled by registries without ever
 receiving a CVE - so neither provenance nor CVE feeds substitute for `MAL-*`
 matching. Provenance ≠ safety.
 
+Layer 2 has a surface the package manager never sees: a cloned repository's
+**agent-hook config** is executable content that arms with no install step.
+Claude Code runs the hooks in a project's `.claude/settings.json` before the
+folder is trusted, including under `claude -p`; opencode loads
+`.opencode/plugin/*.ts` and the `plugin` entries of a project `opencode.json`
+on discovery, walking up from the working directory. pi asks "Trust project
+folder?" before loading `.pi/extensions/` and leaves them unloaded in a
+headless run with no stored answer; Codex discovers `.codex/hooks.json` and
+runs nothing from it until its hash is trusted on that machine. Before running
+an agent in a repository you did not write, read those files, or start with
+`claude --bare` (or `--setting-sources user`, or `--settings
+'{"disableAllHooks": true}'`) and `OPENCODE_DISABLE_PROJECT_CONFIG=1`. The
+hook contracts are in the mechanical-enforcement skill's
+`references/agent-tool-gates.md`.
+
 ## Slopsquatting
 
 Agents hallucinate plausible package names; attackers register them. Before
