@@ -123,6 +123,30 @@ blockExoticSubdeps: true         # v11 default; explicit keeps the posture audit
   `assets/pnpm-build-scripts-check.mjs`). Its limit: the installed tree is
   platform-resolved, so a `linux-x64`-only postinstall needs a CI job on the
   target platform.
+- **pnpm pins and verifies itself, and two settings throw that away.** With
+  `devEngines.packageManager` in `package.json` (or the legacy
+  `packageManager` field and `pmOnFail` other than `ignore`), pnpm 11+
+  records the resolved manager in `pnpm-lock.yaml` under
+  `packageManagerDependencies` with an `@pnpm/exe@<version>` entry and its
+  sha512, and refuses to run a build whose bytes do not match
+  (`ERR_PNPM_PNPM_ENGINE_IDENTITY_MISMATCH`). The default `pmOnFail:
+  download` is the path that fetches that checksummed build. `onFail:
+  "error"` makes pnpm refuse instead of download, so the pinned build is
+  never the one anyone gets, and `corepack prepare pnpm@<v>` in CI fetches
+  by tag with no checksum; both bypass the self-pin.
+  `managePackageManagerVersions`, `packageManagerStrict` and
+  `packageManagerStrictVersion` do not exist in 11+ (`pmOnFail` replaced
+  them). Verified 2026-09-21 on pnpm 12.4.1 against a repo pinning 11.3.0.
+  Caveat: on Cloudflare Workers Builds a `devEngines.packageManager` object
+  beside `packageManager` breaks corepack (cloudflare-workers-deployments
+  skill, `references/troubleshooting.md`).
+- **Exclusion selectors take exact versions, never ranges.**
+  `minimumReleaseAgeExclude` and `trustPolicyExclude` accept a bare name, a
+  name glob (`@myorg/*`), an exact version (`nx@21.6.5`) or a disjunction of
+  exact versions; a semver range is refused
+  (`ERR_PNPM_INVALID_MINIMUM_RELEASE_AGE_EXCLUDE ... Use exact versions
+  only`). Prefer the exact form: it stops matching the moment the dependency
+  bumps, so the hole closes by itself. Verified 2026-09-21 on pnpm 11.3.0.
 - macOS gotcha: the global config lives at `~/Library/Preferences/pnpm/config.yaml`,
   not `~/.config/pnpm/` - verify which file the tool actually reads.
 
@@ -310,7 +334,7 @@ better, because it's reviewable and revertible:
 | Tool | One-off bypass | Tracked exception vehicle |
 |---|---|---|
 | npm | `--before` date pinning (no age-gate env override) | project `.npmrc`; `npm approve-scripts` allowlist |
-| pnpm | CLI/env per install | `minimumReleaseAgeExclude`, `allowBuilds` |
+| pnpm | CLI/env per install | `minimumReleaseAgeExclude`, `trustPolicyExclude`, `allowBuilds` |
 | bun | `--minimum-release-age=0` | project `bunfig.toml` (replaces whole `[install]` table - re-state the gate) |
 | Yarn | - | `npmPreapprovedPackages` |
 | aube | - | `minimumReleaseAgeExclude`, `trustPolicyExclude`, `allowBuilds` |
