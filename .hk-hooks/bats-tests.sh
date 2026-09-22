@@ -46,7 +46,9 @@ suites=$(
 		"$TESTS_DIR"/*.bats)
 			echo "$f"
 			;;
-		.config/zsh/functions/* | .config/tmux/scripts/*)
+		# A case pattern's `*` crosses `/`, so the .claude arm covers both the
+		# top-level scripts (statusline.sh, subagent-statusline.sh) and hooks/.
+		.config/zsh/functions/* | .config/tmux/scripts/* | .claude/*.sh)
 			stem=$(basename "$f")
 			stem=${stem%.sh}
 			if [[ -f $TESTS_DIR/$stem.bats ]]; then
