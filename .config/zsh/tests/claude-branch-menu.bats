@@ -504,7 +504,7 @@ EOF
 
   run "$MENU" fork-worktree "feat/x" "session-xyz"
   [ "$status" -eq 0 ]
-  grep -q "wt-add feat/x" "$TEST_LOG"
+  grep -q "wt-add --base HEAD feat/x" "$TEST_LOG"
   grep -q -- "new-window -c /tmp/trees/repo/feat/x claude -r session-xyz --fork-session" "$TEST_LOG"
 }
 
@@ -535,15 +535,15 @@ EOF
   write_stub wt-add <<'EOF'
 #!/usr/bin/env bash
 printf 'wt-add %s\n' "$*" >>"$TEST_LOG"
-echo "/tmp/trees/repo/$1"
+echo "/tmp/trees/repo/${!#}"
 EOF
 
   run "$MENU" fork-worktrees 4 "feat/foo" "session-xyz"
   [ "$status" -eq 0 ]
-  grep -q -- "wt-add feat/foo-1" "$TEST_LOG"
-  grep -q -- "wt-add feat/foo-2" "$TEST_LOG"
-  grep -q -- "wt-add feat/foo-3" "$TEST_LOG"
-  grep -q -- "wt-add feat/foo-4" "$TEST_LOG"
+  grep -q -- "wt-add --base HEAD feat/foo-1" "$TEST_LOG"
+  grep -q -- "wt-add --base HEAD feat/foo-2" "$TEST_LOG"
+  grep -q -- "wt-add --base HEAD feat/foo-3" "$TEST_LOG"
+  grep -q -- "wt-add --base HEAD feat/foo-4" "$TEST_LOG"
   [ "$(log_count "new-window -c /tmp/trees/repo/feat/foo-")" -eq 4 ]
   [ "$(log_count "claude -r session-xyz --fork-session")" -eq 4 ]
 }
