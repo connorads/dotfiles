@@ -1176,5 +1176,9 @@
     "command": "~/.claude/statusline.sh",
     "type": "command"
   },
+  "subagentStatusLine": {
+    "command": "~/.claude/subagent-statusline.sh",
+    "type": "command"
+  },
   "theme": "dark"
 }

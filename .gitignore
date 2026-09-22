@@ -55,6 +55,7 @@
 !/.claude/hooks/
 !/.claude/hooks/**
 !/.claude/system-append.md
+!/.claude/subagent-statusline.sh
 
 !/.codex/
 /.codex/**
