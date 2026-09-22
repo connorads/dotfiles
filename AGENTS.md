@@ -309,7 +309,7 @@ svc up <name> [port]   # Start service + expose via Tailscale
 svc down <name>        # Stop service + teardown Tailscale route
 svc restart <name>     # Restart a service
 svc ui                 # fzf service picker (default in TTY)
-wt-add <branch>        # Create worktree under ~/.trees, run rs, print path (agent-callable)
+wt-add <branch>        # Create worktree under ~/.trees from the default branch (--base to override), run rs, print path (agent-callable)
 wta <branch>           # wt-add + cd into it (human workflow)
 wt-status [path]       # Report worktree status; --all / --json for agents; --pr adds real PR state from gh
 wt-publish             # Push current worktree branch and optionally open a PR

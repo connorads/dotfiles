@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 # wt-add: create a worktree under ~/.trees/<repo>/<branch>, print its path
 # usage: wt-add [--base <ref>] [--no-setup] [--no-fetch] [--json] [--lock [reason]] <branch>
+# A new branch starts from the repo's default branch (the fetched remote copy
+# when present), untracked; --base HEAD stacks on the current checkout instead.
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-add]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
@@ -86,8 +88,20 @@ elif [[ -n "$base" ]]; then
   # New branch from specified base
   git worktree add -b "$branch" "$worktree_path" "$base" >&2 || return 1
 else
-  # New branch from current HEAD
-  git worktree add -b "$branch" "$worktree_path" >&2 || return 1
+  # New branch from the default branch; the fetched remote copy wins because
+  # the local one may be stale. --no-track keeps it from tracking origin/main.
+  local default_base="" start_ref=""
+  default_base=$(_wt_resolve_base "$repo_root" "" 2>/dev/null) || true
+  if [[ -n "$preferred_remote" && -n "$default_base" ]] &&
+    git show-ref --verify --quiet "refs/remotes/$preferred_remote/$default_base"; then
+    start_ref="refs/remotes/$preferred_remote/$default_base"
+  elif [[ -n "$default_base" ]] && git rev-parse --verify --quiet "${default_base}^{commit}" >/dev/null; then
+    start_ref=$default_base
+  else
+    echo "error: cannot resolve default branch; pass --base <ref>" >&2
+    return 1
+  fi
+  git worktree add --no-track -b "$branch" "$worktree_path" "$start_ref" >&2 || return 1
 fi
 created=1
 

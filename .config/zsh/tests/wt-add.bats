@@ -115,3 +115,78 @@ make_repo() {
   [ "$(printf '%s' "$output" | jq -r '.path')" = "$HOME/.trees/repo/feature/foo" ]
   [ -d "$HOME/.trees/repo/feature/foo" ]
 }
+
+# A repo on `main` whose checkout sits on a feature branch one commit ahead.
+make_repo_on_feature() {
+  local repo=$1
+
+  git init -b main "$repo" >/dev/null
+  git -C "$repo" config user.name "Bats"
+  git -C "$repo" config user.email "bats@example.com"
+  echo "base" >"$repo/base.txt"
+  git -C "$repo" add base.txt
+  git -C "$repo" commit -m "initial" >/dev/null
+  git -C "$repo" checkout -b feature >/dev/null 2>&1
+  echo "feature" >"$repo/feature.txt"
+  git -C "$repo" add feature.txt
+  git -C "$repo" commit -m "feature" >/dev/null
+}
+
+@test "without --base a new branch starts from the default branch, not HEAD" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo_on_feature "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.trees/repo/topic/base.txt" ]
+  [ ! -e "$HOME/.trees/repo/topic/feature.txt" ]
+}
+
+@test "without --base a new branch starts from the fetched origin default branch, untracked" {
+  local origin="$BATS_TEST_TMPDIR/origin"
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo_on_feature "$origin"
+  git -C "$origin" checkout main >/dev/null 2>&1
+  git clone "$origin" "$repo" >/dev/null 2>&1
+  git -C "$repo" config user.name "Bats"
+  git -C "$repo" config user.email "bats@example.com"
+  git -C "$repo" checkout feature >/dev/null 2>&1
+  echo "upstream" >"$origin/upstream.txt"
+  git -C "$origin" add upstream.txt
+  git -C "$origin" commit -m "upstream" >/dev/null
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.trees/repo/topic/upstream.txt" ]
+  [ ! -e "$HOME/.trees/repo/topic/feature.txt" ]
+  run git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref '@{u}'
+  [ "$status" -ne 0 ]
+}
+
+@test "--base HEAD branches from the checked-out branch" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo_on_feature "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --base HEAD topic"
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.trees/repo/topic/feature.txt" ]
+}
+
+@test "errors naming --base when no default branch resolves" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  git init -b trunk "$repo" >/dev/null
+  git -C "$repo" config user.name "Bats"
+  git -C "$repo" config user.email "bats@example.com"
+  echo "base" >"$repo/base.txt"
+  git -C "$repo" add base.txt
+  git -C "$repo" commit -m "initial" >/dev/null
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic 2>&1"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"--base"* ]]
+  [ ! -e "$HOME/.trees/repo/topic" ]
+}
