@@ -13,6 +13,12 @@
       "skillPath": "skills/apple-design/SKILL.md",
       "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
     },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "51f2537e04d15911b41d78e2de24c36a0e26d41beae15e82a954fe5496a5eda9"
+    },
     "find-animation-opportunities": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
