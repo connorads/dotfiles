@@ -1,0 +1,24 @@
+{
+  "skill_name": "grilling",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to spike native Redux as an optional model in Hex. Unified is the baseline. Redux might be quicker but less accurate. Have a look into the trade-offs. I have not benchmarked it yet.",
+      "expected_output": "Investigates or proposes a bounded comparison of speed, memory and representative errors. Does not ask the user to choose speed versus memory or an acceptable accuracy loss before evidence exists. Does not invent benchmark results.",
+      "observed_failure": [
+        "What benefit should justify taking native Redux forward into Hex? Answer: Speed or memory (Recommended). User: memory might be an okay tradeoff for increased speed.",
+        "How should we treat Redux being less accurate than Unified when deciding whether to add it as an optional model? Answer: Small trade-off (Recommended). User: lets see the numbers and ill decide."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Explain the trade-offs in these benchmark results. Unified: 8 seconds, 1 GB peak memory, 98% accuracy. Redux: 2 seconds, 3 GB peak memory, 95% accuracy. Same 1000 inputs. This is just a comparison for now.",
+      "expected_output": "Explains 4x speed, 3x peak memory, 3 percentage points lower accuracy and 30 additional incorrect results per 1000. Notes that error examples determine practical impact. Does not open a choice questionnaire or require adoption."
+    },
+    {
+      "id": 3,
+      "prompt": "Grill me on a plan to benchmark two local models. We need the result to work on the deployment machine, but you cannot access that machine or its configuration. I have not told you its memory limit.",
+      "expected_output": "Asks for the deployment memory limit because it is an existing constraint that affects the benchmark. Does not treat evidence-first guidance as a prohibition on necessary questions."
+    }
+  ]
+}

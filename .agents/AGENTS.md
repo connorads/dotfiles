@@ -34,6 +34,8 @@ Use subagents for broad research so the main context stays focused.
 
 ## Communication
 
+When asked to explain, research or compare options, present the findings before asking the user to choose. Ask upfront only for information needed to make the investigation useful. If a preference depends on unseen results, show concrete comparisons, measurements or examples first. An unresolved preference need not block exploration, and a comparison need not end with a decision.
+
 Use British English: analyse, favourite, realise, colour.
 Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
 Use `-`, not em/en dashes (`—`/`–`), and don't swap in parentheses or a mid-sentence colon instead. If a thought needs separating, end the sentence.
