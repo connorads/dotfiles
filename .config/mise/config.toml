@@ -141,6 +141,21 @@ fnox = "1"
   "tree-sitter-rust",
   "tree-sitter-typescript",
 ] }
+# pino@9.14.0 (bb-app's ^9.6.0 dep) lacks provenance that pino's 10.x line has
+# since 10.0.0: manually published by matteo.collina (pino's lead maintainer,
+# same identity across the version history) as a same-day backport to the 9.x
+# line, not a compromised release - verified via npm registry metadata.
+"npm:bb-app" = { version = "latest", allow_builds = [
+  "better-sqlite3",
+  "@parcel/watcher",
+  "fs-native-extensions",
+], trust_policy_excludes = [
+  "pino@9.14.0",
+] }
+"npm:@getpaseo/cli" = { version = "latest", allow_builds = [
+  "node-pty",
+  "sherpa-onnx-node",
+] }
 "npm:agent-browser" = "0"
 "npm:agent-device" = "0"
 "npm:serve-sim" = "latest"
