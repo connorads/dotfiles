@@ -330,7 +330,10 @@ _up_summary() {
 }
 
 _up_finish() {
-  _up_summary
+  local summary
+  summary=$(_up_summary)
+  print -r -- "$summary"
+  printf '\n[%s] summary\n%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$summary" >>"$up_log"
   return $up_failed
 }
 
