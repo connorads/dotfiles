@@ -13,6 +13,7 @@ setup() {
   local jq_dir
   jq_dir="$(dirname "$(command -v jq)")" # capture before PATH is isolated
   setup_test_home
+  unset CLOUDSDK_PYTHON
   export PATH="$PATH:$jq_dir"
 
   mkdir -p "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"
