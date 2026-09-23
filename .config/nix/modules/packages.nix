@@ -110,6 +110,7 @@ let
     sqlite
 
     # Networking
+    aria2
     nmap
     bandwhich
     cloudflared
