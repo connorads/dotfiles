@@ -1,0 +1,68 @@
+{
+  "skill_name": "formal-verification",
+  "how_to_run": "Per the writing-skills eval harness: for each eval, run the prompt with-skill and baseline (no skill) in fresh sessions, in parallel, each in a scratch dir outside any CLAUDE.md tree (claude -p --setting-sources \"\"). Copy the fixture directory's contents into the scratch dir first. Grade transcripts against the assertions, not just outputs.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "tla-job-queue-double-run",
+      "prompt": "ok so we have a job queue on postgres. workers do `SELECT ... FOR UPDATE SKIP LOCKED LIMIT 1` to claim a job, set status='running', lease_until=now()+30s, commit, then run the job, then UPDATE status='done'. theres a reaper cron every 10s that sets status='pending' where status='running' and lease_until < now(). workers heartbeat every 10s extending lease_until. every few days a job runs twice (we see 2 charge emails). i want a TLA+ spec that models this and finds the bug with TLC. put files in this dir. tell me what it finds",
+      "assertions": [
+        "Actually runs SANY and TLC (installing a pinned toolchain locally if absent), or labels the spec a draft",
+        "Does not pass -deadlock / CHECK_DEADLOCK FALSE silently; if used, says why and adds a replacement property",
+        "Shows passing configs are non-vacuous: a canary invariant that fails, or coverage showing the charge action fires",
+        "Checks at least one liveness property with fairness stated",
+        "Names model abstractions that make a fix pass by construction (e.g. idempotency modelled as perfect dedupe) as assumptions",
+        "Reports passes as bounded (workers, jobs, depth or distinct states), not proved"
+      ],
+      "baseline_2026_09_23": "3/3 clean baselines disabled deadlock checking (-deadlock or CHECK_DEADLOCK FALSE), checked no liveness, used no canary invariants or coverage; 2/3 reported the idempotency fix as passing on a perfect-dedupe provider. With-skill run (1 sample): deadlock checking on with an explicit Finished step, liveness with WF, canaries and a seeded bug failing, bounded report, declined to model the fix by construction."
+    },
+    {
+      "id": 2,
+      "name": "lean-isort-correctness",
+      "fixture": "evals/fixtures/lean-isort",
+      "prompt": "Sort.lean in this dir has my insertion sort. can you add a lean 4 proof that isort is correct? want to be able to tell my team its formally verified",
+      "assertions": [
+        "Statement is sorted AND permutation of the input, and is shown to the user in plain words for sign-off",
+        "Compiles with lake build --wfail (or lean) and runs #print axioms, or refuses to call it verified",
+        "Toolchain installed without editing shell profiles (ELAN_HOME / --no-modify-path) when absent",
+        "Report states claim, axioms, and what the proof does not cover"
+      ],
+      "baseline_2026_09_23": "Right statement (Sorted and Perm); could not compile and said so honestly. The unchecked proof failed to compile when later checked on v4.34.0 (simp lemmas broke on the `insert` name clash)."
+    },
+    {
+      "id": 3,
+      "name": "decide-leader-election",
+      "prompt": "we keep getting rare split-brain in our leader election (lease in redis, SET NX PX 5000, leader renews every 2s, followers poll). its maybe once a month in prod, we cant repro. someone on the team says we should \"formally verify it\". is that worth it? lean? tla+? that new bend language? what would you actually do, concretely",
+      "assertions": [
+        "Recommends fault injection or reproduction plus fencing before or alongside any model; does not lead with Lean",
+        "Describes Bend 2 accurately as a dependent-type proof language for agents (not the Bend 1 GPU language), and why it doesn't fit",
+        "If TLA+ is suggested, scopes it to checking the fix design, with environment failures (pauses, failover) modelled",
+        "Gives one concrete recommendation rather than a menu"
+      ],
+      "baseline_2026_09_23": "Strong practical answer (audit checklist, SIGSTOP repro, fencing tokens) but described Bend as a GPU parallel language, which is Bend 1. With-skill: Bend 2 described correctly; TLA+ scoped to checking the fencing fix with a signed-off property."
+    },
+    {
+      "id": 4,
+      "name": "review-agent-proof",
+      "fixture": "evals/fixtures/lean-agent-proof",
+      "prompt": "codex wrote Dedup.lean and says dedup is proven correct and it builds fine. can you sanity check before i merge",
+      "assertions": [
+        "Flags the axiom dedup_nodup_aux as an unproved assumption that makes dedup_correct prove nothing",
+        "Flags native_decide as trusting the compiler",
+        "Flags the spec as too weak: Nodup alone is met by [] - needs membership preserved (and first-occurrence order if intended)",
+        "Notices dedup_small's expected value contradicts the docstring (keeps last occurrences, not first)",
+        "Recommends #print axioms and lake build --wfail as the merge gate"
+      ],
+      "baseline_2026_09_23": "Baseline (Lean available) caught all four planted issues; no delta over with-skill. Kept as a regression test."
+    },
+    {
+      "id": 5,
+      "name": "should-not-perform-pbt",
+      "prompt": "add a property based test for parse_duration in src/duration.py - it takes strings like '1h30m' and returns seconds. we use hypothesis",
+      "assertions": [
+        "Writes the Hypothesis test directly without proposing a formal model or proof",
+        "Does not load or apply the formal-verification procedure (trigger should not fire; testing owns this)"
+      ]
+    }
+  ]
+}
