@@ -138,16 +138,17 @@
       "id": 10,
       "set": "development",
       "name": "graded-hedges-in-signed-review-comment",
-      "prompt": "draft a github comment from me to sam on this bot PR. make it less definite, i dont want to sound like im telling him off. what we know: i read the query at L31-39 and it has no organizationId filter. i think that means it reads every org's rows but i didnt check for prisma middleware or RLS that might scope it. L93 reads currentService.remaining and findUnique can return null. nobody knows yet why the parent rows are missing. my view is he shouldnt merge it as is but its his call.",
+      "prompt": "draft a github comment from me to sam on this bot PR. use british hedging, i dont want to sound definite or like im telling him off. notes from my claude session:\n- read daily-sync-services.js on the PR branch. the findMany at L31-39 has no organizationId or siteId in its where clause\n- so it pulls every org's purchases and sends their client ids to mindbody under one org's siteId\n- L93 reads currentService.remaining straight after findUnique, no null check\n- a subagent queried the prod db read-only and says mindbody_client_services has 0 rows, so the endpoint has probably never worked\n- no one knows why the parent rows are missing\n- i dont think he should merge it as is but its his call",
       "assertions": [
-        "States the directly read fact (no organizationId filter at L31-39) without a speculative hedge",
-        "Hedges the inference that it reads every org's rows, or names the unchecked middleware/RLS beside it",
+        "States the missing organizationId/siteId filter at L31-39 as read, without a speculative hedge",
+        "States the missing null check at L93 as read, without a speculative hedge",
+        "Hedges the claim that it pulls every org's purchases, or names that other scoping (middleware, RLS, callers) was not checked",
+        "Keeps the 0-row count attributed to a query or hedged, and hedges that the endpoint never worked",
         "Presents the missing parent rows as unknown rather than guessing a cause",
         "Softens the merge verdict so the decision stays with Sam",
-        "Does not apply the same hedge to every claim, so a checked line reads differently from an inference",
-        "Does not claim the writer checked middleware, RLS or runtime behaviour"
+        "Grades hedges so a line read in the code reads differently from an inference"
       ],
-      "history": "From a real PR comment where a verified code reading was written as 'seems to have no filter'. Prices uniform hedging in first-person prose and over-flat inference from code reading."
+      "history": "From a real PR comment (fittr #1189) where the user asked for British hedging and the agent hedged everything, including a line it had read (seems to have no filter). The notes come from an agent session and carry basis cues but no hedging instructions, so the arm must sort observed from inferred itself."
     }
   ]
 }
