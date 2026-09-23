@@ -962,3 +962,12 @@ EOF
   [ "$status" -eq 0 ]
   grep -qE '^  brew .*1 no longer outdated.*Full Disk Access denied' <<<"$output"
 }
+
+@test "up appends the summary to the log and still ends stdout with Log" {
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qF '] summary' "$XDG_CACHE_HOME"/up/*.log
+  grep -qF 'UPDATE COMPLETE' "$XDG_CACHE_HOME"/up/*.log
+  grep -qF 'Applied' "$XDG_CACHE_HOME"/up/*.log
+  [ "${lines[-2]}" = "Log" ]
+}
