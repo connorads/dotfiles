@@ -114,6 +114,16 @@ invent a start date, deadline, deliverable, or broader ownership around it.
 - Use hedges to mark a specific uncertainty, never to join claims that cannot
   both support the argument. Ask whether the conclusion survives every way the
   uncertainty could resolve.
+- Reading code observes its text, not its behaviour. "L31 has no org filter"
+  is observed; "so it reads every org's rows" is inferred and assumes nothing
+  else (middleware, RLS, a caller) scopes it. Treat the second as inference.
+- In prose signed by the human, hedge inferences even when the chain looks
+  complete: the human answers for what the agent did not consider. A plain
+  "seems" or "I think" can stand in for a basis clause. Impersonal prose may
+  state the inference without a hedge when it names what was checked and what
+  was not.
+- Grade hedges so the reader can tell a checked line from a guess; uniform
+  "seems" erases the difference.
 
 ## Actions do not outrun the claim
 
@@ -139,6 +149,7 @@ finding behind it.
 | "Someone needs to own it" | Record that ownership is unassigned or ask the named person to confirm. |
 | "The fix is useful anyway" | Call it hardening, and state separately whether it reaches the observed failure. |
 | "Add a status section so it is honest" | Put each material basis or limitation where that artefact's reader needs it. |
+| "Soften it, make it less definite" | Soften the verdict and the ask, which are the reader's call; keep checked facts flat. |
 
 ## Boundaries
 
