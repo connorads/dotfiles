@@ -43,6 +43,7 @@ cros = "cros"     # ChromeOS cros-garcon service
 sur = "sur"       # Homebrew :big_sur symbol
 aks = "aks"       # aks-desktop cask
 iif = "iif"       # IIFE tokenised as IIF + Es
+veru = "veru"     # VeruSAGE, a Verus benchmark paper
 fpr = "fpr"       # false-positive rate
 edn = "edn"       # "1st edn" - the edition abbreviation summon's book pointers use
 # Code identifiers and deliberate fragments in first-party sources.

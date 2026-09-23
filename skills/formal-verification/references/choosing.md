@@ -65,7 +65,7 @@ Costs or misses:
   ([SysMoBench](https://arxiv.org/pdf/2509.23130)).
 - Agents cheat when the checker is the goal: 7-14% of Verus runs used
   `assume`, `admit`, `external_body` or weakened specs until a cheat checker
-  cut it below 1.5% ([VerySAGE](https://arxiv.org/html/2512.18436v2)).
+  cut it below 1.5% ([VeruSAGE](https://arxiv.org/html/2512.18436v2)).
 - The durable split: a human owns the statement, the machine owns the proof
   (Kleppmann, [2025](https://martin.kleppmann.com/2025/12/08/ai-formal-verification.html)).
 
