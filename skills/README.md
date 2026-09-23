@@ -15,6 +15,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `game-playtesting` | Verify game journeys and reproduce gameplay defects | `pnpm dlx skills add connorads/dotfiles -s game-playtesting` |
 | `typescript` | Idiomatic, type-safe TypeScript | `pnpm dlx skills add connorads/dotfiles -s typescript` |
 | `testing` | Test strategy, TDD, test design | `pnpm dlx skills add connorads/dotfiles -s testing` |
+| `formal-verification` | Model checking and proofs (TLA+, Lean, Dafny, Kani) without vacuous passes | `pnpm dlx skills add connorads/dotfiles -s formal-verification` |
 | `test-coverage` | Coverage audits and enforcement | `pnpm dlx skills add connorads/dotfiles -s test-coverage` |
 | `mechanical-enforcement` | Linter/type rules that kill bug classes | `pnpm dlx skills add connorads/dotfiles -s mechanical-enforcement` |
 | `supply-chain-hardening` | Dependency supply-chain gates, triggers, scanning, exceptions | `pnpm dlx skills add connorads/dotfiles -s supply-chain-hardening` |
