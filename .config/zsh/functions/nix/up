@@ -681,6 +681,8 @@ if ((frozen)); then
   _up_skip pins "frozen mode"
 else
   _up_run advisory pins "conditional and range pins" pin-audit
+  local flagged=$(( $(grep -c 'pin-audit: FLAG ' "$up_log") ))
+  ((flagged)) && up_phase_details[-1]+="; $flagged flagged"
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then
