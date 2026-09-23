@@ -136,6 +136,12 @@
       "skillPath": "skills/lavish/SKILL.md",
       "computedHash": "5ff18ff1fb92bda3049037e08d1f7db31f7667bc90635677c37dcf620fd0c1a4"
     },
+    "lean-proof": {
+      "source": "leanprover/skills",
+      "sourceType": "github",
+      "skillPath": "skills/lean-proof/SKILL.md",
+      "computedHash": "d0983c0f5b2df8337c16ec20a67f6af0899de9640606968baab21291120610c0"
+    },
     "local-ci": {
       "source": "redwoodjs/agent-ci",
       "sourceType": "github",
