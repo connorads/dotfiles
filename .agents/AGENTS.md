@@ -58,6 +58,7 @@ Restate what each step needs; don't assume the reader is holding earlier context
 - A good commit is revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
 - Before amending, check whether the commit was pushed with `git log @{u}.. --oneline`; amend only unpushed commits.
 - Never stage with `git add -A`/`--all`/`.`; they sweep in unintended changes. Stage explicit paths, or stage hunks non-interactively with `git hunks list` then `git hunks add <id>` when one file holds changes for several concerns.
+- The index may already hold staged changes that are not yours, and a bare `git commit` takes them all. Check `git status --short` first. `git commit -- <paths>` commits only those paths, but it takes each path's whole work-tree content, unstaged hunks included. For a partly staged file, stage its hunks, check `git diff --cached --stat`, then commit without a pathspec.
 
 ## Verification
 
