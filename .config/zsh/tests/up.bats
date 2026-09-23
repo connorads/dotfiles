@@ -971,3 +971,21 @@ EOF
   grep -qF 'Applied' "$XDG_CACHE_HOME"/up/*.log
   [ "${lines[-2]}" = "Log" ]
 }
+
+# A FLAG is advice to act on a pin by hand; pin-audit did its job, so the count
+# enriches the advisory row and nothing more.
+@test "up counts pin-audit FLAGs on the pins advisory without degrading" {
+  write_stub pin-audit <<'EOF2'
+#!/usr/bin/env bash
+echo "pin-audit $*" >>"$TEST_LOG"
+echo 'pin-audit: OK   sandbox-runtime 0.0.62 - keep the exact pin'
+echo 'pin-audit: FLAG aube pinned 1, 2.2.17 available'
+echo 'pin-audit: FLAG npm:@playwright/cli pinned 0.1.18, 0.1.21 available'
+exit 0
+EOF2
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qE '^  pins .*2 flagged' <<<"$output"
+  [[ "$output" != *"degraded"* ]] || false
+  [[ "$output" != *"Next"* ]] || false
+}
