@@ -117,7 +117,10 @@ payload() {
 # saying so. ~48ms against the 217MB binary. Skips when claude is absent,
 # matching the never-brick posture of ts-typecheck.sh and bats-tests.sh.
 @test "the installed claude binary still ships subagentStatusLine" {
-  bin=$(command -v claude) || skip "claude not on PATH"
-  real=$(readlink -f "$bin" 2>/dev/null || echo "$bin")
+  # A mise shim is a symlink to mise itself, so readlink -f on it finds mise.
+  real=$(mise which claude 2>/dev/null) || {
+    bin=$(command -v claude) || skip "claude not on PATH"
+    real=$(readlink -f "$bin" 2>/dev/null || echo "$bin")
+  }
   LC_ALL=C grep -qa subagentStatusLine "$real"
 }
