@@ -845,3 +845,120 @@ STUB
   [[ "$output" == *"brew doctor: advisory returned exit 127"* ]]
   [[ "$output" == *"brew vulns: advisory returned exit 127"* ]]
 }
+
+# mise emits both real WARN shapes; 6 warnings over 3 repos, so the row must
+# report repos, not warnings. The hint line is the one that names the variable.
+_mise_github_401_fixture() {
+  write_stub mise <<'EOF'
+#!/usr/bin/env bash
+echo "mise $*" >>"$TEST_LOG"
+if [ "$1" = "which" ] && [ "$2" = "python" ]; then
+  printf '%s\n' "$TEST_HOME/python runtime"
+  exit 0
+fi
+if [ "$1" = "upgrade" ] || [ "$1" = "install" ]; then
+  for repo in herdrdev/herdr aws/aws-cli cli/cli; do
+    echo "mise WARN  Error getting latest version for github:$repo: HTTP status client error (401 Unauthorized) for url (https://api.github.com/repos/$repo/releases?per_page=100)" >&2
+    echo "mise WARN  Remote versions cannot be fetched for $repo: HTTP status client error (401 Unauthorized) for url (https://api.github.com/repos/$repo/tags?per_page=100)" >&2
+    echo 'mise hint: the token in `MISE_GITHUB_TOKEN` was rejected by GitHub (401 Unauthorized)' >&2
+  done
+fi
+exit 0
+EOF
+}
+
+@test "up reports a GitHub 401 degradation while the mise phase stays applied" {
+  _mise_github_401_fixture
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=> UPDATE COMPLETE (update)"*"- degraded, see Next"* ]] || false
+  # repos, not the 6 raw warnings
+  grep -qE '^  mise .*401.*3 repos not refreshed' <<<"$output"
+  [[ "$output" == *"Next"*"renew MISE_GITHUB_TOKEN"* ]] || false
+  # a degradation is not a failure: no Failed section, and the phase stays Applied
+  [[ "$output" != *"Failed"* ]] || false
+  [[ "$output" != *"Advisories"*"mise"* ]] || false
+}
+
+@test "up does not attribute a GitHub 401 to a later clean phase" {
+  write_stub nfu <<'EOF'
+#!/usr/bin/env bash
+echo "nfu $*" >>"$TEST_LOG"
+echo "updated" >>"$HOME/.config/nix/flake.lock"
+echo 'mise WARN  Remote versions cannot be fetched for cli/cli: HTTP status client error (401 Unauthorized) for url (https://api.github.com/repos/cli/cli/tags?per_page=100)' >&2
+exit 0
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qE '^  flake update .*401.*1 repo not refreshed' <<<"$output"
+  ! grep -qE '^  rebuild .*not refreshed' <<<"$output"
+  ! grep -qE '^  mise .*not refreshed' <<<"$output"
+}
+
+# The real message carries U+2192 arrows; the detector must match on ASCII only.
+_drs_full_disk_access_fixture() {
+  write_stub drs <<'EOF'
+#!/usr/bin/env bash
+echo "drs $*" >>"$TEST_LOG"
+echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
+exit 0
+EOF
+}
+
+@test "up reports a Full Disk Access degradation from a successful rebuild" {
+  _drs_full_disk_access_fixture
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"- degraded, see Next"* ]] || false
+  grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
+  [[ "$output" == *"Next"*"grant Full Disk Access to the terminal"* ]] || false
+  # the phase state is untouched, so the cleanup summary still reads completed
+  [[ "$output" == *"Homebrew declared packages: rebuild completed"* ]] || false
+}
+
+@test "up does not attribute a Full Disk Access nag to a later clean phase" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+if [ "${1:-}" = upgrade ]; then
+  echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
+fi
+exit 0
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qE '^  brew .*Full Disk Access denied' <<<"$output"
+  ! grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
+}
+
+@test "up detects a degradation on the --verbose streamed path" {
+  _drs_full_disk_access_fixture
+  run_zsh_function "$UP" --no-audit --verbose
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Unable to remove some files"* ]] || false
+  grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
+  [[ "$output" == *"- degraded, see Next"* ]] || false
+}
+
+@test "up keeps Homebrew package counts alongside a degradation" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+case "${1:-}" in
+  outdated)
+    if [ -f "$HOME/.brew-upgrade-ran" ]; then
+      echo '{"formulae":[],"casks":[]}'
+    else
+      echo '{"formulae":[],"casks":[{"name":"chatgpt"}]}'
+    fi ;;
+  upgrade)
+    : >"$HOME/.brew-upgrade-ran"
+    echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
+    ;;
+esac
+exit 0
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qE '^  brew .*1 no longer outdated.*Full Disk Access denied' <<<"$output"
+}

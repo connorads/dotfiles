@@ -48,7 +48,7 @@ local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_n
 local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
 local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
 local up_brew_detail="" up_brew_resolved=0 up_brew_attempted=0
-local up_phase_diagnosis=""
+local up_phase_diagnosis="" up_phase_degraded="" up_degraded=0
 
 (umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
   print -u2 "up: cannot create log: $up_log"
@@ -132,11 +132,64 @@ _up_failure_excerpt() {
   print -u2 "   full log: $up_log"
 }
 
+_up_phase_log() {
+  sed -n "$1,$2p" "$up_log"
+}
+
+_up_degrade() {
+  up_degraded=1
+  [[ -n $up_phase_degraded ]] &&
+    up_phase_degraded="$up_phase_degraded; $1" ||
+    up_phase_degraded=$1
+}
+
+# Two identical pipelines differing by one status string, so they share a helper.
+_up_github_rejects() {
+  _up_phase_log "$1" "$2" |
+    grep -F "$3) for url (https://api.github.com/repos/" |
+    grep -o 'api\.github\.com/repos/[^/)]*/[^/)]*' |
+    sort -u | wc -l
+}
+
+# A phase can exit 0 and still have quietly done less than it claims. Each marker
+# owns its detection and its remedy; they share nothing but the log slice.
+_up_degradations() {
+  local log_start=$1 log_end=$2 repos noun
+
+  # An expired MISE_GITHUB_TOKEN stops every github:-backed tool having its version
+  # and lockfile checksums refreshed, and mise still exits 0. Raw warnings are
+  # inflated by repeated resolve/lock passes over the same repo (41 warnings, 19
+  # repos, 2026-09-22), so the repo slug is the unit.
+  repos=$(( $(_up_github_rejects "$log_start" "$log_end" '401 Unauthorized') ))
+  if ((repos)); then
+    noun=repos; ((repos == 1)) && noun=repo
+    _up_degrade "GitHub API rejected the token (401); $repos $noun not refreshed"
+    _up_next "renew MISE_GITHUB_TOKEN (separate credential from 'gh auth'), then rerun up"
+  fi
+
+  # With no token at all the same calls are rate-limited instead of rejected.
+  repos=$(( $(_up_github_rejects "$log_start" "$log_end" '403 Forbidden') ))
+  if ((repos)); then
+    noun=repos; ((repos == 1)) && noun=repo
+    _up_degrade "GitHub API rate-limited (403); $repos $noun not refreshed"
+    _up_next "set MISE_GITHUB_TOKEN - unauthenticated GitHub API calls are rate-limited"
+  fi
+
+  # Homebrew's zap cleanup, run from inside the nix-darwin rebuild, cannot delete
+  # cask files without Full Disk Access - and the rebuild exits 0. Matched on ASCII
+  # only: the real message carries U+2192 arrows.
+  if _up_phase_log "$log_start" "$log_end" | grep -qF 'Unable to remove some files'; then
+    _up_degrade "brew zap could not remove cask files; Full Disk Access denied"
+    _up_next "grant Full Disk Access to the terminal in System Settings > Privacy & Security, then rerun 'up -s'"
+  fi
+}
+
 _up_run() {
   local policy=$1 name=$2 detail=$3
   shift 3
   local started=$SECONDS rc state log_start log_end
   up_phase_diagnosis=""
+  up_phase_degraded=""
   log_start=$(( $(wc -l <"$up_log") + 1 ))
 
   print "=> $name"
@@ -147,9 +200,10 @@ _up_run() {
     _up_logged "$name" "$@"
   fi
   rc=$?
+  log_end=$(( $(wc -l <"$up_log") ))
+  _up_degradations "$log_start" "$log_end"
   if ((rc)); then
-    log_end=$(( $(wc -l <"$up_log") ))
-    if sed -n "${log_start},${log_end}p" "$up_log" | grep -F 'No space left on device' >/dev/null; then
+    if _up_phase_log "$log_start" "$log_end" | grep -F 'No space left on device' >/dev/null; then
       up_phase_diagnosis="disk space exhausted"
       _up_next "Free disk space before retrying"
     fi
@@ -167,6 +221,7 @@ _up_run() {
   else
     state=REPORTED
   fi
+  [[ -n $up_phase_degraded ]] && detail="${detail:+$detail; }$up_phase_degraded"
   _up_record "$name" "$state" $((SECONDS - started)) "$detail"
   return $rc
 }
@@ -201,12 +256,13 @@ _up_cleanup_summary() {
 }
 
 _up_summary() {
-  local i detail number=1
+  local i detail number=1 verdict=""
+  ((up_degraded)) && verdict="  - degraded, see Next"
   print ""
   if ((up_failed)); then
-    printf '=> UPDATE INCOMPLETE (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+    printf '=> UPDATE INCOMPLETE (%s)  %s%s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))" "$verdict"
   else
-    printf '=> UPDATE COMPLETE (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+    printf '=> UPDATE COMPLETE (%s)  %s%s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))" "$verdict"
   fi
 
   print ""
@@ -416,6 +472,10 @@ _up_brew() {
   return $rc
 }
 
+# Records its own phase rather than going through _up_run, so its log slice is
+# never scanned for degradations. `brew doctor` reports pre-existing conditions,
+# including Full Disk Access nags it did not cause, which would read as a fresh
+# degradation of the run.
 _up_brew_advisory() {
   local name=$1 detail=$2
   shift 2
@@ -496,6 +556,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
     if [[ -n $up_brew_detail ]]; then
       up_phase_details[-1]=$up_brew_detail
       [[ -n $up_phase_diagnosis ]] && up_phase_details[-1]+="; $up_phase_diagnosis"
+      [[ -n $up_phase_degraded ]] && up_phase_details[-1]+="; $up_phase_degraded"
       if ((brew_rc && up_brew_resolved > 0)); then
         up_phase_states[-1]=PARTIAL
       fi
