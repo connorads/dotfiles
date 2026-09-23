@@ -29,6 +29,15 @@ backend = "npm:@ampcode/cli"
 [tools.amp.options]
 allow_builds = '["@ampcode/cli"]'
 
+[[tools."aqua:XcodesOrg/xcodes"]]
+version = "2.1.0"
+backend = "aqua:XcodesOrg/xcodes"
+
+[tools."aqua:XcodesOrg/xcodes"."platforms.macos-arm64"]
+checksum = "sha256:f1519afe934a513e85dd9b32fc872394becbbb6a41db15d9ac3926a09a891888"
+url = "https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip"
+url_api = "https://api.github.com/repos/XcodesOrg/xcodes/releases/assets/563562943"
+
 [[tools."aqua:anomalyco/opencode"]]
 version = "1.18.30"
 backend = "aqua:anomalyco/opencode"

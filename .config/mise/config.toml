@@ -78,6 +78,7 @@ fnox = "1"
 "aqua:lindell/multi-gitter" = "0.63"
 # shenwei356/rush: parallel dispatcher for `bats --jobs` (lighter than GNU parallel)
 "aqua:shenwei356/rush" = "0"
+"aqua:XcodesOrg/xcodes" = { version = "2", os = ["macos"] }
 
 # herdrdev/herdr, not ogulcancelik/herdr: the project moved org at 0.8.0.
 # GitHub redirects the old path, but a redirect is only as good as the old name
