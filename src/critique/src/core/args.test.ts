@@ -31,6 +31,10 @@ test("branch base is optional", () => {
   expect(run(["--target", "branch:origin/dev"]).target).toEqual({ kind: "branch", base: "origin/dev" });
 });
 
+test("a reviewer list is a panel", () => {
+  expect(run(["--reviewer", "codex,claude"]).reviewers).toEqual(["codex", "claude"]);
+});
+
 test("--help wins", () => {
   expect(parseArgs(["--target", "auto", "-h"])).toEqual({ ok: true, value: { kind: "help" } });
 });
@@ -45,6 +49,7 @@ test.each([
   [["--reviewer", "gemini"], "unknown reviewer"],
   [["--reviewer", "codex,codex"], "twice"],
   [["--json", "--md"], "exclusive"],
+  [["--reviewer", "codex,claude", "--model", "opus"], "one reviewer's model"],
   [["--focus", "a", "--focus", "b"], "given twice"],
 ])("%p is a usage error", (argv, message) => {
   const r = parseArgs(argv);

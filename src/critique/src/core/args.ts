@@ -34,15 +34,17 @@ document (JSON, or markdown with --md).
 
   --target <t>     auto (default) | uncommitted | branch[:<base>] | commit:<sha>
                    auto: the working tree when dirty, else the branch vs origin/HEAD
-  --reviewer <r>   codex | claude (default: the agent that is not the caller)
+  --reviewer <r>   codex | claude | codex,claude (default: the agent that is
+                   not the caller; a list runs a panel in parallel)
   --rubric <ref>   skl skill whose bundle is added as review criteria
   --focus <text>   area to weight heavily
-  --model <m>      override the reviewer's pinned model
+  --model <m>      override the reviewer's pinned model (single reviewer only)
   --effort <e>     override the reviewer's pinned reasoning effort
   --json | --md    output format (default: --json unless stdout is a TTY)
   -h, --help
 
-exit: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer failed`;
+exit: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer failed
+(a panel with some failures still reports, with errors[] filled)`;
 
 const VALUE_FLAGS = ["--target", "--reviewer", "--rubric", "--focus", "--model", "--effort"] as const;
 type ValueFlag = (typeof VALUE_FLAGS)[number];
@@ -75,7 +77,6 @@ export const parseReviewers = (raw: string): Result<readonly ReviewerKind[], str
     if (kinds.includes(kind)) return err(`reviewer '${kind}' listed twice`);
     kinds.push(kind);
   }
-  if (kinds.length > 1) return err("one reviewer at a time");
   return ok(kinds);
 };
 
@@ -113,6 +114,11 @@ export const parseArgs = (argv: readonly string[]): Result<Parsed, string> => {
     reviewers = parsed.value;
   }
 
+  const model = values.get("--model") ?? null;
+  if (model !== null && reviewers !== null && reviewers.length > 1) {
+    return err("--model names one reviewer's model; drop it or run one reviewer");
+  }
+
   return ok({
     kind: "run",
     options: {
@@ -120,7 +126,7 @@ export const parseArgs = (argv: readonly string[]): Result<Parsed, string> => {
       reviewers,
       rubric: values.get("--rubric") ?? null,
       focus: values.get("--focus") ?? null,
-      model: values.get("--model") ?? null,
+      model,
       effort: values.get("--effort") ?? null,
       format,
     },
