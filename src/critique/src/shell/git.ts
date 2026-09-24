@@ -96,3 +96,41 @@ export const guidanceFromDisk = async (root: string): Promise<GuidanceDoc[]> => 
   );
   return dedupe(docs.filter((d) => d !== null));
 };
+
+/**
+ * Guidance as committed at `ref`. For a PR this is the base, so the PR cannot
+ * rewrite the rules it is reviewed against. Symlink blobs are skipped: their
+ * content is the link target's name, not its text.
+ */
+export const guidanceFromRef = async (root: string, ref: string): Promise<Result<GuidanceDoc[], string>> => {
+  const tree = await git(root, ["ls-tree", ref, "--", ...GUIDANCE_FILES]);
+  if (!tree.ok) return tree;
+  const docs: GuidanceDoc[] = [];
+  for (const entry of lines(tree.value)) {
+    const m = /^(\d+) blob ([0-9a-f]+)\t(.+)$/.exec(entry);
+    if (!m || m[1] === "120000") continue;
+    const blob = await git(root, ["cat-file", "blob", m[2] ?? ""]);
+    if (!blob.ok) return blob;
+    docs.push({ path: m[3] ?? "", text: blob.value });
+  }
+  return ok(dedupe(docs));
+};
+
+export const fetchRefs = async (root: string, refspecs: readonly string[]): Promise<Result<void, string>> => {
+  const r = await git(root, ["fetch", "--quiet", "--no-tags", "origin", ...refspecs]);
+  return r.ok ? ok(undefined) : r;
+};
+
+export const hasCommit = async (root: string, sha: string): Promise<boolean> =>
+  (await run(["git", "cat-file", "-e", `${sha}^{commit}`], { cwd: root })).code === 0;
+
+export const addDetachedWorktree = async (root: string, path: string, sha: string): Promise<Result<void, string>> => {
+  const r = await git(root, ["worktree", "add", "--quiet", "--detach", path, sha]);
+  return r.ok ? ok(undefined) : r;
+};
+
+/** --force: the worktree is critique's own scratch copy, never user work. */
+export const removeWorktree = async (root: string, path: string): Promise<Result<void, string>> => {
+  const r = await git(root, ["worktree", "remove", "--force", path]);
+  return r.ok ? ok(undefined) : r;
+};

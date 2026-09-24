@@ -23,6 +23,9 @@ export type Target =
   | {
       readonly kind: "pr";
       readonly number: number;
+      readonly title: string;
+      /** The PR description: author-written, so untrusted like the diff. */
+      readonly body: string;
       readonly headSha: string;
       readonly baseSha: string;
       readonly mergeBase: string;
