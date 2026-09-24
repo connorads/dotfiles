@@ -499,7 +499,7 @@ proves it. One line per class, all verified 2026-09-03:
 - **`overrides[].files` anchors to the config file's directory**, so a config moved one level down matches nothing and exits 0. `--print-config` cannot see it.
 - **An unknown key inside a `no-restricted-imports` pattern object drops the whole rule**, exit 0, and `$schema` does not validate at runtime.
 - **A nested `.oxlintrc.json` overrides the root** and is dropped by `-c`; `oxlintrc.json` and `oxlint.config.mjs` are not discovered at all.
-- **oxlint lints `node_modules`** absent a VCS ignore file, so the target paths in the gate command are load-bearing.
+- **oxlint lints `node_modules`** absent a VCS ignore file, so the gate command must name its target paths.
 - **`/* eslint-disable */` on line 1 mutes every rule**, `no-abusive-eslint-disable` can suppress itself, and `respectEslintDisableDirectives: false` hides the very directives it neuters.
 - **Biome `--error-on-warnings` does not lift info**, `--diagnostic-level=error` defeats it entirely, and a `//` comment makes `biome.json` vanish with no message.
 - **Biome nursery rules cannot be enabled from `overrides[]`** and exit 0 there.

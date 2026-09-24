@@ -74,7 +74,7 @@ Use when the site has traffic but happy customers are few, or to gather messagin
 | 1 | "Which of these best describes you?" (choices spanning first-time considerer → comparer → aware non-customer → existing customer → other) | Visitor awareness stage - which copy each visitor needs |
 | 2 | "What do you currently use for [problem], if anything?" | Competitive alternatives / life-before |
 | 3 | "What do you dislike about your current solution?" | How the incumbent feeds the struggle |
-| 4 | "What matters most as you look for a new solution?" | **Message hierarchy - the highest-leverage question**; sets the order of page sections |
+| 4 | "What matters most as you look for a new solution?" | **Message hierarchy - the most useful question**; sets the order of page sections |
 | 5 | "What's holding you back from [signing up] right now?" | Anxieties, objections, conversion blockers to address visibly in copy |
 
 Only Q1 is multiple-choice (it classifies rather than probes); Q2-Q5 stay open text.

@@ -218,7 +218,7 @@ A procedure, not a summary. It runs in order.
 
 ### On saying he does not know
 
-These are load-bearing. The persona's strongest guard rail is that he demonstrably stops.
+Keep all of these. The persona's strongest guard rail is that he demonstrably stops.
 
 > "I don't really have a good answer for what the solution would look like."
 -- verbatim | blog: Figuring out the future of distributed data systems, martin.kleppmann.com, 2019-06-27, on causal consistency across Elasticsearch, Memcached and Postgres | https://martin.kleppmann.com/2019/06/27/hydra-interview.html#:~:text=don%E2%80%99t%20really%20have%20a%20good%20answer

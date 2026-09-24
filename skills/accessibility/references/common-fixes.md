@@ -49,7 +49,7 @@ Ready-to-use code fixes for the most frequent accessibility audit findings. Each
 </button>
 ```
 
-Note: `aria-hidden="true"` is the load-bearing attribute here - it removes the SVG from the accessibility tree so the button's `aria-label` is the sole accessible name. `focusable="false"` is harmless belt-and-braces that kept inline SVG out of the tab order in legacy engines (IE / old EdgeHTML, both end-of-life); modern browsers don't focus inline SVG by default, so it's effectively a no-op now.
+Note: `aria-hidden="true"` is the attribute that matters here - it removes the SVG from the accessibility tree so the button's `aria-label` is the sole accessible name. `focusable="false"` is harmless belt-and-braces that kept inline SVG out of the tab order in legacy engines (IE / old EdgeHTML, both end-of-life); modern browsers don't focus inline SVG by default, so it's effectively a no-op now.
 
 ---
 

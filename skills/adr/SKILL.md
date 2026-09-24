@@ -57,7 +57,7 @@ trigger test and why, write records for the ones that pass.
 One required section, spelled exactly `## Alternatives considered`, with every
 option carrying the reason it lost. Everything else is free - `## Context`,
 `## Decision`, `## Consequences`, a known-limit note, a parked list - used when
-each earns its place. Match what the repo's existing records already do.
+each is needed. Match what the repo's existing records already do.
 
 - **No Status field and no `Proposed`.** A record on disk is in force; a record
   that is not decided yet is a draft, not a file. `Proposed` records rot in

@@ -158,7 +158,7 @@ build that emits single quotes, unquoted attributes, or a different order will
 slip through a naive regex. Match your actual emitted markup (or parse the DOM),
 not the template's literal string.
 
-The shared-coverage discipline is the load-bearing bit: the subset generator and
+The shared coverage module is what makes this work: the subset generator and
 this checker both `import` the *same* coverage module, so the shipped woff2 and
 the assertion cannot drift - widen a range, regenerate, and the guard follows.
 
@@ -630,7 +630,7 @@ free - a `check-dist.mjs` step (Tier 0) reads the shipped HTML with no server, s
 it slots straight into CI after `build`. For an **SSR** repo the equivalent
 preload-count gate (section 3a) needs a booted server, so it makes for a slower
 commit - like a browser-based a11y smoke. Either way, prefer a mechanical gate
-over "remember to check" for anything load-bearing.
+over "remember to check" for anything that matters.
 
 ## 8. Regression-guard the trade-offs
 

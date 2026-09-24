@@ -119,7 +119,7 @@ $ f=("${(@ps:\t:)rec}"); print -r -- "n=${#f}"
 n=7                                # [a][][c][][][f][]
 ```
 
-Both flags are load-bearing. `@` inside double quotes is what preserves empty
+Both flags are required. `@` inside double quotes is what preserves empty
 elements. `p` is what makes the separator an actual tab: the flag's argument is
 not escape-processed, so `"${(@s:\t:)rec}"` returns **one** field - the whole
 record. Plain `${(s:\t:)rec}` is the trap from the other direction, dropping
@@ -159,7 +159,7 @@ the pwsh analogue of the bash-3.2 contract. The floor rules out ternary `?:`,
   profile `win-8_x64_10.0.14393.0_5.1.14393.2791_x64_4.0.30319.42000_framework`,
   the full `compatibility_profiles` filename base; the short `desktop-5.1.*`
   alias does not resolve in PSScriptAnalyzer 1.25.
-- `-EnableExit` is load-bearing. Without it `Invoke-ScriptAnalyzer` exits 0 even
+- `-EnableExit` is required. Without it `Invoke-ScriptAnalyzer` exits 0 even
   with findings, so the gate passes a failing script.
 - Keep configuration in a `PSScriptAnalyzerSettings.psd1` so the hook and CI read
   the same rules and severities.

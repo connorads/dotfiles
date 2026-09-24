@@ -30,8 +30,8 @@ you relay them; the user decides what to apply. No autonomous fix loop.
 
 ### 1. Pick the reviewer - a model that is not you
 
-Run it **read-only** and **headless**. These exact invocations are load-bearing;
-run them as written, not the `cy`/`cxy` aliases (those open a TUI and hang).
+Run it **read-only** and **headless**. Run these exact invocations
+as written, not the `cy`/`cxy` aliases (those open a TUI and hang).
 
 | You are | Review with | Command (`$P` = path to the prompt file from step 3) |
 |---|---|---|

@@ -30,7 +30,7 @@ each one stands on its own without a narrative.
 ## The core in 30 seconds (sticky rules)
 
 1. **Only two diagrams for most systems: System Context + Container.** Add
-   Component only when it earns its place; Code almost never. Don't draw all four
+   Component only when it adds information; Code almost never. Don't draw all four
    by default.
 2. **A Container is an app or data store that must be *running*** - a web app,
    SPA, mobile app, serverless function, database schema, S3 bucket. **NOT a

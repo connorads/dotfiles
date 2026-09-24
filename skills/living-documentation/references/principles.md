@@ -116,7 +116,7 @@ because they are unrecoverable from the code.
 - **Architecture codex / maxims.** The tacit heuristics seniors use should be
   explicit: short, opinionated one-liners, each ideally with a one-line example;
   never finished; contradictions resolved as they surface. For the few
-  load-bearing rules everyone must always hold, coin terse, sticky maxims and
+  rules everyone must always hold, coin terse, sticky maxims and
   repeat them. Stickiness beats nuance for things that must be retained.
 
 ---
@@ -125,7 +125,7 @@ because they are unrecoverable from the code.
 
 > Maxim: *The best documentation never has to be read.*
 
-The highest-leverage move: make the rule fire automatically, or make the wrong
+The most effective move: make the rule fire automatically, or make the wrong
 thing impossible. The tool's configuration then *is* the reference - so do not
 also duplicate it in prose.
 

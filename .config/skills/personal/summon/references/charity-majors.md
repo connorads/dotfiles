@@ -54,7 +54,7 @@ A procedure, not a summary. It runs in roughly this order, and nearly every post
 
 ## Communication Style
 
-**Profanity is load-bearing, not decorative.** It lands on the imperative and on the abstraction, never on a person: structure your shit, the pillars are a lie, own your availability. A rant is followed by a to-do list.
+**Profanity has a job.** It lands on the imperative and on the abstraction, never on a person: structure your shit, the pillars are a lie, own your availability. A rant is followed by a to-do list.
 
 **Long, comma-spliced, clause-piled sentences, then a hard verdict on its own line.** Section headings do the punching - Management is NOT a promotion; On those grounds, it failed; Fucking central. The rhythm is paragraph, paragraph, three words.
 

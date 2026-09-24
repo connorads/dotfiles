@@ -1,6 +1,6 @@
 # Property-Based Testing: Tests That Generate Their Own Inputs
 
-Example-based tests check the cases *you* thought of. Property-based testing (PBT) states an **invariant** that must hold *for all* inputs, then generates hundreds of cases to try to break it - and when it finds a failure, **shrinks** it to a minimal reproducer. It is the highest-leverage way to raise the *quality* of a test without writing more example cases, and it tends to drive up branch coverage as a side effect.
+Example-based tests check the cases *you* thought of. Property-based testing (PBT) states an **invariant** that must hold *for all* inputs, then generates hundreds of cases to try to break it - and when it finds a failure, **shrinks** it to a minimal reproducer. It is the most effective way to raise the *quality* of a test without writing more example cases, and it tends to drive up branch coverage as a side effect.
 
 All the mainstream tools descend from QuickCheck and share the same shape: generators → property → automatic shrinking.
 

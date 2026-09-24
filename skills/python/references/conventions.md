@@ -32,7 +32,7 @@ Annotate an `is_x` predicate with `typing.TypeIs` (PEP 742, stdlib since 3.13), 
 `def is_active(u: User) -> TypeIs[ActiveUser]`: it narrows the negative branch as well
 as the positive, what the predicate actually claims. With `TypeGuard` the `else` stays
 at the declared `ActiveUser | SuspendedUser`, so the caller writes a redundant second
-check or reaches for the `cast()` this page rations. `TypeGuard` earns its place only
+check or reaches for the `cast()` this page rations. Use `TypeGuard` only
 where the narrowed type is not a subtype of the parameter type, which `TypeIs` forbids:
 `TypeIs[list[str]]` on a `list[object]` parameter is a `reportGeneralTypeIssues` error,
 so that predicate takes `TypeGuard[list[str]]`. Naming (`parse_x` / `make_x` / `is_x`)

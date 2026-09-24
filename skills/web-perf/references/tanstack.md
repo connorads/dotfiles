@@ -27,7 +27,7 @@ Version shape: Start is at Release Candidate stage and its docs are served
 under `/start/v0/`, while Router is at v1; packages are versioned
 independently and releases are tagged by date, so "the TanStack version" is not
 a single number (`@tanstack/react-router` 1.170.32, `@tanstack/react-start`
-1.168.49 as of Aug 2026). Where a fix version is load-bearing it is named
+1.168.49 as of Aug 2026). Where a fix needs a specific version it is named
 below.
 
 ## Contents

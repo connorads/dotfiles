@@ -25,7 +25,7 @@ Two halves, because you cannot `exec` a sourced file:
 `#!/bin/sh` and `#!/usr/bin/env sh` files are **exempt** - they are genuinely
 POSIX-clean. The rule keys on the **shebang, not the `.sh` extension**.
 
-Three details that are load-bearing, not tidiness:
+Three details that break things if dropped:
 
 - **`unset TMUX_BASH5_REEXEC` on the success path.** The guard exists only to
   stop an exec loop, and must never be inherited. Otherwise
@@ -494,7 +494,7 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
   trimmed. `respawn-pane -k` discards the visible screen and keeps scrolled
   history (observed), so park re-prints the capture; re-printing tmux's
   full-height padding would scroll the content itself off the top.
-- **Park gives the pane a title, and that is load-bearing.** `save.sh` parses
+- **Park gives the pane a title, and `save.sh` needs it.** It parses
   its own dump with `IFS=<tab> read`, and TAB is IFS whitespace, so a pane with
   an **empty** title collapses that line's fields - the pid lands in the title
   slot and the pane saves no command at all (observed: 14 parked panes saved
@@ -602,7 +602,7 @@ right-click pane menu exposes the pin. Manual hibernation ignores it.
 
 Tests: [`../zsh/tests/agent-hibernate.bats`](../zsh/tests/agent-hibernate.bats)
 drives a real private server end to end. Its fake claude is a **symlink to a nix
-bash** running an idle script, and both halves are load-bearing: `ps -o comm=`
+bash** running an idle script, and both halves are required: `ps -o comm=`
 reports a *script's* interpreter (so a shell stub never matches "claude"), and
 macOS withholds a SIP-protected binary's environment from `ps -E` (so
 `/usr/bin/tail` would read back no `CLAUDE_CONFIG_DIR`). The save-side and
@@ -1304,7 +1304,7 @@ Two constraints remove failure states by construction rather than by discipline:
 
 A session that is nearly up and a run that is not finished is the ordinary case,
 and before `[+]` the only route to more time was off → `t` → re-pick, which drops
-the hold. Three things about the extension are load-bearing:
+the hold. Three things about the extension must hold:
 
 - **It adds to the remainder, never sets a fresh total.** `caffeine_extend_total`
   is remaining + picked. Setting would silently *shorten* a session with more
@@ -1328,7 +1328,7 @@ invariant survives any number of them.
 
 **Dependency: a sudoers rule.** `environment.etc."sudoers.d/20-caffeine-pmset"`
 in [`../nix/modules/darwin-shared.nix`](../nix/modules/darwin-shared.nix) grants
-exactly two argument vectors, no wildcard. `NOPASSWD` is load-bearing rather than
+exactly two argument vectors, no wildcard. `NOPASSWD` is required, not a
 convenience: the trap must run unattended at 04:00 and the reconciler runs from
 launchd with no tty, so a Touch ID or password prompt would break the auto-clear
 and leave the Mac unable to sleep. It adds a rule, so the desktop's
@@ -1336,7 +1336,7 @@ and leave the Mac unable to sleep. It adds a rule, so the desktop's
 
 **Open fact:** whether `SleepDisabled` survives a reboot is not yet confirmed on
 this machine (it needs a real reboot to settle). The design holds either way -
-`RunAtLoad` on the reconciler is load-bearing if it persists and belt-and-braces
+`RunAtLoad` on the reconciler is required if it persists and belt-and-braces
 if it does not. Settle it with: set the flag, reboot,
 `pmset -g | grep SleepDisabled`, and replace this paragraph with the answer.
 
@@ -1447,7 +1447,7 @@ Why a tap and why no fallback:
 process and one clock, and what was measured before building it:
 [`docs/adr/0012`](../../docs/adr/0012-vox-captures-both-tracks-in-one-voxtap-aggregate.md).
 
-**The store convention is the load-bearing decision.** One directory per
+**The store convention is the decision everything else depends on.** One directory per
 recording under `${VOX_STORE:-~/Recordings/vox}`:
 
 ```text
@@ -1496,7 +1496,7 @@ Change as a set:
   last time you looked: READY is "a non-empty `transcript.md` is newer than
   this", which covers any number of finished recordings without tracking one of
   them, and makes touching the marker the only write. Cleared by opening the
-  picker and by starting a new capture. `-size +0` in the count is load-bearing:
+  picker and by starting a new capture. `-size +0` in the count matters:
   a transcript with nothing in it is not something to go and read. It is instead
   counted by **`vox_empty_count`**, that count's mirror (`-size 0c`, same
   no-marker branch), so every finished transcript lands in exactly one of the two
@@ -1619,7 +1619,7 @@ Change as a set:
   capture has stopped. Elapsed uses `human_age`, not mm:ss, which would tick in
   15 s jumps at this `status-interval` and read as broken.
 
-### Findings that are load-bearing, not tidiness
+### Findings that break things if ignored
 
 - **`command-prompt` splits `-p` and `-I` on commas**, into a *sequence* of
   prompts with one answer each (`%%`, `%1`, `%2`, …). So any prompt holding
@@ -1777,7 +1777,7 @@ hyperlink schemes, plus its LS_COLORS colouring and popup plumbing.
 Reversal is one line: delete `rm_default_schemes` and `user_schemes` and the
 plugin's own behaviour resumes.
 
-Two files, and the split is load-bearing:
+Two files, and the split is required:
 
 - [`fzf_link_paths.py`](./fzf_link_paths.py) - the core, importing nothing from
   the plugin, so it is testable, typecheckable and runnable with no plugin
@@ -1788,7 +1788,7 @@ Two files, and the split is load-bearing:
   the plugin's own mechanism) rather than putting `~/.config/tmux` on the import
   path, where a name that generic would shadow whatever else is installed.
 
-Findings that are load-bearing, not tidiness:
+Findings that break things if ignored:
 
 - **`checked` is dead, so shadowing a tag does nothing.** `__main__.py` creates
   the set, reads it, and deletes it without ever adding to it, so the documented

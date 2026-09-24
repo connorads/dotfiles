@@ -23,7 +23,7 @@ context are independent choices.
 
 ## Claim ledger
 
-For each load-bearing claim, record:
+For each claim the diagnosis rests on, record:
 
 ```text
 Claim:

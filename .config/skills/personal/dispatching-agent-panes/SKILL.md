@@ -25,7 +25,7 @@ prompt, and `task-loop` for unattended sequential execution.
    sources instead of asking the user.
 2. Mark each task `accepted`, `deferred`, `rejected`, or `unresolved`. Launch
    unresolved work only in `plan` mode.
-3. Group tasks that share one outcome, files, or load-bearing invariants.
+3. Group tasks that share one outcome, files, or invariants.
    Separate groups that can progress independently. Put dependent groups in
    later waves.
 4. Choose one provider default for the run and apply explicit per-assignment

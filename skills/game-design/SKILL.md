@@ -86,7 +86,7 @@ universal timing or pass-rate thresholds.
 
 Inspect available gameplay, state and source when diagnosing an existing game.
 When studying another game, identify the relevant version, mode and context;
-verify load-bearing mechanics through available primary sources or observation.
+verify the mechanics your argument depends on through available primary sources or observation.
 Do not claim to have played or measured it when using an interview or footage.
 Keep useful examples self-contained; named references are optional.
 

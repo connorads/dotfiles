@@ -148,7 +148,7 @@ older READMEs say - and `js`/`js-lazy` variants need JS by construction.
 
 Two caveats hold for either pattern:
 
-- **The `<noscript>` duplicate is load-bearing, not decorative.** Every strategy
+- **The `<noscript>` duplicate is required.** Every strategy
   bar beasties' default and `body` needs JS to finish the job: without it the
   preload variant never becomes a stylesheet and the print variant stays a
   print-only stylesheet. beasties adds the `<noscript>` fallback itself unless

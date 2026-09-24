@@ -22,8 +22,8 @@ mirrors this loop; this skill's own `evals.json` is the same shape, using
 
 ## Test prompts
 
-Write 2-3 prompts a real user would type. Realism is the load-bearing
-property - sanitised prompts pass trivially and hide the failures that matter:
+Write 2-3 prompts a real user would type. Realism is what counts -
+sanitised prompts pass trivially and hide the failures that matter:
 
 - **Messy and specific**: file paths, column names, a bit of backstory,
   lowercase, abbreviations, a typo. "ok my boss sent me this xlsx (downloads,
@@ -90,8 +90,8 @@ Grade the transcript, not just the output. The questions that find revisions:
   procedure's *content* appears but its control flow doesn't - ordering
   drifts, stop points and escape hatches vanish. Verify the transcript shows
   an actual body read. (See [description.md](description.md) - even a
-  trigger-only description can steer most of the content; the body is
-  load-bearing for the behaviours.)
+  trigger-only description can steer most of the content; the behaviours
+  need the body.)
 - Where did it rationalise around a rule? Copy the excuse verbatim into a
   rationalisation table (see
   [instruction-forms.md](instruction-forms.md)).

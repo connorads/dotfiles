@@ -6,7 +6,7 @@ A deep module hides substantial behaviour behind a cohesive, low-burden
 interface - not necessarily few functions, since one concept can carry a dozen
 cohesive combinators and still be deep. Avoid modules that forward calls or
 mirror tables. Deletion test: deleting a pass-through module makes complexity
-vanish; deleting one that earned its keep spreads complexity across callers.
+vanish; deleting one that hides real complexity spreads complexity across callers.
 
 ## Package layout
 

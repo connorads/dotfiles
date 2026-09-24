@@ -1,7 +1,7 @@
 # Golden Rule Examples
 
 The golden rule is the one-line frame for the supervisor - what's
-inside its domain and what's outside. It's load-bearing: every
+inside its domain and what's outside. Every
 ambiguous judgement call during supervision should trace back to it.
 
 Use these as seed material for the interview. Offer 2-3 as prompts

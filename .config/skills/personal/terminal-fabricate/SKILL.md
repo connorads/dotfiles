@@ -71,7 +71,7 @@ For a polished clip with captions/markers/speed, hand off to the
 `terminal-control` skill's `record`/`mark`/`video --edit` flow - the timeline
 format is identical, so a fabricated `run.termctrl` drops straight in.
 
-## Load-bearing gotchas
+## Gotchas
 
 - **Line breaks must be CRLF (`\r\n`), not `\n`.** termctrl feeds a real VT
   parser, so a lone `\n` line-feeds without a carriage return and text
