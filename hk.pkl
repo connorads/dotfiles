@@ -583,6 +583,7 @@ local fast_steps = new Mapping<String, Step> {
         tests {
             ["one config out of step fails"] {
                 run = "check"
+                files = List("{{tmp}}/.npmrc")
                 write { ["{{tmp}}/.npmrc"] = "min-release-age=9\n" }
                 before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
                 expect {
@@ -593,6 +594,7 @@ local fast_steps = new Mapping<String, Step> {
 
             ["a config whose key has gone missing fails"] {
                 run = "check"
+                files = List("{{tmp}}/.npmrc")
                 write { ["{{tmp}}/.npmrc"] = "allow-git=none\n" }
                 before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
                 expect {
@@ -603,6 +605,7 @@ local fast_steps = new Mapping<String, Step> {
 
             ["the agreed value passes"] {
                 run = "check"
+                files = List("{{tmp}}/.npmrc")
                 write { ["{{tmp}}/.npmrc"] = "min-release-age=4\n" }
                 before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
                 expect { code = 0 }
