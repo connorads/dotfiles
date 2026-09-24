@@ -132,6 +132,33 @@ def test_skill_load_is_detected_per_client(agent, arm, loaded):
     assert "PERIWINKLE-42" in t.final_message or not loaded
 
 
+def test_normalise_tolerates_string_and_list_shaped_fields():
+    # Claude emits permission_denied events whose `message` is a string.
+    odd = [
+        '{"type":"system","subtype":"permission_denied","message":"Claude requested permissions"}',
+        '{"type":"assistant","message":{"content":["not-a-block"]}}',
+        '{"type":"result","result":"ok","usage":[1]}',
+    ]
+    t = run_evals.normalise("claude", odd, "x")
+    assert t.final_message == "ok"
+    assert t.tool_calls == ()
+
+
+def test_snapshot_hides_only_the_placed_skill(tmp_path):
+    for rel in (
+        ".claude/skills/mine/SKILL.md",
+        ".agents/skills/mine/SKILL.md",
+        ".claude/skills/made-by-agent/SKILL.md",
+        "notes/a.md",
+    ):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text("x")
+
+    files = run_evals.snapshot(tmp_path, "mine")
+
+    assert sorted(files) == [".claude/skills/made-by-agent/SKILL.md", "notes/a.md"]
+
+
 def test_normalise_skips_non_json_lines():
     t = run_evals.normalise("claude", ["warning: noise", *lines("claude-work.jsonl")], "x")
     assert len(t.tool_calls) == 2
@@ -234,6 +261,30 @@ def test_aggregate_counts_errored_runs_as_zero():
     )
     assert b["run_summary"]["with_skill"]["pass_rate"]["mean"] == 0.0
     assert b["run_summary"]["with_skill"]["errors"] == 1
+
+
+def test_run_one_records_an_unexpected_crash_as_that_runs_error(tmp_path):
+    # One run's bug must not abort the suite and lose every other result.
+    class Crashing:
+        name = "claude"
+
+        def run(self, ws, prompt, model):
+            raise RuntimeError("boom")
+
+        def judge(self, prompt, model):
+            raise AssertionError("unreachable")
+
+    skill = tmp_path / "s"
+    skill.mkdir()
+    case = run_evals.Case(1, "c", "p", "", (), (), ())
+    args = type("A", (), {"model": None, "judge_model": None})()
+
+    r = run_evals.run_one(
+        Crashing(), args, skill, case, "with_skill", 1, tmp_path / "out", run_evals.Budget(None)
+    )
+
+    assert r is not None
+    assert "boom" in r.error
 
 
 # --- CLI (fake clients on PATH) ----------------------------------------------------
