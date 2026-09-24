@@ -670,6 +670,10 @@ backend = "npm:ctx7"
 version = "2.3.9"
 backend = "npm:deepsec"
 
+[[tools."npm:droid"]]
+version = "0.223.0"
+backend = "npm:droid"
+
 [[tools."npm:eas-cli"]]
 version = "24.7.0"
 backend = "npm:eas-cli"
