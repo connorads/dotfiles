@@ -20,6 +20,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `mechanical-enforcement` | Linter/type rules that kill bug classes | `pnpm dlx skills add connorads/dotfiles -s mechanical-enforcement` |
 | `supply-chain-hardening` | Dependency supply-chain gates, triggers, scanning, exceptions | `pnpm dlx skills add connorads/dotfiles -s supply-chain-hardening` |
 | `hk` | Set up `hk` git hooks | `pnpm dlx skills add connorads/dotfiles -s hk` |
+| `agent-readiness` | Audit a repo for agent readiness with a gated, Factory-comparable score | `pnpm dlx skills add connorads/dotfiles -s agent-readiness` |
 | `cloudflare-workers-deployments` | Deploy and protect Cloudflare Workers with Workers Builds and Access | `pnpm dlx skills add connorads/dotfiles -s cloudflare-workers-deployments` |
 | `accessibility` | Screen-reader-first a11y (WCAG 2.2 AA) | `pnpm dlx skills add connorads/dotfiles -s accessibility` |
 | `holistic-ux` | UX via systems thinking and service design | `pnpm dlx skills add connorads/dotfiles -s holistic-ux` |
