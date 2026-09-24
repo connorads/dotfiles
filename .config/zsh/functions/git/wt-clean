@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 # wt-clean: reap merged/stale worktrees for a repo, deleting their branches
 # usage: wt-clean [--all] [--include-closed] [--force] [--yes|-y] [--dry-run] [--no-disk] [--json]
+# note: a worktree some process has as its cwd (lsof; skipped with a warning
+#       when lsof is missing) is blocked as "in use", like dirty work.
 # note: a reaped worktree's branch goes with it (git branch -d; --force makes
 #       that -D, which discards unmerged commits). wt-remove <path> without
 #       --delete-branch is the branch-preserving primitive.
@@ -63,6 +65,12 @@ rows=$(printf '%s' "$status_json" | jq -r '
     .pr_state, (.pr_number // "" | tostring), (.pr_url // "")
   ] | @tsv')
 
+# Processes whose cwd is inside a worktree block its removal: an agent, dev
+# server or idle shell would be stranded in a deleted dir. lsof reports resolved
+# paths, so candidates are compared by ${wt_path:A}.
+local procs
+procs=$(_wt_cwd_procs)
+
 # Candidate records (TSV): path, branch, pr_state, pr_number, reclaimable, eligible(0/1), reason
 typeset -a candidates=()
 
@@ -71,7 +79,8 @@ typeset -a candidates=()
 # and a bare `local x` (no assignment) on an already-set var re-runs each
 # iteration prints `x=value` to stdout — so never re-declare inside the loop.
 local wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url
-local wk base pr_eligible reason eligible reclaimable
+local wk base pr_eligible reason eligible reclaimable wt_real proc
+typeset -a proc_fields=() use_cmds=()
 while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url; do
   [[ -n "$wt_path" ]] || continue
 
@@ -98,7 +107,16 @@ while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind p
   fi
   (( pr_eligible )) || continue
 
-  # Safety filter: unsaved or unpushed work blocks removal unless --force.
+  wt_real=${wt_path:A}
+  use_cmds=()
+  for proc in "${(@f)procs}"; do
+    [[ -n "$proc" ]] || continue
+    proc_fields=("${(@ps:\t:)proc}")
+    [[ "${proc_fields[3]}" == "$wt_real" || "${proc_fields[3]}" == "$wt_real"/* ]] && use_cmds+=("${proc_fields[2]}")
+  done
+
+  # Safety filter: unsaved or unpushed work, or a live process, blocks removal
+  # unless --force.
   reason=""
   if [[ "$conflicted" == true ]]; then
     reason="conflicted"
@@ -108,6 +126,8 @@ while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind p
     reason="untracked"
   elif [[ "$ahead" != 0 && -n "$ahead" ]]; then
     reason="unpushed ($ahead ahead)"
+  elif (( ${#use_cmds} )); then
+    reason="in use (${#use_cmds}: ${(j:, :)${(@u)use_cmds}})"
   fi
 
   eligible=1
@@ -180,7 +200,7 @@ if (( ${#removable} )); then
 fi
 
 if (( ${#blocked} )); then
-  echo "Blocked (uncommitted or unpushed work; use --force to include):"
+  echo "Blocked (in use, uncommitted or unpushed work; use --force to include):"
   for rec in "${blocked[@]}"; do
     IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
     printf '  %-8s %-6s %6s  %s  (%s)\n' "$c_state" "#${c_num:-?}" "$c_size" "$c_branch" "$c_reason"

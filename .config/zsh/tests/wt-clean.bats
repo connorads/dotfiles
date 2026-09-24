@@ -16,6 +16,19 @@ setup() {
   ln -s "$FUNCTIONS_DIR/git/wt-remove" "$TEST_BIN/wt-remove"
 }
 
+teardown() {
+  [ -z "${PARKED_PID:-}" ] || kill "$PARKED_PID" 2>/dev/null || true
+}
+
+# park_process DIR - start a background process whose cwd is DIR, and return
+# once it is there. Sets PARKED_PID for teardown.
+park_process() {
+  local dir=$1 ready="$BATS_TEST_TMPDIR/parked.ready"
+  (cd "$dir" && touch "$ready" && exec sleep 30) &
+  PARKED_PID=$!
+  wait_until -t 5 '[ -e "$ready" ]'
+}
+
 make_repo() {
   local repo=$1
 
@@ -221,4 +234,58 @@ run_clean() {
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .pr_number')" = "42" ]
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .eligible')" = "true" ]
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .blocked_reason')" = "null" ]
+}
+
+@test "wt-clean blocks a MERGED worktree with a live process in it" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+  park_process "$HOME/.trees/repo/topic"
+
+  stub_gh 'topic\tMERGED\t42\thttps://example.test/pr/42\tfalse\n'
+
+  run_clean "$repo" --yes --no-disk
+  [ "$status" -eq 0 ]
+  [ -d "$HOME/.trees/repo/topic" ]
+  [[ "$output" == *"in use (1:"* ]]
+
+  run_clean "$repo" --json --no-disk
+  [ "$(printf '%s' "$output" | jq -r '.[0].eligible')" = false ]
+  [[ "$(printf '%s' "$output" | jq -r '.[0].blocked_reason')" == "in use (1:"* ]]
+}
+
+@test "wt-clean --force reaps a worktree with a live process in it" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+  park_process "$HOME/.trees/repo/topic"
+
+  stub_gh 'topic\tMERGED\t42\thttps://example.test/pr/42\tfalse\n'
+
+  run_clean "$repo" --force --yes --no-disk
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
+}
+
+@test "wt-clean warns and reaps as before when lsof fails" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  stub_gh 'topic\tMERGED\t42\thttps://example.test/pr/42\tfalse\n'
+  write_stub lsof <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run_clean "$repo" --yes --no-disk
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
+  [[ "$output" == *"warning: lsof"* ]]
 }
