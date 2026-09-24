@@ -111,10 +111,12 @@ every sentence:
   *snapshot* ages silently (`current 4.3`, prices, `recent changes`); deleting
   its date only hides the staleness so it reads as eternal truth - repoint to a
   live source (`--help`, official docs) or keep an honest as-of caveat
-  (`verified 2026-06-30 against X`). The checker enforces phrasing only: dated
-  caveats pass it, and whether they still hold is the revision-time sweep's
-  job (see the ship checklist), because staleness is a fact about the world,
-  not the text.
+  (`verified 2026-06-30 against X`). The checker enforces phrasing only,
+  because staleness is a fact about the world, not the text. So every revision
+  of a skill includes a freshness sweep: re-verify its as-of caveats and
+  executable claims (counts, versions, flags, API fields) against the live
+  source, and update or repoint whatever drifted. The as-of markers and
+  version literals the checker tolerates are the sweep's target list.
 - **One source of truth.** Any rule, table, or protocol lives in exactly one
   file; every other mention is a one-line pointer. Duplication drifts as the
   skill evolves and inflates a rule's apparent importance.
@@ -171,14 +173,8 @@ the gaps you're testing for.
 
 A skill can produce the right final answer while wasting steps, ignoring its
 bundled scripts, or following the description instead of the body. Grade *how*
-the agent got there. Prefer deterministic trace checks when available: skill
-invoked, files touched, commands run, and expected order. Record token cost and
-wall time; grade token cost as a context trade-off, and treat wall time as
-informational because machines vary. Two signals to hunt for:
-
-- Sections the agent read but that changed nothing → candidates for deletion.
-- Work the agent reinvented identically across runs → candidate for a bundled
-  script.
+the agent got there: the questions, and which to script as trace checks, are
+in the Grading section of [references/evals.md](references/evals.md).
 
 ### 5. Revise
 
@@ -208,13 +204,8 @@ re-run the eval prompts *without* it and retire or shrink whatever the model now
 does unaided - a skill teaching what the agent already knows is pure context
 cost.
 
-Truth decays underneath it too, and no grep can catch that - the checker flags
-rot-prone *phrasing*; whether a claim still holds is a fact about the world.
-Whenever you revise a skill, sweep it for freshness: re-verify its dated as-of
-caveats and executable claims (counts, versions, flags, API fields) against
-the live tool or source, and update or repoint whatever drifted. The as-of
-markers and version literals the checker tolerates are the sweep's target
-list - grep for them to know what needs re-checking.
+Truth decays underneath it too: run the freshness sweep from the
+timeless-present rule (step 2) on every revision.
 
 ## Ship checklist
 
