@@ -13,7 +13,7 @@ The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
 The `amends`/`import` pin in `hk.pkl` and the mise-installed binary must name
 the same version. The pin decides which builtins exist; the
 binary decides what understands them, and a mismatch makes builtin steps fail
-with `no command for test` rather than saying so.
+with `no command for test` rather than saying so. `pin-audit` FLAGs a mismatch.
 
 There is no `.local` exclude. It would hide 128 tracked entries - 6 first-party
 scripts on PATH plus the 122 `zfn-link` shims - from every gate, and the

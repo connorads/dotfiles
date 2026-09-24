@@ -61,7 +61,13 @@ export type Probe =
   /** Newest versioned non-prerelease tag; null when none exists yet. */
   | { readonly kind: "stableRelease"; readonly tag: string | null }
   /** Every tool mise resolved, drifted or not; the check filters. */
-  | { readonly kind: "outdated"; readonly rows: readonly DriftRow[] };
+  | { readonly kind: "outdated"; readonly rows: readonly DriftRow[] }
+  /** hk.pkl's pkl package pin and the hk binary's version; null when unreadable. */
+  | {
+      readonly kind: "hkVersions";
+      readonly pinned: string | null;
+      readonly installed: string | null;
+    };
 
 /**
  * OK   condition still holds, keep the pin
