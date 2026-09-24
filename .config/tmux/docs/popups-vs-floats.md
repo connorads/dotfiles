@@ -85,6 +85,5 @@ in `#{window_layout}` as a trailing `<…>` cell, but `select-layout` rejects th
 string (`invalid layout`), and `restore.sh` replays exactly that saved layout.
 Verified on a private socket (save a tiled pane + a float, restore, read
 `#{pane_floating_flag}`): every pane comes back, with its command and cwd, as an
-ordinary tiled pane. Nothing is lost but the floatness and the geometry. This
-exposure predates the popup→float migration - it comes with any float binding -
-and is a tmux limitation to revisit on 3.8.
+ordinary tiled pane. Nothing is lost but the floatness and the geometry. It
+comes with any float binding, and is a tmux limitation to revisit on 3.8.

@@ -216,7 +216,7 @@ old eval-time mechanism could not support it. Left as a separate decision.
 The **invariant across every new pane** - fork, restore, and handoff - is that a
 new pane has no more authority than the one it came from, and never silently
 less. The handoff rows (`Handoff → Claude` / `Handoff → Codex`) are bound by it
-too, which fixes a pane that used to open with *nothing*.
+too.
 
 The boundary between the two halves:
 

@@ -39,21 +39,18 @@ shells out from Python; `window_label(seconds)` gives canonical `5-hour`/`7-day`
 Pace/colour maths uses each window's real length, and skips a window whose
 length is unknown.
 
-`usage-debug` was the surface that never adopted the core, and read
-`primary_window` positionally with a hardcoded `5h=` label for its whole life -
-printing `5h=14% reset in 6d 11h` on today's weekly-only payload. That matters
-more than a wrong label: it is the independent read you reach for when the
-dashboard is the thing you cannot trust, so it misled during exactly the task it
-exists for. Its `// 0` fallbacks fabricated `0%` for a window whose data was
-simply absent, which reads as headroom. Claude stays positional there too, and
-both its windows are read.
+`usage-debug` is the independent read you reach for when the dashboard is the
+thing you cannot trust, so a wrong label there misleads during exactly the task
+it exists for. It renders Codex windows through the same core, and omits a
+window whose data is absent rather than printing `0%`, which would read as
+headroom. Claude stays positional there too, and both its windows are read.
 
-Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
-no return date, collapsing usage to a single weekly window that arrives in the
+Why: OpenAI can withdraw the 5h window, and has done so with no return date.
+Usage then collapses to a single weekly window that arrives in the
 `primary_window` slot. Positional classification (primary=5h, secondary=7d)
 mislabels that weekly figure as 5h. Duration classification is adaptive: it
-renders only the windows that exist and stays correct whether the 5h window is
-gone now or returns later, in either slot. Claude stays positional because its
+renders only the windows that exist and stays correct whichever windows the
+payload carries, in either slot. Claude stays positional because its
 `five_hour`/`seven_day` keys are named and contractually fixed, so they can't
 suffer the same collapse. Spark extras (`additional_rate_limits`) apply the same
 duration rule inline (low-stakes, not the failure mode), not the shared jq.
