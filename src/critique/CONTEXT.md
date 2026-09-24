@@ -22,7 +22,8 @@ working tree when it is dirty and to the branch otherwise.
 
 One headless agent process (`codex` or `claude`) with a pinned model and
 effort. Always read-only, enforced by the reviewer's own sandbox rather than by
-the prompt asking nicely.
+the prompt asking nicely. See
+[ADR 0001](./docs/adr/0001-read-only-enforcement-per-reviewer.md).
 
 ## Panel
 

@@ -11,6 +11,9 @@ export interface ReviewRequest {
   readonly cwd: string;
   /** Private scratch dir for this reviewer's schema and output files. */
   readonly workdir: string;
+  readonly home: string;
+  /** Paths the reviewer must be unable to write, whatever it runs. */
+  readonly denyWrite: readonly string[];
 }
 
 export type RunReviewer = (req: ReviewRequest) => Promise<Result<unknown, string>>;

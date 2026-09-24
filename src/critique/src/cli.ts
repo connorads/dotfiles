@@ -99,10 +99,18 @@ const prepareLocal = async (options: Options, root: string): Promise<Result<Prep
   return ok({ target, cwd: root, collected: collected.value });
 };
 
-const runOne = async (spec: ReviewerSpec, prompt: string, cwd: string, workroot: string): Promise<ReviewerOutput> => {
-  const workdir = join(workroot, spec.kind);
+interface RunContext {
+  readonly prompt: string;
+  readonly cwd: string;
+  readonly workroot: string;
+  readonly home: string;
+  readonly denyWrite: readonly string[];
+}
+
+const runOne = async (spec: ReviewerSpec, ctx: RunContext): Promise<ReviewerOutput> => {
+  const workdir = join(ctx.workroot, spec.kind);
   await Bun.write(join(workdir, ".keep"), "");
-  const raw = await RUNNERS[spec.kind]({ spec, prompt, cwd, workdir });
+  const raw = await RUNNERS[spec.kind]({ ...ctx, spec, workdir });
   if (!raw.ok) return { ok: false, spec, error: { reviewer: spec.kind, message: raw.error } };
   const report = parseReport(raw.value);
   if (!report.ok) {
@@ -168,7 +176,14 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
   try {
     const who = specs.map((s) => `${s.kind} (${s.model}, ${s.effort})`).join(", ");
     console.error(`critique: reviewing ${targetLabel(target)} with ${who}`);
-    outputs = await Promise.all(specs.map((s) => runOne(s, prompt.value, prepared.value.cwd, workroot)));
+    const ctx: RunContext = {
+      prompt: prompt.value,
+      cwd: prepared.value.cwd,
+      workroot,
+      home: env.home,
+      denyWrite: [root.value],
+    };
+    outputs = await Promise.all(specs.map((s) => runOne(s, ctx)));
   } finally {
     await rm(workroot, { recursive: true, force: true });
   }
