@@ -100,31 +100,64 @@ if ((skill_lines > 500)); then
 	warn "SKILL.md is $skill_lines lines (recommended max 500; move reference-shaped detail into references/)"
 fi
 
-# Local state that should never ship inside a skill.
-while IFS= read -r -d '' f; do
-	warn "shipped cache/artifact: ${f#"$dir"/}"
-done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o \( -name __pycache__ -o -name .rumdl_cache -o -name node_modules \
-	-o -name .DS_Store -o -name '*.pyc' \) -print0)
-
-# Orphans: bundled files never mentioned in SKILL.md (matched by basename;
-# heuristic, so a warning). LICENSE files and evals/ are conventional exceptions.
+# The files the skill ships, relative to $dir. Inside a git work-tree that is
+# tracked plus untracked-but-unignored files, so gitignored local state
+# (__pycache__, tool caches) is never reported as shipped. `git -C` honours
+# GIT_DIR/GIT_WORK_TREE, which covers a split git-dir such as a dotfiles
+# work-tree. Outside git, every file. evals/fixtures/ holds deliberately
+# broken skills, so no scan below sees it.
+files=()
+if [[ $(git -C "$dir" rev-parse --is-inside-work-tree 2>/dev/null) == true ]]; then
+	lister=(git -C "$dir" ls-files -z --cached --others --exclude-standard)
+else
+	lister=(find . -type f -print0)
+fi
 while IFS= read -r -d '' f; do
 	rel=${f#./}
-	base=$(basename "$rel")
+	[[ $rel == evals/fixtures/* ]] && continue
+	# ls-files --cached still lists a tracked file deleted from the work-tree.
+	[[ -f $dir/$rel ]] && files+=("$rel")
+done < <(cd "$dir" && "${lister[@]}")
+
+# Local state that should never ship inside a skill. One warning per cache
+# directory, not per file inside it.
+reported=" "
+for rel in ${files[@]+"${files[@]}"}; do
+	prefix=""
+	IFS=/ read -ra parts <<<"$rel"
+	for part in "${parts[@]}"; do
+		prefix=${prefix:+$prefix/}$part
+		case $part in
+		__pycache__ | .rumdl_cache | node_modules | .DS_Store | *.pyc)
+			if [[ $reported != *" $prefix "* ]]; then
+				warn "shipped cache/artifact: $prefix"
+				reported+="$prefix "
+			fi
+			break
+			;;
+		esac
+	done
+done
+
+# Orphans: bundled files never mentioned in SKILL.md (matched by basename;
+# heuristic, so a warning). LICENSE files, evals/ and tests/ are conventional
+# exceptions: tests exercise the skill's scripts, the agent never loads them.
+for rel in ${files[@]+"${files[@]}"}; do
 	case $rel in
-	SKILL.md | LICENSE* | licence* | evals/*) continue ;;
+	SKILL.md | LICENSE* | licence* | evals/* | tests/* | .* | */.*) continue ;;
 	esac
-	grep -qF "$base" "$skill_md" || warn "possible orphan: $rel is never referenced from SKILL.md"
-done < <(cd "$dir" && find . -type f ! -path '*/.*' -print0)
+	grep -qF "$(basename "$rel")" "$skill_md" || warn "possible orphan: $rel is never referenced from SKILL.md"
+done
 
 # Long references need a table of contents: partial reads of a long file
 # silently lose scope. 300 lines matches the guidance in spec-and-packaging.md.
-while IFS= read -r -d '' f; do
-	lines=$(wc -l <"$f" | tr -d ' ')
-	if ((lines > 300)) && ! head -40 "$f" | grep -qiE '^#+ +(contents|table of contents)'; then
-		warn "${f#"$dir"/} is $lines lines with no Contents section in its first 40 lines"
+for rel in ${files[@]+"${files[@]}"}; do
+	[[ $rel == *.md && $(basename "$rel") != SKILL.md ]] || continue
+	lines=$(wc -l <"$dir/$rel" | tr -d ' ')
+	if ((lines > 300)) && ! head -40 "$dir/$rel" | grep -qiE '^#+ +(contents|table of contents)'; then
+		warn "$rel is $lines lines with no Contents section in its first 40 lines"
 	fi
-done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name SKILL.md -print0)
+done
 
 # Doc-rot phrasing, two classes. This check owns *phrasing*; whether a claim is
 # still true is verified at revision time (see SKILL.md "Ship checklist"), not
@@ -134,37 +167,48 @@ done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name 
 # and "at the time of writing" is a snapshot with its date deleted — both warn
 # unconditionally. A *dated* as-of caveat is sanctioned standing prose (the
 # "honest as-of caveat" in SKILL.md's timeless-present rule), so verification
-# banners warn only when the line carries no date at all.
+# banners warn only when the line carries no anchor at all: a date, a version
+# ("as of UTM 4.7.x"), or a live-source pointer ("verified against `--help`").
 # Inline-code spans and fenced code blocks are stripped first (blanked, so
 # line numbers stay stable) so teaching examples that quote the very phrasing
 # they warn against (`recent changes`, a grep for the markers) don't self-trip.
-history_re='\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|at the time of writing)\b'
+# Bare "previously", "no longer" and "used to" are absent: they are mostly
+# present tense ("commands that previously failed", "paths that no longer
+# exist", "can be used to"), so only "used to" plus a state verb counts.
+history_re='\b(used to (be|work|have|require|need)|recent changes|renamed[^.]*recently|recently (added|changed|moved)|at the time of writing)\b'
 # Bare 'checked' is deliberately absent: it swallows instructive prose
 # ("spot-checked against", "checked out locally"), which is a rule, not a claim.
 banner_re='\b(current as of|as of|last verified|verified against)\b'
 year_re='(19|20)[0-9]{2}'
+version_re='(as of|verified against)[^;]{0,40}[0-9]+\.[0-9]+(\.[0-9x]+)?'
+pointer_re='verified against[[:space:]]*`'
 # The sed strips inline-code spans; its single-quoted backticks are literal.
 # shellcheck disable=SC2016
-while IFS= read -r -d '' f; do
-	rel=${f#"$dir"/}
-	[[ $rel == evals/fixtures/* ]] && continue
-	stripped=$(awk 'BEGIN { fence = 0 }
+for rel in ${files[@]+"${files[@]}"}; do
+	[[ $rel == *.md ]] || continue
+	fenced=$(awk 'BEGIN { fence = 0 }
 		/^[ \t]*```/ { fence = !fence; print ""; next }
 		fence { print ""; next }
-		{ print }' "$f" | sed -E 's/`[^`]*`//g')
+		{ print }' "$dir/$rel")
+	stripped=$(sed -E 's/`[^`]*`//g' <<<"$fenced")
 	while IFS= read -r hit; do
 		warn "possible doc-rot phrasing: $rel:$hit"
 	done < <(grep -nEi "$history_re" <<<"$stripped" || true)
-	# The date test runs on content only (never grep -n's line-number prefix,
-	# which could itself look like a year) and includes the following line,
-	# since an honest caveat often wraps: "(as of\nmid-2026, v0.93)".
+	# The anchor test runs on content only (never grep -n's line-number prefix,
+	# which could itself look like a year), on the unstripped line so a code
+	# span can serve as the pointer, and includes the following line, since an
+	# honest caveat often wraps: "(as of\nmid-2026, v0.93)".
 	while IFS= read -r hit; do
 		lineno=${hit%%:*}
-		window="${hit#*:} $(sed -n "$((lineno + 1))p" <<<"$stripped")"
-		[[ $window =~ $year_re ]] && continue
+		window="$(sed -n "${lineno}p;$((lineno + 1))p" <<<"$fenced" | tr '\n' ' ')"
+		shopt -s nocasematch
+		anchored=0
+		[[ $window =~ $year_re || $window =~ $version_re || $window =~ $pointer_re ]] && anchored=1
+		shopt -u nocasematch
+		((anchored)) && continue
 		warn "undated verification banner (date it or point at a live source): $rel:$hit"
 	done < <(grep -nEi "$banner_re" <<<"$stripped" || true)
-done < <(find "$dir" -name '*.md' -print0)
+done
 
 # --- Authoritative validator, when available ---------------------------------
 if command -v skills-ref >/dev/null 2>&1; then
