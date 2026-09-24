@@ -34,6 +34,7 @@ skills, the field set is **closed**: unknown top-level keys such as `version:`,
 | `compatibility` (optional) | 1-500 chars; only for genuine environment requirements. Most skills should omit it. |
 | `metadata` (optional) | String-to-string map for anything else. |
 | `allowed-tools` (optional) | Space-separated pre-approved tool patterns. Experimental; agent support varies. |
+| `disable-model-invocation` (client extension) | `true` keeps the skill out of the model's listing, so only the user invokes it. Claude Code and Cursor honour it; opencode ignores it; claude.ai upload and `skills-ref validate` reject it. `scripts/check.sh` accepts it. |
 
 ## Client compatibility
 
@@ -41,8 +42,9 @@ Some clients extend the portable spec with their own top-level fields, and the
 exact set churns per release - so treat each client's live docs as the source
 of truth (e.g. code.claude.com/docs/en/skills) rather than snapshotting a list
 that rots here. Extension fields can be valid for their target client but
-reduce portability. This skill's checker defaults to the portable field set;
-document any client-specific target before accepting extension fields.
+reduce portability. This skill's checker accepts the portable field set plus
+`disable-model-invocation`; document any client-specific target before
+accepting other extension fields.
 
 ## Size budgets
 

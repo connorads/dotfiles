@@ -52,8 +52,10 @@ fi
 # Closed field set per the agentskills spec: unknown top-level keys are invalid.
 # Extraction is broad (underscore/digit keys too) so nothing slips past unseen;
 # the allowlist match is exact so 'tools' never passes as a prefix of
-# 'allowed-tools'.
-allowed="name description license compatibility metadata allowed-tools"
+# 'allowed-tools'. disable-model-invocation is the one accepted client
+# extension: clients that lack it ignore it, and a hand-picked skill needs it
+# to stay out of the model's listing (see spec-and-packaging.md).
+allowed="name description license compatibility metadata allowed-tools disable-model-invocation"
 if ((fm_valid)); then
 	while IFS= read -r key; do
 		[[ -z $key ]] && continue
