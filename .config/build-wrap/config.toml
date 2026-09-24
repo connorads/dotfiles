@@ -11,5 +11,10 @@
 # sdl2-sys: build.rs copies the compiled libSDL2 dylib into target/<profile>/
 # (outside OUT_DIR) so the binary can link/find it - a legitimate build-time FS
 # write the sandbox blocks. Well-known *-sys crate; vendored SDL, no network.
-packages = ["sdl2-sys"]
-directories = []
+# apple-cf, apple-metal, screencapturekit: build.rs runs `swift build`, and
+# SwiftPM's own sandbox-exec cannot nest inside Seatbelt (sandbox_apply EPERM).
+# gpui: compiles Metal shaders; the Metal Toolchain is a cryptex mounted under
+# /private/var/run/com.apple.security.cryptexd/mnt, unreadable in the sandbox.
+packages = ["sdl2-sys", "apple-cf", "apple-metal", "screencapturekit", "gpui"]
+# hex-redux: Hex's build.rs runs `xcrun metal` (same cryptex mount as gpui).
+directories = ["~/git/hex-redux"]
