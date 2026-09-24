@@ -5,6 +5,8 @@
 // The argv is deliberately identical to the zsh original's, so the bats suite's
 // mise/gh/npm stubs keep standing in for real upstreams.
 
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import type { Probes } from "../core/checks.ts";
 import type { Probe } from "../core/types.ts";
 
@@ -104,4 +106,27 @@ const miseOutdatedBump = async (): Promise<Probe> => {
   return { kind: "outdated", rows };
 };
 
-export const probes: Probes = { miseLatest, npmLatest, ghStableRelease, miseOutdatedBump };
+/** `import` must name the same version, and `amends` is read first by hk. */
+const HK_PKL_PIN = /^amends\s+"[^"]*\/hk@([0-9.]+)#/m;
+const HK_VERSION = /^hk ([0-9]+(?:\.[0-9]+)+)/;
+
+const hkVersions = async (): Promise<Probe> => {
+  let pinned: string | null = null;
+  try {
+    const pkl = await readFile(`${homedir()}/hk.pkl`, "utf8");
+    pinned = HK_PKL_PIN.exec(pkl)?.[1] ?? null;
+  } catch {
+    // absent hk.pkl stays null; judge degrades to SKIP
+  }
+  const ran = await run(["hk", "--version"]);
+  const installed = ran.ok ? (HK_VERSION.exec(ran.stdout.trim())?.[1] ?? null) : null;
+  return { kind: "hkVersions", pinned, installed };
+};
+
+export const probes: Probes = {
+  miseLatest,
+  npmLatest,
+  ghStableRelease,
+  miseOutdatedBump,
+  hkVersions,
+};

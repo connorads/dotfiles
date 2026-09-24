@@ -26,6 +26,8 @@ export interface Probes {
   readonly ghStableRelease: (repo: string) => Promise<Probe>;
   /** Every tool's requested range vs newest release (`mise outdated --bump`). */
   readonly miseOutdatedBump: () => Promise<Probe>;
+  /** hk.pkl's `amends` package version and `hk --version`. */
+  readonly hkVersions: () => Promise<Probe>;
 }
 
 export interface Check {
@@ -141,6 +143,31 @@ const cosineCli = (probes: Probes): Check => ({
 });
 
 /**
+ * Guard: hk.pkl's `amends`/`import` pkl package must match the hk binary, or
+ * builtin steps fail with `no command for test`. `up` can bump the binary
+ * within `hk = "2"` while hk.pkl stays put, so this watches for the gap.
+ */
+const hkPin = (probes: Probes): Check => ({
+  id: "hk-pin",
+  readPin: () => ({ kind: "always" }),
+  probe: () => probes.hkVersions(),
+  judge: (_pin, probe) => {
+    if (probe.kind !== "hkVersions" || probe.pinned === null || probe.installed === null) {
+      return { kind: "skip", detail: "hk-pin - could not read the hk.pkl pin or `hk --version`" };
+    }
+    if (probe.pinned === probe.installed) {
+      return { kind: "ok", detail: `hk-pin - hk.pkl and hk binary both ${probe.pinned}` };
+    }
+    return {
+      kind: "flag",
+      detail:
+        `hk-pin - hk.pkl pins ${probe.pinned}, hk binary is ${probe.installed}; ` +
+        `bump amends/import in ~/hk.pkl`,
+    };
+  },
+});
+
+/**
  * Deliberate pins, excluded from drift so the report stays worth reading. Two
  * are already covered by a conditional check above (which states the condition
  * for lifting them); the other two are documented holds in the file header.
@@ -201,6 +228,7 @@ export const buildChecks = (probes: Probes): readonly Check[] => [
   rembg(probes),
   sandboxRuntime(probes),
   cosineCli(probes),
+  hkPin(probes),
   drift(probes),
 ];
 

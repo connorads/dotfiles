@@ -15,10 +15,15 @@ const noProbes: Probes = {
   npmLatest: () => Promise.reject(new Error("npmLatest not stubbed")),
   ghStableRelease: () => Promise.reject(new Error("ghStableRelease not stubbed")),
   miseOutdatedBump: () => Promise.reject(new Error("miseOutdatedBump not stubbed")),
+  hkVersions: () => Promise.reject(new Error("hkVersions not stubbed")),
 };
 
-/** drift always probes, so cases that don't exercise it still need it answered. */
-const quietDrift: Probes = { ...noProbes, miseOutdatedBump: async () => noDrift };
+/** drift and hk-pin always probe, so cases that don't exercise them still need them answered. */
+const quietDrift: Probes = {
+  ...noProbes,
+  miseOutdatedBump: async () => noDrift,
+  hkVersions: async () => hkMatch,
+};
 
 const checkById = (id: string, probes: Probes = noProbes): Check => {
   const found = buildChecks(probes).find((c) => c.id === id);
@@ -51,6 +56,14 @@ const row = (tool: string, requested: string, bump: string | null, latest: strin
 });
 
 const noDrift: Probe = { kind: "outdated", rows: [] };
+
+const hk = (pinned: string | null, installed: string | null): Probe => ({
+  kind: "hkVersions",
+  pinned,
+  installed,
+});
+
+const hkMatch = hk("2.0.1", "2.0.1");
 
 describe("rembg", () => {
   const pinned = config({ "pipx:rembg": entry("2.0.69") });
@@ -157,6 +170,28 @@ describe("CosineAI/cli", () => {
   });
 });
 
+describe("hk-pin", () => {
+  const anyCfg = config({});
+
+  test("OK while hk.pkl and the hk binary name the same version", () => {
+    expect(render(verdict("hk-pin", anyCfg, hkMatch))).toBe(
+      "pin-audit: OK   hk-pin - hk.pkl and hk binary both 2.0.1",
+    );
+  });
+
+  test("flags an hk.pkl pin that differs from the binary", () => {
+    expect(render(verdict("hk-pin", anyCfg, hk("2.0.0", "2.0.1")))).toBe(
+      "pin-audit: FLAG hk-pin - hk.pkl pins 2.0.0, hk binary is 2.0.1; bump amends/import in ~/hk.pkl",
+    );
+  });
+
+  test("a version it could not read degrades to SKIP", () => {
+    expect(verdict("hk-pin", anyCfg, hk(null, "2.0.1")).kind).toBe("skip");
+    expect(verdict("hk-pin", anyCfg, hk("2.0.1", null)).kind).toBe("skip");
+    expect(verdict("hk-pin", anyCfg, unavailable).kind).toBe("skip");
+  });
+});
+
 describe("drift", () => {
   const anyCfg = config({});
 
@@ -236,9 +271,10 @@ describe("audit", () => {
       npmLatest: async () => ({ kind: "latestVersion", version: "0.0.66" }),
       ghStableRelease: async () => ({ kind: "stableRelease", tag: null }),
       miseOutdatedBump: async () => noDrift,
+      hkVersions: async () => hkMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok"]);
   });
 
   test("flattens drift's per-tool verdicts in with the conditional ones", async () => {
@@ -250,9 +286,10 @@ describe("audit", () => {
         kind: "outdated",
         rows: [row("uv", "0.11", "0.12", "0.12.4"), row("gcloud", "573", "580", "580.0.0")],
       }),
+      hkVersions: async () => hkMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "flag", "flag"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "flag", "flag"]);
   });
 
   test("probes overlap rather than running one after another", async () => {
@@ -270,20 +307,21 @@ describe("audit", () => {
       miseLatest: held("mise"),
       npmLatest: held("npm"),
       ghStableRelease: held("gh"),
+      hkVersions: held("hk"),
       miseOutdatedBump: held("outdated"),
     };
 
     const running = audit(full, buildChecks(probes));
     await Promise.resolve();
-    // All four are blocked on the same gate, so none can have finished first.
-    expect(started).toEqual(["mise", "npm", "gh", "outdated"]);
+    // All five are blocked on the same gate, so none can have finished first.
+    expect(started).toEqual(["mise", "npm", "gh", "hk", "outdated"]);
     release();
-    expect((await running).map((v) => v.kind)).toEqual(["info", "skip", "skip", "skip"]);
+    expect((await running).map((v) => v.kind)).toEqual(["info", "skip", "skip", "skip", "skip"]);
   });
 
   test("skips the probe entirely when the pin is already gone", async () => {
-    // drift is unconditional, so only the three conditional probes stay unstubbed.
+    // drift and hk-pin are unconditional, so only the three conditional probes stay unstubbed.
     const got = await audit(config({}), buildChecks(quietDrift));
-    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok", "ok"]);
   });
 });

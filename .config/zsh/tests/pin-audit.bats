@@ -16,10 +16,19 @@ write_configs() {
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu" }
 EOF
+  write_hk_pkl 2.0.1
+}
+
+# hk.pkl's pkl package pin, which the hk-pin check compares with `hk --version`.
+write_hk_pkl() {
+  cat >"$TEST_HOME/hk.pkl" <<EOF
+amends "package://github.com/jdx/hk/releases/download/v$1/hk@$1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v$1/hk@$1#/Builtins.pkl"
+EOF
 }
 
 # Probe stubs keyed by env vars so each test picks its scenario:
-#   SRT_LATEST, COS_JSON, OUTDATED_JSON; unset any of
+#   SRT_LATEST, COS_JSON, OUTDATED_JSON, HK_VERSION; unset any of
 #   MISE_OK/GH_OK/NPM_OK to simulate that probe failing (offline).
 write_probe_stubs() {
   # `mise` answers two probes: `ls-remote <tool>` (rembg) and the drift sweep
@@ -49,6 +58,10 @@ case "$3" in
   version) echo "${SRT_LATEST:-0.0.66}" ;;
 esac
 EOF
+  write_stub hk <<'EOF'
+#!/usr/bin/env bash
+echo "hk ${HK_VERSION:-2.0.1}"
+EOF
 }
 
 setup() {
@@ -61,7 +74,7 @@ setup() {
   [ -n "$bun_bin" ] || skip "bun absent (mise install bun)"
 
   setup_test_home
-  # Just bun, not its whole directory: the mise/gh/npm stubs stay the only
+  # Just bun, not its whole directory: the mise/gh/npm/hk stubs stay the only
   # spelling of those commands.
   ln -s "$bun_bin" "$TEST_BIN/bun"
   # The wrapper resolves its implementation as ~/src/pin-audit, so the isolated
@@ -151,4 +164,19 @@ setup() {
   [[ "$output" == *"OK   rembg - exact pin gone"* ]]
   [[ "$output" == *"OK   sandbox-runtime - exact pin gone"* ]]
   [[ "$output" == *"OK   CosineAI/cli - prerelease=true gone"* ]]
+}
+
+# hk builtin steps fail when hk.pkl's package pin and the binary disagree, and
+# `up` can move the binary alone.
+@test "an hk.pkl pin matching the hk binary is OK" {
+  run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OK   hk-pin - hk.pkl and hk binary both 2.0.1"* ]]
+}
+
+@test "an hk.pkl pin that trails the hk binary is FLAGged" {
+  write_hk_pkl 2.0.0
+  run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FLAG hk-pin - hk.pkl pins 2.0.0, hk binary is 2.0.1"* ]]
 }
