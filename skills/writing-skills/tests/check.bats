@@ -110,6 +110,20 @@ allowed: yes
 	[[ "$output" == *"ERROR:"*"unknown top-level frontmatter key 'allowed'"* ]]
 }
 
+@test "disable-model-invocation is an accepted extension field" {
+	local skill="$BATS_TEST_TMPDIR/manual-only"
+	make_skill "$skill" "manual-only"
+	sed -i.bak '/^description:/a\
+disable-model-invocation: true
+' "$skill/SKILL.md"
+	rm "$skill/SKILL.md.bak"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
 @test "underscore keys are extracted and rejected" {
 	local skill="$BATS_TEST_TMPDIR/underscore-key"
 	make_skill "$skill" "underscore-key"
