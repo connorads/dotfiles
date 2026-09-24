@@ -11,7 +11,7 @@ Set up a consumer group for at-least-once processing.
 
 ## Partition assignor
 
-Use `CooperativeSticky` — available since Kafka 3.0, it rebalances
+Use `CooperativeSticky` — available since Kafka 2.4, it rebalances
 incrementally. On older brokers fall back to `RangeAssignor`.
 
 ## Offset storage
