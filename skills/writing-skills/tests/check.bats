@@ -257,13 +257,13 @@ EOF
 	cat >"$skill/references/tool.md" <<'EOF'
 # Tool Reference
 
-Verified against Tool v1.2.
+Verified against the upstream docs.
 EOF
 
 	run "$SCRIPT" "$skill"
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): references/tool.md:3:Verified against Tool v1.2."* ]]
+	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): references/tool.md:3:Verified against the upstream docs."* ]]
 	[[ "$output" == *"0 error(s), 1 warning(s)"* ]]
 }
 
@@ -341,7 +341,7 @@ EOF
 		for i in $(seq 1 2025); do
 			printf '\n'
 		done
-		printf 'Verified against Tool v1.2.\n'
+		printf 'Verified against the upstream docs.\n'
 	} >>"$skill/SKILL.md"
 
 	run "$SCRIPT" "$skill"
@@ -384,4 +384,160 @@ EOF
 			return 1
 		}
 	done < <(jq -r '.evals[].fixture | select(. != "none")' "$evals")
+}
+
+@test "outside git, a cache directory warns" {
+	local skill="$BATS_TEST_TMPDIR/plain-cache"
+	make_skill "$skill" "plain-cache"
+	mkdir -p "$skill/scripts/__pycache__"
+	touch "$skill/scripts/__pycache__/tool.cpython-314.pyc"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: shipped cache/artifact: scripts/__pycache__"* ]]
+}
+
+@test "inside a git work-tree, gitignored caches are not scanned" {
+	local repo="$BATS_TEST_TMPDIR/repo"
+	local skill="$repo/ignored-cache"
+	make_skill "$skill" "ignored-cache"
+	git -C "$repo" init -q
+	printf '__pycache__/\n' >"$repo/.gitignore"
+	mkdir -p "$skill/scripts/__pycache__"
+	touch "$skill/scripts/__pycache__/tool.cpython-314.pyc"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "inside a git work-tree, an unignored cache still warns" {
+	local repo="$BATS_TEST_TMPDIR/repo"
+	local skill="$repo/tracked-cache"
+	make_skill "$skill" "tracked-cache"
+	git -C "$repo" init -q
+	touch "$skill/.DS_Store"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: shipped cache/artifact: .DS_Store"* ]]
+}
+
+@test "split git-dir and work-tree (dotfiles layout) honours its ignores" {
+	local gitdir="$BATS_TEST_TMPDIR/gitdir"
+	local home="$BATS_TEST_TMPDIR/home"
+	local skill="$home/skills/split-cache"
+	make_skill "$skill" "split-cache"
+	git init -q --bare "$gitdir"
+	printf '/*\n!/skills/\n__pycache__/\n' >"$home/.gitignore"
+	mkdir -p "$skill/scripts/__pycache__"
+	touch "$skill/scripts/__pycache__/tool.cpython-314.pyc"
+
+	GIT_DIR="$gitdir" GIT_WORK_TREE="$home" run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "tests/ files are not orphans" {
+	local skill="$BATS_TEST_TMPDIR/with-tests"
+	make_skill "$skill" "with-tests"
+	mkdir -p "$skill/tests"
+	touch "$skill/tests/test_tool.py" "$skill/tests/conftest.py"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "present-tense previously, no longer and used to do not warn" {
+	local skill="$BATS_TEST_TMPDIR/present-tense"
+	make_skill "$skill" "present-tense"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Re-run commands that previously failed.
+Delete exclusions for paths that no longer exist.
+Types can be used to represent the domain.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "used to plus a state verb still warns as history" {
+	local skill="$BATS_TEST_TMPDIR/used-to-be"
+	make_skill "$skill" "used-to-be"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+The flag used to be required on every call.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: possible doc-rot phrasing: SKILL.md:"*"used to be required"* ]]
+	[[ "$output" == *"0 error(s), 1 warning(s)"* ]]
+}
+
+@test "a version anchor dates an as-of or verified-against banner" {
+	local skill="$BATS_TEST_TMPDIR/version-anchor"
+	make_skill "$skill" "version-anchor"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+# utmctl reference (as of UTM 4.7.x)
+Verified against guest-tools 0.1.271.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "a code span after verified against is a live-source pointer" {
+	local skill="$BATS_TEST_TMPDIR/live-pointer"
+	make_skill "$skill" "live-pointer"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+The scaffold leaves traps (verified against `brew create --help`):
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "as of writing with no date or version still warns" {
+	local skill="$BATS_TEST_TMPDIR/as-of-writing"
+	make_skill "$skill" "as-of-writing"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Limits as of writing: 256 KB per log, 20M logs/month included.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): SKILL.md:"* ]]
+}
+
+@test "threshold-vs-snapshot eval fixture keeps its true catches" {
+	local skill="$BATS_TEST_TMPDIR/kafka-consumer"
+	mkdir -p "$skill"
+	cp "$SKILL_ROOT/evals/fixtures/threshold-vs-snapshot/SKILL.fixture.md" "$skill/SKILL.md"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"possible doc-rot phrasing: SKILL.md:"*"Recent changes (2025-2026)"* ]]
+	[[ "$output" == *"possible doc-rot phrasing: SKILL.md:"*"renamed"*"recently"* ]]
+	[[ "$output" != *"Kafka 3.0"* ]]
+	[[ "$output" != *"3.12+"* ]]
 }
