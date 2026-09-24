@@ -28,8 +28,8 @@ skills, the field set is **closed**: unknown top-level keys such as `version:`,
 
 | Field | Rules |
 |---|---|
-| `name` (required) | 1-64 chars; lowercase letters/digits + hyphens; no leading/trailing/double hyphen; equals the directory name; not "anthropic"/"claude". Gerund style reads well (`processing-pdfs`). |
-| `description` (required) | 1-1024 chars, non-empty, no XML tags. See [description.md](description.md). |
+| `name` (required) | 1-64 chars; lowercase letters/digits + hyphens; no leading/trailing/double hyphen; equals the directory name. Anthropic's platform (claude.ai, API upload) also reserves "anthropic" and "claude". Gerund style reads well (`processing-pdfs`). |
+| `description` (required) | 1-1024 chars, non-empty. No XML tags is an Anthropic platform rule, not the spec's; `scripts/check.sh` enforces it so a skill stays uploadable. See [description.md](description.md). |
 | `license` (optional) | Free text or a pointer to a bundled license file. |
 | `compatibility` (optional) | 1-500 chars; only for genuine environment requirements. Most skills should omit it. |
 | `metadata` (optional) | String-to-string map for anything else. |
@@ -66,8 +66,10 @@ conversation for context:
   machines; a hard-coded path breaks the first step silently.
 - Keep references **one level deep** from SKILL.md. Chains (SKILL.md → a.md
   → b.md) and very long files get partially read, silently losing content.
-- Give any reference over ~300 lines a **table of contents** at the top, so
-  a partial read still reveals the full scope.
+- Give any reference over 300 lines a **table of contents** at the top, so
+  a partial read still reveals the full scope. 300 is Anthropic's
+  skill-creator threshold and the one `scripts/check.sh` warns at;
+  Anthropic's platform best-practices page says 100.
 - Every bundled file should be reachable from SKILL.md - an unreferenced
   file is never routed to by progressive disclosure. If a support directory
   is intentionally unrouted (e.g. `evals/`), say so in one line.

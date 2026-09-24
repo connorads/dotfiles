@@ -8,8 +8,12 @@ nothing errors.
 
 ## The formula
 
-Third person. State **what** the skill does, then **when** to use it, carrying
-the literal words users type:
+State **what** the skill does, then **when** to use it, carrying the literal
+words users type. Sources disagree on voice: Anthropic says "Always write in
+third person" ("Processes Excel files..."), while agentskills.io's examples
+are imperative ("Use this skill when..."). Both trigger; the default here is
+third person for the *what* and "Use when" for the *when*, as below. Keep one
+voice across a catalogue.
 
 ```yaml
 description: >-
@@ -51,12 +55,15 @@ description: >-
   its screenshots or attachments.
 ```
 
-**Workflow summary.** Never compress the skill's method into the description.
-An agent that can see steps in the description may follow *them* instead of
-reading the body - the description becomes a lossy substitute for the skill.
-Observed failure: a description saying "reviews code in two passes" led the
-agent to do its own idea of two passes without ever loading the body.
-Triggers go in the description; method goes in the body.
+**Workflow summary.** Keep the skill's method out of the description. An agent
+that can see steps there may follow *them* instead of reading the body. This
+is a heuristic from one reported case, not a measured rule: obra/superpowers'
+writing-skills saw a description saying "code review between tasks" produce
+one review where the body's flowchart required two, fixed by cutting the
+description to triggers only
+(github.com/obra/superpowers, `skills/writing-skills/SKILL.md`). Anthropic's
+and the spec's own examples do state *what* plus *when*; what to leave out is
+the *how*.
 
 **Body-only triggers.** A "Use when…" section in the body is invisible at
 trigger time. Non-obvious *application* cues can live in the body; anything
