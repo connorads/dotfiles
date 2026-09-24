@@ -16,5 +16,3 @@
 # gpui: compiles Metal shaders; the Metal Toolchain is a cryptex mounted under
 # /private/var/run/com.apple.security.cryptexd/mnt, unreadable in the sandbox.
 packages = ["sdl2-sys", "apple-cf", "apple-metal", "screencapturekit", "gpui"]
-# hex-redux: Hex's build.rs runs `xcrun metal` (same cryptex mount as gpui).
-directories = ["~/git/hex-redux"]
