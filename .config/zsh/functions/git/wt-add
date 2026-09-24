@@ -41,7 +41,7 @@ repo_root=$(_wt_current_path) || {
   echo "error: not in a git repository" >&2
   return 1
 }
-local repo=${repo_root:t}
+local repo=$(_wt_repo_name "$repo_root")
 local worktree_path="$HOME/.trees/${repo}/${branch}"
 
 # Idempotent: if worktree already exists, just print its path
