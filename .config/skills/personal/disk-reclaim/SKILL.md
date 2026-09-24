@@ -78,12 +78,29 @@ this machine change; check every time rather than trusting a remembered figure.
 
 Where large things tend to hide: `~/Library/Application Support` (games, model
 weights), Rust `target/` dirs under repos, `~/Downloads`, LLM/Whisper model
-stores, and `/private/tmp` (dev/agent scratch accumulates there and is cleared
+stores, `~/.codex/sessions` (single transcripts reach 400M; `cleanup`'s codex
+target prunes only those older than 30 days), `~/Recordings/vox` WAV (`vox
+compact` converts to Opus with preview and confirm), and `/private/tmp` (dev/agent scratch accumulates there and is cleared
 only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
 rebooting or with `cleanup --target claude-temp --yes`. That opt-in target
 removes only current-user Claude session scratch older than 60 minutes. It
 protects live sessions from every configured profile and every hibernation
 record, including orphaned records whose pane is gone.
+
+## When the space comes back
+
+A second "disk full" within days means something writes faster than cleanup
+reclaims. Re-running `cleanup` alone buys the same headroom and loses it
+again. Attribute the growth since the last cleanup first:
+
+- `find ~ -xdev -type f -size +200M -newermt <last-cleanup-date>` names the
+  fresh writers.
+- Compare each opt-in dry-run with its previous figure: `worktree-build` went
+  from 5 dirs/9.8G to 14 dirs/25.5G in one day here.
+
+Report the cause beside the reclaim. `worktree-build` treats a symptom: every
+built worktree regrows its `node_modules`, so the lasting fix is fewer
+worktrees.
 
 ## What may be deleted
 
@@ -214,6 +231,11 @@ audio manifest or deleting files.
   `wt-clean` deliberately spares, bare `wt-remove <path>` is the
   branch-preserving primitive. To keep every worktree and branch while
   reclaiming rebuildable output, use `cleanup --target worktree-build --yes`.
+  `~/.trees` also holds agent run roots that are not repos: a dir with its own
+  `RUN.md`/`brief.md`, an `evidence/` tree and a nested `wt/` of worktrees
+  (103 in one run), which `wt-status` lists under the run's name. Read the
+  run's notes (`RUN.md`, `PAUSED.md`) before classifying: they say whether it
+  finished, that each worktree has its own branch, and which dirs are evidence.
   It protects worktrees containing any live or hibernated agent CWD, removes
   only `node_modules`, `.next`, `.turbo`, and `coverage`, and skips an artefact
   if Git reports any tracked file beneath it.
@@ -292,6 +314,10 @@ audio manifest or deleting files.
   manifests desync. Usually the largest single win, and the user must do it.
 - **Yarn v1:** do not probe `yarn cache clean` with `--help` - it runs the
   cleaner. Use `yarn cache --help` to inspect the parent command instead.
+- **`stat` on PATH is GNU coreutils (nix).** BSD flags fail with `cannot read
+  file system information for '%SB'`; call `/usr/bin/stat` for birth times.
+- **A full `cleanup --yes` can outlive a 5-minute tool timeout.** Background
+  it and read the `volume_available_*` JSON lines when it finishes.
 - Don't pipe a long-running background command through `tail`: the output is
   lost to buffering and you end up polling for a result that never lands.
 
