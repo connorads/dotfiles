@@ -542,10 +542,10 @@ EOF
 	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): SKILL.md:"* ]]
 }
 
-@test "threshold-vs-snapshot eval fixture keeps its true catches" {
+@test "kafka-consumer eval fixture keeps its true catches" {
 	local skill="$BATS_TEST_TMPDIR/kafka-consumer"
 	mkdir -p "$skill"
-	cp "$SKILL_ROOT/evals/fixtures/threshold-vs-snapshot/SKILL.fixture.md" "$skill/SKILL.md"
+	cp "$SKILL_ROOT/evals/fixtures/kafka-consumer/SKILL.fixture.md" "$skill/SKILL.md"
 
 	run "$SCRIPT" "$skill"
 
