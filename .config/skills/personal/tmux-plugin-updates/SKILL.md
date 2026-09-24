@@ -1,6 +1,7 @@
 ---
 name: tmux-plugin-updates
 description: Safely review and update sha-pinned tmux plugins. Use whenever the user mentions tmux-upstream, tmux plugin pins or updates, a tmux plugin being commits behind upstream, pin_tmux_plugin in home-shared.nix, asks whether a tmux plugin update is dodgy/compromised/safe, or asks to bump/update a tmux plugin. Default to review-only and ask before bumping unless the user explicitly requested automatic safe updates.
+disable-model-invocation: true
 ---
 
 # Tmux Plugin Updates

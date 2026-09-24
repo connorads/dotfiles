@@ -7,6 +7,7 @@ description: >-
   work into separate coding-agent panes or windows. Not for controlling
   already-running agents, producing only a durable backlog, or unattended
   sequential task execution.
+disable-model-invocation: true
 ---
 
 # Dispatching Agent Panes

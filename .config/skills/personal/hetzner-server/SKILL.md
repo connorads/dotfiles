@@ -1,6 +1,7 @@
 ---
 name: hetzner-server
 description: Create and manage Hetzner Cloud servers. Use when creating VPS/cloud servers, managing Hetzner infrastructure, or setting up dev/remote servers. Requires hcloud CLI.
+disable-model-invocation: true
 ---
 
 # Hetzner Server Management
