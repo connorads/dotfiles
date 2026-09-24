@@ -1,5 +1,5 @@
 ---
-name: pdf-forms
+name: pdf-fomrs
 description: Fills and flattens PDF form fields with pypdf. Use when filling in a PDF form, listing a form's fields, or flattening a filled form so it can't be edited.
 ---
 
