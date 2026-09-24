@@ -46,12 +46,35 @@ reduce portability. This skill's checker accepts the portable field set plus
 `disable-model-invocation`; document any client-specific target before
 accepting other extension fields.
 
+## Claude Code mechanics
+
+Numbers checked 2026-09-25 against code.claude.com/docs/en/skills; re-check
+there before leaning on one.
+
+- **Description cap.** The skill listing truncates `description` plus
+  `when_to_use` at 1,536 characters (`skillListingMaxDescChars`). The docs'
+  rule follows from it: put the key use case first.
+- **Listing budget.** All descriptions share 1% of the context window
+  (`skillListingBudgetFraction`, or `SLASH_COMMAND_TOOL_CHAR_BUDGET`). On
+  overflow the least-invoked skills' descriptions are shortened first, so a
+  rarely used skill loses the trigger words that would get it used. Front-load
+  them. `disable-model-invocation: true` takes a skill out of the listing.
+- **Compaction.** After auto-compaction only the latest invocation of each
+  skill is re-attached: its first 5,000 tokens, within 25,000 tokens across
+  all skills, most recent first. A standing rule that must survive a long
+  session belongs in the body's first 5,000 tokens.
+- **Claude Code-only features.** `` !`cmd` `` context injection,
+  `$ARGUMENTS`, `${CLAUDE_SKILL_DIR}` and extension fields are not in the
+  portable spec, so no other client is obliged to honour them. Keep them out
+  of a skill meant to travel.
+
 ## Size budgets
 
 Soft limits with a hard rationale - the body competes with the whole
 conversation for context:
 
-- name + description ≈ 100 tokens (preloaded into every session).
+- name + description ≈ 100 tokens (preloaded into every session; Claude
+  Code's caps are under Claude Code mechanics above).
 - SKILL.md body: under 500 lines / ~5k tokens - a **cap, not a target**. The
   more often a skill fires, the leaner its body should be; push depth into
   references.
