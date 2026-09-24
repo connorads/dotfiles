@@ -23,7 +23,7 @@ const git = (...args: string[]) => {
 };
 
 beforeEach(async () => {
-  repo = await mkdtemp(join(tmpdir(), "critique-git-"));
+  repo = await mkdtemp(join(tmpdir(), "xreview-git-"));
   git("init", "-q", "-b", "master");
   git("config", "user.email", "t@users.noreply.github.com");
   git("config", "user.name", "t");

@@ -1,13 +1,13 @@
 # Context
 
-Working glossary and domain notes for `critique`. Terms here are meaningful to
+Working glossary and domain notes for `xreview`. Terms here are meaningful to
 the tool's domain, not implementation trivia.
 
-## `critique` - headless review by another agent
+## `xreview` - headless review by another agent
 
 An agent cannot review its own work adversarially. Grading it in-context, in a
 subagent or in a fork is the same model reasoning from the same transcript, so
-it rationalises the same mistakes. `critique` hands the change to a fresh
+it rationalises the same mistakes. `xreview` hands the change to a fresh
 process, by default the *other* agent (Claude reviews Codex's work and the
 reverse), runs it read-only, and returns one JSON document a caller can branch
 on without parsing prose.
@@ -41,7 +41,7 @@ fact: the caller triages it against the code.
 ## Verdict
 
 `approve` or `needs-attention`. The exit code carries it, so a loop can branch
-on `critique`'s status alone.
+on `xreview`'s status alone.
 
 ## Context delivery
 

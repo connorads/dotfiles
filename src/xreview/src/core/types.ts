@@ -82,7 +82,7 @@ export type TargetSummary =
   | { readonly kind: "pr"; readonly number: number; readonly head_sha: string }
   | { readonly kind: "plan"; readonly source: string };
 
-/** The one document critique prints. */
+/** The one document xreview prints. */
 export interface Review {
   /** Null only when every reviewer failed: there is no verdict to report. */
   readonly verdict: Verdict | null;

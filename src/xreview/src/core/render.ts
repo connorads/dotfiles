@@ -37,7 +37,7 @@ const findingText = (f: Finding, i: number): string => {
 
 export const renderMarkdown = (r: Review): string => {
   const out = [
-    `# critique: ${r.verdict ?? "failed"}`,
+    `# xreview: ${r.verdict ?? "failed"}`,
     "",
     r.summary,
     "",
