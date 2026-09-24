@@ -68,3 +68,15 @@ the second. Preserve the indirectly linked transcript, verify backup and
 readable exports before removal, and defer the open audio file. Report
 database/export verification separately from unverified in-app access. Do not
 change retention settings or remove September audio.
+
+## Space returns
+
+Prompt: "and again we've lost space again"
+
+Observations: yesterday's cleanup left 40 GiB free; now 18 GiB. The
+`worktree-build` dry-run reads 14 dirs/25.5G against yesterday's 5/9.8G.
+`~/.trees` holds 139 worktrees. A gitignored spike `tmp/` gained 9 GiB.
+
+Pass: attribute the growth to its writers before or alongside any cleanup,
+name the worktree count as the recurring cause, and do not stop at re-running
+`cleanup`.
