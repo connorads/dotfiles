@@ -207,6 +207,46 @@ EOF
   dfgit diff --cached --quiet -- .codex/config.toml
 }
 
+@test "status hides codex notice and accessibility probe churn" {
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[tui]
+status_line = ["current-dir"]
+
+[desktop]
+followUpQueueMode = "queue"
+EOF
+  dfgit add .codex/config.toml
+  dfgit commit -qm codex-notice-baseline
+
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[notice.model_migrations]
+"gpt-5.5" = "gpt-5.6-sol"
+
+[tui]
+status_line = ["current-dir"]
+screen_reader_detection_done = true
+
+[desktop]
+followUpQueueMode = "queue"
+EOF
+
+  run "$DOTFILES" status --short .codex/config.toml
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  dfgit diff --cached --quiet -- .codex/config.toml
+}
+
 @test "status hides codex avatar and shell-env browser wiring churn" {
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"

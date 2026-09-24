@@ -13,6 +13,7 @@ emulate -L zsh
 #   [projects.*]                  per-machine trust entries
 #   [marketplaces.*]              regenerated source/timestamp state (.tmp paths)
 #   [tui.model_availability_nux]  per-machine NUX "times shown" counters
+#   [notice.model_migrations]     per-machine migration notice dismissals
 #   [mcp_servers.node_repl]       Codex.app-injected browser-feature wiring
 #                                 (abs /Applications + CODEX_HOME paths, app SHA);
 #                                 matched BY NAME so genuine MCP servers survive
@@ -28,6 +29,8 @@ emulate -L zsh
 #   js_repl = ...                 app-flipped browser-feature flag (regenerated)
 #   dock-icon-preference = ...    desktop UI preference written by Codex.app
 #   selected-avatar-id = ...      desktop avatar UI preference written by Codex.app
+#   screen_reader_detection_done = ...
+#                                accessibility probe state written by the TUI
 #   NODE_REPL_* / BROWSER_USE_*   app-injected browser/REPL feature env wiring under
 #                                 [shell_environment_policy.set]: absolute CODEX_HOME
 #                                 path + per-app client SHA256s + backend list, all
@@ -47,6 +50,7 @@ awk '
   /^\[projects\./ { skip=1; in_section=1; next }
   /^\[marketplaces\./ { skip=1; in_section=1; next }
   /^\[tui\.model_availability_nux\]/ { skip=1; in_section=1; next }
+  /^\[notice\.model_migrations\]/ { skip=1; in_section=1; next }
   /^\[mcp_servers\.node_repl/ { skip=1; in_section=1; next }
   /^\[mcp_servers\.computer-use/ { skip=1; in_section=1; next }
   /^\[plugins\."codex-app-tools@openai-bundled"\]/ { skip=1; in_section=1; next }
@@ -73,6 +77,7 @@ awk '
   /^js_repl[[:space:]]*=/ { next }
   /^dock-icon-preference[[:space:]]*=/ { next }
   /^selected-avatar-id[[:space:]]*=/ { next }
+  /^screen_reader_detection_done[[:space:]]*=/ { next }
   /^NODE_REPL_[A-Z0-9_]+[[:space:]]*=/ { next }
   /^BROWSER_USE_[A-Z0-9_]+[[:space:]]*=/ { next }
   /^[[:space:]]*$/ {
