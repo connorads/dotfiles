@@ -272,5 +272,5 @@ suite that instead points `TMUX_TMPDIR` at a short private dir (`resurrect-keepa
 
 ## See also
 
-- `../../tmux/AGENTS.md` - tmux subsystem docs (status bar, agent-state, sweep daemon).
+- `../../tmux/AGENTS.md` - tmux rules and the index of subsystem docs under `../../tmux/docs/`.
 - `~/CLAUDE.md` (project) and `~/.claude/CLAUDE.md` (Testing/Verification) - global rules.

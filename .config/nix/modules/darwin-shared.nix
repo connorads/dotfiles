@@ -240,7 +240,7 @@
   # security.pam.services.sudo_local (Touch ID) is unaffected.
   #
   # Consumed by scripts/caffeine-lib.sh (caffeine_start_lid's supervisor trap)
-  # and scripts/caffeine-reconcile.sh. See .config/tmux/AGENTS.md "Caffeine".
+  # and scripts/caffeine-reconcile.sh. See .config/tmux/docs/caffeine.md.
   environment.etc."sudoers.d/20-caffeine-pmset".text = ''
     ${config.system.primaryUser} ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
   '';

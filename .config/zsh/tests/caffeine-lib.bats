@@ -356,7 +356,7 @@ EOF
 
 # --- drive layer: the constraints, not the privileged path ------------------
 # Starting a real lid session needs sudo and mutates a machine-wide kernel flag,
-# so the happy path stays a manual smoke test (see ../../tmux/AGENTS.md). What is
+# so the happy path stays a manual smoke test (see ../../tmux/docs/caffeine.md). What is
 # asserted here is what a caller can rely on without ever reaching sudo.
 
 @test "lid mode refuses an indefinite session" {
