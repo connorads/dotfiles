@@ -1,5 +1,5 @@
 {
-  "reason": "omit --browser (config pins bundled Chromium); --browser=chrome and attach drive the user's real Chrome",
+  "reason": "omit --browser (config pins bundled Chromium); --browser=chrome and attach drive the user's real Chrome; no --headed (config runs headless on the GPU)",
   "files": [
     ".agents/skills/playwright-cli/SKILL.md"
   ]
