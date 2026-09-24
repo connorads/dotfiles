@@ -10,9 +10,10 @@ To change the policy: set EXPECTED_DAYS, update all nine configs, done - the
 checker tells you which files still disagree. To add a newly gated manager:
 append a row to CHECKS (path, key, one-capture regex, unit).
 
-A second, warn-only section greps the docs that cite literal values (AGENTS.md,
-the dotfiles-docs supply-chain page) and warns when they no longer contain the
-current spellings - documentation staleness never blocks a commit.
+A second, warn-only section greps the docs that cite literal values
+(docs/supply-chain.md, the dotfiles-docs supply-chain page) and warns when
+they no longer contain the current spellings - documentation staleness never
+blocks a commit.
 
 Exit codes: 0 = all nine agree, 1 = drift or an unparseable/missing config.
 
@@ -50,7 +51,7 @@ CHECKS: list[tuple[str, str, str, str]] = [
 # Docs that cite literal quarantine values; derived spellings must appear or a
 # warning (never a failure) is printed.
 DOC_CITES = [
-    "AGENTS.md",
+    "docs/supply-chain.md",
     "src/dotfiles-docs/src/content/docs/trust/supply-chain.md",
 ]
 

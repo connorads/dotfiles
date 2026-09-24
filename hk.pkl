@@ -1,4 +1,5 @@
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
+// Gate-by-gate rationale: .hk-hooks/AGENTS.md.
 amends "package://github.com/jdx/hk/releases/download/v2.0.0/hk@2.0.0#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v2.0.0/hk@2.0.0#/Builtins.pkl"
 
