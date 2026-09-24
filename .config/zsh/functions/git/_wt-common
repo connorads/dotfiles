@@ -482,9 +482,21 @@ _wt_current_or_arg_path() {
   _wt_current_path
 }
 
+# The main checkout names itself; a linked worktree takes the name of the main
+# worktree (the first porcelain entry), minus a bare repo's .git suffix.
 _wt_repo_name() {
   local repo_root=$1
-  printf '%s\n' "${repo_root:t}"
+  local git_dir common_dir line
+  git_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --absolute-git-dir 2>/dev/null)
+  common_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  if [[ -z "$git_dir" || "${git_dir:A}" == "${common_dir:A}" ]]; then
+    printf '%s\n' "${repo_root:t}"
+    return 0
+  fi
+
+  line=$(git -C "$repo_root" worktree list --porcelain 2>/dev/null | head -n 1)
+  local main=${line#worktree }
+  printf '%s\n' "${${main:t}%.git}"
 }
 
 _wt_find_remote_branch() {

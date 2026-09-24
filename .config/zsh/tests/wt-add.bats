@@ -190,3 +190,42 @@ make_repo_on_feature() {
   [[ "$output" == *"--base"* ]]
   [ ! -e "$HOME/.trees/repo/topic" ]
 }
+
+@test "from inside a linked worktree names the tree dir after the main repo" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  git -C "$repo" worktree add "$HOME/.trees/repo/topic" -b topic >/dev/null
+
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup other"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$HOME/.trees/repo/other"* ]]
+  [ -e "$HOME/.trees/repo/other/.git" ]
+}
+
+@test "from a linked worktree of a bare repo strips the .git suffix" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  git clone --bare "$repo" "$BATS_TEST_TMPDIR/proj.git" >/dev/null 2>&1
+  git -C "$BATS_TEST_TMPDIR/proj.git" worktree add "$HOME/.trees/proj/topic" -b topic >/dev/null 2>&1
+
+  run bash -lc "cd '$HOME/.trees/proj/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --no-fetch other"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$HOME/.trees/proj/other"* ]]
+}
+
+@test "a separate-git-dir main checkout keeps its toplevel name" {
+  local checkout="$BATS_TEST_TMPDIR/checkout"
+  git init --separate-git-dir "$BATS_TEST_TMPDIR/meta.git" "$checkout" >/dev/null
+  git -C "$checkout" config user.name "Bats"
+  git -C "$checkout" config user.email "bats@example.com"
+  echo "base" >"$checkout/base.txt"
+  git -C "$checkout" add base.txt
+  git -C "$checkout" commit -m "initial" >/dev/null
+
+  run bash -lc "cd '$checkout' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$HOME/.trees/checkout/topic"* ]]
+}
