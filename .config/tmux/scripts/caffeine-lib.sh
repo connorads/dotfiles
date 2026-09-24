@@ -20,7 +20,7 @@
 # is never silently left running in a forgotten shell. Lid mode has no process to
 # hang the flag's lifetime on, so it records a *supervisor* whose trap clears the
 # flag on every ordinary exit; caffeine-reconcile.sh is the backstop for SIGKILL,
-# crash, panic and reboot, where no trap runs. See ../AGENTS.md "Caffeine".
+# crash, panic and reboot, where no trap runs. See ../docs/caffeine.md.
 #
 # State is recorded in the pidfile as three fields "pid deadline_epoch mode"
 # (deadline 0 = indefinite, mode idle|lid). Field 3 is optional and defaults to
