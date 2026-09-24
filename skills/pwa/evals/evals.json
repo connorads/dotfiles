@@ -1,0 +1,98 @@
+{
+  "skill_name": "pwa",
+  "how_to_run": "Per writing-skills/references/evals.md: run each prompt with-skill and baseline (no skill) in fresh clean sessions (`claude -p --setting-sources \"\"` from a directory outside any CLAUDE.md tree, skill granted with --add-dir), in parallel. Grade the transcript, not just the answer: did the skill fire, which references were read, did the agent run scripts/pwa-check.mjs on the served output dir. Assertions come from gaps reproduced by no-skill Opus 5.5 runs on 2026-09-24 (G1, G2, G4, G5, G6, G11, D1); gaps the baseline already got right are deliberately not asserted. Evals 7 and 8 (held-out-negative-*) score whether the skill FIRES, and it should not.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "vite-spa-cloudflare-pwa",
+      "fixture": "",
+      "prompt": "hey can you make my app installable as a PWA? it's a vite + react + typescript SPA with react-router, deployed to cloudflare pages. we also have a small express api on the same domain under /api and /auth (google login callback lands on /auth/google/callback). i want it to work offline-ish and update properly when i deploy. also needs to look right when added to home screen on iphone",
+      "assertions": [
+        "Fires and reads the body before writing config",
+        "Does NOT name Lighthouse's PWA category or PWA/installability audit as a verification step (G1); verifies with pwa-check.mjs on the build output and DevTools > Application > Manifest",
+        "Denylists /auth (the OAuth callback) as well as /api from navigateFallback, and states the reason is that navigateFallback answers navigations, not fetch() (G5)",
+        "Adds manifest screenshots with form_factor, or states their absence means the plain install prompt (G11)",
+        "Does NOT state that iOS ignores manifest icons (G2)",
+        "Looks up package versions (pnpm view / registry) rather than pinning from memory (G6)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "tanstack-start-pwa",
+      "fixture": "",
+      "prompt": "we're on tanstack start (react, vite, nitro), deployed as a node server. make it a PWA with offline support for the app shell, and make sure it updates when we deploy. we use pnpm.",
+      "assertions": [
+        "Fires and routes to references/toolchain.md (TanStack Start section)",
+        "Does not use a plain VitePWA() config; uses the SPA-mode recipe (outDir .output/public, closeBundleOrder 'pre', _shell.html via additionalManifestEntries) or a post-build workbox-build step",
+        "Asserts the service worker exists in .output/public after the build (pwa-check.mjs --dir .output/public or equivalent) rather than trusting a green build (D1)",
+        "Registers from src/client.tsx and adds workbox-window as a direct dependency when using virtual:pwa-register",
+        "Denylists /_serverFn/ alongside /api/",
+        "If pnpm refuses a dependency on trust policy, surfaces it as the user's decision rather than disabling the policy"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "stuck-on-old-version",
+      "fixture": "",
+      "prompt": "our PWA is stuck on an old version for some users after we deploy. we use a service worker with cache first, sw.js is served by cloudfront with the same max-age=86400 as everything else. how do i fix this properly so users always get the new build soon after deploy without breaking offline?",
+      "assertions": [
+        "Fires",
+        "States that browsers bypass their own HTTP cache for sw.js by default (updateViaCache 'imports') and that the max-age matters because CloudFront's edge honours it (G4); does NOT claim a 24-hour browser cap delays the update",
+        "Fixes the edge: no-cache on sw.js at origin and CDN, checked on the emitted URL (pwa-check.mjs --url or curl -I)",
+        "Moves HTML navigations off cache-first"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "iphone-screenshot-icon",
+      "fixture": "",
+      "prompt": "on iphone when people add our site to home screen the icon is just a screenshot of the page. we only have icons in manifest.webmanifest (a 512 maskable png and a 192). android's fine. what am i missing?",
+      "assertions": [
+        "Fires and routes to references/ios.md",
+        "Explains Safari uses manifest icons only when no apple-touch-icon exists AND purpose is any/unset, so this maskable-only-at-512 set gives iOS nothing usable at size (G2); does NOT say iOS ignores manifest icons",
+        "Recommends a 180px opaque apple-touch-icon and checking its URL returns an image",
+        "Labels the iOS behaviour as documented, not device-verified"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "oauth-callback-returns-shell",
+      "fixture": "",
+      "prompt": "after we added vite-plugin-pwa, login broke for returning users only. the okta redirect to /auth/callback?code=... just shows our app's home page and the code never gets exchanged. first-time visitors are fine. navigateFallbackDenylist already has /api. wtf",
+      "assertions": [
+        "Fires",
+        "Diagnoses navigateFallback answering the /auth/callback navigation from the precached shell because only /api is denylisted (G5)",
+        "Fixes by denylisting every server-owned navigation (/auth, and any other server routes), and notes existing users need the updated worker to activate"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "foldkit-ssr-offline",
+      "fixture": "",
+      "prompt": "we're building with foldkit using its SSR mode (the experimental server rendering) and want the app to work offline. plan is vite-plugin-pwa with generateSW, precache everything and navigateFallback to the shell. anything we should watch out for?",
+      "assertions": [
+        "Fires",
+        "Warns that cached HTML from one build with JS from another is refused terminally by Runtime.hydrate, so navigations must not be served from a cross-build cache (regression check; the baseline already knew this)",
+        "Recommends NetworkOnly navigations with a precached offline page carrying the same build id, and registration from the client entry"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "held-out-negative-font-flash",
+      "fixture": "",
+      "prompt": "our vite spa's headings render in times new roman for a split second on first load then swap to our brand font. it's installed as a pwa on some phones too if that matters. how do we stop the flash?",
+      "assertions": [
+        "The pwa skill does NOT fire (this is web-perf: a first-load font swap); if it fires, it hands off to web-perf rather than changing the service worker"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "held-out-negative-contrast",
+      "fixture": "",
+      "prompt": "the grey placeholder text in our pwa's login form fails wcag contrast according to axe. what colour should we use on a white background?",
+      "assertions": [
+        "The pwa skill does NOT fire (this is accessibility: colour contrast)"
+      ]
+    }
+  ]
+}
