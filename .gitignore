@@ -211,6 +211,12 @@
 !/src/annotate/**
 /src/annotate/node_modules/
 
+# critique: headless read-only review by another agent (bun/TS; zsh wrapper in
+# functions/agents)
+!/src/critique/
+!/src/critique/**
+/src/critique/node_modules/
+
 !/.pi/
 /.pi/**
 !/.pi/agent/
