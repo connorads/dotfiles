@@ -68,7 +68,7 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 - Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit, and sorts keys (`jq -S`) so the reordering Claude Code does on every rewrite stays out of git; permission arrays keep their authored order.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
-- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `annotate`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `annotate`, `xreview`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
 
 ## Key Documentation
 
@@ -128,6 +128,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [~/src/pin-audit](./src/pin-audit/) | `pin-audit` (bun/TS). Tests: `bun test` there, plus `pin-audit.bats` |
 | [~/src/skl](./src/skl/CONTEXT.md) | `skl` (bun/TS); config `.config/skl/config.json`. Tests: `bun test` there, plus `skl-pick.bats` |
 | [~/src/annotate](./src/annotate/CONTEXT.md) | `annotate` (bun/TS); log `~/.local/state/agents/annotate.jsonl`. Tests: `bun test` there, plus `annotate.bats`, `annotate-lib.bats` |
+| [~/src/xreview](./src/xreview/CONTEXT.md)                              | `xreview`: headless, read-only review of a change, PR or plan by another agent (Codex when Claude calls, Claude when Codex does; `--reviewer codex,claude` for a panel). bun/TS, zero runtime deps, own [ADRs](./src/xreview/docs/adr/). One Review JSON document out, exit 0 approve / 1 needs-attention / 2 usage / 3 failed; `--post` creates a pending GitHub review. Read-only is enforced per reviewer (codex `-s read-only`; claude with no setting sources, `dontAsk` and its native sandbox), not asked for. Wrapper in `functions/agents`; skill `personal/xreview`. Tests: `cd ~/src/xreview && bun test`, plus `.config/zsh/tests/xreview.bats` (CLI contract, stubbed reviewers) |
 | [~/src/raycast/skl](./src/raycast/skl/README.md) | Raycast extension over the `skl` catalogue; couples to the `~/.local/bin/skl` shim |
 | `src/oyp/oyp.sh` | `oyp`: open the current PR in the terminal (via `.local/bin/oyp`) |
 

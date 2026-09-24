@@ -1,0 +1,46 @@
+{
+  "skill_name": "xreview",
+  "evals": [
+    {
+      "id": 1,
+      "name": "default-cross-review-of-working-tree",
+      "prompt": "before i commit this can you get codex to have a proper go at it? dont fix anything yet just tell me what it finds",
+      "assertions": [
+        "Runs the xreview CLI with --json rather than composing a codex exec or claude -p command by hand",
+        "Relies on the default target and reviewer, or passes --reviewer codex, without narrowing the review to git diff HEAD",
+        "Runs it in the background or with a timeout of 10 minutes or more",
+        "Opens the cited code for each finding and labels it confirmed, disputed or needs-you, keeping the reviewer's severity and confidence verbatim",
+        "Leads the report with the verdict and triage counts and applies no fixes"
+      ],
+      "history": "Replaces cross-review, whose hand-built claude -p --permission-mode plan call was shown to write to the repo under the user's allowlist."
+    },
+    {
+      "id": 2,
+      "name": "plan-review-before-execution",
+      "prompt": "here's my plan for the migration (pasted below). get the other model to tear it apart before i start - check it against the actual repo\n\n1. Rename users.email to users.primary_email\n2. Update the ORM model\n3. Deploy",
+      "assertions": [
+        "Writes the plan to a file or pipes it on stdin and runs xreview --target plan:<file|-> from inside the repository",
+        "Does not substitute a code review of the working tree for the plan review",
+        "Checks each finding's claims about the codebase against the repository before labelling it",
+        "Reports needs-you for trade-offs such as downtime or backfill strategy rather than deciding them",
+        "Does not start executing the plan"
+      ],
+      "history": "Plan review is a first-class target so a reviewer can check the plan's assumptions against the code before any change exists."
+    },
+    {
+      "id": 3,
+      "name": "pr-review-with-rubric-and-post",
+      "prompt": "review PR 42 with a panel using the thermo-nuclear-code-quality-review rubric and leave the comments on the PR for me to look at",
+      "assertions": [
+        "Runs xreview --target pr:42 --reviewer codex,claude --rubric thermo-nuclear-code-quality-review --post --json",
+        "Does not paraphrase the rubric or load it into --focus",
+        "Does not pass --model with the panel",
+        "Tells the user the GitHub review is pending, invisible to others until they submit it, and does not submit it",
+        "Names any reviewer listed in errors[] as missing from the panel rather than hiding the failure"
+      ],
+      "history": "Exercises the outward-facing path: --post must stay a pending review the user submits."
+    }
+  ],
+  "how_to_run": "Run each prompt with the skill and without it in fresh sessions, with the xreview CLI stubbed or pointed at a scratch repository. Never let an eval post to a real PR: stub gh, or stop before the xreview call for eval 3 and grade the command. Grade the transcript against the assertions.",
+  "notes": "The baseline without the skill hand-builds reviewer commands (often claude -p --permission-mode plan, which is not read-only headless), reviews git diff HEAD and misses untracked files, and relays reviewer output as fact without checking it against the code. Those are the behavioural targets."
+}
