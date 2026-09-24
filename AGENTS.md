@@ -81,59 +81,55 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 
 ## Configuration Files
 
-| File                                                                   | Purpose                                                                                   |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
-| [modules/biokc.nix](./.config/nix/modules/biokc.nix)                   | Builds `biokc` (Touch ID keychain helper) from [`main.swift`](./.config/nix/biokc/main.swift) via system swiftc; desktop-only. Used by gh-gate to fingerprint-gate the key |
-| [modules/imagepaste.nix](./.config/nix/modules/imagepaste.nix)         | Builds `imagepaste` from [`main.swift`](./.config/nix/imagepaste/main.swift) via system swiftc; preserves clipboard GIF bytes for `shotpath`, then falls back to PNG |
-| [packages/terminal-control.nix](./.config/nix/packages/terminal-control.nix) | Nix-built Rust CLI `termctrl` (drive/inspect/test terminal apps in a real PTY, VT100 render to PNG/SVG/text) from a pinned+hashed GitHub source; all hosts. Paired with the vendored `terminal-control` skill |
-| [packages/footswitch.nix](./.config/nix/packages/footswitch.nix)         | Nix-built `footswitch` (rgerganov, pinned rev + hash) for flashing the PCsensor USB foot pedal; desktop macOS only. nixpkgs' package is Linux-only and predates the macOS HID-interface fix. Driven by `pedal-flash` |
-| [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
-| [.config/srt/base.json](./.config/srt/base.json)                       | `agent-sandbox` (`asb`) srt policies: opt-in OS sandbox for CLI agents. Subsystem docs: [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
-| [.config/sbx/Dockerfile](./.config/sbx/Dockerfile)                     | Image for `sbx` ([zsh/functions/agents/sbx](./.config/zsh/functions/agents/sbx)): VM-isolated (colima) container for running UNTRUSTED software. Inverse of `agentbox` - no host mounts, cap-drop ALL, offline by default. Capable toolbox baked in (build/net/trace tools); no host dotfiles |
-| [.vale.ini](./.vale.ini)                                               | Vale config for the house prose rules. `StylesPath` resolves relative to the file, so `prose` applies it from any cwd; the work-tree root is `$HOME`, so Vale's search-up finds it globally too. Two format sections: markdown, and the extensions Vale extracts code comments from |
-| [.config/vale/styles/Connorads/](./.config/vale/styles/Connorads/)     | The house style: `Dashes` (the em/en dash ban), `PlainWord`, `Spellings`. Named `Connorads`, not `House`, so it cannot shadow the client repos' own `House` via the global styles dir. Every rule carries `level: error` - without it the rule is a silent no-op under `MinAlertLevel = error`. Tests: [vale-style.bats](./.config/zsh/tests/vale-style.bats) |
-| [.oxlintrc.json](./.oxlintrc.json)                                     | oxlint config; the only one in the tree, so it governs every oxlint run in the work-tree. Turns on the type-aware rules (`options.typeAware`) and exempts `node:test`'s own `test`/`it`/`describe` from `no-floating-promises` |
-| [.config/opencode/package.json](./.config/opencode/package.json)       | Authored by us, consumed by opencode (it runs `bun install` on the config dir at startup), so the path is the interface. Pairs with a `tsconfig.json` covering the four plugin dirs; typecheck-only, no `test` script |
-| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
-| [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 12 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
-| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` - XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
-| [.config/pip/pip.conf](./.config/pip/pip.conf)                         | pip quarantine (`uploaded-prior-to = P4D`) for direct `pip install` / `download` / `wheel` |
-| [.yarnrc.yml](./.yarnrc.yml)                                           | Modern Yarn quarantine (`npmMinimalAgeGate: 4d`). Yarn 1 ignores this; prefer pnpm there |
-| [.config/aube/config.toml](./.config/aube/config.toml)                 | aube quarantine + trustPolicy + low-download gate + advisoryBloomCheck. Primary npm backend for mise (`npm.package_manager = "aube"`, the embedded library since mise v2026.7.15; `aube_cli` names the old shell-out path) |
-| [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
-| [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
-| [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
-| [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration · maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md)       |
-| [config.kdl](./.config/zellij/config.kdl)                             | zellij configuration (KDL) · maintenance: [.config/zellij/AGENTS.md](./.config/zellij/AGENTS.md) |
-| [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
-| [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm via `prefix + T` Tools or pane context menu); design + env vars   |
-| [.claude/subagent-statusline.sh](./.claude/subagent-statusline.sh)     | Decorates each row of Claude Code's agent panel with that agent's own model and context gauge. Driven by the `subagentStatusLine` setting, which is separate from `statusLine`: that one is session-scoped and reports the main thread only. Receives every visible row as one JSON payload and answers in JSONL, so one `jq` run covers the panel. The panel gives a model id, not a display name, so the label is derived here; colour bands come from [statusline.sh](./.claude/statusline.sh). Any failure exits 0 and every row keeps its default. Tests: [.config/zsh/tests/subagent-statusline.bats](./.config/zsh/tests/subagent-statusline.bats), whose last case guards against the setting vanishing from the binary |
-| [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh)            | Memory-pressure vocabulary (OK/BUSY/CRITICAL) shared by the status gauge, `prefix + Alt+m` popup, and `memwatch`; state is the fill of the compressor's two ceilings (slots and segments, both kernel panic limits); kernel critical pressure escalates on its own, warn pressure only marks the figure with `▲`, swap is a figure only. Per-arm helpers (`mem_arm_state` / `mem_arm_gap` / `mem_bar_marked`) give every surface the distance to the next line. Subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| [tmux/scripts/agent-state.sh](./.config/tmux/scripts/agent-state.sh)    | Hook-driven agent status: per-pane `@agent_state` (`blocked>done>working>idle`, seen-bit done→idle), window dots, outer-terminal bell on blocked. Agents: use `agent wait`/`agent ls`, don't scrape - see the `coding-agents` skill (`skl`). Subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| [tmux/strategies/](./.config/tmux/strategies/)                          | Resurrect agent-session restore: Claude/Codex panes resume their own conversation via an in-pane launcher keyed on `$TMUX_PANE` (exact, client-independent); OpenCode stays eval-time. Saved-argv flag fidelity throughout. Already built - do not re-implement. Subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| [zsh/functions/macos/memwatch](./.config/zsh/functions/macos/memwatch) | Desktop-only launchd watcher ([darwin-desktop.nix](./.config/nix/modules/darwin-desktop.nix)): 5 s ticks over the compressor ceilings, a banner on a transition into BUSY/CRITICAL naming each arm's distance to its next line (re-logged only once the reading moves), a sleep-overshoot liveness probe (a wake 5 s late reads CRITICAL, cause `stall`), and at CRITICAL the emergency tier: hibernate the heaviest idle/done agent pane under the shared `@agent_auto_hibernate` mode and pins. Log `~/.cache/memwatch.log`; reload `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"` |
-| [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
-| [config.json](./.config/fresh/config.json)                             | Fresh terminal IDE configuration; local theme/help live under `~/.config/fresh/`           |
-| [.fresh/config.json](./.fresh/config.json)                             | Fresh project config for this dotfiles work-tree (shows hidden files from `~`)             |
-| [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
-| [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
-| [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper; normal keyring auth unless gh-gate token files exist                       |
-| [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
-| [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
-| [~/src/raycast/shotpath](./src/raycast/shotpath)                       | Local Raycast extension wrapping the `shotpath` command; kept outside dot dirs because Raycast rejects hidden development source paths |
-| [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md)                   | Astro Starlight site ("How I work") explaining the workflow these dotfiles encode; deploys later to dotfiles.connoradams.co.uk. Scope commits with `dotfiles commit -- src/dotfiles-docs` |
-| [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
-| [mcpz](./.config/zsh/functions/agents/mcpz)                            | Render+launch MCP bundles into each agent's native form (Claude/Codex/OpenCode), resolving secrets fresh at launch. Reads a gitignored registry (the only place client names/URLs live). Subsystem docs + schema: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
-| [.config/vox/](./.config/vox/)                                         | `vox` merge filter (`merge.py`, stdlib-only) + its pytest and the `wrong<TAB>right` vocabulary map. Subsystem docs: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Gates in its `pyproject.toml`: strict pytest (randomly/timeout/socket, warnings as errors), an import-linter layers contract (`cli -> formats -> ir -> leaves`), deptry; typecheck via `pyrefly.toml` (`strict`). All run at commit time (`py-tests-scoped`, `py-typecheck-handoff`) and from `mise run py-checks`. By hand: `cd ~/src/handoff && uv run --group dev pytest -c pyproject.toml` |
-| [~/src/pin-audit](./src/pin-audit/)                                    | `pin-audit`'s implementation: pure core (readPin/judge) + shell adapters (`Bun.TOML.parse`, argv-form `Bun.spawn`), bun with zero runtime deps. The zsh function in `functions/nix` is a wrapper. Tests: `cd ~/src/pin-audit && bun test` (unit) plus `.config/zsh/tests/pin-audit.bats` (CLI contract) |
-| [~/src/skl](./src/skl/CONTEXT.md)                                      | `skl`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/skl/docs/adr/). Config stays at `.config/skl/config.json` (`SKL_CONFIG` overrides); `.local/bin/skl` execs `src/cli.ts`, `bin/pick` is the fzf picker. Tests: `cd ~/src/skl && bun test`, plus `.config/zsh/tests/skl-pick.bats` (picker contract) |
-| [~/src/annotate](./src/annotate/CONTEXT.md)                            | `annotate`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/annotate/docs/adr/). Batch several corrections into one agent prompt - a spool with a slot per excerpt, each keeping its own provenance. Append-only JSONL at `~/.local/state/agents/annotate.jsonl`; wrapper in `functions/agents`, tmux glue in `.config/tmux/scripts/annotate-{stash,pick,lib}.sh`. Tests: `cd ~/src/annotate && bun test`, plus `.config/zsh/tests/annotate.bats` (CLI contract + capture key) and `annotate-lib.bats` (status pill) |
-| [~/src/raycast/skl](./src/raycast/skl/README.md)                       | Local Raycast extension over the `skl` catalogue: copy or paste a pointer outside tmux. Couples to the `~/.local/bin/skl` shim, not to skl's source tree |
+Detail lives in each file's header comment or the linked subsystem doc.
 
-`oyp` opens the current PR in the terminal through `src/oyp/oyp.sh` and its
-`.local/bin/oyp` symlink. The tmux Oyo launcher adds the error pause for floats.
+| File | Purpose |
+| --- | --- |
+| [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager) |
+| [modules/biokc.nix](./.config/nix/modules/biokc.nix) | Builds `biokc`, the Touch ID keychain helper gh-gate uses; desktop-only |
+| [modules/imagepaste.nix](./.config/nix/modules/imagepaste.nix) | Builds `imagepaste`, which keeps clipboard GIF bytes for `shotpath` |
+| [packages/terminal-control.nix](./.config/nix/packages/terminal-control.nix) | Builds `termctrl` (drive and render terminal apps in a real PTY); pairs with the `terminal-control` skill |
+| [packages/footswitch.nix](./.config/nix/packages/footswitch.nix) | Builds `footswitch` for the foot pedal, driven by `pedal-flash`; desktop macOS only |
+| [config.toml](./.config/mise/config.toml) | mise tools; maintenance: [.config/mise/AGENTS.md](./.config/mise/AGENTS.md) |
+| [.config/srt/base.json](./.config/srt/base.json) | `agent-sandbox` (`asb`) OS sandbox policies; docs: [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
+| [.config/sbx/Dockerfile](./.config/sbx/Dockerfile) | Image for `sbx`: VM-isolated box for UNTRUSTED software. No host mounts, cap-drop ALL, offline by default |
+| [.vale.ini](./.vale.ini) | Vale config for the house prose rules; applies to markdown and code comments |
+| [.config/vale/styles/Connorads/](./.config/vale/styles/Connorads/) | The house style rules; tests: [vale-style.bats](./.config/zsh/tests/vale-style.bats) |
+| [.oxlintrc.json](./.oxlintrc.json) | The tree's only oxlint config, type-aware rules on |
+| [.config/opencode/package.json](./.config/opencode/package.json) | opencode plugin deps; opencode runs `bun install` on it, so the path is the interface |
+| [.npmrc](./.npmrc), [.config/pnpm/config.yaml](./.config/pnpm/config.yaml), [.bunfig.toml](./.bunfig.toml), [.config/pip/pip.conf](./.config/pip/pip.conf), [.yarnrc.yml](./.yarnrc.yml) | Per-manager quarantine and install-script block; see [docs/supply-chain.md](./docs/supply-chain.md) |
+| [.config/aube/config.toml](./.config/aube/config.toml) | aube, mise's npm backend: quarantine, trust policy, typosquat gates |
+| [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers |
+| [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
+| [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
+| [tmux.conf](./.config/tmux/tmux.conf) | tmux config; maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
+| [config.kdl](./.config/zellij/config.kdl) | zellij config; maintenance: [.config/zellij/AGENTS.md](./.config/zellij/AGENTS.md) |
+| [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
+| [claude-watcher/README.md](./.config/claude-watcher/README.md) | Per-pane Claude auto-continue watcher |
+| [.claude/subagent-statusline.sh](./.claude/subagent-statusline.sh) | Model and context gauge on each row of Claude Code's agent panel; tests: [subagent-statusline.bats](./.config/zsh/tests/subagent-statusline.bats) |
+| [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh) | Memory-pressure states (OK/BUSY/CRITICAL) shared by the status gauge, popup and `memwatch` |
+| [tmux/scripts/agent-state.sh](./.config/tmux/scripts/agent-state.sh) | Per-pane `@agent_state`. Agents: use `agent wait`/`agent ls`, don't scrape |
+| [tmux/strategies/](./.config/tmux/strategies/) | Resurrect restore that resumes each Claude/Codex conversation. Already built - do not re-implement |
+| [zsh/functions/macos/memwatch](./.config/zsh/functions/macos/memwatch) | launchd memory watcher; at CRITICAL it hibernates the heaviest idle agent pane. Log `~/.cache/memwatch.log` |
+| [init.lua](./.config/nvim/init.lua) | Neovim config |
+| [config.json](./.config/fresh/config.json) | Fresh terminal IDE config |
+| [.fresh/config.json](./.fresh/config.json) | Fresh project config for this work-tree (shows hidden files) |
+| [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded in zsh, also on PATH) |
+| [~/.local/bin/](./.local/bin/) | Symlinks to dual-mode zsh functions; includes `git-hunks` |
+| [~/.local/bin/gh](./.local/bin/gh) | `gh` wrapper; keyring auth unless gh-gate token files exist |
+| [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
+| [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config ([connorads/remobi](https://github.com/connorads/remobi)) |
+| [~/src/raycast/shotpath](./src/raycast/shotpath) | Raycast extension for `shotpath`; outside dot dirs because Raycast rejects hidden source paths |
+| [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md) | "How I work" Starlight site; commit with `dotfiles commit -- src/dotfiles-docs` |
+| [gh-gate](./.config/zsh/functions/git/gh-gate) | Scoped gh tokens via a GitHub App; `gh-gate --help` for setup |
+| [mcpz](./.config/zsh/functions/agents/mcpz) | Render and launch MCP bundles per agent; docs: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
+| [.config/vox/](./.config/vox/) | `vox` merge filter and vocabulary map; docs: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
+| [~/src/handoff](./src/handoff/README.md) | `handoff` (Python). Tests: `cd ~/src/handoff && uv run --group dev pytest -c pyproject.toml` |
+| [~/src/pin-audit](./src/pin-audit/) | `pin-audit` (bun/TS). Tests: `bun test` there, plus `pin-audit.bats` |
+| [~/src/skl](./src/skl/CONTEXT.md) | `skl` (bun/TS); config `.config/skl/config.json`. Tests: `bun test` there, plus `skl-pick.bats` |
+| [~/src/annotate](./src/annotate/CONTEXT.md) | `annotate` (bun/TS); log `~/.local/state/agents/annotate.jsonl`. Tests: `bun test` there, plus `annotate.bats`, `annotate-lib.bats` |
+| [~/src/raycast/skl](./src/raycast/skl/README.md) | Raycast extension over the `skl` catalogue; couples to the `~/.local/bin/skl` shim |
+| `src/oyp/oyp.sh` | `oyp`: open the current PR in the terminal (via `.local/bin/oyp`) |
 
 ## Shell Function Conventions
 
@@ -236,110 +232,55 @@ The `up` function runs both on NixOS. An agent on rpi5 can modify the system con
 
 ## Common Commands
 
+Run `<cmd> --help` for flags and subcommands.
+
 ```bash
-drs                    # darwin-rebuild switch (macOS); extra args forwarded
-drsr                   # darwin-rebuild switch --rollback (macOS)
-hms                    # home-manager switch (Linux); extra args forwarded
-hmsr                   # home-manager switch --rollback (Linux)
-nrs                    # nixos-rebuild switch (reads $NIXOS_FLAKE, default: ~/.config/nix)
-nrsr                   # nixos-rebuild switch --rollback
-up                     # update everything: bump mise.lock + flake.lock, brew/apt, rebuild (NixOS: nrs + hms)
-up -s / up --frozen    # frozen rebuild: install clean committed mise.lock, permit a dirty flake.lock retry, then rebuild; no bumps/standalone brew/apt/commit
-up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
-up --no-audit          # skip lockfile and Brew vulnerability scans; keep failure diagnostics
-up --verbose           # stream full update output; normal runs keep it in the reported ~/.cache/up log
-lockfile-audit         # OSV sweep of tracked repo lockfiles: MAL-* blocks, CVEs report (also: mise run lockfile-audit)
-pin-audit              # recheck conditional pins/excludes + flag range pins the newest release outgrew; report-only, FLAG = act by hand (also: mise run pin-audit). Thin zsh wrapper over ~/src/pin-audit (TS/bun); no bun = one SKIP line, never a failure
-mise-npm-where [TOOL]  # print the installed package dir for an npm-backed mise tool, probing the three layouts mise's npm backend has shipped. Use `mise which <cmd>` for a bin (mise's own probe order); this is for the package dir. --install-dir/--package override
-macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
-macup-check            # report pending macOS updates (cached daily scan; --scan to force)
-pedal-flash            # flash the PCsensor foot pedal (left Esc, centre right Option = MacWhisper hold-to-talk, right Enter) and verify by readback; --read / --dry-run
+drs | hms | nrs        # rebuild: darwin (macOS) | home-manager (Linux) | nixos; add r (drsr...) to roll back
+up                     # update everything: bump + commit mise.lock and flake.lock, brew/apt, rebuild
+up -s                  # frozen rebuild from committed locks; no bumps, no commit
 nfu                    # nix flake update
-dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
-dotfiles status        # See changes
-dhk check              # Run hk checks in dotfiles repo
-dhk fix                # Run hk fixes in dotfiles repo
-dhk test               # Run the hk steps' own tests (the `tests {}` blocks in hk.pkl)
-git hooks status       # Which hooks a repo declares vs what actually fires (manager, mechanism, identity guard, stale stubs); --json / --check (exit 2 when declared but unarmed) / --quiet (what `rs` calls). Reports only - arming is a deliberate act
-mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
-mise run py-checks     # Lint (ruff) + typecheck (pyrefly strict) + test all first-party Python; handoff also runs lint-imports + deptry
-mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
-prose [path...]        # Lint markdown and code comments against the house rules (Vale, Connorads style); paths default to cwd, recursively. Always uses ~/.vale.ini, so house rules apply in any repo and beat its own .vale.ini. Non-zero on findings; vale absent = warn + exit 0
-eraser <cmd> [args]    # Eraser diagrams: JSON in, PNG/HTML/measured-JSON out, rendered locally in Chromium (render|validate|registry|schema|init). Wrapper over `eraser-diagrams` that injects --no-config and pins Chromium; never call the bare CLI - see the function header for why
-ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
-ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
-claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
-claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
-mcpz list [--json]     # list MCP bundles (gitignored registry ~/.config/mcp/registry.local.json)
-mcpz show <bundle>     # servers in a bundle, secrets redacted
-mcpz render <agent> <bundle>       # print exact launch form; agent = claude|cc, codex, opencode|oc
-mcpz run <agent> <bundle> [-- ...] # resolve secrets → env → exec agent with the bundle
-mcpz                   # bare on a TTY: fzf-pick bundle + agent, then run
-agent ls [--json]      # list live agent panes (pane/state/kind/name/loc/window/cwd), ranked
-agent state <target>   # print a pane's @agent_state (target = %N | sess:win.pane | agent name)
-agent wait <target> [--for s,s] [--timeout n]  # block until @agent_state reaches a state
-agent prompt <target> <text> [--force]         # paste prompt + Enter, verify the agent starts
-agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
-agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
-agent goto <target>    # focus a pane by id, address or agent name; the picker's jump without the picker
-coord                  # jump to the coordinator agent, launching it (codex in ~/git/coord) if absent; from inside it, return to the pane you came from (tmux: prefix + Alt+d). Launch spec ~/.config/coord/config, COORD_* env wins
-coord status           # the coord pane, how it was found (name|window), and the recorded origin
-agent hibernate [<target>] [--force]  # stop an idle Claude/Codex pane to reclaim RAM/swap and park a thawer in it; the conversation resumes in full on thaw. Only idle/done go without --force (refusal = exit 6)
-agent thaw [<target>]  # resume a hibernated pane; bare = pick from parked panes plus orphaned records (a lost pane never strands its session)
-agent auto status [--json] | agent auto off|observe|on  # pressure-gated auto-hibernation; tracked default observe. One mode gates two actors: the sweep policy (sustained CRITICAL, 24 h idle) and memwatch's emergency tier (heaviest idle/done pane on any CRITICAL tick or scheduler stall)
-agent pin [<target>] | agent unpin [<target>]  # persist/remove a conversation-level auto-hibernation exclusion; manual hibernate stays available
-atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
-handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
-shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
-annotate list          # excerpts stashed for the next agent prompt; --json to script it
-annotate send          # render the spool into one markdown draft, edit it, deliver it to the pane the excerpts came from (tmux: copy-mode `a` stashes, prefix + Alt+e opens the draft, prefix + Alt+Shift+E picks an untruncated Claude transcript message)
-annotate send --to %19 # ...somewhere else; after `annotate undo` this re-aims a mis-targeted send with nothing retyped
-annotate drop <n|last|all> | annotate clear | annotate render | annotate draft [--edit|--discard]
-vox [--name <title>]   # record mic + system audio (Core Audio tap, no setup); `vox stop` transcribes locally and prints the recording's path (tmux: prefix + Alt+v starts/stops, prefix + Alt+Shift+V opens the picker)
-vox cancel             # stop and discard, without transcribing
-vox ls | vox last      # recording paths, newest first (`cat "$(vox last)/transcript.md"` is the whole integration story)
-vox <file>             # transcribe an audio/video file that already exists
-vox transcribe <path>  # re-run transcription on a recording, in place (what the picker's ctrl-t calls)
-vox rename <path> <slug>   # retitle a recording, keeping its timestamp prefix
-vox compact [--older 30d]  # WAV -> Opus 32k mono, preview + confirm (--dry-run/--force)
-vox prune   [--older 90d]  # delete audio, keep transcripts (destructive; preview + confirm)
-vox prune --empty          # delete only silent tracks, keeping the one that carries the recording
-vox prune <path>...        # reclaim exactly the recordings you name (what the picker's ctrl-x calls)
-ts                     # Tailscale wrapper (defined in .zshrc)
-zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
-svc ls                 # List agent services with status
-svc up <name> [port]   # Start service + expose via Tailscale
-svc down <name>        # Stop service + teardown Tailscale route
-svc restart <name>     # Restart a service
-svc ui                 # fzf service picker (default in TTY)
-wt-add <branch>        # Create worktree under ~/.trees from the default branch (--base to override), run rs, print path (agent-callable)
-wta <branch>           # wt-add + cd into it (human workflow)
-wt-status [path]       # Report worktree status; --all / --json for agents; --pr adds real PR state from gh
-wt-publish             # Push current worktree branch and optionally open a PR
-wt-finish --mode local # Merge feature→base, remove worktree, delete branch
-wt-finish --mode pr    # Push + open PR via wt-publish (worktree remains)
-wt-clean [--all]       # Reap worktrees whose PR is MERGED (squash/rebase-aware) AND delete their branches; spares open/no-PR/dirty/unpushed. --force escalates to git branch -D. Preview+confirm; --dry-run/--json/--force/--include-closed/--yes
-wt-remove [path]       # Non-interactive managed worktree removal primitive; keeps the branch unless --delete-branch
-wti                    # Alias for `wt-status --all`
-wtc                    # Alias for `wt-clean`
-wtu                    # Human TUI: multi-select open/publish/remove; alt-R sweeps merged PRs via wt-clean
-wts                    # fzf switch to a worktree (works outside git repos)
-wt-prune               # Prune stale git worktree metadata after crashes/manual deletes
-wt-repair [path...]    # Repair moved worktree metadata
-ghcl [owner]           # fzf clone from GitHub (SSH)
-ghcl-org <org>         # bulk-clone an org into cwd, flat (SSH, skips archived/forks); re-run to re-sync via pull --ff-only, default branch only. --dry-run/--json preview the plan; no tty needs --yes; orphans reported, never deleted
-ghfzf [pr|issue|run]   # fzf triage for GitHub PRs, issues, and Actions runs
-gh-gate init <host>    # Deploy read-only PAT to a managed remote
-gh-gate grant <host>   # Push 1-hour write token to a managed remote
-gh-gate revoke <host>  # Revoke write token on a managed remote
-gh-gate status [host]  # Check token state on a managed remote
-gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
-sbx new [--net] [name] # Create+attach a VM-isolated box for UNTRUSTED software (offline by default)
-sbx shell [name]       # Self-heal (colima+box up) then attach the box's tmux session
-sbx net on|off [name]  # Toggle network for a running box
-sbx cp <path> [name]   # Copy a host path into the box's /work
-sbx list               # List sbx boxes; sbx stop/rm [name] to stop / nuke (box + volume)
-lazydocker             # TUI to browse/exec/log/prune containers (nix)
+lockfile-audit         # OSV sweep of tracked lockfiles; MAL-* blocks, CVEs report
+pin-audit              # report pins/excludes to recheck and range pins the newest release outgrew
+mise-npm-where [TOOL]  # installed package dir of an npm-backed mise tool (`mise which` for bins)
+macup | macup-check    # install | report pending macOS updates
+pedal-flash            # flash and verify the foot pedal mapping
+dotfiles <git args>    # git for the dotfiles work-tree (add, status, commit...)
+dhk check|fix|test     # hk checks, fixes, and the steps' own tests
+git hooks status       # which hooks a repo declares vs what actually fires
+mise run ts-checks     # typecheck + test all first-party TS
+mise run py-checks     # lint + typecheck + test all first-party Python
+mise run skill-checks  # colocated skill-script tests, all tiers
+mise run zsh-tests     # the whole bats suite
+prose [path...]        # lint markdown and code comments against the house rules, in any repo
+eraser <cmd>           # Eraser diagrams rendered locally; never call the bare `eraser-diagrams`
+ccp [-y] [<name>]      # launch Claude Code on an account (bare = picker); --mcp <bundle> adds MCP
+claude-usage --all     # refresh usage for every Claude account
+claude-watch           # arm/disarm Claude auto-continue on a pane
+mcpz                   # MCP bundles: list, show, render, run per agent
+agent <sub>            # live agent panes: ls, state, wait, prompt, name, pick, goto, hibernate, thaw, auto, pin
+coord                  # jump to the coordinator agent, launching it if absent
+atp                    # teleport a live Claude/Codex session to another host
+handoff                # translate a session between Claude Code and Codex
+shotpath [host]        # save or upload the clipboard image, copy its path
+annotate <sub>         # stash excerpts, then send them to an agent as one prompt
+vox                    # record mic + system audio; `vox stop` transcribes locally
+ts | tsp               # Tailscale wrapper | serve/funnel ports (see Tailscale)
+svc <sub>              # agent services: ls, up, down, restart, ui
+wt-add <branch>        # new worktree under ~/.trees, set up, print path (agent-callable)
+wta <branch>           # wt-add + cd (human)
+wt-status | wti        # worktree status; wti = --all
+wt-publish             # push the worktree branch, optionally open a PR
+wt-finish --mode local|pr  # merge locally and remove, or push and open a PR
+wt-clean | wtc         # reap worktrees whose PR merged, and their branches
+wt-remove [path]       # remove one managed worktree
+wtu | wts              # worktree TUI | fzf switch
+wt-prune | wt-repair   # fix stale or moved worktree metadata
+ghcl [owner]           # fzf clone from GitHub
+ghcl-org <org>         # bulk-clone or re-sync an org into cwd
+ghfzf [pr|issue|run]   # fzf triage for PRs, issues and Actions runs
+gh-gate <sub> <host>   # scoped gh tokens on a remote: init, grant, revoke, status, ui
+sbx <sub>              # VM-isolated box for UNTRUSTED software: new, shell, net, cp, list, stop, rm
+zellij | lazydocker    # alternative multiplexer | container TUI
 ```
 
 ### Xcode
@@ -416,32 +357,36 @@ Caveats:
 
 ## Supply Chain & Update Strategy
 
+Detail: mise, aube, `up` and the lockfile in [.config/mise/AGENTS.md](./.config/mise/AGENTS.md); per-manager quarantine, install scripts, osv-scanner and Homebrew cleanup in [docs/supply-chain.md](./docs/supply-chain.md).
+
 ### Dependency ownership: Nix, mise, Homebrew
 
-Nix owns the machine/profile layer: base shell tools, services, fonts, native
-libraries, patched builds, tools needed before mise works, stable CLIs, and GUI
-apps where the nixpkgs package is healthy.
-
-Prefer Nix for GUI apps when they are open-source, cross-platform, useful on a
-future Linux desktop, or otherwise behave well from nixpkgs. macOS-only GUI apps
-can still belong in Nix when declarative ownership and rollback matter.
-
-Homebrew is the macOS app compatibility lane: use it for casks, MAS apps,
-proprietary/vendor bundles, self-updating apps, browsers/editors/AI apps with
-fast vendor cadence, drivers/extensions, or anything whose signing, permissions,
-updates, or app-bundle integration are better via Homebrew.
-
-mise owns the developer-tool layer: language runtimes, package managers,
-project-specific tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs
-like Claude/Codex, and tools needing direct upstream updates or postinstall
-patching.
+- **Nix** owns the machine layer: base shell tools, services, fonts, native libraries, patched builds, tools mise needs, and GUI apps that are healthy in nixpkgs.
+- **mise** owns the developer-tool layer: runtimes, package managers, project tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs like Claude and Codex.
+- **Homebrew** is the macOS app lane: casks, MAS apps, vendor bundles, self-updating apps, drivers, and anything whose signing or app-bundle integration works better through brew.
 
 Rule of thumb: host-global and well-packaged -> Nix; project/version-selected ->
 mise; macOS vendor bundle -> Homebrew.
 
-Detail lives in two files: mise, aube, `up` and the lockfile in [.config/mise/AGENTS.md](./.config/mise/AGENTS.md); per-manager quarantines, install scripts, osv-scanner and Homebrew cleanup in [docs/supply-chain.md](./docs/supply-chain.md).
+Claude Code is mise-owned. Do not install it natively or re-enable its self-updater. Why: [docs/adr/0011](./docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
+
+### Quarantine
+
+Every package manager installs only versions released 4+ days ago: mise, aube, pnpm, npm, bun, uv, pip and Yarn. Each spells it in its own unit: days for npm, 5760 minutes for pnpm and aube, 345600 seconds for bun, `P4D` for pip. The `quarantine-drift` gate blocks a commit when the nine configs disagree.
+
+For an urgent mise tool update, bypass it once with `mise upgrade --bump --before 0d <tool>`.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
+
+### Install scripts
+
+Install scripts are blocked for npm, pnpm, bun, aube and mise's npm tools. When a native module or codegen step fails for lack of one:
+
+1. Ask the user before allow-listing. The security decision is theirs.
+2. With approval, allow one package. pnpm: `allowBuilds` in `pnpm-workspace.yaml`. mise npm tool: the per-tool `allow_builds` list in `.config/mise/config.toml`. npm: a project `.npmrc` with `ignore-scripts=false`.
+3. Never disable the block globally.
+
+The block also leaves a repo's husky/hk hooks unarmed and skips its own `postinstall`. `rs` and `git hooks status` report both; arming stays a manual step.
 
 ## Git Identity Guard
 
@@ -480,6 +425,12 @@ through; fast-forwards, merges and rebased-branch force pushes are unaffected.
 Plain `git push --force` or `--no-force-if-includes` is the typed escape hatch.
 
 ## Git Hooks (hk)
+
+- `core.hooksPath` is `.hk-hooks`; pre-commit runs `hk run pre-commit -q` from `~/hk.pkl`.
+- The `amends`/`import` pin in `hk.pkl` must name the same version as the mise-installed `hk`. A mismatch makes builtin steps fail with `no command for test`.
+- `dhk check`, `dhk fix`, `dhk test` (the steps' own `tests {}` blocks).
+- Gates fail open: a glob that matches nothing exits 0. After moving code between trees, run `mise run gate-coverage`.
+- There is deliberately no pre-push gate. `git push` holds the GitHub connection open while pre-push runs, and GitHub drops it before a whole-suite run ends. Run `mise run zsh-tests` by hand.
 
 Gate-by-gate detail: [.hk-hooks/AGENTS.md](./.hk-hooks/AGENTS.md).
 

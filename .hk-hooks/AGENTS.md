@@ -52,6 +52,11 @@ in the pre-commit path. Vale skips fenced blocks and code spans natively, so a
 dash in a command or a diagram is never touched. `prose` is the advisory twin,
 callable from any repo.
 
+The style is named `Connorads`, not `House`, so it cannot shadow a client repo's
+own `House` style through the global styles dir. Every rule carries
+`level: error`; without it the rule is a silent no-op under
+`MinAlertLevel = error`.
+
 Scope is markdown **and code comments**: `~/.vale.ini` carries two format
 sections, and both are `BasedOnStyles = Connorads`, so the same rules apply to a
 comment as to a doc. `.py .ts .tsx .js .jsx .rs .go .rb .lua` are the source
