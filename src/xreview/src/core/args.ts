@@ -32,7 +32,7 @@ export interface Options {
 
 export type Parsed = { readonly kind: "help" } | { readonly kind: "run"; readonly options: Options };
 
-export const USAGE = `usage: critique [options]
+export const USAGE = `usage: xreview [options]
 
 Headless, read-only review of a change by another agent. Prints one Review
 document (JSON, or markdown with --md).

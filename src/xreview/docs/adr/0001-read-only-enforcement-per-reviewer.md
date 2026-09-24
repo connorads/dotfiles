@@ -23,7 +23,7 @@ permission mode at all.
 **Codex** runs `codex exec -s read-only`, its OS sandbox, which fails every
 write whatever the model tries. `-c project_doc_max_bytes=0` stops it
 auto-loading the reviewed repo's `AGENTS.md`. Guidance reaches the reviewer only
-through critique's prompt, which for a PR reads it from the base ref.
+through xreview's prompt, which for a PR reads it from the base ref.
 
 **Claude** runs with:
 

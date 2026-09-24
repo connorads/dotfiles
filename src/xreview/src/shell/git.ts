@@ -129,7 +129,7 @@ export const addDetachedWorktree = async (root: string, path: string, sha: strin
   return r.ok ? ok(undefined) : r;
 };
 
-/** --force: the worktree is critique's own scratch copy, never user work. */
+/** --force: the worktree is xreview's own scratch copy, never user work. */
 export const removeWorktree = async (root: string, path: string): Promise<Result<void, string>> => {
   const r = await git(root, ["worktree", "remove", "--force", path]);
   return r.ok ? ok(undefined) : r;

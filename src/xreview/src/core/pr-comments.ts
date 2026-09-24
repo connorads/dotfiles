@@ -79,7 +79,7 @@ export const reviewPayload = (review: Review, headSha: string, diff: string): Re
   }
   const reviewers = review.reviewers.map((s) => `${s.kind} (${s.model})`).join(", ");
   const body = [
-    `**critique: ${review.verdict ?? "failed"}** (${reviewers})`,
+    `**xreview: ${review.verdict ?? "failed"}** (${reviewers})`,
     "",
     review.summary,
     ...(outside.length === 0 ? [] : ["", "### Findings outside the diff", "", outside.join("\n\n")]),

@@ -46,7 +46,7 @@ test("a failed reviewer yields no verdict and exit 3", () => {
 
 test("markdown carries location, confidence and reviewer", () => {
   const md = renderMarkdown(assemble({ kind: "uncommitted" }, [{ ok: true, spec: DEFAULT_SPECS.codex, report }]));
-  expect(md).toContain("# critique: needs-attention");
+  expect(md).toContain("# xreview: needs-attention");
   expect(md).toContain("### 1. [high] Race");
   expect(md).toContain("`a.ts:3-5` · confidence 0.8 · codex");
   expect(md).toContain("**Recommendation.** lock it");

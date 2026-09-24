@@ -1,4 +1,4 @@
-// critique: headless, read-only review of a change by another agent.
+// xreview: headless, read-only review of a change by another agent.
 // Composition root: parse, resolve the target, collect the change, build the
 // prompt, run the reviewer, print one Review document, exit on its verdict.
 
@@ -133,11 +133,11 @@ const preparePr = async (n: number, root: string, env: Env): Promise<Result<Prep
   const guidance = await guidanceFromRef(root, pr.baseRefOid);
   if (!guidance.ok) return err(failed(guidance.error));
 
-  const scratch = await mkdtemp(join(env.tmpdir, `critique-pr${n}-`));
+  const scratch = await mkdtemp(join(env.tmpdir, `xreview-pr${n}-`));
   const worktree = join(scratch, "wt");
   const cleanup = async (): Promise<void> => {
     const removed = await removeWorktree(root, worktree);
-    if (!removed.ok) console.error(`critique: could not remove ${worktree}: ${removed.error}`);
+    if (!removed.ok) console.error(`xreview: could not remove ${worktree}: ${removed.error}`);
     await rm(scratch, { recursive: true, force: true });
   };
   const added = await addDetachedWorktree(root, worktree, pr.headRefOid);
@@ -242,7 +242,7 @@ const runOne = async (spec: ReviewerSpec, ctx: RunContext): Promise<ReviewerOutp
 export const main = async (argv: readonly string[], env: Env, cwd: string): Promise<number> => {
   const parsed = parseArgs(argv);
   if (!parsed.ok) {
-    console.error(`critique: ${parsed.error}\n\n${USAGE}`);
+    console.error(`xreview: ${parsed.error}\n\n${USAGE}`);
     return EXIT.usage;
   }
   if (parsed.value.kind === "help") {
@@ -256,7 +256,7 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
   if (options.rubric !== null) {
     const r = await inlineRubric(options.rubric);
     if (!r.ok) {
-      console.error(`critique: ${r.error}`);
+      console.error(`xreview: ${r.error}`);
       return EXIT.usage;
     }
     rubric = r.value;
@@ -264,7 +264,7 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
 
   const prepared = await prepare(options, cwd, env);
   if (!prepared.ok) {
-    console.error(`critique: ${prepared.error.message}`);
+    console.error(`xreview: ${prepared.error.message}`);
     return prepared.error.code;
   }
   // A caller that times a background review out sends SIGTERM; the PR
@@ -292,7 +292,7 @@ const review = async (
 ): Promise<number> => {
   const { target, context } = prepared;
   if (context === null) {
-    console.error(`critique: nothing to review in ${targetLabel(target)}`);
+    console.error(`xreview: nothing to review in ${targetLabel(target)}`);
     return EXIT.usage;
   }
 
@@ -304,15 +304,15 @@ const review = async (
     context,
   });
   if (!prompt.ok) {
-    console.error(`critique: ${prompt.error}`);
+    console.error(`xreview: ${prompt.error}`);
     return EXIT.failed;
   }
 
-  const workroot = await mkdtemp(join(env.tmpdir, "critique-"));
+  const workroot = await mkdtemp(join(env.tmpdir, "xreview-"));
   let outputs: ReviewerOutput[];
   try {
     const who = specs.map((s) => `${s.kind} (${s.model}, ${s.effort})`).join(", ");
-    console.error(`critique: reviewing ${targetLabel(target)} with ${who}`);
+    console.error(`xreview: reviewing ${targetLabel(target)} with ${who}`);
     const ctx: RunContext = {
       prompt: prompt.value,
       cwd: prepared.cwd,
@@ -336,10 +336,10 @@ const review = async (
       reviewPayload(result, target.headSha, prepared.diff),
     );
     if (!posted.ok) {
-      console.error(`critique: --post failed: ${posted.error}`);
+      console.error(`xreview: --post failed: ${posted.error}`);
       return EXIT.failed;
     }
-    console.error(`critique: pending review created (submit it yourself): ${posted.value}`);
+    console.error(`xreview: pending review created (submit it yourself): ${posted.value}`);
   }
   return exitCode(result);
 };
