@@ -122,13 +122,9 @@ Ship only SKILL.md plus the files it routes to:
   `.DS_Store`, `node_modules/`) - local state that adds nothing for a
   consuming agent.
 - No eval scratch/output directories in the shipped skill.
-- No migration-history prose, release-note phrasing, or undated verification
-  banners - state the current rule; history belongs in commit messages. A
-  *dated* as-of caveat is fine: it is the honest form the timeless-present
-  rule sanctions, re-verified whenever the skill is revised.
-- No volatile external facts (prices, version literals, beta statuses) as
-  standing prose; point at the live source and mark any snapshot as
-  illustrative.
+- No history prose (release notes, "recently") and no undated snapshots
+  (prices, version literals, verification banners). The rule and its fixes are
+  SKILL.md's timeless-present bullet; `scripts/check.sh` greps the phrasing.
 
 ## Validation
 
