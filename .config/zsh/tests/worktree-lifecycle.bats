@@ -769,3 +769,13 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"worktrees/topic"* ]]
 }
+
+@test "wt-prune rejects a stray argument instead of looping" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' timeout 5 zsh --no-rcs '$WT_PRUNE' stray"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unexpected argument stray"* ]]
+}

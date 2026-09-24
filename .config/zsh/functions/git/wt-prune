@@ -9,6 +9,7 @@ while (( $# )); do
     -h|--help) echo "usage: wt-prune [--json]" >&2; return 0 ;;
     --json)    json=1; shift ;;
     -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+    *)         echo "error: unexpected argument $1" >&2; return 1 ;;
   esac
 done
 
