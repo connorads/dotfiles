@@ -83,6 +83,11 @@ capabilities, it's two skills.
 
 ## Testing a description
 
+Write every description well; test triggering only when the model decides
+whether to load the skill. A user-invoked skill (`disable-model-invocation:
+true`, or a catalogue skill the user picks by hand) has no trigger to test -
+its description is read by a person or a picker, so clarity is the only bar.
+
 Trigger accuracy is testable - realistic prompts, fresh sessions, did it
 load. The harness, including should-trigger and near-miss should-NOT-trigger
 sets, is in [evals.md](evals.md). Two rules of thumb carry over:
