@@ -808,7 +808,7 @@ local fast_steps = new Mapping<String, Step> {
     // Missing jq/runner/node_modules warns and passes, same never-brick posture
     // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
     ["ts-tests-scoped"] {
-        glob = List("src/skl/**", "src/pin-audit/**", "src/annotate/**", "src/critique/**", "src/opencode-plugins/**", ".pi/agent/extensions/**", ".config/opencode/**")
+        glob = List("src/skl/**", "src/pin-audit/**", "src/annotate/**", "src/xreview/**", "src/opencode-plugins/**", ".pi/agent/extensions/**", ".config/opencode/**")
         check = "bash .hk-hooks/ts-tests.sh {{files}}"
     }
 
@@ -829,9 +829,9 @@ local fast_steps = new Mapping<String, Step> {
         glob = List("src/annotate/src/**/*.ts", "src/annotate/tests/**/*.ts", "src/annotate/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh src/annotate"
     }
-    ["ts-typecheck-critique"] {
-        glob = List("src/critique/src/**/*.ts", "src/critique/tsconfig.json")
-        check = "bash .hk-hooks/ts-typecheck.sh src/critique"
+    ["ts-typecheck-xreview"] {
+        glob = List("src/xreview/src/**/*.ts", "src/xreview/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh src/xreview"
     }
     ["ts-typecheck-opencode-plugins"] {
         glob = List("src/opencode-plugins/src/**/*.ts", "src/opencode-plugins/tests/**/*.ts", "src/opencode-plugins/tsconfig.json")
