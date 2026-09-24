@@ -1,8 +1,9 @@
 # sbx: image for running UNTRUSTED software in a throwaway, VM-isolated
 # container. The inverse of agentbox: nothing of the host is trusted in (no
-# dotfile mounts, cap-drop ALL, offline by default - see the sbx notes in
-# ~/AGENTS.md). What IS baked is a capable general toolbox so you can actually
-# poke at whatever you're testing without the host ever being reachable.
+# dotfile mounts, cap-drop ALL, offline by default - see the header of
+# ~/.config/zsh/functions/agents/sbx). What IS baked is a capable general
+# toolbox so you can actually poke at whatever you're testing without the host
+# ever being reachable.
 FROM debian:stable-slim
 
 # Baked toolbox (grouped): shell/session, editors, fetch/vcs, build/compile,
