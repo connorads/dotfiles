@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   chooseDelivery,
+  renderPlan,
   fence,
   INLINE_MAX_BYTES,
   isEmpty,
@@ -99,4 +100,8 @@ test("isEmpty needs neither a diff nor untracked files", () => {
 test("fence outgrows backtick runs in the content", () => {
   expect(fence("a ```` b")).toStartWith("`````\n");
   expect(fence("plain", "diff")).toBe("```diff\nplain\n```");
+});
+
+test("a plan is fenced whole with its source", () => {
+  expect(renderPlan("# Plan\n\n1. Do it", "plan.md")).toBe("Source: plan.md\n\n```markdown\n# Plan\n\n1. Do it\n```");
 });

@@ -38,6 +38,11 @@ test("pr target and --post", () => {
   expect(o.post).toBe(true);
 });
 
+test("plan target from a file or stdin", () => {
+  expect(run(["--target", "plan:docs/plan.md"]).target).toEqual({ kind: "plan", path: "docs/plan.md" });
+  expect(run(["--target=plan:-"]).target).toEqual({ kind: "plan", path: "-" });
+});
+
 test("a reviewer list is a panel", () => {
   expect(run(["--reviewer", "codex,claude"]).reviewers).toEqual(["codex", "claude"]);
 });
@@ -59,6 +64,8 @@ test.each([
   [["--target", "pr:abc"], "PR number"],
   [["--target", "pr:0"], "PR number"],
   [["--post"], "--post needs --target pr"],
+  [["--target", "plan:"], "plan needs a file"],
+  [["--target", "plan:p.md", "--post"], "--post needs --target pr"],
   [["--reviewer", "codex,claude", "--model", "opus"], "one reviewer's model"],
   [["--focus", "a", "--focus", "b"], "given twice"],
 ])("%p is a usage error", (argv, message) => {
