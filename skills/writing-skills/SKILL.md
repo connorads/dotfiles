@@ -254,7 +254,7 @@ contents list. Then verify the things a script can't:
 | Writing or debugging a description / skill not triggering | [references/description.md](references/description.md) |
 | Choosing instruction form, tone, degrees of freedom; a rule the agent keeps breaking | [references/instruction-forms.md](references/instruction-forms.md) |
 | Running the eval harness: prompts, baselines, grading, micro-testing wording | [references/evals.md](references/evals.md) |
-| Frontmatter fields, naming, layout, packaging, validation | [references/spec-and-packaging.md](references/spec-and-packaging.md) |
+| Frontmatter fields, naming, layout, packaging, validation; Claude Code listing and compaction limits | [references/spec-and-packaging.md](references/spec-and-packaging.md) |
 
 `evals/` holds this skill's own test prompts, fixture templates, and assertions -
 run them per [references/evals.md](references/evals.md) when revising this
