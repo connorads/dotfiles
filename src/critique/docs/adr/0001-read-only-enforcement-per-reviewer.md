@@ -39,7 +39,10 @@ through critique's prompt, which for a PR reads it from the base ref.
   - Bash runs in Claude's native sandbox with the repo write-denied and the
     network off. `Bash(git diff:*)` also matches `git diff --output=<file>`.
     Checked with the allowlisted command: it wrote `pwn.txt` without the
-    sandbox and failed with `Operation not permitted` with it.
+    sandbox and failed with `Operation not permitted` with it. The same
+    command aimed at `~/.claude`, `~` and `$TMPDIR` failed too: the
+    sandbox's default write allowance is the working directory, which is
+    denied, so Bash can write nowhere.
   - `Read()` denies for every path in `~/.config/srt/base.json`'s `denyRead`,
     also passed to the sandbox's `denyRead` for Bash. `--setting-sources ""`
     drops the user's own `Read()` denies along with everything else. Checked:
