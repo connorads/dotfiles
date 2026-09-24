@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+# xreview: headless, read-only review of a change by another agent
+# Wrapper around the TypeScript implementation at ~/src/xreview (bun, zero
+# runtime deps). By default the reviewer is the agent that is not the caller:
+# Codex reviews Claude's work and Claude reviews Codex's. Prints one Review
+# JSON document (or markdown with --md) and exits on its verdict.
+#
+#   xreview                          working tree if dirty, else branch vs origin/HEAD
+#   xreview --target pr:12 --post    PR, plus a PENDING GitHub review you submit
+#   xreview --target plan:plan.md    an implementation plan
+#   xreview --reviewer codex,claude  a panel
+#
+# exit codes: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer
+# failed, or --post failed. `xreview --help` for the full contract.
+#
+# Unlike annotate this sits on no keybinding, so a missing bun is an error, not
+# a SKIP: a caller branching on the exit code must not read "nothing ran" as
+# approve. Never `exec` here - this file is also autoloaded as a zsh function,
+# and exec would replace the caller's interactive shell.
+emulate -L zsh
+
+local impl=~/src/xreview/src/cli.ts
+local bun_bin="" dir
+
+# mise's shims dir is the fallback for callers whose PATH lacks an activated
+# mise - a bare agent shell reaching ~/.local/bin/xreview directly.
+for dir in $path "$HOME/.local/share/mise/shims"; do
+	if [[ -x "$dir/bun" ]]; then
+		bun_bin="$dir/bun"
+		break
+	fi
+done
+
+if [[ -z $bun_bin ]]; then
+	print -u2 "xreview: bun absent (mise install bun); see ~/src/xreview"
+	return 3
+fi
+
+"$bun_bin" "$impl" "$@"

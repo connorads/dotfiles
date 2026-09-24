@@ -792,7 +792,7 @@ local fast_steps = new Mapping<String, Step> {
     // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
     // everything by hand.
     ["bats-scoped"] {
-        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/oyp/**", ".config/vale/**", ".vale.ini", ".config/opencode/**", "src/pin-audit/**", "src/skl/**", "src/annotate/**", ".zshenv", ".zshrc", ".hk-hooks/ts-tests.sh", ".hk-hooks/py-tests.sh", ".claude/*.sh", ".claude/hooks/*.sh")
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/oyp/**", ".config/vale/**", ".vale.ini", ".config/opencode/**", "src/pin-audit/**", "src/skl/**", "src/annotate/**", "src/xreview/**", ".zshenv", ".zshrc", ".hk-hooks/ts-tests.sh", ".hk-hooks/py-tests.sh", ".claude/*.sh", ".claude/hooks/*.sh")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 

@@ -102,6 +102,10 @@ suites=$(
 		src/annotate/*)
 			echo "$TESTS_DIR/annotate.bats"
 			;;
+		# Same shape for xreview: TypeScript under ~/src, CLI contract in bats.
+		src/xreview/*)
+			echo "$TESTS_DIR/xreview.bats"
+			;;
 		# The two commit-time test gates carry their harness contract as a bats
 		# suite; staging the gate script runs its suite.
 		.hk-hooks/ts-tests.sh)

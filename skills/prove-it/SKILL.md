@@ -127,7 +127,7 @@ alone carries no information; restate the evidence if nothing material changed.
   proof. Prove-it addresses claims about observed systems and evidence.
 - **design-forking** widens options for a design. Prove-it's rivals are
   explanations to update using evidence, not options to compare on trade-offs.
-- **cross-review** supplies a differently framed reader when your own evidence
+- **xreview** supplies a differently framed reader when your own evidence
   assessment has a common-mode risk.
 
 ## References
