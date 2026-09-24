@@ -800,12 +800,12 @@ local fast_steps = new Mapping<String, Step> {
     // ungated for its whole life. Viable at commit time because it assumes
     // node_modules is present: the slow half of `mise run ts-checks` is its
     // frozen-lockfile installs, not the tests (0.1-3.1s scoped, ~8s for all).
-    // The six roots are duplicated in ts-tests.sh's own list; gate-coverage
+    // The seven roots are duplicated in ts-tests.sh's own list; gate-coverage
     // asserts the two agree.
     // Missing jq/runner/node_modules warns and passes, same never-brick posture
     // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
     ["ts-tests-scoped"] {
-        glob = List("src/skl/**", "src/pin-audit/**", "src/annotate/**", "src/opencode-plugins/**", ".pi/agent/extensions/**", ".config/opencode/**")
+        glob = List("src/skl/**", "src/pin-audit/**", "src/annotate/**", "src/critique/**", "src/opencode-plugins/**", ".pi/agent/extensions/**", ".config/opencode/**")
         check = "bash .hk-hooks/ts-tests.sh {{files}}"
     }
 
@@ -825,6 +825,10 @@ local fast_steps = new Mapping<String, Step> {
     ["ts-typecheck-annotate"] {
         glob = List("src/annotate/src/**/*.ts", "src/annotate/tests/**/*.ts", "src/annotate/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh src/annotate"
+    }
+    ["ts-typecheck-critique"] {
+        glob = List("src/critique/src/**/*.ts", "src/critique/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh src/critique"
     }
     ["ts-typecheck-opencode-plugins"] {
         glob = List("src/opencode-plugins/src/**/*.ts", "src/opencode-plugins/tests/**/*.ts", "src/opencode-plugins/tsconfig.json")

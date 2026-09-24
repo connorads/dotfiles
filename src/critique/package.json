@@ -1,0 +1,14 @@
+{
+  "name": "critique",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Headless read-only code review by another agent, with a JSON contract",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14"
+  }
+}
