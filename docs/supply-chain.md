@@ -28,7 +28,7 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 1. **Ask the user before allow-listing.** Security decision is theirs, not the agent's.
 2. With approval, allow-list specifically:
-   - **pnpm** (v11): `pnpm approve-builds` (interactive) or add to `allowBuilds` in `pnpm-workspace.yaml` (`false` = acknowledged-and-skipped, `true` = runs; pnpm 11 no longer reads `package.json#pnpm`).
+   - **pnpm** (v11): `pnpm approve-builds` (interactive) or add to `allowBuilds` in `pnpm-workspace.yaml` (`false` = acknowledged-and-skipped, `true` = runs; pnpm 11 does not read `package.json#pnpm`).
    - **npm**: project-level `.npmrc` with `ignore-scripts=false` (no per-package primitive exists).
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
