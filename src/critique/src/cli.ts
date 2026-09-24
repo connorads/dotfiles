@@ -3,10 +3,10 @@
 // prompt, run the reviewer, print one Review document, exit on its verdict.
 
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs, USAGE, type Options } from "./core/args.ts";
 import { defaultReviewer } from "./core/caller.ts";
-import { isEmpty, renderContext, targetLabel, type Collected } from "./core/context.ts";
+import { isEmpty, renderContext, renderPlan, targetLabel, type Collected } from "./core/context.ts";
 import { parseReport } from "./core/parse.ts";
 import { reviewPayload } from "./core/pr-comments.ts";
 import { buildPrompt, type GuidanceDoc } from "./core/prompt.ts";
@@ -69,7 +69,11 @@ interface Prepared {
   readonly target: Target;
   /** Where the reviewer runs: the repo root, or a PR's worktree. */
   readonly cwd: string;
-  readonly collected: Collected;
+  readonly template: "review.md" | "plan.md";
+  /** The rendered change; null when there is nothing to review. */
+  readonly context: string | null;
+  /** The tracked diff, for mapping findings onto PR lines. */
+  readonly diff: string;
   readonly guidance: readonly GuidanceDoc[];
   /** Paths the reviewer must not write. */
   readonly denyWrite: readonly string[];
@@ -78,6 +82,42 @@ interface Prepared {
 }
 
 const noCleanup = async (): Promise<void> => {};
+
+const change = (target: Target, collected: Collected) => ({
+  template: "review.md" as const,
+  context: isEmpty(collected) ? null : renderContext(target, collected),
+  diff: collected.diff,
+});
+
+const readPlan = async (path: string, cwd: string): Promise<Result<string, string>> => {
+  try {
+    return ok(path === "-" ? await Bun.stdin.text() : await readFile(resolve(cwd, path), "utf8"));
+  } catch (e) {
+    return err(`cannot read plan ${path}: ${(e as Error).message}`);
+  }
+};
+
+/**
+ * A plan needs no git, but inside a repository the reviewer runs at its root
+ * so it can check the plan's claims against the code.
+ */
+const preparePlan = async (path: string, cwd: string): Promise<Result<Prepared, Stop>> => {
+  const text = await readPlan(path, cwd);
+  if (!text.ok) return err(usage(text.error));
+  const source = path === "-" ? "stdin" : path;
+  const root = await repoRoot(cwd);
+  const dir = root.ok ? root.value : cwd;
+  return ok({
+    target: { kind: "plan", text: text.value, source },
+    cwd: dir,
+    template: "plan.md",
+    context: text.value.trim() === "" ? null : renderPlan(text.value, source),
+    diff: "",
+    guidance: root.ok ? await guidanceFromDisk(dir) : [],
+    denyWrite: [dir],
+    cleanup: noCleanup,
+  });
+};
 
 const preparePr = async (n: number, root: string, env: Env): Promise<Result<Prepared, Stop>> => {
   const info = await prView(root, n);
@@ -120,11 +160,22 @@ const preparePr = async (n: number, root: string, env: Env): Promise<Result<Prep
     mergeBase: mb.value,
     worktree,
   };
-  return ok({ target, cwd: worktree, collected: collected.value, guidance: guidance.value, denyWrite: [worktree, root], cleanup });
+  return ok({
+    target,
+    cwd: worktree,
+    ...change(target, collected.value),
+    guidance: guidance.value,
+    denyWrite: [worktree, root],
+    cleanup,
+  });
 };
 
-const prepare = async (options: Options, root: string, env: Env): Promise<Result<Prepared, Stop>> => {
+const prepare = async (options: Options, cwd: string, env: Env): Promise<Result<Prepared, Stop>> => {
   const spec = options.target;
+  if (spec.kind === "plan") return preparePlan(spec.path, cwd);
+  const found = await repoRoot(cwd);
+  if (!found.ok) return err(usage(found.error));
+  const root = found.value;
   if (spec.kind === "pr") return preparePr(spec.number, root, env);
 
   const snap = await snapshot(root);
@@ -161,7 +212,7 @@ const prepare = async (options: Options, root: string, env: Env): Promise<Result
   return ok({
     target,
     cwd: root,
-    collected: collected.value,
+    ...change(target, collected.value),
     guidance: await guidanceFromDisk(root),
     denyWrite: [root],
     cleanup: noCleanup,
@@ -201,12 +252,6 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
   const options = parsed.value.options;
   const specs = specsFor(options, env);
 
-  const root = await repoRoot(cwd);
-  if (!root.ok) {
-    console.error(`critique: ${root.error}`);
-    return EXIT.usage;
-  }
-
   let rubric: string | null = null;
   if (options.rubric !== null) {
     const r = await inlineRubric(options.rubric);
@@ -217,7 +262,7 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
     rubric = r.value;
   }
 
-  const prepared = await prepare(options, root.value, env);
+  const prepared = await prepare(options, cwd, env);
   if (!prepared.ok) {
     console.error(`critique: ${prepared.error.message}`);
     return prepared.error.code;
@@ -230,7 +275,7 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
   try {
-    return await review(options, specs, prepared.value, root.value, rubric, env);
+    return await review(options, specs, prepared.value, rubric, env);
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
@@ -242,22 +287,21 @@ const review = async (
   options: Options,
   specs: readonly ReviewerSpec[],
   prepared: Prepared,
-  root: string,
   rubric: string | null,
   env: Env,
 ): Promise<number> => {
-  const { target, collected } = prepared;
-  if (isEmpty(collected)) {
+  const { target, context } = prepared;
+  if (context === null) {
     console.error(`critique: nothing to review in ${targetLabel(target)}`);
     return EXIT.usage;
   }
 
-  const template = await readFile(join(PROMPTS, "review.md"), "utf8");
+  const template = await readFile(join(PROMPTS, prepared.template), "utf8");
   const prompt = buildPrompt(template, {
     guidance: prepared.guidance,
     rubric,
     focus: options.focus,
-    context: renderContext(target, collected),
+    context,
   });
   if (!prompt.ok) {
     console.error(`critique: ${prompt.error}`);
@@ -286,7 +330,11 @@ const review = async (
   process.stdout.write(format === "json" ? `${JSON.stringify(result, null, 2)}\n` : renderMarkdown(result));
 
   if (options.post && target.kind === "pr" && result.verdict !== null) {
-    const posted = await postPendingReview(root, target.number, reviewPayload(result, target.headSha, collected.diff));
+    const posted = await postPendingReview(
+      prepared.cwd,
+      target.number,
+      reviewPayload(result, target.headSha, prepared.diff),
+    );
     if (!posted.ok) {
       console.error(`critique: --post failed: ${posted.error}`);
       return EXIT.failed;

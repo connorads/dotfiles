@@ -25,3 +25,10 @@ test("empty inputs render as (none), guidance as tagged files", async () => {
   expect(r.value).toContain("DIFF-HERE");
   expect(r.value).not.toMatch(/\{\{[A-Z_]+\}\}/);
 });
+
+test.each(["review.md", "plan.md"])("%s fills every slot", async (name) => {
+  const template = await Bun.file(`${import.meta.dir}/../../prompts/${name}`).text();
+  const r = buildPrompt(template, { guidance: [], rubric: "R", focus: "F", context: "C" });
+  if (!r.ok) throw new Error(r.error);
+  expect(r.value).not.toMatch(/\{\{[A-Z_]+\}\}/);
+});

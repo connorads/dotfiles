@@ -10,7 +10,9 @@ export type TargetSpec =
   /** base null = origin/HEAD. */
   | { readonly kind: "branch"; readonly base: string | null }
   | { readonly kind: "commit"; readonly sha: string }
-  | { readonly kind: "pr"; readonly number: number };
+  | { readonly kind: "pr"; readonly number: number }
+  /** path "-" = stdin. */
+  | { readonly kind: "plan"; readonly path: string };
 
 export type Format = "json" | "md";
 
@@ -36,9 +38,10 @@ Headless, read-only review of a change by another agent. Prints one Review
 document (JSON, or markdown with --md).
 
   --target <t>     auto (default) | uncommitted | branch[:<base>] | commit:<sha>
-                   | pr:<n>
+                   | pr:<n> | plan:<file|->
                    auto: the working tree when dirty, else the branch vs origin/HEAD
                    pr: fetched into a temporary detached worktree, removed after
+                   plan: an implementation plan, checked against the repo in cwd
   --reviewer <r>   codex | claude | codex,claude (default: the agent that is
                    not the caller; a list runs a panel in parallel)
   --rubric <ref>   skl skill whose bundle is added as review criteria
@@ -74,6 +77,9 @@ export const parseTarget = (raw: string): Result<TargetSpec, string> => {
     case "pr":
       if (!rest || !/^[1-9]\d*$/.test(rest)) return err("--target pr needs a PR number: pr:<n>");
       return ok({ kind: "pr", number: Number(rest) });
+    case "plan":
+      if (!rest) return err("--target plan needs a file, or - for stdin: plan:<file|->");
+      return ok({ kind: "plan", path: rest });
     default:
       return err(`unknown --target '${raw}'`);
   }

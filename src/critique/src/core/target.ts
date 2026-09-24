@@ -22,7 +22,7 @@ export const NO_ORIGIN_HEAD =
   "origin/HEAD is unset, so there is no base branch to review against; run `git remote set-head origin -a` or pass --target branch:<base>";
 
 export const resolveLocal = (
-  spec: Exclude<TargetSpec, { kind: "pr" }>,
+  spec: Exclude<TargetSpec, { kind: "pr" } | { kind: "plan" }>,
   snap: GitSnapshot,
 ): Result<LocalTarget, string> => {
   switch (spec.kind) {

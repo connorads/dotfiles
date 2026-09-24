@@ -123,3 +123,7 @@ export const renderContext = (target: Target, c: Collected): string => {
     .join("\n")
     .trimEnd();
 };
+
+/** A plan is prose, so it is always inline: there is nothing to self-collect. */
+export const renderPlan = (text: string, source: string): string =>
+  [`Source: ${source}`, "", fence(text, "markdown")].join("\n");
