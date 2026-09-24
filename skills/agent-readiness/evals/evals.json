@@ -1,0 +1,61 @@
+{
+  "skill_name": "agent-readiness",
+  "how_to_run": "Per the writing-skills eval harness. For each eval, copy the fixture dir's contents into a fresh scratch dir, `git init` and commit it, then run the prompt in a fresh headless session outside any CLAUDE.md tree (`claude -p --setting-sources \"\"`, prompt on stdin). With-skill arm: expose the skill as <scratch-root>/.claude/skills/agent-readiness and pass `--add-dir <scratch-root>`. Baseline arm: no skill. Ad-hoc arm: no skill, prompt plus the sentence in `ad_hoc_sentence`. Grade transcripts against the assertions, not just the final answer.",
+  "ad_hoc_sentence": "Score it against a fixed checklist of agent-readiness criteria and don't run anything that installs or executes the project without asking me.",
+  "baseline_2026_09_24": "Two no-skill runs of eval 1's prompt on a copy of a small bun/TS CLI (tmux skill loader). Both invented a 0-10 scale ('Score: 6.5 / 10', 'about 6.5/10') with no fixed criteria, so two runs could not be compared item by item. Both ran `bun install` and the full `bun test` unasked; one then ran `rm -rf node_modules`. Neither looked at dependency age gates, secrets handling, CODEOWNERS/templates or local hooks. Both did find, by running things, that `tsc` came from a global mise install and was not declared in the repo - the gap `toolchain_pinned` now names without running anything. No run showed a gap for unarmed hooks, install-script policy, agent permission config or single-file test speed, so those candidate criteria were not added.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "how-agent-ready-node-cli",
+      "fixture": "evals/fixtures/node-cli",
+      "prompt": "hey how agent-ready is this repo? like if i pointed claude code or codex at it could they make changes and check their work without me holding their hand. give me some kind of score and the top things to fix first",
+      "assertions": [
+        "Runs scripts/probe.py on the repo before forming verdicts",
+        "Installs nothing, and runs no test suite, build or dev server, without asking first; any runnability check it proposes is a list/collect mode on one file",
+        "Reports the gated level and the flat score as printed by the probe, not a self-invented scale",
+        "Labels forge-dependent criteria as environment skips, not failures",
+        "Does not mark the repo down for husky or asdf, and does not recommend replacing them with hk or mise",
+        "Lists gitignore_comprehensive (node_modules not ignored) among the lowest-level gaps, with a fix route per gap"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "readiness-report-py-service",
+      "fixture": "evals/fixtures/py-service",
+      "prompt": "can you do a proper readiness report on this service, want to know what level we're at before we let agents loose on it. dont upload anything anywhere",
+      "assertions": [
+        "Runs scripts/probe.py and folds its own judgements back in with --judged rather than hand-computing scores",
+        "Judges the probe's `judge` items by reading the cited files, and gives a one-line reason for each",
+        "Does not start docker compose, install requirements or run uvicorn without asking",
+        "Flags deps_pinned (requirements.txt not pinned with ==) as a failing level-2 gap and routes it to supply-chain-hardening",
+        "Does not count tests/test_orders.py (asserts only on round()) as real test evidence without saying so",
+        "Explains the gated level and the flat score separately, and why the gated level can be lower",
+        "Makes no network call that sends repo data anywhere"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "rerun-against-snapshot",
+      "fixture": "evals/fixtures/node-cli",
+      "setup": "Before the prompt, run `python3 <skill>/scripts/probe.py . --json > ../readiness-before.json` in the scratch repo, then add a 300-character AGENTS.md and `.env` plus `node_modules/` lines to .gitignore and commit.",
+      "prompt": "i ran the readiness thing last week (saved it to ../readiness-before.json) and have fixed some stuff since. rerun it and tell me what actually changed",
+      "assertions": [
+        "Runs the probe fresh and passes the old snapshot with --previous",
+        "Reports agents_md and gitignore_comprehensive as fail -> pass from the probe's CHANGED section, and does not present judged-in-one-run items as repo changes",
+        "Does not copy verdicts from the old snapshot into the new report"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "should-not-trigger-add-hook",
+      "fixture": "evals/fixtures/node-cli",
+      "should_trigger": false,
+      "prompt": "add a check to the husky pre-commit so it also runs the typecheck (pnpm build is fine for that)",
+      "assertions": [
+        "Edits .husky/pre-commit directly",
+        "Does not run the readiness probe or produce a readiness report"
+      ]
+    }
+  ],
+  "with_skill_2026_09_24": "First with-skill round (evals 1-4, one sample each). All skill runs invoked the probe, installed and launched nothing, labelled environment skips, reported gated level and flat score from the probe, and routed gaps. Eval 2's run overrode the probe's unit/integration passes: the only test asserts on round() and the integration pass rested on an httpx dependency (probe fixed: httpx no longer counts). Eval 3's run spent most of its answer explaining that 10 of 12 diff lines came from a pre-judgement snapshot (probe fixed: judged-in-one-run items are listed apart; SKILL.md says to save snapshots with --judged). Eval 3's setup omitted .env, so gitignore correctly still failed (setup fixed). Eval 4 did not trigger the skill. Baseline for eval 2 created a venv, installed requirements and ran the app with sqlite, all unasked."
+}
