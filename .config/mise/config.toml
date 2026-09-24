@@ -164,6 +164,7 @@ fnox = "1"
 "npm:critique" = "0"
 "npm:ctx7" = "0"
 "npm:deepsec" = "2"
+"npm:droid" = "0"
 "npm:eas-cli" = "24"
 # Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so
 # `mise upgrade --bump` would regress to it. Do not bump past "1".
