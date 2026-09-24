@@ -5,6 +5,7 @@ description: >
   loop in tmux. Use when asked to "supervise a loop", "watch a loop",
   "babysit a loop", "set up a supervisor", or when a task-loop / rl
   run needs someone operating the harness around it.
+disable-model-invocation: true
 ---
 
 # Loop Supervisor

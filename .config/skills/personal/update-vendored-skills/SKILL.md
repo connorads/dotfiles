@@ -1,6 +1,7 @@
 ---
 name: update-vendored-skills
 description: Safely refresh the vendored third-party agent skills in this dotfiles repo. Use whenever the user wants to update, refresh, upgrade, or re-pull vendored skills (`skills update`), or asks to check whether a skill refresh is safe / dodgy / compromised before committing. Prepare recorded Git snapshots outside the installed tree, review their instructions and code, reapply local patches, and commit only verified payloads.
+disable-model-invocation: true
 ---
 
 # Update Vendored Skills

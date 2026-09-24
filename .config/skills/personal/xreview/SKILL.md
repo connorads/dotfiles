@@ -10,6 +10,7 @@ description: >-
   panel of reviewers, optionally with a review rubric skill via skl. Not for
   applying fixes (report only unless asked), shipping a session to another
   host (agent-teleport), or forking your own session.
+disable-model-invocation: true
 ---
 
 # xreview

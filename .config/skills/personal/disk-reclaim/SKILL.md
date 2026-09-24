@@ -6,6 +6,7 @@ description: >-
   what's eating space, free up space, or clean up their Mac - including
   mentions of ncdu, du, dust, or "startup disk full". Not for pruning a single
   project's build output, or for disk on a remote server.
+disable-model-invocation: true
 ---
 
 # Disk reclaim

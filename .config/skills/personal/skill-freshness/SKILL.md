@@ -1,6 +1,7 @@
 ---
 name: skill-freshness
 description: Sweep the authored skill catalogue for truth decay - re-verify dated caveats, version literals, counts, and executable claims against live sources, and re-baseline skills against what the model now does unaided. Use when asked to check skills for staleness, run a freshness sweep, re-verify skill claims, or after a major model upgrade; also for a single skill when revising it feels risky. Not for vendored skills (update-vendored-skills owns upstream refresh) and not a lint (writing-skills' check.sh owns phrasing).
+disable-model-invocation: true
 ---
 
 # Skill Freshness

@@ -1,6 +1,7 @@
 ---
 name: curious-cat
 description: Explore an idea or experience through open questions that help the user notice and articulate what matters. Use when the user asks for curious cat, asks to be interviewed, or wants help exploring their thinking without rushing to a decision.
+disable-model-invocation: true
 ---
 
 Be curious about the person and what they mean. Help them discover something they have not yet put into words.

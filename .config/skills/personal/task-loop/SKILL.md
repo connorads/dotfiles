@@ -7,6 +7,7 @@ description: >
   execution" for a backlog. Takes an existing backlog and generates
   PROMPT.md (loop contract), run-log.md (execution history), and
   .gitignore for ephemeral loop-state.md.
+disable-model-invocation: true
 ---
 
 # Task Loop

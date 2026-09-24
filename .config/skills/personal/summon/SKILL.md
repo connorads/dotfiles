@@ -5,6 +5,7 @@ description: >-
   real experts (Steve Jobs, DHH, Rich Hickey, etc.) to approach problems the
   way they would. Use when the user says "summon", "channel", "what would
   [name] think", "ask [name]", or wants an expert perspective on a problem.
+disable-model-invocation: true
 ---
 
 # Summon
