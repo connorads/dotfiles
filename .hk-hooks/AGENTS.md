@@ -11,13 +11,13 @@ dotfiles config core.hooksPath .hk-hooks
 The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
 (`-q`, hk >= 1.51.0: success is silent, step chatter only surfaces on failure).
 The `amends`/`import` pin in `hk.pkl` and the mise-installed binary must name
-the same version - both are 1.56.1. The pin decides which builtins exist; the
+the same version. The pin decides which builtins exist; the
 binary decides what understands them, and a mismatch makes builtin steps fail
 with `no command for test` rather than saying so.
 
-There is no `.local` exclude. It hid 128 tracked entries - 6 first-party
+There is no `.local` exclude. It would hide 128 tracked entries - 6 first-party
 scripts on PATH plus the 122 `zfn-link` shims - from every gate, and the
-untracked mise/pnpm trees under `.local/share` and `.local/state` were never in
+untracked mise/pnpm trees under `.local/share` and `.local/state` are out of
 scope anyway: `hk --all` selects tracked files, and the staged path sees only
 what git tracks. What each gate covers, and the candidates that were rejected
 with the evidence against them, is
@@ -168,8 +168,8 @@ type-aware buys little) - and there the declaration-form JSDoc
 belongs to no tsconfig.
 
 `no-floating-promises` carries `allowForKnownSafeCalls` for `test`/`it`/
-`describe` from `node:test`: the runner awaits its own `test(...)` promise, and
-those calls were 192 of the 209 findings. The rule stays live inside test
+`describe` from `node:test`: the runner awaits its own `test(...)` promise, so
+flagging those calls is noise. The rule stays live inside test
 bodies, where an unawaited promise is a real bug.
 
 The `ts-tests-scoped` step runs those projects' test suites at commit time,
@@ -178,8 +178,8 @@ per project: each staged file resolves to its nearest `package.json`, and that
 project's `test` script runs under the package manager its lockfile names
 (`bun.lock` → `bun run test`, `pnpm-lock.yaml` → `pnpm run test`), so
 `node --test`, `vitest` and `bun test` all dispatch through one gate and a new
-project is covered the day it exists. Enumeration is what left `agent-guard`
-ungated for its whole life. Latency is affordable because the gate assumes
+project is covered the day it exists; a per-project list leaves any project
+missing from it ungated. Latency is affordable because the gate assumes
 `node_modules` is present - the slow half of `mise run ts-checks` is its
 frozen-lockfile installs, not the tests. Missing `jq`, runner or `node_modules`
 warns and exits 0, same never-brick posture as `ts-typecheck.sh`;
@@ -229,9 +229,8 @@ The `bats-scoped` step (pre-commit) gates the zsh bats suite
 the suites the staged files touch - a staged `*.bats` runs itself, a staged
 script under `.config/zsh/functions/**` or `.config/tmux/scripts/**` runs the
 suite named after it plus any suite that names it. `bats` absent warns and exits
-0, same never-brick posture as `ts-typecheck.sh`. The gate exists because
-nothing ran the suite before: CI is PR-only and commits land through the hook,
-so four suites rotted unnoticed. Conventions and the meaning of the
+0, same never-brick posture as `ts-typecheck.sh`. CI is PR-only and
+commits land through the hook, so without this gate nothing runs the suite. Conventions and the meaning of the
 `integration` tag: [.config/zsh/tests/AGENTS.md](../.config/zsh/tests/AGENTS.md).
 
 **There is deliberately no pre-push gate.** `git push` opens the connection and
