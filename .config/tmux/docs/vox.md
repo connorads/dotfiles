@@ -256,38 +256,12 @@ Change as a set:
   with the output switched to the built-in speakers mid-capture and back: the
   tone resumed in the tap both times. Nothing rebuilds on that event.
 - **Nothing pre-processes the audio, and the guard against losing speech is a
-  detector rather than a filter.** `mw` reads each stored WAV directly.
-  vox used to hand it a `silenceremove`d copy, because Parakeet once returned an
-  EMPTY transcript for a clip ending in enough digital zeros
-  ([NVIDIA-NeMo/Speech#15757](https://github.com/NVIDIA-NeMo/Speech/issues/15757)) -
-  which is exactly the shape voxtap's padding gives a far side who speaks and then
-  goes quiet. Two things ended that arrangement:
-  - **The premise no longer holds.** Re-measured against the pinned model
-    (`parakeet-pro:nvidia_parakeet-v3_494MB`) with padding verified as exact zeros
-    (`astats` Max level 0.000000): a 4 s utterance transcribes under 5, 12, 24, 60
-    and 120 s of zeros, and still does attenuated to -40, -50 and -60 dB mean; so
-    does the exact 2.6 s / -46 dB shape the original measurement used. `mw` is a
-    self-updating GUI app outside mise and nix, so the likeliest account is an
-    upstream fix, but "fixed" and "misdiagnosed" are not discriminable now and the
-    action is the same either way.
-  - **The filter was destroying data.** A POSITIVE `stop_periods=1` stops output
-    at the FIRST silence run of `stop_duration` or longer, counted from the start -
-    it does not trim the end alone, whatever the old comment here said. Two
-    recordings on 2026-09-14 lost most of their speech to it: a 2158 s system track
-    reached `mw` as 7.91 s (`{"segments":[],"text":""}`, and `vox_session_kind` then
-    reported the 36-minute call as `solo`), and a 1158 s mic track as 88.97 s,
-    keeping 4 of 43 segments. The internal gaps it cut on measure ±6 LSB, so they
-    were the far side's real near-silence, not padding.
-
-  In its place, `_vox_report_blanked` measures each stored track after
-  transcription and warns - to stderr and `vox.log`, naming the track and its mean
-  level - when `vox_track_blanked` finds audible audio behind an empty transcript.
-  It covers the same loss from any cause, including a future model regression,
-  which a filter aimed at zeros cannot. The zero-padded case still has a real-`mw`
-  regression guard in `vox-contract.bats`; it is one-sided by construction, and
-  failing it is what would justify re-adding pre-processing.
-  What it deliberately does not catch is a PARTIAL truncation - deleting the
-  filter removes that failure rather than detecting it.
+  detector rather than a filter.** `mw` reads each stored WAV directly, and
+  `_vox_report_blanked` warns - to stderr and `vox.log`, naming the track and
+  its mean level - when `vox_track_blanked` finds audible audio behind an empty
+  transcript. Do not add a `silenceremove` pass: it cut real speech at the
+  first quiet gap. Why, with the measurements:
+  [ADR 0014](../../../docs/adr/0014-vox-hands-mw-the-stored-audio-unprocessed.md).
 - **The mic track is channel 0 of the mic's first buffer**, never a downmix: a
   multichannel input would otherwise get a surround matrix (LFE and height
   coefficients) instead of the channel apps actually write. The tap is mono at

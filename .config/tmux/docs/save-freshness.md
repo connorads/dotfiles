@@ -3,9 +3,9 @@
 Same one-lib-many-surfaces shape as the memory gauge, for a different failure:
 **detecting when session saving silently stops.** continuum advances its
 save-timestamp unconditionally every 5 min, so a save path that stops producing
-files ticks on without error - it did exactly that for 3.5 weeks (saves froze at
-28 Jun) until a kernel panic found no recent session to restore. The write path
-was healthy; the *silence* was the bug. This subsystem makes save-freshness a
+files ticks on without error, and nothing shows until a crash finds no recent
+session to restore. The write path can be healthy while saving has stopped, so
+the *silence* is the failure to detect. This subsystem makes save-freshness a
 visible, alarming state.
 
 Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file.
@@ -22,13 +22,12 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   Cross-platform (no macOS-only syscalls), so it works on Linux hosts too.
   Caveat: tmux-resurrect only keeps a timestamped file when session state changed
   since the previous save, so `age` is the age of the last *content-changing*
-  save - exactly the signal that went stale in the incident.
+  save - the signal that goes stale when saving stops.
 - [`scripts/status-right.sh`](../scripts/status-right.sh) - `resurrect_segment()`,
   the always-shown pill (width ≥ 80). It gathers newest-save age once, then uses
   the lib's pure `resurrect_state_from` / `resurrect_token_from` derivations.
   Unlike the quiet-when-healthy mem pill, a
-  live green `⟳ 2m` is wanted as the running-confidence signal the incident
-  lacked; it reddens to yellow/red the moment saving stops. It is the first
+  live green `⟳ 2m` is wanted as the running-confidence signal; it reddens to yellow/red the moment saving stops. It is the first
   persistent system pill, followed by the darker CPU pill, so its surface1
   (`#45475a`) shade stays distinct.
 - [`scripts/resurrect-keepalive.sh`](../scripts/resurrect-keepalive.sh) - the

@@ -34,7 +34,7 @@ Three details that break things if dropped:
   [`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh) as a
   **child process** whose own `env bash` is still 3.2 - the child inherits the
   guard, skips its own re-exec and dies, and `run_step` only `log_warn`s while the
-  script `exit 0`s. Silent, which is precisely the 3.5-week failure shape the [save
+  script `exit 0`s. Silent, which is precisely the failure shape the [save
   freshness subsystem](./docs/save-freshness.md) exists to catch. Regression test:
   `post-save hook does not suppress its child's own bash5 re-exec` in
   [`../zsh/tests/tmux-resurrect-post-save.bats`](../zsh/tests/tmux-resurrect-post-save.bats).

@@ -100,8 +100,8 @@ prefix costs **56 bytes per row** (20 uncoloured) before any path text - it, not
 the display text, dominates the command. Two things keep us clear of the cliff:
 
 - **`@fzf-links-history-lines 0`** in [`tmux.conf`](../tmux.conf), the plugin's
-  own default: the picker offers the visible pane. It was 2000, which on a codex
-  pane in a repo turned a 40-line screen into 166 rows and a 21KB command.
+  own default: the picker offers the visible pane. At 2000 lines, a codex pane
+  in a repo turns a 40-line screen into 166 rows and a 21KB command.
 - **`ROW_BUDGET`** in [`fzf_link_paths.py`](../fzf_link_paths.py): `claim`
   refuses a row once our rows have spent it. That bounds *our* contribution
   only - the default schemes' rows (urls, hyperlinks) are unbounded and merged

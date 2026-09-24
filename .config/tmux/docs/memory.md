@@ -21,10 +21,10 @@ distance, and the help section reads as a procedure. Change as a set:
   State comes from the compressor's **two ceilings**, both hard kernel limits it
   panics at: slots (`vm.compressor.pages_compressed` over
   `.pages_compressed_limit`; a swapout never releases one, only a process free
-  or exit does - the arm the 2026-09-20 panic hit at 100%) and segments
+  or exit does; a kernel panic has been observed with this arm at 100%) and segments
   (`vm.compressor.segment.total` over `.segment.limit`; relieved by swapout and
   compaction). Swap tracks the segments arm only, so `mem_swap_*` stays a figure
-  for the popup and the log and is no longer an input to the state. Pressure 4
+  for the popup and the log and is not an input to the state. Pressure 4
   (critical) makes the state CRITICAL on its own and is then the cause;
   pressure 2 (warn) is this machine's resting level under ordinary load
   (measured: on all day at 30% fill), so it changes no state and only adds the
@@ -98,8 +98,8 @@ distance, and the help section reads as a procedure. Change as a set:
   **liveness probe**: a wake later than `MEMWATCH_STALL_LOG_SECS` (2) logs
   `<ts>  stall=Ns  interval=Ns`, and one later than
   `MEMWATCH_STALL_CRITICAL_SECS` (5) makes the next tick CRITICAL with the
-  memwatch-local cause `stall`. The 2026-09-20 panic was preceded by ~2 min of
-  userspace stall that a 5 s sleeper sees as it starts; the probe measures
+  memwatch-local cause `stall`. An observed compressor panic was preceded by
+  ~2 min of userspace stall, which a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.
   `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). At

@@ -13,7 +13,7 @@ can.** Measured here: `pmset -g log` recorded `Entering Sleep state due to
 'Clamshell Sleep'` while `caffeinate -i -t 14400` held a live
 `PreventUserIdleSystemSleep` assertion. Clamshell sleep is a separate kernel path
 that never consults power assertions, so the whole family - `-i`, `-s`, `-d` - is
-*structurally* unable to stop it. This is what killed an overnight agent run.
+*structurally* unable to stop it.
 
 The only lever that works is `sudo pmset -a disablesleep 1`, a kernel
 `SleepDisabled` flag checked *before* the clamshell path. Its well-known failure
@@ -45,8 +45,7 @@ hooks-plus-backstop shape used twice already here (agent-state hooks +
 
 **Neither layer alone is sufficient** - this is the part a future reader needs,
 because "just use the supervisor" is the obvious simplification and it is wrong.
-Layer 1 misses the panic (this machine has had one; it is what exposed the
-resurrect staleness bug). Layer 2 alone would leave up to 5 minutes of wrong
+Layer 1 misses a kernel panic, which leaves no trap to run. Layer 2 alone would leave up to 5 minutes of wrong
 state on every normal stop, and would give the pill nothing to report meanwhile.
 
 Two constraints remove failure states by construction rather than by discipline:
@@ -94,12 +93,6 @@ convenience: the trap must run unattended at 04:00 and the reconciler runs from
 launchd with no tty, so a Touch ID or password prompt would break the auto-clear
 and leave the Mac unable to sleep. It adds a rule, so the desktop's
 `security.pam.services.sudo_local` (Touch ID for normal sudo) is unaffected.
-
-**Open fact:** whether `SleepDisabled` survives a reboot is not yet confirmed on
-this machine (it needs a real reboot to settle). The design holds either way -
-`RunAtLoad` on the reconciler is required if it persists and belt-and-braces
-if it does not. Settle it with: set the flag, reboot,
-`pmset -g | grep SleepDisabled`, and replace this paragraph with the answer.
 
 ## The pieces
 
@@ -187,3 +180,11 @@ SleepDisabled` is `1` while ON-LID and gone after stop, and prove the actual bug
 end to end: start a lid session, shut the lid ~10 min, reopen, and check `pmset
 -g log | grep -i clamshell` shows **no** new `Clamshell Sleep` entry in that
 window. Keep the pill legend in [`help.md`](../help.md) in sync with the lib.
+
+## Open questions
+
+- Does `SleepDisabled` survive a reboot? It needs a real reboot to settle. The
+  design holds either way: `RunAtLoad` on the reconciler is required if the
+  flag persists and belt-and-braces if it does not. To settle it, set the
+  flag, reboot, run `pmset -g | grep SleepDisabled`, and record the answer in
+  place of this item.
