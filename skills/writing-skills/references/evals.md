@@ -8,8 +8,9 @@ but then captured outputs plus user feedback *are* the eval.
 
 agentskills.io/skill-creation/ documents an official eval methodology
 (`evals/evals.json`, trigger-rate testing, a skill-creator plugin) that
-mirrors this loop; this skill's own `evals.json` is the same shape, using
-`fixture` where upstream uses `files`/`expected_output`.
+mirrors this loop; this skill's own `evals.json` uses the upstream fields
+(`prompt`, `expected_output`, `files`, `assertions`) plus optional
+deterministic `checks`, which clients that don't know them ignore.
 
 ## Contents
 

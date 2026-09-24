@@ -383,7 +383,7 @@ EOF
 	command -v jq >/dev/null 2>&1 || skip "jq not installed"
 	local evals="$SKILL_ROOT/evals/evals.json"
 
-	run jq -e '.skill_name == "writing-skills" and (.evals | type == "array" and length > 0) and all(.evals[]; has("id") and has("name") and has("fixture") and has("prompt") and (.assertions | type == "array" and length > 0))' "$evals"
+	run jq -e '.skill_name == "writing-skills" and (.evals | type == "array" and length > 0) and all(.evals[]; has("id") and has("name") and has("prompt") and (.expected_output | type == "string") and (.files | type == "array") and (.assertions | type == "array" and length > 0))' "$evals"
 
 	[ "$status" -eq 0 ]
 
@@ -397,7 +397,7 @@ EOF
 			echo "fixture must not contain live SKILL.md: $fixture"
 			return 1
 		}
-	done < <(jq -r '.evals[].fixture | select(. != "none")' "$evals")
+	done < <(jq -r '.evals[].files[]' "$evals")
 }
 
 @test "outside git, a cache directory warns" {
