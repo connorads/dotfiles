@@ -43,6 +43,29 @@ _wt_current_path() {
   git rev-parse --show-toplevel 2>/dev/null
 }
 
+# Every visible process's cwd as pid<TAB>cmd<TAB>cwd lines, from one lsof call.
+# lsof's exit status is no signal (0 with hidden processes, 1 on partial access
+# on Linux), so success is "it ran and printed something". Otherwise warn once
+# and print nothing. The `sh -c` prints lsof's own pid first, via exec, so its
+# row can be dropped.
+_wt_cwd_procs() {
+  local raw self body="" line pid="" cmd=""
+  raw=$(sh -c 'echo "$$"; exec lsof -a -d cwd -Fpcn -w' 2>/dev/null)
+  self=${raw%%$'\n'*}
+  [[ "$raw" == *$'\n'* ]] && body=${raw#*$'\n'}
+  if [[ -z "$body" ]]; then
+    echo "warning: lsof unavailable or empty; skipping the in-use check" >&2
+    return 0
+  fi
+  for line in "${(@f)body}"; do
+    case $line in
+      p*) pid=${line#p}; cmd="" ;;
+      c*) cmd=${line#c} ;;
+      n*) [[ "$pid" == "$self" ]] || printf '%s\t%s\t%s\n' "$pid" "$cmd" "${line#n}" ;;
+    esac
+  done
+}
+
 _wt_current_branch() {
   git branch --show-current 2>/dev/null
 }
