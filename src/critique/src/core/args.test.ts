@@ -15,6 +15,7 @@ test("defaults: auto target, caller's default reviewer, format by TTY", () => {
     focus: null,
     model: null,
     effort: null,
+    post: false,
     format: null,
   });
 });
@@ -29,6 +30,12 @@ test("both --flag value and --flag=value", () => {
 test("branch base is optional", () => {
   expect(run(["--target", "branch"]).target).toEqual({ kind: "branch", base: null });
   expect(run(["--target", "branch:origin/dev"]).target).toEqual({ kind: "branch", base: "origin/dev" });
+});
+
+test("pr target and --post", () => {
+  const o = run(["--target", "pr:42", "--post"]);
+  expect(o.target).toEqual({ kind: "pr", number: 42 });
+  expect(o.post).toBe(true);
 });
 
 test("a reviewer list is a panel", () => {
@@ -49,6 +56,9 @@ test.each([
   [["--reviewer", "gemini"], "unknown reviewer"],
   [["--reviewer", "codex,codex"], "twice"],
   [["--json", "--md"], "exclusive"],
+  [["--target", "pr:abc"], "PR number"],
+  [["--target", "pr:0"], "PR number"],
+  [["--post"], "--post needs --target pr"],
   [["--reviewer", "codex,claude", "--model", "opus"], "one reviewer's model"],
   [["--focus", "a", "--focus", "b"], "given twice"],
 ])("%p is a usage error", (argv, message) => {

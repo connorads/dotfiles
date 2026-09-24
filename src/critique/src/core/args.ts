@@ -9,7 +9,8 @@ export type TargetSpec =
   | { readonly kind: "uncommitted" }
   /** base null = origin/HEAD. */
   | { readonly kind: "branch"; readonly base: string | null }
-  | { readonly kind: "commit"; readonly sha: string };
+  | { readonly kind: "commit"; readonly sha: string }
+  | { readonly kind: "pr"; readonly number: number };
 
 export type Format = "json" | "md";
 
@@ -21,6 +22,8 @@ export interface Options {
   readonly focus: string | null;
   readonly model: string | null;
   readonly effort: string | null;
+  /** Create a pending GitHub review from the findings (pr target only). */
+  readonly post: boolean;
   /** Null = json when stdout is not a TTY, md when it is. */
   readonly format: Format | null;
 }
@@ -33,18 +36,22 @@ Headless, read-only review of a change by another agent. Prints one Review
 document (JSON, or markdown with --md).
 
   --target <t>     auto (default) | uncommitted | branch[:<base>] | commit:<sha>
+                   | pr:<n>
                    auto: the working tree when dirty, else the branch vs origin/HEAD
+                   pr: fetched into a temporary detached worktree, removed after
   --reviewer <r>   codex | claude | codex,claude (default: the agent that is
                    not the caller; a list runs a panel in parallel)
   --rubric <ref>   skl skill whose bundle is added as review criteria
   --focus <text>   area to weight heavily
   --model <m>      override the reviewer's pinned model (single reviewer only)
   --effort <e>     override the reviewer's pinned reasoning effort
+  --post           pr only: also create a PENDING GitHub review from the
+                   findings; it stays invisible to others until you submit it
   --json | --md    output format (default: --json unless stdout is a TTY)
   -h, --help
 
-exit: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer failed
-(a panel with some failures still reports, with errors[] filled)`;
+exit: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer failed, or
+--post failed (a panel with some failures still reports, with errors[] filled)`;
 
 const VALUE_FLAGS = ["--target", "--reviewer", "--rubric", "--focus", "--model", "--effort"] as const;
 type ValueFlag = (typeof VALUE_FLAGS)[number];
@@ -64,6 +71,9 @@ export const parseTarget = (raw: string): Result<TargetSpec, string> => {
     case "commit":
       if (!rest) return err("--target commit needs a sha: commit:<sha>");
       return ok({ kind: "commit", sha: rest });
+    case "pr":
+      if (!rest || !/^[1-9]\d*$/.test(rest)) return err("--target pr needs a PR number: pr:<n>");
+      return ok({ kind: "pr", number: Number(rest) });
     default:
       return err(`unknown --target '${raw}'`);
   }
@@ -83,9 +93,14 @@ export const parseReviewers = (raw: string): Result<readonly ReviewerKind[], str
 export const parseArgs = (argv: readonly string[]): Result<Parsed, string> => {
   const values = new Map<ValueFlag, string>();
   let format: Format | null = null;
+  let post = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     if (arg === "-h" || arg === "--help") return ok({ kind: "help" });
+    if (arg === "--post") {
+      post = true;
+      continue;
+    }
     if (arg === "--json" || arg === "--md") {
       const f: Format = arg === "--json" ? "json" : "md";
       if (format !== null && format !== f) return err("--json and --md are exclusive");
@@ -105,6 +120,7 @@ export const parseArgs = (argv: readonly string[]): Result<Parsed, string> => {
 
   const target = parseTarget(values.get("--target") ?? "auto");
   if (!target.ok) return target;
+  if (post && target.value.kind !== "pr") return err("--post needs --target pr:<n>");
 
   let reviewers: readonly ReviewerKind[] | null = null;
   const rawReviewers = values.get("--reviewer");
@@ -128,6 +144,7 @@ export const parseArgs = (argv: readonly string[]): Result<Parsed, string> => {
       focus: values.get("--focus") ?? null,
       model,
       effort: values.get("--effort") ?? null,
+      post,
       format,
     },
   });

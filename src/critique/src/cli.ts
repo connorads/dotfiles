@@ -8,7 +8,8 @@ import { parseArgs, USAGE, type Options } from "./core/args.ts";
 import { defaultReviewer } from "./core/caller.ts";
 import { isEmpty, renderContext, targetLabel, type Collected } from "./core/context.ts";
 import { parseReport } from "./core/parse.ts";
-import { buildPrompt } from "./core/prompt.ts";
+import { reviewPayload } from "./core/pr-comments.ts";
+import { buildPrompt, type GuidanceDoc } from "./core/prompt.ts";
 import { renderMarkdown } from "./core/render.ts";
 import { err, ok, type Result } from "./core/result.ts";
 import { assemble, EXIT, exitCode } from "./core/review.ts";
@@ -23,12 +24,18 @@ import {
 import { runClaude } from "./shell/claude.ts";
 import { runCodex } from "./shell/codex.ts";
 import { readEnv, type Env } from "./shell/env.ts";
+import { postPendingReview, prView } from "./shell/gh.ts";
 import {
+  addDetachedWorktree,
   collectCommit,
   collectRange,
   collectUncommitted,
+  fetchRefs,
   guidanceFromDisk,
+  guidanceFromRef,
+  hasCommit,
   mergeBase,
+  removeWorktree,
   repoRoot,
   revParse,
   snapshot,
@@ -60,14 +67,69 @@ const specsFor = (options: Options, env: Env): ReviewerSpec[] => {
 
 interface Prepared {
   readonly target: Target;
+  /** Where the reviewer runs: the repo root, or a PR's worktree. */
   readonly cwd: string;
   readonly collected: Collected;
+  readonly guidance: readonly GuidanceDoc[];
+  /** Paths the reviewer must not write. */
+  readonly denyWrite: readonly string[];
+  /** Undo whatever preparing created. Always safe to call. */
+  readonly cleanup: () => Promise<void>;
 }
 
-const prepareLocal = async (options: Options, root: string): Promise<Result<Prepared, Stop>> => {
+const noCleanup = async (): Promise<void> => {};
+
+const preparePr = async (n: number, root: string, env: Env): Promise<Result<Prepared, Stop>> => {
+  const info = await prView(root, n);
+  if (!info.ok) return err(failed(info.error));
+  const pr = info.value;
+  const fetched = await fetchRefs(root, [`pull/${n}/head`, `refs/heads/${pr.baseRefName}`]);
+  if (!fetched.ok) return err(failed(fetched.error));
+  for (const sha of [pr.headRefOid, pr.baseRefOid]) {
+    if (!(await hasCommit(root, sha))) return err(failed(`PR #${n}: ${sha} not fetched; the PR moved, retry`));
+  }
+  const mb = await mergeBase(root, pr.baseRefOid, pr.headRefOid);
+  if (!mb.ok) return err(failed(mb.error));
+  const guidance = await guidanceFromRef(root, pr.baseRefOid);
+  if (!guidance.ok) return err(failed(guidance.error));
+
+  const scratch = await mkdtemp(join(env.tmpdir, `critique-pr${n}-`));
+  const worktree = join(scratch, "wt");
+  const cleanup = async (): Promise<void> => {
+    const removed = await removeWorktree(root, worktree);
+    if (!removed.ok) console.error(`critique: could not remove ${worktree}: ${removed.error}`);
+    await rm(scratch, { recursive: true, force: true });
+  };
+  const added = await addDetachedWorktree(root, worktree, pr.headRefOid);
+  if (!added.ok) {
+    await rm(scratch, { recursive: true, force: true });
+    return err(failed(added.error));
+  }
+  const collected = await collectRange(worktree, mb.value, pr.headRefOid);
+  if (!collected.ok) {
+    await cleanup();
+    return err(failed(collected.error));
+  }
+  const target: Target = {
+    kind: "pr",
+    number: n,
+    title: pr.title,
+    body: pr.body,
+    headSha: pr.headRefOid,
+    baseSha: pr.baseRefOid,
+    mergeBase: mb.value,
+    worktree,
+  };
+  return ok({ target, cwd: worktree, collected: collected.value, guidance: guidance.value, denyWrite: [worktree, root], cleanup });
+};
+
+const prepare = async (options: Options, root: string, env: Env): Promise<Result<Prepared, Stop>> => {
+  const spec = options.target;
+  if (spec.kind === "pr") return preparePr(spec.number, root, env);
+
   const snap = await snapshot(root);
   if (!snap.ok) return err(failed(snap.error));
-  const local = resolveLocal(options.target, snap.value);
+  const local = resolveLocal(spec, snap.value);
   if (!local.ok) return err(usage(local.error));
 
   let target: Target;
@@ -96,7 +158,14 @@ const prepareLocal = async (options: Options, root: string): Promise<Result<Prep
     }
   }
   if (!collected.ok) return err(failed(collected.error));
-  return ok({ target, cwd: root, collected: collected.value });
+  return ok({
+    target,
+    cwd: root,
+    collected: collected.value,
+    guidance: await guidanceFromDisk(root),
+    denyWrite: [root],
+    cleanup: noCleanup,
+  });
 };
 
 interface RunContext {
@@ -138,17 +207,6 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
     return EXIT.usage;
   }
 
-  const prepared = await prepareLocal(options, root.value);
-  if (!prepared.ok) {
-    console.error(`critique: ${prepared.error.message}`);
-    return prepared.error.code;
-  }
-  const { target, collected } = prepared.value;
-  if (isEmpty(collected)) {
-    console.error(`critique: nothing to review in ${targetLabel(target)}`);
-    return EXIT.usage;
-  }
-
   let rubric: string | null = null;
   if (options.rubric !== null) {
     const r = await inlineRubric(options.rubric);
@@ -159,9 +217,44 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
     rubric = r.value;
   }
 
+  const prepared = await prepare(options, root.value, env);
+  if (!prepared.ok) {
+    console.error(`critique: ${prepared.error.message}`);
+    return prepared.error.code;
+  }
+  // A caller that times a background review out sends SIGTERM; the PR
+  // worktree must not outlive the run either way.
+  const onSignal = (signal: NodeJS.Signals): void => {
+    void prepared.value.cleanup().then(() => process.exit(signal === "SIGINT" ? 130 : 143));
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  try {
+    return await review(options, specs, prepared.value, root.value, rubric, env);
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+    await prepared.value.cleanup();
+  }
+};
+
+const review = async (
+  options: Options,
+  specs: readonly ReviewerSpec[],
+  prepared: Prepared,
+  root: string,
+  rubric: string | null,
+  env: Env,
+): Promise<number> => {
+  const { target, collected } = prepared;
+  if (isEmpty(collected)) {
+    console.error(`critique: nothing to review in ${targetLabel(target)}`);
+    return EXIT.usage;
+  }
+
   const template = await readFile(join(PROMPTS, "review.md"), "utf8");
   const prompt = buildPrompt(template, {
-    guidance: await guidanceFromDisk(root.value),
+    guidance: prepared.guidance,
     rubric,
     focus: options.focus,
     context: renderContext(target, collected),
@@ -178,20 +271,29 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
     console.error(`critique: reviewing ${targetLabel(target)} with ${who}`);
     const ctx: RunContext = {
       prompt: prompt.value,
-      cwd: prepared.value.cwd,
+      cwd: prepared.cwd,
       workroot,
       home: env.home,
-      denyWrite: [root.value],
+      denyWrite: prepared.denyWrite,
     };
     outputs = await Promise.all(specs.map((s) => runOne(s, ctx)));
   } finally {
     await rm(workroot, { recursive: true, force: true });
   }
 
-  const review = assemble(target, outputs);
+  const result = assemble(target, outputs);
   const format = options.format ?? (process.stdout.isTTY ? "md" : "json");
-  process.stdout.write(format === "json" ? `${JSON.stringify(review, null, 2)}\n` : renderMarkdown(review));
-  return exitCode(review);
+  process.stdout.write(format === "json" ? `${JSON.stringify(result, null, 2)}\n` : renderMarkdown(result));
+
+  if (options.post && target.kind === "pr" && result.verdict !== null) {
+    const posted = await postPendingReview(root, target.number, reviewPayload(result, target.headSha, collected.diff));
+    if (!posted.ok) {
+      console.error(`critique: --post failed: ${posted.error}`);
+      return EXIT.failed;
+    }
+    console.error(`critique: pending review created (submit it yourself): ${posted.value}`);
+  }
+  return exitCode(result);
 };
 
 if (import.meta.main) {
