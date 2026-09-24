@@ -552,6 +552,6 @@ EOF
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"possible doc-rot phrasing: SKILL.md:"*"Recent changes (2025-2026)"* ]]
 	[[ "$output" == *"possible doc-rot phrasing: SKILL.md:"*"renamed"*"recently"* ]]
-	[[ "$output" != *"Kafka 3.0"* ]]
+	[[ "$output" != *"Kafka 2.4"* ]]
 	[[ "$output" != *"3.12+"* ]]
 }

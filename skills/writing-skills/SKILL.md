@@ -107,7 +107,7 @@ every sentence:
   guidance that should apply throughout as an ongoing rule, not an action to
   perform now.
 - **Timeless present, keep versions that set a threshold.** A *threshold* stays true
-  whenever it's read (`3.12+`, `since Kafka 3.0`) - not rot, keep it. A
+  whenever it's read (`3.12+`, `since Kafka 2.4`) - not rot, keep it. A
   *snapshot* ages silently (`current 4.3`, prices, `recent changes`); deleting
   its date only hides the staleness so it reads as eternal truth - repoint to a
   live source (`--help`, official docs) or keep an honest as-of caveat

@@ -59,10 +59,10 @@
       "id": 4,
       "name": "threshold-vs-snapshot-discrimination",
       "prompt": "review my kafka-consumer skill for anything that'll go stale before i publish it - its at <workspace>/kafka-consumer",
-      "expected_output": "Version thresholds ('since Kafka 3.0', 'Python 3.12+') are kept; self-ageing snapshots (the checked-on banner, 'Recent changes', 'renamed recently', 'as of mid-2026') are flagged with a repoint, timeless reword or honest as-of caveat rather than bare date deletion.",
+      "expected_output": "Version thresholds ('since Kafka 2.4', 'Python 3.12+') are kept; self-ageing snapshots (the checked-on banner, 'Recent changes', 'renamed recently', 'as of mid-2026') are flagged with a repoint, timeless reword or honest as-of caveat rather than bare date deletion.",
       "files": ["evals/fixtures/kafka-consumer"],
       "assertions": [
-        "Keeps load-bearing version thresholds: does NOT flag 'since Kafka 3.0' or 'Python 3.12+' as doc-rot",
+        "Keeps load-bearing version thresholds: does NOT flag 'since Kafka 2.4' or 'Python 3.12+' as doc-rot",
         "Flags the self-ageing snapshots: the 'Verified against ... checked 2026-06-30' banner, 'Recent changes (2025-2026)', 'renamed ... recently', 'as of mid-2026'",
         "For snapshots, recommends repoint-to-live-source, a timeless reword, or an honest as-of caveat - not bare date deletion that leaves a stale fact reading as current",
         "Runs check.sh and notes its doc-rot warnings fire on the snapshot phrasing but not on the version literals"
@@ -70,7 +70,7 @@
       "checks": [
         {"type": "tool_used", "tool": "Bash", "input_match": "check\\.sh"}
       ],
-      "history": "Baseline (pre-reframe wording) over-flags 'since Kafka 3.0' / '3.12+' as version-literal rot and/or recommends bare date deletion; the reframe must fix both without losing the true snapshot catches."
+      "history": "Baseline (pre-reframe wording) over-flags 'since Kafka 2.4' / '3.12+' as version-literal rot and/or recommends bare date deletion; the reframe must fix both without losing the true snapshot catches."
     },
     {
       "id": 5,
