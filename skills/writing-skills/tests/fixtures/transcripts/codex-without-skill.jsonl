@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a0d3f3-a30a-7892-9931-aeed2c77b4a5"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I don’t have a secret spike word in the available context."}}
+{"type":"turn.completed","usage":{"input_tokens":14244,"cached_input_tokens":12160,"cache_write_input_tokens":0,"output_tokens":31,"reasoning_output_tokens":12}}

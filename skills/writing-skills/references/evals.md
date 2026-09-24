@@ -59,16 +59,37 @@ For each prompt, run fresh sessions in parallel:
   baseline: the delta over the sentence is what the skill actually earns.
 
 Fresh sessions are non-negotiable: the authoring conversation knows the
-skill's intent and masks exactly the ambiguities you're hunting. Where the
-environment offers subagents, spawn all runs in the same turn so they finish
-together; otherwise run serially, still in clean sessions.
+skill's intent and masks exactly the ambiguities you're hunting.
 
 Fresh also means uncontaminated: user/project memory files
-(CLAUDE.md/AGENTS.md) often overlap a skill's domain and silently inflate or
-mask the baseline. In Claude Code, `claude -p --setting-sources ""` run from
-a directory outside any CLAUDE.md-bearing tree gives a clean headless
-session; grant the skill file with `--add-dir <skills-dir>` and pass the
-prompt on stdin (`--add-dir` is variadic and swallows a positional prompt).
+(CLAUDE.md/AGENTS.md) and the user's own skills often overlap a skill's domain
+and silently inflate or mask the baseline.
+
+**Default: `scripts/run_evals.py` (EXECUTE).** It runs every case with and
+without the skill against Claude Code or Codex, in parallel, each in its own
+temp workspace outside any memory-file tree:
+
+```sh
+scripts/run_evals.py <skill-dir> --agent claude --model <m> --runs 3 --max-cost-usd 10
+```
+
+The with-skill arm places the skill at the workspace's `.claude/skills/` and
+`.agents/skills/`, so the agent discovers it like any project skill and
+chooses whether to load it; each run records whether it did. It grades
+`checks` deterministically and `assertions` with a judge that is not told the
+arm, and writes `results.json` (the upstream `benchmark.json` shape) plus
+`report.md` linking every transcript - read those, per Grading below. `--help`
+lists the flags; exit 2 means the cost ceiling stopped the suite early.
+
+**Fallback, by hand** (another client, or no Python): run each prompt in a
+fresh headless session from a temp dir holding a copy of the case's `files`.
+Claude Code: `claude -p --setting-sources project` with the skill copied into
+the temp dir's `.claude/skills/` (`--setting-sources ""` also drops project
+skills, so the with-skill arm would never see it). Codex: `codex exec
+--ignore-user-config` still reads `~/.agents/skills` and `~/.codex/AGENTS.md`,
+so point `HOME` and `CODEX_HOME` at a temp dir holding only `auth.json`. Where
+the environment offers subagents instead, spawn all runs in the same turn;
+their shared memory files are the contamination to watch.
 
 Capture per run: the outputs the user cares about, the full transcript, token
 cost, and wall time. Token cost is a grading dimension because skill text

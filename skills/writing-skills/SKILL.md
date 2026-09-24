@@ -157,7 +157,9 @@ Two lanes, same shape, different rigour:
   with-skill and baseline (no skill, or the old version) in **fresh sessions**,
   in parallel where the environment allows. Keep a held-out validation slice
   for description changes so trigger wording doesn't overfit the first misses.
-  Read [references/evals.md](references/evals.md) for the full harness.
+  Run the arms with `scripts/run_evals.py <skill-dir> --agent claude|codex`
+  (EXECUTE); read [references/evals.md](references/evals.md) for the full
+  harness and the by-hand fallback.
 - **Exploratory mode (human-reviewed)** - iterate live with the user on real
   tasks when the output is subjective or the user prefers a conversational
   loop. Capture the outputs and feedback; the human review is the eval.
@@ -242,7 +244,8 @@ contents list. Then verify the things a script can't:
   neighbouring skills ("this begins where X ends") when they could collide.
 
 `tests/check.bats` covers the checker CLI contract; run it after changing
-`scripts/check.sh`.
+`scripts/check.sh`. `tests/test_run_evals.py` (pytest) does the same for
+`scripts/run_evals.py`.
 
 ## References
 
