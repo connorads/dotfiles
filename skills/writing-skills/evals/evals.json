@@ -21,7 +21,7 @@
     {
       "id": 2,
       "name": "create-skill-from-scratch",
-      "prompt": "i want a skill that makes agents write proper git commit messages in my repos - small coherent commits, imperative subject line, body explains why not what, no 'various fixes' rubbish. create it in <workspace>/ - call it whatever makes sense",
+      "prompt": "i want a skill that makes agents write proper git commit messages in my repos - small coherent commits, imperative subject line, body explains why not what, no 'various fixes' rubbish. create it in <workspace>/skills/ - call it whatever makes sense",
       "expected_output": "A new skill directory whose name matches its frontmatter, with a what + when description including a negative trigger, a lean body whose form fits the failure type, a note that must-run steps belong in hooks, and a proposal to test before shipping.",
       "files": [],
       "assertions": [
@@ -91,7 +91,7 @@
     {
       "id": 6,
       "name": "baseline-before-drafting",
-      "prompt": "can u make me a skill so agents stop writing massive vague PR descriptions? they pad them with a summary of every file changed and never say why. put it in <workspace>/",
+      "prompt": "can u make me a skill so agents stop writing massive vague PR descriptions? they pad them with a summary of every file changed and never say why. put it in <workspace>/skills/",
       "expected_output": "Before SKILL.md is drafted, a run of the task without the skill is performed, or proposed to the user with the reason, so the draft answers observed failures rather than predicted ones.",
       "files": [],
       "assertions": [
