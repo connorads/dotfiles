@@ -54,6 +54,25 @@ browser action. A click call can return after an attack's recovery ends, making
 a later movement measurement miss the action entirely. Record observed event
 times and simulation progress; requested wait durations are not measurements.
 
+### Browser harness traps
+
+Each of these produced a false reading in a real three.js session:
+
+- A WebGL canvas created without `preserveDrawingBuffer: true` can screenshot
+  blank while `gl.readPixels` right after a render shows content. Before
+  calling a black or empty frame a rendering defect, read pixels back or
+  enable the flag in the test build.
+- Loading a `file://` page through the browser tool can yield an empty
+  document with no console error. Serve the build over loopback HTTP instead.
+- A dev server's hot reload after any source edit restarts the game at its
+  boot screen. Re-run boot and setup before each observation; the state you
+  prepared earlier is gone.
+- A prepared start (a debug level jump or a written position) can land inside
+  collision geometry. The camera then clips into walls or the game resolves
+  the overlap, and the frame shows neither the intended spot nor a real
+  defect. Confirm the prepared position is open space before judging the
+  frame.
+
 Use the existing browser and recording skills for commands and capture details.
 Check installed command help before relying on a flag. Avoid a new automation
 framework when existing input and capture tools suffice.
