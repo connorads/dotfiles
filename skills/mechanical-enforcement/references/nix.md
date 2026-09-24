@@ -41,7 +41,7 @@ Budget for it: ~25-45s warm across half a dozen configurations, so glob the step
 to `**/*.nix` plus `flake.lock` and nothing else. A punctuation fix in a README
 under the same directory should not buy a six-configuration evaluation.
 
-The linters earn their place by catching what evaluation cannot: dead code
+The linters are worth running because they catch what evaluation cannot: dead code
 evaluates perfectly.
 
 ## Dead code (deadnix)

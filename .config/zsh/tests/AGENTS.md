@@ -220,7 +220,7 @@ tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }   # later commands; -f only matters at ser
 teardown() { stop_private_server; }     # kills the server AND unlinks the socket
 ```
 
-Two reasons for `-f /dev/null`, both load-bearing:
+Two reasons for `-f /dev/null`:
 
 - **Correctness (the real one).** `../../tmux/tmux.conf` registers focus hooks
   (`set-hook -ga after-select-pane` / `session-window-changed`) that fire

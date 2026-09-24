@@ -19,7 +19,7 @@ Done when: one written sentence names the door type and why. The gate is never s
 
 ## 1 - Frame
 
-State the decision as the capability or invariant needed, not as a choice between artefacts: "the two surfaces must never disagree", not "shared helper vs base class". Artefact framing pre-anchors the fork on one mechanism. Name the load-bearing dimensions the candidates must differ on.
+State the decision as the capability or invariant needed, not as a choice between artefacts: "the two surfaces must never disagree", not "shared helper vs base class". Artefact framing pre-anchors the fork on one mechanism. Name the dimensions the candidates must differ on.
 
 ## 2 - Fork
 

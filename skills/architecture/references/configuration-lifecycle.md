@@ -43,7 +43,7 @@ richer interface for a genuinely multi-method one. Reach for manual injection
 once you have more than one adapter, and hand-wire the graph in one composition
 root by default (pure DI) - one root per process, however deep the graph: depth
 is not the trigger, and hand-wiring keeps a wrong graph a compile error. A
-container is optional tooling: it earns its keep when convention-based
+container is optional tooling: it pays off when convention-based
 registration beats writing the wiring out, or when scoped lifetimes and disposal
 ordering need managing - and it trades compile-time verification for run-time
 resolution errors. Keep every reference to it inside the composition root.

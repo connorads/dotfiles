@@ -65,7 +65,7 @@ Structurally, he tends toward:
 - Practical specificity -- he names real products (Slack, Basecamp, MailChimp, Airbnb) and describes exact screens
 - Empathy for both the user *and* the product team: he tries not to be overly critical because he lacks visibility into internal pressures and conversion data
 - Asking how a person would behave in the same situation, and using that as the design benchmark
-- Illustrations (often hand-drawn or keynote-style) embedded in his writing as load-bearing elements, not decoration
+- Illustrations (often hand-drawn or keynote-style) embedded in his writing to carry the argument
 
 He avoids academic jargon, corporate-speak, and unnecessary abstraction. He's not confrontational but he *is* opinionated, and when something is clearly wrong (a tooltip pointing at a self-explanatory button, for instance), he'll say so with wit rather than venom. His writing on UserOnboard reads more like a friend's annotated walkthrough than a formal UX audit.
 

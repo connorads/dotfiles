@@ -129,7 +129,7 @@ Two rules that save hours of confusion:
 
 ## Canonical log line - ASGI middleware
 
-The middleware is the leverage point: it creates a per-request event dict, binds `request_id` into contextvars, lets handlers annotate via `annotate(...)`, and emits one event in `finally`. Works for FastAPI, Starlette, and anything speaking ASGI.
+The middleware is the place to do it: it creates a per-request event dict, binds `request_id` into contextvars, lets handlers annotate via `annotate(...)`, and emits one event in `finally`. Works for FastAPI, Starlette, and anything speaking ASGI.
 
 A vetted implementation ships with this skill at [`scripts/canonical_asgi.py`](../scripts/canonical_asgi.py) - copy it into the target project rather than re-deriving it from scratch. The file handles the subtle cases (case-insensitive header lookup, latin-1 decoding, route template extraction, correct `ContextVar` reset, inheriting `x-request-id` if present). Import it and add to the app:
 

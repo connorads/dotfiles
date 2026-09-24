@@ -124,7 +124,7 @@ mechanism on their own integrity** (theme 1.1).
 
 ## The cross-cutting wins (what most setups miss)
 
-Ranked by leverage for an AGENTS.md + skills + ADRs + KB workflow:
+Ranked by payoff for an AGENTS.md + skills + ADRs + KB workflow:
 
 1. **Reconciliation / drift checks** (theme 1.1/5.4) - turn hand-maintained tables
    and pointers into pre-commit/CI assertions. The single biggest fix.

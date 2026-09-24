@@ -57,7 +57,7 @@ common, coherent combination. So is one-type (A) raised one at a time.
 
 Pick by how much the consumers are outside your control and how independently
 the contract must evolve. The more consumers you don't deploy with, the more a
-separate, versioned contract (B) earns its keep.
+separate, versioned contract (B) is worth the cost.
 
 ## The Two That Don't Bend
 

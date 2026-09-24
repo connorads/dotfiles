@@ -177,7 +177,7 @@ three. Retrofitting global `domain/application/infrastructure` folders onto an
 existing tangle yields four connected balls of mud; layering belongs *inside*
 a capability, as a private detail.
 
-The load-bearing mechanism is encapsulation, not folder names: give each
+The mechanism that protects a boundary is encapsulation, not folder names: give each
 module one narrow public surface and keep the rest internal - a folder full of
 public types provides no protection however it is named. Keep cross-module
 calls on explicit interfaces so a module can later be deployed separately

@@ -15,8 +15,8 @@ that role by itself.
 ## Make interactions worth discovering
 
 Create a recognisable first strategy and opportunities to adapt it. A new piece
-can earn its place by enabling a new plan. A numerical upgrade
-can earn its place through timing, affordability or reaching a useful threshold;
+is worth adding if it enables a new plan. A numerical upgrade
+can justify itself through timing, affordability or reaching a useful threshold;
 not every level needs a new rule.
 
 Damage-first choices alone do not distinguish superior value, clearer wording,

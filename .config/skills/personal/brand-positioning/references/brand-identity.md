@@ -159,7 +159,7 @@ Three models, with the reality that portfolios go hybrid:
 
 **Six strategic questions** - the decision instrument; answer all six in any architecture recommendation:
 
-1. What do we gain by leveraging the parent name?
+1. What do we gain by using the parent name?
 2. Does the offering's positioning demand distance from the parent?
 3. Will co-branding confuse customers?
 4. Keep or replace an acquired name's equity? (Never reflexively discard acquired equity.)

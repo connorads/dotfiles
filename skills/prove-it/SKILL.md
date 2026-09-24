@@ -15,7 +15,7 @@ description: >-
 > What result did each live explanation predict, and how should this
 > observation change their relative weight?
 
-Use the full protocol for a load-bearing claim: one that drives an action,
+Use the full protocol for a key claim: one that drives an action,
 closes an investigation, or will be reported as fact. For a minor claim, ask
 the question above and state the evidential strength.
 
@@ -31,7 +31,7 @@ Each step produces something stated, not merely considered.
    live config and state address what it is doing.
 
 2. **Audit inherited premises and priors.** Treat every premise from a prompt,
-   ticket, summary or earlier turn as a claim. Check the load-bearing ones and
+   ticket, summary or earlier turn as a claim. Check the ones the conclusion rests on and
    report a false one promptly. Include relevant base rates. The reporter's
    diagnosis, including yours, is Hypothesis #0 rather than a fact.
 
@@ -58,7 +58,7 @@ Each step produces something stated, not merely considered.
 6. **Label the chain.** Mark material links **observed** (directly seen and
    cited), **derived** (logic or arithmetic from observations), **inferred**
    (best explanation under stated assumptions), or **assumed** (unchecked).
-   The weakest load-bearing link limits the conclusion. Confidence in a
+   The weakest link the conclusion rests on limits it. Confidence in a
    conjunction is not an average across its parts.
 
 7. **Report the warrant and boundary inline.** Name the observation, how it

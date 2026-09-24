@@ -39,7 +39,7 @@ def status_line(inv: Invoice) -> str:
         case _:                assert_never(inv)   # a later variant: cannot be assigned ... "Never"
 ```
 
-A `Literal` tag field is not what makes the union exhaustive; it earns its place
+A `Literal` tag field is not what makes the union exhaustive; it is needed
 only where the union is **serialised**, because a wire format has no classes:
 `kind: Literal["draft"] = "draft"` on each DTO under
 `Annotated[DraftDto | SentDto, Field(discriminator="kind")]`, or
@@ -77,7 +77,7 @@ Zero-argument `super()` inside a slotted dataclass method raises
 `TypeError: super(type, obj): obj must be an instance or subtype of type` on
 3.12 and works from 3.13.
 
-**`kw_only=True` earns its place twice.** A defaulted field does not force
+**`kw_only=True` does two jobs.** A defaulted field does not force
 defaults onto the fields after it, so `TypeError: non-default argument follows
 default argument` cannot happen. And two fields of the same type stop being
 swappable, because positional construction is refused outright:

@@ -55,7 +55,7 @@ passes every `no-restricted-imports` in the repo.
 repo's tsconfig and asserts layer rules (no `src/domain/**` module reaches `src/infra/**`),
 reachability with the offending chain named in the failure message, and package cycles,
 filtering type-only edges separately so a boundary allowing shared types but not runtime values
-is two assertions over one graph. Two mechanics are load-bearing, verified 2026-09-03 against
+is two assertions over one graph. Two mechanics are required, verified 2026-09-03 against
 ts-morph 28.0.0. Edges come from `getLiteralsReferencingOtherSourceFiles()`, not
 `getImportDeclarations()`: a module whose only edges are a dynamic `await
 import("../infra/db.ts")` and an `import("../infra/db.ts").Order` type query returns **zero**
@@ -164,7 +164,7 @@ Gate by level:
 - **Package / namespace / module cycles: zero-tolerance.** These layers carry
   architectural intent, so any cycle between them is a violation - this is
   where `import/no-cycle` / dependency-cruiser / `cargo modules --acyclic`
-  earn their keep. Python's is import-linter's `acyclic_siblings` contract,
+  pay off. Python's is import-linter's `acyclic_siblings` contract,
   which names a cycle-breaking edge in the failure message
   (`It could be made acyclic by removing 1 dependency: .infra -> .domain`).
   It compares direct dependencies among the sibling set only, so a chain
@@ -335,7 +335,7 @@ out=$(cd "$tmp" && "$root/node_modules/.bin/oxlint" --config .oxlintrc.json src/
 [[ $out == *no-restricted-properties* ]] || { echo "purity gate not armed"; exit 1; }
 ```
 
-Three details are load-bearing: match the **rule name** in the output rather than the exit
+Three details are required: match the **rule name** in the output rather than the exit
 status, because a known-bad file trips unrelated rules and an exit-code test passes whatever the
 gate does; capture with `|| true`, since oxlint exits 1 on any diagnostic; and run against a
 temp copy, or the committed known-bad file reddens the real gate for good. Deleting the rule

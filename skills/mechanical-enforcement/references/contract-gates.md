@@ -96,7 +96,7 @@ pnpm build && api-extractor run --local   # dev: rewrite the report, commit it
 pnpm build && api-extractor run           # CI: exits 1 on a diff - never --local
 ```
 
-`pnpm build &&` is load-bearing, because the gate reads the emitted `.d.ts` and
+`pnpm build &&` is required, because the gate reads the emitted `.d.ts` and
 nothing else - against a stale or CI-restored `dist/` it exits 0 on an
 already-changed API. It also exits 1 on *any* warning, not only a report diff,
 and `ae-missing-release-tag` fires once per exported symbol until each carries

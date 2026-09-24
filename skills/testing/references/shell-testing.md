@@ -205,7 +205,7 @@ sys.stdout.buffer.write(b"".join(chunks))
 sys.exit(proc.returncode)                  # the CHILD's status, not the driver's
 ```
 
-Three parts are load-bearing:
+Three parts are required:
 
 - **The driver holds the master open** until the child exits. That is what keeps
   the child's stdin from hitting EOF before it reads - the heredoc failure above.

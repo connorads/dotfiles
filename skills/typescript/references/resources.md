@@ -139,6 +139,6 @@ Temporal (the date API, not the durable-execution engine) is typed ahead of the 
 Cannot find namespace 'Temporal'`, and with that lib the same code compiles at exit 0
 while `typeof Temporal` is `undefined` on the current runtime floor. The next runtime line ships it
 unflagged and reaches Active LTS on 2026-10-28, the floor for a domain type. The port
-earns its keep past that date: the current runner bundles fake timers,
+is worth keeping past that date: the current runner bundles fake timers,
 whose shipped code holds zero occurrences of `Temporal`, so `vi.useFakeTimers()` freezes
 `Date.now()` and leaves `Temporal.Now` on the wall clock, silently.

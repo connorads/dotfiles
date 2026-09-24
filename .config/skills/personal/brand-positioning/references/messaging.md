@@ -78,7 +78,7 @@ interview verbatims from `customer-research.md`):
    list, not a clever abstraction of it.
 2. **Order sections by the customers' stated priorities** - the message-hierarchy
    question ("what matters most as you look for a new solution?") is the
-   highest-leverage research input; its frequency ranking is the page's section
+   most useful research input; its frequency ranking is the page's section
    order. Do not order by what the team finds most impressive.
 3. **Use verbatim sticky phrases as headlines and subheads.** Customers' exact words
    from research go on the page untranslated; rewriting them into marketing-speak

@@ -107,7 +107,7 @@ jq -e '.analysis.types.kind? == "included"' .pack/attw.json || exit 1
 
 The clean-directory smoke test is the only gate that exercises the artefact as a
 consumer sees it, and its two halves catch different failures. The `cd` is
-load-bearing: run from the project root and the source tree shadows the install.
+required: run from the project root and the source tree shadows the install.
 
 ```sh
 D=$(mktemp -d) && cp .pack/*.tgz "$D/pkg.tgz" && cd "$D"

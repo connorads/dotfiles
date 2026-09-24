@@ -1,6 +1,6 @@
 # Rituals - runnable recipes
 
-Concrete procedures for the highest-leverage principles. Mechanism names
+Concrete procedures for the principles that pay off most. Mechanism names
 (pre-commit hook, CI check, fresh agent session) are illustrative - swap in
 whatever your project already uses.
 

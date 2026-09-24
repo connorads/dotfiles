@@ -106,7 +106,7 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
 - **Metric-matched fallback `@font-face`.** A local fallback (e.g. Georgia) with
   `size-adjust` + `ascent-override` + `descent-override` tuned to the real face
   stops reflow on swap - turning a layout jump into (at worst) an appearance
-  shimmer. Highest-leverage anti-CLS technique for self-hosted fonts. It is exactly
+  shimmer. Most effective anti-CLS technique for self-hosted fonts. It is exactly
   what `next/font`'s `adjustFontFallback` generates (both `next/font/google`, from
   `capsize-font-metrics.json`, and `next/font/local`, via fontkit, use the identical
   Capsize-derived algorithm, falling back to Arial/Times New Roman by generic
@@ -170,7 +170,7 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
 
 `ascent-override` / `descent-override` / `line-gap-override` set the line-box
 metrics as a `<percentage>` of em. `size-adjust` (%, initial 100%) multiplies **all**
-metrics *including those overrides* - that clause is the load-bearing bit. It is why
+metrics *including those overrides* - that clause is the key. It is why
 generators divide the raw metric by `unitsPerEm * sizeAdjust`, pre-compensating so
 ascent/descent land correctly after size-adjust re-multiplies. `size-adjust` itself
 is a general scale factor over all the fallback's metrics; generators *derive its

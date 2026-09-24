@@ -127,7 +127,7 @@ reference.
 
 9. Use raw strings as leads. For important literals, confirm offsets,
    pointer/length use, xrefs, or reachable code flow before claiming runtime use.
-   Search to locate, read to quote: take load-bearing literals - hostnames, keys,
+   Search to locate, read to quote: take the literals a finding rests on - hostnames, keys,
    field names, numeric constants - from the file itself, not from the terminal
    output of a search pipeline.
 
@@ -161,7 +161,7 @@ networking imports in a native library does not establish that its Python
 wrapper or dynamically loaded payload is offline.
 
 Static reading and live behaviour disagree more often than either seems to
-warrant. Where a claim is load-bearing, establish it both ways.
+warrant. Where a conclusion depends on a claim, establish it both ways.
 
 ## Probing a Live Service
 

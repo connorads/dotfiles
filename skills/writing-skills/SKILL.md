@@ -82,7 +82,7 @@ returns empty is a failure to investigate, not a pass.
 ### 2. Draft the minimum
 
 Write the **description first** - it alone decides whether the body is ever
-read, which makes it the highest-leverage sentence in the skill. Read
+read, which makes it the most important sentence in the skill. Read
 [references/description.md](references/description.md) when writing or
 debugging one.
 
@@ -106,7 +106,7 @@ every sentence:
   once and persists; the agent doesn't re-read the file later. Phrase
   guidance that should apply throughout as an ongoing rule, not an action to
   perform now.
-- **Timeless present, keep load-bearing versions.** A *threshold* stays true
+- **Timeless present, keep versions that set a threshold.** A *threshold* stays true
   whenever it's read (`3.12+`, `since Kafka 3.0`) - not rot, keep it. A
   *snapshot* ages silently (`current 4.3`, prices, `recent changes`); deleting
   its date only hides the staleness so it reads as eternal truth - repoint to a
@@ -123,7 +123,7 @@ every sentence:
   concept throughout.
 
 Anchor the skill on a single mental model or question stated up front (as this
-file does). A checklist covers the cases you listed; a north star lets the
+file does). A checklist covers the cases you listed; a guiding question lets the
 agent resolve cases you didn't.
 
 Structure follows the three loading levels - metadata (always in context),

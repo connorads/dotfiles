@@ -35,7 +35,7 @@ PR, ADR, or short message unless that shape was requested or is the shortest way
 to stop a material misreading.
 
 Precision is semantic, not ceremonial. The reader must be able to recover how a
-load-bearing claim is known and who stands behind it; they need not see the
+key claim is known and who stands behind it; they need not see the
 names of these rules.
 
 ## How is it known?

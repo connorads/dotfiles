@@ -41,7 +41,7 @@ valid, with the same trade-offs as fonts.md's font-display section.)
   fonts.md), so its preconnect **must** carry `crossorigin` to warm the socket
   the font fetch will actually use.
 - Keep them separate `<link>` tags. With hosted fonts this pair IS
-  load-bearing - the "preconnect is pure waste" rule in resource-hints.md
+  required - the "preconnect is pure waste" rule in resource-hints.md
   applies to self-hosted fonts only.
 
 ## You cannot reliably hand-preload the gstatic woff2

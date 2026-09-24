@@ -90,7 +90,7 @@ type Slug = Annotated[
 ]
 ```
 
-The ordering is load-bearing. `StringConstraints` applies `pattern` to the
+The ordering matters. `StringConstraints` applies `pattern` to the
 **raw** input, not to the value its own `strip_whitespace`/`to_lower` produces,
 so that constraint alone rejects `"  Hello-World "`; with the `BeforeValidator`
 first, the same input parses to `'hello-world'`.

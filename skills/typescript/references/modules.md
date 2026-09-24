@@ -5,7 +5,7 @@
 A deep module hides substantial behaviour behind a cohesive, low-burden interface. Low-burden ≠ few functions - a domain module may expose many cohesive
 combinators around one concept and still be deep. Avoid modules that merely
 forward calls. Deletion test: if deleting one makes complexity vanish it was
-pass-through waste; if it spreads complexity across callers it earned its keep.
+pass-through waste; if it spreads complexity across callers, keep it.
 
 ## Domain modules
 

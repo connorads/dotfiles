@@ -16,7 +16,7 @@ Follow this runbook in order.
 
 ## 1. Role + golden rule
 
-<One-line role definition. Load-bearing.>
+<One-line role definition.>
 
 Example: "Operate the harness around the <name> research loop. Fixing
 a broken runner or freeing a stuck hypothesis is your job. Writing
@@ -175,7 +175,7 @@ anything you can't classify):
   every session. Bloated sections waste tokens and dilute the
   actually-important triggers.
 - **Inline the golden rule (§1).** Don't offload it to a reference.
-  It's the single most load-bearing line in the file.
+  Every judgement call in the file traces back to it.
 - **Don't inline tmux syntax.** The consumer has the `tmux` skill.
   Describe *what* to watch; let the skill handle *how*.
 - **Keep §4 triggers copy-pasteable.** A future human reading the

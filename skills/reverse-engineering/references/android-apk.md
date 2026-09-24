@@ -242,7 +242,7 @@ cat out_res/res/xml/network_security_config.xml
 
 ## Evidence Discipline
 
-**A grep pipeline is not a citation.** Confirm every load-bearing literal -
+**A grep pipeline is not a citation.** Confirm every literal a finding rests on -
 hostname, application id, key, field name, numeric constant - by reading the file
 at the offset, not by trusting terminal output. Search to locate; read to quote.
 This costs one extra tool call per claim and is the difference between a spec
@@ -271,7 +271,7 @@ single most common way a nearly-correct static finding becomes wrong.
   `META-INF/*.version` marker. Time-box this. If a `META-INF` marker and an
   obvious version constant both come up empty, stop grepping and either
   fingerprint class shapes against upstream tags or record the version as
-  unproven - it is rarely load-bearing anyway.
+  unproven - findings rarely depend on it.
 
 ## Sources
 

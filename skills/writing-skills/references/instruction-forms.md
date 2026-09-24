@@ -82,7 +82,7 @@ whole skill:
 A useful tell: if you'd trust a competent new hire's judgement on the step,
 write a principle; if you'd hand them a runbook, write the runbook.
 
-## Techniques that earn their keep
+## Techniques that work
 
 - **Name the anti-pattern.** A memorable label ("the mirror-test trap",
   "voodoo constant") gives the agent a recognition hook it can apply beyond

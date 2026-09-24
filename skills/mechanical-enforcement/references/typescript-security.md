@@ -135,8 +135,8 @@ across assignments. Install from the project's own script - it is not on npm.
 opengrep scan --config opengrep-rules --error --taint-intrafile --disable-nosem src
 ```
 
-- **`--error` is load-bearing**: without it findings print and the exit is 0, and with it a rule declaring `severity: WARNING` still exits 1 - the flag decides the gate, not the rule's severity.
-- **`--taint-intrafile` is equally load-bearing.** On the commonest real handler shape - source in the handler, `execSync` behind a same-file helper - the same rule and the same file report 0 findings and exit 0 without the flag, and 1 finding and exit 1 with it.
+- **`--error` is required.** Without it findings print and the exit is 0, and with it a rule declaring `severity: WARNING` still exits 1 - the flag decides the gate, not the rule's severity.
+- **`--taint-intrafile` is required too.** On the commonest real handler shape - source in the handler, `execSync` behind a same-file helper - the same rule and the same file report 0 findings and exit 0 without the flag, and 1 finding and exit 1 with it.
 - **`// nosemgrep` silently disarms the gate, and `--disable-nosem` only half-restores it.** A `nosemgrep` comment on the finding line or the line above it takes the finding to 0 and exit 0. Adding `--disable-nosem` makes the finding print again while the run still exits **0**. Pair it with a grep whose exit dispatch treats 1 as clean, 0 as a finding and greater than 1 as an execution error.
 - **A bare `opengrep scan --error src` is not a no-op.** With no config it resolves `auto` and fires on the fixture's `eval(code)` and `Object.assign({}, JSON.parse(code))` with no custom rule at all - useful as a smoke check, but it puts a network call in the gate path.
 - **Registry packs (`p/typescript`, `p/nodejs`, `p/security-audit`) are rejected**: they are framework-shaped rather than language-shaped, `p/security-audit` announces 225 rules and runs 22 after language filtering, and each pull is a network call. Hand-written rules plus the sinks file are the gate.

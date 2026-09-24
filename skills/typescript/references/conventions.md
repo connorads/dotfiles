@@ -24,7 +24,7 @@ return normalised as EmailAddress;
 ## `satisfies` keeps the keys literal
 
 `satisfies T` checks a value against `T` without widening it, so no cast happens
-and no SAFETY note is needed. The load-bearing consequence is key preservation:
+and no SAFETY note is needed. What matters is that it preserves keys:
 
 ```ts
 type Routes = Record<string, { readonly method: "GET" | "POST"; readonly path: string }>;
