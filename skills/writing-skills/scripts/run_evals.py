@@ -214,6 +214,11 @@ def parse_evals(data: object) -> list[Case]:
 # --- Transcript normalisation -------------------------------------------------
 
 
+def _obj(value: object) -> dict:
+    """The value if it is a JSON object, else empty: client events vary in shape."""
+    return value if isinstance(value, dict) else {}
+
+
 def _json_lines(lines: Iterable[str]) -> Iterable[dict]:
     for line in lines:
         try:
@@ -249,9 +254,9 @@ def _normalise_claude(
     final, tokens, cost = "", None, None
     for ev in events:
         kind = ev.get("type")
-        content = (ev.get("message") or {}).get("content")
+        content = _obj(ev.get("message")).get("content")
         if kind == "assistant" and isinstance(content, list):
-            for block in content:
+            for block in map(_obj, content):
                 if block.get("type") == "tool_use":
                     calls[block.get("id", "")] = len(out)
                     out.append(
@@ -260,15 +265,15 @@ def _normalise_claude(
                 elif block.get("type") == "text" and block.get("text"):
                     final = block["text"]
         elif kind == "user" and isinstance(content, list):
-            for block in content:
-                idx = calls.get(block.get("tool_use_id", "")) if isinstance(block, dict) else None
+            for block in map(_obj, content):
+                idx = calls.get(block.get("tool_use_id", ""))
                 if idx is not None:
                     c = out[idx]
                     out[idx] = ToolCall(c.tool, c.input_text, _text(block.get("content")))
         elif kind == "result":
             final = ev.get("result") or final
             cost = ev.get("total_cost_usd")
-            usage = ev.get("usage") or {}
+            usage = _obj(ev.get("usage"))
             tokens = sum(
                 int(usage.get(k) or 0)
                 for k in (
@@ -288,7 +293,7 @@ def _normalise_codex(
     final, tokens = "", None
     for ev in events:
         if ev.get("type") == "item.completed":
-            item = ev.get("item") or {}
+            item = _obj(ev.get("item"))
             kind = item.get("type")
             if kind == "agent_message":
                 final = item.get("text", "")
@@ -307,7 +312,7 @@ def _normalise_codex(
             elif kind == "web_search":
                 out.append(ToolCall("WebSearch", str(item.get("query", "")), ""))
         elif ev.get("type") == "turn.completed":
-            usage = ev.get("usage") or {}
+            usage = _obj(ev.get("usage"))
             tokens = (
                 (tokens or 0)
                 + int(usage.get("input_tokens") or 0)
@@ -543,14 +548,15 @@ class Client(Protocol):
     def judge(self, prompt: str, model: str | None) -> tuple[Any, float | None]: ...
 
 
-CLAUDE_SANDBOX = json.dumps(
+CLAUDE_SETTINGS = json.dumps(
     {
+        "permissions": {"allow": ["WebSearch", "WebFetch"]},
         "sandbox": {
             "enabled": True,
             "failIfUnavailable": True,
             "allowUnsandboxedCommands": False,
             "autoAllowBashIfSandboxed": True,
-        }
+        },
     }
 )
 
@@ -559,7 +565,10 @@ class Claude:
     # --setting-sources project: the workspace's .claude/skills load, the
     # user's skills and CLAUDE.md don't ("" would drop project skills too).
     # acceptEdits confines edits to the workspace; Bash runs in the native
-    # sandbox, which confines writes to it.
+    # sandbox, which confines writes to it. Web search and fetch are allowed
+    # because verifying claims live is behaviour evals grade. Writes under the
+    # workspace's .claude/ stay denied whatever the rules say (a built-in
+    # safety check), so a case prompt should not target that directory.
     name = "claude"
 
     def env(self) -> dict[str, str]:
@@ -576,7 +585,7 @@ class Claude:
             "--permission-mode",
             "acceptEdits",
             "--settings",
-            CLAUDE_SANDBOX,
+            CLAUDE_SETTINGS,
             "--output-format",
             "stream-json",
             "--verbose",
@@ -718,11 +727,13 @@ def make_workspace(skill_dir: Path, case: Case, with_skill: bool) -> Path:
     return ws
 
 
-def snapshot(ws: Path, limit: int = 2000) -> dict[str, str]:
+def snapshot(ws: Path, skill: str, limit: int = 2000) -> dict[str, str]:
+    """Workspace text by relative path, minus the placed skill under test."""
+    hidden = (f".claude/skills/{skill}/", f".agents/skills/{skill}/", ".git/")
     files: dict[str, str] = {}
     for p in sorted(ws.rglob("*")):
         rel = p.relative_to(ws).as_posix()
-        if rel.split("/")[0] in (".claude", ".agents", ".git") or not p.is_file():
+        if rel.startswith(hidden) or not p.is_file():
             continue
         files[rel] = p.read_text(errors="replace") if p.stat().st_size <= 65536 else ""
         if len(files) >= limit:
@@ -768,14 +779,14 @@ def run_one(
     start = time.monotonic()
     try:
         ws = make_workspace(skill_dir, case, arm == "with_skill")
-        before = snapshot(ws)
+        before = snapshot(ws, skill_dir.name)
         proc = client.run(ws, case.prompt.replace("<workspace>", str(ws)), args.model)
         seconds = time.monotonic() - start
         (run_dir / "transcript.jsonl").write_text(proc.stdout)
         (run_dir / "stderr.txt").write_text(proc.stderr)
         t = normalise(client.name, proc.stdout.splitlines(), skill_dir.name)
         budget.add(t.cost_usd)
-        files = snapshot(ws)
+        files = snapshot(ws, skill_dir.name)
         results = [grade(c, t, files) for c in case.checks]
         cost = t.cost_usd
         if case.assertions:
@@ -792,7 +803,8 @@ def run_one(
             if proc.returncode == 0
             else f"{client.name} exited {proc.returncode}: {proc.stderr[-300:]}"
         )
-    except (ClientError, OSError, subprocess.TimeoutExpired) as e:
+    # One run's failure must not lose every other run's results.
+    except Exception as e:
         seconds = time.monotonic() - start
         (run_dir / "transcript.jsonl").touch()
         (run_dir / "error.txt").write_text(str(e))
