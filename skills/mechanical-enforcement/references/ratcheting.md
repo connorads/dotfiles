@@ -21,9 +21,12 @@ gates.
 | lizard | `lizard -i <today's count>` | Coarse: a bare warning **count**, not a per-site baseline, so fixing one function and adding another nets zero. Use only for languages with no linter baseline. |
 | knip | per-issue-type severity in the `rules` key (`"error"` / `"warn"` / `"off"`) | No baseline file exists. `"warn"` keeps a type in the report and out of the exit code, so adopt type by type; `"off"` drops it from the report as well. `--max-issues N` counts what survives `--include` and `--production` filtering, so a per-category budget takes one scoped run each, and a number tuned in one mode does not hold in the other. The non-numeric `--max-issues` fail-open and its version floor: `references/typescript.md`, Dead code (knip). Verified 2026-09-03 against knip 6.33.0. |
 | Coverage (Vitest) | `coverage.thresholds.autoUpdate: true` | Self-tightening: bumps thresholds up as coverage rises. Run where the config edit can be committed, not in a gated CI job. |
+| Per-edit delta (slew), any metric | none: the gate scores each touched function before and after the edit | Fails an edit that raises a function's score by more than a set step, and always allows a score to hold or fall. interlinked-cli's steps are more than 2 cyclomatic or 4 cognitive in one edit. No linter here ships it, so it needs a harness that can score the pre-edit version, such as an agent edit hook or a diff-based CI script. It adds no baseline file, which makes it usable where the tool has none. On its own it never shrinks legacy debt, so pair it with a shrink-only baseline whose own gate rejects any edit that raises an entry. Then loosening a water-line is a blocked edit too. |
 
 Biome, oxlint and `tsc` have no baseline mechanism at all (open proposals
-only), so a strict compiler flag has no ratchet vehicle in TypeScript. The
+only), so a strict compiler flag has no ratchet vehicle in TypeScript. For a
+per-function metric rule, per-edit delta (above) is the one vehicle that
+needs no baseline from the tool. The
 ESLint and dependency-cruiser rows carry lint and graph rules rather than
 compiler flags, and neither tool runs on TypeScript 7 without the side-by-side
 TypeScript 6 alias (`references/typescript.md`, Type checking), so on an
