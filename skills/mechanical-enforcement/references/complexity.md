@@ -85,7 +85,7 @@ stack's own default is defensible, adopt it rather than inventing one.
 | Concern | Number | Where it comes from |
 |---|---|---|
 | Cyclomatic complexity, per function | **15** (10 greenfield) | NIST SP 500-235 §2.5 verbatim: "The original limit of 10 as proposed by McCabe has significant supporting evidence, but limits as high as 15 have been used successfully as well." Read the next sentence too - NIST conditions anything over 10 on experienced staff, formal design, code walkthroughs and a comprehensive test plan. |
-| Cognitive complexity, per function | **15** | SonarSource's own S3776 default, and independently the default of Biome, eslint-plugin-sonarjs and complexipy - so one number spans TS and Python. Ultracite's 20 is an adoption ceiling, not a recommendation. |
+| Cognitive complexity, per function | **15** | SonarSource's own S3776 default, and independently the default of Biome, eslint-plugin-sonarjs and complexipy - so one number spans TS and Python. Ultracite's 20 is an adoption ceiling, not a recommendation. oxlint has no native rule for it: 1.83.0 rejects `sonarjs/cognitive-complexity` with `Plugin 'sonarjs' not found`, so on oxlint it needs the `jsPlugins` bridge (`references/typescript.md`, Complexity) or it is not gated at all. |
 | Nesting depth | **4** | The oxlint/ESLint `max-depth` default and von Zitzewitz's number. Ruff's `PLR1702` tightened from 5. Clippy counts *blocks* with the fn body as level 1, so its 5 is this 4. |
 | File length | **300** new / **800** ratchet ceiling | 300 is the oxlint and Biome default. 800 (von Zitzewitz) is where a file is *already* a problem - a ceiling to ratchet toward, not a trigger. |
 | Function length | each tool's default: **50** lines (TS), **50** statements (Python), **60** lines / **40** statements (Go), **100** lines (Rust) | Convention, not an inflection point: the mechanism is a reviewer's working memory and the integer is folklore. Adopting the tool default is honest and costs no argument. |
@@ -93,6 +93,7 @@ stack's own default is defensible, adopt it rather than inventing one.
 | Nested callbacks | **3** | The oxlint/ESLint default of 10 is unreachable in async/await code, so it gates nothing. Biome's nursery equivalent picks 5 - use that if 3 is noisy. |
 | Nested call expressions | **3** | eslint-plugin-unicorn's default. `a(b(c(d(x))))` has no named intermediates and no readable stack position. |
 | Operators in one condition | **3** | sonarjs `expression-complexity` default. The sub-statement gap that branch counts and depth caps both miss. |
+| Halstead difficulty, per function | **report-only** | `(distinct operators / 2) × (total operands / distinct operands)`. A density metric, so it sees the straight-line function with 40 operands that scores cyclomatic 1. There is no convention to adopt. interlinked-cli reports calibrating a ceiling of 25 on fixtures, finding that it was the 75th percentile of 9,023 real functions (2,226 findings), and recalibrating to 80 for 17 findings. Those are their figures on their corpus, not a number to copy. |
 | Duplicate block, minimum | **50 tokens / 5 lines** | jscpd's defaults. Below that is noise, which is also why sonarjs's schema refuses a line threshold under 3. |
 | Duplication percentage | **3%**, as a ratchet | Arbitrary as an absolute. Set it just under today's figure and lower it. The honest gate is "no new clone above N tokens", which needs a clone baseline jscpd does not ship - see `references/ratcheting.md`, Complexity gates. |
 
@@ -120,6 +121,7 @@ known-bad fixture rather than trusting a green run.
 | Stack | The trap | Verified |
 |---|---|---|
 | TypeScript | oxlint's metric rules sit in `pedantic` / `style` / `restriction`, so `-D warnings` never reaches them. Ultracite explicitly switches five of the eight **off**. | oxlint 1.77.0: a 5-deep, 5-param function reports nothing on a bare run |
+| TypeScript | A threshold cannot be set with `-D`, and `-D` does not validate: `-D 'max-depth:["error",{"max":4}]'` and `-D invented-rule` both print nothing and exit 0, so a gate built from CLI flags can check nothing and pass. A config file validates strictly: an unknown plugin or rule exits 1, and a missing `-c` file exits 1. Put every metric rule in the config file. | oxlint 1.83.0 |
 | TypeScript | Biome's seven cap rules all default below `error` (five `information`, two `warning`), and Biome exits non-zero only on error-level diagnostics. | Biome 2.5.11 rule declarations |
 | Python | Selecting a preview rule with `preview = false` prints `warning: Selection PLR1702 has no effect` and then `All checks passed!`. | ruff 0.16.2 |
 | Rust | A `clippy.toml` key sets a threshold; it does not enable a lint. `pedantic` and `restriction` lints stay silent with no warning that the key did nothing. | clippy 0.1.97 |
@@ -220,6 +222,24 @@ source.
 The vehicle table and the complexity-specific notes (the all-oxc stack, ruff,
 complexipy, jscpd, Go) live in `references/ratcheting.md`.
 
+**Calibrate the number against the tree, not against fixtures.** A fixture
+shows that a rule fires. It says nothing about how often it fires on real
+code. To pick a number:
+
+1. Run the metric over the whole tree the gate will cover, through the same
+   config the gate will use.
+2. Read the distribution of scores, not just the count at one number.
+3. Pick the number from the top of that distribution, then count the sites
+   over it.
+4. Expect the count to move sharply between candidate numbers. interlinked-cli
+   reports 2,226 findings at a Halstead ceiling of 25 and 17 at 80 on one
+   corpus. Over one 224-file TypeScript tree, oxlint 1.83.0 `complexity` gave
+   29 sites at 15 and 13 at 20 (measured 2026-09-25).
+
+If the count at the number you can defend is more than a couple of dozen, the
+rule is a backlog (`SKILL.md`, Ratcheting). Moving the number until today's
+code passes is the failure this procedure prevents.
+
 ## Report-only, and tools that cannot gate
 
 Useful as reports. Wiring any of them to an exit code is a mistake:
@@ -227,6 +247,7 @@ Useful as reports. Wiring any of them to an exit code is a mistake:
 | Tool / metric | Why it cannot gate |
 |---|---|
 | Maintainability index (`radon mi`, Go `maintidx`) | Non-independent inputs, 1992 constants, tool-dependent values, and unactionable output - "your index is 17" names no fix. The three primitives underneath it do. |
+| CRAP (`CC² × (1 − cov)³ + CC`) | The formula is the same everywhere and reduces to cyclomatic complexity at full coverage, but no threshold is defended: `crap-typescript` defaults to 6.0 (it calls below 4.0 noisy and above 8.0 too lenient) and interlinked-cli ships 30, a 5x spread in the same units. `crap-typescript` also takes coverage as `min(statement, branch)`, so its scores differ from line-coverage tools at partial coverage. Unlike the maintainability index it names a fix (test or simplify), but both inputs already have their own gates, so a CRAP gate adds nothing. Use it to rank what to test first. |
 | `scc`'s COMPLEXITY column | A keyword count, by the author's own description an approximation. File-level only, roughly proportional to file size, not comparable across languages, and there is no threshold flag. |
 | `tokei` / `cloc` / `gocloc` | Counters with no threshold option and no non-zero exit. |
 | `qlty smells` / `qlty metrics` | Always exit 0 by construction. Its documented default thresholds are worth mining; the tool is not a gate. `qlty check` is BUSL-1.1 and downloads plugins on first run, duplicating the per-stack picks with a second config surface outside mise's quarantine. |

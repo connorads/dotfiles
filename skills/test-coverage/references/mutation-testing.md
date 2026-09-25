@@ -40,7 +40,7 @@ Run it as a **separate CI job that fires after the normal suite goes green**, no
 
 ### TypeScript / JavaScript - StrykerJS (mature, recommended)
 
-- **CI gate:** `thresholds` config, default `{ high: 80, low: 60, break: null }`. Only `break` fails the build - score `< break` → **exit code 1**. `high`/`low` only colour the report. `break` is `null` by default (never fails), so set it explicitly.
+- **CI gate:** `thresholds` config, default `{ high: 80, low: 60, break: null }`. Only `break` fails the build - score `< break` → **exit code 1**. `high`/`low` only colour the report. `break` is `null` by default (never fails), so set it explicitly. The exception is a separate consumer that reads the report - a score ratchet, a CI parser. Keep `break: null` there on purpose: with `break` set, exit 1 means both "score under threshold" and "run failed", so the consumer reads a complete measurement as a missing one. Let the consumer own the threshold.
 - **Incremental:** `--incremental` tracks code/test changes and mutates only changed code while still emitting a full report (state in `reports/stryker-incremental.json`). Available since Stryker 6.2.
 - Pitfall: maintainers recommend a periodic `--force` full run so the incremental cache doesn't drift.
 
@@ -111,6 +111,7 @@ Keep the boundary the rest of this skill uses: **thresholds live in the tool's o
 |---------|------------|
 | Full-tree runs never finish | Diff-only + covered-only + cap per file |
 | **Equivalent mutants** (semantically identical, can't be killed) | Suppression rules; accept score <100%; don't chase the last few |
+| An accepted survivor with no recorded reason | Keep an adjudication ledger: one committed entry per accepted survivor saying why it is not a defect (equivalent, unreachable, deliberate). Make it monotone: deleting an entry always passes, and a gate flags any change that adds one, so each new acceptance is a visible decision. Then "score <100%" stays auditable instead of becoming a place to hide misses |
 | Incremental cache drift | Schedule a periodic full `--force` run |
 | Survivors on uncovered lines | That's a *coverage* gap - fix with a test that runs the line first |
 | Go ecycle immaturity | Don't gate PRs on a pre-1.0 tool; audit periodically instead |

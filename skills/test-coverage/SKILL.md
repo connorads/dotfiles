@@ -244,6 +244,12 @@ For projects not yet at target:
 3. After each improvement, bump the threshold
 4. Never lower it
 
+Keep the goal and the floor as two separate numbers. The goal is a direction,
+written down where people read it and read by no gate. The floor is per file,
+may hold or rise, and is the only number a gate checks. That split is why
+"100%" can make sense as a direction and still be a smell as a mandate (see
+Test Quality below).
+
 See [enforcement](references/enforcement.md) for detailed CI patterns, PR checks, and ratcheting workflow.
 
 ## Write Tests for New Code
@@ -387,6 +393,7 @@ Counter-based (not random) for deterministic debugging. Reset between test runs 
 | E2E tests too slow for pre-commit | Run in CI only; document in project README |
 | Ignore comment used without justification | Always add a reason after the ignore directive |
 | Coverage passes but tests are meaningless | Review test quality, not just the metric |
+| A function missing from the coverage report scored as 0% | Unknown coverage is not zero. Scoring it as zero drives CRAP to its ceiling and can put functions that are in fact covered at the top of a hotspot list. Treat a missing entry as a stale report and regenerate it |
 | New file added with no tests | Threshold regression catches it at commit time |
 | Browser tests import server-only code | Create stub modules, alias in browser config |
 | Flaky tests in pre-commit hooks | Investigate root cause; do not retry or skip |
