@@ -196,13 +196,13 @@ describe("filterAndScore", () => {
 
   it("applies frecency boost", () => {
     const frecency = new Map([["README.md", 100]]);
-    const result = filterAndScore(items, "", (x) => x, 5000, frecency);
+    const result = filterAndScore(items, "", (x) => x, { frecencyMap: frecency });
     // README.md should be boosted to the top
     expect(result[0]!.item).toBe("README.md");
   });
 
   it("respects limit", () => {
-    const result = filterAndScore(items, "", (x) => x, 2);
+    const result = filterAndScore(items, "", (x) => x, { limit: 2 });
     expect(result).toHaveLength(2);
   });
 

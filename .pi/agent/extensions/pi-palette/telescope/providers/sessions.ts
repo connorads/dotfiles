@@ -32,6 +32,13 @@ function relativeTime(date: Date): string {
   return "just now";
 }
 
+function messageText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  const textBlock = content.find((b: { type: string }) => b.type === "text");
+  return textBlock ? textBlock.text : "";
+}
+
 const sessionCache = new Map<string, { meta: SessionInfo; mtime: number }>();
 
 function parseSession(filePath: string): SessionInfo | null {
@@ -54,20 +61,10 @@ function parseSession(filePath: string): SessionInfo | null {
         const entry = JSON.parse(line);
         if (entry.type === "session") cwd = entry.cwd ?? "";
         if (entry.type === "session_info" && entry.name) name = entry.name;
-        if (entry.type === "message" && entry.message) {
-          const msg = entry.message;
-          if (msg.role === "user" || msg.role === "assistant") messageCount++;
-          if (msg.role === "user" && !firstMessage) {
-            if (typeof msg.content === "string") {
-              firstMessage = msg.content;
-            } else if (Array.isArray(msg.content)) {
-              const textBlock = msg.content.find(
-                (b: { type: string }) => b.type === "text",
-              );
-              if (textBlock) firstMessage = textBlock.text;
-            }
-          }
-        }
+        if (entry.type !== "message" || !entry.message) continue;
+        const msg = entry.message;
+        if (msg.role === "user" || msg.role === "assistant") messageCount++;
+        if (msg.role === "user" && !firstMessage) firstMessage = messageText(msg.content);
       } catch {}
     }
 
@@ -87,20 +84,25 @@ function parseSession(filePath: string): SessionInfo | null {
   }
 }
 
+function sessionsIn(dirPath: string): SessionInfo[] {
+  if (!statSync(dirPath).isDirectory()) return [];
+  const found: SessionInfo[] = [];
+  for (const file of readdirSync(dirPath)) {
+    if (!file.endsWith(".jsonl")) continue;
+    const meta = parseSession(join(dirPath, file));
+    if (meta && meta.messageCount > 0) found.push(meta);
+  }
+  return found;
+}
+
 function findSessions(): SessionInfo[] {
   if (!existsSync(SESSION_BASE)) return [];
 
   const results: SessionInfo[] = [];
   try {
     for (const dir of readdirSync(SESSION_BASE)) {
-      const dirPath = join(SESSION_BASE, dir);
       try {
-        if (!statSync(dirPath).isDirectory()) continue;
-        for (const file of readdirSync(dirPath)) {
-          if (!file.endsWith(".jsonl")) continue;
-          const meta = parseSession(join(dirPath, file));
-          if (meta && meta.messageCount > 0) results.push(meta);
-        }
+        results.push(...sessionsIn(join(SESSION_BASE, dir)));
       } catch {}
     }
   } catch {}

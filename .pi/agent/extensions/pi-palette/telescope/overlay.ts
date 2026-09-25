@@ -156,9 +156,10 @@ export async function openTelescope(
           state.allItems,
           state.query,
           (item) => currentProvider.searchText(item),
-          5000,
-          frecencyMap,
-          currentProvider.frecencyKey?.bind(currentProvider),
+          {
+            frecencyMap,
+            getFrecencyKey: currentProvider.frecencyKey?.bind(currentProvider),
+          },
         );
         state.loading = false;
         state.selectedIndex = 0;
@@ -203,9 +204,10 @@ export async function openTelescope(
         state.allItems,
         state.query,
         (item) => currentProvider.searchText(item),
-        5000,
-        frecencyMap,
-        currentProvider.frecencyKey?.bind(currentProvider),
+        {
+          frecencyMap,
+          getFrecencyKey: currentProvider.frecencyKey?.bind(currentProvider),
+        },
       );
       state.selectedIndex = 0;
       state.scrollOffset = 0;

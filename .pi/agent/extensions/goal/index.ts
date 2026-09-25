@@ -438,6 +438,7 @@ export default function (pi: ExtensionAPI): void {
       "without user input or an external-state change. Do not mark complete merely because the budget is nearly " +
       "exhausted or because you are stopping work.",
     parameters: asSchema(UPDATE_GOAL_SCHEMA),
+    // oxlint-disable-next-line max-params -- arity fixed by pi's ToolDefinition.execute
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const { status, summary } = params as { status: "complete" | "blocked"; summary: string };
       return engine.execUpdateGoal(rtOf(ctx), status, summary);
@@ -449,6 +450,7 @@ export default function (pi: ExtensionAPI): void {
     label: "Get Goal",
     description: "Get the active goal's objective, status, and remaining token/iteration budget.",
     parameters: asSchema(GET_GOAL_SCHEMA),
+    // oxlint-disable-next-line max-params -- arity fixed by pi's ToolDefinition.execute
     async execute(_id, _params, _signal, _onUpdate, ctx) {
       return engine.execGetGoal(rtOf(ctx));
     },

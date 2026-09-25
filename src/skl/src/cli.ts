@@ -174,7 +174,7 @@ const recordLoad = async (
   target: string | null,
   submit: boolean,
 ): Promise<void> => {
-  const appended = await appendHistory(historyLine(skill, mode, target, submit, env.now()));
+  const appended = await appendHistory(historyLine(skill, { mode, target, submit }, env.now()));
   if (!appended.ok) env.stderr(`skl: history write failed (${appended.error})\n`);
 };
 

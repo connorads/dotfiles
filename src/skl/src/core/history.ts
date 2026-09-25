@@ -21,9 +21,7 @@ export interface HistoryRecord {
 /** Build the JSONL line (record + trailing newline) for one successful load. */
 export const historyLine = (
   skill: DiscoveredSkill,
-  mode: "inject" | "copy" | "install",
-  target: string | null,
-  submit: boolean,
+  { mode, target, submit }: Pick<HistoryRecord, "mode" | "target" | "submit">,
   ts: string,
 ): string => {
   const record: HistoryRecord = {

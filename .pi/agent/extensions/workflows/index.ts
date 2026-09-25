@@ -149,6 +149,7 @@ export default function extension(pi: ExtensionAPI) {
     ],
     parameters: asSchema(WORKFLOW_INPUT_SCHEMA),
     executionMode: "sequential",
+    // oxlint-disable-next-line max-params -- arity fixed by pi's ToolDefinition.execute
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const launch = await manager.launch(params, {
         cwd: ctx.cwd,

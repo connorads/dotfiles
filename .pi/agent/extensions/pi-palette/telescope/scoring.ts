@@ -79,13 +79,8 @@ function computeBestMatch(
         const distance = foundIdx - state.lastIdx;
         let localScore = 0;
 
-        if (qi > 0) {
-          if (distance === 1) {
-            localScore += 15; // consecutive
-          } else {
-            localScore -= Math.min(distance, 15); // gap penalty
-          }
-        }
+        // consecutive, else gap penalty
+        if (qi > 0) localScore += distance === 1 ? 15 : -Math.min(distance, 15);
 
         if (foundIdx === 0) localScore += 20; // path start
         if (foundIdx === filenameStart) localScore += 50; // filename start
@@ -217,9 +212,15 @@ export function filterAndScore<T>(
   items: T[],
   query: string,
   getText: (item: T) => string,
-  limit = 5000,
-  frecencyMap?: Map<string, number>,
-  getFrecencyKey?: (item: T) => string,
+  {
+    limit = 5000,
+    frecencyMap,
+    getFrecencyKey,
+  }: {
+    limit?: number;
+    frecencyMap?: Map<string, number> | undefined;
+    getFrecencyKey?: ((item: T) => string) | undefined;
+  } = {},
 ): ScoredItem<T>[] {
   if (!query) {
     const result = items.slice(0, limit).map((item) => {

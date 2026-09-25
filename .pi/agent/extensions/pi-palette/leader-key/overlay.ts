@@ -238,7 +238,7 @@ export async function openLeaderKey(
   const thinkingLevel = pi.getThinkingLevel();
 
   const entries = buildEntries(commands, currentModel, thinkingLevel, {
-    setThinkingLevel: (level) => pi.setThinkingLevel(level as any),
+    setThinkingLevel: (level) => pi.setThinkingLevel(level),
   });
 
   const selected = await ctx.ui.custom<ActionItem | null>(
