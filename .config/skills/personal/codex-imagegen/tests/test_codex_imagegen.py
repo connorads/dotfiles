@@ -24,6 +24,7 @@ class Backend:
     def __init__(self) -> None:
         self.requests: list[dict[str, Any]] = []
         self.valid_token = "access-1"
+        self.fail: tuple[int, dict[str, Any]] | None = None
 
     def handle(self, h: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
         body = json.loads(h.rfile.read(int(h.headers["Content-Length"])))
@@ -39,6 +40,8 @@ class Backend:
             }
         if h.headers["Authorization"] != f"Bearer {self.valid_token}":
             return 401, {"error": "expired"}
+        if self.fail:
+            return self.fail
         return 200, {
             "created": 1,
             "data": [{"b64_json": base64.b64encode(PNG).decode()}],
@@ -171,3 +174,29 @@ def test_existing_output_is_not_overwritten(
     assert res.returncode == 2
     assert out.read_bytes() == b"keep"
     assert state.requests == []
+
+
+def test_rejected_input_image_is_not_reported_as_quota(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path
+) -> None:
+    state, url = backend
+    state.fail = (
+        400,
+        {"error": {"type": "image_generation_user_error", "code": "invalid_image_file"}},
+    )
+    ref = tmp_path / "ref.jpg"
+    ref.write_bytes(PNG)
+    res = run(url, codex_home, "edit", "-r", str(ref), "-o", str(tmp_path / "e.png"))
+    assert res.returncode != 0
+    assert "quota" not in res.stderr
+    assert "8-bit PNG" in res.stderr
+
+
+def test_429_is_reported_as_quota(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path
+) -> None:
+    state, url = backend
+    state.fail = (429, {"error": {"resets_at": 1}})
+    res = run(url, codex_home, "a fox", "-o", str(tmp_path / "f.png"))
+    assert res.returncode != 0
+    assert "quota" in res.stderr

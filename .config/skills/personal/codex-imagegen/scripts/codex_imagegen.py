@@ -191,11 +191,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         status, raw = post(url, body, auth["tokens"], version)
     if status != 200:
         detail = raw.decode(errors="replace")[:500]
-        hint = (
-            " Image quota likely exhausted; see resets_at."
-            if "image_gen" in detail or status == 429
-            else ""
-        )
+        if "invalid_image_file" in detail:
+            hint = " A reference image was rejected; re-save it as an 8-bit PNG."
+        elif "image_gen" in detail or status == 429:
+            hint = " Image quota likely exhausted; see resets_at."
+        else:
+            hint = ""
         raise Fail(f"HTTP {status} from {url}: {detail}{hint}")
 
     resp = json.loads(raw)
