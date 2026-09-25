@@ -1,0 +1,238 @@
+<title>Film</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #16120e; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: system-ui, sans-serif; }
+  #stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+  canvas { width: 100%; height: 100%; display: block; background: #efe4cc; }
+  #play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20, 14, 8, .35); border: 0; cursor: pointer; }
+  #play span { font: 700 clamp(18px, 3vw, 34px)/1 system-ui; color: #1d1a17; background: #f7efdc; padding: .7em 1.2em; border-radius: 6px; box-shadow: 6px 8px 0 rgba(0,0,0,.35); transform: rotate(-2deg); }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(0,0,0,.25); cursor: pointer; opacity: 0; transition: opacity .3s; }
+  #stage:hover #bar { opacity: 1; }
+  #bar i { display: block; height: 100%; width: 0; background: #d62d20; }
+  #load { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #f7efdc; font: 20px system-ui; }
+</style>
+<div id="stage">
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <div id="load">Loading…</div>
+  <button id="play" hidden aria-label="Play"><span>▶ Play with sound</span></button>
+  <div id="bar"><i></i></div>
+</div>
+<script>
+const ASSETS = /*ASSETS*/{};
+const TL = /*TIMELINE*/{};
+</script>
+<script>
+"use strict";
+// ================================================================ core
+// Everything is a pure function of t (seconds). Live playback passes
+// audio.currentTime; export passes frame / fps. Never read the wall clock.
+const W = 1920, H = 1080, END = TL.duration;
+const cv = document.getElementById("c");
+const main = cv.getContext("2d");
+let ctx = main; // scenes draw into whatever ctx points at (offscreen during transitions)
+const IMG = {};
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const inv = (a, b, x) => clamp((x - a) / (b - a));
+const Ez = {
+  out: t => 1 - Math.pow(1 - t, 3),
+  in: t => t * t * t,
+  io: t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+  back: t => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
+};
+const rnd = s => { const x = Math.sin(s * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+// "boil": hand-made jitter that changes on a 12fps grid, so still things look alive
+const BOIL = 12;
+const bf = t => Math.floor(t * BOIL);
+const jit = (t, seed, amp) => (rnd(bf(t) * 7.13 + seed * 3.7) - .5) * 2 * amp;
+const pop = (t, t0, d = .38) => (t < t0 ? 0 : Ez.back(clamp((t - t0) / d)));
+const popOut = (t, t1, d = .25) => (t < t1 ? 1 : 1 - Ez.in(clamp((t - t1) / d)));
+const INK = "#1f1a16", RED = "#d62d20", CREAM = "#f7efdc";
+// A style may declare `const STYLE = { font, bubbleFont }` to set text defaults.
+const styleFont = k => (typeof STYLE === "object" && STYLE[k]) || (typeof STYLE === "object" && STYLE.font) || "sans-serif";
+function makeCanvas(w = W, h = H) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+
+// ---------------------------------------------------------------- timeline refs
+const clip = id => TL.clips.find(c => c.id === id) || (() => { throw new Error("no line " + id); })();
+const norm = s => s.toLowerCase().replace(/[^\w']/g, "");
+// word("c02", "bail") -> start time of the first word in line c02 beginning with "bail"
+const word = (id, w) => { const c = clip(id); const x = c.words.find(x => norm(x.w).startsWith(norm(w))); if (!x) throw new Error(`no word ${w} in ${id}`); return x.s; };
+const lineEnd = id => { const c = clip(id); return c.start + c.dur; };
+const env = (sp, t) => { const a = TL.env[sp]; return a ? a[Math.floor(t * TL.envFps)] || 0 : 0; };
+
+// ---------------------------------------------------------------- stickers
+// Bake the drop shadow once per image: per-frame shadowBlur is the slowest thing on canvas.
+function baked(img) {
+  const pad = 46, c = makeCanvas(img.width + pad * 2, img.height + pad * 2), g = c.getContext("2d");
+  g.shadowColor = "rgba(45,28,12,.42)"; g.shadowBlur = 22; g.shadowOffsetX = 10; g.shadowOffsetY = 14;
+  g.drawImage(img, pad, pad);
+  c.pad = pad; c.iw = img.width; c.ih = img.height;
+  return c;
+}
+// Draw image `name` centred on x,y at width w. ax/ay move the anchor.
+function sticker(name, x, y, w, o = {}) {
+  const im = IMG[name]; if (!im) return;
+  const { rot = 0, alpha = 1, sx = 1, sy = 1, t = 0, seed = 0, ax = .5, ay = .5, flip = false, wob = .012 } = o;
+  if (alpha <= 0 || sx === 0 || sy === 0) return;
+  const s = w / im.iw, h = im.ih * s;
+  ctx.save();
+  ctx.translate(x + jit(t, seed + 1, 1.2), y + jit(t, seed + 2, 1.2));
+  ctx.rotate(rot + jit(t, seed, wob));
+  ctx.scale(sx * (flip ? -1 : 1), sy);
+  ctx.globalAlpha *= alpha;
+  ctx.drawImage(im, -w * ax - im.pad * s, -h * ay - im.pad * s, im.width * s, im.height * s);
+  ctx.restore();
+}
+// Character head: images <name>_rest, <name>_talk, <name>_<expr>. While the
+// character's own voice is loud, rest swaps to talk (replacement animation at 15fps).
+// h is the image height; images are 4:5.
+function head(name, x, y, h, o = {}) {
+  const { t = 0, expr = "rest", talk = true, seed = 0, rot = 0, idle = true } = o;
+  const tq = Math.floor(t * 15) / 15;
+  const e = talk ? Math.max(env(name, tq), env(name, tq + 1 / 60)) : 0;
+  const v = expr === "rest" && e > .1 ? "talk" : expr;
+  const bob = -e * 16 + (idle ? Math.sin(t * 2.3 + seed) * 4 : 0);
+  sticker(name + "_" + v, x, y + bob, h * .8 * (1 + e * .035),
+    { ...o, seed, rot: rot + (idle ? Math.sin(t * 1.7 + seed * 2) * .025 : 0) + e * jit(t, seed + 9, .05) });
+}
+
+// ---------------------------------------------------------------- text & shapes
+function label(text, x, y, size, o = {}) {
+  const { font = styleFont("font"), color = INK, rot = 0, alpha = 1, align = "center", t = 0, seed = 0, sc = 1 } = o;
+  if (alpha <= 0 || sc <= 0) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot + jit(t, seed, .01)); ctx.scale(sc, sc);
+  ctx.globalAlpha *= alpha; ctx.font = `${size}px ${font}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, 0); ctx.restore();
+}
+function wobblePath(pts, t, seed, amp = 3) {
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => { const X = px + jit(t, seed + i * 1.3, amp), Y = py + jit(t, seed + i * 2.1, amp); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+  ctx.closePath();
+}
+// Speech bubble at x,y (w,h) with a tail to tx,ty. lines: string[] or t => string[];
+// a function entry draws custom content at its line's y.
+function bubble(x, y, w, h, tx, ty, lines, t, t0, o = {}) {
+  const { t1 = 1e9, size = 50, seed = 0, font = styleFont("bubbleFont"), fill = "#fffaf0" } = o;
+  const s = pop(t, t0, .34) * popOut(t, t1);
+  if (s <= 0) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(jit(t, seed, .012));
+  const pts = [];
+  for (let i = 0; i < 36; i++) {
+    const a = i / 36 * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+    pts.push([Math.sign(c) * Math.pow(Math.abs(c), 2 / 3.2) * w / 2, Math.sign(sn) * Math.pow(Math.abs(sn), 2 / 3.2) * h / 2]);
+  }
+  const ang = Math.atan2(ty - y, tx - x), bx = Math.cos(ang) * w * .28, by = Math.sin(ang) * h * .3, perp = ang + Math.PI / 2, bw = 34;
+  ctx.fillStyle = "rgba(40,25,10,.28)"; ctx.save(); ctx.translate(7, 10); wobblePath(pts, t, seed); ctx.fill(); ctx.restore();
+  ctx.fillStyle = fill; ctx.strokeStyle = INK; ctx.lineWidth = 5; ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(bx + Math.cos(perp) * bw, by + Math.sin(perp) * bw);
+  ctx.lineTo((tx - x) / s + jit(t, seed + 5, 3), (ty - y) / s + jit(t, seed + 6, 3));
+  ctx.lineTo(bx - Math.cos(perp) * bw, by - Math.sin(perp) * bw);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  wobblePath(pts, t, seed); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx + Math.cos(perp) * (bw - 5), by + Math.sin(perp) * (bw - 5)); ctx.lineTo(bx - Math.cos(perp) * (bw - 5), by - Math.sin(perp) * (bw - 5));
+  ctx.strokeStyle = fill; ctx.lineWidth = 9; ctx.stroke();
+  ctx.fillStyle = INK; ctx.font = `${size}px ${font}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const L = typeof lines === "function" ? lines(t) : lines;
+  L.forEach((ln, i) => { const yy = (i - (L.length - 1) / 2) * size * 1.08; typeof ln === "string" ? ctx.fillText(ln, 0, yy) : ln(yy); });
+  ctx.restore();
+}
+</script>
+<script>
+// ================================================================ style
+/*INLINE:style.js*/
+</script>
+<script>
+// ================================================================ scenes
+/*INLINE:scenes.js*/
+</script>
+<script>
+"use strict";
+// ================================================================ compositor
+const maskC = makeCanvas(), bufA = makeCanvas(), bufB = makeCanvas(), gA = bufA.getContext("2d"), gB = bufB.getContext("2d");
+let grain;
+function makeGrain() {
+  grain = makeCanvas(512, 512); const g = grain.getContext("2d"), d = g.createImageData(512, 512);
+  for (let i = 0; i < d.data.length; i += 4) { const v = 128 + (rnd(i * .37) - .5) * 90; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  g.putImageData(d, 0, 0);
+}
+function drawScene(s, t, g) { ctx = g; g.save(); g.clearRect(0, 0, W, H); s.draw(t); g.restore(); }
+function tornEdge(seed) { const pts = []; for (let y = -20; y <= H + 20; y += 28) pts.push([(rnd(seed + y * .13) - .5) * 26, y]); return pts; }
+// Scenes overlap by a few tenths of a second; the later one's `tr` decides the
+// transition: "slide" (torn paper from the right), "drop" (from above), "cut".
+function renderAt(t) {
+  t = clamp(t, 0, END);
+  const active = SCENES.filter(s => t >= s.a && t < s.b);
+  const cur = active[active.length - 1] || SCENES[SCENES.length - 1], prev = active.length > 1 ? active[active.length - 2] : null;
+  main.save(); main.fillStyle = "#efe4cc"; main.fillRect(0, 0, W, H);
+  main.translate(jit(t, 99, 1.6), jit(t, 98, 1.6));
+  if (prev && cur.tr && cur.tr !== "cut") {
+    drawScene(prev, t, gA); drawScene(cur, t, gB);
+    const k = Ez.io(inv(cur.a, prev.b, t));
+    main.drawImage(bufA, 0, 0); main.save();
+    if (cur.tr === "slide") {
+      const edge = tornEdge(cur.a * 10);
+      main.translate(lerp(W + 60, -40, k), 0); main.rotate((1 - k) * .03);
+      main.beginPath(); main.moveTo(W + 100, -20); edge.forEach(([ex, ey]) => main.lineTo(ex, ey)); main.lineTo(W + 100, H + 20); main.closePath();
+      main.shadowColor = "rgba(30,18,8,.5)"; main.shadowBlur = 30; main.shadowOffsetX = -12; main.fillStyle = "#fbf5e6"; main.fill(); main.shadowColor = "transparent";
+      main.beginPath(); main.moveTo(W + 100, -20); edge.forEach(([ex, ey]) => main.lineTo(ex + 14, ey)); main.lineTo(W + 100, H + 20); main.closePath(); main.clip();
+      main.drawImage(bufB, 0, 0);
+    } else {
+      main.translate(0, lerp(-H - 40, 0, Ez.back(k))); main.rotate((1 - k) * -.04);
+      main.shadowColor = "rgba(30,18,8,.5)"; main.shadowBlur = 30; main.shadowOffsetY = 16; main.fillStyle = "#fbf5e6"; main.fillRect(-10, -10, W + 20, H + 20); main.shadowColor = "transparent";
+      main.drawImage(bufB, 0, 0);
+    }
+    main.restore();
+  } else { drawScene(cur, t, gB); main.drawImage(bufB, 0, 0); }
+  ctx = main;
+  caption(t);
+  main.restore();
+  main.save(); main.globalCompositeOperation = "overlay"; main.globalAlpha = .16;
+  main.translate(-Math.floor(rnd(bf(t)) * 512), -Math.floor(rnd(bf(t) + 5) * 512));
+  main.fillStyle = main.createPattern(grain, "repeat"); main.fillRect(0, 0, W + 512, H + 512); main.restore();
+  const v = main.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * 1.05); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(30,15,5,.42)");
+  main.fillStyle = v; main.fillRect(0, 0, W, H);
+  const f = Math.min(inv(0, .25, t), 1 - inv(END - .35, END, t));
+  if (f < 1) { main.fillStyle = `rgba(16,12,8,${1 - f})`; main.fillRect(0, 0, W, H); }
+}
+// Narrator lines listed in CAPTIONS get a caption; words light up as spoken.
+// The style may define drawCaption(words, clip, t, alpha); this is the fallback.
+function caption(t) {
+  const c = TL.clips.find(c => CAPTIONS.has(c.id) && t >= c.start - .05 && t <= c.start + c.dur + .5);
+  if (!c) return;
+  const a = inv(c.start - .05, c.start + .15, t) * (1 - inv(c.start + c.dur + .25, c.start + c.dur + .5, t));
+  if (typeof drawCaption === "function") return drawCaption(c.words, c, t, a);
+  ctx.save(); ctx.globalAlpha = a; ctx.font = "40px sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "#000"; ctx.lineWidth = 6; const s = c.words.filter(w => t >= w.s - .04).map(w => w.w).join(" ");
+  ctx.strokeText(s, W / 2, H - 80); ctx.fillText(s, W / 2, H - 80); ctx.restore();
+}
+
+// ================================================================ loading & playback
+async function loadAll() {
+  await Promise.all(Object.keys(ASSETS).filter(k => k.startsWith("font_")).map(async k => { const f = new FontFace(k.slice(5), `url(${ASSETS[k]})`); await f.load(); document.fonts.add(f); }));
+  // bg_* images are drawn raw (full-frame backgrounds); everything else gets a baked shadow
+  await Promise.all(Object.keys(ASSETS).filter(k => k.startsWith("img_")).map(k => new Promise((res, rej) => {
+    const im = new Image(); im.onload = () => { const n = k.slice(4); IMG[n] = n.startsWith("bg_") ? im : baked(im); res(); }; im.onerror = rej; im.src = ASSETS[k];
+  })));
+  makeGrain();
+}
+const audio = new Audio();
+let playing = false;
+function loop() { renderAt(audio.currentTime); document.querySelector("#bar i").style.width = (audio.currentTime / END * 100) + "%"; if (playing) requestAnimationFrame(loop); }
+window.__ready = loadAll().then(() => {
+  document.getElementById("load").hidden = true;
+  renderAt(typeof POSTER === "number" ? POSTER : 1.5);
+  if (window.__EXPORT) return;
+  audio.src = ASSETS.audio; audio.preload = "auto";
+  const btn = document.getElementById("play"), msg = s => { btn.querySelector("span").textContent = s; btn.hidden = false; };
+  btn.hidden = false;
+  const start = () => { btn.hidden = true; if (audio.ended || audio.currentTime >= END - .05) audio.currentTime = 0; audio.play(); playing = true; loop(); };
+  btn.onclick = start;
+  audio.onended = () => { playing = false; renderAt(END); msg("↻ Watch again"); };
+  cv.onclick = () => { if (audio.paused) start(); else { audio.pause(); playing = false; msg("▶ Resume"); } };
+  document.getElementById("bar").onclick = e => { const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = (e.clientX - r.left) / r.width * END; if (!playing) renderAt(audio.currentTime); };
+  addEventListener("keydown", e => { if (e.code === "Space") { e.preventDefault(); cv.onclick(); } });
+});
+window.renderAt = renderAt;
+</script>

@@ -1,0 +1,23 @@
+{
+  "name": "my-film",
+  "voices": {
+    "narrator": "<voice id: pick from GET /v1/voices by accent and delivery>"
+  },
+  "tempo": { "narrator": 1.07, "*": 1.04 },
+  "start": 1.3,
+  "tail": 2.6,
+  "lines": [
+    { "id": "n01", "speaker": "narrator", "text": "[whispers] Deep in the city roams a rare and noble pack.", "cuts": { "city": 0.4 } }
+  ],
+  "sfx": {
+    "pop": { "prompt": "Cartoon cork pop, bright and bouncy, single", "dur": 0.5, "influence": 0.7 }
+  },
+  "music": {
+    "cue_intro": { "prompt": "Instrumental whimsical nature-documentary comedy score: pizzicato strings, glockenspiel, playful flute. No vocals.", "ms": 20000 }
+  },
+  "mix": {
+    "music": [{ "name": "cue_intro", "at": 0, "gain": 0.55, "fout": 0.6, "until": "n01$+4" }],
+    "sfx": [["pop", "n01:noble", 0.4]],
+    "bleep": []
+  }
+}
