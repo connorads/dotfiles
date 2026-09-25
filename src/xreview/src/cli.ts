@@ -275,7 +275,7 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
   try {
-    return await review(options, specs, prepared.value, rubric, env);
+    return await review({ options, specs, prepared: prepared.value, rubric }, env);
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
@@ -284,10 +284,17 @@ export const main = async (argv: readonly string[], env: Env, cwd: string): Prom
 };
 
 const review = async (
-  options: Options,
-  specs: readonly ReviewerSpec[],
-  prepared: Prepared,
-  rubric: string | null,
+  {
+    options,
+    specs,
+    prepared,
+    rubric,
+  }: {
+    options: Options;
+    specs: readonly ReviewerSpec[];
+    prepared: Prepared;
+    rubric: string | null;
+  },
   env: Env,
 ): Promise<number> => {
   const { target, context } = prepared;

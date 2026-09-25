@@ -420,11 +420,16 @@ local fast_steps = new Mapping<String, Step> {
         }
     }
 
-    // First-party JS/TS lint, including the type-aware rules: on the 184-file
-    // gate set they turn 0 findings into 209, at 0.16s -> 1.15s. Enabled through
+    // First-party JS/TS lint: oxlint's default correctness rules, the
+    // type-aware rules, and the mechanical-enforcement metric caps (no `any`,
+    // max-depth 4, max-params 4, max-nested-callbacks 3). Type-aware is on in
     // .oxlintrc.json (options.typeAware) rather than --type-aware, so the editor
-    // and any wrapper that drops argv get the same rules; -c names the config
-    // explicitly rather than relying on cwd discovery.
+    // and any wrapper that drops argv get the same rules. The caps live in
+    // .hk-hooks/oxlintrc.json, which extends it: oxlint walks up to ancestor
+    // configs, so caps in ~/.oxlintrc.json would gate every repo under $HOME
+    // without its own. -c names the config rather than relying on discovery,
+    // and a missing -c file fails closed. The backlog of rules measured and
+    // held back sits in that file.
     //
     // A type-aware rule needs project membership and degrades SILENTLY without
     // it: a file inside a tsconfig `include` catches an unawaited writeFile(),
@@ -444,7 +449,37 @@ local fast_steps = new Mapping<String, Step> {
             "skills/**/references/**",
             ".config/skills/**/references/**"
         )
-        check = "oxlint -c .oxlintrc.json --deny-warnings {{files}}"
+        check = "oxlint -c .hk-hooks/oxlintrc.json --deny-warnings {{files}}"
+
+        // Every metric rule is off by default and `-D` accepts an unknown rule
+        // or a threshold it cannot parse with exit 0, so a green run proves
+        // nothing: each cap is asserted against a known-bad fixture. The gate
+        // config extends ../.oxlintrc.json, so both are copied into the sandbox.
+        tests {
+            ["nesting past max-depth fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.ts"] = "export function f(a: number): number {\n  if (a) { if (a > 1) { if (a > 2) { if (a > 3) { if (a > 4) { return 5; } } } } }\n  return 0;\n}\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/oxlintrc.json .hk-hooks/ && cp {{root}}/.oxlintrc.json ."
+                files = List("{{tmp}}/probe.ts")
+                expect { code = 1 }
+            }
+
+            ["an explicit any fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.ts"] = "export const f = (a: any): number => Number(a);\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/oxlintrc.json .hk-hooks/ && cp {{root}}/.oxlintrc.json ."
+                files = List("{{tmp}}/probe.ts")
+                expect { code = 1 }
+            }
+
+            ["conforming code passes"] {
+                run = "check"
+                write { ["{{tmp}}/probe.ts"] = "export function f(a: number): number {\n  if (a > 4) return 5;\n  return 0;\n}\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/oxlintrc.json .hk-hooks/ && cp {{root}}/.oxlintrc.json ."
+                files = List("{{tmp}}/probe.ts")
+                expect { code = 0 }
+            }
+        }
     }
 
     // First-party Python lint + format (ruff via mise). Config passed with

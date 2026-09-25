@@ -11,11 +11,11 @@ const skill = (source: string, name: string): DiscoveredSkill => ({
 });
 
 const record = (source: string, name: string, ts: string): string =>
-  historyLine(skill(source, name), "inject", "%1", false, ts);
+  historyLine(skill(source, name), { mode: "inject", target: "%1", submit: false }, ts);
 
 describe("historyLine", () => {
   test("one JSON line with trailing newline, ts passed through", () => {
-    const line = historyLine(skill("repo", "alpha"), "inject", "%3", true, "2026-07-16T10:00:00.000Z");
+    const line = historyLine(skill("repo", "alpha"), { mode: "inject", target: "%3", submit: true }, "2026-07-16T10:00:00.000Z");
     expect(line.endsWith("\n")).toBe(true);
     expect(line.slice(0, -1)).not.toContain("\n");
     expect(JSON.parse(line)).toEqual({
@@ -30,12 +30,12 @@ describe("historyLine", () => {
   });
 
   test("copy mode carries a null target", () => {
-    const line = historyLine(skill("repo", "alpha"), "copy", null, false, "2026-07-16T10:00:00.000Z");
+    const line = historyLine(skill("repo", "alpha"), { mode: "copy", target: null, submit: false }, "2026-07-16T10:00:00.000Z");
     expect(JSON.parse(line)).toMatchObject({ mode: "copy", target: null, submit: false });
   });
 
   test("install mode records the project root as target", () => {
-    const line = historyLine(skill("expo", "expo-router"), "install", "/repo", false, "2026-07-16T10:00:00.000Z");
+    const line = historyLine(skill("expo", "expo-router"), { mode: "install", target: "/repo", submit: false }, "2026-07-16T10:00:00.000Z");
     expect(JSON.parse(line)).toMatchObject({ mode: "install", target: "/repo" });
   });
 });

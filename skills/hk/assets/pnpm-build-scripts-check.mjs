@@ -98,26 +98,22 @@ function readDecisions(yamlPath) {
 			const m = line.match(/^([A-Za-z][\w-]*)\s*:\s*(.*)$/);
 			if (!m) continue;
 			const [, key, rest] = m;
-			if (key === "allowBuilds") {
-				if (rest.startsWith("{")) {
-					for (const entry of rest.replace(/^\{|\}\s*$/g, "").split(",")) {
-						const name = entry.split(":")[0];
-						if (name.trim()) decided.add(unquote(name));
-					}
-				} else if (!rest) {
-					block = "map";
-				}
-			} else if (
+			const isMap = key === "allowBuilds";
+			const isList =
 				key === "onlyBuiltDependencies" ||
-				key === "ignoredBuiltDependencies"
-			) {
-				if (rest.startsWith("[")) {
-					for (const entry of rest.replace(/^\[|\]\s*$/g, "").split(",")) {
-						if (entry.trim()) decided.add(unquote(entry));
-					}
-				} else if (!rest) {
-					block = "list";
-				}
+				key === "ignoredBuiltDependencies";
+			if (!isMap && !isList) continue;
+			if (!rest) {
+				block = isMap ? "map" : "list";
+				continue;
+			}
+			if (!rest.startsWith(isMap ? "{" : "[")) continue;
+			const flow = isMap
+				? rest.replace(/^\{|\}\s*$/g, "")
+				: rest.replace(/^\[|\]\s*$/g, "");
+			for (const entry of flow.split(",")) {
+				const name = isMap ? entry.split(":")[0] : entry;
+				if (name.trim()) decided.add(unquote(name));
 			}
 			continue;
 		}

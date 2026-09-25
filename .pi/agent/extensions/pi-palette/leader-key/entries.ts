@@ -5,7 +5,10 @@
  * Pure function - no side effects, testable with fixture data.
  */
 
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { TopLevelEntry } from "./types.js";
+
+type ThinkingLevel = Parameters<ExtensionAPI["setThinkingLevel"]>[0];
 
 interface CommandLike {
   name: string;
@@ -36,10 +39,10 @@ const BUILTIN_NAMES = new Set([
 ]);
 
 interface Callbacks {
-  setThinkingLevel?: (level: string) => void;
+  setThinkingLevel?: (level: ThinkingLevel) => void;
 }
 
-const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
+const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 /**
  * Build the leader-key top-level entries.

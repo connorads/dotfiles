@@ -1,0 +1,42 @@
+{
+  // The hk `oxlint` step's config: ~/.oxlintrc.json plus the metric caps from
+  // the mechanical-enforcement skill. The caps stay out of ~/.oxlintrc.json
+  // because oxlint walks up to ancestor configs, so that file already applies
+  // to every repo under $HOME that lacks its own - caps there would gate
+  // client code too. Each metric rule is off by default and `-D` cannot set a
+  // threshold, so a config file is the only way to run them.
+  "extends": ["../.oxlintrc.json"],
+  "rules": {
+    // `any` switches type checking off for every value it touches.
+    "typescript/no-explicit-any": "error",
+    // Deep nesting hides the path to each branch; flatten with early returns.
+    "max-depth": ["error", { "max": 4 }],
+    // Past four, callers swap same-typed positional args without an error;
+    // take an options object.
+    "max-params": ["error", { "max": 4 }],
+    // Callback pyramids; use async/await or named functions.
+    "max-nested-callbacks": ["error", { "max": 3 }]
+
+    // Backlog, measured 2026-09-25 on oxlint 1.83.0 over the step's 224 files.
+    // Each is past the couple-of-dozen line where a rule is a refactor, not a
+    // gate, and none gets a number chosen to make today's code pass:
+    //   complexity (cyclomatic) 15: 29 sites (13 at 20)
+    //   max-lines 300 / 500 / 800: 22 / 6 / 1 - the 1 is
+    //     pi-palette/telescope/overlay.ts at 848 lines
+    //   max-lines-per-function 50: 69
+    //   typescript/no-non-null-assertion: 83
+    //   no-console: 91, 60 of them in skills/web-perf/scripts, whose job is to
+    //     print - so the open question is excluding that dir, not the rule
+  },
+  "overrides": [
+    {
+      // Scene-drawing API: the style primitives take canvas geometry and time
+      // positionally - stamp(text, x, y, size, t, t0, opts) - and users'
+      // scenes.js files call them that way.
+      // Override globs match relative to THIS file's dir, so a `skills/...` or
+      // `../skills/...` glob silently matches nothing; keep the `**/` prefix.
+      "files": ["**/skills/canvas-film/assets/**"],
+      "rules": { "max-params": "off" }
+    }
+  ]
+}
