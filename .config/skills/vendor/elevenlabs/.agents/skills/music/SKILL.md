@@ -166,7 +166,15 @@ Constraints from the current API schema:
 `music_v2` composition plans are an ordered list of `chunks`. Each chunk specifies its own
 `text` (section label, lyrics, inline cues), `duration_ms`, `positive_styles`, `negative_styles`,
 and `context_adherence` (`low`, `medium`, or `high`, default `high`). Up to 30 chunks per plan,
-each 3,000–120,000 ms, total length 3 s to 10 minutes.
+each 3,000–120,000 ms, total length 3 s to 10 minutes; each `text` is sung, not read as direction.
+
+<!-- LOCAL PATCH (connorads dotfiles): Composition-plan chunk text is sung as lyrics, so an instrumental plan needs empty text, and music requests share a low per-plan concurrency cap. -->
+Stage directions in `text`, such as "[Intro] playful pizzicato strings", came back as vocals
+reading the direction aloud (confirmed with speech-to-text, 2026-09-25). For an instrumental
+plan, leave every `text` empty and put the direction in `positive_styles`, with "vocals" and
+"singing" in `negative_styles`. With empty text the model follows per-chunk moods only loosely;
+when a score must change mood on exact beats, generate one prompt-mode track per mood with
+`force_instrumental=True` and cut between them.
 
 Generate a plan first, edit it, then compose:
 
@@ -428,7 +436,10 @@ try {
 }
 ```
 
-Common errors: 401 (invalid key), 422 (invalid params), 429 (rate limit).
+Common errors: 401 (invalid key), 422 (invalid params), 429 (rate limit or concurrency).
+
+A 429 `concurrent_limit_exceeded` means too many requests in flight, not quota: the plan caps
+parallel requests (2 on the plan checked 2026-09-25). Run music jobs at most two at a time.
 
 ## References
 

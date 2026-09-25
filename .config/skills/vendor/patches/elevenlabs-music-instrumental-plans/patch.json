@@ -1,0 +1,6 @@
+{
+  "reason": "Composition-plan chunk text is sung as lyrics, so an instrumental plan needs empty text, and music requests share a low per-plan concurrency cap.",
+  "files": [
+    "elevenlabs/.agents/skills/music/SKILL.md"
+  ]
+}
