@@ -58,32 +58,32 @@ url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode
 url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875293"
 
 [[tools."aqua:google/osv-scanner"]]
-version = "2.5.1"
+version = "2.6.0"
 backend = "aqua:google/osv-scanner"
 
 [tools."aqua:google/osv-scanner"."platforms.linux-arm64"]
-checksum = "sha256:3d0f5aa5a6baa8eb32bcef247388e149ef6030a6634ccae6fa0d62681fb27a6d"
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_linux_arm64"
-url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/517615386"
+checksum = "sha256:2c71403eb443d05891c4f268c3ad771cf4f16e5443463fd7851ef8f454d3c7e4"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_arm64"
+url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/562414650"
 
 [tools."aqua:google/osv-scanner"."platforms.linux-arm64".provenance.slsa]
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/multiple.intoto.jsonl"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/multiple.intoto.jsonl"
 
 [tools."aqua:google/osv-scanner"."platforms.linux-x64"]
-checksum = "sha256:f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be"
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_linux_amd64"
-url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/517615411"
+checksum = "sha256:ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64"
+url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/562414718"
 
 [tools."aqua:google/osv-scanner"."platforms.linux-x64".provenance.slsa]
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/multiple.intoto.jsonl"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/multiple.intoto.jsonl"
 
 [tools."aqua:google/osv-scanner"."platforms.macos-arm64"]
-checksum = "sha256:75c44d6332f892a1e56286f4105a98ed751ae28d215ca0a8b65cc00d84103054"
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_darwin_arm64"
-url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/517615384"
+checksum = "sha256:98c460dcd37de25819babd757d04542045b6243113e209edcd4d89fedb0256b4"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_darwin_arm64"
+url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/562414648"
 
 [tools."aqua:google/osv-scanner"."platforms.macos-arm64".provenance.slsa]
-url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/multiple.intoto.jsonl"
+url = "https://github.com/google/osv-scanner/releases/download/v2.6.0/multiple.intoto.jsonl"
 
 [[tools."aqua:lindell/multi-gitter"]]
 version = "0.63.1"
@@ -180,16 +180,16 @@ version = "1.14.0"
 backend = "aqua:bats-core/bats-core"
 
 [tools.bats."platforms.linux-arm64"]
-url = "https://github.com/bats-core/bats-core/archive/refs/tags/1.14.0.tar.gz"
-url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/1.14.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
 [tools.bats."platforms.linux-x64"]
-url = "https://github.com/bats-core/bats-core/archive/refs/tags/1.14.0.tar.gz"
-url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/1.14.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
 [tools.bats."platforms.macos-arm64"]
-url = "https://github.com/bats-core/bats-core/archive/refs/tags/1.14.0.tar.gz"
-url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/1.14.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
 [[tools.bun]]
 version = "1.4.2"
@@ -249,6 +249,16 @@ url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/5
 [[tools.codex]]
 version = "0.156.0"
 backend = "aqua:openai/codex"
+
+[tools.codex."platforms.linux-arm64"]
+checksum = "sha256:ff07a585b07be3192233efa987cc31164c48954636f583806664afb44bb6b8db"
+url = "https://github.com/openai/codex/releases/download/rust-v0.156.0/codex-package-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/582124320"
+
+[tools.codex."platforms.linux-x64"]
+checksum = "sha256:e8b744b03adb90b296bf632c8a29167e75ea1b9d2980e49d3dfc6e84f5dba749"
+url = "https://github.com/openai/codex/releases/download/rust-v0.156.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/582115884"
 
 [tools.codex."platforms.macos-arm64"]
 checksum = "sha256:6f7bdad25693f464a146ad6f24d477ad6fbffe07b62556f829ee5d3b04f48f8b"
@@ -365,23 +375,23 @@ url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-apple-
 url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
 
 [[tools."github:can1357/oh-my-pi"]]
-version = "18.1.20"
+version = "18.2.8"
 backend = "github:can1357/oh-my-pi"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
-checksum = "sha256:87a776561e73076d87c56b41db03db7b2103ee1e2b7502b687f65d092e41ecae"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-linux-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868424"
+checksum = "sha256:a9aa63e43c95ccaa0683e9fed03463c401829e220ad2bbc414b341d2d49e5806"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.2.8/omp-linux-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/579521026"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
-checksum = "sha256:f4eb8e037c4104e97da3bc2023ecae24acd4f5264736a91fbee577171fe9edaf"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-linux-x64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868431"
+checksum = "sha256:b0c01da7339d87fd5d26d7faa7b61c131a50648399962783899fd93a6d8b1d65"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.2.8/omp-linux-x64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/579521031"
 
 [tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
-checksum = "sha256:f96e404908d16f548bafb852be67c5ea94d6a044b5ca3e1177d764280c18e01d"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-darwin-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868427"
+checksum = "sha256:cf8d34a7fe6f60de1acbe74f29c82026e4c07888e9d89f7ebceeb922159e5787"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.2.8/omp-darwin-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/579521033"
 
 [[tools."github:herdrdev/herdr"]]
 version = "0.9.0"
@@ -647,7 +657,7 @@ version = "1.10.0"
 backend = "npm:apify-cli"
 
 [[tools."npm:bb-app"]]
-version = "0.43.1"
+version = "0.43.3"
 backend = "npm:bb-app"
 
 [tools."npm:bb-app".options]
@@ -693,6 +703,10 @@ backend = "npm:hunkdiff"
 [[tools."npm:lavish-axi"]]
 version = "0.1.72"
 backend = "npm:lavish-axi"
+
+[[tools."npm:node-gyp"]]
+version = "13.0.2"
+backend = "npm:node-gyp"
 
 [[tools."npm:obsidian-headless"]]
 version = "0.0.14"
@@ -891,25 +905,25 @@ url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/568294350
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.74"
+version = "0.2.75"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:6126d87c3586ac56e608f1e64f6cc43197b9dc44e5eb8aebe693e948f6b487ef"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.74/rumdl-v0.2.74-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/573014007"
+checksum = "sha256:2d22c15c13e5c8c8c89993670494bdf4d30c2ae95caeeca30ea6aae3e5466146"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.75/rumdl-v0.2.75-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/577473570"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:8720bd8b101048433c2058c54597fe6a300f1ff6b2692acfe66586573fc1815c"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.74/rumdl-v0.2.74-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/573014015"
+checksum = "sha256:e9be454f7726e23f91a7a4c91dc33eb17c87a7be67372de586d543c97b3297cc"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.75/rumdl-v0.2.75-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/577473576"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:6d623ffce778f3eeed50377284b9825dadc569cb1238bd52b3e774928be7dbe6"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.74/rumdl-v0.2.74-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/573014012"
+checksum = "sha256:22771c73a49ab5fb3f426c287bd2f1cc88b5544edfc013eb66723a2789f96c62"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.75/rumdl-v0.2.75-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/577473581"
 provenance = "github-attestations"
 
 [[tools.rust]]
