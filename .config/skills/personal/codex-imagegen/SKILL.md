@@ -51,6 +51,28 @@ scripts/codex_imagegen.py "<prompt>" -o <out.png> [--quality low|medium|high|aut
   to the content, for example with Pillow.
 - The script refuses to overwrite `-o` without `--force`. Write variants to
   sibling names (`hero-v2.png`).
+- **Edits reject some phone photos.** A Pixel "UHDR" JPEG (16-bit) came back
+  `400 invalid_image_file`. Re-save every `-r` input as an 8-bit PNG first
+  (`magick in.jpg -depth 8 -strip ref.png`).
+- `quality: auto` on an edit sometimes returns `low`; check the JSON and rerun
+  a final asset that came back `low`.
+
+## A consistent set of characters or assets
+
+Separate generations drift in style. What held a five-person cast together
+(checked 2026-09-25):
+
+1. Generate the first asset from its photo, and look at it until it is right.
+2. Pass that asset as a second `-r` for every other one: "Image 2: style
+   reference only - match its style, colouring, border and framing, but do NOT
+   copy its person".
+3. Make expression or pose variants as edits of the finished asset: "Keep
+   EVERYTHING identical - same pose, framing, border and background. Change
+   ONLY the mouth". Variants come back at the same size and framing, so
+   swapping the whole image works as a stop-motion replacement (for example
+   a talking mouth).
+4. Rebuild a hidden part of a face (another head in front of it, a hand)
+   with a photographic edit of the crop first, then caricature the result.
 
 ## Failures
 
