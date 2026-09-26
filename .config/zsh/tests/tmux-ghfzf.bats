@@ -24,7 +24,6 @@ TMUX_DIR="$TESTS_DIR/../../tmux"
   # every tools.tsv addition.
   tools_row=$(grep -F '| `Ctrl+b T` | Tools launcher' "$TMUX_DIR/help.md")
   [[ $tools_row == *'Git review'* ]]
-  [[ $tools_row == *'claude-watch'* ]]
   [[ $tools_row == *'Claude plan viewer'* ]]
   [[ $tools_row == *'tpm-clean'* ]]
 

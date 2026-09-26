@@ -1,3 +1,0 @@
-[2m⏺[0m Read src/config.ts
-  The rate limiter caps requests at 100/min.
-  Implementing the retry handler now.

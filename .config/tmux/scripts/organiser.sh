@@ -356,7 +356,6 @@ pane_menu() {
 	menu+=(
 		""
 		"Copy pane info (id·tty·cmd·cwd)" "y" "run-shell \"$dir/copy-pane-info.sh $pane_id $tty $cmd '$path'\""
-		"Arm/disarm claude-watch" "a" "run-shell '$HOME/.local/bin/claude-watch $pane_id'"
 		""
 	)
 	append_agent_dot_items "$pane_id" 1 "$client"
