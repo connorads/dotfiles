@@ -364,8 +364,7 @@ daemon() {
 	fi
 
 	# Own a process group so teardown can signal the whole tree. setsid is absent
-	# on macOS — fall back to running in place (run-shell -b already detached us),
-	# exactly as claude-watcher does.
+	# on macOS — fall back to running in place (run-shell -b already detached us).
 	if [ -z "${AGENT_SWEEP_SETSID:-}" ] && command -v setsid >/dev/null 2>&1; then
 		AGENT_SWEEP_SETSID=1 exec setsid "$SELF_DIR/$(basename -- "$0")" daemon
 	fi

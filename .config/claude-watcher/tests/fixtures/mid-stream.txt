@@ -1,3 +1,0 @@
-⏺ Bash(npm test)
-  ⎿ 42 passing
-  Editing src/limiter.ts to increase the limit to 100.

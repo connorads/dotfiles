@@ -101,7 +101,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, annotate undo/reset, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, Claude plan viewer, annotate undo/reset, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; hand off to the other agent Claude↔Codex via handoff; copy cmd/id) |
@@ -363,7 +363,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | scroll | scroll the pane under the pointer; keyboard focus stays put (type/dictate in one pane while scrolling another) |
 | drag border | resize pane |
 | double-click pane | zoom toggle |
-| right-click pane | pane organiser (zoom, mark, break, join marked pane, copy info, claude-watch, agent dot, hibernate/thaw, kill pane) |
+| right-click pane | pane organiser (zoom, mark, break, join marked pane, copy info, agent dot, hibernate/thaw, kill pane) |
 | right-click window tab | window organiser (move, share, unlink, rename, kill; `~/.trees` windows add publish PR / finish / remove worktree) |
 | right-click session name (status left) | session menu (organise, pickers, agents, memory, detach) |
 | Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |

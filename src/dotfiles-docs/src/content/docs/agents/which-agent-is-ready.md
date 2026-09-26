@@ -1,6 +1,6 @@
 ---
 title: Which agent is ready?
-description: Window-tab dots for per-pane agent state, an attention-ranked jump popup, usage meters, and an opt-in auto-continue watcher - supervising several agents without polling them.
+description: Window-tab dots for per-pane agent state, an attention-ranked jump popup, and usage meters - supervising several agents without polling them.
 ---
 
 ## The itch
@@ -69,14 +69,6 @@ combined usage dashboard for Claude, Codex and Cosine, with the compact
 version always in the status bar. Before kicking off another long task I
 can see which subscription window has headroom - which is often what
 decides whether the task goes to Claude or Codex at all.
-
-**Auto-continue, per pane, opt-in.** When Claude hits its rolling usage
-limit it doesn't exit - it blocks, prints the reset time, and waits for a
-human. For an overnight task that's the whole night lost. `claude-watch`
-arms a *specific* pane: it spots the limit banner, parses the printed reset
-time, waits it out, types "continue", and verifies the message landed.
-Caps and a wait ceiling make it give up noisily rather than babysit a
-week-long limit. Nothing runs unless I arm the pane.
 
 ## Why it compounds
 

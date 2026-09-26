@@ -105,7 +105,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [tmux.conf](./.config/tmux/tmux.conf) | tmux config; maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | [config.kdl](./.config/zellij/config.kdl) | zellij config; maintenance: [.config/zellij/AGENTS.md](./.config/zellij/AGENTS.md) |
 | [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
-| [claude-watcher/README.md](./.config/claude-watcher/README.md) | Per-pane Claude auto-continue watcher |
 | [.claude/subagent-statusline.sh](./.claude/subagent-statusline.sh) | Model and context gauge on each row of Claude Code's agent panel; tests: [subagent-statusline.bats](./.config/zsh/tests/subagent-statusline.bats) |
 | [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh) | Memory-pressure states (OK/BUSY/CRITICAL) shared by the status gauge, popup and `memwatch` |
 | [tmux/scripts/agent-state.sh](./.config/tmux/scripts/agent-state.sh) | Per-pane `@agent_state`. Agents: use `agent wait`/`agent ls`, don't scrape |
@@ -256,7 +255,6 @@ prose [path...]        # lint markdown and code comments against the house rules
 eraser <cmd>           # Eraser diagrams rendered locally; never call the bare `eraser-diagrams`
 ccp [-y] [<name>]      # launch Claude Code on an account (bare = picker); --mcp <bundle> adds MCP
 claude-usage --all     # refresh usage for every Claude account
-claude-watch           # arm/disarm Claude auto-continue on a pane
 mcpz                   # MCP bundles: list, show, render, run per agent
 agent <sub>            # live agent panes: ls, state, wait, prompt, name, pick, goto, hibernate, thaw, auto, pin
 coord                  # jump to the coordinator agent, launching it if absent
