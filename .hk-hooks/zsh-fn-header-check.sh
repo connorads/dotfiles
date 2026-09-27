@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # zsh-fn-header-check: enforce the shell-function conventions for files under
-# .config/zsh/functions/ (see "Shell Function Conventions" in ~/AGENTS.md):
+# .config/zsh/functions/ (see ~/docs/shell-functions.md):
 #   1. a `# <name>: <purpose>` header on line 1 (line 2 for dual-mode files)
 #   2. `#!/usr/bin/env zsh` shebang XOR a `# zsh-only: <reason>` marker in the
 #      first 5 lines - every function is either a dual-mode PATH command or
