@@ -17,6 +17,7 @@ setup() {
   printf 'PWD=%s\n' "$PWD"
   printf 'GIT_DIR=%s\n' "${GIT_DIR:-}"
   printf 'GIT_WORK_TREE=%s\n' "${GIT_WORK_TREE:-}"
+  printf 'GIT_INDEX_FILE=%s\n' "${GIT_INDEX_FILE:-}"
   printf 'HK_STASH_UNTRACKED=%s\n' "${HK_STASH_UNTRACKED:-}"
   printf 'args=%s\n' "$*"
 } >>"$TEST_LOG"
@@ -24,12 +25,14 @@ EOF
 }
 
 @test "dhk runs hk from HOME with explicit dotfiles git environment" {
+  export GIT_INDEX_FILE="$HOME/git/dotfiles/index"
   run_zsh_function "$DHK" check
 
   [ "$status" -eq 0 ]
   grep -Fxq "PWD=$HOME" "$TEST_LOG"
   grep -Fxq "GIT_DIR=$HOME/git/dotfiles" "$TEST_LOG"
   grep -Fxq "GIT_WORK_TREE=$HOME" "$TEST_LOG"
+  grep -Fxq "GIT_INDEX_FILE=$HOME/git/dotfiles/index" "$TEST_LOG"
   grep -Fxq "HK_STASH_UNTRACKED=false" "$TEST_LOG"
   grep -Fxq "args=check" "$TEST_LOG"
 }
@@ -40,12 +43,16 @@ EOF
 # re-initialises ~/git/dotfiles and rewrites its config. It only failed to
 # because a commit in progress happened to hold the config lock.
 @test "dhk test runs hk with no dotfiles git environment to leak" {
+  export GIT_DIR="$HOME/git/dotfiles"
+  export GIT_WORK_TREE="$HOME"
+  export GIT_INDEX_FILE="$HOME/git/dotfiles/index"
   run_zsh_function "$DHK" test
 
   [ "$status" -eq 0 ]
   grep -Fxq "PWD=$HOME" "$TEST_LOG"
   grep -Fxq "GIT_DIR=" "$TEST_LOG"
   grep -Fxq "GIT_WORK_TREE=" "$TEST_LOG"
+  grep -Fxq "GIT_INDEX_FILE=" "$TEST_LOG"
   grep -Fxq "args=test" "$TEST_LOG"
 }
 

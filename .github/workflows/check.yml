@@ -38,7 +38,7 @@ jobs:
           # gracefully no-ops when absent.
           install_args: >-
             hk pkl shfmt shellcheck rumdl gitleaks oxlint ruff typos
-            actionlint zizmor
+            actionlint zizmor lychee
         env:
           # oxlint is npm-backed; the aube package manager from the global
           # config is not installed here, so use plain npm (node is on the
@@ -47,7 +47,9 @@ jobs:
       - name: install shell deps
         run: sudo apt-get update && sudo apt-get install -y zsh ripgrep
       - name: hk check --all
-        run: hk check --all
+        run: |
+          lychee --version
+          hk check --all
 
   # The bats suite is macOS-developed, so a Linux run is the only guard against
   # a portability bug landing unseen - and this file set is exactly where those

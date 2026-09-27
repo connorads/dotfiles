@@ -7,9 +7,10 @@
 # would silently miss the one case it exists for. Owning the file list here
 # instead is the same shape as nix-eval.sh.
 #
-# --offline: relative paths and heading anchors are resolved against the tree,
-# no network call at commit time (the zizmor step's posture). Whole-tree is
-# ~0.2s over ~335 files, so there is nothing to scope.
+# --offline: local file destinations are resolved against the tree; heading
+# anchors and external URLs are not checked. No network call at commit time
+# (the zizmor step's posture). Whole-tree is ~0.2s over ~335 files, so there is
+# nothing to scope.
 #
 # Relative paths on purpose: hk runs steps from the work-tree root, which is
 # $HOME locally but the checkout dir in CI.

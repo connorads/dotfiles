@@ -23,8 +23,9 @@ cd "$HOME" || return 1
 # that command addresses ~/git/dotfiles itself and rewrites its config. hk
 # resolves its own config from cwd, so the tests need no git environment at
 # all. The hk-test STEP carries the same strip for the pre-commit path.
+# GIT_INDEX_FILE overrides a fixture's index even with the directory vars gone.
 if [[ ${1:-} == test ]]; then
-  unset GIT_DIR GIT_WORK_TREE
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
   export HK_STASH_UNTRACKED=false
   "$hk_bin" "$@"
   return
