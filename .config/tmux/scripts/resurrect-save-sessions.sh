@@ -82,24 +82,6 @@ find_claude_session() {
 			jq -r --arg dir "$dir" 'select((.cwd // $dir) == $dir) | .sessionId // empty' 2>/dev/null || true)
 	fi
 
-	# Fallback for older Claude versions — find .jsonl files the process has open.
-	# Match either the default ~/.claude/projects/ or the profile's <dir>/projects/.
-	if [ -z "$session_id" ] && [ -n "$claude_pid" ] && kill -0 "$claude_pid" 2>/dev/null; then
-		local projects_re='\.claude/projects/'
-		if [ -n "$config_dir" ]; then
-			projects_re="${config_dir}/projects/"
-		fi
-		local lsof_bin
-		lsof_bin=$(agent_lsof_command)
-		[ -n "$lsof_bin" ] || lsof_bin=lsof
-		session_id=$("$lsof_bin" -p "$claude_pid" 2>/dev/null |
-			grep '\.jsonl$' |
-			grep -F "$projects_re" |
-			awk '{print $NF}' |
-			head -1 |
-			xargs -I{} basename {} .jsonl 2>/dev/null || true)
-	fi
-
 	echo "$session_id"
 }
 

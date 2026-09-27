@@ -27,7 +27,9 @@ Safe cwd fallback: on an exact-key miss the launcher resumes only when *exactly
 one* recorded `.panes[]` entry has `.dir == $PWD`; 0 or >1 → `--continue` /
 `--last`, never a guessed resume. Because resolution is exact, no save-time
 disambiguation is needed - the save hook just records `.panes[$key] = {dir,
-claude|codex, claudeConfigDir?}`.
+claude|codex, claudeConfigDir?}`. A Claude id comes only from the pane's
+foreground pid's `<config_dir>/sessions/<pid>.json`; with no marker the pane
+records no id, and the carry rule below keeps any earlier one.
 
 **`session_ids.json` is merged, not rewritten.** A live agent pane can resolve to
 nothing - the agent is still starting, it sits at Claude's "Do you trust this
