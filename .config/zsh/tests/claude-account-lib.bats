@@ -57,9 +57,9 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
   # default present, real dir in column 2
-  grep -qF "$(printf 'default\t%s/.claude' "$HOME")" <<<"$output"
-  grep -qF "$(printf 'a1\t%s' "$(prof a1)")" <<<"$output"
-  grep -qF "$(printf 'a2\t%s' "$(prof a2)")" <<<"$output"
+  grep -qF "$(printf 'default\037%s/.claude' "$HOME")" <<<"$output"
+  grep -qF "$(printf 'a1\037%s' "$(prof a1)")" <<<"$output"
+  grep -qF "$(printf 'a2\037%s' "$(prof a2)")" <<<"$output"
 }
 
 @test "account_candidates excludes the source profile" {
@@ -68,25 +68,25 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   src=$(prof a1)
   run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
-  grep -q '^a2	' <<<"$output"
-  grep -q '^default	' <<<"$output"
-  ! grep -q '^a1	' <<<"$output"
+  grep -q $'^a2\037' <<<"$output"
+  grep -q $'^default\037' <<<"$output"
+  ! grep -q $'^a1\037' <<<"$output"
 }
 
 @test "account_candidates excludes the default account when source is empty" {
   mk_profiles a1
   run "$BASH5" -c "source '$ACCT_LIB'; account_candidates ''"
   [ "$status" -eq 0 ]
-  grep -q '^a1	' <<<"$output"
-  ! grep -q '^default	' <<<"$output"
+  grep -q $'^a1\037' <<<"$output"
+  ! grep -q $'^default\037' <<<"$output"
 }
 
 @test "account_candidates excludes default when source is the explicit ~/.claude" {
   mk_profiles a1
   run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$HOME/.claude'"
   [ "$status" -eq 0 ]
-  grep -q '^a1	' <<<"$output"
-  ! grep -q '^default	' <<<"$output"
+  grep -q $'^a1\037' <<<"$output"
+  ! grep -q $'^default\037' <<<"$output"
 }
 
 @test "account_candidates with no profiles dir emits only default" {
@@ -94,7 +94,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   src=$(prof a1)
   run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
-  grep -q '^default	' <<<"$output"
+  grep -q $'^default\037' <<<"$output"
 }
 
 # --- stage_session_for_fork ------------------------------------------------

@@ -382,7 +382,7 @@ account-menu)
 
 	acct_menu=()
 	acct_i=0
-	while IFS=$'\t' read -r acct_label acct_dir; do
+	while IFS=$'\037' read -r acct_label acct_dir; do
 		[ -n "$acct_dir" ] || continue
 		acct_i=$((acct_i + 1))
 		# 1-9 give mnemonic number keys; extras stay arrow-selectable.
