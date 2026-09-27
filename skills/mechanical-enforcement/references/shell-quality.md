@@ -134,19 +134,79 @@ all. The fix taken was to stop *producing* the empty field, which left the
 parse - and the other 40 sites spelling the same idiom - exposed. Fixing the
 producer treats one field of one record; the parse is the thing that generalises.
 
-Audit with `grep -rF "IFS=\$'\t' read"`, then judge each site by whether an
-*interior* field can be empty with a non-empty field after it - a nullable
-*final* field collapses harmlessly, which is why so many sites are correct by
-accident. Two spellings a literal grep misses: `IFS="$(printf '\t')"`, and a
-tab typed literally into the assignment.
+Do not audit with `grep -rF "IFS=\$'\t' read"`. Three spellings a literal grep
+misses, and the third hides the largest cluster in this tree: `IFS="$(printf
+'\t')"`, a tab typed literally into the assignment, and `IFS=$d` where the same
+file earlier set `d=$'\t'` (tmux-resurrect's `save.sh` hides thirteen sites that
+way). A checker has to parse the assignment's value, not match its text.
 
-Encoding this mechanically is not currently possible: ShellCheck has no zsh
-dialect and ast-grep has no zsh grammar, so the only option is a text
-assertion over the tree - which is a gate only once the tree is already clean.
-Landing one against 17 offending files would be the ratcheting failure this
-skill warns about: a threshold chosen to make today's worst file pass is not a
-gate, and it gets waived or reverted. Convention plus review until the live
-sites are fixed, then the text assertion becomes worth wiring.
+### Fix the separator, not the split
+
+Splitting correctly at every consumer is the wrong layer. It leaves the record
+format hazardous, and it does not port: `"${(@ps:\t:)rec}"` is zsh-only, and the
+POSIX equivalent is a verbose per-field `${line%%"$sep"*}` walk - more code at
+every site, and a tab *inside* a field still breaks the record.
+
+Change the separator to **US (0x1f)** instead. It is non-whitespace, so plain
+`IFS=<US> read -r` preserves empty interior fields - the `/etc/passwd` behaviour
+above - with no escaping and no decoder. Verified in every dialect this tree
+uses: `/bin/sh` and `/bin/bash` (Apple bash 3.2.57), nix bash 5.3.15, dash and
+zsh 5.9.2, and in the `while IFS=… read` loop shape over a pipe. Every other
+consumer handles it too, each checked against a record with an empty interior
+field: `awk -F '\037'` (awk reads the octal escape), `sort -t`, `cut -d`, fzf's
+`--delimiter`, and jq's `split("\u001f")` / `join($sep)`. tmux emits the byte
+verbatim from `display-message -p` and `list-panes -F`, unchanged under
+`en_GB.UTF-8`, `C`, `POSIX` and a stripped locale.
+
+Two mechanics matter.
+
+**Never type the byte.** A raw control byte in tracked source is its own hazard:
+git can classify the file binary, and a staged-diff gate then has no bytes to
+scan. Spell it `$'\037'` in bash and zsh. `#!/bin/sh` files cannot - dash leaves
+`$'\037'` as the literal four characters `$\037` - so they take one
+`_US=$(printf '\037')` at the top, which is how those files already spelled the
+tab.
+
+**Producer and consumers change together.** That is safe because a mismatch
+fails loudly - one field instead of seven - rather than shifting silently.
+
+### Rejected: tmux's `#{qa:}`
+
+`#{qa:}` escapes a value as a *command argument*, so it quote-wraps rather than
+passing through:
+
+| input | `#{q:}` | `#{qa:}` |
+| --- | --- | --- |
+| `plain` | `plain` | `plain` |
+| `has space` | `has\ space` | `"has space"` |
+| `a<TAB>b` | `a<TAB>b` | `a\tb` |
+| *(empty)* | *(empty)* | `''` |
+| `new<LF>line` | `new<LF>line` | `new\nline` |
+
+It fixes both failure modes, but every consumer then needs shell-unquoting plus
+`\t`/`\n` un-escaping - an `eval`-shaped step at every site, for a hazard no
+observed bug involved. `#{q:}` is no help at all: it leaves a real tab intact.
+
+### The gate
+
+ShellCheck has no zsh dialect and ast-grep has no zsh grammar, so the only
+option is an assertion over the tree - which is a gate only once the tree is
+already clean. That is why this sat on convention plus review for so long:
+landing one against the offending files would have been the ratcheting failure
+this skill warns about.
+
+`.config/tmux` is clean, so `.hk-hooks/tsv-separator-lint.py` gates it
+(`hk.pkl`, `tsv-separator-lint`): per-file over `.config/tmux/**`, flagging a
+tab-valued `IFS` in all four spellings including the indirect one. It parses
+each assignment's value rather than matching text, and scans only shell files
+so prose about the rule is not itself a finding. The checker reports 32 sites
+against the pre-migration tree and none after it.
+
+The fourteen sites the same checker finds in `.config/zsh/functions/**` (across
+`wt-clean`, `tsp`, the three usage functions, `mcpz`, `rl-kill` and
+`claude-session-adopt`) stay **convention-only**: none has been judged for a
+nullable interior field, so a gate over them would be exactly the ratchet
+against an unclean tree. Clean a subtree first, then extend the glob.
 
 ## PowerShell
 

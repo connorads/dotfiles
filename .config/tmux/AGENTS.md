@@ -119,6 +119,22 @@ repros: [docs/vox.md](./docs/vox.md#findings-that-break-things-if-ignored).
   parsing and then `sh -c`, so a backtick in the answer runs. Store it with
   `set-option -g @name "x%%%"`, which only tmux parses, then read the option
   back and unset it.
+- **Multi-field records separate with US (`0x1f`), never a tab.** Tab is IFS
+  whitespace, so `IFS=<tab> read` collapses a run of tabs: an empty interior
+  field vanishes and every later field shifts one slot left, silently. Fields
+  here are routinely empty - an unset `@agent_state`, `@agent_kind` or
+  `@agent_name`, an unnamed window, and `#{pane_current_path}` on a dead pane
+  held open by `remain-on-exit`. tmux emits `\037` verbatim from
+  `display-message -p` and `list-panes -F`, and `read`, `awk -F '\037'`,
+  `sort -t`, `cut -d`, fzf `--delimiter` and jq `split("\u001f")` all keep the
+  empty field in place. Spell it `$'\037'` in a bash file; a `#!/bin/sh` file
+  takes one `_US=$(printf '\037')`, because dash leaves `$'...'` literal. Never
+  type the raw byte - git can classify the file binary, and a staged-diff gate
+  then has nothing to scan. A producer and its consumers change together; a
+  mismatch fails loudly, one field instead of seven. At commit time the
+  `tsv-separator-lint` hk step blocks a tab-valued `IFS` anywhere under this
+  directory, including the indirect `IFS=$d` / `d=$'\t'` spelling. Mechanism and
+  measurements: the `mechanical-enforcement` skill, `references/shell-quality.md`.
 
 ## Popups vs floating panes
 
