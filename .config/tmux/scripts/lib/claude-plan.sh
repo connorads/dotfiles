@@ -53,18 +53,18 @@ claude_plan_account_label() {
 
 # claude_plan_live_rows — the single enumerator feeding both the fast path and
 # the picker. Latest plan event per pane (absorbing session-id churn),
-# intersected with live tmux panes, newest first. Emits TSV:
-#   pane \t account \t name/window \t cwd-basename \t plan-title \t age \t planFilePath
+# intersected with live tmux panes, newest first. Emits one US-separated row:
+#   pane <US> account <US> name/window <US> cwd-basename <US> plan-title <US> age <US> planFilePath
 # Field 1 (pane) is the hidden join key. Empty when the journal or jq is absent,
 # or no live pane has a recorded plan.
 claude_plan_live_rows() {
 	command -v jq >/dev/null 2>&1 || return 0
 
-	local live_tsv live_json
-	live_tsv=$(tmux list-panes -a -F '#{pane_id}	#{@agent_name}	#{window_name}' 2>/dev/null) || return 0
-	[ -n "$live_tsv" ] || return 0
-	live_json=$(printf '%s\n' "$live_tsv" | jq -R -s '
-		split("\n") | map(select(length > 0) | split("\t"))
+	local live_rows live_json
+	live_rows=$(tmux list-panes -a -F $'#{pane_id}\037#{@agent_name}\037#{window_name}' 2>/dev/null) || return 0
+	[ -n "$live_rows" ] || return 0
+	live_json=$(printf '%s\n' "$live_rows" | jq -R -s '
+		split("\n") | map(select(length > 0) | split("\u001f"))
 		| map({(.[0]): {name: (.[1] // ""), window: (.[2] // "")}}) | add // {}')
 
 	local -a jfiles=()
@@ -76,7 +76,7 @@ claude_plan_live_rows() {
 	cat "${jfiles[@]}" 2>/dev/null |
 		jq -c 'select(.plan != null)
 			| {pane, ts, cwd, plan: .plan.plan, planFilePath: .plan.planFilePath}' |
-		jq -rs --argjson live "$live_json" '
+		jq -rs --argjson live "$live_json" --arg sep $'\037' '
 			def humanage($s):
 				($s | floor) as $x
 				| if $x < 60 then "\($x)s"
@@ -94,9 +94,9 @@ claude_plan_live_rows() {
 				| (($e.plan // "") | split("\n")[0] | sub("^#+ *"; "")) as $title
 				| (now - ($e.ts | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)) as $age
 				| [$e.pane, $nw, $cwdb, $title, humanage($age), ($e.planFilePath // "")])
-			| .[] | @tsv' |
-		while IFS=$'\t' read -r pane nw cwdb title age pf; do
-			printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+			| .[] | join($sep)' |
+		while IFS=$'\037' read -r pane nw cwdb title age pf; do
+			printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
 				"$pane" "$(claude_plan_account_label "$pf")" "$nw" "$cwdb" "$title" "$age" "$pf"
 		done
 }
