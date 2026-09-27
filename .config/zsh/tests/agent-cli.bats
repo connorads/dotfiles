@@ -109,27 +109,44 @@ teardown() {
   [ "$(printf '%s\n' "$output" | grep -c .)" = 2 ]
   # Positional (window 1 before window 2), NOT rank order — p1 first despite
   # p2 being blocked. 7-field contract: pane state kind name loc window cwd.
-  [ "$(printf '%s\n' "$output" | head -n1 | cut -f1)" = "$p1" ]
-  [ "$(printf '%s\n' "$output" | head -n1 | cut -f3)" = claude ]
-  [ "$(printf '%s\n' "$output" | sed -n 2p | cut -f1)" = "$p2" ]
-  [ "$(printf '%s\n' "$output" | sed -n 2p | cut -f4)" = backend ]
-  [ "$(printf '%s\n' "$output" | head -n1 | awk -F '\t' '{ print NF }')" = 7 ]
-  loc=$(printf '%s\n' "$output" | sed -n 2p | cut -f5)
+  [ "$(printf '%s\n' "$output" | head -n1 | cut -d $'\037' -f1)" = "$p1" ]
+  [ "$(printf '%s\n' "$output" | head -n1 | cut -d $'\037' -f3)" = claude ]
+  [ "$(printf '%s\n' "$output" | sed -n 2p | cut -d $'\037' -f1)" = "$p2" ]
+  [ "$(printf '%s\n' "$output" | sed -n 2p | cut -d $'\037' -f4)" = backend ]
+  [ "$(printf '%s\n' "$output" | head -n1 | awk -F '\037' '{ print NF }')" = 7 ]
+  loc=$(printf '%s\n' "$output" | sed -n 2p | cut -d $'\037' -f5)
   addr=$(tx display-message -p -t "$p2" '#{session_name}:#{window_index}.#{pane_index}')
   [ "$loc" = "$addr" ]
-  case "$(printf '%s\n' "$output" | head -n1 | cut -f7)" in
+  case "$(printf '%s\n' "$output" | head -n1 | cut -d $'\037' -f7)" in
   /*) : ;; # full path, not a basename
   *) return 1 ;;
   esac
 }
 
+@test "a tab inside an agent name does not add a column" {
+  # @agent_name is free text a user or a launcher sets. Under a tab-separated
+  # record one inside it became a column boundary: the row grew an eighth
+  # field, loc read as the tail of the name and the cwd fell off the end.
+  . "$CLI_LIB"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state idle
+  tx set-option -p -t "$p1" @agent_name "$(printf 'back\tend')"
+
+  run agent_list_rows
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '{ print NF }')" = 7 ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f4)" = "$(printf 'back\tend')" ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f5)" = \
+    "$(tx display-message -p -t "$p1" '#{session_name}:#{window_index}.#{pane_index}')" ]
+}
+
 @test "agent_rank_sort orders rank desc with stable positional tie-break" {
   . "$CLI_LIB"
-  rows=$'%1\tidle\n%2\tblocked\n%3\tdone\n%4\tblocked'
+  rows=$'%1\037idle\n%2\037blocked\n%3\037done\n%4\037blocked'
   run agent_rank_sort <<<"$rows"
   [ "$status" -eq 0 ]
   # blocked > done > idle; %2 before %4 (equal rank keeps input order).
-  [ "$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')" = "%2 %4 %3 %1 " ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1 | tr '\n' ' ')" = "%2 %4 %3 %1 " ]
 }
 
 @test "agent_name_taken sees another live pane's name but excludes self" {

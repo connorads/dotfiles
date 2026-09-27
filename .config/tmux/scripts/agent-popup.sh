@@ -45,9 +45,9 @@ list() {
 	_g_hibernated=$(agent_glyph hibernated)
 	_g_unknown=$(agent_glyph unknown)
 	agent_list_rows | agent_rank_sort |
-		awk -F '\t' -v states=",$_states," '
+		awk -F '\037' -v states=",$_states," '
 			states == ",," || index(states, "," $2 ",") > 0' |
-		awk -F '\t' \
+		awk -F '\037' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
 			-v g_done="$_g_done" -v g_idle="$_g_idle" \
 			-v g_hibernated="$_g_hibernated" -v g_unknown="$_g_unknown" '
@@ -60,7 +60,7 @@ list() {
 			if (s == "hibernated") return g_hibernated
 			return g_unknown
 		}
-		BEGIN { OFS = "\t" }
+		BEGIN { OFS = "\037" }
 		# In: pane state kind name loc window_name cwd → out (fzf row):
 		# pane glyph state kind name proj(basename cwd) loc window_name.
 		{
@@ -95,12 +95,12 @@ jump() {
 	AGENT_STATE_PANE="$_pane" sh "$AGENT_STATE_SH" seen
 }
 
-# _next_pane WANT CUR (rows `pane_id<TAB>state` on stdin) — echo the pane_id of
+# _next_pane WANT CUR (rows `pane_id<US>state` on stdin) — echo the pane_id of
 # the first row with state == WANT strictly after CUR in row order, wrapping
 # past the end; empty if none. CUR absent or not in the list → start at the
 # top. Pure (no tmux) so ordering/wrap are unit-testable from stdin.
 _next_pane() {
-	awk -F '\t' -v want="$1" -v cur="$2" '
+	awk -F '\037' -v want="$1" -v cur="$2" '
 		{ pane[NR] = $1; st[NR] = $2 }
 		END {
 			n = NR; if (n == 0) exit
@@ -126,7 +126,7 @@ cycle() {
 	_wants=${1:-blocked}
 	_cur=${2:-}
 	[ -f "$AGENT_SWEEP" ] && sh "$AGENT_SWEEP" >/dev/null 2>&1 || true
-	_rows=$(agent_list_rows | cut -f1,2)
+	_rows=$(agent_list_rows | cut -d "$_US" -f1,2)
 	[ -n "$_rows" ] || {
 		tmux display-message "no active agents" 2>/dev/null || true
 		return 0
@@ -163,13 +163,13 @@ pick() {
 
 	_choice=$(printf '%s\n' "$_rows" | fzf \
 		--ansi --reverse --no-multi --info=hidden \
-		--delimiter='\t' --with-nth=2.. \
+		--delimiter="$_US" --with-nth=2.. \
 		--prompt='jump › ' \
 		--header="$_legend" \
 		--preview 'tmux capture-pane -ep -t {1}' \
 		--preview-window=right:60%:wrap) || return 0
 
-	_target=$(printf '%s' "$_choice" | cut -f1)
+	_target=$(printf '%s' "$_choice" | cut -d "$_US" -f1)
 	[ -n "$_target" ] && jump "$_target"
 }
 
