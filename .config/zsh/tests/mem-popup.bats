@@ -87,7 +87,7 @@ EOF
   run "$MEM_POPUP" _one 6
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'6\tApp6\t6\t/Applications/App6.app/Contents/MacOS/App6' ]
+  [ "$output" = $'6\037App6\0376\037/Applications/App6.app/Contents/MacOS/App6' ]
 }
 
 @test "summary bounds contributors to five and advertises the detail path" {
@@ -166,12 +166,26 @@ plain() {
 }
 
 @test "the action line names the heaviest idle or done pane h would stop first" {
-  export TMUX_PANES=$'idle\tclaude\t\tapi\tdev:1.0\t100\t%10\nworking\tclaude\tbusy\tworker\tdev:2.0\t200\t%20\ndone\tcodex\tother\tweb\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tjobs\tdev:4.0\t200\t%40'
+  export TMUX_PANES=$'idle\037claude\037\037api\037dev:1.0\037100\037%10\nworking\037claude\037busy\037worker\037dev:2.0\037200\037%20\ndone\037codex\037other\037web\037dev:3.0\037300\037%30\ndone\037claude\037batch\037jobs\037dev:4.0\037200\037%40'
 
   run "$MEM_POPUP" _summary
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Action   [h] hibernate other (done, 300M) frees its pages from both arms"* ]] || false
+}
+
+@test "an agent pane with no window name still reports its footprint" {
+  # #{window_name} is empty for a pane in a window tmux has not named. Under a
+  # tab separator `read` collapsed it, pane_pid landed in the window slot and
+  # the pid slot came out empty - mem_heaviest_pid_mb "" answered 0, so the
+  # pane reported 0 MB however much it held.
+  export TMUX_PANES=$'idle\037\037200'
+
+  run "$MEM_POPUP" _agents
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"201M"* ]] || false
+  [[ "$output" != *"0M"* ]] || false
 }
 
 @test "the action line falls back to k when no pane is safe to hibernate" {
@@ -182,12 +196,12 @@ plain() {
 }
 
 @test "hibernate candidates include safe Claude and Codex panes and rank by footprint" {
-  export TMUX_PANES=$'idle\tclaude\t\tapi\tdev:1.0\t100\t%10\nworking\tclaude\tbusy\tworker\tdev:2.0\t200\t%20\ndone\tcodex\tother\tweb\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tjobs\tdev:4.0\t200\t%40'
+  export TMUX_PANES=$'idle\037claude\037\037api\037dev:1.0\037100\037%10\nworking\037claude\037busy\037worker\037dev:2.0\037200\037%20\ndone\037codex\037other\037web\037dev:3.0\037300\037%30\ndone\037claude\037batch\037jobs\037dev:4.0\037200\037%40'
 
   run "$MEM_POPUP" _hibernate_rows
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'%30\t300\tother\tdone\tdev:3.0\n%40\t201\tbatch\tdone\tdev:4.0\n%10\t101\tapi\tidle\tdev:1.0' ]
+  [ "$output" = $'%30\037300\037other\037done\037dev:3.0\n%40\037201\037batch\037done\037dev:4.0\n%10\037101\037api\037idle\037dev:1.0' ]
 }
 
 @test "batch hibernate confirms multiple panes, continues after refusal, and summarises" {

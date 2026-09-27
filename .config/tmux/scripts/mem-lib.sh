@@ -26,6 +26,12 @@
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
 # are bare 6-hex (no leading #), `#`-prefixed at the call site.
 
+# Record separator. Every multi-field row this lib emits or parses is split on
+# US (0x1f), not tab: tab is IFS whitespace, so `read` collapses runs of it and
+# an empty field - an unset @agent_name, say - shifts every later field left.
+# `printf`, not $'\037': this file is #!/bin/sh and dash leaves $'...' literal.
+_US=$(printf '\037')
+
 # Thresholds — defined once, as a percentage of each ceiling. Slots
 # (`vm.compressor.pages_compressed` over `.pages_compressed_limit`) fill with
 # every page compressed and only empty when the owning process frees or exits,
@@ -304,7 +310,7 @@ mem_arm_gap() {
 # not fork once per derived attribute. Output: state<TAB>colour<TAB>glyph<TAB>token.
 mem_attrs_from() {
 	_state=$(mem_state_from "${1:-1}" "${2:-0}" "${3:-0}")
-	printf '%s\t%s\t%s\t%s' "$_state" "$(mem_state_colour "$_state")" \
+	printf '%s\037%s\037%s\037%s' "$_state" "$(mem_state_colour "$_state")" \
 		"$(mem_state_glyph "$_state")" "$(mem_token_from "${1:-1}" "${2:-0}" "${3:-0}")"
 }
 
@@ -350,16 +356,16 @@ mem_app_name() {
 	esac
 }
 
-# mem_group_apps — stdin rows "<mb>\t<app>"; stdout "<total_mb>\t<count>\t<app>"
+# mem_group_apps — stdin rows "<mb><US><app>"; stdout "<total_mb><US><count><US><app>"
 # sorted by total descending. Aggregates per-app footprint and process count.
 #
 # CAVEAT: per-app footprint sums OVER-count shared pages (a Chrome sum can
 # exceed physical RAM). The *ranking* is reliable; the absolute total is not —
 # callers must render it as approximate (≈).
 mem_group_apps() {
-	awk -F '\t' '$2 != "" { mb[$2] += $1; cnt[$2]++ }
-		END { for (a in mb) printf "%d\t%d\t%s\n", mb[a], cnt[a], a }' |
-		sort -t "$(printf '\t')" -k1,1 -nr
+	awk -F '\037' '$2 != "" { mb[$2] += $1; cnt[$2]++ }
+		END { for (a in mb) printf "%d\037%d\037%s\n", mb[a], cnt[a], a }' |
+		sort -t "$_US" -k1,1 -nr
 }
 
 # mem_bar VALUE MAX [WIDTH] — a WIDTH-wide ▓░ bar (default 12) giving non-colour
@@ -422,17 +428,17 @@ mem_heaviest_pid_mb() {
 }
 
 # mem_hibernate_rows — the panes it is safe to hibernate, heaviest first:
-# every idle or done Claude/Codex pane as "pane\tmb\tlabel\tstate\tloc". Shared
+# every idle or done Claude/Codex pane as "pane<US>mb<US>label<US>state<US>loc". Shared
 # by the popup's `h` list and memwatch's emergency tier so both rank identically.
 mem_hibernate_rows() {
-	tmux list-panes -a -F '#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_id}' 2>/dev/null |
-		awk -F '\t' '$1 ~ /^(idle|done)$/ && $2 ~ /^(claude|codex)$/ {
+	tmux list-panes -a -F "#{@agent_state}${_US}#{@agent_kind}${_US}#{@agent_name}${_US}#{window_name}${_US}#{session_name}:#{window_index}.#{pane_index}${_US}#{pane_pid}${_US}#{pane_id}" 2>/dev/null |
+		awk -F '\037' '$1 ~ /^(idle|done)$/ && $2 ~ /^(claude|codex)$/ {
 			label = $3 == "" ? $4 : $3
-			print $6 "\t" $7 "\t" label "\t" $1 "\t" $5
+			print $6 "\037" $7 "\037" label "\037" $1 "\037" $5
 		}' |
-		while IFS="$(printf '\t')" read -r _ppid _pane _label _state _loc; do
+		while IFS="$_US" read -r _ppid _pane _label _state _loc; do
 			[ -n "$_pane" ] || continue
-			printf '%s\t%s\t%s\t%s\t%s\n' \
+			printf '%s\037%s\037%s\037%s\037%s\n' \
 				"$_pane" "$(mem_heaviest_pid_mb "$_ppid")" "$_label" "$_state" "$_loc"
-		done | sort -t "$(printf '\t')" -k2,2nr
+		done | sort -t "$_US" -k2,2nr
 }

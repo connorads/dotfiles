@@ -119,7 +119,7 @@ STUB
   export AGENT_AUTO_PINS_FILE="$BATS_TEST_TMPDIR/auto/pins.json"
   # Three safe panes; with footprint = pid MB and the ps ppid tree above, the
   # ranking is %30 (300M) > %40 (201M) > %10 (101M).
-  export TMUX_PANES=$'idle\tclaude\tapi\tw1\tdev:1.0\t100\t%10\ndone\tcodex\tother\tw3\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tw4\tdev:4.0\t200\t%40'
+  export TMUX_PANES=$'idle\037claude\037api\037w1\037dev:1.0\037100\037%10\ndone\037codex\037other\037w3\037dev:3.0\037300\037%30\ndone\037claude\037batch\037w4\037dev:4.0\037200\037%40'
 
   # sleep: logs what was asked, then really sleeps that plus SLEEP_EXTRA, so an
   # overrun is produced rather than simulated - the probe measures wall-clock.
@@ -391,7 +391,7 @@ critical() { export FAKE_SLOTS=820; }
 
 @test "no safe pane logs once per cooldown window" {
   critical
-  export TMUX_MODE=on TMUX_PANES=$'working\tclaude\tbusy\tw2\tdev:2.0\t200\t%20' MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
+  export TMUX_MODE=on TMUX_PANES=$'working\037claude\037busy\037w2\037dev:2.0\037200\037%20' MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
 
   run_zsh_function "$MEMWATCH"
 
