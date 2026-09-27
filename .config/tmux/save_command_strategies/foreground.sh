@@ -92,10 +92,10 @@ hibernate_command() {
 	command -v jq >/dev/null 2>&1 || return 0
 
 	local row
-	row=$(tmux list-panes -a -F '#{pane_pid}	#{pane_id}	#{@agent_state}' 2>/dev/null |
-		awk -F'\t' -v pid="$PANE_PID" '$1 == pid { print; exit }')
+	row=$(tmux list-panes -a -F $'#{pane_pid}\037#{pane_id}\037#{@agent_state}' 2>/dev/null |
+		awk -F'\037' -v pid="$PANE_PID" '$1 == pid { print; exit }')
 	[ -n "$row" ] || return 0
-	IFS=$'\t' read -r _ pane state <<<"$row"
+	IFS=$'\037' read -r _ pane state <<<"$row"
 	[ "$state" = hibernated ] || return 0
 
 	for rec in "$dir"/*.json; do
@@ -122,11 +122,11 @@ own_command() {
 # tmux's own idea of the pane: its tty and foreground command name.
 foreground_command() {
 	local row tty cmd pid
-	row=$(tmux list-panes -a -F '#{pane_pid}	#{pane_tty}	#{pane_current_command}' 2>/dev/null |
-		awk -F'\t' -v pid="$PANE_PID" '$1 == pid { print; exit }')
+	row=$(tmux list-panes -a -F $'#{pane_pid}\037#{pane_tty}\037#{pane_current_command}' 2>/dev/null |
+		awk -F'\037' -v pid="$PANE_PID" '$1 == pid { print; exit }')
 	[ -n "$row" ] || return 0
 
-	IFS=$'\t' read -r _ tty cmd <<<"$row"
+	IFS=$'\037' read -r _ tty cmd <<<"$row"
 	[ -n "$cmd" ] || return 0
 	is_shell "$cmd" && return 0
 	command -v agent_foreground_pid_for_tty >/dev/null 2>&1 || return 0

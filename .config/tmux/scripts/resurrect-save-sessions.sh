@@ -195,13 +195,13 @@ find_opencode_env() {
 }
 
 # --- Get pane PIDs from tmux (still running at hook time) ---
-# Returns: session:window.pane<TAB>pid<TAB>command<TAB>cwd<TAB>tty
+# Returns: session:window.pane<US>pid<US>command<US>cwd<US>tty
 get_live_panes() {
-	tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_current_command}	#{pane_current_path}	#{pane_tty}' 2>/dev/null || true
+	tmux list-panes -a -F $'#{session_name}:#{window_index}.#{pane_index}\037#{pane_pid}\037#{pane_current_command}\037#{pane_current_path}\037#{pane_tty}' 2>/dev/null || true
 }
 
 # --- Parse save file for panes running claude, codex or opencode ---
-# Save file pane format (tab-delimited):
+# Save file pane format (tab-delimited, upstream's own format):
 # pane<TAB>session<TAB>window<TAB>win_active<TAB>:flags<TAB>pane_idx<TAB>:title<TAB>:dir<TAB>pane_active<TAB>pane_cmd<TAB>:full_cmd
 # But PID is not in the save file — we use live tmux panes instead.
 
@@ -211,7 +211,7 @@ live_panes=$(get_live_panes)
 # OpenCode has no live active-session marker, so its cwd/latest restore is
 # gated on a single live pane owning the cwd. Claude/Codex resolve exactly at
 # restore time (see the launchers) and need no save-time disambiguation.
-while IFS=$'\t' read -r pane_key pid cmd dir tty; do
+while IFS=$'\037' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
 	case "$cmd" in
 	opencode)
@@ -220,7 +220,7 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 	esac
 done <<<"$live_panes"
 
-while IFS=$'\t' read -r pane_key pid cmd dir tty; do
+while IFS=$'\037' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
 	# Every live agent pane, resolved or not — the guard for carrying an
 	# unconfirmed entry through this save (see the carried map below).
@@ -293,8 +293,8 @@ live_json=$(
 # entry would be pruned in the window between a restore and park re-addressing
 # its record. Their pane keys are carried on the pane's own hibernated state.
 hib_live_json=$(tmux list-panes -a -F \
-	'#{session_name}:#{window_index}.#{pane_index}	#{@agent_state}' 2>/dev/null |
-	jq -R -s 'split("\n") | map(select(length > 0) | split("\t"))
+	$'#{session_name}:#{window_index}.#{pane_index}\037#{@agent_state}' 2>/dev/null |
+	jq -R -s 'split("\n") | map(select(length > 0) | split("\u001f"))
 		| map(select(.[1] == "hibernated") | {(.[0]): true}) | add // {}' 2>/dev/null || echo '{}')
 [ -n "$hib_live_json" ] || hib_live_json='{}'
 
@@ -325,7 +325,7 @@ HIBERNATE_DIR=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent
 if [ -d "$HIBERNATE_DIR" ]; then
 	# One tmux read: every live pane's id, key, cwd and agent state.
 	hib_panes=$(tmux list-panes -a -F \
-		'#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_current_path}	#{@agent_state}' 2>/dev/null || true)
+		$'#{pane_id}\037#{session_name}:#{window_index}.#{pane_index}\037#{pane_current_path}\037#{@agent_state}' 2>/dev/null || true)
 	for rec in "$HIBERNATE_DIR"/*.json; do
 		[ -f "$rec" ] || continue
 		hib_sid=$(jq -r '.sessionId // empty' "$rec" 2>/dev/null) || continue
@@ -335,9 +335,9 @@ if [ -d "$HIBERNATE_DIR" ]; then
 		# The pane must still be the parked one: after a restart a recycled pane
 		# id can name an unrelated pane, and @agent_state=hibernated is what
 		# distinguishes them.
-		hib_row=$(awk -F '\t' -v p="$hib_pane" '$1 == p { print; exit }' <<<"$hib_panes")
+		hib_row=$(awk -F '\037' -v p="$hib_pane" '$1 == p { print; exit }' <<<"$hib_panes")
 		[ -n "$hib_row" ] || continue
-		IFS=$'\t' read -r _ hib_key hib_dir hib_state <<<"$hib_row"
+		IFS=$'\037' read -r _ hib_key hib_dir hib_state <<<"$hib_row"
 		[ "$hib_state" = hibernated ] || continue
 
 		hib_cfg=$(jq -r '.configDir // empty' "$rec" 2>/dev/null)

@@ -110,9 +110,9 @@ write_tmux_stub_for_save() {
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
-	printf 'main:1.2\t222\tclaude\t/Users/connorads\t/dev/ttys002\n'
-	printf 'main:2.1\t333\tzsh\t/Users/connorads\t/dev/ttys003\n'
+	printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
+	printf 'main:1.2\037222\037claude\037/Users/connorads\037/dev/ttys002\n'
+	printf 'main:2.1\037333\037zsh\037/Users/connorads\037/dev/ttys003\n'
 	exit 0
 fi
 exit 1
@@ -178,7 +178,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -214,7 +214,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -259,7 +259,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -294,8 +294,8 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tcodex\t/Users/connorads\t/dev/ttys001\n'
-	printf 'main:1.2\t222\tcodex\t/Users/connorads\t/dev/ttys002\n'
+	printf 'main:1.1\037111\037codex\037/Users/connorads\037/dev/ttys001\n'
+	printf 'main:1.2\037222\037codex\037/Users/connorads\037/dev/ttys002\n'
 	exit 0
 fi
 exit 1
@@ -337,7 +337,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tcodex\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037codex\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -379,10 +379,10 @@ write_tmux_stub_for_merge() {
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
-	printf 'main:1.2\t222\tclaude\t/Users/connorads\t/dev/ttys002\n'
-	printf 'main:1.3\t333\tclaude\t/Users/connorads/moved\t/dev/ttys003\n'
-	printf 'main:2.1\t444\tzsh\t/Users/connorads\t/dev/ttys004\n'
+	printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
+	printf 'main:1.2\037222\037claude\037/Users/connorads\037/dev/ttys002\n'
+	printf 'main:1.3\037333\037claude\037/Users/connorads/moved\037/dev/ttys003\n'
+	printf 'main:2.1\037444\037zsh\037/Users/connorads\037/dev/ttys004\n'
 	exit 0
 fi
 exit 1
@@ -465,18 +465,18 @@ if [ "$1" = "list-panes" ]; then
 	case "$*" in
 	*pane_id*)
 		# pane_id / key / cwd / agent state
-		printf '%%7\tmain:1.5\t/Users/connorads/parked\thibernated\n'
-		printf '%%8\tmain:1.6\t/Users/connorads/other\t\n'
+		printf '%%7\037main:1.5\037/Users/connorads/parked\037hibernated\n'
+		printf '%%8\037main:1.6\037/Users/connorads/other\037\n'
 		;;
 	*@agent_state*)
 		# key / agent state
-		printf 'main:1.5\thibernated\n'
-		printf 'main:1.6\t\n'
+		printf 'main:1.5\037hibernated\n'
+		printf 'main:1.6\037\n'
 		;;
 	*)
 		# key / pid / command / cwd / tty (get_live_panes)
-		printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
-		printf 'main:1.5\t555\tzsh\t/Users/connorads/parked\t/dev/ttys005\n'
+		printf 'main:1.1\037111\037claude\037/Users/connorads\037/dev/ttys001\n'
+		printf 'main:1.5\037555\037zsh\037/Users/connorads/parked\037/dev/ttys005\n'
 		;;
 	esac
 	exit 0
@@ -553,9 +553,9 @@ EOF
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
 	case "$*" in
-	*pane_id*) printf '%%7\tmain:1.5\t/Users/connorads/parked\thibernated\n' ;;
-	*@agent_state*) printf 'main:1.5\thibernated\n' ;;
-	*) printf 'main:1.5\t555\tzsh\t/Users/connorads/parked\t/dev/ttys005\n' ;;
+	*pane_id*) printf '%%7\037main:1.5\037/Users/connorads/parked\037hibernated\n' ;;
+	*@agent_state*) printf 'main:1.5\037hibernated\n' ;;
+	*) printf 'main:1.5\037555\037zsh\037/Users/connorads/parked\037/dev/ttys005\n' ;;
 	esac
 	exit 0
 fi
@@ -574,6 +574,40 @@ EOF
   [ -f "$SESSION_FILE" ]
   run jq -r '.panes["main:1.5"].claude' "$SESSION_FILE"
   [ "$output" = "sid-parked" ]
+}
+
+@test "save hook writes a hibernated entry whose pane reports an empty cwd" {
+  # tmux reports an empty #{pane_current_path} for a dead pane held open by
+  # remain-on-exit, so the parked pane's record carries an empty interior
+  # field. Under a tab separator `read` collapsed it and `hibernated` landed in
+  # the cwd slot, leaving the state slot empty - the parked-pane check then
+  # failed and the whole save was discarded.
+  seed_hibernate_record
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	case "$*" in
+	*pane_id*) printf '%%7\037main:1.5\037\037hibernated\n' ;;
+	*@agent_state*) printf 'main:1.5\037hibernated\n' ;;
+	*) printf 'main:1.5\037555\037zsh\037\037/dev/ttys005\n' ;;
+	esac
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  [ -f "$SESSION_FILE" ]
+  run jq -r '.panes["main:1.5"].claude' "$SESSION_FILE"
+  [ "$output" = "sid-parked" ]
+  run jq -r '.panes["main:1.5"].dir' "$SESSION_FILE"
+  [ "$output" = "" ]
 }
 
 @test "save hook carries a hibernated entry whose pane is still parked" {
@@ -649,7 +683,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:2.1\t444\tzsh\t/Users/connorads\t/dev/ttys004\n'
+	printf 'main:2.1\037444\037zsh\037/Users/connorads\037/dev/ttys004\n'
 	exit 0
 fi
 exit 1
@@ -1075,7 +1109,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037opencode\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -1100,8 +1134,8 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
-	printf 'main:1.2\t222\topencode\t/Users/connorads\t/dev/ttys002\n'
+	printf 'main:1.1\037111\037opencode\037/Users/connorads\037/dev/ttys001\n'
+	printf 'main:1.2\037222\037opencode\037/Users/connorads\037/dev/ttys002\n'
 	exit 0
 fi
 exit 1
@@ -1123,7 +1157,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037opencode\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
@@ -1168,7 +1202,7 @@ EOF
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = "list-panes" ]; then
-	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.1\037111\037opencode\037/Users/connorads\037/dev/ttys001\n'
 	exit 0
 fi
 exit 1
