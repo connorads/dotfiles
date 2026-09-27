@@ -82,6 +82,34 @@ teardown() {
   [ "$(jq -r '.panes[0].decision' <<<"$output")" = state-done ]
 }
 
+@test "an unset idle-since is not read as an idle age" {
+  # @agent_idle_since is a user option, so tmux reports it as an empty interior
+  # field. Under a tab separator `read` collapsed it and pane_active (1) landed
+  # in the idle-since slot, making a pane of unknown age look idle since epoch
+  # second 1 - eligible, and one tick away from being killed.
+  tx set-option -pu -t "$pane" @agent_idle_since
+
+  run env AGENT_AUTO_NOW=200 "$SCRIPT" status --json
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.panes[0].decision' <<<"$output")" = idle-age-unknown ]
+  [ "$(jq -r '.panes[0].idleSince' <<<"$output")" = null ]
+}
+
+@test "unset visibility fields never read as hidden" {
+  # The same record's pane_active/window_active/session_attached trio sits
+  # behind three user options. Collapsing shifted them out of their slots and
+  # is_viewing was handed three empty strings - the visibility gate of
+  # automatic hibernation, answered from nothing.
+  tx set-option -pu -t "$pane" @agent_state
+  tx set-option -pu -t "$pane" @agent_kind
+  tx set-option -pu -t "$pane" @agent_idle_since
+
+  run env AGENT_AUTO_NOW=200 "$SCRIPT" status --json
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.panes[0].decision' <<<"$output")" = unsupported-kind ]
+  [ "$(jq -r '.panes[0].kind' <<<"$output")" = "" ]
+}
+
 @test "a durable pin excludes an otherwise eligible conversation" {
   "$SCRIPT" pin "$pane" >/dev/null
   run env AGENT_AUTO_NOW=200 "$SCRIPT" status --json

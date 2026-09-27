@@ -128,16 +128,16 @@ cmd_unpin() {
 }
 
 pane_rows() {
-	tmux list-panes -a -F $'#{pane_id}\t#{@agent_state}\t#{@agent_kind}\t#{@agent_idle_since}\t#{pane_active}\t#{window_active}\t#{session_attached}' 2>/dev/null
+	tmux list-panes -a -F $'#{pane_id}\037#{@agent_state}\037#{@agent_kind}\037#{@agent_idle_since}\037#{pane_active}\037#{window_active}\037#{session_attached}' 2>/dev/null
 }
 
-# gather_candidates NOW PINS - emit one TSV row per pane:
+# gather_candidates NOW PINS - emit one US-separated row per pane:
 # pane, decision, idleSince, kind, sessionId, pid, pinRevision.
 gather_candidates() {
 	local now=$1 pins=$2 pane state kind since pa wa sa key data sid pid reason
 	local -A seen=() visible=()
 	local -A states=() kinds=() sinces=()
-	while IFS=$'\t' read -r pane state kind since pa wa sa; do
+	while IFS=$'\037' read -r pane state kind since pa wa sa; do
 		[ -n "$pane" ] || continue
 		seen[$pane]=1
 		states[$pane]=$state
@@ -175,7 +175,7 @@ gather_candidates() {
 			fi
 		fi
 		[ -n "$reason" ] || reason=eligible
-		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+		printf '%s\037%s\037%s\037%s\037%s\037%s\037%s\n' \
 			"$pane" "$reason" "$since" "$kind" "$sid" "$pid" "$(pin_revision)"
 	done
 }
@@ -213,16 +213,16 @@ cmd_status() {
 	pins=$(pins_json) || die 1 'pin store is malformed'
 	pressure=${AGENT_AUTO_MEMORY_STATE:-$(mem_state)}
 	rows=$(gather_candidates "$now" "$pins")
-	while IFS=$'\t' read -r pane _ _ _ _ _ _; do
+	while IFS=$'\037' read -r pane _ _ _ _ _ _; do
 		[ -n "$pane" ] && sync_pin_mirror "$pane" "$pins" >/dev/null || true
 	done <<<"$rows"
 	if [ "$json" -eq 1 ]; then
 		printf '%s\n' "$rows" | jq -R -s --arg mode "$(mode)" --arg pressure "$pressure" '
-		  {mode:$mode,pressure:$pressure,panes:(split("\n")|map(select(length>0)|split("\t"))|
+		  {mode:$mode,pressure:$pressure,panes:(split("\n")|map(select(length>0)|split("\u001f"))|
 		  map({pane:.[0],decision:.[1],idleSince:(.[2] | tonumber? // null),kind:.[3],sessionId:(.[4]//"")}))}'
 	else
 		printf 'mode=%s pressure=%s\n' "$(mode)" "$pressure"
-		printf '%s\n' "$rows" | awk -F '\t' 'NF { printf "%s\t%s\t%s\n", $1, $2, $4 }'
+		printf '%s\n' "$rows" | awk -F '\037' 'NF { printf "%s\t%s\t%s\n", $1, $2, $4 }'
 	fi
 }
 
@@ -272,14 +272,14 @@ cmd_tick() {
 		return 0
 	}
 	rows=$(gather_candidates "$now" "$pins")
-	chosen=$(printf '%s\n' "$rows" | awk -F '\t' '$2=="eligible"' | sort -t $'\t' -k3,3n | head -1)
+	chosen=$(printf '%s\n' "$rows" | awk -F '\037' '$2=="eligible"' | sort -t $'\037' -k3,3n | head -1)
 	policy=$(jq -c --argjson now "$now" '.lastEvaluationAt=$now' <<<"$policy")
 	if [ -z "$chosen" ]; then
 		event "$now" "$mode_value" "$pressure" no-candidate
 		write_policy "$policy"
 		return 0
 	fi
-	IFS=$'\t' read -r pane _ since kind sid pid revision <<<"$chosen"
+	IFS=$'\037' read -r pane _ since kind sid pid revision <<<"$chosen"
 	expected=$(jq -cn --arg pane "$pane" --arg kind "$kind" --arg sid "$sid" --argjson pid "$pid" \
 		--arg idle "$since" --arg revision "$revision" \
 		'{pane:$pane,kind:$kind,sessionId:$sid,pid:$pid,idleSince:$idle,pinRevision:$revision}')

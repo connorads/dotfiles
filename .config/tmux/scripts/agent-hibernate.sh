@@ -8,7 +8,7 @@
 #   agent-hibernate.sh hibernate <pane> [--force]  # snapshot, kill, park
 #   agent-hibernate.sh thaw [<pane>|<session-id>]  # resume (no arg: fzf picker)
 #   agent-hibernate.sh park                        # runs INSIDE the parked pane
-#   agent-hibernate.sh list                        # records TSV (parked|orphan)
+#   agent-hibernate.sh list                        # records, US-separated (parked|orphan)
 #
 # Record store: one JSON file per hibernated session at
 # ~/.local/state/agent-hibernate/<sessionId>.json, with the pane's screen
@@ -163,8 +163,8 @@ readdress() {
 pane_is_parked() {
 	local pane="${1:-}" out
 	[ -n "$pane" ] || return 1
-	out=$(tmux display-message -p -t "$pane" '#{pane_id}	#{@agent_state}' 2>/dev/null) || return 1
-	[ "$out" = "$(printf '%s\thibernated' "$pane")" ]
+	out=$(tmux display-message -p -t "$pane" $'#{pane_id}\037#{@agent_state}' 2>/dev/null) || return 1
+	[ "$out" = "$(printf '%s\037hibernated' "$pane")" ]
 }
 
 # last_journal_ts PANE — ts of PANE's last non-hibernated journal event, from
@@ -291,9 +291,9 @@ cmd_probe() {
 	[ -n "$pane" ] || die 2 "usage: agent-hibernate.sh probe <pane>"
 	command -v jq >/dev/null 2>&1 || die 1 "jq required"
 	info=$(tmux display-message -p -t "$pane" \
-		$'#{pane_id}\t#{pane_pid}\t#{pane_tty}\t#{pane_current_path}\t#{session_name}:#{window_index}.#{pane_index}\t#{@agent_state}\t#{@agent_kind}\t#{@agent_idle_since}' 2>/dev/null)
+		$'#{pane_id}\037#{pane_pid}\037#{pane_tty}\037#{pane_current_path}\037#{session_name}:#{window_index}.#{pane_index}\037#{@agent_state}\037#{@agent_kind}\037#{@agent_idle_since}' 2>/dev/null)
 	[ -n "$info" ] || die 3 "no such pane: $pane"
-	IFS=$'\t' read -r pane pane_pid pane_tty cwd pane_key state declared idle_since <<<"$info"
+	IFS=$'\037' read -r pane pane_pid pane_tty cwd pane_key state declared idle_since <<<"$info"
 	case "$declared" in claude | codex) ;; *) die 6 "unsupported agent kind: ${declared:-unknown}" ;; esac
 	pid=$(agent_foreground_pid_for_tty "$pane_tty" "$declared" "$pane_pid")
 	[ -n "$pid" ] || die 6 "no matching $declared process in pane $pane"
@@ -350,9 +350,9 @@ cmd_hibernate() {
 
 	local info pane_pid pane_tty cwd pane_key window_name
 	info=$(tmux display-message -p -t "$pane" \
-		'#{pane_id}	#{pane_pid}	#{pane_tty}	#{pane_current_path}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}' 2>/dev/null)
+		$'#{pane_id}\037#{pane_pid}\037#{pane_tty}\037#{pane_current_path}\037#{session_name}:#{window_index}.#{pane_index}\037#{window_name}' 2>/dev/null)
 	[ -n "$info" ] || die 3 "no such pane: $pane"
-	IFS=$'\t' read -r pane pane_pid pane_tty cwd pane_key window_name <<<"$info"
+	IFS=$'\037' read -r pane pane_pid pane_tty cwd pane_key window_name <<<"$info"
 
 	# Gate on the agent state: idle/done are safe to kill; blocked holds a
 	# pending permission prompt, working an in-flight tool call, and an empty
@@ -474,9 +474,9 @@ PY
 		current_idle=$(tmux show-options -pqv -t "$pane" @agent_idle_since 2>/dev/null)
 		[ "$current_state" = idle ] && [ "$current_kind" = "$kind" ] && [ "$current_idle" = "$expected_idle" ] ||
 			die 6 "automatic pane state changed before commit"
-		visible_rows=$(tmux list-panes -a -F $'#{pane_id}\t#{pane_active}\t#{window_active}\t#{session_attached}' 2>/dev/null) ||
+		visible_rows=$(tmux list-panes -a -F $'#{pane_id}\037#{pane_active}\037#{window_active}\037#{session_attached}' 2>/dev/null) ||
 			die 6 "cannot read automatic visibility"
-		if awk -F '\t' -v pane="$pane" '$1 == pane && $2 == 1 && $3 == 1 && $4 > 0 { found=1 } END { exit !found }' <<<"$visible_rows"; then
+		if awk -F '\037' -v pane="$pane" '$1 == pane && $2 == 1 && $3 == 1 && $4 > 0 { found=1 } END { exit !found }' <<<"$visible_rows"; then
 			die 6 "automatic hibernation refuses a visible pane"
 		fi
 		if [ -f "$pins" ]; then current_revision=$(cksum "$pins" | awk '{ print $1 ":" $2 }'); else current_revision=none; fi
@@ -738,7 +738,7 @@ PY
 				verified=1
 				break
 			fi
-			IFS=$'\t' read -r pane_tty pane_pid < <(tmux display-message -p -t "$pane" '#{pane_tty}\t#{pane_pid}' 2>/dev/null)
+			IFS=$'\037' read -r pane_tty pane_pid < <(tmux display-message -p -t "$pane" $'#{pane_tty}\037#{pane_pid}' 2>/dev/null)
 			live_pid=$(agent_foreground_pid_for_tty "$pane_tty" codex "$pane_pid")
 			if [ -n "$live_pid" ]; then
 				live_sid=$(codex_session_id_for_pid "$live_pid" "$cwd" "$pane")
@@ -799,13 +799,13 @@ pick_record() {
 	local choice
 	choice=$(printf '%s\n' "$rows" | fzf \
 		--reverse --no-multi --info=hidden \
-		--delimiter='\t' --with-nth=2.. \
+		--delimiter=$'\037' --with-nth=2.. \
 		--prompt='thaw › ' \
 		--header='status · name · idle · cwd · pane' \
 		--preview "cat '$STATE_DIR'/{1}.screen.txt 2>/dev/null" \
 		--preview-window=right:60%:wrap) || return 130
 	local sid
-	sid=$(printf '%s' "$choice" | cut -f1)
+	sid=$(printf '%s' "$choice" | cut -d $'\037' -f1)
 	[ -n "$sid" ] || return 130
 	printf '%s\n' "$STATE_DIR/$sid.json"
 }
@@ -823,7 +823,7 @@ cmd_list() {
 		cwd=$(jq -r '.cwd // empty' "$rec" 2>/dev/null)
 		if pane_is_parked "$pane"; then status=parked; else status=orphan; fi
 		label=$(record_label "$rec" "$pane")
-		printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+		printf '%s\037%s\037%s\037%s\037%s\037%s\n' \
 			"$sid" "$status" "$label" "$(idle_age "$rec")" "$cwd" "${pane:--}"
 	done
 }
