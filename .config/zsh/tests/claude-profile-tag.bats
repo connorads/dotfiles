@@ -14,6 +14,8 @@ SCRIPT="$TESTS_DIR/../../tmux/scripts/claude-profile-tag.sh"
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
 
 setup() {
+  # The script skips print-mode Claude; a caller's inherited entrypoint must not leak in.
+  unset CLAUDE_CODE_ENTRYPOINT
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="claudeprofiletag_${BATS_TEST_NUMBER}_$$"
@@ -58,6 +60,26 @@ labelled_cfg() {
   [ "$(tag "$PANE")" = "str" ]
   run env CLAUDE_PROFILE_PANE="$PANE" sh "$SCRIPT" clear
   [ "$status" -eq 0 ]
+  [ -z "$(tag "$PANE")" ]
+}
+
+@test "print-mode claude neither sets nor clears the pane tag" {
+  cfg="$(labelled_cfg stretch str)"
+  env CLAUDE_PROFILE_PANE="$PANE" CLAUDE_CONFIG_DIR="$cfg" sh "$SCRIPT"
+  other="$(labelled_cfg other oth)"
+  run env CLAUDE_CODE_ENTRYPOINT=sdk-cli CLAUDE_PROFILE_PANE="$PANE" CLAUDE_CONFIG_DIR="$other" sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(tag "$PANE")" = "str" ]
+  run env CLAUDE_CODE_ENTRYPOINT=sdk-cli CLAUDE_PROFILE_PANE="$PANE" sh "$SCRIPT" clear
+  [ "$status" -eq 0 ]
+  [ "$(tag "$PANE")" = "str" ]
+}
+
+@test "interactive claude entrypoint still sets and clears the tag" {
+  cfg="$(labelled_cfg stretch str)"
+  run env CLAUDE_CODE_ENTRYPOINT=cli CLAUDE_PROFILE_PANE="$PANE" CLAUDE_CONFIG_DIR="$cfg" sh "$SCRIPT"
+  [ "$(tag "$PANE")" = "str" ]
+  run env CLAUDE_CODE_ENTRYPOINT=cli CLAUDE_PROFILE_PANE="$PANE" sh "$SCRIPT" clear
   [ -z "$(tag "$PANE")" ]
 }
 

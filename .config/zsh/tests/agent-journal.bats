@@ -13,6 +13,8 @@ STOP_SCRIPT="$TESTS_DIR/../../tmux/scripts/agent-stop.sh"
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
 
 setup() {
+  # The script skips print-mode Claude; a caller's inherited entrypoint must not leak in.
+  unset CLAUDE_CODE_ENTRYPOINT
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   command -v jq >/dev/null 2>&1 || skip "jq not installed"
@@ -80,6 +82,13 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
 
   [ ! -d "$AGENT_JOURNAL_DIR" ]
   [ "$(tx show-options -pqv -t "$PANE" @agent_state)" = working ]
+}
+
+@test "print-mode claude writes no journal line" {
+  printf '%s' '{"hook_event_name":"PreToolUse","session_id":"nested"}' |
+    env CLAUDE_CODE_ENTRYPOINT=sdk-cli AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude
+
+  [ -z "$(journal_lines)" ]
 }
 
 @test "events append across invocations" {

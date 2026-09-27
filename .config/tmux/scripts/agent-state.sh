@@ -41,6 +41,9 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # Capture (and fully drain) hook stdin before any early exit, so the hook
 # writer never sees EPIPE. The captured payload feeds journal_event below.
 journal_capture_stdin
+# A nested `claude -p` (entrypoint sdk-cli) inherits TMUX_PANE; its lifecycle
+# belongs to no pane, so neither the state nor the journal row is written.
+case ${CLAUDE_CODE_ENTRYPOINT:-cli} in cli) ;; *) exit 0 ;; esac # claude -p shares the pane
 
 [ -n "$pane" ] || exit 0
 command -v tmux >/dev/null 2>&1 || exit 0

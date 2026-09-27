@@ -12,6 +12,8 @@ SCRIPT="$TESTS_DIR/../../tmux/scripts/agent-state.sh"
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
 
 setup() {
+  # The script skips print-mode Claude; a caller's inherited entrypoint must not leak in.
+  unset CLAUDE_CODE_ENTRYPOINT
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="agentstate_${BATS_TEST_NUMBER}_$$"
@@ -47,6 +49,20 @@ large_hook_payload() {
   [ "$status" -eq 0 ]
   [ "$(pstate "$pane")" = working ]
   [ "$(wstate "$win")" = working ]
+}
+
+@test "print-mode claude leaves the pane state alone" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  run env CLAUDE_CODE_ENTRYPOINT=sdk-cli AGENT_STATE_PANE="$pane" sh "$SCRIPT" working claude
+  [ "$status" -eq 0 ]
+  [ -z "$(pstate "$pane")" ]
+}
+
+@test "interactive claude entrypoint sets the pane state" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  run env CLAUDE_CODE_ENTRYPOINT=cli AGENT_STATE_PANE="$pane" sh "$SCRIPT" working claude
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
 }
 
 @test "idle evidence starts on entry, survives repeats, and clears on activity" {

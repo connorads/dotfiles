@@ -8,10 +8,13 @@
 # it runs inside the claude process, so $CLAUDE_CONFIG_DIR is the real profile
 # regardless of fresh launch / -r resume / fork / resurrect restore / teleport,
 # and $TMUX_PANE is inherited from the pane. Quiet no-op outside tmux.
+# A nested `claude -p` inherits the pane too; Claude sets its entrypoint to
+# sdk-cli, so its SessionEnd must not clear the interactive parent's tag.
 # shellcheck source=/dev/null
 . "$HOME/.claude/hooks/profile-label.sh"
 
 verb="${1:-set}"
+case ${CLAUDE_CODE_ENTRYPOINT:-cli} in cli) ;; *) exit 0 ;; esac # claude -p shares the pane
 pane=${CLAUDE_PROFILE_PANE:-${TMUX_PANE:-}}
 [ -n "$pane" ] || exit 0
 command -v tmux >/dev/null 2>&1 || exit 0

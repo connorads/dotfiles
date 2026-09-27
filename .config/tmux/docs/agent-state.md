@@ -136,7 +136,9 @@ The logic is spread across several files - change them as a set:
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
-  `agent-state.sh` on lifecycle events; Claude's `Stop`/`StopFailure` route
+  `agent-state.sh` on lifecycle events. A nested `claude -p` inherits the
+  pane's `TMUX_PANE`, so `agent-state.sh` and `claude-profile-tag.sh` exit
+  unless `CLAUDE_CODE_ENTRYPOINT` is `cli` (or unset). Claude's `Stop`/`StopFailure` route
   through `agent-stop.sh` (`working` while `background_tasks` holds finite
   in-flight work, `done` once drained), and Codex's `PreToolUse`
   ([`~/.codex/hooks.json`](../../../.codex/hooks.json)) routes through
