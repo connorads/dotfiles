@@ -14,8 +14,8 @@ setup() {
 printf '%s\n' "$*" >>"$TEST_LOG"
 if [ "$1" = "display-message" ]; then
   case "$*" in
-    *window_panes*) printf '$1\ts\t@7\t%%5\t2\t2\t/dev/ttys010\tzsh\t/tmp/somewhere\n' ;;
-    *window_linked*) printf '$1\ts\t@7\t1\tmywin\t0\t1\t2\n' ;;
+    *window_panes*) printf '$1\037s\037@7\037%%5\0372\0372\037/dev/ttys010\037zsh\037/tmp/somewhere\n' ;;
+    *window_linked*) printf '$1\037s\037@7\0371\037mywin\0370\0371\0372\n' ;;
   esac
 elif [ "$1" = "list-panes" ]; then
   :

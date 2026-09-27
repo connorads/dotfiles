@@ -138,11 +138,11 @@ target_window_id() {
 }
 
 target_window_info() {
-	tmux display-message -p -t "$1" '#{session_id}	#{session_name}	#{window_id}	#{window_index}	#{?automatic-rename,#{b:pane_current_path},#{window_name}}	#{window_linked}	#{window_linked_sessions}	#{session_windows}'
+	tmux display-message -p -t "$1" $'#{session_id}\037#{session_name}\037#{window_id}\037#{window_index}\037#{?automatic-rename,#{b:pane_current_path},#{window_name}}\037#{window_linked}\037#{window_linked_sessions}\037#{session_windows}'
 }
 
 target_pane_info() {
-	tmux display-message -p -t "$1" '#{session_id}	#{session_name}	#{window_id}	#{pane_id}	#{window_panes}	#{session_windows}	#{pane_tty}	#{pane_current_command}	#{pane_current_path}'
+	tmux display-message -p -t "$1" $'#{session_id}\037#{session_name}\037#{window_id}\037#{pane_id}\037#{window_panes}\037#{session_windows}\037#{pane_tty}\037#{pane_current_command}\037#{pane_current_path}'
 }
 
 session_has_window() {
@@ -163,7 +163,7 @@ switch_client_if_present() {
 }
 
 all_sessions() {
-	tmux list-sessions -F '#{session_id}	#{session_name}'
+	tmux list-sessions -F $'#{session_id}\037#{session_name}'
 }
 
 menu_base() {
@@ -194,19 +194,19 @@ window_destination_menu() {
 	local mode=$1 client=$2 win=$3 pane=$4 mx=$5 my=$6 page=${7:-0}
 	local info src_session src_name src_win win_index label linked src_windows
 	info="$(target_window_info "$win")"
-	IFS=$'\t' read -r src_session src_name src_win win_index label linked _ src_windows <<<"$info"
+	IFS=$'\037' read -r src_session src_name src_win win_index label linked _ src_windows <<<"$info"
 
 	local -a destinations
 	destinations=()
-	while IFS=$'\t' read -r session_id session_name; do
+	while IFS=$'\037' read -r session_id session_name; do
 		[ "$session_id" != "$src_session" ] || continue
 		case "$mode" in
 		move-follow | move-background)
-			destinations+=("$session_id"$'\t'"$session_name")
+			destinations+=("$session_id"$'\037'"$session_name")
 			;;
 		share)
 			session_has_window "$session_id" "$src_win" && continue
-			destinations+=("$session_id"$'\t'"$session_name")
+			destinations+=("$session_id"$'\037'"$session_name")
 			;;
 		esac
 	done < <(all_sessions)
@@ -230,7 +230,7 @@ window_destination_menu() {
 		menu+=("Previous" "<" "$(organiser_run_shell window-dest "$mode" "$client" "$src_win" "$pane" "$mx" "$my" "$((page - 1))")")
 	fi
 	for ((i = start; i < end; i++)); do
-		IFS=$'\t' read -r session_id session_name <<<"${destinations[$i]}"
+		IFS=$'\037' read -r session_id session_name <<<"${destinations[$i]}"
 		menu+=("$(format_label "$session_name")" "" "$(organiser_run_shell action-window "$mode" "$client" "$src_win" "$session_id")")
 	done
 	if [ "$end" -lt "$total" ]; then
@@ -243,7 +243,7 @@ pane_destination_menu() {
 	local mode=$1 client=$2 pane=$3 mx=$4 my=$5 page=${6:-0}
 	local info src_session src_name src_win src_pane pane_count src_windows tty cmd path
 	info="$(target_pane_info "$pane")"
-	IFS=$'\t' read -r src_session src_name src_win src_pane pane_count src_windows tty cmd path <<<"$info"
+	IFS=$'\037' read -r src_session src_name src_win src_pane pane_count src_windows tty cmd path <<<"$info"
 
 	if [ "$pane_count" = 1 ]; then
 		show_no_destinations "$client" "$pane" "$mx" "$my" " Pane $src_pane " "Break disabled: pane is already the only pane"
@@ -252,8 +252,8 @@ pane_destination_menu() {
 
 	local -a destinations
 	destinations=()
-	while IFS=$'\t' read -r session_id session_name; do
-		destinations+=("$session_id"$'\t'"$session_name")
+	while IFS=$'\037' read -r session_id session_name; do
+		destinations+=("$session_id"$'\037'"$session_name")
 	done < <(all_sessions)
 
 	local height size total start end i title
@@ -270,7 +270,7 @@ pane_destination_menu() {
 		menu+=("Previous" "<" "$(organiser_run_shell pane-dest "$mode" "$client" "$src_pane" "$mx" "$my" "$((page - 1))")")
 	fi
 	for ((i = start; i < end; i++)); do
-		IFS=$'\t' read -r session_id session_name <<<"${destinations[$i]}"
+		IFS=$'\037' read -r session_id session_name <<<"${destinations[$i]}"
 		menu+=("$(format_label "$session_name")" "" "$(organiser_run_shell action-pane-break "$mode" "$client" "$src_pane" "$session_id")")
 	done
 	if [ "$end" -lt "$total" ]; then
@@ -280,15 +280,15 @@ pane_destination_menu() {
 }
 
 marked_pane_record() {
-	tmux list-panes -a -F '#{pane_marked}	#{session_id}	#{session_name}	#{window_id}	#{pane_id}	#{window_panes}	#{session_windows}' |
-		awk -F '\t' '$1 == 1 {print; exit}'
+	tmux list-panes -a -F $'#{pane_marked}\037#{session_id}\037#{session_name}\037#{window_id}\037#{pane_id}\037#{window_panes}\037#{session_windows}' |
+		awk -F '\037' '$1 == 1 {print; exit}'
 }
 
 window_menu() {
 	local client=${1:-} win=${2:?window required} pane=${3:?pane required} cwd=${4:-} mx=${5:-C} my=${6:-C}
 	local info session_id session_name window_id win_index label linked session_windows
 	info="$(target_window_info "$win")"
-	IFS=$'\t' read -r session_id session_name window_id win_index label linked _ session_windows <<<"$info"
+	IFS=$'\037' read -r session_id session_name window_id win_index label linked _ session_windows <<<"$info"
 	local qlabel
 	qlabel="$(tmux_quote "$label")"
 	menu_base "$client" "$pane" "$mx" "$my" " Window · $(format_label "$label") "
@@ -330,7 +330,7 @@ pane_menu() {
 	local client=${1:-} pane=${2:?pane required} mx=${3:-C} my=${4:-C}
 	local info session_id session_name window_id pane_id pane_count session_windows tty cmd path
 	info="$(target_pane_info "$pane")"
-	IFS=$'\t' read -r session_id session_name window_id pane_id pane_count session_windows tty cmd path <<<"$info"
+	IFS=$'\037' read -r session_id session_name window_id pane_id pane_count session_windows tty cmd path <<<"$info"
 	local marked marked_window marked_pane
 	marked="$(marked_pane_record || true)"
 	menu_base "$client" "$pane_id" "$mx" "$my" " Pane $pane_id "
@@ -341,7 +341,7 @@ pane_menu() {
 		"Break in background…" "b" "$(organiser_run_shell pane-dest break-background "$client" "$pane_id" "$mx" "$my" 0)"
 	)
 	if [ -n "$marked" ]; then
-		IFS=$'\t' read -r _ _ _ marked_window marked_pane _ _ <<<"$marked"
+		IFS=$'\037' read -r _ _ _ marked_window marked_pane _ _ <<<"$marked"
 		if [ "$marked_window" != "$window_id" ]; then
 			menu+=(
 				""
@@ -385,7 +385,7 @@ action_window() {
 	local mode=$1 client=$2 win=$3 dest=$4
 	local info src_session src_name src_win win_index label linked session_windows
 	info="$(target_window_info "$win")"
-	IFS=$'\t' read -r src_session src_name src_win win_index label linked _ session_windows <<<"$info"
+	IFS=$'\037' read -r src_session src_name src_win win_index label linked _ session_windows <<<"$info"
 	case "$mode" in
 	move-follow)
 		if [ "$session_windows" = 1 ]; then
@@ -413,7 +413,7 @@ action_pane_break() {
 	local mode=$1 client=$2 pane=$3 dest=$4
 	local info src_session src_name src_win src_pane pane_count src_windows tty cmd path
 	info="$(target_pane_info "$pane")"
-	IFS=$'\t' read -r src_session src_name src_win src_pane pane_count src_windows tty cmd path <<<"$info"
+	IFS=$'\037' read -r src_session src_name src_win src_pane pane_count src_windows tty cmd path <<<"$info"
 	if [ "$pane_count" = 1 ]; then
 		tmux display-message -c "$client" "Break disabled: pane is already the only pane"
 		return 1
@@ -435,10 +435,10 @@ action_pane_join() {
 	local direction=$1 client=$2 source=$3 dest=$4
 	local src dst needs_confirm prompt command
 	local -a flags
-	src="$(tmux display-message -p -t "$source" '#{session_id}	#{session_name}	#{window_id}	#{window_panes}	#{session_windows}')"
-	dst="$(tmux display-message -p -t "$dest" '#{session_id}	#{window_id}')"
-	IFS=$'\t' read -r src_session src_name _ src_panes src_windows <<<"$src"
-	IFS=$'\t' read -r dst_session dst_window <<<"$dst"
+	src="$(tmux display-message -p -t "$source" $'#{session_id}\037#{session_name}\037#{window_id}\037#{window_panes}\037#{session_windows}')"
+	dst="$(tmux display-message -p -t "$dest" $'#{session_id}\037#{window_id}')"
+	IFS=$'\037' read -r src_session src_name _ src_panes src_windows <<<"$src"
+	IFS=$'\037' read -r dst_session dst_window <<<"$dst"
 	flags=()
 	case "$direction" in
 	left) flags=(-h -b) ;;
