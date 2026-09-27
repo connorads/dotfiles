@@ -158,12 +158,11 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   batch is one joined clipboard write (a second write would clobber the first). The
   named tmux buffer remains as a fallback (choose-buffer / prefix + =; named buffers
   sit outside the automatic stack, so prefix + ] won't see them).
-- **Command + location**: command is `skl`; Bun project root at `~/.config/skl/`
-  (`src/`, `tests/`, `bin/`, `package.json`, `config.json`, plus this `CONTEXT.md` and
-  `docs/adr/` co-located in the project - not at `~`). `~/.local/bin/skl` is a thin
-  launcher shim (`exec bun ~/.config/skl/src/cli.ts "$@"`); `~/.local/bin/skl-pick`
-  symlinks `bin/pick`, the fzf picker glue. The launcher shim is the only Bun-facing
-  thing in `bin`.
+- **Command + location**: command is `skl`; Bun project root at `~/src/skl/`
+  (`src/`, `tests/`, `bin/`, `package.json`, this `CONTEXT.md` and `docs/adr/`).
+  Config lives at `~/.config/skl/config.json`. `~/.local/bin/skl` is a thin
+  launcher shim executing `~/src/skl/src/cli.ts` with Bun; `~/.local/bin/skl-pick`
+  symlinks `~/src/skl/bin/pick`, the fzf picker glue.
   Dotfiles-tracked for the MVP; **intent to extract to a standalone `~/git/skl` repo**
   once it stabilises.
 - **Path config**: JSON config file (ordered sources `{ path, name? }`) is source of
@@ -173,7 +172,7 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   reads inside it.
   Committed with `~`/`$HOME`-relative paths (tilde-expanded at load) for portability;
   machine-specific roots via `--path` or an uncommitted local override, never absolute
-  paths in the committed config. New tracked paths (`~/.config/skl/**`, `~/.local/bin/skl`)
+  paths in the committed config. New tracked paths (`~/src/skl/**`, `~/.config/skl/config.json`, `~/.local/bin/skl`)
   need `.gitignore` un-ignore patterns before `dotfiles add`.
 - **Frontmatter parsing**: `Bun.YAML.parse` (native in Bun 1.3.14, zero-dep) on the
   extracted `---` fenced block; validate `name`/`description` are strings at the boundary

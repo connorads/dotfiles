@@ -237,7 +237,7 @@ Run `<cmd> --help` for flags and subcommands.
 ```bash
 drs | hms | nrs        # rebuild: darwin (macOS) | home-manager (Linux) | nixos; add r (drsr...) to roll back
 up                     # update everything: bump + commit mise.lock and flake.lock, brew/apt, rebuild
-up -s                  # frozen rebuild from committed locks; no bumps, no commit
+up -s                  # frozen rebuild; clean mise.lock required, dirty flake.lock allowed; no bumps/commit
 nfu                    # nix flake update
 lockfile-audit         # OSV sweep of tracked lockfiles; MAL-* blocks, CVEs report
 pin-audit              # report pins/excludes to recheck and range pins the newest release outgrew
@@ -438,33 +438,10 @@ Gate-by-gate detail: [.hk-hooks/AGENTS.md](./.hk-hooks/AGENTS.md).
 Before adding, removing, vendoring, or promoting skills, read
 [`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).
 
-Skills load three ways, in preference order. **Canonical home is the catalogue at
-`~/.config/skills/{public,personal,vendor}`** - *not* `~/.agents/skills/`, which is the
-deliberately small global autoload dir.
-
-1. **`skl` - on-demand, the default (~95% of use).** Pick a catalogue skill → its pointer
-   is injected into the agent's tmux pane → the agent reads `SKILL.md`. Zero session cost.
-   Authored skills: just drop a dir in `~/.config/skills/{public,personal}`. Third-party:
-   `cd ~/.config/skills/vendor && skills add <owner/repo> --skill <name>` (project scope).
-2. **Per-project autoload.** `skills add <owner/repo> --skill <name>` (no `-g`) from inside a
-   repo → auto-fires for *that repo* only.
-3. **Global autoload - rare, used sparingly.** The filesystem at `~/.agents/skills/`
-   is the source of truth for the current global set. Vendored globals use `skills add -g`
-   and authored globals use symlink + `skillsync`. `skillsync` is deprecated for catalogue
-   sync, but remains the supported path for authored global autoload symlinks.
-
-`~/.agents/` is the single agents root, for skills and for instructions
-(`~/.agents/AGENTS.md`). Codex, opencode, pi and Amp read `~/.agents/skills` natively;
-Claude Code does not - its user scope is `~/.claude/skills`, which is the one arm
-`skillsync` fans out to. `~/.codex/skills` is read as well, despite being absent from
-Codex's published scope list and marked deprecated upstream, so prefer the documented
-path. Why this root and not an XDG one:
-[docs/adr/0002](./docs/adr/0002-agents-root.md).
-
-Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
-
-**Curation intent, the rubric, tiers, and lockfile/skillsync rationale live in
-[`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).**
+The catalogue is the default; load its skills on demand with `skl`. The curation
+guide owns installation, reviewed updates and promotion to autoload.
+Bookmarked skills live in [.agents/README.md](./.agents/README.md).
+The agents-root decision is recorded in [ADR 0002](./docs/adr/0002-agents-root.md).
 
 ## Tmux (agent safety)
 
@@ -575,12 +552,34 @@ ts ssh connor@rpi5 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME pull'
 
 ## Keeping Docs Updated
 
-After making significant changes (new config files, architectural changes, new scripts), update the relevant documentation:
+After changing paths, commands or ownership, search current-state documentation
+for the old claims. Verify replacements against source, configuration or observed
+behaviour. Replace duplicated procedures with links to their canonical owner.
+The [living-documentation reconciliation workflow](./skills/living-documentation/references/rituals.md)
+describes how to check hand-maintained claims.
 
-- This file (`AGENTS.md`) - for new key files or commands
+Update the owning documentation:
+
+- This file (`AGENTS.md`) - for standing rules and task routes
+- The relevant subsystem guide - for commands, configuration and procedures
 - [README.md](./README.md) - for changes to the dotfiles system itself
 - [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md) - the "How I work" site
   justifies subsystems these dotfiles encode (keybindings, aliases, tool
   choices, security posture). When a change alters something a page covers,
   update that page in the same commit; check the sidebar in
   `src/dotfiles-docs/astro.config.mjs` for what's covered
+
+## Verification by Change
+
+Run checks from the work-tree root unless the command names a project directory.
+Start with `dhk check <changed paths>` and the matching row below. Report checks
+as passed, failed or skipped; a hook that skips a missing tool is not verification.
+
+| Change | Checks | Coverage limit |
+| --- | --- | --- |
+| Shell behaviour | Relevant Bats files; follow [.config/zsh/tests/AGENTS.md](./.config/zsh/tests/AGENTS.md) | `zsh-tests-fast` excludes integration tests; missing Bats can skip the hook |
+| TypeScript | Affected project's test script and typecheck; hook details in [.hk-hooks/AGENTS.md](./.hk-hooks/AGENTS.md) | Missing tools or dependencies can skip checks |
+| Python | Affected project's pytest and typecheck; `mise run py-checks` includes flat script suites | Not every flat script suite runs at commit time; missing tools can skip checks |
+| Nix configuration | `bash .hk-hooks/nix-eval.sh` and scoped Nix lint | Cross-host evaluation does not prove builds or activation |
+| Code moves or gate wiring | `mise run gate-coverage`, affected suites and `dhk test` for changed hk steps | A matching path does not prove behaviour; inspect the hook plan too |
+| Documentation | Scoped Markdown/prose checks and `dhk check --step link-check` | Local file destinations only; no external URLs, heading anchors or factual claims; missing lychee skips |

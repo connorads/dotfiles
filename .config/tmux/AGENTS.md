@@ -93,7 +93,9 @@ plugin-injected binds a tmux.conf grep can't, and flags terminal aliasing
 
 Verify a binding before committing: live-test on a throwaway server
 (`tmux -L test new-session -d; tmux -L test source-file <(grep '^bind ...' tmux.conf); tmux -L test list-keys -T prefix | grep '<desc>'`),
-or `tmux source-file ~/.config/tmux/tmux.conf` to reload the running server.
+and clean up that private server after the check. Reloading the running server
+with `tmux source-file ~/.config/tmux/tmux.conf` is live activation, not a
+verification step.
 
 At commit time the `tmux-bind-lint` hk step blocks a key bound twice in one
 key-table and both halves of a terminal-alias pair; see
