@@ -10,8 +10,8 @@
 # The `pi` bin runs dist/bundle/cli.js, so the target is the bundled chunk that
 # defines the reader, not dist/utils/clipboard-image.js. Chunk names are content
 # hashes, so the chunk is found by the reader's name. The fallback calls only
-# unminified bundle names (runClipboardCommand, getNativeClipboard) and reads
-# the file with `cat` to avoid depending on a minified fs import alias.
+# the unminified bundle name execFileSync and reads the file with `cat` to
+# avoid depending on a minified fs import alias.
 
 emulate -L zsh
 setopt no_unset pipe_fail
@@ -87,8 +87,8 @@ fi
 
 local patch_name=pi-image-paste-fileurl-patch
 local patch_label='native clipboard file URL fallback'
-local needle='let bytes=await getNativeClipboard()?.getImage();'
-local replace='let bytes=(await getNativeClipboard()?.getImage());if(!bytes?.length&&process.platform==="darwin"){let fileUrlPath=(await runClipboardCommand("osascript",["-e","POSIX path of (the clipboard as «class furl»)"],{timeoutMs:1e3}))?.toString("utf-8").trim();if(fileUrlPath&&/\.(png|jpe?g|gif|webp)$/i.test(fileUrlPath))bytes=await runClipboardCommand("cat",[fileUrlPath])??bytes}'
+local needle='if(!clipboard||!clipboard.hasImage())return null;'
+local replace='if(process.platform==="darwin"&&!clipboard?.hasImage()){try{let fileUrlPath=execFileSync("osascript",["-e","POSIX path of (the clipboard as «class furl»)"],{timeout:1e3,encoding:"utf-8",stdio:["ignore","pipe","ignore"]}).trim(),ext=fileUrlPath.match(/\.(png|jpe?g|gif|webp)$/i)?.[1].toLowerCase();if(ext){let fileBytes=execFileSync("cat",[fileUrlPath]);if(fileBytes.length)return{bytes:new Uint8Array(fileBytes),mimeType:ext==="png"?"image/png":ext==="gif"?"image/gif":ext==="webp"?"image/webp":"image/jpeg"}}}catch{}}if(!clipboard||!(clipboard.hasImage()))return null;'
 local marker="$HOME/.cache/$patch_name.stale"
 local missing_body=$'Pi likely changed its bundled clipboard reader. Ctrl+V paste of\nfile-URL screenshots (Zappy) will revert until this needle is updated.'
 local missing_banner='Ctrl+V file-URL image paste will revert'

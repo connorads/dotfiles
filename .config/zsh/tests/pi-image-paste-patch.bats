@@ -15,8 +15,8 @@ PI_PATCH="$FUNCTIONS_DIR/pi/pi-image-paste-patch"
 MARKER_REL=".cache/pi-image-paste-fileurl-patch.stale"
 LAYOUT_MARKER_REL=".cache/pi-image-paste-patch.stale"
 
-NEEDLE='let bytes=await getNativeClipboard()?.getImage();'
-PATCHED='let bytes=(await getNativeClipboard()?.getImage());if(!bytes?.length&&process.platform==="darwin")'
+NEEDLE='if(!clipboard||!clipboard.hasImage())return null;'
+PATCHED='if(process.platform==="darwin"&&!clipboard?.hasImage()){'
 
 # Write a bundle chunk defining the reader around whichever body is passed,
 # plus an unrelated sibling chunk the resolver must skip.
@@ -25,7 +25,7 @@ write_chunk() {
   chunks="$(dirname "$CLIPBOARD")"
   mkdir -p "$chunks"
   printf 'function other(){return 1}\n' >"$chunks/chunk-OTHER.js"
-  printf 'async function readClipboardImageViaNativeClipboard(){%s if(bytes!==void 0)return null}\n' "$1" >"$CLIPBOARD"
+  printf 'async function readClipboardImageViaNativeClipboard(){%s return null}\n' "$1" >"$CLIPBOARD"
 }
 
 PI_PKG='@earendil-works/pi-coding-agent'
@@ -129,6 +129,12 @@ setup() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == patched:* ]]
+
+  # The replacement keeps the original check, so it must not re-match the
+  # needle, or a second --reapply would stack another fallback on top.
+  run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(grep -oF "$PATCHED" "$CLIPBOARD" | wc -l)" -eq 1 ]
 }
 
 @test "--restore puts the reader back and --reapply re-applies it" {
@@ -147,7 +153,7 @@ setup() {
 }
 
 @test "a renamed needle marks and exits 0 under --reapply" {
-  write_chunk 'let bytes=await getNativeClipboard()?.RENAMED();'
+  write_chunk 'if(!clipboard||!clipboard.RENAMED())return null;'
 
   run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
 
