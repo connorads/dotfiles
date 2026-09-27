@@ -156,8 +156,8 @@ The logic is spread across several files - change them as a set:
 - [`scripts/agent-cli-lib.sh`](../scripts/agent-cli-lib.sh) - functional core
   shared by the `agent` CLI and [`scripts/agent-popup.sh`](../scripts/agent-popup.sh):
   the target resolver (`%N` | `session:win.pane` | exact `@agent_name`) and
-  `agent_list_rows`, the **single agent-pane enumerator** (positional TSV:
-  session → window → pane; `cycle` consumes it directly). Attention ranking is
+  `agent_list_rows`, the **single agent-pane enumerator** (positional,
+  US-separated: session → window → pane; `cycle` consumes it directly). Attention ranking is
   `agent_rank_sort`, a filter applied at the consuming edge (the popup's list,
   `agent ls`) that injects the canonical `rank()` from agent-state-lib.sh.
   `agent_name_taken` (the live-uniqueness check) lives here too, scoped to the
