@@ -14,6 +14,11 @@
 # shellcheck disable=SC1090,SC1091
 . "${AGENT_STATE_LIB:-$HOME/.config/tmux/scripts/agent-state-lib.sh}"
 
+# Record separator. Tab is IFS whitespace, so a `read` of these rows collapses
+# runs of it and an empty field - an unset @agent_name - shifts every later
+# field left. `printf`, not $'\037': #!/bin/sh, where $'...' is literal.
+_US=$(printf '\037')
+
 # agent_pane_state PANE — echo PANE's @agent_state (empty when unset or gone).
 agent_pane_state() {
 	tmux display-message -p -t "$1" '#{@agent_state}' 2>/dev/null
@@ -95,7 +100,7 @@ agent_resolve_target() {
 		fi
 		;;
 	*)
-		_matches=$(agent_list_rows | awk -F '\t' -v n="$_t" '$4 == n { print $1 }')
+		_matches=$(agent_list_rows | awk -F '\037' -v n="$_t" '$4 == n { print $1 }')
 		_count=0
 		_first=
 		while IFS= read -r _m; do
@@ -120,19 +125,18 @@ EOF
 	esac
 }
 
-# agent_list_rows — the single agent-pane enumerator: one TSV row per pane
+# agent_list_rows — the single agent-pane enumerator: one US-separated row per pane
 # carrying @agent_state, in positional order (session → window index → pane
 # index). Fields:
 #   pane_id  state  kind  name  session:win.pane  window_name  cwd(full)
 # cycle() consumes positional order directly; consumers wanting attention
 # order (the popup's list, `agent ls`) pipe through agent_rank_sort.
 agent_list_rows() {
-	_tab=$(printf '\t')
 	tmux list-panes -a -F \
-		"#{session_name}	#{window_index}	#{pane_index}	#{pane_id}	#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{pane_current_path}" \
+		"#{session_name}${_US}#{window_index}${_US}#{pane_index}${_US}#{pane_id}${_US}#{@agent_state}${_US}#{@agent_kind}${_US}#{@agent_name}${_US}#{window_name}${_US}#{pane_current_path}" \
 		2>/dev/null |
-		sort -t "$_tab" -k1,1 -k2,2n -k3,3n |
-		awk -F '\t' 'BEGIN { OFS = "\t" }
+		sort -t "$_US" -k1,1 -k2,2n -k3,3n |
+		awk -F '\037' 'BEGIN { OFS = "\037" }
 		$5 != "" { print $4, $5, $6, $7, $1 ":" $2 "." $3, $8, $9 }'
 }
 
@@ -143,8 +147,7 @@ agent_list_rows() {
 # into awk via -v (awk cannot call sh) — the same idiom the popup uses for
 # glyphs, so the mapping lives in exactly one place.
 agent_rank_sort() {
-	_tab=$(printf '\t')
-	awk -F '\t' -v OFS='\t' \
+	awk -F '\037' -v OFS='\037' \
 		-v r_blocked="$(rank blocked)" -v r_done="$(rank 'done')" \
 		-v r_working="$(rank working)" -v r_idle="$(rank idle)" \
 		-v r_hibernated="$(rank hibernated)" '
@@ -154,8 +157,8 @@ agent_rank_sort() {
 			r["hibernated"] = r_hibernated
 		}
 		{ print ($2 in r ? r[$2] : 0), $0 }' |
-		sort -t "$_tab" -k1,1rn -s |
-		cut -f2-
+		sort -t "$_US" -k1,1rn -s |
+		cut -d "$_US" -f2-
 }
 
 # agent_name_taken NAME [EXCLUDE_PANE] — true iff some *other* live agent pane
@@ -169,6 +172,6 @@ agent_name_taken() {
 	_name=$1
 	_exclude=${2:-}
 	_hit=$(agent_list_rows |
-		awk -F '\t' -v n="$_name" -v x="$_exclude" '$1 != x && $4 == n { print 1; exit }')
+		awk -F '\037' -v n="$_name" -v x="$_exclude" '$1 != x && $4 == n { print 1; exit }')
 	[ -n "$_hit" ]
 }

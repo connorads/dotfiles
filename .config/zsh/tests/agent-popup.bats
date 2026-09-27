@@ -51,7 +51,7 @@ attach_client() { attach_pty_client "${1:-s}"; }
   tx set-option -p -t "$p4" @agent_state done
   run sh "$SCRIPT" list
   [ "$status" -eq 0 ]
-  order=$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')
+  order=$(printf '%s\n' "$output" | cut -d $'\037' -f1 | tr '\n' ' ')
   [ "$order" = "$p2 $p4 $p1 $p3 " ]
 }
 
@@ -67,11 +67,11 @@ attach_client() { attach_pty_client "${1:-s}"; }
 
   run sh "$SCRIPT" list hibernated
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')" = "$p2 " ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1 | tr '\n' ' ')" = "$p2 " ]
 
   run sh "$SCRIPT" list working,idle
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')" = "$p1 $p3 " ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1 | tr '\n' ' ')" = "$p1 $p3 " ]
 
   # No filter still lists everything.
   run sh "$SCRIPT" list
@@ -85,7 +85,7 @@ attach_client() { attach_pty_client "${1:-s}"; }
   run sh "$SCRIPT" list
   [ "$status" -eq 0 ]
   [ "$(printf '%s\n' "$output" | grep -c .)" = 1 ]
-  [ "$(printf '%s\n' "$output" | cut -f1)" = "$p1" ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1)" = "$p1" ]
 }
 
 @test "list emits the catppuccin truecolour glyph" {
@@ -105,8 +105,8 @@ attach_client() { attach_pty_client "${1:-s}"; }
   tx set-option -p -t "$p1" @agent_name backend
   run sh "$SCRIPT" list
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | cut -f1)" = "$p1" ]
-  [ "$(printf '%s\n' "$output" | cut -f5)" = backend ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1)" = "$p1" ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f5)" = backend ]
 }
 
 @test "list renders an empty name column without shifting fields" {
@@ -114,9 +114,9 @@ attach_client() { attach_pty_client "${1:-s}"; }
   tx set-option -p -t "$p1" @agent_state working
   run sh "$SCRIPT" list
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | cut -f1)" = "$p1" ]
-  [ -z "$(printf '%s\n' "$output" | cut -f5)" ]
-  [ "$(printf '%s\n' "$output" | awk -F '\t' '{ print NF }')" = 8 ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1)" = "$p1" ]
+  [ -z "$(printf '%s\n' "$output" | cut -d $'\037' -f5)" ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '{ print NF }')" = 8 ]
 }
 
 @test "pick with no agents prints a notice and exits 0" {
@@ -164,7 +164,7 @@ next_pane() {
 }
 
 @test "_next_pane picks the first match strictly after the current pane, wrapping" {
-  rows=$'%1\tblocked\n%2\tworking\n%3\tblocked'
+  rows=$'%1\037blocked\n%2\037working\n%3\037blocked'
   [ "$(printf '%s\n' "$rows" | next_pane blocked %1)" = %3 ]
   [ "$(printf '%s\n' "$rows" | next_pane blocked %3)" = %1 ] # wraps
   [ "$(printf '%s\n' "$rows" | next_pane blocked '')" = %1 ] # no current → top

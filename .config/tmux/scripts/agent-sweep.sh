@@ -31,6 +31,12 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=agent-journal.sh disable=SC1091
 . "$SELF_DIR/agent-journal.sh"
 
+# Record separator. Tab is IFS whitespace, so `read` collapses runs of it and
+# an empty field - an unset @agent_state - shifts every later field left. US
+# (0x1f) is not, so one `read` splits the 16-field pane row correctly.
+# `printf`, not $'\037': this file is #!/bin/sh and dash leaves $'...' literal.
+_US=$(printf '\037')
+
 AGENT_PRESENCE_GRACE=${AGENT_PRESENCE_GRACE:-10}
 AGENT_PS=${AGENT_PS:-ps}
 AGENT_SWEEP_DAEMON_VERSION=2
@@ -45,13 +51,11 @@ sweep_once() {
 	command -v tmux >/dev/null 2>&1 || return 0
 	tmux list-sessions >/dev/null 2>&1 || return 0
 
-	# @agent_kind and pane_title feed the codex title-spinner reconcile below;
-	# pane_title is last because it is freeform (a stray tab in a title can't then
-	# misalign the earlier columns). Field order is load-bearing beyond that: the
-	# awk below addresses pane_id as $3 and pane_pid as $12, so a new field goes
-	# after pane_pid and before pane_title.
+	# @agent_kind and pane_title feed the codex title-spinner reconcile below.
+	# Field order is load-bearing: the awk addresses pane_id as $3 and pane_pid
+	# as $12, so a new field goes before pane_title.
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{@agent_idle_since}	#{window_zoomed_flag}	#{pane_title}" \
+		"#{window_id}${_US}#{pane_id}${_US}#{@agent_state}${_US}#{pane_current_command}${_US}#{@win_agent_state}${_US}#{pane_active}${_US}#{window_active}${_US}#{session_attached}${_US}#{@agent_kind}${_US}#{@agent_presence_absent_since}${_US}#{pane_pid}${_US}#{@agent_idle_since}${_US}#{window_zoomed_flag}${_US}#{pane_title}" \
 		2>/dev/null) || return 0
 
 	# Sanitise the process table immediately: only ids plus an exact argv0 class
@@ -62,7 +66,7 @@ sweep_once() {
 		"$AGENT_PS" -ww -axo pid=,pgid=,tpgid=,args=
 		printf '__agent_ps_status__ %s\n' "$?"
 	} 2>/dev/null | awk '
-		$1 == "__agent_ps_status__" { print "S\t" $2; next }
+		$1 == "__agent_ps_status__" { print "S\037" $2; next }
 		{
 			arg0 = $4
 			sub(/^.*\//, "", arg0)
@@ -70,20 +74,19 @@ sweep_once() {
 			kind = (arg0 == "claude" || arg0 == "codex") ? arg0 : ""
 			shell = (arg0 == "zsh" || arg0 == "bash" || arg0 == "sh" ||
 				arg0 == "fish" || arg0 == "dash" || arg0 == "ash") ? 1 : 0
-			print "R\t" $1 "\t" $2 "\t" $3 "\t" kind "\t" shell
+			print "R\037" $1 "\037" $2 "\037" $3 "\037" kind "\037" shell
 		}')
 
 	# Join every pane to its foreground group in one awk process. Output starts
-	# with OBSERVATION and OBSERVED_KIND, followed by the untouched tmux row so a
-	# tab in the freeform title remains harmless at the end.
+	# with OBSERVATION and OBSERVED_KIND, followed by the untouched tmux row.
 	_observed_rows=$({
 		while IFS= read -r _row; do
-			[ -n "$_row" ] && printf 'P\t%s\n' "$_row"
+			[ -n "$_row" ] && printf 'P\037%s\n' "$_row"
 		done <<EOF
 $_rows
 EOF
 		printf '%s\n' "$_snapshot"
-	} | awk -F '\t' '
+	} | awk -F '\037' '
 		$1 == "P" {
 			pane[++pane_count] = $3
 			pane_pid[$3] = $12
@@ -100,7 +103,7 @@ EOF
 		}
 		$1 == "S" { probe_status = $2 }
 		END {
-			OFS = "\t"
+			OFS = "\037"
 			for (i = 1; i <= pane_count; i++) {
 				p = pane[i]
 				obs = "unknown"; observed = ""
@@ -135,46 +138,15 @@ EOF
 	# once here. Global opt-out mirrors @cross_session_badge.
 	_codex_poll=$(tmux show-options -gqv @codex_title_poll 2>/dev/null) || _codex_poll=
 
-	_tab=$(printf '\t')
 	_windows=
 	_changed=0
 	_now=${AGENT_PRESENCE_NOW:-$(date +%s)}
 	case $_now in '' | *[!0-9]*) _now=0 ;; esac
 	case $AGENT_PRESENCE_GRACE in '' | *[!0-9]*) _grace=10 ;; *) _grace=$AGENT_PRESENCE_GRACE ;; esac
-	# Manual tab-split (not IFS read): tab is IFS-whitespace, so consecutive tabs
-	# from an empty @agent_state field would collapse and misalign the columns.
-	while IFS= read -r _line; do
-		[ -n "$_line" ] || continue
-		_observation=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_observed_kind=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_win=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_pane=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_astate=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_cmd=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_wstate=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_pactive=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_wactive=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_sattached=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_kind=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_absent_since=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_pane_pid=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_idle_since=${_line%%"$_tab"*}
-		_line=${_line#*"$_tab"}
-		_zoomed=${_line%%"$_tab"*}
-		_ptitle=${_line#*"$_tab"}
+	while IFS="$_US" read -r _observation _observed_kind _win _pane _astate \
+		_cmd _wstate _pactive _wactive _sattached _kind _absent_since \
+		_pane_pid _idle_since _zoomed _ptitle; do
+		[ -n "$_pane" ] || continue
 
 		if [ "$_astate" != hibernated ]; then
 			case $_observation in

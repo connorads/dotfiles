@@ -78,7 +78,7 @@ _agent_ls() {
   rows=$(agent_list_rows | agent_rank_sort)
   if (( json )); then
     printf '%s\n' "$rows" | jq -R -s '
-      split("\n") | map(select(length > 0)) | map(split("\t"))
+      split("\n") | map(select(length > 0)) | map(split("\u001f"))
       | map({
           pane: .[0],
           state: .[1],
@@ -90,9 +90,10 @@ _agent_ls() {
         })'
   else
     [[ -n $rows ]] || return 0
-    # Empty fields become "-" so BSD column (which merges consecutive
-    # delimiters) cannot shift later columns.
-    printf '%s\n' "$rows" | awk -F '\t' 'BEGIN { OFS = "\t" }
+    # awk splits on US and re-emits tabs for column; empty fields become "-"
+    # so BSD column (which merges consecutive delimiters) cannot shift later
+    # columns.
+    printf '%s\n' "$rows" | awk -F '\037' 'BEGIN { OFS = "\t" }
       { for (i = 1; i <= NF; i++) if ($i == "") $i = "-"; print }' |
       column -t -s '	'
   fi
