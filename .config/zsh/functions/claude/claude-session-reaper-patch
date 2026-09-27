@@ -13,10 +13,10 @@
 # The helper's name is minified and not stable across rebuilds, so the needle
 # slots it and re-emits whatever it captured.
 #
-# expect_matches stays unset, deliberately: every installed binary carries *two*
-# separately minified copies of this helper (xC + a7s on 2.1.220, SE + zPa on
-# 2.1.227, Jv + C3l on 2.1.241) and both are live, so replace-all is correct here
-# and a second match is not ambiguity.
+# expect_matches stays unset, deliberately: the number of separately minified
+# copies of this helper varies by release (two on 2.1.220 xC + a7s, 2.1.227
+# SE + zPa and 2.1.241 Jv + C3l; one on 2.1.280 Fe) and every copy is live, so
+# replace-all is correct here and a second match is not ambiguity.
 #
 # Length-preserving - 78 literal bytes either side - as a Bun single-file
 # binary's byte-offset source trailer requires; the default same_length=1
