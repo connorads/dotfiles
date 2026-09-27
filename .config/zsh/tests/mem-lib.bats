@@ -395,16 +395,16 @@ EOF
 # --- app grouping aggregation ----------------------------------------------
 
 @test "grouping sums footprint and counts procs per app, ranked desc" {
-  run bash -c "source '$MEM_LIB'; printf '100\tChrome\n50\tChrome\n300\tnode\n' | mem_group_apps"
-  [ "${lines[0]}" = "$(printf '300\t1\tnode')" ]
-  [ "${lines[1]}" = "$(printf '150\t2\tChrome')" ]
+  run bash -c "source '$MEM_LIB'; printf '100\037Chrome\n50\037Chrome\n300\037node\n' | mem_group_apps"
+  [ "${lines[0]}" = "$(printf '300\0371\037node')" ]
+  [ "${lines[1]}" = "$(printf '150\0372\037Chrome')" ]
 }
 
 @test "grouping ignores tab-less / empty-app rows" {
   # A malformed line (no tab → empty app) must not form a spurious bucket.
-  run bash -c "source '$MEM_LIB'; printf '100\tChrome\nmb=508\n50\tChrome\n' | mem_group_apps"
+  run bash -c "source '$MEM_LIB'; printf '100\037Chrome\nmb=508\n50\037Chrome\n' | mem_group_apps"
   [ "${#lines[@]}" -eq 1 ]
-  [ "${lines[0]}" = "$(printf '150\t2\tChrome')" ]
+  [ "${lines[0]}" = "$(printf '150\0372\037Chrome')" ]
 }
 
 # --- magnitude bar ----------------------------------------------------------

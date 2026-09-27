@@ -183,7 +183,7 @@ mem_segment() {
 		slots=0
 		segs=0
 	fi
-	IFS=$'\t' read -r state colour glyph token <<<"$(mem_attrs_from "$pressure" "$slots" "$segs")"
+	IFS=$'\037' read -r state colour glyph token <<<"$(mem_attrs_from "$pressure" "$slots" "$segs")"
 	if [ "$state" = "OK" ]; then
 		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
 			"$colour" "$glyph" "$token"
@@ -203,7 +203,7 @@ mem_segment() {
 resurrect_segment() {
 	local age state colour glyph token
 	age="$(resurrect_newest_age_secs)"
-	IFS=$'\t' read -r state colour glyph token <<<"$(resurrect_attrs_from "$age")"
+	IFS=$'\037' read -r state colour glyph token <<<"$(resurrect_attrs_from "$age")"
 	if [ "$state" = "FRESH" ]; then
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
 			"$colour" "$glyph" "$token"

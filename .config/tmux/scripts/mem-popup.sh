@@ -13,6 +13,9 @@ AGENT_HIBERNATE_SH=${AGENT_HIBERNATE_SH:-$SELF_DIR/agent-hibernate.sh}
 # shellcheck source=/dev/null
 . "$SELF_DIR/agent-state-lib.sh"
 
+# Record separator; mem-lib.sh explains why, and #!/bin/sh why not $'\037'.
+_US=$(printf '\037')
+
 TOP_PROCS=${MEM_TOP_PROCS:-15}
 DETAIL_TOP_PROCS=${MEM_DETAIL_TOP_PROCS:-50}
 TOP_APPS=${MEM_TOP_APPS:-5}
@@ -31,14 +34,14 @@ ansi() {
 	printf '\033[38;2;%d;%d;%dm%s\033[0m' "$_r" "$_g" "$_b" "$2"
 }
 
-# emit_one PID — "<footprint_mb>\t<app>\t<pid>\t<command>".
+# emit_one PID — "<footprint_mb><US><app><US><pid><US><command>".
 emit_one() {
 	_pid=$1
 	_mb=$(mem_footprint_mb "$_pid")
 	[ "$_mb" -gt 0 ] 2>/dev/null || return 0
 	_cmd=$(ps -p "$_pid" -o command= 2>/dev/null) || return 0
 	[ -n "$_cmd" ] || return 0
-	printf '%s\t%s\t%s\t%s\n' "$_mb" "$(mem_app_name "$_cmd")" "$_pid" "$_cmd"
+	printf '%s\037%s\037%s\037%s\n' "$_mb" "$(mem_app_name "$_cmd")" "$_pid" "$_cmd"
 }
 
 # snapshot_rows LIMIT — candidates come from cheap RSS, then footprint is
@@ -51,7 +54,7 @@ snapshot_rows() {
 }
 
 group_rows() {
-	awk -F '\t' 'NF >= 3 { print $1 "\t" $2 }' | mem_group_apps
+	awk -F '\037' 'NF >= 3 { print $1 "\037" $2 }' | mem_group_apps
 }
 
 vm_stat_mb() {
@@ -66,8 +69,8 @@ vm_stat_mb() {
 }
 
 agent_rows() {
-	tmux list-panes -a -F '#{@agent_state}	#{window_name}	#{pane_pid}' 2>/dev/null |
-		awk -F '\t' '$1 != ""'
+	tmux list-panes -a -F "#{@agent_state}${_US}#{window_name}${_US}#{pane_pid}" 2>/dev/null |
+		awk -F '\037' '$1 != ""'
 }
 
 hibernate_apply() {
@@ -105,10 +108,10 @@ choose_agents_to_hibernate() {
 		return 0
 	fi
 	_selected=$(printf '%s\n' "$_rows" | fzf --multi --reverse \
-		--delimiter="$(printf '\t')" --with-nth=3,2,4,5 \
+		--delimiter="$_US" --with-nth=3,2,4,5 \
 		--header='Tab selects multiple · Enter hibernates' \
 		--prompt='hibernate › ' 2>/dev/null) || return 0
-	_panes=$(printf '%s\n' "$_selected" | cut -f1)
+	_panes=$(printf '%s\n' "$_selected" | cut -d "$_US" -f1)
 	# Pane ids contain no whitespace; splitting turns the selected lines into argv.
 	# shellcheck disable=SC2086
 	set -- $_panes
@@ -141,19 +144,19 @@ render_arm() {
 
 # render_action — the lever: the heaviest idle/done agent pane `h` would stop
 # first, from the rows render() gathered, else the `k` fallback. Fields by
-# `cut`, never `IFS=tab read`: the label can be empty, and read would then
-# shift every later field left.
+# `cut` rather than a whole-row parse: three fields are wanted and each is
+# addressed by number.
 render_action() {
 	_first=$(printf '%s\n' "$CURRENT_HIB_ROWS" | head -n1)
 	if [ -z "$_first" ]; then
 		printf '  Action   no idle or done agent pane; [k] ends a process (frees both arms)\n'
 		return
 	fi
-	_h_label=$(printf '%s\n' "$_first" | cut -f3 | cut -c1-24)
-	[ -n "$_h_label" ] || _h_label=$(printf '%s\n' "$_first" | cut -f1)
+	_h_label=$(printf '%s\n' "$_first" | cut -d "$_US" -f3 | cut -c1-24)
+	[ -n "$_h_label" ] || _h_label=$(printf '%s\n' "$_first" | cut -d "$_US" -f1)
 	printf '  Action   [h] hibernate %s (%s, %s) frees its pages from both arms\n' \
-		"$_h_label" "$(printf '%s\n' "$_first" | cut -f4)" \
-		"$(mem_human_mb "$(printf '%s\n' "$_first" | cut -f2)")"
+		"$_h_label" "$(printf '%s\n' "$_first" | cut -d "$_US" -f4)" \
+		"$(mem_human_mb "$(printf '%s\n' "$_first" | cut -d "$_US" -f2)")"
 }
 
 # render_header — state line (with the pressure level and marker), then the
@@ -217,8 +220,8 @@ render_apps() {
 		printf '  (no footprint data)\n'
 		return
 	fi
-	_max=$(printf '%s\n' "$_groups" | head -n1 | cut -f1)
-	printf '%s\n' "$_groups" | head -n "$_limit" | while IFS="$(printf '\t')" read -r _mb _cnt _app; do
+	_max=$(printf '%s\n' "$_groups" | head -n1 | cut -d "$_US" -f1)
+	printf '%s\n' "$_groups" | head -n "$_limit" | while IFS="$_US" read -r _mb _cnt _app; do
 		printf '  %-22s %s ≈%-7s (%s)\n' \
 			"$_app" "$(mem_bar "$_mb" "$_max" "$BAR_WIDTH")" \
 			"$(mem_human_mb "$_mb")" "$_cnt"
@@ -230,7 +233,7 @@ render_agents() {
 	_limit=$2
 	[ -n "$_agents" ] || return
 	printf '%s\n' "$(ansi 89b4fa 'Agents')"
-	printf '%s\n' "$_agents" | head -n "$_limit" | while IFS="$(printf '\t')" read -r _st _win _ppid; do
+	printf '%s\n' "$_agents" | head -n "$_limit" | while IFS="$_US" read -r _st _win _ppid; do
 		printf '  %s %-22s %s\n' \
 			"$(agent_glyph "$_st")" "$_win" "$(mem_human_mb "$(mem_heaviest_pid_mb "$_ppid")")"
 	done
@@ -292,15 +295,15 @@ pause_result() {
 choose_process() {
 	[ -n "$CURRENT_GROUPED" ] || return 0
 	_choice=$(printf '%s\n' "$CURRENT_GROUPED" | head -n "$TOP_APPS" |
-		fzf --reverse --delimiter="$(printf '\t')" --with-nth=3,1,2 \
+		fzf --reverse --delimiter="$_US" --with-nth=3,1,2 \
 			--header='Choose a visible pressure contributor' 2>/dev/null) || return 0
-	_app=$(printf '%s\n' "$_choice" | cut -f3)
+	_app=$(printf '%s\n' "$_choice" | cut -d "$_US" -f3)
 	[ -n "$_app" ] || return 0
 	_process=$(printf '%s\n' "$CURRENT_ROWS" |
-		awk -F '\t' -v app="$_app" '$2 == app { printf "%s\t%s\t%s\t%s\n", $3, $1, $2, $4 }' |
-		fzf --reverse --delimiter="$(printf '\t')" --with-nth=2,3,1,4 \
+		awk -F '\037' -v app="$_app" '$2 == app { printf "%s\037%s\037%s\037%s\n", $3, $1, $2, $4 }' |
+		fzf --reverse --delimiter="$_US" --with-nth=2,3,1,4 \
 			--header="Choose a process from $_app" 2>/dev/null) || return 0
-	_pid=$(printf '%s\n' "$_process" | cut -f1)
+	_pid=$(printf '%s\n' "$_process" | cut -d "$_US" -f1)
 	case "$_pid" in *[!0-9]* | '') return 0 ;; esac
 	zsh -ic "pclose --pid $_pid" || true
 	pause_result

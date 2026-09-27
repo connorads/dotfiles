@@ -148,7 +148,7 @@ act_on_critical() {
 	{
 		pane=
 		for row in ${(f)"$(mem_hibernate_rows)"}; do
-			f=("${(@ps:\t:)row}")
+			f=("${(@ps:\037:)row}")
 			[[ -n "${f[1]:-}" ]] || continue
 			((${refused[$f[1]]:-0} + action_cooldown > now)) && continue
 			pane_pinned "$f[1]" && continue
@@ -192,7 +192,7 @@ act_on_critical() {
 # top_apps — top apps by phys_footprint this instant: RSS-rank, footprint the
 # top N, group by app (mem-lib). Serial: only run on a transition, so the ~1.3 s
 # is paid once per episode, not per tick; the popup parallelises because it
-# blocks a human. Stdout: "<mb>\t<cnt>\t<app>".
+# blocks a human. Stdout: "<mb><US><cnt><US><app>".
 top_apps() {
 	# Declared once here, NOT inside the loop: in zsh a `local` for an
 	# already-set parameter *lists* it ("mb=508") to stdout, which would then
@@ -204,7 +204,7 @@ top_apps() {
 			[[ "$mb" -gt 0 ]] || continue
 			cmd=$(ps -p "$pid" -o command= 2>/dev/null) || continue
 			[[ -n "$cmd" ]] || continue
-			printf '%s\t%s\n' "$mb" "$(mem_app_name "$cmd")"
+			printf '%s\037%s\n' "$mb" "$(mem_app_name "$cmd")"
 		done | mem_group_apps
 }
 
@@ -251,7 +251,7 @@ while :; do
 		if [[ "$state" != "$prev" ]] || ((now - last_notify >= cooldown && moved)); then
 			grouped=$(top_apps)
 			swap=$(mem_swap_human)
-			hog=$(printf '%s\n' "$grouped" | awk -F '\t' 'NR==1 {
+			hog=$(printf '%s\n' "$grouped" | awk -F '\037' 'NR==1 {
 				printf "%s ≈%s", $3, ($1 >= 1024 ? sprintf("%.1fG", $1/1024) : $1 "M") }')
 			[[ -n "$hog" ]] || hog="(no footprint data)"
 
@@ -260,7 +260,7 @@ while :; do
 			{
 				printf '%s  state=%s  cause=%s  pressure=%s  swap=%s  slots=%s%%  segs=%s%%  ratio=%s\n' \
 					"$(stamp)" "$state" "$cause" "$pressure" "$swap" "$slots" "$segs" "$ratio"
-				printf '%s\n' "$grouped" | head -5 | while IFS=$'\t' read -r mb cnt app; do
+				printf '%s\n' "$grouped" | head -5 | while IFS=$'\037' read -r mb cnt app; do
 					printf '  %-24s ≈%s (%s)\n' "$app" "$(mem_human_mb "$mb")" "$cnt"
 				done
 			} >>"$log"

@@ -171,6 +171,6 @@ resurrect_token_from() {
 # state<TAB>colour<TAB>glyph<TAB>token.
 resurrect_attrs_from() {
 	_state=$(resurrect_state_from "${1:-$RESURRECT_NONE_AGE}")
-	printf '%s\t%s\t%s\t%s' "$_state" "$(resurrect_state_colour "$_state")" \
+	printf '%s\037%s\037%s\037%s' "$_state" "$(resurrect_state_colour "$_state")" \
 		"$(resurrect_state_glyph "$_state")" "$(resurrect_token_from "${1:-$RESURRECT_NONE_AGE}")"
 }
