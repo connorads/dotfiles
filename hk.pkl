@@ -760,6 +760,60 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/bash5-preamble.py"
     }
 
+    // TAB is IFS whitespace, so `IFS=<tab> read` collapses runs of tabs: an
+    // empty interior field vanishes and every later one shifts left. The tmux
+    // subsystem's records are full of nullable fields (unset user options, a
+    // dead pane's cwd), so every producer/consumer pair there separates with
+    // US (0x1f). shellcheck has no rule for it. Self-path in the glob so
+    // editing the checker re-triggers it.
+    ["tsv-separator-lint"] {
+        glob = List(".config/tmux/**", ".hk-hooks/tsv-separator-lint.py")
+        check = "python3 .hk-hooks/tsv-separator-lint.py {{files}}"
+
+        // {{tmp}}-scoped fixtures, and the checker copied in: with a bare
+        // relative path hk writes the fixture INTO the work tree, and this
+        // work tree is $HOME.
+        tests {
+            ["a tab-valued IFS fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.sh"] = "#!/bin/sh\nIFS=$'\\t' read -r a b\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/tsv-separator-lint.py .hk-hooks/"
+                files = List("{{tmp}}/probe.sh")
+                expect { code = 1 }
+            }
+
+            // The spelling a grep for the literal forms misses.
+            ["a tab reached through a variable fails"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/probe.sh"] = "#!/usr/bin/env bash\nd=$'\\t'\nwhile IFS=$d read -r a b; do :; done\n"
+                }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/tsv-separator-lint.py .hk-hooks/"
+                files = List("{{tmp}}/probe.sh")
+                expect { code = 1 }
+            }
+
+            ["the US separator passes"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/probe.sh"] = "#!/bin/sh\n_US=$(printf '\\037')\nwhile IFS=\"$_US\" read -r a b; do :; done\n"
+                }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/tsv-separator-lint.py .hk-hooks/"
+                files = List("{{tmp}}/probe.sh")
+                expect { code = 0 }
+            }
+
+            // Prose describing the rule is not itself a finding.
+            ["a Markdown file is skipped"] {
+                run = "check"
+                write { ["{{tmp}}/notes.md"] = "Never write IFS=$'\\t' read.\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/tsv-separator-lint.py .hk-hooks/"
+                files = List("{{tmp}}/notes.md")
+                expect { code = 0 }
+            }
+        }
+    }
+
     // Sibling of tmux-bind-lint for the prefix+T launcher table: the popup
     // parser (tools-popup.sh) runs everything after the FIRST tab, so a
     // tab-less row lists in fzf but silently runs nothing when chosen.
