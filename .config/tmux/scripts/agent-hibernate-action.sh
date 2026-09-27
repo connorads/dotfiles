@@ -36,8 +36,8 @@ client=${3:-}
 case "$action" in hibernate | thaw) ;; *) exit 2 ;; esac
 [ -n "$pane" ] || exit 2
 
-info=$(tmux display-message -p -t "$pane" '#{@agent_name}	#{window_name}' 2>/dev/null || true)
-IFS=$'\t' read -r name window_name <<<"$info"
+info=$(tmux display-message -p -t "$pane" $'#{@agent_name}\037#{window_name}' 2>/dev/null || true)
+IFS=$'\037' read -r name window_name <<<"$info"
 label=${name:-${window_name:-$pane}}
 
 result_file=$(mktemp)

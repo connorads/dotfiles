@@ -17,7 +17,7 @@ setup() {
 #!/usr/bin/env bash
 printf 'tmux %s\n' "$*" >>"$ACTION_LOG"
 if [ "$1" = display-message ] && [[ " $* " == *" -p "* ]]; then
-  printf 'agent-one\twindow-one\n'
+  printf 'agent-one\037window-one\n'
 fi
 EOF
 

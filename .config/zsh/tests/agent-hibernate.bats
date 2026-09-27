@@ -450,8 +450,8 @@ EOF
     >"$AGENT_HIBERNATE_DIR/sid-dead.json"
   run "$SCRIPT" list
   [ "$status" -eq 0 ]
-  [[ "$output" == *"sid-test	parked"* ]]
-  [[ "$output" == *"sid-dead	orphan"* ]]
+  [[ "$output" == *$'sid-test\037parked'* ]]
+  [[ "$output" == *$'sid-dead\037orphan'* ]]
 }
 
 @test "list labels records by live window, saved window, pane key, then short session id" {
@@ -471,10 +471,10 @@ EOF
 
   run "$SCRIPT" list
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'sid-test\tparked\tlive-window\t'* ]]
-  [[ "$output" == *$'sid-saved\torphan\tsaved-window\t'* ]]
-  [[ "$output" == *$'sid-key\torphan\t'"$key"$'\t'* ]]
-  [[ "$output" == *$'1234567890abcdef\torphan\t12345678\t'* ]]
+  [[ "$output" == *$'sid-test\037parked\037live-window\037'* ]]
+  [[ "$output" == *$'sid-saved\037orphan\037saved-window\037'* ]]
+  [[ "$output" == *$'sid-key\037orphan\037'"$key"$'\037'* ]]
+  [[ "$output" == *$'1234567890abcdef\037orphan\03712345678\037'* ]]
 }
 
 @test "thaw of an orphan record opens a new window in the recorded cwd" {
