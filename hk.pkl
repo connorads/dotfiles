@@ -112,7 +112,7 @@ local fast_steps = new Mapping<String, Step> {
         check = "zsh -n {{files}}"
     }
 
-    // Shell Function Conventions (AGENTS.md): `# <name>: <purpose>` header,
+    // Shell conventions (docs/shell-functions.md): `# <name>: <purpose>` header,
     // and dual-mode shebang XOR a `# zsh-only: <reason>` marker.
     ["zsh-fn-header"] {
         glob = List(".config/zsh/functions/**")

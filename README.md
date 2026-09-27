@@ -74,7 +74,7 @@ up
 # up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
 ```
 
-`up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
+`up` is the canonical updater; see [mise and update guidance](.config/mise/AGENTS.md) for lockfile commits and [supply-chain controls](docs/supply-chain.md) for package quarantine. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
 
 On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and `zap` removal of undeclared packages and associated cask files.
 
@@ -96,7 +96,7 @@ up
 # up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
 ```
 
-`up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `mise upgrade`) can still be run individually.
+`up` is the canonical updater; see [mise and update guidance](.config/mise/AGENTS.md) for lockfile commits and [supply-chain controls](docs/supply-chain.md) for package quarantine. The underlying steps (`nfu` for `flake.lock`, `mise upgrade`) can still be run individually.
 
 #### Cleanup
 
