@@ -126,7 +126,9 @@ it from the live claude PID's real environment via the shared
 on Linux, `ps -E` token scan on macOS - env introspection is authoritative and
 never stale). The launcher `export`s it before `exec` (a real env var, so
 spaces/quotes need no shell quoting). Without it a restored client pane reverts to
-the personal `~/.claude` account - a cross-billing risk. Only `CLAUDE_CONFIG_DIR`
+the personal `~/.claude` account - a cross-billing risk. The account is recorded
+even when no session id resolves, so a pane restored with `--continue` keeps it.
+Only `CLAUDE_CONFIG_DIR`
 is persisted; never any other env var - both sources expose the process's full
 environment, secrets included.
 
