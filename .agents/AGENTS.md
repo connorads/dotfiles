@@ -51,6 +51,7 @@ Restate what each step needs; don't assume the reader is holding earlier context
 
 - Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
 - Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` and `gh stack merge` are ask-ruled in settings, so the prompt is the authorisation. `gh stack merge` lands every unmerged PR below its target at once.
+- Attach relevant screenshots or videos to PRs with `gh pr edit --attach <file>`. It rewrites matching `![alt](path)` references in the body.
 - Commit after each coherent unit - code, tests and wiring that would stand as a PR - rather than batching unrelated work.
 - Dependent work that would otherwise be one big PR goes in a stack: `gh stack` (GitHub stacked PRs). Read the `gh-stack` skill first (`skl preview gh-stack`) - most commands open a TUI under a PTY and hang.
 - Show intended atomic commit boundaries in implementation plans; revise them when the work reveals a better split.
