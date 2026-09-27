@@ -31,7 +31,7 @@ claude_account_slug() {
 }
 
 # account_candidates <source_config_dir>
-# Emit "label<TAB>config_dir" for every fork target, one per line: the default
+# Emit "label<US>config_dir" for every fork target, one per line: the default
 # account plus each ~/.claude-profiles/code/* profile, EXCLUDING the source
 # account (you cannot fork onto yourself). An empty source_config_dir means the
 # default account, normalised to $HOME/.claude before comparing. config_dir is
@@ -41,7 +41,7 @@ account_candidates() {
 	[ -n "$source_config_dir" ] || source_config_dir="$HOME/.claude"
 
 	local default_dir="$HOME/.claude"
-	[ "$default_dir" = "$source_config_dir" ] || printf 'default\t%s\n' "$default_dir"
+	[ "$default_dir" = "$source_config_dir" ] || printf 'default\037%s\n' "$default_dir"
 
 	local profiles_dir="$HOME/.claude-profiles/code"
 	[ -d "$profiles_dir" ] || return 0
@@ -52,7 +52,7 @@ account_candidates() {
 		dir="${dir%/}"
 		[ "$dir" = "$source_config_dir" ] && continue
 		name="${dir##*/}"
-		printf '%s\t%s\n' "$name" "$dir"
+		printf '%s\037%s\n' "$name" "$dir"
 	done
 }
 
