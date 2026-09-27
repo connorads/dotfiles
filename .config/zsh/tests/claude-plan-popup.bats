@@ -17,7 +17,7 @@ setup() {
   export AGENT_JOURNAL_DIR="$BATS_TEST_TMPDIR/journal"
   mkdir -p "$AGENT_JOURNAL_DIR"
 
-  # tmux stub: emit the live-pane TSV (pane \t name \t window) from a fixture the
+  # tmux stub: emit the live-pane rows (pane <US> name <US> window) from a fixture the
   # test writes to $LIVE_PANES. Only `list-panes` is used by the core.
   STUB_DIR="$BATS_TEST_TMPDIR/bin"
   mkdir -p "$STUB_DIR"
@@ -47,7 +47,7 @@ journal_event() {
 
 # live_row PANE [NAME] [WINDOW] — register a pane as live in the tmux stub.
 live_row() {
-  printf '%s\t%s\t%s\n' "$1" "${2:-}" "${3:-win}" >>"$LIVE_PANES"
+  printf '%s\037%s\037%s\n' "$1" "${2:-}" "${3:-win}" >>"$LIVE_PANES"
 }
 
 # Run one lib function in a fresh bash, printing its output. $BASH5, not plain
@@ -80,9 +80,9 @@ acct=demoacct
   run_lib 'claude_plan_live_rows'
   [ "$status" -eq 0 ]
   [ "$(printf '%s\n' "$output" | grep -c .)" = 1 ]
-  [ "$(printf '%s\n' "$output" | cut -f1)" = %119 ]
-  [ "$(printf '%s\n' "$output" | cut -f7)" = /Users/x/.claude/plans/new.md ]
-  [ "$(printf '%s\n' "$output" | cut -f5)" = "New plan" ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f1)" = %119 ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f7)" = /Users/x/.claude/plans/new.md ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f5)" = "New plan" ]
 }
 
 @test "live_rows includes only live panes and labels accounts" {
@@ -97,13 +97,13 @@ acct=demoacct
   [ "$status" -eq 0 ]
   [ "$(printf '%s\n' "$output" | grep -c .)" = 2 ]
   # %99 (no live pane) is absent → drives the picker path, never the fast path.
-  ! printf '%s\n' "$output" | cut -f1 | grep -qx %99
+  ! printf '%s\n' "$output" | cut -d $'\037' -f1 | grep -qx %99
   # account column (field 2) for each live pane.
-  [ "$(printf '%s\n' "$output" | awk -F '\t' '$1=="%10"{print $2}')" = "$acct" ]
-  [ "$(printf '%s\n' "$output" | awk -F '\t' '$1=="%20"{print $2}')" = default ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '$1=="%10"{print $2}')" = "$acct" ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '$1=="%20"{print $2}')" = default ]
   # name/window column (field 3): @agent_name when set, else window_name.
-  [ "$(printf '%s\n' "$output" | awk -F '\t' '$1=="%10"{print $3}')" = backend ]
-  [ "$(printf '%s\n' "$output" | awk -F '\t' '$1=="%20"{print $3}')" = nvim ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '$1=="%10"{print $3}')" = backend ]
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '$1=="%20"{print $3}')" = nvim ]
 }
 
 @test "live_rows orders newest plan first" {
@@ -114,7 +114,21 @@ acct=demoacct
 
   run_lib 'claude_plan_live_rows'
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | head -1 | cut -f1)" = %2 ]
+  [ "$(printf '%s\n' "$output" | head -1 | cut -d $'\037' -f1)" = %2 ]
+}
+
+@test "an untitled plan keeps its file path in the last field" {
+  # A plan whose first line is a bare "#" has an empty title - field 5 of 7.
+  # Under a tab separator `read` collapsed it, age slid into the title slot and
+  # planFilePath into age, leaving the path field empty: the picker's preview
+  # and its Enter action both lost the plan they were pointing at.
+  journal_event 2026-07-24T11:00:00Z %7 /a /Users/x/.claude/plans/untitled.md '#'
+  live_row %7 backend
+
+  run_lib 'claude_plan_live_rows'
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f5)" = "" ]
+  [ "$(printf '%s\n' "$output" | cut -d $'\037' -f7)" = /Users/x/.claude/plans/untitled.md ]
 }
 
 @test "live_rows is empty when no live pane has a plan" {

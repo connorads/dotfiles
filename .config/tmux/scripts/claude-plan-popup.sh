@@ -132,9 +132,9 @@ fi
 
 # Fast path: the launching pane has a recorded plan → render it, no list.
 if [ -n "$pane_id" ]; then
-	fast_row=$(printf '%s\n' "$rows" | awk -F '\t' -v p="$pane_id" '$1 == p { print; exit }')
+	fast_row=$(printf '%s\n' "$rows" | awk -F '\037' -v p="$pane_id" '$1 == p { print; exit }')
 	if [ -n "$fast_row" ]; then
-		pf=$(printf '%s' "$fast_row" | cut -f7)
+		pf=$(printf '%s' "$fast_row" | cut -d $'\037' -f7)
 		show_for_pane "$pane_id" "$pf"
 		exit 0
 	fi
@@ -149,7 +149,7 @@ if [ "$row_count" -eq 1 ]; then
 else
 	choice=$(printf '%s\n' "$rows" | fzf \
 		--ansi --reverse --no-multi --info=hidden \
-		--delimiter='\t' --with-nth=2..6 \
+		--delimiter=$'\037' --with-nth=2..6 \
 		--prompt='plan › ' \
 		--header='account · name · dir · title · age' \
 		--preview "bash '$SELF' --preview {7} {1}" \
@@ -157,7 +157,7 @@ else
 fi
 
 [ -n "$choice" ] || exit 0
-target=$(printf '%s' "$choice" | cut -f1)
-pf=$(printf '%s' "$choice" | cut -f7)
+target=$(printf '%s' "$choice" | cut -d $'\037' -f1)
+pf=$(printf '%s' "$choice" | cut -d $'\037' -f7)
 [ -n "$target" ] || exit 0
 show_for_pane "$target" "$pf"
