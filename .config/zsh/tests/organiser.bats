@@ -19,16 +19,16 @@ if [ "$1" = "display-message" ]; then
     *'#{@agent_kind}'*) printf '%s\n' "${TMUX_AGENT_KIND:-claude}" ;;
     *'#{@agent_hibernate_pinned}'*) printf '%s\n' "${TMUX_AGENT_PINNED:-}" ;;
     *window_linked*)
-      if [ -n "${TMUX_WINDOW_INFO:-}" ]; then printf '%s\n' "$TMUX_WINDOW_INFO"; else printf '$1\tsource @name\t@7\t1\twin ##{x}\t0\t1\t2\n'; fi
+      if [ -n "${TMUX_WINDOW_INFO:-}" ]; then printf '%s\n' "$TMUX_WINDOW_INFO"; else printf '$1\037source @name\037@7\0371\037win ##{x}\0370\0371\0372\n'; fi
       ;;
     *window_panes*)
-      if [ -n "${TMUX_PANE_INFO:-}" ]; then printf '%s\n' "$TMUX_PANE_INFO"; else printf '$1\tsource @name\t@7\t%%5\t2\t2\t/dev/ttys010\tzsh\t/tmp/has space\n'; fi
+      if [ -n "${TMUX_PANE_INFO:-}" ]; then printf '%s\n' "$TMUX_PANE_INFO"; else printf '$1\037source @name\037@7\037%%5\0372\0372\037/dev/ttys010\037zsh\037/tmp/has space\n'; fi
       ;;
-    *'#{session_id}	#{window_id}'*) printf '$2	@8\n' ;;
-    *'#{session_id}	#{session_name}	#{window_id}	#{window_panes}	#{session_windows}'*) printf '%s\n' "${TMUX_MARKED_SOURCE_INFO:-$9	marked	@9	2	2}" ;;
+    *'#{session_id}'*'#{window_id}'*) printf '$2\037@8\n' ;;
+    *'#{session_name}'*'#{window_panes}'*'#{session_windows}'*) printf '%s\n' "${TMUX_MARKED_SOURCE_INFO:-$9marked@922}" ;;
   esac
 elif [ "$1" = "list-sessions" ]; then
-  if [ -n "${TMUX_SESSIONS:-}" ]; then printf '%b' "$TMUX_SESSIONS"; else printf '$1\tsource @name\n$2\tdest one\n$3\tdest two\n'; fi
+  if [ -n "${TMUX_SESSIONS:-}" ]; then printf '%b' "$TMUX_SESSIONS"; else printf '$1\037source @name\n$2\037dest one\n$3\037dest two\n'; fi
 elif [ "$1" = "list-windows" ]; then
   case "$*" in
     *'$3'*) printf '@7\n' ;;
@@ -128,7 +128,7 @@ EOF
 
 @test "window destination menu pages to client height with next control" {
   export TMUX_CLIENT_HEIGHT=12
-  export TMUX_SESSIONS='$1	src\n$2	a\n$3	b\n$4	c\n$5	d\n$6	e\n$7	f\n$8	g\n'
+  export TMUX_SESSIONS='$1\037src\n$2\037a\n$3\037b\n$4\037c\n$5\037d\n$6\037e\n$7\037f\n$8\037g\n'
 
   run "$ORG" window-dest move-follow clientA "@7" "%5" 1 2 0
 
@@ -138,7 +138,7 @@ EOF
 }
 
 @test "window destination commands shell-quote multi-digit session IDs" {
-  export TMUX_SESSIONS='$1\tsrc\n$13\tdest\n'
+  export TMUX_SESSIONS='$1\037src\n$13\037dest\n'
 
   run "$ORG" window-dest move-background "client one" "@7" "%5" 1 2 0
 
@@ -147,7 +147,7 @@ EOF
 }
 
 @test "pane destination commands shell-quote multi-digit session IDs" {
-  export TMUX_SESSIONS='$1\tsrc\n$13\tdest\n'
+  export TMUX_SESSIONS='$1\037src\n$13\037dest\n'
 
   run "$ORG" pane-dest break-background "client one" "%5" 1 2 0
 
@@ -157,7 +157,7 @@ EOF
 
 @test "paging commands preserve client names and tmux IDs" {
   export TMUX_CLIENT_HEIGHT=12
-  export TMUX_SESSIONS='$1\tsrc\n$2\ta\n$3\tb\n$4\tc\n$5\td\n$6\te\n$7\tf\n$13\tg\n'
+  export TMUX_SESSIONS='$1\037src\n$2\037a\n$3\037b\n$4\037c\n$5\037d\n$6\037e\n$7\037f\n$13\037g\n'
 
   run "$ORG" window-dest move-follow "client one's" "@7" "%5" 1 2 0
 
@@ -166,7 +166,7 @@ EOF
 }
 
 @test "window menu uses IDs for commands and escaped names only for labels" {
-  export TMUX_WINDOW_INFO='$1	source	@7	1	win #{danger}	0	1	2'
+  export TMUX_WINDOW_INFO=$'$1\037source\037@7\0371\037win #{danger}\0370\0371\0372'
 
   run "$ORG" window clientA "@7" "%5" "/tmp/has space" 9 3
 
@@ -177,7 +177,7 @@ EOF
 }
 
 @test "the rename prompt takes a label, not a comma-split list" {
-  export TMUX_WINDOW_INFO='$1	source	@7	1	notes, drafts	0	1	2'
+  export TMUX_WINDOW_INFO=$'$1\037source\037@7\0371\037notes, drafts\0370\0371\0372'
 
   run "$ORG" window clientA "@7" "%5" "/tmp/has space" 9 3
 
@@ -190,7 +190,7 @@ EOF
 }
 
 @test "linked window menu relabels kill and enables unlink" {
-  export TMUX_WINDOW_INFO='$1	source	@7	1	shared	1	2	3'
+  export TMUX_WINDOW_INFO=$'$1\037source\037@7\0371\037shared\0371\0372\0373'
 
   run "$ORG" window clientA "@7" "%5" "/tmp/has space" 9 3
 
@@ -199,8 +199,25 @@ EOF
   grep -q 'Kill shared window everywhere' "$TEST_LOG"
 }
 
+@test "a window whose label is empty is not read as a linked window" {
+  # tmux reports an empty #{pane_current_path} for a dead pane held open by
+  # remain-on-exit, so #{b:pane_current_path} - the label under
+  # automatic-rename, tmux's default - is empty too. Under a tab separator
+  # `read` collapsed it: window_linked became the label and
+  # window_linked_sessions became window_linked, so an unlinked window offered
+  # Unlink and "Kill shared window everywhere" on a menu titled "Window · 0".
+  export TMUX_WINDOW_INFO=$'$1\037source\037@7\0371\037\0370\0371\0371'
+
+  run "$ORG" window clientA "@7" "%5" "/tmp" 9 3
+
+  [ "$status" -eq 0 ]
+  ! grep -q 'Kill shared window everywhere' "$TEST_LOG"
+  ! grep -q 'Remove from this session' "$TEST_LOG"
+  ! grep -q 'Window · 0' "$TEST_LOG"
+}
+
 @test "move follow confirms when it closes the source session" {
-  export TMUX_WINDOW_INFO='$1	source	@7	1	only	0	1	1'
+  export TMUX_WINDOW_INFO=$'$1\037source\037@7\0371\037only\0370\0371\0371'
 
   run "$ORG" action-window move-follow clientA "@7" '$2'
 
@@ -209,7 +226,7 @@ EOF
 }
 
 @test "pane break is disabled for a sole pane" {
-  export TMUX_PANE_INFO='$1	source	@7	%5	1	2	/dev/ttys010	zsh	/tmp'
+  export TMUX_PANE_INFO=$'$1\037source\037@7\037%5\0371\0372\037/dev/ttys010\037zsh\037/tmp'
 
   run "$ORG" pane-dest break-follow clientA "%5" 1 2 0
 
@@ -218,7 +235,9 @@ EOF
 }
 
 @test "pane menu shows four marked-pane join directions from another window" {
-  export TMUX_MARKED='1	$9	marked	@9	%9	2	2\n'
+  # Real bytes, not \037 escapes: the stub renders with printf '%b', where
+  # \0372 reads as the single octal \0372, not US followed by a 2.
+  export TMUX_MARKED=$'1\037$9\037marked\037@9\037%9\0372\0372\n'
 
   run "$ORG" pane clientA "%5" 1 2
 
