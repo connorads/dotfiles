@@ -68,6 +68,7 @@ If no automated checks exist, still verify manually: run the command, start the 
 Scale verification to risk: config tweak -> smoke test; user-facing feature -> relevant automated suite plus manual confirmation when coverage is thin.
 When validating a hypothesis (mine, a ticket's, a report's), isolate the claim it stands or falls on and run the cheapest observation that discriminates it from the rival explanation; evidence consistent with every explanation verifies nothing.
 When writing plans, include how each step will be verified.
+Report required checks as passed, failed or skipped. A successful hook exit does not prove every check ran; name skipped checks and their missing prerequisites.
 
 ## Deletion Safety
 

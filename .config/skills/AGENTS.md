@@ -26,12 +26,13 @@ tmux pane on demand - progressive disclosure, no autoload, ~zero session cost.
 The `skills` CLI's **global** install dir is hard-coded to `~/.agents/skills` and is
 **not** configurable. But its **project** scope (`skills add` *without* `-g`, run from a
 dir) installs into `<cwd>/.agents/skills/<name>` with a project-local
-`skills-lock.json`, and `skills update` from that dir refreshes **in place**. So the
-CLI's two scopes *are* our two managed tiers:
+`skills-lock.json`. Installed vendor trees are refreshed through the
+[reviewed update workflow](#update-vendored-skills). The CLI's two scopes map to
+our managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/<name>/.agents/skills` (vendored sets) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/manual/<name>` (manual bucket) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (sets + vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/<name>/.agents/skills` (vendored sets) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/manual/<name>` (manual bucket) | No | ~zero (pointer on demand) | hand-edit authored skills; [add](#add--vendor-a-third-party-skill) and [review updates](#update-vendored-skills) for vendor trees |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes - every session, every tool | every session | symlink into `~/.agents/skills` (authored → `~/skills`, vendored → the vendor copy), then `skillsync` for Claude Code; `skills add -g` only for a non-catalogue global |
 
@@ -59,7 +60,7 @@ no provenance split above it - the shapes below differ only in *how they are ref
 promoted*, not in where they come from:
 
 - **set** (`vendor/<name>/`) - a *cohesive* multi-skill upstream, one skills-CLI project dir
-  with its **own lockfile**. `skills update -p` from the set dir refreshes it as a unit, and
+  with its **own lockfile**. The reviewed update workflow refreshes it as a unit, and
   `skl install <set>/` copies the whole set into a matching-stack repo. Examples: `expo`,
   `elevenlabs`, `mattpocock`, `hyperframes`.
 - **unsorted bucket** (`vendor/.agents/skills/`) - CLI-vendored skills from upstreams
@@ -122,8 +123,8 @@ What the flat bucket costs, and what a set buys:
   before the other engineering skills and names `triage`, `to-tickets` and `to-spec` -
   none of them vendored, so a referenced flow dead-ends.
 
-A set may hold entries from several `owner/repo` sources: `skills update -p` groups by
-`(source, ref)` at refresh time, so `jakubkrehel` refreshes its twelfth entry from
+A set may hold entries from several `owner/repo` sources: the reviewed update workflow
+records a Git revision per `(source, ref)`, so `jakubkrehel` refreshes its twelfth entry from
 `jakubkrehel/make-interfaces-feel-better` alongside the eleven from `jakubkrehel/skills`.
 
 Name a set for the **repo it came from, not the org**, wherever the org publishes more
@@ -175,9 +176,9 @@ above) are curation calls.
   vendor/                  single third-party (VENDORED) root · skl sources: one per set, plus 'vendor'/'manual'
     <set>/                 vendored SET = one skills-CLI project dir per cohesive group · skl source '<set>'
       .agents/skills/<name>/  real CLI-cloned files (CLI-managed, project scope)
-      skills-lock.json     the set's own lockfile (`skills update -p` from here refreshes in place)
+      skills-lock.json     the set's own lockfile (reviewed update workflow)
     .agents/skills/<name>/ unsorted bucket: real CLI-cloned singletons (project scope) · skl source 'vendor'
-    skills-lock.json       the unsorted bucket's lockfile (`skills update` from vendor/ refreshes in place)
+    skills-lock.json       the unsorted bucket's lockfile (reviewed update workflow)
     manual/<name>/         manual bucket: manually-vendored skills (no upstream, no lock) · skl source 'manual'
     patches/               local-patch definitions (skill-patch source of truth)
 
@@ -356,7 +357,7 @@ ln -s ../../.config/skills/vendor/.agents/skills/<name> ~/.agents/skills/<name>
 skillsync   # only Claude Code needs an arm; the rest read ~/.agents/skills
 ```
 
-One real clone serves both tiers, so a `skills update -p` refresh and any
+One real clone serves both tiers, so a reviewed refresh and any
 `vendor/patches/` local patch apply once and reach every tool (playwright-cli is this
 shape: patched allowed-tools, globally autoloaded). A separate `skills add -g` clone is
 the fallback only for a skill you deliberately do NOT want in the catalogue - it lands a
