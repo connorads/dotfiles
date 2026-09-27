@@ -40,9 +40,10 @@ The `hk-test` step runs the steps' own `tests {}` blocks whenever `hk.pkl` is
 staged. Gates fail **open** here - a glob matching nothing exits 0 - so
 `gate-coverage.py` asserts the wiring still points at real paths and this
 asserts the checkers still reject what they exist to reject. It strips
-`GIT_DIR`/`GIT_WORK_TREE`: `Builtins.actionlint`'s bundled tests run
+`GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`: `Builtins.actionlint`'s bundled tests run
 `before = "git init"`, and with the bare-repo split exported that addresses
-`~/git/dotfiles` itself.
+`~/git/dotfiles` itself. The index variable also makes fixture queries read the
+real index after the directory variables are stripped. `dhk test` strips all three too.
 
 The `vale` step gates the house prose rules that a regex can express (config
 `~/.vale.ini`, style `.config/vale/styles/Connorads`). It runs `--no-global` so
@@ -70,9 +71,9 @@ ungated; and Vale extracts Python `#` comments but not docstrings. Only
 error-level Spelling rule, which reads an identifier in a comment as a typo.
 
 Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
-host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever
-`.config/nix/**` is staged, so a config authored on one host can't silently
-break another; ~25s, skippable with `HK_SKIP_STEPS=nix-eval`), `statix`
+host configuration's `.drvPath`, discovered from the flake, whenever Nix files
+or `flake.lock` under `.config/nix/` are staged, so a config authored on one host
+can't silently break another; ~25s, skippable with `HK_SKIP_STEPS=nix-eval`), `statix`
 (`~/.hk-hooks/statix.sh`: nix anti-patterns, one staged file per call because
 statix takes a single target; `--config .hk-hooks/statix.toml` keeps it a gate
 config rather than the global default, and `repeated_keys` is disabled there -
@@ -104,6 +105,14 @@ docs that cite literal values), and `tmux-bind-lint`
 blocks a key bound twice in one key-table, or both members of a terminal-alias
 pair, i.e. a self-collision that silently kills the earlier bind - the
 commit-time complement to the edit-time `tmux-freekeys` advisor).
+
+`link-check` validates local file destinations, including hidden first-party
+Markdown. It does not check external URLs, heading anchors or factual claims.
+It excludes vendored skills, `.codex/skills/` and `src/dotfiles-docs/`; the
+site's build validates its routes. Locally, unavailable lychee warns and skips.
+CI installs the pinned lychee and requires `lychee --version` to pass before
+`hk check --all`. Run `dhk test --step link-check` with lychee installed to test
+valid and broken links, hidden files, exclusions and the unavailable-tool path.
 
 The `bash5-preamble` step (`~/.hk-hooks/bash5-preamble.py`) keeps the tmux
 shell glue from depending on which bash the caller's PATH supplies - macOS

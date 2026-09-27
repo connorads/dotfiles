@@ -63,7 +63,7 @@ local fast_steps = new Mapping<String, Step> {
     // tree. gate-coverage.py asserts the wiring is still pointed at real
     // paths; this asserts the checkers still reject what they exist to reject.
     //
-    // GIT_DIR/GIT_WORK_TREE are stripped, and that is not defensive tidying.
+    // GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE are stripped; hooks export all three.
     // The dhk and pre-commit wrappers export the bare-repo split and hk hands
     // it to every step, so a test's `before` that runs bare `git` addresses the
     // REAL dotfiles repo - GIT_DIR beats cwd discovery, so running in a sandbox
@@ -72,12 +72,14 @@ local fast_steps = new Mapping<String, Step> {
     // ~/git/dotfiles and tried to rewrite core.filemode there; it only failed
     // because the commit in progress held the config lock. Same strip, and the
     // same reason, as bats-tests.sh / ts-tests.sh / skill-tests.sh.
+    // GIT_INDEX_FILE also overrides a fixture's index after directory variables
+    // are stripped, so its tracked-file query would still read the real index.
     //
     // A CommandSpec, not a plain string: the builtin declares `effect = "write"`
     // and a string override drops that silently.
     ["hk-test"] = (Builtins.hk_test) {
         check = new CommandSpec {
-            command = "env -u GIT_DIR -u GIT_WORK_TREE hk test --quiet"
+            command = "env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE hk test --quiet"
             effect = "write"
         }
     }
@@ -366,6 +368,71 @@ local fast_steps = new Mapping<String, Step> {
     // is ~0.1s, so there is nothing to scope.
     ["link-check"] {
         check = "bash .hk-hooks/link-check.sh"
+
+        local setup = "lychee --version >/dev/null && mkdir -p .hk-hooks && cp '{{root}}/.hk-hooks/link-check.sh' .hk-hooks/ && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git init -q ."
+
+        tests {
+            ["valid links in tracked Markdown pass"] {
+                tmpdir = true
+                write {
+                    ["README.md"] = "[Guide](.config/guide.markdown)\n"
+                    [".config/guide.markdown"] = "[Target](../target.txt)\n"
+                    ["page.mdx"] = "[Target](target.txt)\n"
+                    ["target.txt"] = "present\n"
+                }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md .config/guide.markdown page.mdx target.txt"
+                expect { code = 0 }
+            }
+
+            ["a missing local target fails"] {
+                tmpdir = true
+                write { ["README.md"] = "[Missing](missing.txt)\n" }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md"
+                expect {
+                    code = 2
+                    stdout = "missing.txt"
+                }
+            }
+
+            ["a broken link in hidden first-party Markdown fails"] {
+                tmpdir = true
+                write { [".config/guide.md"] = "[Missing](missing.txt)\n" }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f .config/guide.md"
+                expect {
+                    code = 2
+                    stdout = "missing.txt"
+                }
+            }
+
+            ["vendor, Codex skills and site routes are excluded"] {
+                tmpdir = true
+                write {
+                    ["README.md"] = "[Target](target.txt)\n"
+                    ["target.txt"] = "present\n"
+                    [".config/skills/vendor/upstream.md"] = "[Missing](missing.txt)\n"
+                    [".codex/skills/upstream.md"] = "[Missing](missing.txt)\n"
+                    ["src/dotfiles-docs/route.md"] = "[Route](/missing-route/)\n"
+                }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md target.txt .config/skills/vendor/upstream.md .codex/skills/upstream.md src/dotfiles-docs/route.md"
+                expect { code = 0 }
+            }
+
+            ["an unavailable lychee warns and skips locally"] {
+                tmpdir = true
+                write {
+                    ["README.md"] = "[Missing](missing.txt)\n"
+                    ["bin/lychee"] = "#!/bin/sh\nprintf 'invoked\\n' > lychee-invoked.txt\nexit 127\n"
+                }
+                // Test env values are literal; PATH is relative to the sandbox.
+                env { ["PATH"] = "./bin:/usr/bin:/bin" }
+                before = "mkdir -p .hk-hooks && cp '{{root}}/.hk-hooks/link-check.sh' .hk-hooks/ && chmod +x bin/lychee"
+                expect {
+                    code = 0
+                    stderr = "lychee absent; skipping"
+                    files { ["lychee-invoked.txt"] = "invoked\n" }
+                }
+            }
+        }
     }
 
     // Only .config/zsh/functions/codex-windows.jq may name a Codex rate-limit
