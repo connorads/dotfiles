@@ -202,6 +202,45 @@ EOF
   [ "$output" = "$cfg" ]
 }
 
+# A profile pane (901) with no pid marker: the account must still be recorded, or
+# the restore's --continue runs under the personal account.
+seed_markerless_profile_pane() {
+  local acct=acme
+  PROFILE_CFG="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$PROFILE_CFG/sessions" "$BATS_TEST_TMPDIR/proc/901"
+  printf 'CLAUDE_CONFIG_DIR=%s\0' "$PROFILE_CFG" >"$BATS_TEST_TMPDIR/proc/901/environ"
+  write_tmux_stub_for_save
+  write_ps_stub_for_save
+}
+
+@test "save hook records the account of a profile pane whose session id is missing" {
+  seed_markerless_profile_pane
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -c --arg cfg "$PROFILE_CFG" '.panes["main:1.1"] == {dir: "/Users/connorads", claudeConfigDir: $cfg}' "$SESSION_FILE"
+  [ "$output" = "true" ]
+  # The default-account pane has neither id nor account, so nothing is written.
+  run jq -r '.panes | has("main:1.2")' "$SESSION_FILE"
+  [ "$output" = "false" ]
+}
+
+@test "save hook keeps a carried id and adds the account when the session id is missing" {
+  seed_markerless_profile_pane
+  jq -n '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"carried-id"}}}' >"$SESSION_FILE"
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
+  [ "$output" = "carried-id" ]
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$SESSION_FILE"
+  [ "$output" = "$PROFILE_CFG" ]
+}
+
 @test "save hook records CLAUDE_CONFIG_DIR via ps -E without leaking other env vars" {
   # Build the config dir via a var so no concrete profile path is committed.
   local acct=acme

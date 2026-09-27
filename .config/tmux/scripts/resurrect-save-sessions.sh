@@ -231,15 +231,18 @@ while IFS=$'\037' read -r pane_key pid cmd dir tty; do
 	esac
 	case "$cmd" in
 	claude)
+		# The account is recorded even when no session id resolves: a restore
+		# without it falls back to the personal account.
+		env_val=$(find_claude_env "$pid" "$tty")
+		if [ -n "$env_val" ]; then
+			found_sessions=1
+			CLAUDE_PANE_ENVS["$pane_key"]="$env_val"
+		fi
 		sid=$(find_claude_session "$dir" "$pid" "$tty")
 		if [ -n "$sid" ]; then
 			found_sessions=1
 			CLAUDE_PANE_SESSIONS["$pane_key"]="$sid"
 			CLAUDE_PANE_DIRS["$pane_key"]="$dir"
-			env_val=$(find_claude_env "$pid" "$tty")
-			if [ -n "$env_val" ]; then
-				CLAUDE_PANE_ENVS["$pane_key"]="$env_val"
-			fi
 		fi
 		;;
 	codex)
@@ -378,6 +381,14 @@ for pane_key in "${!CLAUDE_PANE_SESSIONS[@]}"; do
 		entry=$(echo "$entry" | jq --arg env "${CLAUDE_PANE_ENVS[$pane_key]}" '. + {claudeConfigDir: $env}')
 	fi
 	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = $entry')
+done
+# A pane with an account but no fresh id keeps any carried id; with none it
+# restores as `--continue` under that account.
+for pane_key in ${CLAUDE_PANE_ENVS[@]+"${!CLAUDE_PANE_ENVS[@]}"}; do
+	[ -z "${CLAUDE_PANE_SESSIONS[$pane_key]:-}" ] || continue
+	json=$(echo "$json" | jq --arg pane_key "$pane_key" --arg dir "${LIVE_AGENT_DIRS[$pane_key]}" \
+		--arg env "${CLAUDE_PANE_ENVS[$pane_key]}" \
+		'.panes[$pane_key] = ((.panes[$pane_key] // {dir: $dir}) + {claudeConfigDir: $env})')
 done
 for pane_key in "${!CODEX_PANE_SESSIONS[@]}"; do
 	entry=$(jq -n --arg dir "${CODEX_PANE_DIRS[$pane_key]}" --arg sid "${CODEX_PANE_SESSIONS[$pane_key]}" '{dir: $dir, codex: $sid}')
