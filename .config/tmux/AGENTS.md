@@ -178,9 +178,8 @@ Detail: [docs/agent-state.md](./docs/agent-state.md).
 - No resolvable session id means no hibernation. `--continue` would resume
   whichever conversation last touched the directory.
 - `blocked`, `working` and an empty state need `--force`; a refusal exits 6.
-- The tracked automatic mode is `observe`. The sweep policy and memwatch's
-  emergency tier share the mode, the pins and `tick.lock`. Controls:
-  `agent auto off|observe|on`, `agent pin|unpin`.
+- Hibernation is manual only:
+  [ADR 0017](../../docs/adr/0017-agent-hibernation-is-manual-only.md).
 - Why lifecycle adapters:
   [ADR 0009](../../docs/adr/0009-hibernate-agent-panes-through-lifecycle-adapters.md).
 

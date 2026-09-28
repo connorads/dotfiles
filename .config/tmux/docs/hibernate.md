@@ -89,43 +89,11 @@ alternatives live in [`docs/adr/0009`](../../../docs/adr/0009-hibernate-agent-pa
   turns engine output into client-targeted status feedback. Window-tab menus
   omit lifecycle actions because a window can contain several agent panes.
 
-## Automatic hibernation
+## No automatic hibernation
 
-Two actors hibernate panes without a hand on the keyboard, under one set of
-controls:
-
-- **The sweep policy**, [`scripts/agent-autohibernate.sh`](../scripts/agent-autohibernate.sh),
-  invoked by the sweep after reconciliation. It acts only after sustained
-  `CRITICAL` memory state, requires 24 hours of uninterrupted
-  `@agent_idle_since`, allows two actions per episode, and excludes visible,
-  unread, working, blocked, pinned, unsupported, unknown, or unresumable panes.
-  It commits through the engine's `--auto`, which re-checks the prepared
-  identity immediately before shutdown.
-- **The emergency tier** in [`../zsh/functions/macos/memwatch`](../../zsh/functions/macos/memwatch),
-  run on every CRITICAL tick of the 5 s watcher (a reading over the lines, or a
-  scheduler stall). It hibernates the heaviest idle *or* done Claude/Codex pane
-  (`mem_hibernate_rows`, the popup's own ranking), one per tick, with
-  `MEMWATCH_ACTION_COOLDOWN` (30 s) between successes. It calls `hibernate`
-  without `--auto`: that path demands exact idle plus a pre-agreed identity,
-  and an emergency wants any pane it is safe to stop. A refusal (rc 6) leaves
-  the cooldown unarmed and marks the pane, so the next tick tries the next.
-
-Both read the same tmux mode (`on` acts, `observe` logs, `off` nothing), the
-same persisted pins, and the same `tick.lock` in the auto-hibernate state dir
-for mutual exclusion - each skips when the other holds it, neither waits, and
-memwatch breaks a lock older than 120 s. The sweep keeps its own rate rules and
-simply finds fewer candidates once memwatch has acted. Missing macOS telemetry
-reads `OK`, so non-macOS hosts never act automatically.
-
-Pins persist by `kind:session-id`; `@agent_hibernate_pinned` is display-only.
-`agent-hibernate.sh probe` is the read-only recovery-identity port shared by
-pinning and policy. Its `--auto` commit compares the prepared identity, idle
-instant, visibility and pin revision after a short claim window immediately
-before shutdown. It cannot combine with `--force`.
-
-The tracked mode is `observe`. `agent auto status [--json]`, `agent auto
-off|observe|on`, and `agent pin|unpin [target]` are the public controls. The
-right-click pane menu exposes the pin. Manual hibernation ignores it.
+Hibernation is manual only. Nothing stops a pane without a hand on the
+keyboard: not the sweep, and not memwatch at `CRITICAL`
+([ADR 0017](../../../docs/adr/0017-agent-hibernation-is-manual-only.md)).
 
 Tests: [`../zsh/tests/agent-hibernate.bats`](../../zsh/tests/agent-hibernate.bats)
 drives a real private server end to end. Its fake claude is a **symlink to a nix

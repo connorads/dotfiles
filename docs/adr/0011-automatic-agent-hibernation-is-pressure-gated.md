@@ -1,5 +1,8 @@
 # Automatic agent hibernation is pressure-gated
 
+> Superseded by [0017](0017-agent-hibernation-is-manual-only.md) - hibernation
+> is manual only; the sweep policy and memwatch's emergency tier are deleted.
+
 ## Context
 
 An idle agent process can retain hundreds of megabytes. On the desktop, the

@@ -100,7 +100,6 @@ EOF
   [[ "$output" == *"[a] all sampled apps"* ]]
   [[ "$output" == *"[k] manage process"* ]]
   [[ "$output" == *"[h] hibernate agents"* ]]
-  [[ "$output" == *"Agent auto-hibernate  observe"* ]]
 }
 
 # plain — the summary with its ANSI colour stripped, so the arm rows can be

@@ -44,7 +44,7 @@ The logic is spread across several files - change them as a set:
   pane→window and window→session rollups, bell, and `is_viewing` helpers (also
   used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
-  the `done` branch, the sweep and auto-hibernation's visibility exemption; its
+  the `done` branch and the sweep; its
   optional 4th argument is the window's zoom flag, defaulting to "hidden" so a
   3-argument call is the strict active-pane-only rule), the codex title-spinner
   pure core

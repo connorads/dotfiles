@@ -40,7 +40,6 @@ _US=$(printf '\037')
 AGENT_PRESENCE_GRACE=${AGENT_PRESENCE_GRACE:-10}
 AGENT_PS=${AGENT_PS:-ps}
 AGENT_SWEEP_DAEMON_VERSION=2
-AGENT_AUTO_HIBERNATE=${AGENT_AUTO_HIBERNATE:-$SELF_DIR/agent-autohibernate.sh}
 
 # sweep_once — reconcile every dot in one pass: read all panes once, clear panes
 # whose agent died (shell foreground), age a `done` dot that is on screen (an
@@ -163,7 +162,6 @@ EOF
 					if [ -n "$_kind" ] && [ "$_kind" != "$_observed_kind" ]; then
 						tmux set-option -pu -t "$_pane" @agent_name 2>/dev/null || true
 						tmux set-option -pu -t "$_pane" @claude_profile 2>/dev/null || true
-						tmux set-option -pu -t "$_pane" @agent_hibernate_pinned 2>/dev/null || true
 					fi
 					tmux set-option -p -t "$_pane" @agent_kind "$_observed_kind" 2>/dev/null || true
 					agent_set_state "$_pane" idle "$_now" 2>/dev/null || true
@@ -278,7 +276,6 @@ EOF
 
 tick_once() {
 	sweep_once
-	[ -x "$AGENT_AUTO_HIBERNATE" ] && "$AGENT_AUTO_HIBERNATE" tick >/dev/null 2>&1 || true
 }
 
 # _is_sweep PID — true if PID is an agent-sweep process (guards the pidfile

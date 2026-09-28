@@ -102,18 +102,10 @@ distance, and the help section reads as a procedure. Change as a set:
   ~2 min of userspace stall, which a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.
-  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). At
-  CRITICAL it runs the emergency hibernation tier described under [Automatic
-  hibernation](./hibernate.md#automatic-hibernation) (`MEMWATCH_HIBERNATE_SH`, `MEMWATCH_ACTION_COOLDOWN`,
-  `MEMWATCH_LOCK`, `AGENT_AUTO_PINS_FILE`), logging `would hibernate %N (…)`,
-  `hibernate %N (…) rc=0|rc=6 refused|rc=N failed`, `hibernate deferred:
-  tick.lock held` or `no hibernatable agent pane`. The launchd plist carries
-  the nix profile on `PATH` (tmux, jq and the bash-5 engine live there; with
-  the system PATH alone the action silently never runs) and `LANG=en_GB.UTF-8`
-  (tmux sanitises the tab delimiters outside UTF-8). Reload after edits:
-  `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`; a dry run in
-  the tracked `observe` mode is `MEM_CRITICAL_SLOTS_PCT=1 memwatch --once`,
-  which must log `would hibernate` and touch no pane.
+  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). It never
+  hibernates a pane. Reload after edits:
+  `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`; a dry run is
+  `MEM_CRITICAL_SLOTS_PCT=1 memwatch --once`.
 
 Tests: [`../zsh/tests/mem-lib.bats`](../../zsh/tests/mem-lib.bats) (lib vocabulary,
 including the gather under zsh with `no_unset`),
