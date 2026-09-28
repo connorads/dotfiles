@@ -1,5 +1,8 @@
 # Claude session capture reads the pid marker
 
+> Partly superseded by [0016](0016-claude-patches-stay-only-while-a-probe-shows-an-effect.md) -
+> the reaper patch is deleted; the rest stands.
+
 ## Context
 
 A resurrect restore relaunches each Claude pane on its own conversation. The
