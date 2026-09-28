@@ -231,6 +231,20 @@
     };
   };
 
+  # -- GPU wired-memory cap --
+  # GPU allocations are wired memory: jetsam cannot reclaim them and memwatch's
+  # compressor gauge never sees them. The sysctl resets to 0 (default) at boot.
+  launchd.daemons.iogpu-wired-limit = {
+    serviceConfig = {
+      Label = "dev.connorads.iogpu-wired-limit";
+      ProgramArguments = [
+        "/usr/sbin/sysctl"
+        "iogpu.wired_limit_mb=8192"
+      ];
+      RunAtLoad = true;
+    };
+  };
+
   # -- Home Manager (desktop additions) --
   # Merges into the shared home-manager.users.connorads submodule, closing over
   # this module's `pkgs`/`packages` args.
