@@ -26,3 +26,42 @@ prefix_rule(
         "git add src/",
     ],
 )
+
+prefix_rule(
+    pattern = ["rm", "-fr"],
+    decision = "forbidden",
+    justification = "Use `trash` outside temporary directories; leave temporary paths for system cleanup.",
+    match = [
+        "rm -fr build",
+    ],
+    not_match = [
+        "rm -f file.txt",
+    ],
+)
+
+prefix_rule(
+    pattern = ["rm", "-r", "-f"],
+    decision = "forbidden",
+    justification = "Use `trash` outside temporary directories; leave temporary paths for system cleanup.",
+    match = [
+        "rm -r -f build",
+    ],
+    not_match = [
+        "rm -r directory",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f", "--force-with-lease"]],
+    decision = "forbidden",
+    justification = "Force pushes rewrite remote history; ask the user to run them.",
+    match = [
+        "git push --force",
+        "git push -f origin main",
+        "git push --force-with-lease",
+    ],
+    not_match = [
+        "git push",
+        "git push origin main",
+    ],
+)
