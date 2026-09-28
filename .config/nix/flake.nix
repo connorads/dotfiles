@@ -66,6 +66,7 @@
               rift = prev.callPackage ./packages/rift.nix { };
               footswitch = prev.callPackage ./packages/footswitch.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
+              mise = prev.callPackage ./packages/mise.nix { };
 
               # TODO(pipx-check): remove once nixpkgs ships a pipx whose test
               # suite passes against its pinned pytest. pipx 1.14.0's
