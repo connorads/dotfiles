@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "remote-mcp-github-oauth",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MyMCP"] }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "class_name": "MyMCP", "name": "MCP_OBJECT" }
+    ]
+  },
+  "kv_namespaces": [
+    // Create with: pnpm wrangler kv namespace create OAUTH_KV
+    { "binding": "OAUTH_KV", "id": "<REPLACE_WITH_KV_NAMESPACE_ID>" }
+  ],
+  "observability": { "enabled": true }
+  // Secrets (set with `wrangler secret put`):
+  //   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, COOKIE_ENCRYPTION_KEY
+}

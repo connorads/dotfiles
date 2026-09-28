@@ -1,0 +1,323 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "id": "cloudflare-docs-mcp",
+      "kind": "github-paths",
+      "repo": "cloudflare/cloudflare-docs",
+      "ref": "production",
+      "paths": [
+        "src/content/docs/agents/model-context-protocol/",
+        "src/content/docs/agents/tools/mcp.mdx",
+        "src/content/docs/agents/tools/payments/",
+        "src/content/docs/agents/tools/codemode/",
+        "src/content/docs/cloudflare-one/access-controls/ai-controls/secure-mcp-servers.mdx",
+        "src/content/docs/cloudflare-one/access-controls/applications/http-apps/managed-oauth.mdx",
+        "src/content/changelog/agents/"
+      ],
+      "watermark": {
+        "value": "9525fb5b8ab78c58bd5e941dea9fd75a366b6eac",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "references/handler.md",
+        "references/auth.md",
+        "references/migrate.md",
+        "references/spec.md"
+      ],
+      "why": "Cloudflare's own MCP server docs and Agents changelog: the canonical API shapes the skill teaches."
+    },
+    {
+      "id": "cloudflare-docs-platform",
+      "kind": "github-paths",
+      "repo": "cloudflare/cloudflare-docs",
+      "ref": "production",
+      "paths": [
+        "src/content/docs/workers/testing/",
+        "src/content/docs/durable-objects/reference/durable-objects-migrations.mdx",
+        "src/content/docs/durable-objects/reference/durable-object-class-migrations-legacy.mdx",
+        "src/content/docs/workers/configuration/routing/custom-domains.mdx",
+        "src/content/docs/workers/configuration/secrets.mdx",
+        "src/content/docs/workers/previews/",
+        "src/content/docs/workers/runtime-apis/bindings/rate-limit.mdx",
+        "src/content/docs/workers/observability/",
+        "src/content/docs/workers/wrangler/configuration.mdx"
+      ],
+      "watermark": {
+        "value": "9525fb5b8ab78c58bd5e941dea9fd75a366b6eac",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/testing-deploy.md",
+        "references/handler.md",
+        "references/migrate.md"
+      ],
+      "why": "Workers testing, Durable Object migrations, custom domains, secrets, previews, rate limits, observability and wrangler.jsonc pages the deploy and migration guidance cites."
+    },
+    {
+      "id": "agents-repo",
+      "kind": "github-paths",
+      "repo": "cloudflare/agents",
+      "ref": "main",
+      "paths": [
+        "packages/agents/src/mcp/",
+        "packages/agents/CHANGELOG.md",
+        "docs/agents/mcp-",
+        "docs/agents/securing-mcp",
+        "design/mcp.md",
+        "examples/mcp",
+        "examples/x402-mcp"
+      ],
+      "watermark": {
+        "value": "a8673b7c27ce7593e31c1d993dc8940bfb236bbf",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "references/handler.md",
+        "references/auth.md",
+        "references/migrate.md",
+        "assets/stateless-server/"
+      ],
+      "why": "Source of createMcpHandler, getMcpAuthContext and the deprecated McpAgent; behaviour here beats the docs."
+    },
+    {
+      "id": "workers-oauth-provider-repo",
+      "kind": "github-paths",
+      "repo": "cloudflare/workers-oauth-provider",
+      "ref": "main",
+      "paths": [
+        "README.md",
+        "CHANGELOG.md",
+        "src/",
+        "docs/",
+        "skills/"
+      ],
+      "watermark": {
+        "value": "ebb2efd899ac1285bda681ceba91cc10106f4d49",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/auth.md",
+        "references/migrate.md"
+      ],
+      "why": "OAuthProvider options and breaking changes land on main before npm; main runs ahead of the published release."
+    },
+    {
+      "id": "cloudflare-ai-demos",
+      "kind": "github-paths",
+      "repo": "cloudflare/ai",
+      "ref": "main",
+      "paths": [
+        "demos/"
+      ],
+      "watermark": {
+        "value": "0e5bc3b2f489e4b8215905812a36fe69d37afb8d",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/auth.md",
+        "references/migrate.md"
+      ],
+      "why": "The OAuth MCP templates agents copy; the skill tracks where they lag the provider and SDK."
+    },
+    {
+      "id": "mcp-spec-repo",
+      "kind": "github-paths",
+      "repo": "modelcontextprotocol/modelcontextprotocol",
+      "ref": "main",
+      "paths": [
+        "docs/specification/",
+        "schema/",
+        "docs/extensions/",
+        "docs/docs/*/tutorials/security/",
+        "blog/content/posts/"
+      ],
+      "watermark": {
+        "value": "ab3a39c13bd23be691c2760e1c6c5c15a64582e1",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/spec.md",
+        "references/auth.md",
+        "references/handler.md"
+      ],
+      "why": "Protocol text, schema, security guidance and the MCP blog behind the era matrix and auth model."
+    },
+    {
+      "id": "mcp-spec-tags",
+      "kind": "github-tags",
+      "repo": "modelcontextprotocol/modelcontextprotocol",
+      "regex": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(-RC)?$",
+      "watermark": {
+        "value": "2026-07-28",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/spec.md",
+        "SKILL.md"
+      ],
+      "why": "A new dated tag is a new protocol revision or release candidate, which changes the compatibility matrix."
+    },
+    {
+      "id": "mcp-typescript-sdk-repo",
+      "kind": "github-paths",
+      "repo": "modelcontextprotocol/typescript-sdk",
+      "ref": "main",
+      "paths": [
+        "docs/",
+        "packages/server/src/",
+        "packages/core/src/"
+      ],
+      "watermark": {
+        "value": "7f7a94c22017e121a960e071bb50ec75e34450bd",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "references/handler.md",
+        "references/migrate.md",
+        "assets/stateless-server/"
+      ],
+      "why": "SDK v2 server API (McpServer, registerTool, schemas) that tool code in the skill uses."
+    },
+    {
+      "id": "mcp-ext-tasks",
+      "kind": "github-paths",
+      "repo": "modelcontextprotocol/ext-tasks",
+      "ref": "main",
+      "paths": [
+        ""
+      ],
+      "watermark": {
+        "value": "6c0997fbc040e6145c5cbd1e757aef9debb94303",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/spec.md"
+      ],
+      "why": "Tasks moved out of the core spec into this extension; long-running tool guidance depends on it."
+    },
+    {
+      "id": "mcp-inspector-repo",
+      "kind": "github-paths",
+      "repo": "modelcontextprotocol/inspector",
+      "ref": "main",
+      "paths": [
+        "docs/",
+        "clients/cli/README.md",
+        "README.md"
+      ],
+      "watermark": {
+        "value": "1e31c78fbf81a989e8eb47021c6281d7876ad7fd",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/testing-deploy.md"
+      ],
+      "why": "Inspector CLI flags and install caveats used for manual verification."
+    },
+    {
+      "id": "cloudflare-skills-repo",
+      "kind": "github-paths",
+      "repo": "cloudflare/skills",
+      "ref": "main",
+      "paths": [
+        "skills/agents-sdk/",
+        "skills/cloudflare/",
+        "skills/durable-objects/",
+        "skills/wrangler/",
+        "skills/workers-best-practices/"
+      ],
+      "watermark": {
+        "value": "626547c06881a20b3322bdc2ed6e6451b33a4fb6",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "references/migrate.md"
+      ],
+      "why": "Cloudflare's own agent skills: what agents loaded alongside this one teach, including stale MCP patterns."
+    },
+    {
+      "id": "npm-packages",
+      "kind": "npm",
+      "packages": [
+        "agents",
+        "@modelcontextprotocol/server",
+        "@modelcontextprotocol/client",
+        "@modelcontextprotocol/sdk",
+        "@cloudflare/workers-oauth-provider",
+        "@cloudflare/vitest-plugin",
+        "@modelcontextprotocol/inspector",
+        "wrangler"
+      ],
+      "peer_report": {
+        "agents": "modelcontextprotocol|zod"
+      },
+      "watermark": {
+        "value": {
+          "agents": "0.24.0",
+          "@modelcontextprotocol/server": "2.1.0",
+          "@modelcontextprotocol/client": "2.1.0",
+          "@modelcontextprotocol/sdk": "1.30.1",
+          "@cloudflare/workers-oauth-provider": "1.1.0",
+          "@cloudflare/vitest-plugin": "1.3.0",
+          "@modelcontextprotocol/inspector": "2.8.0",
+          "wrangler": "4.142.0"
+        },
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "assets/stateless-server/",
+        "references/migrate.md",
+        "references/testing-deploy.md",
+        "references/auth.md"
+      ],
+      "why": "Released versions and the exact MCP peer pins of agents, which decide what the template installs."
+    },
+    {
+      "id": "cloudflare-blog",
+      "kind": "rss",
+      "feeds": [
+        "https://blog.cloudflare.com/rss/",
+        "https://blog.cloudflare.com/tag/mcp/rss/",
+        "https://blog.cloudflare.com/tag/agents/rss/"
+      ],
+      "include": "\\bMCP\\b|Model Context Protocol|McpAgent|createMcpHandler|workers-oauth-provider",
+      "watermark": {
+        "value": "2026-09-22T13:00:00Z",
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "SKILL.md",
+        "references/migrate.md",
+        "references/auth.md"
+      ],
+      "why": "Launch posts announce new MCP capabilities and deprecations before the docs settle."
+    },
+    {
+      "id": "client-connector-docs",
+      "kind": "url-hash",
+      "urls": [
+        "https://claude.com/docs/connectors/building/authentication.md",
+        "https://claude.com/docs/connectors/building/lazy-authentication.md",
+        "https://developers.openai.com/plugins/build/auth"
+      ],
+      "watermark": {
+        "value": {
+          "https://claude.com/docs/connectors/building/authentication.md": "15990c751f053e20",
+          "https://claude.com/docs/connectors/building/lazy-authentication.md": "af8366943bfcadd9",
+          "https://developers.openai.com/plugins/build/auth": "bda34403706637f0"
+        },
+        "observed_at": "2026-09-28T00:00:00Z"
+      },
+      "informs": [
+        "references/auth.md"
+      ],
+      "why": "Claude and ChatGPT connector auth requirements; no feed or repo exists, so a content hash flags edits."
+    }
+  ]
+}

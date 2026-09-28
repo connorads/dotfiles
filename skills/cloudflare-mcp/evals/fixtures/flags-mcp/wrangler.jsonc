@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "flags-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [{ "binding": "FLAGS", "id": "c0ffee00c0ffee00c0ffee00c0ffee00" }],
+  "vars": { "ADMIN_TOKEN": "change-me" },
+  "observability": { "enabled": true }
+}

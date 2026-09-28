@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "acme-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-02",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "routes": [{ "pattern": "mcp.acme.dev", "custom_domain": true }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "9b2e4d6f8a0c1e3b5d7f9a1c3e5b7d9f" }],
+  "observability": { "enabled": true }
+}
