@@ -22,13 +22,14 @@ HELP_WITH_FLAG = (
 HELP_WITHOUT_FLAG = 'echo "Usage: hk check [OPTIONS]"; echo "      --all  Check all files"; exit 0'
 
 
-def _fake_hk(bin_dir: Path, help_body: str, check_body: str) -> None:
+def _fake_hk(bin_dir: Path, help_body: str, check_body: str) -> Path:
     """Write a fake `hk` that answers --help one way and a real run another."""
     script = bin_dir / "hk"
     script.write_text(
         f'#!/bin/sh\ncase " $* " in\n  *" --help "*) {help_body} ;;\nesac\n{check_body}\n'
     )
     script.chmod(0o755)
+    return script
 
 
 @pytest.fixture
@@ -92,6 +93,20 @@ def test_missing_hk_is_silent(repo: Path) -> None:
 def test_repo_without_config_is_silent(repo: Path) -> None:
     (repo / "hk.pkl").unlink()
     _fake_hk(repo / "bin", HELP_WITH_FLAG, 'echo "should not run"; exit 1')
+    r = _run(repo)
+    assert r.returncode == 0
+    assert r.stdout == ""
+
+
+def test_repo_pinned_hk_is_used_over_path_hk(repo: Path) -> None:
+    # The PATH hk is a newer major that cannot load an older pinned hk.pkl.
+    _fake_hk(repo / "bin", HELP_WITH_FLAG, 'echo "Failed to load configuration"; exit 1')
+    pinned_dir = repo / "pinned"
+    pinned_dir.mkdir()
+    pinned = _fake_hk(pinned_dir, HELP_WITH_FLAG, "exit 0")
+    mise = repo / "bin" / "mise"
+    mise.write_text(f'#!/bin/sh\necho "{pinned}"\n')
+    mise.chmod(0o755)
     r = _run(repo)
     assert r.returncode == 0
     assert r.stdout == ""
