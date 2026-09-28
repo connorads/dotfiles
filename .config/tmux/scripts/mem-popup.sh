@@ -181,8 +181,6 @@ render_header() {
 	_segb=$(sysctl -n vm.compressor_segment_buffer_size 2>/dev/null) || _segb=""
 	case $_pgsz in '' | *[!0-9]*) _pgsz=16384 ;; esac
 	case $_segb in '' | *[!0-9]*) _segb=65536 ;; esac
-	_auto=$(tmux show-options -gqv @agent_auto_hibernate 2>/dev/null || true)
-	case $_auto in off | observe | on) ;; *) _auto=observe ;; esac
 	_colour=$(mem_state_colour "$_state")
 	_glyph=$(mem_state_glyph "$_state")
 	_swap_total_mb=$(sysctl -n vm.swapusage 2>/dev/null | awk '{
@@ -208,7 +206,7 @@ render_header() {
 	awk -v r="$(mem_ratio_from "$_pages" "$_segs")" -v l="$(mem_ratio_from "$_plimit" "$_slimit")" \
 		'BEGIN { printf "  Ratio    %s pages per segment (limits %s): %s fill first\n", r, l, (r > l ? "slots" : "segments") }'
 	render_action
-	printf '\n  Agent auto-hibernate  %s\n\n' "$_auto"
+	printf '\n'
 }
 
 render_apps() {

@@ -205,9 +205,8 @@
   # prefix+Alt+m popup): a resident watcher that notices pressure even with no
   # terminal in view. This 16 GB Air panicked from chronic memory exhaustion;
   # memwatch reads the compressor ceilings every 5 s, posts a notification on
-  # a transition into BUSY/CRITICAL, logs to ~/.cache/memwatch.log, and at
-  # CRITICAL hibernates the heaviest idle agent pane through agent-hibernate.sh
-  # under the shared @agent_auto_hibernate mode.
+  # a transition into BUSY/CRITICAL and logs to ~/.cache/memwatch.log. It never
+  # hibernates a pane; hibernation is manual only.
   #
   # A user *agent* (not a launchd.daemons system daemon): agents run inside the
   # GUI session, which is what lets osascript notifications actually appear.
@@ -225,12 +224,7 @@
       KeepAlive = true;
       ProcessType = "Background";
       EnvironmentVariables = {
-        # The action path forks tmux, jq and the bash-5 hibernate engine, all
-        # nix-owned: with a system-only PATH the watcher sees CRITICAL and
-        # silently never acts. Same shape as the resurrect keepalive agent.
-        PATH = "/usr/sbin:/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
-        # Outside UTF-8 tmux sanitises the tabs mem_hibernate_rows is delimited
-        # with, so every candidate row would parse as one field.
+        # The banner and log lines carry non-ASCII glyphs (·, ≈).
         LANG = "en_GB.UTF-8";
       };
       StandardErrorPath = "/Users/connorads/.cache/memwatch.err.log";

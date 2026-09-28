@@ -212,13 +212,8 @@ by footprint and the agent panes. `h` lists idle or done Claude and Codex
 panes, heaviest first. Choose one or more to hibernate. One selection
 hibernates directly. Several ask for confirmation and end with one summary.
 
-The header also shows the automatic-hibernation mode, `observe` by default.
-`agent auto status` explains each exclusion. `agent auto on` enables both
-automatic tiers: the sweep's one oldest hidden idle conversation per 15 minutes
-while CRITICAL, and memwatch's emergency hibernation of the heaviest idle or
-done pane, one per 5 s tick, the moment a reading or a scheduler stall is
-CRITICAL. Use the pane right-click menu or `agent pin` to protect a
-conversation from both. Pinning does not block manual hibernation.
+Hibernation is manual only. Nothing hibernates a pane on its own, even at
+CRITICAL.
 
 ## Caffeine (status bar)
 

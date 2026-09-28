@@ -32,7 +32,6 @@ agent_set_state() {
 agent_clear_state() {
 	tmux set-option -pu -t "$1" @agent_state 2>/dev/null || true
 	tmux set-option -pu -t "$1" @agent_idle_since 2>/dev/null || true
-	tmux set-option -pu -t "$1" @agent_hibernate_pinned 2>/dev/null || true
 }
 
 # Attention ranking — the window dot shows the worst (highest) of its panes:
@@ -131,11 +130,10 @@ sync_agent_rollups() {
 # looking at the pane. The window must be the active window of an attached
 # session; within it, tmux draws every pane at once, so a *sibling* pane is on
 # screen too — unless the window is zoomed, which genuinely hides the siblings.
-# The single definition of "you are looking at it", shared by three call sites:
+# The single definition of "you are looking at it", shared by two call sites:
 # the `done` branch (agent-state.sh, seen-at-birth) and the phase-5 sweep
 # (agent-sweep.sh, the viewed-done reconcile), which both pass the real ZOOMED
-# flag to opt into the on-screen-sibling rule, and the auto-hibernation
-# visibility exemption (agent-autohibernate.sh), which keeps the strict rule.
+# flag to opt into the on-screen-sibling rule.
 # ZOOMED defaults to 1 ("assume hidden"), so a 3-argument call is the strict
 # active-pane-only rule. Missing/empty fields default to "not viewed" so a
 # failed read never spuriously marks seen.

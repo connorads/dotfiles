@@ -428,8 +428,8 @@ mem_heaviest_pid_mb() {
 }
 
 # mem_hibernate_rows — the panes it is safe to hibernate, heaviest first:
-# every idle or done Claude/Codex pane as "pane<US>mb<US>label<US>state<US>loc". Shared
-# by the popup's `h` list and memwatch's emergency tier so both rank identically.
+# every idle or done Claude/Codex pane as "pane<US>mb<US>label<US>state<US>loc", for
+# the popup's `h` list.
 mem_hibernate_rows() {
 	tmux list-panes -a -F "#{@agent_state}${_US}#{@agent_kind}${_US}#{@agent_name}${_US}#{window_name}${_US}#{session_name}:#{window_index}.#{pane_index}${_US}#{pane_pid}${_US}#{pane_id}" 2>/dev/null |
 		awk -F '\037' '$1 ~ /^(idle|done)$/ && $2 ~ /^(claude|codex)$/ {
