@@ -14,7 +14,7 @@
 //   amp exact pin (mise config.toml) - Amp releases several times a day and is
 //     exempt from the age gate; the global exact pin is the control itself.
 
-import type { DriftRow, MiseConfig, PinState, Probe, ToolEntry, Verdict } from "./types.ts";
+import type { DriftRow, HandoffAgent, MiseConfig, PinState, Probe, ToolEntry, Verdict } from "./types.ts";
 
 /** Upstream probes as a port; the adapters live in ../shell/probe.ts. */
 export interface Probes {
@@ -28,6 +28,8 @@ export interface Probes {
   readonly miseOutdatedBump: () => Promise<Probe>;
   /** hk.pkl's `amends` package version and `hk --version`. */
   readonly hkVersions: () => Promise<Probe>;
+  /** handoff's Claude/Codex version constants and each CLI's `--version`. */
+  readonly handoffVersions: () => Promise<Probe>;
 }
 
 export interface Check {
@@ -168,6 +170,40 @@ const hkPin = (probes: Probes): Check => ({
 });
 
 /**
+ * Guard: handoff writes a Claude and a Codex version into the sessions it
+ * materialises, and each is the release its session format was tested against.
+ * Either CLI can change that format in any release, and `up` moves both on
+ * `latest`, so this flags an installed CLI that has moved past handoff's.
+ */
+const handoffDrift = (probes: Probes): Check => ({
+  id: "handoff-drift",
+  readPin: () => ({ kind: "always" }),
+  probe: () => probes.handoffVersions(),
+  judge: (_pin, probe) => {
+    if (probe.kind !== "handoffVersions") {
+      return { kind: "skip", detail: "handoff-drift - could not read handoff's versions" };
+    }
+    return probe.agents.map((agent: HandoffAgent): Verdict => {
+      if (agent.pinned === null || agent.installed === null) {
+        return {
+          kind: "skip",
+          detail: `handoff-drift - could not read ${agent.cli}'s version or handoff's pin`,
+        };
+      }
+      if (agent.pinned === agent.installed) {
+        return { kind: "ok", detail: `handoff-drift - ${agent.cli} ${agent.installed} matches handoff` };
+      }
+      return {
+        kind: "flag",
+        detail:
+          `handoff-drift - handoff targets ${agent.cli} ${agent.pinned}, installed is ` +
+          `${agent.installed}; re-test handoff against it and bump the version in ${agent.pinFile}`,
+      };
+    });
+  },
+});
+
+/**
  * Deliberate pins, excluded from drift so the report stays worth reading. Two
  * are already covered by a conditional check above (which states the condition
  * for lifting them); the other two are documented holds in the file header.
@@ -229,6 +265,7 @@ export const buildChecks = (probes: Probes): readonly Check[] => [
   sandboxRuntime(probes),
   cosineCli(probes),
   hkPin(probes),
+  handoffDrift(probes),
   drift(probes),
 ];
 

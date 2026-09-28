@@ -67,7 +67,19 @@ export type Probe =
       readonly kind: "hkVersions";
       readonly pinned: string | null;
       readonly installed: string | null;
-    };
+    }
+  /** The CLI versions handoff writes into sessions, and the installed CLIs'. */
+  | { readonly kind: "handoffVersions"; readonly agents: readonly HandoffAgent[] };
+
+/** One agent CLI handoff materialises sessions for; null when unreadable. */
+export interface HandoffAgent {
+  /** The CLI's command name: `claude` or `codex`. */
+  readonly cli: string;
+  /** handoff's version constant, and the file that declares it. */
+  readonly pinned: string | null;
+  readonly pinFile: string;
+  readonly installed: string | null;
+}
 
 /**
  * OK   condition still holds, keep the pin

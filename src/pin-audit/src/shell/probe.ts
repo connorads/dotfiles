@@ -123,10 +123,40 @@ const hkVersions = async (): Promise<Probe> => {
   return { kind: "hkVersions", pinned, installed };
 };
 
+/** The first dotted version in `claude --version` / `codex --version` output. */
+const CLI_VERSION = /([0-9]+(?:\.[0-9]+)+)/;
+
+const HANDOFF_FORMATS = `${homedir()}/src/handoff/src/handoff/formats`;
+
+/** handoff's version constants, one per agent CLI it writes sessions for. */
+const HANDOFF_PINS = [
+  { cli: "claude", file: `${HANDOFF_FORMATS}/claude.py`, constant: "CLAUDE_CODE_VERSION" },
+  { cli: "codex", file: `${HANDOFF_FORMATS}/codex.py`, constant: "CODEX_CLI_VERSION" },
+] as const;
+
+const handoffVersions = async (): Promise<Probe> => {
+  const agents = await Promise.all(
+    HANDOFF_PINS.map(async ({ cli, file, constant }) => {
+      let pinned: string | null = null;
+      try {
+        const source = await readFile(file, "utf8");
+        pinned = new RegExp(`^${constant} = "([0-9.]+)"$`, "m").exec(source)?.[1] ?? null;
+      } catch {
+        // absent handoff stays null; judge degrades to SKIP
+      }
+      const ran = await run([cli, "--version"]);
+      const installed = ran.ok ? (CLI_VERSION.exec(ran.stdout)?.[1] ?? null) : null;
+      return { cli, pinned, pinFile: file, installed };
+    }),
+  );
+  return { kind: "handoffVersions", agents };
+};
+
 export const probes: Probes = {
   miseLatest,
   npmLatest,
   ghStableRelease,
   miseOutdatedBump,
   hkVersions,
+  handoffVersions,
 };
