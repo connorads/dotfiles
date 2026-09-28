@@ -59,6 +59,20 @@ blocked | working | idle | hibernated | done | unread | clear)
 	;;
 esac
 
+# A repeat of the pane's current state and kind changes nothing: no journal
+# row, no rollup, no repaint. PostToolUse fires `working` around every tool
+# call, so this is the common path. `done` is not a plain set (it may land as
+# idle) and blocked's bell already keys on entry, so only the direct setters
+# short-circuit. An absent kind argument matches any recorded kind.
+case $state in
+working | idle | hibernated | blocked)
+	current=$(tmux display-message -p -t "$pane" '#{@agent_state} #{@agent_kind}' 2>/dev/null) || current=
+	if [ "$current" = "$state ${kind:-${current#* }}" ]; then
+		exit 0
+	fi
+	;;
+esac
+
 # Every state-setting verb is journalled; `seen` only when it actually ages a
 # pane (the focus hook fires it on every pane focus — no-ops are noise).
 journal=1
