@@ -174,14 +174,6 @@ _up_degradations() {
     _up_degrade "GitHub API rate-limited (403); $repos $noun not refreshed"
     _up_next "set MISE_GITHUB_TOKEN - unauthenticated GitHub API calls are rate-limited"
   fi
-
-  # Homebrew's zap cleanup, run from inside the nix-darwin rebuild, cannot delete
-  # cask files without Full Disk Access - and the rebuild exits 0. Matched on ASCII
-  # only: the real message carries U+2192 arrows.
-  if _up_phase_log "$log_start" "$log_end" | grep -qF 'Unable to remove some files'; then
-    _up_degrade "brew zap could not remove cask files; Full Disk Access denied"
-    _up_next "grant Full Disk Access to the terminal in System Settings > Privacy & Security, then rerun 'up -s'"
-  fi
 }
 
 _up_run() {
@@ -246,7 +238,7 @@ _up_cleanup_summary() {
   print '  Nix GC: scheduled separately; not run by up (see Nix configuration)'
   if [[ $OSTYPE == darwin* ]]; then
     print "  Homebrew automatic cleanup: managed by Homebrew; upgrade $(_up_cleanup_outcome brew)"
-    print "  Homebrew declared packages: rebuild $(_up_cleanup_outcome rebuild); policy removes undeclared packages with zap, including associated cask files"
+    print "  Homebrew declared packages: rebuild $(_up_cleanup_outcome rebuild); policy uninstalls undeclared packages; their app data stays on disk"
   elif [[ $OSTYPE == linux-gnu && ! -f /etc/NIXOS ]] && command -v apt-get &>/dev/null; then
     local outcome=$(_up_cleanup_outcome apt)
     [[ $outcome == failed* ]] && outcome="APT phase $outcome"
@@ -474,9 +466,8 @@ _up_brew() {
 }
 
 # Records its own phase rather than going through _up_run, so its log slice is
-# never scanned for degradations. `brew doctor` reports pre-existing conditions,
-# including Full Disk Access nags it did not cause, which would read as a fresh
-# degradation of the run.
+# never scanned for degradations. `brew doctor` reports pre-existing conditions
+# it did not cause, which would read as a fresh degradation of the run.
 _up_brew_advisory() {
   local name=$1 detail=$2
   shift 2

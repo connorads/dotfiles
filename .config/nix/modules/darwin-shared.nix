@@ -25,12 +25,12 @@
   ];
 
   # -- Homebrew (base) --
-  # Casks/masApps/taps are host-specific (see darwin-desktop.nix). zap cleanup
-  # means the server's first switch removes the mini's old desktop casks.
+  # Casks/masApps/taps are host-specific (see darwin-desktop.nix). Uninstall
+  # cleanup means the server's first switch removes the mini's old desktop casks.
   homebrew = {
     enable = true;
     onActivation = {
-      cleanup = "zap";
+      cleanup = "uninstall";
       # Upgrade outdated formulae/casks on activation (drops brew bundle's
       # --no-upgrade). Non-greedy bundle still skips auto_updates casks, so
       # self-updating apps are untouched; only formulae, pinned casks, and

@@ -76,7 +76,7 @@ up
 
 `up` is the canonical updater; see [mise and update guidance](.config/mise/AGENTS.md) for lockfile commits and [supply-chain controls](docs/supply-chain.md) for package quarantine. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
 
-On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and `zap` removal of undeclared packages and associated cask files.
+On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and uninstalling undeclared packages. Their app data stays on disk.
 
 On normal macOS runs, `up` runs `brew vulns --list-skipped` after the rebuild if the standalone Brew phase was attempted. It reports findings and coverage gaps for installed formulae, including installed formula dependencies. It does not scan casks or libraries bundled inside formulae. A failed standalone Brew update or upgrade also runs `brew doctor`. Both reports are advisory and retain their native output in the terminal and log. `--no-audit` skips both the lockfile and Brew vulnerability scans; it keeps failure diagnostics enabled. Frozen mode skips the Brew scan. These checks target Homebrew 7; unavailable commands warn without failing the update.
 
