@@ -53,7 +53,6 @@ SELF="$SELF_DIR/$(basename -- "${BASH_SOURCE[0]}")"
 STATE_DIR=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}
 SESSION_FILE=${AGENT_HIBERNATE_SESSION_FILE:-$HOME/.local/share/tmux/resurrect/session_ids.json}
 AGENT_STATE_SH=${AGENT_STATE_SH:-$SELF_DIR/agent-state.sh}
-JOURNAL_DIR=${AGENT_JOURNAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-journal}
 MATERIALISE=${AGENT_HIBERNATE_MATERIALISE:-$HOME/.config/zsh/functions/claude-profile-materialise}
 KILL_WAIT=${AGENT_HIBERNATE_KILL_WAIT:-5}
 CODEX_EXIT_WAIT=${AGENT_HIBERNATE_CODEX_EXIT_WAIT:-15}
@@ -91,15 +90,10 @@ human_age() {
 	fi
 }
 
-# prev_month YYYY-MM — the preceding month, pure arithmetic (no date -v/-d split).
-prev_month() {
-	local y="${1%%-*}" m="${1#*-}"
-	m=$((10#$m - 1))
-	if [ "$m" -eq 0 ]; then
-		m=12
-		y=$((y - 1))
-	fi
-	printf '%04d-%02d' "$y" "$m"
+# epoch_to_iso SECS — ISO8601Z; BSD date first, GNU fallback.
+epoch_to_iso() {
+	date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null ||
+		date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null
 }
 
 # iso_to_epoch ISO8601Z — epoch seconds; BSD date first, GNU fallback.
@@ -161,27 +155,11 @@ pane_is_parked() {
 	[ "$out" = "$(printf '%s\037hibernated' "$pane")" ]
 }
 
-# last_journal_ts PANE — ts of PANE's last non-hibernated journal event, from
-# the current + previous month files only (on-demand; the files run ~60MB/month).
-last_journal_ts() {
-	local pane="$1" cur f
-	local -a files=()
-	cur=$(date -u +%Y-%m)
-	for f in "$JOURNAL_DIR/events-$(prev_month "$cur").jsonl" "$JOURNAL_DIR/events-$cur.jsonl"; do
-		[ -f "$f" ] && files+=("$f")
-	done
-	[ "${#files[@]}" -gt 0 ] || return 0
-	grep -h -F "\"pane\":\"$pane\"" "${files[@]}" 2>/dev/null |
-		jq -r 'select(.state != "hibernated") | .ts // empty' 2>/dev/null | tail -n 1
-}
-
-# idle_age RECFILE — human age since the pane's last real activity (journal),
-# falling back to the hibernation timestamp.
+# idle_age RECFILE — human age since the pane's last real activity, recorded at
+# hibernate time, falling back to the hibernation timestamp.
 idle_age() {
-	local recfile="$1" pane ts epoch now
-	pane=$(jq -r '.pane // empty' "$recfile" 2>/dev/null)
-	ts=$(last_journal_ts "$pane")
-	[ -n "$ts" ] || ts=$(jq -r '.hibernatedAt // empty' "$recfile" 2>/dev/null)
+	local recfile="$1" ts epoch now
+	ts=$(jq -r '.lastActivityAt // .hibernatedAt // empty' "$recfile" 2>/dev/null)
 	epoch=$(iso_to_epoch "$ts") || {
 		echo '?'
 		return 0
@@ -405,6 +383,16 @@ PY
 		awk '{ buf = buf $0 "\n" } /[^[:space:]]/ { printf "%s", buf; buf = "" }' \
 			>"$STATE_DIR/$sid.screen.txt" || true
 
+	# The idle instant is the last real activity; a done pane has none recorded,
+	# so it falls back to now.
+	local at idle_since last_activity
+	at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	idle_since=$(tmux show-options -pqv -t "$pane" @agent_idle_since 2>/dev/null)
+	case $idle_since in
+	'' | *[!0-9]*) last_activity=$at ;;
+	*) last_activity=$(epoch_to_iso "$idle_since") || last_activity=$at ;;
+	esac
+
 	local tmp="$STATE_DIR/$sid.json.tmp.$$"
 	if ! jq -n \
 		--arg sid "$sid" --arg pane "$pane" --arg key "$pane_key" \
@@ -412,11 +400,11 @@ PY
 		--arg window_name "$window_name" --arg kind "$kind" \
 		--arg rollout "$rollout_path" --arg cli "$cli_version" \
 		--arg executable "$executable" --arg bundle "$mcp_bundle" \
-		--arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+		--arg at "$at" --arg last_activity "$last_activity" \
 		--argjson flags "$flags_json" --argjson rss "$rss_kb" \
 		'{schemaVersion: 2, kind: $kind, sessionId: $sid, pane: $pane, paneKey: $key, windowName: $window_name, cwd: $cwd,
 		  configDir: $config_dir, flags: $flags, name: $name,
-		  hibernatedAt: $at, rssKb: $rss}
+		  hibernatedAt: $at, lastActivityAt: $last_activity, rssKb: $rss}
 		 + (if $kind == "codex" then {rolloutPath: $rollout, cliVersion: $cli,
 		    executable: $executable} + (if $bundle == "" then {} else {mcpBundle: $bundle} end)
 		    else {} end)' >"$tmp"; then
@@ -508,7 +496,6 @@ cmd_park() {
 		while :; do read -rsn1 _ 2>/dev/null || sleep 60; done
 	fi
 
-	# Age from journal BEFORE re-journalling the hibernated state below.
 	local age sid label rss_kb kind
 	age=$(idle_age "$recfile")
 	sid=$(jq -r '.sessionId' "$recfile" 2>/dev/null)

@@ -288,6 +288,19 @@ EOF
   [ "$(jq -r '.configDir' "$(record)")" = "$cfg" ]
 }
 
+@test "hibernate records lastActivityAt from the pane's idle instant" {
+  pane=$(launch_claude_pane)
+  tx set-option -p -t "$pane" @agent_state idle
+  tx set-option -p -t "$pane" @agent_idle_since 1700000000
+  run "$SCRIPT" hibernate "$pane"
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.lastActivityAt' "$(record)")" = 2023-11-14T22:13:20Z ]
+  # The list's idle age reads that instant, not the moment of hibernation.
+  expected="$((($(date -u +%s) - 1700000000) / 86400))d"
+  run "$SCRIPT" list
+  [ "$(printf '%s\n' "$output" | awk -F '\037' '$1 == "sid-test" { print $4 }')" = "$expected" ]
+}
+
 @test "thaw respawns claude with --resume, the flags and the account, then cleans up" {
   acct=work
   cfg="$HOME/.claude-profiles/code/$acct"
