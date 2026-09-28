@@ -30,7 +30,8 @@ The logic is spread across several files - change them as a set:
   absence age. Full tool inputs are deliberately not recorded (file contents /
   command lines can carry secrets). Fail-open, needs jq; disable with
   `AGENT_JOURNAL_DISABLE=1`, relocate with `AGENT_JOURNAL_DIR`. Monthly files:
-  retention is deleting old months. The **plan viewer**
+  the sweep's `journal_retain` keeps the current and previous month plain,
+  gzips the two before them and deletes anything older. The **plan viewer**
   ([`scripts/claude-plan-popup.sh`](../scripts/claude-plan-popup.sh) via `prefix +
   T` → "Claude: view plan") is a live *reader* of this journal, not only a
   history consumer: its pure core
