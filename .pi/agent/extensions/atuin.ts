@@ -9,9 +9,13 @@
  * Then restart pi or run /reload.
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const ATUIN_AUTHOR = "pi";
+// Local edit: agent history goes to its own DB (see ~/docs/commands.md).
+const ATUIN_BIN = join(homedir(), ".local/bin/atuin-agent");
 const ATUIN_TIMEOUT_MS = 10_000;
 
 async function startHistory(
@@ -21,7 +25,7 @@ async function startHistory(
 ): Promise<string | undefined> {
 	try {
 		const result = await pi.exec(
-			"atuin",
+			ATUIN_BIN,
 			["history", "start", "--author", ATUIN_AUTHOR, "--", command],
 			{ cwd, timeout: ATUIN_TIMEOUT_MS },
 		);
@@ -43,7 +47,7 @@ async function endHistory(
 ): Promise<void> {
 	try {
 		await pi.exec(
-			"atuin",
+			ATUIN_BIN,
 			["history", "end", historyId, "--exit", String(exitCode)],
 			{ cwd, timeout: ATUIN_TIMEOUT_MS },
 		);

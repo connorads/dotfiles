@@ -14,14 +14,14 @@
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-secret-paths-codex.py\"" } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-mutating-api-codex.py\"" } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-git-destructive-codex.py\"" } ] },
-      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
     ],
     "PostToolUse": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] },
-      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
     ],
     "PostToolUseFailure": [
-      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
     ],
     "PermissionRequest": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" blocked codex || true", "timeout": 10 } ] }

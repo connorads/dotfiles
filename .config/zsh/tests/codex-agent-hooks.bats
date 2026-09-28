@@ -95,7 +95,7 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
     # and the Bash guards (deliberately blocking, exit 2) coexist with the
     # agent-state hooks and are exempt from these assertions. Exempted by
     # naming convention, so a new guard-*-codex.py needs no edit here.
-    [[ "$cmd" == "atuin hook codex"* ]] && continue
+    [[ "$cmd" == *"atuin-agent\" hook codex"* ]] && continue
     [[ "$cmd" == *"guard-"*"-codex.py"* ]] && continue
     seen=1
     # By role, not by binary: a hook either calls agent-state.sh directly, or
