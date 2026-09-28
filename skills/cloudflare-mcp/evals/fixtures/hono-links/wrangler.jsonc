@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "links",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-02",
+  "kv_namespaces": [{ "binding": "LINKS", "id": "3f1c9a0e5b7d4c2a9e8f6d1b0a2c4e6f" }],
+  "vars": { "API_TOKEN_HEADER": "x-api-key" },
+  "observability": { "enabled": true }
+}

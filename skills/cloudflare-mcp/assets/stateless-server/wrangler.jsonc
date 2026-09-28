@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "stateless-mcp-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-28",
+  // agents/mcp/server imports node:async_hooks.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+}

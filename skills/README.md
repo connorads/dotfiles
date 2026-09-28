@@ -22,6 +22,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `hk` | Set up `hk` git hooks | `pnpm dlx skills add connorads/dotfiles -s hk` |
 | `agent-readiness` | Audit a repo for agent readiness with a gated, Factory-comparable score | `pnpm dlx skills add connorads/dotfiles -s agent-readiness` |
 | `cloudflare-workers-deployments` | Deploy and protect Cloudflare Workers with Workers Builds and Access | `pnpm dlx skills add connorads/dotfiles -s cloudflare-workers-deployments` |
+| `cloudflare-mcp` | Build, migrate, secure and test remote MCP servers on Cloudflare Workers | `pnpm dlx skills add connorads/dotfiles -s cloudflare-mcp` |
 | `accessibility` | Screen-reader-first a11y (WCAG 2.2 AA) | `pnpm dlx skills add connorads/dotfiles -s accessibility` |
 | `holistic-ux` | UX via systems thinking and service design | `pnpm dlx skills add connorads/dotfiles -s holistic-ux` |
 | `ui-design` | Build application screens and complete task flows | `pnpm dlx skills add connorads/dotfiles -s ui-design` |
