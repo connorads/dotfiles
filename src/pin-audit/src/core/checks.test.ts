@@ -16,13 +16,15 @@ const noProbes: Probes = {
   ghStableRelease: () => Promise.reject(new Error("ghStableRelease not stubbed")),
   miseOutdatedBump: () => Promise.reject(new Error("miseOutdatedBump not stubbed")),
   hkVersions: () => Promise.reject(new Error("hkVersions not stubbed")),
+  handoffVersions: () => Promise.reject(new Error("handoffVersions not stubbed")),
 };
 
-/** drift and hk-pin always probe, so cases that don't exercise them still need them answered. */
+/** The always-probing checks, answered so cases that don't exercise them stay quiet. */
 const quietDrift: Probes = {
   ...noProbes,
   miseOutdatedBump: async () => noDrift,
   hkVersions: async () => hkMatch,
+  handoffVersions: async () => handoffMatch,
 };
 
 const checkById = (id: string, probes: Probes = noProbes): Check => {
@@ -64,6 +66,22 @@ const hk = (pinned: string | null, installed: string | null): Probe => ({
 });
 
 const hkMatch = hk("2.0.1", "2.0.1");
+
+const CLAUDE_PY = "/home/u/src/handoff/src/handoff/formats/claude.py";
+const CODEX_PY = "/home/u/src/handoff/src/handoff/formats/codex.py";
+
+const handoff = (
+  claude: [string | null, string | null],
+  codex: [string | null, string | null],
+): Probe => ({
+  kind: "handoffVersions",
+  agents: [
+    { cli: "claude", pinned: claude[0], pinFile: CLAUDE_PY, installed: claude[1] },
+    { cli: "codex", pinned: codex[0], pinFile: CODEX_PY, installed: codex[1] },
+  ],
+});
+
+const handoffMatch = handoff(["2.1.283", "2.1.283"], ["0.156.0", "0.156.0"]);
 
 describe("rembg", () => {
   const pinned = config({ "pipx:rembg": entry("2.0.69") });
@@ -192,6 +210,33 @@ describe("hk-pin", () => {
   });
 });
 
+describe("handoff-drift", () => {
+  const anyCfg = config({});
+
+  test("OK per agent while handoff's version matches the installed CLI", () => {
+    expect(verdicts("handoff-drift", anyCfg, handoffMatch).map(render)).toEqual([
+      "pin-audit: OK   handoff-drift - claude 2.1.283 matches handoff",
+      "pin-audit: OK   handoff-drift - codex 0.156.0 matches handoff",
+    ]);
+  });
+
+  test("flags each agent whose installed CLI moved past handoff", () => {
+    const probe = handoff(["2.1.215", "2.1.283"], ["0.144.6", "0.156.0"]);
+    expect(verdicts("handoff-drift", anyCfg, probe).map(render)).toEqual([
+      `pin-audit: FLAG handoff-drift - handoff targets claude 2.1.215, installed is 2.1.283; ` +
+        `re-test handoff against it and bump the version in ${CLAUDE_PY}`,
+      `pin-audit: FLAG handoff-drift - handoff targets codex 0.144.6, installed is 0.156.0; ` +
+        `re-test handoff against it and bump the version in ${CODEX_PY}`,
+    ]);
+  });
+
+  test("a version it could not read degrades that agent to SKIP", () => {
+    const got = verdicts("handoff-drift", anyCfg, handoff([null, "2.1.283"], ["0.156.0", null]));
+    expect(got.map((v) => v.kind)).toEqual(["skip", "skip"]);
+    expect(verdict("handoff-drift", anyCfg, unavailable).kind).toBe("skip");
+  });
+});
+
 describe("drift", () => {
   const anyCfg = config({});
 
@@ -272,9 +317,10 @@ describe("audit", () => {
       ghStableRelease: async () => ({ kind: "stableRelease", tag: null }),
       miseOutdatedBump: async () => noDrift,
       hkVersions: async () => hkMatch,
+      handoffVersions: async () => handoffMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "ok", "ok"]);
   });
 
   test("flattens drift's per-tool verdicts in with the conditional ones", async () => {
@@ -287,9 +333,10 @@ describe("audit", () => {
         rows: [row("uv", "0.11", "0.12", "0.12.4"), row("gcloud", "573", "580", "580.0.0")],
       }),
       hkVersions: async () => hkMatch,
+      handoffVersions: async () => handoffMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "flag", "flag"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "ok", "flag", "flag"]);
   });
 
   test("probes overlap rather than running one after another", async () => {
@@ -308,20 +355,28 @@ describe("audit", () => {
       npmLatest: held("npm"),
       ghStableRelease: held("gh"),
       hkVersions: held("hk"),
+      handoffVersions: held("handoff"),
       miseOutdatedBump: held("outdated"),
     };
 
     const running = audit(full, buildChecks(probes));
     await Promise.resolve();
-    // All five are blocked on the same gate, so none can have finished first.
-    expect(started).toEqual(["mise", "npm", "gh", "hk", "outdated"]);
+    // All six are blocked on the same gate, so none can have finished first.
+    expect(started).toEqual(["mise", "npm", "gh", "hk", "handoff", "outdated"]);
     release();
-    expect((await running).map((v) => v.kind)).toEqual(["info", "skip", "skip", "skip", "skip"]);
+    expect((await running).map((v) => v.kind)).toEqual([
+      "info",
+      "skip",
+      "skip",
+      "skip",
+      "skip",
+      "skip",
+    ]);
   });
 
   test("skips the probe entirely when the pin is already gone", async () => {
-    // drift and hk-pin are unconditional, so only the three conditional probes stay unstubbed.
+    // drift, hk-pin and handoff-drift are unconditional, so only the three conditional probes stay unstubbed.
     const got = await audit(config({}), buildChecks(quietDrift));
-    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok", "ok", "ok", "ok"]);
   });
 });
