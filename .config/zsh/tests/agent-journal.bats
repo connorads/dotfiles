@@ -99,6 +99,25 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
   [ "$(journal_lines | jq -rs '.[1].state')" = blocked ]
 }
 
+@test "a repeat of the same state and kind writes no journal line" {
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude </dev/null
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude </dev/null
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working codex </dev/null
+
+  [ "$(journal_lines | wc -l | tr -d ' ')" = 2 ]
+  [ "$(journal_lines | jq -rs '.[1].kind')" = codex ]
+  [ "$(tx show-options -pqv -t "$PANE" @agent_kind)" = codex ]
+}
+
+@test "a repeat state still cancels a pending shell-return retirement" {
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude </dev/null
+  tx set-option -p -t "$PANE" @agent_presence_absent_since 123
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude </dev/null
+
+  [ -z "$(tx show-options -pqv -t "$PANE" @agent_presence_absent_since)" ]
+  [ "$(journal_lines | wc -l | tr -d ' ')" = 1 ]
+}
+
 @test "seen that ages done to idle is journalled; a no-op seen is not" {
   tx set-option -p -t "$PANE" @agent_state done
   env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" seen </dev/null

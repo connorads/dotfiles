@@ -43,6 +43,7 @@
       {
         "hooks": [
           {
+            "async": true,
             "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true",
             "type": "command"
           }
