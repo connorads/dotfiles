@@ -1162,6 +1162,13 @@
       "Edit(~/.zshenv)"
     ]
   },
+  "pluginConfigs": {
+    "agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-and-agents-md"
+      }
+    }
+  },
   "showClearContextOnPlanAccept": true,
   "skipDangerousModePermissionPrompt": true,
   "statusLine": {
