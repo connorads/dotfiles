@@ -48,7 +48,7 @@ from handoff.ir import (
 
 __all__ = ["load", "write"]
 
-CLAUDE_CODE_VERSION = "2.1.215"
+CLAUDE_CODE_VERSION = "2.1.283"
 """`CLAUDE_CODE_VERSION` written into materialised session lines."""
 
 

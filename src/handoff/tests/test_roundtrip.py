@@ -124,7 +124,7 @@ def test_materializes_canonical_codex_layout(
         text = path.read_text(encoding="utf-8")
         assert '"type":"input_image"' in text
         assert '"name":"Read"' in text
-        assert '"cli_version":"0.144.6"' in text
+        assert '"cli_version":"0.158.0"' in text
     finally:
         connection.close()
 
@@ -183,7 +183,7 @@ def test_materialized_codex_sessions_include_turn_events(tmp_path: Path) -> None
         session_meta = next(value for value in lines if value.get("type") == "session_meta")
         payload = session_meta["payload"]
         assert payload.get("model_provider") == "openai"
-        assert payload.get("cli_version") == "0.144.6"
+        assert payload.get("cli_version") == "0.158.0"
         assert payload.get("history_mode") == "legacy"
         assert payload.get("base_instructions") is None
 
@@ -227,7 +227,7 @@ def test_materializes_canonical_claude_layout(
     saw_structured_tool_result = False
     for line in path.read_text(encoding="utf-8").splitlines():
         value = json.loads(line)
-        assert value.get("version") == "2.1.215"
+        assert value.get("version") == "2.1.283"
         assert value.get("entrypoint") == "cli"
         message = value.get("message")
         if message is not None:
