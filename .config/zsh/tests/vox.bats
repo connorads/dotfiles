@@ -136,7 +136,7 @@ stub_mw() {
 #!/usr/bin/env bash
 printf 'mw %s\n' "$*" >>"$TEST_LOG"
 case "$*" in
-*mic.wav*)
+*mic.wav* | *mic.opus*)
   printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hello there"}]}\n'
   ;;
 *)
@@ -760,7 +760,7 @@ EOF
 
 # --- transcribe: redoing a recording in place --------------------------------
 #
-# The stored WAVs are the source of truth; JSON and transcript are regenerable.
+# The stored audio is the source of truth; JSON and transcript are regenerable.
 # So a recording whose far side was transcribed to nothing is redone where it
 # is, not minted again as a one-track import.
 
@@ -835,18 +835,35 @@ EOF
   [[ "$stderr" == *"usage: vox transcribe <path>"* ]]
 }
 
-@test "transcribe refuses a recording with no WAV tracks" {
+@test "transcribe re-runs a compacted recording from its Opus tracks" {
   stub_mw
   dir="$VOX_STORE/2026-07-28-140312-old"
   mkdir -p "$dir"
-  printf 'OggS' >"$dir/mic.opus"
+  printf 'OggSmic' >"$dir/mic.opus"
+  printf 'OggSsys' >"$dir/sys.opus"
+  printf '[00:00:00] Me: stale\n' >"$dir/transcript.md"
+
+  vox transcribe "$dir"
+
+  [ "$status" -eq 0 ]
+  # Compacting is lossy but not a dead end: mw demuxes Opus itself.
+  grep -q "^mw transcribe $dir/mic.opus " "$TEST_LOG"
+  grep -q "^mw transcribe $dir/sys.opus " "$TEST_LOG"
+  [ "$(sed -n 1p "$dir/transcript.md")" = "[00:00:00] Me: hello there" ]
+  [[ "$(cat "$dir/transcript.md")" == *"Speaker 1: yes hello"* ]]
+}
+
+@test "transcribe refuses a recording with no audio left" {
+  stub_mw
+  dir="$VOX_STORE/2026-07-28-140312-old"
+  mkdir -p "$dir"
   printf '[00:00:00] Me: hello\n' >"$dir/transcript.md"
 
   vox transcribe "$dir"
 
   [ "$status" -eq 1 ]
-  [[ "$stderr" == *"no WAV tracks"* ]]
-  [[ "$stderr" == *"compacted"* ]]
+  [[ "$stderr" == *"no audio tracks"* ]]
+  [[ "$stderr" == *"pruned"* ]]
   ! grep -q '^mw ' "$TEST_LOG"
   # Nothing was touched on the way out.
   [ "$(cat "$dir/transcript.md")" = "[00:00:00] Me: hello" ]

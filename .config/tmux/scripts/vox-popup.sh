@@ -236,7 +236,7 @@ ctrl-p)
 	fi
 	;;
 ctrl-t)
-	# Unconfirmed: the WAVs stay, so a rerun costs time and nothing else. stderr
+	# Unconfirmed: the audio stays, so a rerun costs time and nothing else. stderr
 	# stays on the tty so mw's per-track progress shows while it runs.
 	for d in "${dirs[@]}"; do
 		if "$VOX_BIN" transcribe "$d" >/dev/null; then
