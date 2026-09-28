@@ -94,13 +94,11 @@
 
   # -- Nix Settings --
   nix.settings.experimental-features = "nix-command flakes";
-  nix.settings.trusted-users = [
-    "@admin"
-    "connorads"
-  ];
 
   # Linux builder VM for building aarch64-linux (e.g., Pi images).
-  # Kept as a reference template — enable when cross-building.
+  # Kept as a reference template — enable when cross-building. Enabling it also
+  # needs nix.settings.trusted-users to include this user, so remote builds can
+  # use the builder.
   # Start manually when needed: sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.linux-builder.plist
   nix.linux-builder = {
     enable = false;
