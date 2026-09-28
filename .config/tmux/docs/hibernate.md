@@ -51,9 +51,9 @@ alternatives live in [`docs/adr/0009`](../../../docs/adr/0009-hibernate-agent-pa
   `hibernated: <name> (idle Nd, freed NNN MB) - Enter to thaw`, and thaws on
   Enter via `run-shell -b` - server-side, outside the pane's own process group,
   or the respawn would kill park mid-thaw before the record is cleaned up.
-- **Idle age comes from the journal** (`last_journal_ts`), grepping only the
-  current and previous month's `events-*.jsonl` on demand - those files run
-  ~60 MB/month.
+- **Idle age comes from the record.** Hibernate writes `lastActivityAt` from
+  the pane's `@agent_idle_since` (a `done` pane has none, so it is the
+  hibernation instant); older records fall back to `hibernatedAt`.
 - **The sweep exempts `hibernated`, and so does `clear`.** A parked pane's
   foreground IS a bare shell, which is the sweep's "the agent died" signal, so
   without the exemption the dot goes within one poll. `agent-state.sh clear`
