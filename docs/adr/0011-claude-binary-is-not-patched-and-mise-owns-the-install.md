@@ -1,5 +1,8 @@
 # The Claude binary is not patched for channels, and mise owns the install
 
+> Partly superseded by [0016](0016-claude-patches-stay-only-while-a-probe-shows-an-effect.md) -
+> the computer-use and session-reaper patches are deleted; the rest stands.
+
 ## Context
 
 Claude Code's `--channels` flag is gated on the `tengu_harbor` feature flag and on an
