@@ -27,10 +27,10 @@ CLOUDSDK_PYTHON = "{% if os() == 'macos' or arch() == 'arm64' %}{{env.HOME}}/.lo
 python = "3.14"
 node = "lts"
 pnpm = "12"
-# Keep before hk and ripwire: mise 2026.8.6 treats their skills/ directories as commands.
+# Keep before hk and ripwire: mise (2026.8.6 through 2026.9.12) treats their skills/ directories as commands.
 "npm:skills" = "1"
 bun = "1.4"
-aube = "1"
+aube = "2"
 uv = "0.12"
 "rust" = "1"
 hk = "2"
