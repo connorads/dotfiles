@@ -431,7 +431,6 @@ _up_commit_lock() {
 _up_reapply_patches() {
   local rc=0 patch
   local -a patches=(
-    claude-session-reaper-patch
     claude-telegram-clear-patch
   )
   for patch in "${patches[@]}"; do
