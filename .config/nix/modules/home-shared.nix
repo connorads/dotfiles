@@ -214,6 +214,6 @@
     pin_tmux_plugin "tmux-resurrect" "tmux-plugins/tmux-resurrect" "cff343cf9e81983d3da0c8562b01616f12e8d548"
     pin_tmux_plugin "tmux-continuum" "tmux-plugins/tmux-continuum" "0698e8f4b17d6454c71bf5212895ec055c578da0"
     pin_tmux_plugin "tmux-cpu" "tmux-plugins/tmux-cpu" "bcb110d754ab2417de824c464730c412a3eb2769"
-    pin_tmux_plugin "tmux-fzf-links" "alberti42/tmux-fzf-links" "820fc0cb39168486e3884b81592d69b57191a272"
+    pin_tmux_plugin "tmux-fzf-links" "alberti42/tmux-fzf-links" "2073c217b2144557d47ba5f30630fb3d8f92a748"
   '';
 }
