@@ -63,8 +63,7 @@ exit 0
 EOF
 
   for cmd in brew macup-check tmux-upstream pin-audit \
-    claude-computer-use-patch claude-session-reaper-patch \
-    claude-telegram-clear-patch; do
+    claude-session-reaper-patch claude-telegram-clear-patch; do
     write_stub "$cmd" <<EOF
 #!/usr/bin/env bash
 echo "$cmd \$*" >>"$TEST_LOG"
