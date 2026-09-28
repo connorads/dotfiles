@@ -105,6 +105,10 @@
           {
             "command": "python3 ~/.claude/hooks/guard-secret-paths.py",
             "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/guard-git-destructive.py",
+            "type": "command"
           }
         ],
         "matcher": "Bash"
