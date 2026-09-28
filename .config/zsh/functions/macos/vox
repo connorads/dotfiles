@@ -23,7 +23,8 @@
 # The store convention is the load-bearing decision:
 #
 #   ~/Recordings/vox/2026-07-28-140312-triver-kickoff/
-#       mic.wav  sys.wav      you / them (sys silent => it was a monologue)
+#       mic.wav  sys.wav      you / them (sys silent => it was a monologue);
+#                             .opus instead once compacted, still re-transcribable
 #       mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
 #       transcript.md         merged, name-fixed - the artefact everything consumes
 #       vox.log               voxtap + mw stderr (mw reports progress there)
@@ -289,19 +290,33 @@ _vox_require_transcript() {
 # only witness that there was speech to lose, which is why the check is a
 # measurement rather than a rule about any particular cause.
 _vox_report_blanked() {
-	local dir=$1 track measured mean msg
+	local dir=$1 track audio measured mean msg
 	command -v ffmpeg >/dev/null 2>&1 || return 0
 	for track in mic sys; do
-		[[ -s "$dir/$track.wav" ]] || continue
-		measured=$(ffmpeg -hide_banner -nostats -i "$dir/$track.wav" \
+		audio=$(_vox_track_audio "$dir" "$track") || continue
+		measured=$(ffmpeg -hide_banner -nostats -i "$audio" \
 			-af volumedetect -f null - 2>&1)
 		print -r -- "$measured" | vox_track_blanked "$dir" "$track" || continue
 		# Audible is what it just concluded, so the level always parses here.
 		mean=$(print -r -- "$measured" | vox_mean_volume)
-		msg="vox: $track.wav is audible (${mean} dB mean) but transcribed to no segments — the speech was lost, not absent; see $dir/vox.log"
+		msg="vox: ${audio:t} is audible (${mean} dB mean) but transcribed to no segments — the speech was lost, not absent; see $dir/vox.log"
 		print -u2 -- "$msg"
 		print -r -- "$msg" >>"$dir/vox.log"
 	done
+}
+
+# _vox_track_audio DIR TRACK - the audio a track is stored as: its WAV while
+# the capture's original is there, else the Opus that compacting left. mw and
+# ffmpeg both demux either, so nothing downstream needs to know which.
+_vox_track_audio() {
+	local f
+	for f in "$1/$2".{wav,opus}; do
+		[[ -s "$f" ]] && {
+			print -r -- "$f"
+			return 0
+		}
+	done
+	return 1
 }
 
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
@@ -311,14 +326,14 @@ _vox_transcribe() {
 	local dir=$1
 	_vox_need mw "$vox_python" || return 1
 
-	local track speakers
+	local track audio speakers
 	for track in mic sys; do
-		[[ -s "$dir/$track.wav" ]] || continue
+		audio=$(_vox_track_audio "$dir" "$track") || continue
 		# --no-speakers on the mic track: it is definitionally you, and asking
 		# for diarisation would only invent a second speaker out of noise.
 		[[ "$track" == sys ]] && speakers=--speakers || speakers=--no-speakers
 		print -u2 -- "vox: transcribing $track…"
-		mw transcribe "$dir/$track.wav" --model "$vox_model" --format json "$speakers" \
+		mw transcribe "$audio" --model "$vox_model" --format json "$speakers" \
 			>"$dir/$track.json" 2>>"$dir/vox.log" ||
 			print -u2 -- "vox: transcribing $track failed — see $dir/vox.log"
 	done
@@ -371,7 +386,7 @@ _vox_transcribe_file() {
 }
 
 # _vox_retranscribe REC - re-run transcription on a recording that already
-# exists, in place: the stored WAVs are the source of truth and the per-track
+# exists, in place: the stored audio is the source of truth and the per-track
 # JSON and transcript.md are regenerable from them, so they are overwritten
 # without a backup. The path out of `vox stop` for a transcript that went
 # wrong - a track transcribed to nothing, a model since improved - without
@@ -390,9 +405,9 @@ _vox_retranscribe() {
 		_vox_die "no such recording: $rec"
 		return 1
 	}
-	local -a wavs=("$rec"/{mic,sys}.wav(N.))
-	(( $#wavs )) || {
-		_vox_die "no WAV tracks in ${rec:t} (compacted?)"
+	local -a tracks=("$rec"/{mic,sys}.{wav,opus}(N.))
+	(( $#tracks )) || {
+		_vox_die "no audio tracks in ${rec:t} (pruned?)"
 		return 1
 	}
 	vox_write_job "$$" "$(date +%s)" "$rec"

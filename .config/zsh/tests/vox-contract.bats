@@ -114,6 +114,20 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [ "$status" -eq 0 ]
 }
 
+@test "mw reads an Ogg Opus track into the same schema" {
+  require_mw
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  # Compacted recordings keep only Opus, so `vox transcribe` on one rests on mw
+  # demuxing Ogg Opus as it does WAV.
+  ffmpeg -nostdin -hide_banner -loglevel error -i "$VOX_CONTRACT_WAV" \
+    -c:a libopus -b:a 32k -ac 1 -y "$BATS_TEST_TMPDIR/speech.opus"
+  mw transcribe "$BATS_TEST_TMPDIR/speech.opus" --format json --no-speakers \
+    >"$BATS_TEST_TMPDIR/opus.json" 2>/dev/null
+
+  assert_schema "$BATS_TEST_TMPDIR/opus.json"
+  grep -qi 'kick' "$BATS_TEST_TMPDIR/opus.json"
+}
+
 @test "merge.py renders real mw output into a timestamped transcript" {
   require_mw
   run python3 "$MERGE_REAL" --me "$PLAIN"
