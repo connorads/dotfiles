@@ -53,7 +53,7 @@
       {
         "hooks": [
           {
-            "command": "atuin hook claude-code",
+            "command": "~/.local/bin/atuin-agent hook claude-code",
             "type": "command"
           }
         ],
@@ -73,7 +73,7 @@
       {
         "hooks": [
           {
-            "command": "atuin hook claude-code",
+            "command": "~/.local/bin/atuin-agent hook claude-code",
             "type": "command"
           }
         ],
@@ -126,7 +126,7 @@
       {
         "hooks": [
           {
-            "command": "atuin hook claude-code",
+            "command": "~/.local/bin/atuin-agent hook claude-code",
             "type": "command"
           }
         ],
