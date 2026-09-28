@@ -63,7 +63,7 @@ exit 0
 EOF
 
   for cmd in brew macup-check tmux-upstream pin-audit \
-    claude-session-reaper-patch claude-telegram-clear-patch; do
+    claude-telegram-clear-patch; do
     write_stub "$cmd" <<EOF
 #!/usr/bin/env bash
 echo "$cmd \$*" >>"$TEST_LOG"
@@ -250,7 +250,7 @@ EOF
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
-  grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
+  grep -qF 'claude-telegram-clear-patch --reapply' "$TEST_LOG"
   [[ "$output" == *"=> UPDATE COMPLETE (update)"* ]]
 }
 
@@ -509,7 +509,7 @@ EOF
   run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
   grep -qF 'mise install' "$TEST_LOG"
-  grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
+  grep -qF 'claude-telegram-clear-patch --reapply' "$TEST_LOG"
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'mise lock' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
