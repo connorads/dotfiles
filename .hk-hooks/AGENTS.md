@@ -36,8 +36,8 @@ differing only in case are one file on macOS and two on the four Linux hosts),
 plus the formatters/linters (shfmt, shellcheck, rumdl for markdown lint,
 `rumdl-format` for its formatting half, nixfmt...).
 
-The `hk-test` step runs the steps' own `tests {}` blocks whenever `hk.pkl` is
-staged. Gates fail **open** here - a glob matching nothing exits 0 - so
+The `hk-test` step runs the steps' own `tests {}` blocks whenever `hk.pkl` or
+a script or config those blocks exercise is staged. Gates fail **open** here - a glob matching nothing exits 0 - so
 `gate-coverage.py` asserts the wiring still points at real paths and this
 asserts the checkers still reject what they exist to reject. It strips
 `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`: `Builtins.actionlint`'s bundled tests run
@@ -228,9 +228,10 @@ step. The script dirs carry a `pytest.ini` with the plugin-free strictness
 A flat script dir has no `pyproject.toml` for that step to discover, so its
 suite is reached by naming the dir instead: `py-tests-dir.sh <root>` runs
 `uv run --with pytest python -m pytest` there, the same invocation `py-checks`
-uses. `py-tests-tmux` is the one step wired to it - the fzf-links path core
-decides which file `prefix + u` opens, and being pure it needs nothing but
-`uv`. The other script dirs still run only from `mise run py-checks`; add a
+uses. Two steps are wired to it. `py-tests-tmux` covers the fzf-links path
+core, which decides which file `prefix + u` opens and, being pure, needs nothing
+but `uv`. `py-tests-hk-hooks` runs the checkers' own suites when a checker
+changes. The other script dirs still run only from `mise run py-checks`; add a
 step per dir if that stops being enough.
 
 The `bats-scoped` step (pre-commit) gates the zsh bats suite

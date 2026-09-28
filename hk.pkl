@@ -77,7 +77,20 @@ local fast_steps = new Mapping<String, Step> {
     //
     // A CommandSpec, not a plain string: the builtin declares `effect = "write"`
     // and a string override drops that silently.
+    //
+    // The glob adds each script or config a `tests {}` block exercises, so a
+    // checker edit runs its tests without hk.pkl being staged too.
     ["hk-test"] = (Builtins.hk_test) {
+        glob = List(
+            "hk.pkl",
+            ".hk-hooks/zsh-fn-header-check.sh",
+            ".hk-hooks/link-check.sh",
+            ".hk-hooks/codex-slot-read.sh",
+            ".hk-hooks/oxlintrc.json",
+            ".hk-hooks/quarantine-drift.py",
+            ".hk-hooks/tsv-separator-lint.py",
+            ".hk-hooks/skills-no-local-paths.sh"
+        )
         check = new CommandSpec {
             command = "env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE hk test --quiet"
             effect = "write"
@@ -1094,6 +1107,13 @@ local fast_steps = new Mapping<String, Step> {
             ".config/tmux/pytest.ini"
         )
         check = "bash .hk-hooks/py-tests-dir.sh .config/tmux"
+    }
+
+    // The checkers' own pytest suites (.hk-hooks/test_*.py), so a checker
+    // change runs the tests that pin its detection. Missing uv warns and passes.
+    ["py-tests-hk-hooks"] {
+        glob = List(".hk-hooks/*.py", ".hk-hooks/pytest.ini")
+        check = "bash .hk-hooks/py-tests-dir.sh .hk-hooks"
     }
 
     // Secret scan: block staged secrets before they enter this public repo.
