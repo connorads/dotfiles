@@ -328,6 +328,11 @@ __pycache__/
 /.cargo/**
 !/.cargo/config.toml
 
+# cua-driver: track config only (telemetry opt-out); caches/state are local
+!/.cua-driver/
+/.cua-driver/**
+!/.cua-driver/config.json
+
 !/.local/
 /.local/**
 !/.local/bin/
