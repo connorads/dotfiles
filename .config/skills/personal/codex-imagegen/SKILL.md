@@ -49,6 +49,8 @@ scripts/codex_imagegen.py "<prompt>" -o <out.png> [--quality low|medium|high|aut
   canvas edges, and some edges have a colour fringe. For an asset that needs
   crisp alpha, clamp it (under about 16 to 0, over about 240 to 255) and trim
   to the content, for example with Pillow.
+- **One image per call.** The server ignores `n` (`n: 2` returned one image,
+  checked 2026-09-28). For variations, run several calls in parallel.
 - The script refuses to overwrite `-o` without `--force`. Write variants to
   sibling names (`hero-v2.png`).
 - **Edits reject some phone photos.** A Pixel "UHDR" JPEG (16-bit) came back
