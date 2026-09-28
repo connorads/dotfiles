@@ -96,7 +96,7 @@ fnox = "1"
 # antonmedv's JSON viewer - a name clash, so spell the owner. Its release
 # workflow attests nothing, so the exact pin is the only control: pre-1.0 and
 # experimental, where every release is a breaking one. Bump by hand.
-"github:vercel-labs/fx" = "0.0.3"
+"github:vercel-labs/fx" = "0.0.10"
 # ripwire: ranked symbol map / call graph / blast radius over a repo. Install via
 # mise, never scripts/install.sh - that symlinks 18 bundled skills into
 # ~/.claude/skills and ~/.agents/skills unprompted, and hooks/ logs every matched
