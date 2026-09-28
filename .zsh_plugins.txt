@@ -6,6 +6,11 @@
 # Powerlevel10k (load first for instant prompt)
 romkatv/powerlevel10k pin:604f19a9eaa18e76db2e60b8d446d5f879065f90
 
+# Completion definitions (fpath only), then compinit. Both must precede the
+# OMZ plugins (they call compdef) and fzf-tab (it wraps compinit's widgets).
+zsh-users/zsh-completions path:src kind:fpath pin:f0b1a348a15d9ce710c9487725e103ab8239b828
+$HOME/.config/zsh/compinit.zsh
+
 # OMZ libs
 ohmyzsh/ohmyzsh path:lib/git.zsh pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
 ohmyzsh/ohmyzsh path:lib/clipboard.zsh pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
@@ -17,7 +22,6 @@ ohmyzsh/ohmyzsh path:plugins/brew pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
 
 # Community plugins
 zsh-users/zsh-autosuggestions pin:85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
-zsh-users/zsh-completions pin:f0b1a348a15d9ce710c9487725e103ab8239b828
 Aloxaf/fzf-tab pin:0983009f8666f11e91a2ee1f88cfdb748d14f656
 # fast-syntax-highlighting: zdharma-continuum is the community recovery fork
 # after the original zdharma org was deleted (Oct 2021). The pin above all:
