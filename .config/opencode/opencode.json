@@ -684,7 +684,6 @@
       "yarn run preview*": "allow",
       "yarn run test*": "allow",
       "yarn run typecheck*": "allow",
-      "yazi --version*": "allow",
       "zoxide --version*": "allow",
       "zoxide init*": "allow",
       "zoxide query*": "allow",
