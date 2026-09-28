@@ -72,9 +72,6 @@ let
   # Tier 2 extras: Server/headless — "feels like home" over SSH
   # ---------------------------------------------------------------------------
   serverExtras = with pkgs; [
-    # Navigation
-    yazi
-
     # Git & VCS
     difftastic
     lazygit

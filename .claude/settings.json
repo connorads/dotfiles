@@ -1063,7 +1063,6 @@
       "Bash(yarn run preview:*)",
       "Bash(yarn run test:*)",
       "Bash(yarn run typecheck:*)",
-      "Bash(yazi --version:*)",
       "Bash(yt-dlp:*)",
       "Bash(zfn-link:*)",
       "Bash(zoxide --version:*)",

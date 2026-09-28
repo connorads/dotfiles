@@ -44,12 +44,6 @@ const customDrawerButtons = [
 		action: { type: 'send', data: '\x02g' },
 	},
 	{
-		id: 'tmux-files',
-		label: 'Yazi',
-		description: 'Open Yazi file manager popup',
-		action: { type: 'send', data: '\x02y' },
-	},
-	{
 		id: 'tmux-links',
 		label: 'Links',
 		description: 'Open tmux links picker',
@@ -132,7 +126,6 @@ const preferredDrawerOrder = [
 	'critique',
 	'review',
 	'tmux-git',
-	'tmux-files',
 	'tmux-links',
 	'scratch-shell',
 	'neovim',
