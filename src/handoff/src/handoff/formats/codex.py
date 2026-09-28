@@ -45,7 +45,7 @@ from handoff.ir import (
 
 __all__ = ["load", "write"]
 
-CODEX_CLI_VERSION = "0.144.6"
+CODEX_CLI_VERSION = "0.158.0"
 """`CODEX_CLI_VERSION`."""
 
 # Codex resolves the session's provider by this exact key against its
