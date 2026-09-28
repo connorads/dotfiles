@@ -119,9 +119,9 @@ fnox = "1"
 # Reapply local generated-JS image paste patch after Pi updates. The script
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
-# 0.1.19 lacks provenance after an ESRP publishing switch. Hold until a
-# trusted release follows microsoft/playwright-cli#459.
-"npm:@playwright/cli" = "0.1.18"
+# 0.1.19 shipped without npm provenance (ESRP publishing switch,
+# microsoft/playwright-cli#459). Bump only to a release with provenance.
+"npm:@playwright/cli" = "0.1.21"
 "npm:typescript" = "7"
 # Also pinned in ~/git/kb/mise.toml so that repo documents its own dependency.
 # aube blocks dependency build scripts by default and qmd's native deps need
