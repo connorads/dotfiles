@@ -867,7 +867,7 @@ local fast_steps = new Mapping<String, Step> {
 
     // Keep every secret-path surface in lock-step with the srt denyRead list:
     // Claude Read/Edit deny rules, the shared _secretpaths.py hook core
-    // (Claude + Codex), and the pi agent-guard TS twin, plus the hook wiring
+    // (Claude + Codex), and the pi and opencode TS twins, plus the hook wiring
     // itself. Fires whenever the canonical list, an embedding surface, or the
     // checker is staged.
     ["secret-path-parity"] {
@@ -879,6 +879,7 @@ local fast_steps = new Mapping<String, Step> {
             ".claude/hooks/guard-secret-paths.py",
             ".claude/hooks/guard-secret-paths-codex.py",
             ".pi/agent/extensions/agent-guard/guard.ts",
+            "src/opencode-plugins/src/policy.ts",
             ".hk-hooks/secret-path-parity.py"
         )
         check = "python3 .hk-hooks/secret-path-parity.py"
