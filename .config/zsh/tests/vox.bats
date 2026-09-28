@@ -532,7 +532,7 @@ aged_recording() {
   grep -q "^mw transcribe .*/sys.wav --model .* --format json --speakers$" "$TEST_LOG"
 }
 
-@test "transcribing reads the stored WAV and leaves it byte-identical" {
+@test "transcribing hands mw the captured WAV itself" {
   require_macos
   stub_ffmpeg
   stub_mw
@@ -540,13 +540,41 @@ aged_recording() {
 
   vox
   dir=$output
-  before=$(cksum <"$dir/mic.wav")
   vox stop
 
-  # mw is handed the archive itself - nothing pre-processes the audio, so what
-  # the model hears is exactly what was captured.
+  # Nothing pre-processes the audio, so what the model hears is exactly what
+  # was captured.
   grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
-  [ "$(cksum <"$dir/mic.wav")" = "$before" ]
+}
+
+# real_tracks DIR - swap the voxtap stub's placeholders for 1 s of real audio,
+# so stop's compaction runs a real encode. The stub writes its files once, at
+# start, so nothing overwrites these.
+real_tracks() {
+  local track
+  for track in mic sys; do
+    ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=300:duration=1' \
+      -ar 16000 -ac 1 -c:a pcm_s16le -y "$1/$track.wav"
+  done
+}
+
+@test "stop compacts both tracks to Opus once the transcript succeeds" {
+  require_macos
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  stub_mw
+  stub_voxtap
+
+  vox
+  dir=$output
+  real_tracks "$dir"
+  vox stop
+
+  [ "$status" -eq 0 ]
+  [ -s "$dir/mic.opus" ]
+  [ -s "$dir/sys.opus" ]
+  [ ! -e "$dir/mic.wav" ]
+  [ ! -e "$dir/sys.wav" ]
+  [ "$(sed -n 1p "$dir/transcript.md")" = "[00:00:00] Me: hello there" ]
 }
 
 @test "stop clears the capture state and leaves a transcript to read" {
@@ -666,6 +694,26 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$stderr" == *"no speech recognised"* ]]
   [[ "$stderr" == *"vox.log"* ]]
+}
+
+@test "an empty transcript keeps the WAVs uncompacted" {
+  require_macos
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  stub_mw_silent
+  stub_voxtap
+
+  vox
+  dir=$output
+  real_tracks "$dir"
+  vox stop
+
+  # Real audio and a real ffmpeg, so only the transcript gate can keep these:
+  # the WAV is what an empty transcript gets diagnosed from.
+  [ "$status" -ne 0 ]
+  [ -s "$dir/mic.wav" ]
+  [ -s "$dir/sys.wav" ]
+  [ ! -e "$dir/mic.opus" ]
+  [ ! -e "$dir/sys.opus" ]
 }
 
 @test "stop prints the path even when the transcript is empty" {
