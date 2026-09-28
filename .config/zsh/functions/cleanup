@@ -1047,7 +1047,7 @@ _cleanup_run_target() {
       # Cache only. `brew autoremove` is deliberately excluded: it uninstalls
       # no-longer-needed dependencies, a tooling state change of the
       # rustup/cargo-target class, and nix-darwin already owns which packages
-      # exist (homebrew.onActivation.cleanup = "zap"), so autoremove would
+      # exist (homebrew.onActivation.cleanup = "uninstall"), so autoremove would
       # fight the declarative model.
       brew cleanup --prune=all
       ;;

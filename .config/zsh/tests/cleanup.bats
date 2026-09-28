@@ -529,7 +529,7 @@ EOF
   # proves the cleanup itself ran.
   grep -Fx -- "brew cleanup --prune=all" "$TEST_LOG"
   # autoremove uninstalls dependencies (a tooling state change) and fights the
-  # nix-darwin `cleanup = "zap"` model, so this target must never invoke it.
+  # nix-darwin `cleanup = "uninstall"` model, so this target must never invoke it.
   [[ "$(cat "$TEST_LOG")" != *"autoremove"* ]]
 }
 

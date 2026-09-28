@@ -7,8 +7,8 @@
 # darwin-shared.nix.
 #
 # Intended differences vs the old shared desktop config on this host:
-#   - no desktop casks/masApps (homebrew zap removes them on first switch;
-#     the MAS app RunCat Neo is NOT zapped — remove manually)
+#   - no desktop casks/masApps (homebrew cleanup removes them on first switch;
+#     the MAS app RunCat Neo is NOT removed — remove manually)
 #   - no sudo_local → sudo falls through to password (no Touch ID / key here)
 #   - no GUI app packages, no desktop-app UI defaults, no app associations /
 #     credential helper (shared personal UI defaults still apply via darwin-ui.nix)

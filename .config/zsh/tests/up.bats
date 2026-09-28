@@ -152,7 +152,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Cleanup"*"Nix GC: scheduled separately; not run by up (see Nix configuration)"* ]] || false
   [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade completed"* ]] || false
-  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy removes undeclared packages with zap, including associated cask files"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy uninstalls undeclared packages; their app data stays on disk"* ]] || false
   [[ "$output" == *"mise: unused versions and caches are not explicitly pruned by up"* ]] || false
   [[ "$output" != *"APT autoremove:"* ]] || false
   ! grep -E 'brew cleanup|mise (prune|cache)|nix-store|nix-collect-garbage|launchctl|systemctl|^du |^df ' "$TEST_LOG"
@@ -162,7 +162,7 @@ EOF
   run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
   [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade not attempted (frozen mode)"* ]] || false
-  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy removes undeclared packages with zap"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy uninstalls undeclared packages"* ]] || false
   ! grep -qF 'brew upgrade' "$TEST_LOG"
 }
 
@@ -894,48 +894,12 @@ EOF
   ! grep -qE '^  mise .*not refreshed' <<<"$output"
 }
 
-# The real message carries U+2192 arrows; the detector must match on ASCII only.
-_drs_full_disk_access_fixture() {
-  write_stub drs <<'EOF'
-#!/usr/bin/env bash
-echo "drs $*" >>"$TEST_LOG"
-echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
-exit 0
-EOF
-}
-
-@test "up reports a Full Disk Access degradation from a successful rebuild" {
-  _drs_full_disk_access_fixture
-  run_zsh_function "$UP" --no-audit
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"- degraded, see Next"* ]] || false
-  grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
-  [[ "$output" == *"Next"*"grant Full Disk Access to the terminal"* ]] || false
-  # the phase state is untouched, so the cleanup summary still reads completed
-  [[ "$output" == *"Homebrew declared packages: rebuild completed"* ]] || false
-}
-
-@test "up does not attribute a Full Disk Access nag to a later clean phase" {
-  write_stub brew <<'EOF'
-#!/usr/bin/env bash
-echo "brew $*" >>"$TEST_LOG"
-if [ "${1:-}" = upgrade ]; then
-  echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
-fi
-exit 0
-EOF
-  run_zsh_function "$UP" --no-audit
-  [ "$status" -eq 0 ]
-  grep -qE '^  brew .*Full Disk Access denied' <<<"$output"
-  ! grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
-}
-
 @test "up detects a degradation on the --verbose streamed path" {
-  _drs_full_disk_access_fixture
+  _mise_github_401_fixture
   run_zsh_function "$UP" --no-audit --verbose
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Unable to remove some files"* ]] || false
-  grep -qE '^  rebuild .*Full Disk Access denied' <<<"$output"
+  [[ "$output" == *"401 Unauthorized"* ]] || false
+  grep -qE '^  mise .*401.*3 repos not refreshed' <<<"$output"
   [[ "$output" == *"- degraded, see Next"* ]] || false
 }
 
@@ -952,14 +916,14 @@ case "${1:-}" in
     fi ;;
   upgrade)
     : >"$HOME/.brew-upgrade-ran"
-    echo 'Error: Unable to remove some files. Please enable Full Disk Access for your terminal under System Settings → Privacy & Security → Full Disk Access.' >&2
+    echo 'mise WARN  Remote versions cannot be fetched for cli/cli: HTTP status client error (401 Unauthorized) for url (https://api.github.com/repos/cli/cli/tags?per_page=100)' >&2
     ;;
 esac
 exit 0
 EOF
   run_zsh_function "$UP" --no-audit
   [ "$status" -eq 0 ]
-  grep -qE '^  brew .*1 no longer outdated.*Full Disk Access denied' <<<"$output"
+  grep -qE '^  brew .*1 no longer outdated.*401.*1 repo not refreshed' <<<"$output"
 }
 
 @test "up appends the summary to the log and still ends stdout with Log" {

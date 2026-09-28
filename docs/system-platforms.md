@@ -33,7 +33,7 @@ and let it manage versions side by side; that route authenticates against the
 developer portal rather than the App Store.
 
 `brew bundle cleanup` only uninstalls formulae, casks and taps, so `cleanup =
-"zap"` never removes a MAS app. An Xcode installed while it was a `masApps`
+"uninstall"` never removes a MAS app. An Xcode installed while it was a `masApps`
 entry stays on disk until deleted by hand.
 
 The Command Line Tools stay installed as the baseline: `xcode-select -p` points
