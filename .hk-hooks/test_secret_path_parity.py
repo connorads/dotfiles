@@ -54,6 +54,11 @@ class TestTsExtraction:
         src = 'export const SECRET_PATHS = [\n  ".ssh",\n  ".aws",\n] as const;\n'
         assert _mod.ts_secret_paths(src) == {".ssh", ".aws"}
 
+    def test_extracts_array_without_semicolon(self) -> None:
+        # The opencode policy.ts style: no trailing semicolon.
+        src = 'export const SECRET_PATHS = [\n  ".ssh", ".aws",\n] as const\n\nconst y = ["other"] as const;\n'
+        assert _mod.ts_secret_paths(src) == {".ssh", ".aws"}
+
     def test_missing_array_extracts_nothing(self) -> None:
         assert _mod.ts_secret_paths("export const OTHER = 1;") == set()
 

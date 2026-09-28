@@ -12,8 +12,9 @@ it. It asserts:
      (Read(~/.ssh/**)); files (FILE_PATHS) only the bare form.
   2. _secretpaths.py SECRET_PATHS (shared Claude/Codex hook core) covers srt
      denyRead.
-  3. The pi guard's SECRET_PATHS (guard.ts, TypeScript twin - extracted from
-     the static array literal) covers srt denyRead.
+  3. The pi guard's SECRET_PATHS (guard.ts) and the opencode plugin's
+     (policy.ts), both TypeScript twins extracted from the static array
+     literal, cover srt denyRead.
   4. The wiring is intact: guard-secret-paths.py under hooks.PreToolUse
      (matcher Bash) in settings.json, guard-secret-paths-codex.py in
      .codex/hooks.json PreToolUse, and the pi agent-guard extension files
@@ -38,7 +39,9 @@ from typing import Any
 # as a directory and needs both forms.
 FILE_PATHS = frozenset({"~/.netrc", "~/.zshrc.local", "~/.docker/config.json", "~/.zshenv"})
 
-_TS_SECRET_ARRAY_RE = re.compile(r"export const SECRET_PATHS = \[(.*?)\] as const;", re.DOTALL)
+_TS_SECRET_ARRAY_RE = re.compile(
+    r"export const SECRET_PATHS = \[(.*?)\] as const;?$", re.DOTALL | re.M
+)
 _TS_STRING_RE = re.compile(r'"([^"]+)"')
 
 
@@ -125,6 +128,7 @@ def main() -> int:
     codex_hooks_path = _resolve(".codex/hooks.json")
     secretpaths_path = _resolve(".claude/hooks/_secretpaths.py")
     pi_guard_path = _resolve(".pi/agent/extensions/agent-guard/guard.ts")
+    opencode_policy_path = _resolve("src/opencode-plugins/src/policy.ts")
 
     try:
         srt = json.loads(srt_path.read_text())
@@ -154,6 +158,15 @@ def main() -> int:
         )
     else:
         errors.append(f"pi guard.ts is missing ({pi_guard_path})")
+
+    if opencode_policy_path.exists():
+        errors += check_covers(
+            "opencode policy.ts SECRET_PATHS",
+            ts_secret_paths(opencode_policy_path.read_text()),
+            srt_relative,
+        )
+    else:
+        errors.append(f"opencode policy.ts is missing ({opencode_policy_path})")
 
     errors += check_wiring(
         settings,
