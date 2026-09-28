@@ -309,6 +309,7 @@
 
 !/.config/zsh/
 !/.config/zsh/.editorconfig
+!/.config/zsh/compinit.zsh
 !/.config/zsh/aliases/
 !/.config/zsh/aliases/**
 !/.config/zsh/functions/

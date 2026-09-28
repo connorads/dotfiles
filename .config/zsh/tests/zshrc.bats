@@ -39,3 +39,9 @@ line_of() {
   [ -n "$preamble" ]
   [ "$loop" -lt "$preamble" ]
 }
+
+@test "zsh-completions definitions register at startup" {
+  run zsh -i -c 'print ${+_comps[age]} ${+_comps[ccache]}'
+  [ "$status" -eq 0 ]
+  [ "${lines[-1]}" = "1 1" ]
+}

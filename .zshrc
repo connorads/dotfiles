@@ -71,21 +71,8 @@ if [[ ! -d "$ANTIDOTE_HOME" ]]; then
 fi
 source "$ANTIDOTE_HOME"/antidote.zsh
 
-# Initialise completion system. Regenerate the dump — full compinit, including
-# the slow security audit — at most once a day; otherwise trust the cache (-C).
-# The staleness test must glob in array context: filename generation does not
-# run inside [[ … ]], so the old `[[ -n …(#qN.mh+24) ]]` form was inert and
-# compinit ran in full on every startup. (compinit must stay before `antidote
-# load` so fzf-tab can wrap the completion widgets it sets up.)
-autoload -Uz compinit
-_zcompdump_fresh=( "${ZDOTDIR:-$HOME}/.zcompdump"(Nmh-24) )
-if (( ${#_zcompdump_fresh} )); then
-  compinit -C
-else
-  compinit
-fi
-unset _zcompdump_fresh
-
+# compinit runs inside the plugin list (~/.config/zsh/compinit.zsh), after the
+# fpath-only bundles and before the plugins that call compdef or wrap widgets.
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
 # fzf-tab configuration
@@ -93,15 +80,6 @@ zstyle ':completion:*:git-checkout:*' sort false
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-
-# Custom functions (lazy-loaded via autoload)
-typeset -U fpath
-fpath=(
-  ~/.config/zsh/functions
-  ~/.config/zsh/functions/*(/N)
-  $fpath
-)
-autoload -Uz ~/.config/zsh/functions/*(.N:t) ~/.config/zsh/functions/*/*(.N:t)
 
 # Deferred completions (register on first prompt, then self-remove)
 add-zsh-hook precmd _register_tmux_completions
