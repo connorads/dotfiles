@@ -1,0 +1,8 @@
+#!/usr/bin/env zsh
+# atuin-agent: run atuin against the separate agent command-history DB.
+emulate -L zsh
+
+# A scoped prefix, not exec: interactively this runs as an autoloaded function.
+ATUIN_DB_PATH=$HOME/.local/share/atuin/agents.db \
+  ATUIN_RECORD_STORE_PATH=$HOME/.local/share/atuin/agents-records.db \
+  atuin "$@"
