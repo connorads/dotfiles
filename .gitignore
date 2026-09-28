@@ -269,9 +269,6 @@
 /.config/tmux/__pycache__/
 /.config/tmux/.pytest_cache/
 
-!/.config/zellij/
-!/.config/zellij/**
-
 !/.config/lazygit/
 !/.config/lazygit/**
 /.config/lazygit/state.yml

@@ -32,7 +32,6 @@ let
     # rather than inheriting it incidentally from the nix-darwin system profile.
     bash
     tmux
-    zellij
     kitty.terminfo
 
     # Editors

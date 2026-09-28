@@ -19,7 +19,6 @@ when the task needs them.
 | Change Git guards, hooks or check coverage | [.hk-hooks/AGENTS.md](./.hk-hooks/AGENTS.md) |
 | Add, update or promote skills | [.config/skills/AGENTS.md](./.config/skills/AGENTS.md) |
 | Change tmux behaviour | [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| Change Zellij | [.config/zellij/AGENTS.md](./.config/zellij/AGENTS.md) |
 | Change MCP bundles | [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
 | Change agent sandbox policies | [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
 | Expose a service or run remote commands | [Remote access](./docs/remote-access.md) |

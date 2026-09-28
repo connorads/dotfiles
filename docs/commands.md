@@ -49,7 +49,7 @@ ghcl-org <org>         # bulk-clone or re-sync an org into cwd
 ghfzf [pr|issue|run]   # fzf triage for PRs, issues and Actions runs
 gh-gate <sub> <host>   # scoped gh tokens on a remote: init, grant, revoke, status, ui
 sbx <sub>              # VM-isolated box for UNTRUSTED software: new, shell, net, cp, list, stop, rm
-zellij | lazydocker    # alternative multiplexer | container TUI
+lazydocker             # container TUI
 ```
 
 ### ccp account config inheritance

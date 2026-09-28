@@ -40,7 +40,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [.zshrc.local.example](../.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
 | [kitty.conf](../.config/kitty/kitty.conf) | Terminal emulator config |
 | [tmux.conf](../.config/tmux/tmux.conf) | tmux config; maintenance: [.config/tmux/AGENTS.md](../.config/tmux/AGENTS.md) |
-| [config.kdl](../.config/zellij/config.kdl) | zellij config; maintenance: [.config/zellij/AGENTS.md](../.config/zellij/AGENTS.md) |
 | [help.md](../.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
 | [.claude/subagent-statusline.sh](../.claude/subagent-statusline.sh) | Model and context gauge on each row of Claude Code's agent panel; tests: [subagent-statusline.bats](../.config/zsh/tests/subagent-statusline.bats) |
 | [tmux/scripts/mem-lib.sh](../.config/tmux/scripts/mem-lib.sh) | Memory-pressure states (OK/BUSY/CRITICAL) shared by the status gauge, popup and `memwatch` |
