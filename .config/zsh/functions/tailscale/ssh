@@ -1,0 +1,16 @@
+# ssh: run ssh, adding a QR code under Tailscale SSH check links
+# zsh-only: shadows the ssh command (must not reach PATH)
+emulate -L zsh
+
+# The braces make zsh wait for the stderr filter, so its output is not cut off
+# after ssh exits. The filter matches only [[:alnum:]] so it stops before the
+# \r ssh adds once the remote tty is in raw mode.
+{ command ssh "$@" } 2> >(
+  local line
+  while IFS= read -r line || [[ -n $line ]]; do
+    print -r -- "$line"
+    if [[ $line =~ 'https://login\.tailscale\.com/a/[[:alnum:]]+' ]] && (( $+commands[qrencode] )); then
+      qrencode -t ansiutf8 -m 1 "$MATCH"
+    fi
+  done >&2
+)
