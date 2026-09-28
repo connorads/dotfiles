@@ -68,7 +68,27 @@ def repo_env() -> tuple[Path, dict[str, str]] | None:
     return None
 
 
-def supports_unstaged(env: dict[str, str]) -> bool:
+def resolve_hk(root: Path) -> str:
+    """The repo's mise-pinned `hk`, else whatever `hk` is on PATH.
+
+    The session PATH carries the global hk, and a newer major cannot evaluate
+    the Config.pkl package an older pinned hk.pkl amends, so it fails with a
+    config-load error that is not a finding.
+    """
+    try:
+        out = subprocess.run(
+            ["mise", "which", "hk"],
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+    except OSError:
+        return "hk"
+    path = out.stdout.strip()
+    return path if out.returncode == 0 and path else "hk"
+
+
+def supports_unstaged(hk: str, env: dict[str, str]) -> bool:
     """Whether this `hk` knows `check --unstaged` (added after 1.50.0).
 
     A feature probe rather than version arithmetic, so nothing here needs
@@ -76,7 +96,7 @@ def supports_unstaged(env: dict[str, str]) -> bool:
     """
     try:
         out = subprocess.run(
-            ["hk", "check", "--help"],
+            [hk, "check", "--help"],
             capture_output=True,
             text=True,
             env=env,
@@ -100,7 +120,8 @@ def main() -> int:
 
     env = {**os.environ, **git_env}
 
-    if not supports_unstaged(env):
+    hk = resolve_hk(root)
+    if not supports_unstaged(hk, env):
         return 0
 
     existing = env.get("HK_SKIP_STEPS", "")
@@ -108,7 +129,7 @@ def main() -> int:
 
     try:
         result = subprocess.run(
-            ["hk", "check", "--unstaged", "--quiet"],
+            [hk, "check", "--unstaged", "--quiet"],
             capture_output=True,
             text=True,
             env=env,
