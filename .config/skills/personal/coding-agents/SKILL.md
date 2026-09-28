@@ -97,7 +97,8 @@ false-matches stateless panes because the title shifts into field 2).
   permission prompts need the state option or a capture.
 - `~/.local/state/agent-journal/events-YYYY-MM.jsonl`: per-pane state history
   with session ids, cwd, and notification messages - the replayable record
-  when current options are not enough.
+  when current options are not enough. The current and previous month are
+  plain; the two before are `.jsonl.gz` (`gzip -dc`); older months are deleted.
 
 ## Boundary with the tmux skill
 

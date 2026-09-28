@@ -6,7 +6,7 @@
 # options; the journal appends each event — with a curated slice of the hook's
 # stdin payload — to ~/.local/state/agent-journal/events-YYYY-MM.jsonl so
 # downstream consumers (sequencers, "what happened overnight" audits) can
-# replay history. Monthly files keep retention a simple delete.
+# replay history. Monthly files keep retention simple (journal_retain).
 #
 # Curated on purpose: hook payloads carry full tool inputs (file contents,
 # command lines — potentially secrets). Only identity/lifecycle fields are
@@ -84,4 +84,34 @@ journal_presence_event() {
 		 observed_kind: (if $observed_kind == "" then null else $observed_kind end),
 		 state: (if $state == "" then null else $state end), age_seconds: $age}
 	' >>"$_file" 2>/dev/null || true
+}
+
+# journal_month_index YYYY-MM — months since year 0, for age arithmetic. The
+# leading zero is stripped: sh reads 08 and 09 as invalid octal.
+journal_month_index() {
+	_m=${1#*-}
+	echo $((${1%-*} * 12 + ${_m#0}))
+}
+
+# journal_retain — cap the journal: gzip each month older than the previous
+# one, and delete every month more than three back. The current and previous
+# month stay plain .jsonl because the plan viewer (lib/claude-plan.sh) reads
+# the two newest plain files. Cheap when there is nothing to do, so the sweep
+# runs it every tick. Fail-open like the writers.
+journal_retain() {
+	_dir=${AGENT_JOURNAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-journal}
+	[ -d "$_dir" ] || return 0
+	_now_idx=$(journal_month_index "$(date -u +%Y-%m)")
+	for _f in "$_dir"/events-*.jsonl "$_dir"/events-*.jsonl.gz; do
+		[ -e "$_f" ] || continue
+		_month=${_f##*/events-}
+		_month=${_month%%.*}
+		case $_month in [0-9][0-9][0-9][0-9]-[0-9][0-9]) ;; *) continue ;; esac
+		_age=$((_now_idx - $(journal_month_index "$_month")))
+		if [ "$_age" -gt 3 ]; then
+			rm -f "$_f" 2>/dev/null || true
+		elif [ "$_age" -gt 1 ] && [ "${_f%.gz}" = "$_f" ]; then
+			gzip -f "$_f" 2>/dev/null || true
+		fi
+	done
 }

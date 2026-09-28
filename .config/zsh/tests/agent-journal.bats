@@ -151,3 +151,37 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
     and (keys | sort) == (["age_seconds", "event", "observed_kind", "pane",
       "previous_kind", "previous_state", "reason", "state", "ts", "window"] | sort)'
 }
+
+# month_ago N — the UTC YYYY-MM N months before now.
+month_ago() {
+  local y m
+  y=$(date -u +%Y) m=$(date -u +%m)
+  m=$((10#$m - $1))
+  while [ "$m" -le 0 ]; do m=$((m + 12)) y=$((y - 1)); done
+  printf '%04d-%02d\n' "$y" "$m"
+}
+
+@test "retention keeps two plain months, gzips older ones, deletes past three" {
+  mkdir -p "$AGENT_JOURNAL_DIR"
+  for n in 0 1 2 3 4; do
+    printf '{"n":%s}\n' "$n" >"$AGENT_JOURNAL_DIR/events-$(month_ago "$n").jsonl"
+  done
+  printf 'old\n' | gzip >"$AGENT_JOURNAL_DIR/events-$(month_ago 5).jsonl.gz"
+
+  sh -c '. "$1"; journal_retain' _ "$TESTS_DIR/../../tmux/scripts/agent-journal.sh"
+
+  [ -f "$AGENT_JOURNAL_DIR/events-$(month_ago 0).jsonl" ]
+  [ -f "$AGENT_JOURNAL_DIR/events-$(month_ago 1).jsonl" ]
+  [ ! -e "$AGENT_JOURNAL_DIR/events-$(month_ago 2).jsonl" ]
+  [ "$(gzip -dc "$AGENT_JOURNAL_DIR/events-$(month_ago 2).jsonl.gz")" = '{"n":2}' ]
+  [ -f "$AGENT_JOURNAL_DIR/events-$(month_ago 3).jsonl.gz" ]
+  [ ! -e "$AGENT_JOURNAL_DIR/events-$(month_ago 4).jsonl" ]
+  [ ! -e "$AGENT_JOURNAL_DIR/events-$(month_ago 4).jsonl.gz" ]
+  [ ! -e "$AGENT_JOURNAL_DIR/events-$(month_ago 5).jsonl.gz" ]
+}
+
+@test "retention is a no-op without a journal dir" {
+  run sh -c '. "$1"; journal_retain' _ "$TESTS_DIR/../../tmux/scripts/agent-journal.sh"
+  [ "$status" -eq 0 ]
+  [ ! -e "$AGENT_JOURNAL_DIR" ]
+}

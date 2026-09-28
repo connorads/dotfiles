@@ -276,6 +276,7 @@ EOF
 
 tick_once() {
 	sweep_once
+	journal_retain
 }
 
 # _is_sweep PID — true if PID is an agent-sweep process (guards the pidfile
