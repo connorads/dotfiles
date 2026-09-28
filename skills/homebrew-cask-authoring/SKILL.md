@@ -49,6 +49,12 @@ it tracks Homebrew's current release, this file doesn't.
    Don't resubmit a refusal for an unfixable reason.
 7. **Linux build**: check whether upstream ships an AppImage. Reviewers ask for
    it on new casks, so include it when it exists.
+8. **Pre-releases**: if upstream marks every GitHub release pre-release, the
+   online audit fails with `<tag> is a GitHub pre-release`. Add
+   `"<token>": "all"` to `audit_exceptions/github_prerelease_allowlist.json`
+   in the same commit (precedent: `agent-tars`, `duplicati`); `"all"` also errors
+   if a non-pre-release appears later. Insert beside its neighbours - the file is
+   not strictly sorted, so re-sorting it is a drive-by diff. Justify it in the PR body.
 
 ## Workflow
 
@@ -125,6 +131,10 @@ lipo -archs "/Volumes/<Vol>/<AppName>.app/Contents/MacOS/<AppName>"
   3. `generate-zap` covers `~/Library` and `~/.<app>` dotfolders, not XDG paths.
      If state survives `--zap` + reinstall, grep upstream source for
      `os.homedir()`, `env-paths`, `xdg`.
+     It also matches only the app name, so it reports "No zap stanza required"
+     when state is named after the CLI or token (`~/Library/Caches/<cli>`). Search
+     `~/Library` for the token and bundle ID too, and grep upstream source for
+     path joins; some directories only appear once a feature is used.
   4. After opening the PR, read CI's zap-check job summary for paths it thinks
      are missing.
 - Keystone/GoogleUpdater-style shared components go in `zap` only, never `uninstall`.
@@ -166,6 +176,10 @@ brew uninstall --cask <token>
 ```
 
 - `brew audit` is silent on success.
+- `brew lgtm` diffs against the local `main` branch, not `origin/main`. In a
+  stale checkout it audits every cask upstream changed since (downloading their
+  artifacts). First `git fetch origin && git rebase origin/main`, then
+  `git branch -f main origin/main`; `git diff --name-only main` should list only your files.
 - Plain `--online` audits only the host OS/arch; `--os=all --arch=all` covers `on_linux` from a Mac.
 - Install and uninstall by token, never by file path.
 - On a TTY (tmux, agent PTY), `brew install` asks for confirmation when it pulls
