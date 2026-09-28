@@ -119,6 +119,17 @@ lipo -archs "/Volumes/<Vol>/<AppName>.app/Contents/MacOS/<AppName>"
 - `uninstall` is required for `pkg` and `installer` (`pkgutil:`, `launchctl:`, ...).
 - `uninstall quit:` runs on uninstall, upgrade and reinstall; Homebrew reopens the
   app after an upgrade. `signal:` is skipped on upgrade unless `on_upgrade: :signal`.
+- An app can ignore `quit:` when a modal window (a first-run permissions panel)
+  blocks its run loop. CI's zap-check launches the app on a fresh runner, so it
+  hits this where a granted local install does not; CI then fails with "Some
+  launch jobs were not unloaded". `signal:` does not help on macOS 26: Homebrew
+  finds processes by launchd label, and the label now ends in a UUID
+  (`application.<id>.<n>.<n>.<UUID>`) that its pattern rejects. Use
+  `launchctl: "application.<bundle-id>.*"` beside `quit:` (precedent:
+  `shutter-encoder`, `cmux`); removing the job ends the process.
+- `launchctl:` checks each job again with `sudo`, so a local uninstall prompts
+  for a password even for a user-level job. The non-sudo pass has already
+  removed it; cancelling the prompt is safe. CI's sudo is passwordless.
 - An app with helper processes (`Contents/Helpers/`, or `pgrep -lf <AppName>` while
   running) needs every bundle ID in `quit:`. A wildcard works if the ID keeps at
   least 3 dot-separated parts (`"com.vendor.*"`).
