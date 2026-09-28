@@ -5,7 +5,8 @@ one-lib-many-surfaces shape as the caffeine toggle. One detached
 [`voxtap record`](../../nix/voxtap/main.swift) captures the mic and the system's own
 output (a Core Audio process tap) through one aggregate device to two mono
 16 kHz WAVs; `vox stop` finalises them, transcribes each with the MacWhisper CLI
-(`mw`) and merges them into one timestamped `transcript.md`. General-purpose by design - meetings,
+(`mw`), merges them into one timestamped `transcript.md` and compacts the WAVs
+to Opus. General-purpose by design - meetings,
 monologues, dictation - with no consumer baked in: integration is
 `cat "$(vox last)/transcript.md" | claude -p …`.
 
@@ -23,7 +24,8 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
 
 ```text
 2026-07-28-140312-triver-kickoff/
-    mic.wav  sys.wav      you / them (sys silent => it was a monologue)
+    mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
+                          until stop compacts it, or kept if the transcript was empty
     mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
     transcript.md         merged, name-fixed - the artefact everything consumes
     vox.log               voxtap + mw stderr (mw reports progress there)
@@ -90,7 +92,13 @@ Change as a set:
   is somewhere to look - but return non-zero, with one line naming what was not
   recognised, how long the audio was and where the log is. `mw` exits 0 whatever
   it heard, so nothing upstream of this check can tell "no speech" from "mw fell
-  over", and one message covers both. `prune --empty` selects by *content* instead of age -
+  over", and one message covers both. **`stop` compacts only after a transcript
+  with content**: each WAV becomes Opus 32k mono (~9% of the size, 128x
+  realtime), one track after the other, inside the job marker so the pill reads
+  TRANSCRIBING until the encode ends. An empty transcript keeps the WAV to
+  diagnose from. `transcribe` reads whichever of `.wav`/`.opus` a track has, so
+  compacting never removes the re-transcribe path; `compact` is the backfill for
+  WAVs a stop left behind. `prune --empty` selects by *content* instead of age -
   the silent track of a monologue, keeping the one that carries the recording -
   and is the production caller of the lib's loudness parsers. It measures only
   its candidates, at the moment you ask, and refuses a recording whose every
@@ -168,7 +176,7 @@ Change as a set:
   calling pane, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals in Finder,
   `ctrl-p` plays (both tracks mixed when there are two, via a temp file because
   `afplay` cannot read a pipe), `ctrl-t` retranscribes in place (unconfirmed: the
-  WAVs stay), `ctrl-d` deletes and `ctrl-x` reclaims audio, the last two
+  audio stays), `ctrl-d` deletes and `ctrl-x` reclaims audio, the last two
   confirmed; `ctrl-t`, `ctrl-d` and `ctrl-x` act over the whole `tab` selection.
   Retranscribing and reclaiming shell out to **`vox transcribe <path>`** and
   **`vox prune <path>...`** rather than doing it here - which files count as
@@ -256,7 +264,7 @@ Change as a set:
   with the output switched to the built-in speakers mid-capture and back: the
   tone resumed in the tap both times. Nothing rebuilds on that event.
 - **Nothing pre-processes the audio, and the guard against losing speech is a
-  detector rather than a filter.** `mw` reads each stored WAV directly, and
+  detector rather than a filter.** `mw` reads each stored track directly, and
   `_vox_report_blanked` warns - to stderr and `vox.log`, naming the track and
   its mean level - when `vox_track_blanked` finds audible audio behind an empty
   transcript. Do not add a `silenceremove` pass: it cut real speech at the

@@ -8,7 +8,7 @@
 #
 #   vox                      start (no args, no thinking)
 #   vox --name <title>       start with a title
-#   vox stop                 finalise -> transcribe -> merge -> print the path
+#   vox stop                 finalise -> transcribe -> merge -> compact -> print the path
 #   vox cancel               stop and discard, without transcribing
 #   vox status               state + elapsed
 #   vox ls                   every recording, newest first, one path per line
@@ -16,15 +16,16 @@
 #   vox <file>               transcribe an audio/video file that already exists
 #   vox transcribe <path>    re-run transcription on a recording, in place
 #   vox rename <path> <slug> retitle, preserving the timestamp prefix
-#   vox compact [--older 30d]  WAV -> Opus 32k mono, preview + confirm
+#   vox compact [--older 30d]  WAV -> Opus 32k mono, preview + confirm (backfill;
+#                              stop already compacts)
 #   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
 #   vox prune --empty        delete only silent tracks, keeping their siblings
 #
 # The store convention is the load-bearing decision:
 #
 #   ~/Recordings/vox/2026-07-28-140312-triver-kickoff/
-#       mic.wav  sys.wav      you / them (sys silent => it was a monologue);
-#                             .opus instead once compacted, still re-transcribable
+#       mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
+#                             until stop compacts it, or kept if the transcript was empty
 #       mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
 #       transcript.md         merged, name-fixed - the artefact everything consumes
 #       vox.log               voxtap + mw stderr (mw reports progress there)
@@ -211,7 +212,11 @@ _vox_halt() {
 	print -r -- "$dir"
 }
 
-# _vox_stop - halt the capture, then transcribe and merge.
+# _vox_stop - halt the capture, then transcribe, merge and compact.
+#
+# Compacting waits for a transcript with content: an empty one keeps the WAV to
+# diagnose from. It runs inside the job marker, so the pill reads TRANSCRIBING
+# and the picker cannot act on a track mid-encode.
 #
 # The job marker is written into the recording around the transcription, not by
 # whoever called stop, so the pill says TRANSCRIBING whether this was typed in a
@@ -223,6 +228,7 @@ _vox_stop() {
 	vox_write_job "$$" "$(date +%s)" "$dir"
 	_vox_transcribe "$dir"
 	local rc=$?
+	(( rc == 0 )) && _vox_compact_tracks "$dir"/{mic,sys}.wav(N.)
 	vox_clear_job "$dir"
 	# The path even when the transcript came back empty: the recording exists and
 	# its audio is intact, so there is somewhere to go and look either way.
@@ -703,19 +709,7 @@ _vox_reclaim() {
 
 	if [[ "$mode" == compact ]]; then
 		_vox_need ffmpeg || return 1
-		local wav opus
-		for wav in "${targets[@]}"; do
-			opus="${wav:r}.opus"
-			# Speech at 16 kHz mono: Opus at 32k is transparent enough to
-			# re-transcribe from, at roughly a tenth of the WAV. The WAV goes
-			# only once its replacement exists and is non-empty.
-			if ffmpeg -hide_banner -loglevel error -y -i "$wav" \
-				-c:a libopus -b:a 32k -ac 1 "$opus" 2>>"${wav:h}/vox.log" && [[ -s "$opus" ]]; then
-				rm -f "$wav"
-			else
-				print -u2 -- "vox: could not compact $wav — see ${wav:h}/vox.log"
-			fi
-		done
+		_vox_compact_tracks "${targets[@]}"
 	else
 		# Only the audio: transcript.md, the per-track JSON and vox.log stay, so
 		# a pruned recording is still fully readable and re-mergeable.
@@ -723,12 +717,33 @@ _vox_reclaim() {
 	fi
 }
 
+# _vox_compact_tracks WAV... - re-encode each WAV to Opus beside it, one after
+# the other, logging failures to the recording's vox.log.
+#
+# Speech at 16 kHz mono: Opus at 32k is transparent enough to re-transcribe
+# from, at roughly a tenth of the WAV (16k measured half again as many word
+# differences). The WAV goes only once its replacement exists and is non-empty.
+# -nostdin because stop runs detached from the tmux toggle with whatever stdin
+# it inherited, and ffmpeg reading a non-tty stdin can hang.
+_vox_compact_tracks() {
+	local wav opus
+	for wav in "$@"; do
+		opus="${wav:r}.opus"
+		if ffmpeg -nostdin -hide_banner -loglevel error -y -i "$wav" \
+			-c:a libopus -b:a 32k -ac 1 "$opus" 2>>"${wav:h}/vox.log" && [[ -s "$opus" ]]; then
+			rm -f "$wav"
+		else
+			print -u2 -- "vox: could not compact $wav — see ${wav:h}/vox.log"
+		fi
+	done
+}
+
 _vox_help() {
 	print -r -- 'vox — record mic + system audio, transcribe locally
 
   vox                      start recording
   vox --name <title>       start recording, titled
-  vox stop                 stop, transcribe, merge, print the path
+  vox stop                 stop, transcribe, merge, compact to Opus, print the path
   vox cancel               stop and discard, without transcribing
   vox status               state + elapsed
   vox ls                   every recording, newest first
@@ -751,7 +766,7 @@ Both tracks are captured by voxtap - the microphone and a Core Audio process
 tap in one aggregate device - so there is nothing to route by hand. vox refuses
 to start without it; VOX_MIC_ONLY=1 records the mic alone.
 
-Recordings live in '"$VOX_STORE"'; each holds mic/sys WAV + JSON,
+Recordings live in '"$VOX_STORE"'; each holds mic/sys Opus + JSON,
 transcript.md and vox.log. The directory name is the title.'
 }
 
