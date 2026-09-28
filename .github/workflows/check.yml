@@ -28,8 +28,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-      - name: install nixfmt (from the flake's locked nixpkgs)
-        run: nix profile install ./.config/nix#formatter.x86_64-linux
+      - name: install nixfmt and deadnix (from the flake's locked nixpkgs)
+        run: |
+          nix profile install ./.config/nix#formatter.x86_64-linux
+          nix profile install --inputs-from ./.config/nix nixpkgs#deadnix
       - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
         with:
           # Selective install mirroring the tools hk.pkl steps invoke - NOT a
@@ -37,12 +39,13 @@ jobs:
           # (claude/codex/runtimes). pyrefly is skipped; its hk step
           # gracefully no-ops when absent.
           install_args: >-
-            hk pkl shfmt shellcheck rumdl gitleaks oxlint ruff typos
-            actionlint zizmor lychee
+            hk pkl node shfmt shellcheck rumdl gitleaks oxlint
+            npm:oxlint-tsgolint ruff typos actionlint zizmor lychee vale
+            ast-grep
         env:
-          # oxlint is npm-backed; the aube package manager from the global
-          # config is not installed here, so use plain npm (node is on the
-          # runner image). The version is still pinned by mise.lock.
+          # oxlint is npm-backed and mise requires its configured node@lts;
+          # the aube package manager from the global config is not installed
+          # here, so use plain npm. The version is still pinned by mise.lock.
           MISE_NPM_PACKAGE_MANAGER: npm
       - name: install shell deps
         run: sudo apt-get update && sudo apt-get install -y zsh ripgrep

@@ -21,6 +21,21 @@ require_sparse() {
   [ "$((blocks * 512))" -lt "$apparent" ] || skip "filesystem does not create sparse files"
 }
 
+# Print a PATH of $TEST_BIN plus the system bin dirs minus one tool. Linux
+# runner images ship some toolchains (go) in /usr/bin, so dropping $PATH down
+# to the system dirs does not make a tool absent there.
+system_path_without() {
+  local tool=$1 sysbin="$BATS_TEST_TMPDIR/sysbin" dir entry
+  mkdir -p "$sysbin"
+  for dir in /usr/bin /bin; do
+    for entry in "$dir"/*; do
+      [ "${entry##*/}" = "$tool" ] && continue
+      [ -e "$sysbin/${entry##*/}" ] || ln -s "$entry" "$sysbin/${entry##*/}"
+    done
+  done
+  printf '%s\n' "$TEST_BIN:$sysbin"
+}
+
 setup() {
   setup_test_home
   export CLEANUP_TMPDIR_ROOT="$HOME/tmp-root"
@@ -684,7 +699,7 @@ EOF
   local disk="$HOME/vm/_disks/colima/datadisk"
   mkdir -p "${disk%/*}"
   # 100 MiB apparent, zero blocks written: the shape of a colima datadisk.
-  dd if=/dev/zero of="$disk" bs=1 count=0 seek=100m 2>/dev/null
+  dd if=/dev/zero of="$disk" bs=1 count=0 seek=104857600 2>/dev/null
   require_sparse "$disk"
 
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" \
@@ -706,7 +721,7 @@ EOF
   # sparse in real use while passing under the tests' native-first PATH.
   local disk="$HOME/vm/_disks/colima/datadisk"
   mkdir -p "${disk%/*}"
-  dd if=/dev/zero of="$disk" bs=1 count=0 seek=100m 2>/dev/null
+  dd if=/dev/zero of="$disk" bs=1 count=0 seek=104857600 2>/dev/null
   require_sparse "$disk"
   write_stub stat <<'EOF'
 #!/usr/bin/env bash
@@ -1070,7 +1085,7 @@ EOF
   chmod a-w "$HOME/go/pkg/mod/module"
   touch "$HOME/go/src/project/main.go" "$HOME/go/bin/tool"
 
-  run env PATH="$TEST_BIN:/usr/bin:/bin" zsh --no-rcs "$CLEANUP" --yes --go
+  run env PATH="$(system_path_without go)" zsh --no-rcs "$CLEANUP" --yes --go
 
   [ "$status" -eq 0 ]
   [ ! -e "$HOME/Library/Caches/go-build" ]
