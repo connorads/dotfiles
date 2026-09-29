@@ -8,7 +8,8 @@
 #
 # Modes:
 #   apply   idempotent; applies every pending hunk. Exit 0 iff all applied;
-#           broken/ambiguous/missing target -> loud banner, exit 1.
+#           broken/ambiguous/missing target -> loud banner, exit 1. Writes a
+#           file only if no hunk that was pending/applied ends otherwise.
 #   check   read-only; exit 0 iff all applied, exit 1 with offenders otherwise.
 #   status  per (patch, target, hunk) state table.
 #   list    patch names + reasons.
@@ -47,6 +48,7 @@ PENDING = "pending"            # find present exactly once
 AMBIGUOUS = "ambiguous"        # find present >1 time - refuse to guess
 BROKEN = "broken"              # neither present - upstream drifted
 MISSING = "missing-target"     # target file does not exist
+REGRESSED = "regressed"        # apply only: the pass would leave it not applied
 
 
 def fail_config(msg):
@@ -149,9 +151,12 @@ def load_patch(patch_dir):
             for num, find_text, replace_text in hunks:
                 f = expand(find_text.decode(), combo).encode()
                 r = expand(replace_text.decode(), combo).encode().replace(b"{{marker}}", marker)
-                if f == r:
-                    fail_config("{}: hunk {} find and replace are identical after expansion".format(
-                        patch_dir.name, num))
+                # Covers identical hunks too. Such a hunk can never classify
+                # as applied, and every apply would insert the replacement again.
+                if f in r:
+                    fail_config("{}: hunk {} replace text contains its find text; "
+                                "rewrite the anchor line instead of repeating it".format(
+                                    patch_dir.name, num))
                 expanded_hunks.append((num, f, r))
             targets.append((expanded_rel, expanded_hunks))
     return {"name": patch_dir.name, "reason": reason, "targets": targets}
@@ -168,6 +173,52 @@ def classify(data, find_text, replace_text):
     return BROKEN
 
 
+def regressed(before, after):
+    return before in (PENDING, APPLIED) and after != APPLIED
+
+
+def plan_apply(files, patches):
+    """Pure core of every mode: no I/O.
+
+    files maps target rel -> bytes; an absent rel is a missing target.
+    Returns (new_files, rows). new_files holds only changed paths safe to
+    write; rows are (patch, rel, hunk, state_before, state_after).
+
+    Every hunk touching a path, across patches in patch order, runs in one
+    in-memory pass, then all are re-classified on the final bytes. A path is
+    safe to write only if no hunk that was pending or applied ends up
+    anything but applied - so a successful apply is a fixed point, and a
+    hunk that was already broken does not block unrelated hunks.
+    """
+    by_path = {}
+    for p in patches:
+        for rel, hunks in p["targets"]:
+            by_path.setdefault(rel, []).extend(
+                (p["name"], num, f, r) for num, f, r in hunks)
+
+    new_files, states = {}, {}
+    for rel, hunks in by_path.items():
+        data = files.get(rel)
+        if data is None:
+            for name, num, _, _ in hunks:
+                states[(name, rel, num)] = (MISSING, MISSING)
+            continue
+        before = [classify(data, f, r) for _, _, f, r in hunks]
+        new_data = data
+        for _, _, f, r in hunks:
+            if classify(new_data, f, r) == PENDING:
+                new_data = new_data.replace(f, r, 1)
+        after = [classify(new_data, f, r) for _, _, f, r in hunks]
+        if new_data != data and not any(map(regressed, before, after)):
+            new_files[rel] = new_data
+        for (name, num, _, _), b, a in zip(hunks, before, after):
+            states[(name, rel, num)] = (b, a)
+
+    rows = [(p["name"], rel, num) + states[(p["name"], rel, num)]
+            for p in patches for rel, hunks in p["targets"] for num, _, _ in hunks]
+    return new_files, rows
+
+
 def banner(lines):
     print("", file=sys.stderr)
     print("#" * 64, file=sys.stderr)
@@ -176,7 +227,14 @@ def banner(lines):
     print("#" * 64, file=sys.stderr)
 
 
-def remediation(state, patch_name, num):
+def remediation(state, patch_name, num, after=None):
+    if state == REGRESSED:
+        if after == BROKEN:
+            cause = "another hunk or patch on this file undid its replacement"
+        else:
+            cause = "a replacement recreates its find text"
+        return "{}; target left unchanged - rework the hunks in patches/{}".format(
+            cause, patch_name)
     if state == PENDING:
         return "clobbered by refresh - run: skill-patch apply"
     if state == BROKEN:
@@ -214,29 +272,32 @@ def main():
             print("{:<{}}  {}".format(p["name"], width, p["reason"]))
         return 0
 
-    rc = 0
-    rows = []
+    files = {}
     for p in patches:
-        for rel, hunks in p["targets"]:
+        for rel, _ in p["targets"]:
             target = vendor_root / rel
-            if not target.is_file():
-                for num, _, _ in hunks:
-                    rows.append((p["name"], rel, num, MISSING))
-                continue
-            data = target.read_bytes()
-            new_data = data
-            for num, find_text, replace_text in hunks:
-                state = classify(new_data, find_text, replace_text)
-                if mode == "apply" and state == PENDING:
-                    new_data = new_data.replace(find_text, replace_text, 1)
-                    state = classify(new_data, find_text, replace_text)
-                rows.append((p["name"], rel, num, state))
-            if mode == "apply" and new_data != data:
-                # Atomic write: temp beside target, preserve mode, rename over.
-                tmp = target.with_name(target.name + ".skill-patch.tmp")
-                tmp.write_bytes(new_data)
-                os.chmod(tmp, target.stat().st_mode)
-                tmp.replace(target)
+            if rel not in files and target.is_file():
+                files[rel] = target.read_bytes()
+    new_files, plan = plan_apply(files, patches)
+
+    if mode == "apply":
+        for rel, new_data in new_files.items():
+            # Atomic write: temp beside target, preserve mode, rename over.
+            target = vendor_root / rel
+            tmp = target.with_name(target.name + ".skill-patch.tmp")
+            tmp.write_bytes(new_data)
+            os.chmod(tmp, target.stat().st_mode)
+            tmp.replace(target)
+        rows, afters = [], {}
+        for name, rel, num, before, after in plan:
+            if regressed(before, after):
+                state = REGRESSED
+                afters[(name, rel, num)] = after
+            else:
+                state = after if rel in new_files else before
+            rows.append((name, rel, num, state))
+    else:
+        rows = [(name, rel, num, before) for name, rel, num, before, _ in plan]
 
     bad = [(name, rel, num, state) for name, rel, num, state in rows if state != APPLIED]
 
@@ -260,7 +321,7 @@ def main():
                 "  patch:  {}".format(name),
                 "  target: {}".format(rel),
                 "  hunk:   {}".format(num),
-                remediation(state, name, num),
+                remediation(state, name, num, afters.get((name, rel, num))),
             ])
         return 1
     print("skill-patch: all patches applied ({} hunk(s) across {} patch(es))".format(

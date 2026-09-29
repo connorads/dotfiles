@@ -48,6 +48,11 @@ diff` on a re-derived hunk reads like the skill diff itself. A hunk that spans
 whole lines therefore ends at the last matched character, not at a trailing
 newline; single-line hunks are just the line.
 
+Replace text must not contain its find text: such a hunk can never read as
+`applied`, and every apply would insert the replacement again. To insert a
+section after an anchor, rewrite the anchor line in the replacement rather
+than repeating it. The engine exits 2 on this.
+
 Tokens:
 
 - `{{<var>}}` - from `vars`, expanded in paths and hunk text.
@@ -69,6 +74,13 @@ Per (target, hunk), `skill-patch` classifies:
 | `missing-target` | target file gone | skill removed upstream? fix or remove the patch |
 
 Malformed `patch.json` / unpaired hunk files exit 2.
+
+`apply` runs every hunk touching a file in one in-memory pass, across
+patches, then re-classifies them all. It writes the file only if every hunk
+that was `pending` or `applied` ends `applied`. Otherwise it reports
+`regressed` and leaves the file untouched: a replacement recreated a find
+text, or a later hunk or patch undid an earlier one. A hunk that was already
+`broken`, `ambiguous` or `missing-target` does not block the others.
 
 ## Procedures
 
