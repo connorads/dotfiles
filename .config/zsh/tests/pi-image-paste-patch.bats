@@ -12,11 +12,12 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 PI_PATCH="$FUNCTIONS_DIR/pi/pi-image-paste-patch"
+NODE_BIN="$(command -v node)"
 MARKER_REL=".cache/pi-image-paste-fileurl-patch.stale"
 LAYOUT_MARKER_REL=".cache/pi-image-paste-patch.stale"
 
-NEEDLE='if(!clipboard||!clipboard.hasImage())return null;'
-PATCHED='if(process.platform==="darwin"&&!clipboard?.hasImage()){'
+NEEDLE='if(bytes!==void 0)return bytes?.length?{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"}:null'
+PATCHED='if(bytes?.length)return{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"}'
 
 # Write a bundle chunk defining the reader around whichever body is passed,
 # plus an unrelated sibling chunk the resolver must skip.
@@ -25,7 +26,7 @@ write_chunk() {
   chunks="$(dirname "$CLIPBOARD")"
   mkdir -p "$chunks"
   printf 'function other(){return 1}\n' >"$chunks/chunk-OTHER.js"
-  printf 'async function readClipboardImageViaNativeClipboard(){%s return null}\n' "$1" >"$CLIPBOARD"
+  printf 'async function readClipboardImageViaNativeClipboard(){let bytes=await getNativeClipboard()?.getImage();%s}\n' "$1" >"$CLIPBOARD"
 }
 
 PI_PKG='@earendil-works/pi-coding-agent'
@@ -116,6 +117,60 @@ setup() {
   [ ! -f "$HOME/$MARKER_REL" ]
 }
 
+@test "file URL fallback returns image bytes only when native image bytes are absent" {
+  run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
+  [ "$status" -eq 0 ]
+
+  run "$NODE_BIN" --input-type=module - "$CLIPBOARD" <<'JS'
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+
+const source = readFileSync(process.argv[2], 'utf8');
+async function read({ native, platform = 'darwin', url, fileBytes }) {
+  const commands = [];
+  const context = {
+    process: { platform },
+    Uint8Array,
+    getNativeClipboard: () => ({ getImage: async () => native }),
+    detectSupportedImageMimeType: () => 'image/png',
+    runClipboardCommand: async (command, args) => {
+      commands.push([command, args]);
+      if (command === 'osascript') return url === undefined ? undefined : Buffer.from(url);
+      if (command === 'cat') return fileBytes;
+      throw new Error(`unexpected command: ${command}`);
+    },
+  };
+  const reader = vm.runInNewContext(`${source}\nreadClipboardImageViaNativeClipboard`, context);
+  return { image: await reader(), commands };
+}
+
+const screenshot = Buffer.from([137, 80, 78, 71]);
+const fallback = await read({ native: null, url: '/tmp/Screen shot.png\n', fileBytes: screenshot });
+assert.equal(fallback.image.mimeType, 'image/png');
+assert.deepEqual(Array.from(fallback.image.bytes), Array.from(screenshot));
+assert.deepEqual(fallback.commands.map(([name]) => name), ['osascript', 'cat']);
+assert.equal(fallback.commands[1][1][0], '/tmp/Screen shot.png');
+
+const native = await read({ native: screenshot, url: '/tmp/other.png', fileBytes: Buffer.from([1]) });
+assert.deepEqual(Array.from(native.image.bytes), Array.from(screenshot));
+assert.deepEqual(native.commands, []);
+
+const unsupported = await read({ native: null, url: '/tmp/text.txt\n' });
+assert.equal(unsupported.image, null);
+assert.deepEqual(unsupported.commands.map(([name]) => name), ['osascript']);
+
+const missing = await read({ native: null });
+assert.equal(missing.image, null);
+
+const otherPlatform = await read({ native: undefined, platform: 'linux' });
+assert.equal(otherPlatform.image, undefined);
+assert.deepEqual(otherPlatform.commands, []);
+JS
+
+  [ "$status" -eq 0 ]
+}
+
 @test "--check reports unpatched, then patched" {
   run_zsh_function "$PI_PATCH" --check "$INSTALL_DIR"
 
@@ -130,8 +185,7 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == patched:* ]]
 
-  # The replacement keeps the original check, so it must not re-match the
-  # needle, or a second --reapply would stack another fallback on top.
+  # A second --reapply must not stack another fallback on top.
   run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
   [ "$status" -eq 0 ]
   [ "$(grep -oF "$PATCHED" "$CLIPBOARD" | wc -l)" -eq 1 ]
@@ -153,7 +207,7 @@ setup() {
 }
 
 @test "a renamed needle marks and exits 0 under --reapply" {
-  write_chunk 'if(!clipboard||!clipboard.RENAMED())return null;'
+  write_chunk 'if(bytes!==void 0)return bytes?.length?{bytes,mimeType:detectSupportedImageMimeType(bytes)??"image/png"}:null'
 
   run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
 
