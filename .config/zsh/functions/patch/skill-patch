@@ -1,8 +1,12 @@
 #!/usr/bin/env zsh
 # skill-patch: apply/check declarative patches for vendored skills
-# usage: skill-patch apply|check|status|list [patch-name...]
+# usage: skill-patch [--root <dir>] apply|check|status|list [patch-name...]
 #
-# Patch definitions live in ~/.config/skills/vendor/patches/<name>/:
+# --root targets another vendor tree (a refresh preview); default
+# ~/.config/skills/vendor. A per-call flag, not an env var, so it cannot leak
+# into the hk gate and silently check the wrong tree.
+#
+# Patch definitions live in <root>/patches/<name>/:
 # patch.json (reason, files, optional vars) + verbatim hunk pairs
 # NN-find.md / NN-replace.md. Format spec: patches/README.md there.
 #
@@ -23,7 +27,16 @@
 emulate -L zsh
 setopt no_unset pipe_fail
 
-local usage="usage: skill-patch apply|check|status|list [patch-name...]"
+local usage="usage: skill-patch [--root <dir>] apply|check|status|list [patch-name...]"
+local root=$HOME/.config/skills/vendor
+if [[ ${1:-} == --root ]]; then
+  if (( $# < 2 )) || [[ -z $2 ]]; then
+    print -u2 -r -- "$usage"
+    return 2
+  fi
+  root=$2
+  shift 2
+fi
 local mode=${1:-}
 case $mode in
   apply|check|status|list) shift ;;
@@ -32,7 +45,7 @@ case $mode in
   *) print -u2 -r -- "skill-patch: unknown mode: $mode"; print -u2 -r -- "$usage"; return 2 ;;
 esac
 
-/usr/bin/python3 - "$mode" "$HOME/.config/skills/vendor" "$@" <<'PY'
+/usr/bin/python3 - "$mode" "$root" "$@" <<'PY'
 import itertools
 import json
 import os

@@ -15,6 +15,7 @@ skill-patch check    # exit 0 iff every hunk is applied (hk runs this on commit)
 skill-patch apply    # idempotent; re-applies hunks clobbered by `skills update`
 skill-patch status   # per (patch, target, hunk) state table
 skill-patch list     # patch names + reasons
+skill-patch --root <preview> apply|check|status   # same, against a preview tree
 ```
 
 ## Format
