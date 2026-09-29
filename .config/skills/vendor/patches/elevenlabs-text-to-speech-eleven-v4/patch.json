@@ -1,0 +1,6 @@
+{
+  "reason": "Eleven v4 usage guidance from the 2026-09-28 launch docs, checked against the live API; upstream only lists the model IDs.",
+  "files": [
+    "elevenlabs/.agents/skills/text-to-speech/SKILL.md"
+  ]
+}
