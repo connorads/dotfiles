@@ -83,6 +83,7 @@
       "android-commandlinetools"
       "visual-studio-code"
       "t3-code"
+      "bb"
       "zed"
       "zappy"
       "calibre"
