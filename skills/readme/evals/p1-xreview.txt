@@ -1,0 +1,1 @@
+write a README.md for the project at ~/src/xreview. i want it short, clear and visually appealing, the kind you'd see on a good github repo. look at the code/docs there to understand it.

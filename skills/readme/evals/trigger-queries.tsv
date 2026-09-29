@@ -1,0 +1,7 @@
+T1	yes	write a README for this repo
+T2	yes	our readme is a wall of text, can you make it look like a proper github project page
+T3	yes	review this README.md, does it read like AI slop?
+T4	yes	need a landing README for the npm package before i publish
+T5	no	update AGENTS.md with the new test command
+T6	no	write an ADR for switching to postgres
+T7	no	document the public API of this module with docstrings
