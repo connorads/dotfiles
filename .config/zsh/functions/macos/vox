@@ -3,8 +3,9 @@
 #
 # One detached `voxtap record` captures your mic and the system's own output -
 # one aggregate device, one clock - to two mono 16 kHz WAVs, and on stop each is
-# transcribed on-device by the MacWhisper CLI, then merged into one timestamped
-# markdown script.
+# transcribed on-device by FluidAudio's CLI (Parakeet ASR, plus speaker
+# diarisation on the system track), then merged into one timestamped markdown
+# script.
 #
 #   vox                      start (no args, no thinking)
 #   vox --name <title>       start with a title
@@ -26,10 +27,12 @@
 #   ~/Recordings/vox/2026-07-28-140312-triver-kickoff/
 #       mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
 #                             until stop compacts it, or kept if the transcript was empty
-#       mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
+#       mic.json sys.json     per-track segments (segments.py), what merge reads
+#       *.asr.json *.diar.json  raw fluidaudiocli output, so a re-segment
+#                             never re-transcribes
 #       transcript.md         merged, name-fixed - the artefact everything consumes
-#       vox.log               voxtap + mw stderr (mw reports progress there)
-#       transcribing.pid      only while mw runs: "pid start_epoch"
+#       vox.log               voxtap + fluidaudiocli stderr
+#       transcribing.pid      only while transcription runs: "pid start_epoch"
 #
 # The directory name IS the title - no metadata file holding a duplicate that
 # can drift - so renaming is `mv`, and Finder, hand and the tmux picker are one
@@ -55,9 +58,6 @@ local vox_lib="${VOX_LIB:-$HOME/.config/tmux/scripts/vox-lib.sh}"
 # shellcheck source=/dev/null
 source "$vox_lib"
 
-# Model pinned per invocation rather than via `mw models select`, which mutates
-# the GUI app's own state - a CLI run must not change what the app does next.
-local vox_model="${VOX_MODEL:-parakeet-pro:nvidia_parakeet-v3_494MB}"
 # The mic is resolved by NAME at start (a case-insensitive substring of the
 # device's Core Audio name, or its exact UID), never by a recorded index: device
 # order changes when one appears or disappears (connecting AirPods is enough).
@@ -65,6 +65,7 @@ local vox_model="${VOX_MODEL:-parakeet-pro:nvidia_parakeet-v3_494MB}"
 local vox_mic_device="${VOX_MIC_DEVICE:-Microphone}"
 local vox_voxtap="${VOX_VOXTAP:-voxtap}"
 local vox_merge="${VOX_MERGE:-$HOME/.config/vox/merge.py}"
+local vox_segments="${VOX_SEGMENTS:-$HOME/.config/vox/segments.py}"
 local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
 local vox_python="${VOX_PYTHON:-python3}"
 
@@ -272,10 +273,10 @@ _vox_audio_secs() {
 
 # _vox_require_transcript DIR - true when the merge left something to read.
 #
-# An empty transcript is a FAILURE to report, not a success to announce: mw's
-# exit status says nothing about content, so without this every surface said
-# "transcript ready" over a 0-byte file. One message covers both "nobody said
-# anything recognisable" and "mw fell over", because nothing here can tell them
+# An empty transcript is a FAILURE to report, not a success to announce: the
+# transcriber's exit status says nothing about content, so without this every
+# surface said "transcript ready" over a 0-byte file. One message covers both
+# "nobody said anything recognisable" and "transcription fell over", because nothing here can tell them
 # apart and vox.log carries the detail in either case.
 _vox_require_transcript() {
 	local dir=$1
@@ -290,7 +291,7 @@ _vox_require_transcript() {
 # transcript holds no segments at all. Best-effort: no ffmpeg, no measurement,
 # no warning.
 #
-# mw exits 0 whatever it heard, so nothing downstream can tell a blanked track
+# fluidaudiocli exits 0 whatever it heard, so nothing downstream can tell a blanked track
 # from a quiet one - and vox_session_kind reads a blanked system track as `solo`,
 # which turns a lost far side into a fact about the meeting. The audio is the
 # only witness that there was speech to lose, which is why the check is a
@@ -312,8 +313,8 @@ _vox_report_blanked() {
 }
 
 # _vox_track_audio DIR TRACK - the audio a track is stored as: its WAV while
-# the capture's original is there, else the Opus that compacting left. mw and
-# ffmpeg both demux either, so nothing downstream needs to know which.
+# the capture's original is there, else the Opus that compacting left.
+# fluidaudiocli and ffmpeg both demux either, so nothing downstream needs to know which.
 _vox_track_audio() {
 	local f
 	for f in "$1/$2".{wav,opus}; do
@@ -325,22 +326,47 @@ _vox_track_audio() {
 	return 1
 }
 
+# _vox_scribe AUDIO DIR TRACK DIARISE - transcribe AUDIO into DIR/TRACK.json,
+# diarising it first when DIARISE is 1. The raw fluidaudiocli output is kept
+# beside it as TRACK.asr.json / TRACK.diar.json.
+#
+# Every output is cleared up front so a failed run never leaves the previous
+# transcription looking current. `transcribe` exits 0 even when it cannot read
+# the audio, writing no JSON, so the file is the success signal rather than the
+# status. stdout carries only the recognised text, already in the JSON.
+_vox_scribe() {
+	local audio=$1 dir=$2 track=$3 diarise=$4
+	local asr="$dir/$track.asr.json" diar="$dir/$track.diar.json"
+	rm -f "$asr" "$diar"
+	: >"$dir/$track.json"
+	fluidaudiocli transcribe "$audio" --word-timestamps --output-json "$asr" \
+		>/dev/null 2>>"$dir/vox.log"
+	[[ -s "$asr" ]] || return 1
+	local -a diar_args=()
+	if (( diarise )); then
+		fluidaudiocli process "$audio" --mode offline --output "$diar" \
+			>/dev/null 2>>"$dir/vox.log" && [[ -s "$diar" ]] || return 1
+		diar_args=(--diar "$diar")
+	fi
+	"$vox_python" "$vox_segments" --asr "$asr" "${diar_args[@]}" \
+		>"$dir/$track.json" 2>>"$dir/vox.log"
+}
+
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
 # per-track JSON is kept so a re-merge (new vocabulary, changed gap) never
 # re-transcribes.
 _vox_transcribe() {
 	local dir=$1
-	_vox_need mw "$vox_python" || return 1
+	_vox_need fluidaudiocli "$vox_python" || return 1
 
-	local track audio speakers
+	local track audio diarise
 	for track in mic sys; do
 		audio=$(_vox_track_audio "$dir" "$track") || continue
-		# --no-speakers on the mic track: it is definitionally you, and asking
-		# for diarisation would only invent a second speaker out of noise.
-		[[ "$track" == sys ]] && speakers=--speakers || speakers=--no-speakers
 		print -u2 -- "vox: transcribing $track…"
-		mw transcribe "$audio" --model "$vox_model" --format json "$speakers" \
-			>"$dir/$track.json" 2>>"$dir/vox.log" ||
+		# Diarise only the system track: the mic is definitionally you, and
+		# diarising it would only invent a second speaker out of noise.
+		[[ "$track" == sys ]] && diarise=1 || diarise=0
+		_vox_scribe "$audio" "$dir" "$track" "$diarise" ||
 			print -u2 -- "vox: transcribing $track failed — see $dir/vox.log"
 	done
 	_vox_report_blanked "$dir"
@@ -356,11 +382,11 @@ _vox_transcribe() {
 
 # _vox_transcribe_file FILE - transcribe an audio/video file that already exists
 # into a new store directory. An imported file is genuinely one track, so it
-# occupies the mic slot; `--speakers` is on because, unlike a live mic capture,
+# occupies the mic slot; it is diarised because, unlike a live mic capture,
 # an imported file may well hold several people.
 _vox_transcribe_file() {
 	local file=$1
-	_vox_need mw "$vox_python" || return 1
+	_vox_need fluidaudiocli "$vox_python" || return 1
 	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)-$(_vox_slug "${${file:t}:r}")"
 	mkdir -p "$dir" || return 1
 	# A symlink back to the source keeps the directory self-contained for `vox
@@ -368,11 +394,10 @@ _vox_transcribe_file() {
 	ln -sfn "${file:A}" "$dir/source.${file:e}" 2>/dev/null
 
 	print -u2 -- "vox: transcribing ${file:t}…"
-	# Straight to mw, in whatever container and rate it arrived in: mw resamples
-	# and demuxes for itself (verified on 48 kHz stereo AAC-in-MP4), so there is
-	# nothing here to normalise and nothing to leave the caller waiting on.
-	mw transcribe "$file" --model "$vox_model" --format json --speakers \
-		>"$dir/mic.json" 2>>"$dir/vox.log" || {
+	# Straight to fluidaudiocli, in whatever container and rate it arrived in:
+	# it resamples and demuxes through Core Audio, so there is nothing here to
+	# normalise and nothing to leave the caller waiting on.
+	_vox_scribe "$file" "$dir" mic 1 || {
 		_vox_die "transcription failed — see $dir/vox.log"
 		return 1
 	}

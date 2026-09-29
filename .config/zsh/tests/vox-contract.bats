@@ -5,10 +5,11 @@
 # The two contracts vox depends on that no fake can keep for it, both driven
 # against the real thing here:
 #
-#   1. The JSON MacWhisper's CLI emits. merge.py trusts
-#      `segments[].{start,end,text}` with start/end as integer MILLISECONDS, and
-#      `speaker` present only under --speakers. A MacWhisper update can change
-#      any of that silently while every faked test in vox.bats stays green.
+#   1. The JSON FluidAudio's CLI writes. segments.py trusts
+#      `wordTimings[].{startTime,endTime,word}` from `transcribe` and
+#      `segments[].{startTimeSeconds,endTimeSeconds,speakerId}` from `process`,
+#      all times in float SECONDS. A FluidAudio update can change any of that
+#      silently while every faked test in vox.bats stays green.
 #   2. voxtap's alignment invariant — the microphone and the tap deliver the
 #      same frame count per IO cycle of the one aggregate device that carries
 #      both, through silence too, and that count follows the microphone's clock.
@@ -18,7 +19,7 @@
 #      the run should have taken.
 #
 # Each half skips when its binary is absent (Linux, or a machine without
-# MacWhisper / before `drs`), keeping the fast subset fast: `mise run
+# fluidaudiocli / before `drs`), keeping the fast subset fast: `mise run
 # zsh-tests-fast` filters this file out.
 
 bats_require_minimum_version 1.5.0
@@ -27,34 +28,38 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 MERGE_REAL="$HOME/.config/vox/merge.py"
+SEGMENTS_REAL="$HOME/.config/vox/segments.py"
 
 setup_file() {
-  command -v mw >/dev/null 2>&1 || return 0
+  command -v fluidaudiocli >/dev/null 2>&1 || return 0
   command -v say >/dev/null 2>&1 || return 0
-  # A real utterance, not a sine tone: the schema only carries segments when
-  # there is speech to segment. Built once per file — `say` plus a transcription
-  # is the expensive part.
+  # A real utterance, not a sine tone: the schema only carries words when
+  # there is speech to transcribe. Built once per file — `say` plus a
+  # transcription is the expensive part.
   export VOX_CONTRACT_WAV="$BATS_FILE_TMPDIR/speech.wav"
   say -o "$VOX_CONTRACT_WAV" --data-format=LEI16@16000 \
     "Right then. Shall we make a start on the kickoff?" 2>/dev/null || true
   if [ -s "$VOX_CONTRACT_WAV" ]; then
-    mw transcribe "$VOX_CONTRACT_WAV" --format json --no-speakers \
-      >"$BATS_FILE_TMPDIR/plain.json" 2>"$BATS_FILE_TMPDIR/plain.err" || true
+    fluidaudiocli transcribe "$VOX_CONTRACT_WAV" --word-timestamps \
+      --output-json "$BATS_FILE_TMPDIR/plain.asr.json" >/dev/null 2>&1 || true
+    fluidaudiocli process "$VOX_CONTRACT_WAV" --mode offline \
+      --output "$BATS_FILE_TMPDIR/plain.diar.json" >/dev/null 2>&1 || true
   fi
 }
 
-require_mw() {
-  command -v mw >/dev/null 2>&1 || skip "MacWhisper CLI (mw) not installed"
+require_fluid() {
+  command -v fluidaudiocli >/dev/null 2>&1 || skip "fluidaudiocli not installed (mise install)"
   command -v say >/dev/null 2>&1 || skip "say not available to build a fixture"
-  [ -s "$BATS_FILE_TMPDIR/plain.json" ] || skip "mw produced no output for the fixture"
-  PLAIN="$BATS_FILE_TMPDIR/plain.json"
+  [ -s "$BATS_FILE_TMPDIR/plain.asr.json" ] || skip "fluidaudiocli produced no output for the fixture"
+  ASR="$BATS_FILE_TMPDIR/plain.asr.json"
+  DIAR="$BATS_FILE_TMPDIR/plain.diar.json"
 }
 
 require_voxtap() {
   command -v voxtap >/dev/null 2>&1 || skip "voxtap not installed (run drs)"
 }
 
-# assert_schema FILE - the shape merge.py depends on.
+# assert_schema FILE - the per-track segment shape merge.py depends on.
 assert_schema() {
   python3 - "$1" <<'PY'
 import json
@@ -76,68 +81,88 @@ assert segments[-1]["end"] > 200, "end looks like seconds, not milliseconds"
 PY
 }
 
-@test "mw --format json emits the segment schema merge.py parses" {
-  require_mw
-  assert_schema "$PLAIN"
-}
+@test "transcribe --output-json writes the word timings segments.py parses" {
+  require_fluid
+  run python3 - "$ASR" <<'PY'
+import json
+import sys
 
-@test "mw --format json writes pure JSON to stdout, progress to stderr" {
-  require_mw
-  # This is what lets vox pipe mw straight into a file with no -o flag.
-  run python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$PLAIN"
-  [ "$status" -eq 0 ]
-  [ ! -s "$BATS_FILE_TMPDIR/plain.err" ] || grep -qi 'transcrib' "$BATS_FILE_TMPDIR/plain.err"
-}
-
-@test "--no-speakers omits the speaker key entirely" {
-  require_mw
-  # merge.py treats speaker as optional precisely because of this.
-  run python3 -c '
-import json, sys
-segments = json.load(open(sys.argv[1]))["segments"]
-print(any("speaker" in s for s in segments))
-' "$PLAIN"
-  [ "$output" = "False" ]
-}
-
-@test "--speakers keeps the same schema and may add a speaker key" {
-  require_mw
-  mw transcribe "$VOX_CONTRACT_WAV" --format json --speakers \
-    >"$BATS_TEST_TMPDIR/diarised.json" 2>/dev/null || skip "diarised run failed"
-  assert_schema "$BATS_TEST_TMPDIR/diarised.json"
-
-  run python3 -c '
-import json, sys
-segments = json.load(open(sys.argv[1]))["segments"]
-assert all(isinstance(s.get("speaker", ""), str) for s in segments)
-' "$BATS_TEST_TMPDIR/diarised.json"
+words = json.load(open(sys.argv[1]))["wordTimings"]
+assert isinstance(words, list) and words, "wordTimings is not a non-empty list"
+for w in words:
+    assert isinstance(w["word"], str), "word is not a string"
+    assert isinstance(w["startTime"], (int, float)), "startTime is not a number"
+    assert isinstance(w["endTime"], (int, float)), "endTime is not a number"
+# Seconds, not milliseconds: a ~3 s utterance ends under 10. segments.py
+# multiplies by 1000, so milliseconds here would push every timestamp out by
+# hours.
+assert 0.2 < words[-1]["endTime"] < 30, "endTime does not look like seconds"
+PY
   [ "$status" -eq 0 ]
 }
 
-@test "mw reads an Ogg Opus track into the same schema" {
-  require_mw
+@test "process --output writes the speaker turns segments.py parses" {
+  require_fluid
+  [ -s "$DIAR" ] || skip "diarisation produced no output for the fixture"
+  run python3 - "$DIAR" <<'PY'
+import json
+import sys
+
+turns = json.load(open(sys.argv[1]))["segments"]
+assert isinstance(turns, list) and turns, "segments is not a non-empty list"
+for t in turns:
+    assert isinstance(t["speakerId"], str) and t["speakerId"], "speakerId missing"
+    assert isinstance(t["startTimeSeconds"], (int, float)), "start is not a number"
+    assert isinstance(t["endTimeSeconds"], (int, float)), "end is not a number"
+assert turns[-1]["endTimeSeconds"] < 30, "turn times do not look like seconds"
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "transcribe on unreadable audio writes no JSON, so the file is the signal" {
+  require_fluid
+  # The CLI exits 0 here, so vox treats a missing output file as the failure.
+  # If this ever writes a file, vox's check needs to read its content instead.
+  printf 'not audio' >"$BATS_TEST_TMPDIR/junk.wav"
+  fluidaudiocli transcribe "$BATS_TEST_TMPDIR/junk.wav" --word-timestamps \
+    --output-json "$BATS_TEST_TMPDIR/junk.json" >/dev/null 2>&1 || true
+
+  [ ! -e "$BATS_TEST_TMPDIR/junk.json" ]
+}
+
+@test "segments.py turns real FluidAudio output into the schema merge.py parses" {
+  require_fluid
+  [ -s "$DIAR" ] || skip "diarisation produced no output for the fixture"
+  python3 "$SEGMENTS_REAL" --asr "$ASR" --diar "$DIAR" >"$BATS_TEST_TMPDIR/sys.json"
+
+  assert_schema "$BATS_TEST_TMPDIR/sys.json"
+  grep -q '"speaker": "Speaker [0-9]*"' "$BATS_TEST_TMPDIR/sys.json"
+}
+
+@test "fluidaudiocli reads an Ogg Opus track" {
+  require_fluid
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  # Compacted recordings keep only Opus, so `vox transcribe` on one rests on mw
-  # demuxing Ogg Opus as it does WAV.
+  # Compacted recordings keep only Opus, so `vox transcribe` on one rests on
+  # fluidaudiocli demuxing Ogg Opus as it does WAV.
   ffmpeg -nostdin -hide_banner -loglevel error -i "$VOX_CONTRACT_WAV" \
     -c:a libopus -b:a 32k -ac 1 -y "$BATS_TEST_TMPDIR/speech.opus"
-  mw transcribe "$BATS_TEST_TMPDIR/speech.opus" --format json --no-speakers \
-    >"$BATS_TEST_TMPDIR/opus.json" 2>/dev/null
+  fluidaudiocli transcribe "$BATS_TEST_TMPDIR/speech.opus" --word-timestamps \
+    --output-json "$BATS_TEST_TMPDIR/opus.json" >/dev/null 2>&1
 
-  assert_schema "$BATS_TEST_TMPDIR/opus.json"
   grep -qi 'kick' "$BATS_TEST_TMPDIR/opus.json"
 }
 
-@test "merge.py renders real mw output into a timestamped transcript" {
-  require_mw
-  run python3 "$MERGE_REAL" --me "$PLAIN"
+@test "merge.py renders real output into a timestamped transcript" {
+  require_fluid
+  python3 "$SEGMENTS_REAL" --asr "$ASR" >"$BATS_TEST_TMPDIR/mic.json"
+  run python3 "$MERGE_REAL" --me "$BATS_TEST_TMPDIR/mic.json"
 
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" =~ ^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\ Me:\  ]]
 }
 
 @test "vox turns a real audio file into a real transcript" {
-  require_mw
+  require_fluid
   # The journey, not the seams. Every other test here checks one contract in
   # isolation, which is how four recordings in a row could produce a 0-byte
   # transcript.md while the suite stayed green: nothing ran audio in one end and
@@ -154,19 +179,16 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
 }
 
 @test "a zero-padded tail transcribes with no pre-processing at all" {
-  require_mw
+  require_fluid
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
   # voxtap pads silence with digital ZEROS to a monotonic clock (docs/adr/0003),
   # so this is the exact shape of a system track whose far side goes quiet. vox
-  # used to trim that tail off mw's input, because Parakeet once returned an
-  # EMPTY transcript for a clip ending in enough zeros
-  # (NVIDIA-NeMo/Speech#15757). It no longer does - re-measured against the
-  # pinned model at 5, 12, 24, 60 and 120 s of verified-exact zeros, at four
-  # levels down to -60 dB mean - so the trim is gone and this is what says so.
+  # once trimmed that tail, because Parakeet returned an EMPTY transcript for a
+  # clip ending in enough zeros (NVIDIA-NeMo/Speech#15757).
   #
-  # The guard is one-sided by construction: only the real mw can fail it, and a
-  # failure here means the model regressed and the audio now needs handling
-  # again. It is the test to look at before re-adding any trim.
+  # The guard is one-sided by construction: only the real transcriber can fail
+  # it, and a failure here means the model regressed and the audio now needs
+  # handling again. It is the test to look at before re-adding any trim.
   ffmpeg -hide_banner -loglevel error -i "$VOX_CONTRACT_WAV" \
     -af 'apad=pad_dur=12' -c:a pcm_s16le -y "$BATS_TEST_TMPDIR/padded.wav"
   export VOX_STORE="$BATS_TEST_TMPDIR/padded-store"
@@ -180,17 +202,18 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   grep -qi 'kick' "$output/transcript.md"
 }
 
-@test "mw's output for a silent track reads solo, not 2-way" {
-  require_mw
+@test "a silent track reads solo, not 2-way" {
+  require_fluid
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  # The failure this guards was invisible to a hand-written fixture: mw emits a
-  # TOP-LEVEL "text" key that is present but empty when nothing was
-  # transcribed, so a check for the word "text" called every monologue 2-way.
+  # Through the real CLI and the real filter: a check that only a hand-written
+  # fixture ever fed once called every monologue 2-way.
   ffmpeg -hide_banner -loglevel error -f lavfi -i 'anullsrc=r=16000:cl=mono' \
     -t 2 -c:a pcm_s16le -y "$BATS_TEST_TMPDIR/silence.wav"
   mkdir -p "$BATS_TEST_TMPDIR/rec"
-  mw transcribe "$BATS_TEST_TMPDIR/silence.wav" --format json --speakers \
-    >"$BATS_TEST_TMPDIR/rec/sys.json" 2>/dev/null || skip "mw refused the silent track"
+  fluidaudiocli transcribe "$BATS_TEST_TMPDIR/silence.wav" --word-timestamps \
+    --output-json "$BATS_TEST_TMPDIR/rec/sys.asr.json" >/dev/null 2>&1
+  [ -s "$BATS_TEST_TMPDIR/rec/sys.asr.json" ] || skip "fluidaudiocli refused the silent track"
+  python3 "$SEGMENTS_REAL" --asr "$BATS_TEST_TMPDIR/rec/sys.asr.json" >"$BATS_TEST_TMPDIR/rec/sys.json"
 
   run bash -c "source '$HOME/.config/tmux/scripts/vox-lib.sh'; vox_session_kind '$BATS_TEST_TMPDIR/rec'"
 

@@ -59,7 +59,7 @@ def test_format_timestamp(ms: int, expected: str) -> None:
     assert format_timestamp(ms) == expected
 
 
-# --- schema: what mw actually emits ----------------------------------------
+# --- schema: what segments.py (and mw before it) emits ---------------------
 
 
 def test_load_segments_reads_ms_start_end_and_text() -> None:

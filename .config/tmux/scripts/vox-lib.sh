@@ -6,7 +6,7 @@
 #
 # What it drives: `vox` runs one detached `voxtap record`, which captures the mic
 # and the system's own output through one aggregate device into two WAVs, then
-# transcribes each locally with the MacWhisper CLI. State is that capture
+# transcribes each locally with FluidAudio's CLI. State is that capture
 # process, tracked by a statefile holding "pid start_epoch dir". See
 # docs/adr/0012.
 #
@@ -28,12 +28,13 @@ VOX_STATEFILE=${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}
 
 # A transcription in flight is marked INSIDE the recording it is working on:
 # `<dir>/transcribing.pid` holds "pid start_epoch", written by `vox stop` and
-# `vox transcribe` around the minutes they spend in mw, so the pill can say
+# `vox transcribe` around the time they spend transcribing, so the pill can say
 # TRANSCRIBING whether the stop was typed in a pane or detached by the toggle.
 # Per recording rather than one global file because two transcriptions can
 # overlap (a stop while an earlier stop is still running) and a shared file
 # would let each overwrite the other's record and the first to finish delete
-# it for both. A dead pid reads as finished, so a crashed `mw` needs no reaper.
+# it for both. A dead pid reads as finished, so a crashed transcriber needs no
+# reaper.
 VOX_JOB_MARKER=transcribing.pid
 
 # Marker whose MTIME is the last time you looked at the recordings. READY is
@@ -172,7 +173,7 @@ vox_job_dir() {
 }
 
 # vox_job_active — true while any transcription's pid is alive. A job that died
-# (mw crashed, the machine rebooted) reads as finished, so this self-clears the
+# (the transcriber crashed, the machine rebooted) reads as finished, so this self-clears the
 # same way the capture state does.
 vox_job_active() {
 	[ -n "$(vox_job_dir)" ]
@@ -368,12 +369,12 @@ vox_mean_volume() {
 	'
 }
 
-# vox_has_segments FILE — true when an mw transcript holds at least one segment.
+# vox_has_segments FILE — true when a track transcript holds at least one segment.
 #
-# A POSITIVE test for a segment object, not for the word "text": real mw output
+# A POSITIVE test for a segment object, not for the word "text": real output
 # carries a TOP-LEVEL "text" key that is present (and empty) even when nothing
 # was transcribed, so looking for the word alone calls every silent track
-# spoken-on. Whitespace is stripped first because mw pretty-prints, so the array
+# spoken-on. Whitespace is stripped first because the JSON is pretty-printed, so the array
 # and its first brace are on different lines. Anything unrecognisable reads as no
 # segments, the conservative call.
 vox_has_segments() {
@@ -417,7 +418,7 @@ vox_classify_track() {
 # WAV arrives on stdin, so this stays testable with a fixture and no audio.
 #
 # Audible-but-empty is a transcription FAILURE, not a monologue, and nothing
-# downstream can tell it from one: mw exits 0 whatever it heard, and
+# downstream can tell it from one: fluidaudiocli exits 0 whatever it heard, and
 # vox_session_kind reads a blanked system track as "solo" — reporting the loss as
 # a fact about the meeting. Silence stays a label (a genuine monologue's system
 # track is quiet, so this is false on it); audible silence is the failure.

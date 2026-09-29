@@ -4,9 +4,11 @@ Local audio capture and on-device transcription, in the same
 one-lib-many-surfaces shape as the caffeine toggle. One detached
 [`voxtap record`](../../nix/voxtap/main.swift) captures the mic and the system's own
 output (a Core Audio process tap) through one aggregate device to two mono
-16 kHz WAVs; `vox stop` finalises them, transcribes each with the MacWhisper CLI
-(`mw`), merges them into one timestamped `transcript.md` and compacts the WAVs
-to Opus. General-purpose by design - meetings,
+16 kHz WAVs; `vox stop` finalises them, transcribes each with FluidAudio's CLI
+(`fluidaudiocli`, Parakeet v3 on Core ML, diarising the system track), merges
+them into one timestamped `transcript.md` and compacts the WAVs to Opus. Why
+FluidAudio rather than MacWhisper's `mw`:
+[ADR 0018](../../../docs/adr/0018-vox-transcribes-with-the-fluidaudio-cli.md). General-purpose by design - meetings,
 monologues, dictation - with no consumer baked in: integration is
 `cat "$(vox last)/transcript.md" | claude -p …`.
 
@@ -26,10 +28,12 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
 2026-07-28-140312-triver-kickoff/
     mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
                           until stop compacts it, or kept if the transcript was empty
-    mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
+    mic.json sys.json     per-track segments (segments.py), what merge.py reads
+    *.asr.json *.diar.json  raw fluidaudiocli output, so a re-segment never
+                          re-transcribes (diar only on a diarised track)
     transcript.md         merged, name-fixed - the artefact everything consumes
-    vox.log               voxtap + mw stderr (mw reports progress there)
-    transcribing.pid      only while mw runs: "pid start_epoch"
+    vox.log               voxtap + fluidaudiocli stderr
+    transcribing.pid      only while transcription runs: "pid start_epoch"
 ```
 
 The directory name **is** the title - no metadata file holding a duplicate that
@@ -58,7 +62,7 @@ Change as a set:
   `vox stop` or `vox transcribe` is spending minutes on, inside the recording it
   is working on - written and removed by those commands themselves, so the pill
   says TRANSCRIBING whether the stop was typed in a pane or detached by the
-  toggle, and a crashed `mw` reads as finished by pid liveness alone. Per
+  toggle, and a crashed transcriber reads as finished by pid liveness alone. Per
   recording, not one global file, because two transcriptions overlap whenever a
   stop lands while an earlier one is still running: a shared file let each
   overwrite the other's record and the first to finish delete it for both, so
@@ -90,9 +94,9 @@ Change as a set:
   stderr, so it composes without glue. **Exit 0 means the transcript has
   content**: `stop`, `transcribe` and `<file>` print the recording's path either way - the audio is intact, so there
   is somewhere to look - but return non-zero, with one line naming what was not
-  recognised, how long the audio was and where the log is. `mw` exits 0 whatever
-  it heard, so nothing upstream of this check can tell "no speech" from "mw fell
-  over", and one message covers both. **`stop` compacts only after a transcript
+  recognised, how long the audio was and where the log is. `fluidaudiocli`
+  exits 0 whatever it heard, so nothing upstream of this check can tell "no
+  speech" from "transcription fell over", and one message covers both. **`stop` compacts only after a transcript
   with content**: each WAV becomes Opus 32k mono (~9% of the size, 128x
   realtime), one track after the other, inside the job marker so the pill reads
   TRANSCRIBING until the encode ends. An empty transcript keeps the WAV to
@@ -118,12 +122,18 @@ Change as a set:
   `drs`**: `voxtap --probe 1` in the foreground takes the microphone TCC prompt
   (a detached first start would sit behind it until the 10 s wait expired; the
   grant is to the terminal and persists across rebuilds).
-- [`../vox/merge.py`](../../vox/merge.py) - a real Unix filter: two `mw` JSON files
-  in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
-  Stdlib-only so the directory stays eligible for the `py-typecheck-vox` pyrefly
-  gate. Applies [`../vox/vocabulary.tsv`](../../vox/vocabulary.tsv) (`wrong<TAB>right`,
-  whole-word and case-insensitive) because `mw transcribe` has no
-  `--vocabulary`/`--prompt` flag and no replacement dictionary in its prefs.
+- [`../vox/segments.py`](../../vox/segments.py) - a real Unix filter:
+  `fluidaudiocli` word timings plus optional diarisation in, the per-track
+  segment JSON out (the schema `mw` wrote, so older recordings read the same).
+  Segments end at a sentence end, a 1.5 s pause or a speaker change;
+  sentence-sized is what lets `merge.py` interleave the other track between them.
+- [`../vox/merge.py`](../../vox/merge.py) - a real Unix filter: two per-track JSON
+  files in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
+  Both filters are stdlib-only so the directory stays eligible for the
+  `py-typecheck-vox` pyrefly gate. Applies
+  [`../vox/vocabulary.tsv`](../../vox/vocabulary.tsv) (`wrong<TAB>right`,
+  whole-word and case-insensitive) because `fluidaudiocli transcribe` has no
+  vocabulary or prompt flag.
 - [`scripts/vox-toggle.sh`](../scripts/vox-toggle.sh) - `prefix + Alt+v`, the
   key the subsystem is actually used through: idle starts, recording stops. Two
   orderings are the design. **The title prompt appears at once, with the capture
@@ -264,7 +274,8 @@ Change as a set:
   with the output switched to the built-in speakers mid-capture and back: the
   tone resumed in the tap both times. Nothing rebuilds on that event.
 - **Nothing pre-processes the audio, and the guard against losing speech is a
-  detector rather than a filter.** `mw` reads each stored track directly, and
+  detector rather than a filter.** `fluidaudiocli` reads each stored track
+  directly (WAV, Ogg Opus or an imported container), and
   `_vox_report_blanked` warns - to stderr and `vox.log`, naming the track and
   its mean level - when `vox_track_blanked` finds audible audio behind an empty
   transcript. Do not add a `silenceremove` pass: it cut real speech at the
@@ -284,14 +295,18 @@ Change as a set:
 - **`:a`, not `:A`, when echoing a path back.** `:A` resolves symlinks, so the
   printed path jumps to the physical one (`/var` → `/private/var` on macOS) and
   no longer matches the store path the caller passed in.
-- **The model is pinned per invocation** (`mw transcribe --model …`), never via
-  `mw models select`, which mutates the GUI app's own state.
-- **`mw` emits a top-level `"text"` key even when it transcribed nothing.** So
-  `vox_session_kind` tests positively for a segment object (`"segments":[{`
-  after stripping whitespace, because mw pretty-prints); looking for the word
-  `"text"` called every silent system track `2-way`. Hand-written fixtures could
-  not catch this, which is why `vox-contract.bats` now drives real `mw` over
-  real silence.
+- **`fluidaudiocli transcribe` exits 0 when it cannot read the audio, and
+  writes no JSON.** `_vox_scribe` clears each track's outputs first and treats
+  the file, not the status, as success. `vox-contract.bats` pins this.
+- **A release `fluidaudiocli` prints nothing below warning level**, `--help`
+  included (it exits 1 silently); info goes to the unified log. Results land in
+  the `--output-json`/`--output` files, and stdout carries only the bare text.
+- **A transcript carries a top-level `"text"` key even when nothing was
+  transcribed.** So `vox_session_kind` tests positively for a segment object
+  (`"segments":[{` after stripping whitespace, because the JSON is
+  pretty-printed); looking for the word `"text"` called every silent system
+  track `2-way`. Hand-written fixtures could not catch this, which is why
+  `vox-contract.bats` drives the real CLI and filter over real silence.
 - **A quiet room is nowhere near digital silence.** Measured here: a system
   track that captured nothing reads **-91 dB**, a microphone in a quiet room
   **-55 dB**. `VOX_SILENCE_DB` therefore sits at -70, between them - above the
@@ -311,8 +326,9 @@ order, Esc/Enter/title outcomes, the no-client path and the detached stop),
 [`../zsh/tests/vox-menu.bats`](../../zsh/tests/vox-menu.bats) (the pill menu's rows
 per state), [`../zsh/tests/vox-popup.bats`](../../zsh/tests/vox-popup.bats) (the
 library's actions, driven through a stubbed fzf), [`../zsh/tests/vox-contract.bats`](../../zsh/tests/vox-contract.bats)
-(integration-tagged: drives the **real** `mw` against the JSON schema `merge.py`
-parses - the one contract here that is not ours to keep - and the **real**
-`voxtap` against the alignment invariant) and
-[`../vox/test_merge.py`](../../vox/test_merge.py) (the filter). Keep the pill legend
+(integration-tagged: drives the **real** `fluidaudiocli` against the JSON
+schema `segments.py` parses - the one contract here that is not ours to keep -
+and the **real** `voxtap` against the alignment invariant),
+[`../vox/test_segments.py`](../../vox/test_segments.py) and
+[`../vox/test_merge.py`](../../vox/test_merge.py) (the filters). Keep the pill legend
 in [`help.md`](../help.md) in sync with the lib.

@@ -9,12 +9,14 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 VOX="$HOME/.config/zsh/functions/macos/vox"
 VOX_LIB_REAL="$HOME/.config/tmux/scripts/vox-lib.sh"
 MERGE_REAL="$HOME/.config/vox/merge.py"
+SEGMENTS_REAL="$HOME/.config/vox/segments.py"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
 setup() {
   setup_test_home
   export VOX_LIB="$VOX_LIB_REAL"
   export VOX_MERGE="$MERGE_REAL"
+  export VOX_SEGMENTS="$SEGMENTS_REAL"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
@@ -130,21 +132,37 @@ teardown() {
   kill_capture
 }
 
-# mw stub: logs its argv and emits the JSON schema the real CLI emits.
-stub_mw() {
-  write_stub mw <<'EOF'
+# fluidaudiocli stub: logs its argv and writes the JSON schema the real CLI
+# writes, to the path its --output-json / --output flag names (the real one
+# prints only the bare text on stdout). $1 is the subcommand, $2 the audio.
+#
+# FLUID_WORDS overrides the words every track transcribes to, one
+# "start end word" triple per line, in seconds.
+stub_fluid() {
+  write_stub fluidaudiocli <<'EOF'
 #!/usr/bin/env bash
-printf 'mw %s\n' "$*" >>"$TEST_LOG"
-case "$*" in
-*mic.wav* | *mic.opus*)
-  printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hello there"}]}\n'
-  ;;
-*)
-  # The system track carries a "speaker" key; the mic track does not, because
-  # it is transcribed with --no-speakers.
-  printf '{"segments":[{"id":0,"start":2000,"end":3000,"text":"yes hello","speaker":"Speaker 1"}]}\n'
-  ;;
-esac
+printf 'fluidaudiocli %s\n' "$*" >>"$TEST_LOG"
+cmd=$1 audio=$2 out=""
+while [ $# -gt 0 ]; do
+  case $1 in --output-json | --output) out=$2 ;; esac
+  shift
+done
+if [ "$cmd" = process ]; then
+  printf '{"segments":[{"startTimeSeconds":0,"endTimeSeconds":10,"speakerId":"S1"}]}\n' >"$out"
+  exit 0
+fi
+if [ -n "${FLUID_WORDS+set}" ]; then
+  words=$FLUID_WORDS
+else
+  case "$audio" in
+  *mic.wav | *mic.opus) words=$'0 0.4 hello\n0.5 1 there' ;;
+  *) words=$'2 2.4 yes\n2.5 3 hello' ;;
+  esac
+fi
+printf '%s\n' "$words" | awk '
+  BEGIN { printf "{\"text\":\"\",\"wordTimings\":[" }
+  NF == 3 { printf "%s{\"startTime\":%s,\"endTime\":%s,\"word\":\"%s\"}", sep, $1, $2, $3; sep = "," }
+  END { print "]}" }' >"$out"
 EOF
 }
 
@@ -473,7 +491,7 @@ aged_recording() {
 
 @test "cancel stops the capture and removes the recording" {
   require_macos
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
@@ -483,7 +501,7 @@ aged_recording() {
   [ "$status" -eq 0 ]
   [ ! -d "$dir" ]
   [ ! -f "$VOX_STATEFILE" ]
-  ! grep -q '^mw ' "$TEST_LOG"
+  ! grep -q '^fluidaudiocli ' "$TEST_LOG"
 }
 
 @test "cancel fails cleanly when nothing is recording" {
@@ -497,7 +515,7 @@ aged_recording() {
 @test "stop signals the capture with INT and waits for it to finish" {
   require_macos
   stub_ffmpeg
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
@@ -505,7 +523,7 @@ aged_recording() {
   vox stop
 
   # INT is the stop signal voxtap finalises both tracks on; the wait is what
-  # lets mw read a WAV with a real length in its header.
+  # lets the transcriber read a WAV with a real length in its header.
   grep -q '^voxtap-signal INT$' "$TEST_LOG"
   ! grep -q '^voxtap-signal TERM$' "$TEST_LOG"
   ! kill -0 "$pid" 2>/dev/null
@@ -513,7 +531,7 @@ aged_recording() {
 
 @test "stop transcribes each track and merges them into transcript.md" {
   require_macos
-  stub_mw
+  stub_fluid
   stub_ffmpeg
   stub_voxtap
 
@@ -526,16 +544,17 @@ aged_recording() {
   [ -s "$dir/sys.json" ]
   [ "$(sed -n 1p "$dir/transcript.md")" = "[00:00:00] Me: hello there" ]
   [ "$(sed -n 2p "$dir/transcript.md")" = "[00:00:02] Speaker 1: yes hello" ]
-  # --no-speakers on the mic track (it is definitionally you), --speakers on
-  # the system track, and the model pinned per invocation.
-  grep -q "^mw transcribe .*/mic.wav --model .* --format json --no-speakers$" "$TEST_LOG"
-  grep -q "^mw transcribe .*/sys.wav --model .* --format json --speakers$" "$TEST_LOG"
+  grep -q "^fluidaudiocli transcribe .*/mic.wav --word-timestamps --output-json .*/mic.asr.json$" "$TEST_LOG"
+  grep -q "^fluidaudiocli transcribe .*/sys.wav --word-timestamps --output-json .*/sys.asr.json$" "$TEST_LOG"
+  # Only the system track is diarised: the mic is definitionally you.
+  grep -q "^fluidaudiocli process .*/sys.wav --mode offline --output .*/sys.diar.json$" "$TEST_LOG"
+  ! grep -q "^fluidaudiocli process .*/mic.wav" "$TEST_LOG"
 }
 
-@test "transcribing hands mw the captured WAV itself" {
+@test "transcribing hands fluidaudiocli the captured WAV itself" {
   require_macos
   stub_ffmpeg
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
@@ -544,7 +563,7 @@ aged_recording() {
 
   # Nothing pre-processes the audio, so what the model hears is exactly what
   # was captured.
-  grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
+  grep -q "^fluidaudiocli transcribe $dir/mic.wav " "$TEST_LOG"
 }
 
 # real_tracks DIR - swap the voxtap stub's placeholders for 1 s of real audio,
@@ -561,7 +580,7 @@ real_tracks() {
 @test "stop compacts both tracks to Opus once the transcript succeeds" {
   require_macos
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
@@ -580,7 +599,7 @@ real_tracks() {
 @test "stop clears the capture state and leaves a transcript to read" {
   require_macos
   stub_ffmpeg
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
@@ -596,13 +615,13 @@ real_tracks() {
 @test "stop leaves no transcribe marker behind" {
   require_macos
   stub_ffmpeg
-  stub_mw
+  stub_fluid
   stub_voxtap
 
   vox
   vox stop
 
-  # The marker exists only while mw is running, so nothing can be left
+  # The marker exists only while transcription runs, so nothing can be left
   # claiming to transcribe.
   [ ! -f "$output/transcribing.pid" ]
 }
@@ -610,7 +629,7 @@ real_tracks() {
 @test "a stop leaves another recording's live transcription alone" {
   require_macos
   stub_ffmpeg
-  stub_mw
+  stub_fluid
   stub_voxtap
   # An earlier stop still transcribing while this one finishes: with one global
   # job file the second stop overwrote the first's record and the first to finish
@@ -649,16 +668,32 @@ real_tracks() {
   require_macos
   stub_ffmpeg
   stub_voxtap
-  write_stub mw <<'EOF'
-#!/usr/bin/env bash
-printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"talking to admit today"}]}\n'
-EOF
+  stub_fluid
+  export FLUID_WORDS=$'0 0.2 talking\n0.3 0.4 to\n0.5 0.7 admit\n0.8 1 today'
   printf 'admit\tAdmyt\n' >"$VOX_VOCAB"
 
   vox
   vox stop
 
   [[ "$(cat "$output/transcript.md")" == *"talking to Admyt today"* ]]
+}
+
+@test "a transcribe that writes no JSON is reported as failed" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+  # The real CLI exits 0 when it cannot read the audio, and writes nothing.
+  write_stub fluidaudiocli <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  vox
+  vox stop
+
+  [ "$status" -ne 0 ]
+  [[ "$stderr" == *"transcribing mic failed"* ]]
+  [[ "$stderr" == *"transcribing sys failed"* ]]
 }
 
 @test "stop fails cleanly when nothing is recording" {
@@ -669,27 +704,24 @@ EOF
 
 # --- an empty transcript is a failure, not a success ------------------------
 
-# mw stub for a recording nobody said anything recognisable on: the real CLI
-# exits 0 and emits a top-level "text" key that is present but empty, which is
-# why exit status alone can never carry this.
-stub_mw_silent() {
-  write_stub mw <<'EOF'
-#!/usr/bin/env bash
-printf 'mw %s\n' "$*" >>"$TEST_LOG"
-printf '{\n  "segments" : [\n\n  ],\n  "text" : ""\n}\n'
-EOF
+# fluidaudiocli stub for a recording nobody said anything recognisable on: the
+# real CLI exits 0 and writes an empty word list, which is why exit status alone
+# can never carry this.
+stub_fluid_silent() {
+  stub_fluid
+  export FLUID_WORDS=""
 }
 
 @test "stop reports a transcript that came back empty" {
   require_macos
   stub_ffmpeg
-  stub_mw_silent
+  stub_fluid_silent
   stub_voxtap
 
   vox
   vox stop
 
-  # Not a success: every surface downstream took mw's exit 0 as "transcript
+  # Not a success: every surface downstream took the transcriber's exit 0 as "transcript
   # ready" and announced a 0-byte file.
   [ "$status" -ne 0 ]
   [[ "$stderr" == *"no speech recognised"* ]]
@@ -699,7 +731,7 @@ EOF
 @test "an empty transcript keeps the WAVs uncompacted" {
   require_macos
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  stub_mw_silent
+  stub_fluid_silent
   stub_voxtap
 
   vox
@@ -719,7 +751,7 @@ EOF
 @test "stop prints the path even when the transcript is empty" {
   require_macos
   stub_ffmpeg
-  stub_mw_silent
+  stub_fluid_silent
   stub_voxtap
 
   vox
@@ -734,10 +766,10 @@ EOF
 
 @test "transcribing a file to nothing fails the same way" {
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  stub_mw_silent
+  stub_fluid_silent
   # Real audio, so the message can name how long the thing it heard nothing in
-  # was — the one figure that says "you recorded 2 seconds" rather than "mw is
-  # broken".
+  # was — the one figure that says "you recorded 2 seconds" rather than "the
+  # transcriber is broken".
   ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=300:duration=2' \
     -ar 16000 -ac 1 -c:a pcm_s16le -y "$HOME/Team Sync.wav"
 
@@ -751,7 +783,7 @@ EOF
 
 # --- a track that lost its speech before anyone could read it ---------------
 #
-# mw exits 0 whatever it heard, so a track that transcribed to nothing is
+# fluidaudiocli exits 0 whatever it heard, so a track that transcribed to nothing is
 # indistinguishable from one nobody spoke on — and `vox_session_kind` reads the
 # system track's silence as `solo`, turning a transcription failure into a fact
 # about the meeting. The audio is the only witness that the speech was there.
@@ -759,7 +791,7 @@ EOF
 @test "a track that is audible but transcribed to nothing is reported" {
   require_macos
   stub_ffmpeg
-  stub_mw_silent
+  stub_fluid_silent
   stub_voxtap
   export VOX_VOLUMEDETECT_FIXTURE="$FIXTURES/vox-volumedetect-speech.txt"
 
@@ -779,7 +811,7 @@ EOF
 @test "a silent track that transcribed to nothing is left alone" {
   require_macos
   stub_ffmpeg
-  stub_mw_silent
+  stub_fluid_silent
   stub_voxtap
   export VOX_VOLUMEDETECT_FIXTURE="$FIXTURES/vox-volumedetect-silent.txt"
 
@@ -794,7 +826,7 @@ EOF
 # --- transcribing a file that already exists --------------------------------
 
 @test "an existing audio file is transcribed into its own store directory" {
-  stub_mw
+  stub_fluid
   printf 'RIFF' >"$HOME/Team Sync.wav"
 
   vox "$HOME/Team Sync.wav"
@@ -804,6 +836,8 @@ EOF
   [ -s "$output/mic.json" ]
   [ -s "$output/transcript.md" ]
   [ -L "$output/source.wav" ]
+  # An imported file may hold several people, so it is diarised.
+  grep -q "^fluidaudiocli process $HOME/Team Sync.wav " "$TEST_LOG"
 }
 
 # --- transcribe: redoing a recording in place --------------------------------
@@ -826,46 +860,50 @@ blanked_recording() {
 }
 
 @test "transcribe re-runs every stored track and re-merges in place" {
-  stub_mw
+  stub_fluid
   dir=$(blanked_recording)
 
   vox transcribe "$dir"
 
   [ "$status" -eq 0 ]
   [ "$output" = "$dir" ]
-  grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
-  grep -q "^mw transcribe $dir/sys.wav " "$TEST_LOG"
-  [[ "$(cat "$dir/sys.json")" == *'"segments":[{'* ]]
+  grep -q "^fluidaudiocli transcribe $dir/mic.wav " "$TEST_LOG"
+  grep -q "^fluidaudiocli transcribe $dir/sys.wav " "$TEST_LOG"
+  [[ "$(tr -d ' \n' <"$dir/sys.json")" == *'"segments":[{'* ]]
   [[ "$(cat "$dir/transcript.md")" == *"Speaker 1: yes hello"* ]]
   # No second directory: the recording was redone, not imported.
   [ "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
 }
 
-@test "transcribe holds the recording's marker while mw runs and drops it after" {
+@test "transcribe holds the recording's marker while transcription runs and drops it after" {
   dir=$(blanked_recording)
   # The stub records whether the marker existed at the moment it was called:
   # that is what makes the pill read TRANSCRIBING for the duration. $2 is the
   # track being transcribed, so its directory is the recording.
-  write_stub mw <<'EOF'
+  write_stub fluidaudiocli <<'EOF'
 #!/usr/bin/env bash
 if [ -f "${2%/*}/transcribing.pid" ]; then
-  printf 'mw job-present\n' >>"$TEST_LOG"
+  printf 'fluid job-present\n' >>"$TEST_LOG"
 else
-  printf 'mw job-absent\n' >>"$TEST_LOG"
+  printf 'fluid job-absent\n' >>"$TEST_LOG"
 fi
-printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hi"}]}\n'
+out=${*: -1}
+case $1 in
+process) printf '{"segments":[]}\n' >"$out" ;;
+*) printf '{"wordTimings":[{"startTime":0,"endTime":1,"word":"hi"}]}\n' >"$out" ;;
+esac
 EOF
 
   vox transcribe "$dir"
 
   [ "$status" -eq 0 ]
-  grep -q '^mw job-present$' "$TEST_LOG"
-  ! grep -q '^mw job-absent$' "$TEST_LOG"
+  grep -q '^fluid job-present$' "$TEST_LOG"
+  ! grep -q '^fluid job-absent$' "$TEST_LOG"
   [ ! -f "$dir/transcribing.pid" ]
 }
 
 @test "transcribe on a missing directory fails and creates nothing" {
-  stub_mw
+  stub_fluid
 
   vox transcribe "$VOX_STORE/2026-07-28-140312-nowhere"
 
@@ -873,7 +911,7 @@ EOF
   [[ "$stderr" == *"no such recording"* ]]
   [ -z "$output" ]
   [ -z "$(ls -A "$VOX_STORE")" ]
-  ! grep -q '^mw ' "$TEST_LOG"
+  ! grep -q '^fluidaudiocli ' "$TEST_LOG"
 }
 
 @test "transcribe without a path prints usage" {
@@ -884,7 +922,7 @@ EOF
 }
 
 @test "transcribe re-runs a compacted recording from its Opus tracks" {
-  stub_mw
+  stub_fluid
   dir="$VOX_STORE/2026-07-28-140312-old"
   mkdir -p "$dir"
   printf 'OggSmic' >"$dir/mic.opus"
@@ -894,15 +932,15 @@ EOF
   vox transcribe "$dir"
 
   [ "$status" -eq 0 ]
-  # Compacting is lossy but not a dead end: mw demuxes Opus itself.
-  grep -q "^mw transcribe $dir/mic.opus " "$TEST_LOG"
-  grep -q "^mw transcribe $dir/sys.opus " "$TEST_LOG"
+  # Compacting is lossy but not a dead end: fluidaudiocli demuxes Opus itself.
+  grep -q "^fluidaudiocli transcribe $dir/mic.opus " "$TEST_LOG"
+  grep -q "^fluidaudiocli transcribe $dir/sys.opus " "$TEST_LOG"
   [ "$(sed -n 1p "$dir/transcript.md")" = "[00:00:00] Me: hello there" ]
   [[ "$(cat "$dir/transcript.md")" == *"Speaker 1: yes hello"* ]]
 }
 
 @test "transcribe refuses a recording with no audio left" {
-  stub_mw
+  stub_fluid
   dir="$VOX_STORE/2026-07-28-140312-old"
   mkdir -p "$dir"
   printf '[00:00:00] Me: hello\n' >"$dir/transcript.md"
@@ -912,7 +950,7 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$stderr" == *"no audio tracks"* ]]
   [[ "$stderr" == *"pruned"* ]]
-  ! grep -q '^mw ' "$TEST_LOG"
+  ! grep -q '^fluidaudiocli ' "$TEST_LOG"
   # Nothing was touched on the way out.
   [ "$(cat "$dir/transcript.md")" = "[00:00:00] Me: hello" ]
 }
