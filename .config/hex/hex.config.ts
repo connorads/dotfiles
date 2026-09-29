@@ -1,4 +1,6 @@
 import { choice, defineHexConfig, digit, letter, union } from "@hex/commands"
+import { runGoto, runNext } from "./voice/run.ts"
+import { systemPorts } from "./voice/system.ts"
 
 export default defineHexConfig({
   // Transformations appear as optional final steps in every dictation mode.
@@ -50,6 +52,26 @@ export default defineHexConfig({
       group: "Apps",
       description: "Open or switch to an app",
       run: ({ hex, captures }) => hex.openApplication(captures.app),
+    },
+    // Global rather than kitty-scoped: both bring kitty forward on the pane.
+    "go-to-pane": {
+      phrases: ["go to {target}"],
+      group: "Agents",
+      description: "Jump to the agent pane matching a spoken description",
+      run: async ({ hex, captures }) => {
+        if ((await runGoto(systemPorts, captures.target ?? "")) === "jump") await hex.openApplication("kitty")
+      },
+    },
+    "next-agent": {
+      phrases: ["next {state}"],
+      captures: {
+        state: choice({ blocked: ["blocked", "stuck", "waiting"], done: ["done", "finished"] } as const),
+      },
+      group: "Agents",
+      description: "Cycle to the next blocked or done agent pane",
+      run: async ({ hex, captures }) => {
+        if (await runNext(systemPorts, captures.state)) await hex.openApplication("kitty")
+      },
     },
     "open-example": {
       phrases: ["open example"],

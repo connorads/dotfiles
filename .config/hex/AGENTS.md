@@ -85,3 +85,16 @@ SDK upgrades, so consult the installed SDK's exports when they differ.
   transformations instead of custom ones.
 
 See `.agents/skills/personal-commands/SKILL.md` for examples.
+
+## Voice pane navigation
+
+`go-to-pane` and `next-agent` live in `voice/`: a pure core (`pane.ts`,
+`goto.ts`), use cases (`run.ts`) over the ports in `ports.ts`, and adapters in
+`system.ts`. `bun test` covers the core and use cases with in-memory ports.
+
+- The host has no `LANG`, and `agent ls --json` returns `[]` without a UTF-8
+  one. Spawn through `system.ts`, which sets `LANG` and `PATH`.
+- Jev reads its API key from the Keychain item `typesafe-api-key`, cached for
+  the host process's life. Restart HEX after changing the key.
+- Every request appends a line to `~/.local/state/hex/voice.jsonl`. Tune
+  `JUMP_FLOOR` in `goto.ts` from it.

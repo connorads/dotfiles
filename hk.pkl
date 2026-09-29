@@ -1047,7 +1047,7 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/ts-typecheck.sh .config/opencode"
     }
     ["ts-typecheck-hex"] {
-        glob = List(".config/hex/*.ts", ".config/hex/tsconfig.json")
+        glob = List(".config/hex/*.ts", ".config/hex/voice/**/*.ts", ".config/hex/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .config/hex"
     }
 
