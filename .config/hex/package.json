@@ -1,0 +1,15 @@
+{
+  "name": "hex-commands",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hex/commands": "file:.hex-sdk",
+    "effect": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

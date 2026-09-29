@@ -132,7 +132,7 @@ runner is absent, and `mise run skill-checks` runs every suite across all
 tiers (private included).
 
 The `ts-typecheck-*` steps gate first-party TS projects (skl, pin-audit,
-annotate, opencode-plugins, `.config/opencode`, pi goal / workflows /
+annotate, opencode-plugins, `.config/opencode`, `.config/hex`, pi goal / workflows /
 pi-palette / agent-guard, and the small pi extensions) with
 the global `tsc` (typescript 7),
 glob-scoped so only staged-project changes pay the cost. The shared

@@ -133,6 +133,20 @@
 !/.config/vale/
 !/.config/vale/**
 
+# hex: HEX voice-command workspace; HEX loads hex.config.ts from this path.
+# .hex-sdk is HEX-managed (refreshed from the app bundle on host start).
+!/.config/hex/
+/.config/hex/**
+!/.config/hex/hex.config.ts
+!/.config/hex/package.json
+!/.config/hex/bun.lock
+!/.config/hex/tsconfig.json
+!/.config/hex/AGENTS.md
+!/.config/hex/.agents/
+!/.config/hex/.agents/**
+!/.config/hex/voice/
+!/.config/hex/voice/**
+
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
 /.config/jj/**
