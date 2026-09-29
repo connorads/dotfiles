@@ -108,12 +108,10 @@ a cached snapshot before treating it as harmless lock maintenance.
 ## 3. Patch and review the preview
 
 Copy the existing patch definitions into a complete disposable vendor-shaped
-preview. Run the existing Python engine from `skill-patch` against that explicit
-preview root. The shell wrapper fixes its root to the installed vendor directory;
-do not run its `apply` mode to prepare a preview or change `HOME` to redirect it.
-Extract its Python heredoc into the temporary directory unchanged, inspect the
-extraction, and invoke it with `apply|check|status` and the preview root as arguments.
-Do not create a second maintained patch engine.
+preview. Run the engine against that explicit root with
+`skill-patch --root "$preview_root" apply|check|status`. Never run `skill-patch`
+without `--root` while preparing a preview: that targets the installed vendor
+tree. Do not change `HOME` to redirect it, and do not create a second patch engine.
 
 Reapply patches before reviewing the diff, so local policy removal cannot hide
 inside upstream churn. Re-derive broken hunks in the temporary patch definitions

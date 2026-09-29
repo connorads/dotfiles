@@ -471,3 +471,28 @@ patched line
 outro'
   [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$expected" ]
 }
+
+@test "--root patches a preview tree and leaves the default vendor root alone" {
+  make_simple_patch
+  write_pending_target
+  local preview="$TEST_HOME/preview"
+  mkdir -p "$preview"
+  cp -R "$VENDOR/." "$preview/"
+  vendor_before=$(cat "$VENDOR/.agents/skills/demo/SKILL.md")
+
+  run_skill_patch --root "$preview" apply
+  [ "$status" -eq 0 ]
+  [[ "$(cat "$preview/.agents/skills/demo/SKILL.md")" == *"LOCAL PATCH"* ]]
+  [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$vendor_before" ]
+
+  run_skill_patch --root "$preview" check
+  [ "$status" -eq 0 ]
+  run_skill_patch check
+  [ "$status" -eq 1 ]
+}
+
+@test "--root without a value exits 2 with usage" {
+  run_skill_patch --root
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage:"* ]]
+}
