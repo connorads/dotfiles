@@ -1,5 +1,7 @@
 # vox hands mw the stored audio unprocessed
 
+> The transcriber is `fluidaudiocli` per [ADR 0018](0018-vox-transcribes-with-the-fluidaudio-cli.md); the no-pre-processing decision stands, and the zero-padded regression test runs against it.
+
 `vox` transcribes each stored WAV as captured. Nothing trims or filters the
 audio before `mw` reads it. The guard against lost speech is a detector that
 runs after transcription: `_vox_report_blanked` measures each track and warns,

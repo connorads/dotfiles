@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Merge two MacWhisper JSON transcripts into one interleaved markdown script.
+"""Merge two per-track vox transcripts into one interleaved markdown script.
 
 A real Unix filter: it reads the two per-track JSON files vox keeps beside the
 audio, writes markdown to stdout, and has no other side effects. That makes it
-usable on its own (`mw … --format json | …`) and testable without any audio.
+usable on its own and testable without any audio.
 
     merge.py --me mic.json --them sys.json [--vocab vocabulary.tsv] > transcript.md
 
-Input schema (`mw transcribe --format json`):
+Input schema (segments.py's output; recordings from before it hold the
+MacWhisper CLI's `mw transcribe --format json`, the same shape):
 
     {"segments": [{"id", "start", "end", "text", "words": [...]}]}
 
-`start`/`end` are integer **milliseconds**. `speaker` is present only when the
-transcription ran with `--speakers`, so it is treated as optional throughout.
-vox transcribes the mic track with `--no-speakers` (it is definitionally you).
+`start`/`end` are integer **milliseconds**. `speaker` is present only on a
+diarised track, so it is treated as optional throughout.
+vox diarises only the system track (the mic is definitionally you).
 
 Output is one line per utterance, sorted by start time:
 
@@ -56,7 +57,7 @@ def format_timestamp(ms: int) -> str:
 
 
 def load_segments(payload: object, default_speaker: str) -> list[Segment]:
-    """Extract segments from an `mw --format json` payload.
+    """Extract segments from a per-track vox transcript payload.
 
     `speaker` is optional (absent under `--no-speakers`) and may be blank, so
     the caller's track name is the fallback. Segments with no text are dropped:
@@ -83,9 +84,8 @@ def load_segments(payload: object, default_speaker: str) -> list[Segment]:
 def parse_vocabulary(text: str) -> list[tuple[str, str]]:
     """Parse a `wrong<TAB>right` vocabulary file. Blank and `#` lines ignored.
 
-    MacWhisper has no `--vocabulary`/`--prompt` flag and no replacement
-    dictionary in its preferences, so correcting names it reliably mangles has
-    to happen after transcription.
+    `fluidaudiocli transcribe` has no vocabulary or prompt flag, so correcting
+    names it reliably mangles has to happen after transcription.
     """
     pairs: list[tuple[str, str]] = []
     for line in text.splitlines():

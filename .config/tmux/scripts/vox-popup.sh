@@ -237,7 +237,7 @@ ctrl-p)
 	;;
 ctrl-t)
 	# Unconfirmed: the audio stays, so a rerun costs time and nothing else. stderr
-	# stays on the tty so mw's per-track progress shows while it runs.
+	# stays on the tty so vox's per-track progress shows while it runs.
 	for d in "${dirs[@]}"; do
 		if "$VOX_BIN" transcribe "$d" >/dev/null; then
 			tmux display-message "vox: retranscribed ${d##*/}" 2>/dev/null || true

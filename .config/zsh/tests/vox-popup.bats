@@ -96,7 +96,7 @@ EOF
 }
 
 # stub_vox_transcribe - a `vox` whose `transcribe` only logs and echoes the
-# path, everything else reaching the real command. Retranscribing needs mw;
+# path, everything else reaching the real command. Retranscribing needs fluidaudiocli;
 # the picker's contract is which paths it hands over.
 stub_vox_transcribe() {
   write_stub vox <<EOF

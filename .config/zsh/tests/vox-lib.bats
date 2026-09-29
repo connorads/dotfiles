@@ -10,6 +10,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 # is driven with real statefiles under VOX_STATEFILE (env-overridable default),
 # with a start_epoch in the past — so no clock stubbing is needed.
 VOX_LIB="$HOME/.config/tmux/scripts/vox-lib.sh"
+SEGMENTS="$HOME/.config/vox/segments.py"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
 setup() {
@@ -194,7 +195,7 @@ statefile() {
 }
 
 @test "a dead transcribe job reads as finished, not stuck" {
-  # mw crashed, or the machine rebooted: pid liveness self-clears the state, so
+  # The transcriber crashed, or the machine rebooted: pid liveness self-clears the state, so
   # there is no reaper and no way to be pinned at TRANSCRIBING forever. The
   # stale marker stays on disk and is harmless.
   jobfile "$(dead_pid)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
@@ -379,7 +380,7 @@ empty() {
 }
 
 @test "a dead marker beside a live one is ignored" {
-  # mw crashed on one recording while another is still going: the dead one
+  # The transcriber crashed on one recording while another is still going: the dead one
   # drops out by pid liveness, the live one keeps the pill honest.
   jobfile "$(dead_pid)" "$(date +%s)" "$VOX_STORE/2026-07-28-150000"
   jobfile "$(spawn)" "$(($(date +%s) - 90))" "$VOX_STORE/2026-07-28-140312"
@@ -521,6 +522,21 @@ JSON
   [ "$output" = "solo" ]
 }
 
+@test "segments.py's own empty output reads solo, and a spoken track 2-way" {
+  # Driven through the real filter, so a change to how it prints (indent,
+  # key order) cannot silently flip every recording's label.
+  mkdir -p "$HOME/rec"
+  printf '{"text":"","wordTimings":[]}' >"$HOME/rec/sys.asr.json"
+  python3 "$SEGMENTS" --asr "$HOME/rec/sys.asr.json" >"$HOME/rec/sys.json"
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "solo" ]
+
+  printf '{"wordTimings":[{"startTime":0,"endTime":1,"word":"hi"}]}' >"$HOME/rec/sys.asr.json"
+  python3 "$SEGMENTS" --asr "$HOME/rec/sys.asr.json" >"$HOME/rec/sys.json"
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "2-way" ]
+}
+
 @test "mw's pretty-printed segments still read 2-way" {
   mkdir -p "$HOME/rec"
   cat >"$HOME/rec/sys.json" <<'JSON'
@@ -613,7 +629,7 @@ JSON
 }
 
 @test "an audible track with no transcript at all reads blanked" {
-  # mw fell over rather than returning nothing: same loss, same warning.
+  # The transcriber fell over rather than returning nothing: same loss, same warning.
   mkdir -p "$HOME/rec"
   lib_stdin "$FIXTURES/vox-volumedetect-speech.txt" vox_track_blanked "'$HOME/rec'" sys
   [ "$status" -eq 0 ]
