@@ -38,6 +38,12 @@ from typing import NamedTuple
 # DEFAULT_GAP_MS, the gap it rejoins same-speaker segments across.
 DEFAULT_GAP_MS = 1500
 
+# A word ending a sentence ends its segment too. Sentence-sized segments are
+# what let merge.py interleave the other track between them: split on pauses
+# alone, one unbroken run of speech is minutes long and sorts the far side's
+# replies after all of it. merge.py rejoins what nothing interrupted.
+SENTENCE_END = re.compile(r"[.?!]$")
+
 # Parakeet emits sentence punctuation as its own token now and then.
 PUNCTUATION = re.compile(r"^[^\w\s]+$")
 
@@ -117,7 +123,12 @@ def segments(asr: object, diar: object | None, gap_ms: int = DEFAULT_GAP_MS) -> 
                 words[-1] = last._replace(end=max(last.end, w.end), text=last.text + w.text)
             continue
         speaker = speaker_at((w.start + w.end) / 2, turns)
-        if groups and groups[-1][0] == speaker and w.start - groups[-1][1][-1].end < gap_ms:
+        if (
+            groups
+            and groups[-1][0] == speaker
+            and w.start - groups[-1][1][-1].end < gap_ms
+            and not SENTENCE_END.search(groups[-1][1][-1].text)
+        ):
             groups[-1][1].append(w)
         else:
             groups.append((speaker, [w]))
