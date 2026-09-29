@@ -34,6 +34,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [.config/vale/styles/Connorads/](../.config/vale/styles/Connorads/) | The house style rules; tests: [vale-style.bats](../.config/zsh/tests/vale-style.bats) |
 | [.oxlintrc.json](../.oxlintrc.json) | The tree's only oxlint config, type-aware rules on |
 | [.config/opencode/package.json](../.config/opencode/package.json) | opencode plugin deps; opencode runs `bun install` on it, so the path is the interface |
+| [.config/hex/hex.config.ts](../.config/hex/hex.config.ts) | HEX voice commands; HEX loads this path and reloads on save. `.hex-sdk` is HEX-managed and untracked; docs: [.config/hex/AGENTS.md](../.config/hex/AGENTS.md) |
 | [.npmrc](../.npmrc), [.config/pnpm/config.yaml](../.config/pnpm/config.yaml), [.bunfig.toml](../.bunfig.toml), [.config/pip/pip.conf](../.config/pip/pip.conf), [.yarnrc.yml](../.yarnrc.yml) | Per-manager quarantine and install-script block; see [docs/supply-chain.md](../docs/supply-chain.md) |
 | [.config/aube/config.toml](../.config/aube/config.toml) | aube, mise's npm backend: quarantine, trust policy, typosquat gates |
 | [.zshrc](../.zshrc) | Shell config with aliases and autoloaded helpers |
