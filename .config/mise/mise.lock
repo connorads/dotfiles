@@ -965,6 +965,10 @@ checksum = "sha256:b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a584
 url = "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_arm64"
 url_api = "https://api.github.com/repos/mvdan/sh/releases/assets/547320930"
 
+[[tools."spm:FluidInference/FluidAudio"]]
+version = "v0.17.4"
+backend = "spm:FluidInference/FluidAudio"
+
 [[tools.typos]]
 version = "1.50.2"
 backend = "aqua:crate-ci/typos"
