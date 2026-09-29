@@ -6,6 +6,8 @@
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["bun"],
     "skipLibCheck": true
   },
   "include": ["**/*.ts"]

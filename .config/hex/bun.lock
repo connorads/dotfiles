@@ -9,6 +9,7 @@
         "effect": "4.0.0-rc.112",
       },
       "devDependencies": {
+        "@types/bun": "1.4.2",
         "typescript": "7.0.2",
       },
     },
