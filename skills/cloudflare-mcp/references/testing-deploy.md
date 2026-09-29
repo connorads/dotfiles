@@ -196,6 +196,15 @@ Then run `/mcp` inside Claude Code to check status and complete OAuth. `-s user`
 Claude.ai custom connectors and ChatGPT developer-mode connectors connect from the vendor's cloud. `localhost` is unreachable from there, so deploy first and use the public HTTPS `/mcp` URL.
 Their auth requirements (401 challenge, redirect URIs, CIMD and DCR) live in `references/auth.md`.
 
+To compare tool designs, run fixed questions with known answers through Claude against the deployed URL, and read the transcripts (observed working, Claude Code 2026-09-29):
+
+```sh
+claude -p "<question>" --mcp-config mcp.json --strict-mcp-config --tools "" --allowedTools "mcp__<name>__*" \
+  --setting-sources "" --no-session-persistence --output-format stream-json --verbose < /dev/null > out.jsonl
+```
+
+Count `tool_use` events per run and read cost and turns from the final `result` event. `< /dev/null` avoids a 3 s stdin wait. This catches what the probe cannot, such as a tool result too large for the model or a parameter the model never finds.
+
 Cloudflare's own testing guide: <https://developers.cloudflare.com/agents/model-context-protocol/guides/test-remote-mcp-server/index.md>. Its commands use `npx`. Use `pnpm dlx`.
 
 ## Deploy
@@ -245,7 +254,7 @@ Docs: <https://developers.cloudflare.com/workers/configuration/secrets/index.md>
 1. Run the typecheck (`wrangler types && tsc --noEmit`, `pnpm typecheck` in the template). A server instance passed to the handler fails here and otherwise returns 500 on every request.
 2. Run the unit and integration suites.
 3. `pnpm exec wrangler deploy`.
-4. Re-run the three-mode client probe against the deployed `https://.../mcp` URL.
+4. Re-run the three-mode client probe against the deployed `https://.../mcp` URL. A probe within about 20 s of the deploy can still reach the previous version (observed), so retry before concluding a fix failed.
 
 ### Custom domain
 

@@ -339,15 +339,30 @@ Use KV when a stale read for up to 60 s is acceptable, such as a shared notebook
 
 ## 12. Code Mode servers
 
-`codeMcpServer` and `openApiMcpServer` from `@cloudflare/codemode/mcp` return **SDK v1** servers. `codeMcpServer` takes a v1 `McpServer` as `server` and is async, so await it. `openApiMcpServer({ spec, executor, request })` returns synchronously.
-Build both servers per request inside `fetch` and serve them with `createLegacyMcpHandler` from `agents/mcp`, not with the stateless handler, so they speak only the legacy era:
+Default: register `search` and `execute` as SDK v2 tools yourself, and run model code with `DynamicWorkerExecutor` from the `@cloudflare/codemode` main entry, which has no peer dependencies. This serves both eras on the stateless handler (observed 2026-09-29 with codemode 0.5.2: all three probe modes, deployed and under `createTestHarness`, which runs `worker_loaders` locally).
 
 ```ts
-const executor = new DynamicWorkerExecutor({ loader: env.LOADER });
+import { DynamicWorkerExecutor } from "@cloudflare/codemode";
+import { env } from "cloudflare:workers";
+
+// Inside an execute tool callback. `get` is a host function that adds credentials.
+const executor = new DynamicWorkerExecutor({ loader: env.LOADER }); // globalOutbound: null by default
+const out = await executor.execute(code, [{ name: "api", fns: { get }, prelude: PAGING_HELPERS }]);
+// out: { result?, error?, logs? }
+```
+
+- `search` hands the catalogue to sandbox code (`fns: { spec }`). `execute` hands it the one host function that makes the authenticated call, so credentials stay in the host Worker.
+- The sandbox calls host functions positionally: `api.get(a, b)` runs `get(a, b)` on the host.
+- Put sandbox-side helpers, such as paging generators or anything holding a closure, in `prelude`. Closures cannot cross RPC. Own properties that `prelude` assigns on the namespace take precedence over the dispatch proxy.
+- Workers RPC caps one value at 32 MiB. A 69 MB result failed with `Serialized RPC arguments or return values are limited to 32MiB` (observed). Return one page per host call and page inside the sandbox.
+- With `globalOutbound: null`, sandbox `fetch` throws `This worker is not permitted to access the internet via global functions like fetch()` (observed). `timeout` defaults to 60 s.
+- Needs `"worker_loaders": [{ "binding": "LOADER" }]` and `nodejs_compat`.
+
+Escape hatch: `codeMcpServer` and `openApiMcpServer` from `@cloudflare/codemode/mcp` return **SDK v1** servers, which speak only the legacy era. `codeMcpServer` takes a v1 `McpServer` as `server` and is async. `openApiMcpServer({ spec, executor, request })` returns synchronously. Build them per request and serve them with `createLegacyMcpHandler` from `agents/mcp`:
+
+```ts
 const server = await codeMcpServer({ server: createUpstreamV1Server(), executor });
 return createLegacyMcpHandler(server, { route: "/mcp" })(request, env, ctx);
 ```
 
-They need a `worker_loaders` binding for `DynamicWorkerExecutor` and `nodejs_compat`.
-Guide: <https://developers.cloudflare.com/agents/model-context-protocol/guides/build-codemode-mcp-server/index.md>.
-This section comes from the docs and the upstream `examples/codemode-mcp` source (`a8673b7`) and was not run.
+Guide: <https://developers.cloudflare.com/agents/model-context-protocol/guides/build-codemode-mcp-server/index.md>. The escape hatch comes from the docs and the upstream `examples/codemode-mcp` source (`a8673b7`) and was not run.

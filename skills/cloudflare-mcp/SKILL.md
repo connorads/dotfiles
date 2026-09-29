@@ -156,7 +156,7 @@ Inspector: see `references/testing-deploy.md`. Do not disable pnpm's trust polic
 
 | When the task involves | Read |
 | --- | --- |
-| Handler options, CORS, Origin/Host policy, `responseMode`, notifications, elicitation (MRTR), serving a sessionful legacy lane, app state in a Durable Object, KV or D1 | `references/handler.md` |
+| Handler options, CORS, Origin/Host policy, `responseMode`, notifications, elicitation (MRTR), serving a sessionful legacy lane, app state in a Durable Object, KV or D1, Code Mode (`search` + `execute`) | `references/handler.md` |
 | OAuth provider config, identity, scopes, consent/CSRF, CIMD vs DCR, Claude or ChatGPT connector requirements | `references/auth.md` |
 | Existing `McpAgent`, SSE, SDK v1, `createLegacyMcpHandler` or provider 0.x code; any stale pattern not in section 4 | `references/migrate.md` |
 | Probes, vitest plugin, test harness, Inspector, deploy, custom domains, observability, rate limits | `references/testing-deploy.md` |

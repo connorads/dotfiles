@@ -348,7 +348,13 @@ export default {
 ```
 
 - Cloudflare Access with Managed OAuth: Access answers the 401, hosts discovery and runs the OAuth flow. The Worker must still validate the Access JWT. Cloudflare: "Only enable Managed OAuth for MCP servers that validate the Access JWT sent by Cloudflare". Managed OAuth is opt-in per self-hosted application. Docs: <https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/index.md> and <https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/secure-mcp-servers/index.md>.
-- Set `"workers_dev": false`. Access guards only the hostname it is configured on.
+- Managed OAuth, observed 2026-09-29 with Worker-level Access on `*.workers.dev` and a claude.ai web custom connector:
+  - The 401 carries `resource_metadata="https://<host>/.well-known/cloudflare-access-protected-resource/mcp"`. That document and `/.well-known/oauth-protected-resource/mcp` both give `resource` as the exact `/mcp` URL.
+  - The AS is `https://<team>.cloudflareaccess.com`: DCR, S256 and the `none` auth method, but no CIMD, so Claude registers with DCR.
+  - Add `https://claude.ai/api/mcp/auth_callback` to the app's allowed redirect URIs, and allow localhost clients for Claude Code.
+  - The claude.ai web connector connected and every request carried the user. Public reports of it failing exist (anthropics/claude-ai-mcp#410, #992).
+- Identity without `jose`: `(await ctx.access?.getIdentity())?.email` was set on Managed OAuth bearer requests (observed). Pass it with a handler built per request, `createMcpHandler(createServer, { authContext: { props: { email } } })`, and read it in tools with `getMcpAuthContext()`. Return 403 when it is missing, so turning Access off closes the server. Whether `ctx.access` satisfies Cloudflare's "validate the Access JWT" requirement is unverified. The `jose` snippet above is the documented path.
+- On a custom domain, set `"workers_dev": false`. Access guards only the hostname it is configured on.
 - The `remote-mcp-cf-access-self-hosted` template verifies the JWT but never hands the identity to tools. The `authInfo` pass above fixes that.
 - Access for SaaS as an OIDC upstream behind `OAuthProvider` follows section 5 with Access endpoints in place of GitHub (template `remote-mcp-cf-access`).
 - Third-party AS (Auth0, WorkOS and others) issuing JWTs: verify `iss`, `aud` equal to your resource URL, and `exp` in the same wrapper. You must also serve PRM at `/.well-known/oauth-protected-resource/mcp` and a 401 challenge yourself. `OAuthResourceServer` with a custom `validateToken` does both (provider `docs/resource-servers.md`, "at your own risk" for non-provider validators).
@@ -403,4 +409,4 @@ ChatGPT (<https://developers.openai.com/plugins/build/auth>, fetched 2026-09-28)
 - The full OAuth round trip (browser consent, GitHub, code exchange, token, authorised MCP call) was not run end to end on provider 1.1.0. 1.1.0 was inside the 4-day pnpm quarantine on 2026-09-28. The section 5 code ran under `wrangler dev` with 1.1.0 aliased in only as far as startup, the 401 challenge and PRM. The section 5 and 6 code was otherwise typechecked: strict `tsc` against the 1.1.0 `.d.ts`, `agents` 0.24.0, `@modelcontextprotocol/server` 2.0.0, `jose` 6.2.12 and `wrangler types` output.
 - The section 3 table was observed at runtime with a probe that mimics the provider's `ctx`, not with the provider itself.
 - ChatGPT following the 401 `resource_metadata` pointer to the path-aware PRM, and ChatGPT's handling of `offline_access`.
-- Access Managed OAuth was not exercised. The section 6 Access snippet is typechecked only.
+- Access Managed OAuth: token refresh after the 15-minute Access token, Cowork and Claude Code were not exercised. The section 6 `jose` snippet is typechecked only.
