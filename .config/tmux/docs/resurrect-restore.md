@@ -18,6 +18,10 @@ its own pane key from `$TMUX_PANE` (`tmux display-message -pt "$TMUX_PANE"`),
 looks up `session_ids.json`, and `exec`s `claude … --resume <id>` /
 `codex resume <id> …`. This is exact and client-independent: `$TMUX_PANE` is
 unambiguous in every pane, so a wrong-pane resume is structurally impossible.
+The Codex launcher runs codex as a child rather than `exec`ing it, and retries a
+non-zero exit that came within 10s (for about two minutes). Codex's TUI
+bootstrap calls chatgpt.com (`account/read`) and exits on failure, and a restore
+right after wake often runs before the network is up.
 The strategy must **not** resolve the session itself - the old eval-time
 `display-message` read reported *global* active-pane state, which resolves to the
 last-active pane when no client is attached (continuum/auto-restore) and races

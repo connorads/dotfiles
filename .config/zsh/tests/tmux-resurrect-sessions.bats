@@ -1138,6 +1138,51 @@ EOF
   [ "$output" = "args=resume --last --model gpt-5" ]
 }
 
+@test "codex launcher retries a fast failure then resumes" {
+  jq -n '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",codex:"codex-one"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_stub sleep <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  # Fails the first two calls, like bootstrap before the network is up.
+  write_stub codex <<EOF
+#!/usr/bin/env bash
+n=\$(( \$(cat "$BATS_TEST_TMPDIR/codex-calls" 2>/dev/null || echo 0) + 1 ))
+echo "\$n" >"$BATS_TEST_TMPDIR/codex-calls"
+echo "args=\$*" >>"$BATS_TEST_TMPDIR/codex-args"
+[ "\$n" -le 2 ] && exit 1
+exit 0
+EOF
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CODEX_LAUNCH" --model gpt-5
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/codex-calls")" = "3" ]
+  [ "$(sort -u "$BATS_TEST_TMPDIR/codex-args")" = "args=resume codex-one --model gpt-5" ]
+}
+
+@test "codex launcher does not retry a failure after a long run" {
+  write_tmux_display_stub 'main:1.1'
+  write_stub sleep <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  # A session that ran past the fast-fail window, then exited non-zero.
+  write_stub codex <<EOF
+#!/usr/bin/env bash
+echo x >>"$BATS_TEST_TMPDIR/codex-calls"
+/bin/sleep 11
+exit 3
+EOF
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CODEX_LAUNCH"
+
+  [ "$status" -eq 3 ]
+  [ "$(wc -l <"$BATS_TEST_TMPDIR/codex-calls" | tr -d ' ')" = "1" ]
+}
+
 # ---------------------------------------------------------------------------
 # OpenCode (unchanged: no in-pane launcher, still cwd/latest gated at save time)
 # ---------------------------------------------------------------------------

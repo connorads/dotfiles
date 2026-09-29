@@ -10,6 +10,10 @@
 # resolved (missing jq / session file / $TMUX_PANE, or an ambiguous cwd) - it
 # never guesses a wrong resume, which was the multi-pane-same-cwd bug this
 # replaces.
+#
+# A fast non-zero exit (bootstrap failing while the network is still down after
+# wake) is retried for about two minutes before a final attempt whose result
+# stands.
 
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -56,7 +60,18 @@ if command -v jq &>/dev/null && [ -f "$SESSION_FILE" ] && [ -n "${TMUX_PANE:-}" 
 	fi
 fi
 
-if [ -n "$resume" ]; then
-	exec codex resume "$resume" "$@"
-fi
-exec codex resume --last "$@"
+cmd=(codex resume --last "$@")
+[ -n "$resume" ] && cmd=(codex resume "$resume" "$@")
+
+# Codex's TUI bootstrap (account/read) needs chatgpt.com and exits on failure;
+# right after wake the network is often not up yet. Retry a fast failure; a run
+# that lasted is a real session ending, so its status passes through.
+for _ in {1..12}; do
+	start=$SECONDS
+	"${cmd[@]}" && exit 0
+	rc=$?
+	((SECONDS - start >= 10)) && exit "$rc"
+	printf 'codex exited after %ss (rc=%s); retrying in 10s\n' "$((SECONDS - start))" "$rc" >&2
+	sleep 10
+done
+exec "${cmd[@]}"
