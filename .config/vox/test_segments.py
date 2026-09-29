@@ -78,6 +78,27 @@ def test_a_short_pause_does_not_split() -> None:
     assert texts(out) == [("", "one two")]
 
 
+def test_a_sentence_end_splits_segments() -> None:
+    # Sentence-sized segments are what let merge.py interleave the other track
+    # between them; one segment per unbroken run would swallow minutes of the
+    # conversation and sort the far side's replies after it.
+    out = segments(
+        asr(
+            word(0, 0.3, "Done."),
+            word(0.4, 0.7, "Next?"),
+            word(0.8, 1, "Yes!"),
+            word(1.1, 1.3, "ok"),
+        ),
+        None,
+    )
+    assert texts(out) == [("", "Done."), ("", "Next?"), ("", "Yes!"), ("", "ok")]
+
+
+def test_a_glued_full_stop_ends_the_sentence() -> None:
+    out = segments(asr(word(0, 0.3, "done"), word(0.3, 0.4, "."), word(0.5, 0.8, "next")), None)
+    assert texts(out) == [("", "done."), ("", "next")]
+
+
 def test_speaker_change_splits_and_relabels() -> None:
     out = segments(
         asr(word(0, 0.4, "hello"), word(0.5, 0.9, "there"), word(1.0, 1.4, "hi")),
