@@ -384,3 +384,90 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"usage:"* ]]
 }
+
+# Replace text that contains its find text can never read as applied, and
+# every apply would insert the replacement again.
+@test "find inside replace: check and apply exit 2, target untouched" {
+  local dir="$VENDOR/patches/insert-section"
+  mkdir -p "$dir" "$VENDOR/.agents/skills/demo"
+  cat >"$dir/patch.json" <<'JSON'
+{"reason": "section inserted.", "files": [".agents/skills/demo/SKILL.md"]}
+JSON
+  printf '## Voice IDs\n' >"$dir/01-find.md"
+  printf '## Voice IDs\n\nLocal section.\n' >"$dir/01-replace.md"
+  printf '# Demo\n\n## Voice IDs\n\nBody.\n' >"$VENDOR/.agents/skills/demo/SKILL.md"
+  before=$(cat "$VENDOR/.agents/skills/demo/SKILL.md")
+
+  run_skill_patch check
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"insert-section"* ]]
+  [[ "$output" == *"hunk 01"* ]]
+  [[ "$output" == *"contains its find text"* ]]
+
+  run_skill_patch apply
+  [ "$status" -eq 2 ]
+  [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$before" ]
+}
+
+@test "later hunk undoing an earlier one: apply exits 1, target untouched" {
+  local dir="$VENDOR/patches/chain"
+  mkdir -p "$dir" "$VENDOR/.agents/skills/demo"
+  cat >"$dir/patch.json" <<'JSON'
+{"reason": "chained edits.", "files": [".agents/skills/demo/SKILL.md"]}
+JSON
+  printf 'alpha line\n' >"$dir/01-find.md"
+  printf 'beta line\n' >"$dir/01-replace.md"
+  printf 'beta line\n' >"$dir/02-find.md"
+  printf 'gamma line\n' >"$dir/02-replace.md"
+  printf 'intro\nalpha line\noutro\n' >"$VENDOR/.agents/skills/demo/SKILL.md"
+  before=$(cat "$VENDOR/.agents/skills/demo/SKILL.md")
+
+  run_skill_patch apply
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"left unchanged"* ]]
+  [[ "$output" != *"run: skill-patch apply"* ]]
+  [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$before" ]
+}
+
+@test "later patch undoing an earlier one: apply exits 1, target untouched" {
+  mkdir -p "$VENDOR/patches/a-first" "$VENDOR/patches/b-second" "$VENDOR/.agents/skills/demo"
+  cat >"$VENDOR/patches/a-first/patch.json" <<'JSON'
+{"reason": "first edit.", "files": [".agents/skills/demo/SKILL.md"]}
+JSON
+  printf 'alpha line\n' >"$VENDOR/patches/a-first/01-find.md"
+  printf 'beta line\n' >"$VENDOR/patches/a-first/01-replace.md"
+  cat >"$VENDOR/patches/b-second/patch.json" <<'JSON'
+{"reason": "second edit.", "files": [".agents/skills/demo/SKILL.md"]}
+JSON
+  printf 'beta line\n' >"$VENDOR/patches/b-second/01-find.md"
+  printf 'gamma line\n' >"$VENDOR/patches/b-second/01-replace.md"
+  printf 'intro\nalpha line\noutro\n' >"$VENDOR/.agents/skills/demo/SKILL.md"
+  before=$(cat "$VENDOR/.agents/skills/demo/SKILL.md")
+
+  run_skill_patch apply
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"a-first"* ]]
+  [[ "$output" == *"left unchanged"* ]]
+  [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$before" ]
+}
+
+@test "broken hunk beside a pending hunk: pending one still applies, exit 1" {
+  local dir="$VENDOR/patches/mixed"
+  mkdir -p "$dir" "$VENDOR/.agents/skills/demo"
+  cat >"$dir/patch.json" <<'JSON'
+{"reason": "mixed drift.", "files": [".agents/skills/demo/SKILL.md"]}
+JSON
+  printf 'line upstream removed\n' >"$dir/01-find.md"
+  printf 'its local replacement\n' >"$dir/01-replace.md"
+  printf 'pending line\n' >"$dir/02-find.md"
+  printf 'patched line\n' >"$dir/02-replace.md"
+  printf 'intro\npending line\noutro\n' >"$VENDOR/.agents/skills/demo/SKILL.md"
+
+  run_skill_patch apply
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"broken"* ]]
+  expected='intro
+patched line
+outro'
+  [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$expected" ]
+}
