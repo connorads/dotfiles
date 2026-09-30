@@ -193,7 +193,7 @@ missing from it ungated. Latency is affordable because the gate assumes
 frozen-lockfile installs, not the tests. Missing `jq`, runner or `node_modules`
 warns and exits 0, same never-brick posture as `ts-typecheck.sh`;
 `bash ~/.hk-hooks/ts-tests.sh --all` (what `ts-checks` calls) is the full run,
-and `~/.config/zsh/tests/ts-tests.bats` pins the gate's own contract. The three
+and `~/.config/zsh/tests/ts-tests.bats` pins the gate's own contract. The
 discovery roots are spelled in both `hk.pkl`'s glob and the script; the
 `gate-coverage` step asserts the two agree.
 
