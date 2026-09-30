@@ -57,6 +57,9 @@ disallowed-names = ["foo", "bar", "baz", "quux"]
 
 # Purity / boundary bans (clippy::disallowed_methods / disallowed_types).
 # Granularity is crate-wide - scope by putting the pure code in its own crate.
+# Scoping to one crate means a clippy.toml in that crate, which REPLACES this
+# file (no merge): repeat every key above there, or it reverts to its default.
+# See references/rust.md (Boundaries).
 disallowed-methods = [
     { path = "std::env::var", reason = "read config through a port - parse env at startup in the shell" },
     { path = "std::time::SystemTime::now", reason = "inject a clock - domain code takes time as an argument" },

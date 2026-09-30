@@ -43,10 +43,16 @@ multiple-versions = "warn"  # flag duplicate versions in the dep tree
 # ]
 
 # Layer boundary via `wrappers`: ban a crate everywhere EXCEPT the listed
-# wrappers. Here only the shell crates may depend on infra — the domain crate
-# cannot, and the compiler-level workspace DAG gets a policy-level backstop.
+# wrappers. Works on workspace path crates, not only registry ones (verified on
+# cargo-deny 0.20.2), so one entry per internal crate gates the layer diagram.
+# Layered example: engine and render are pure, frame composes them, shell and
+# web are the leaves, and device crates stay in the shell.
 # deny = [
-#     { crate = "my-infra", wrappers = ["my-app", "my-api"] },
+#     { crate = "my-engine",   wrappers = ["my-frame", "my-web", "my-shell"], reason = "only the composition and leaf crates consume the engine" },
+#     { crate = "my-render",   wrappers = ["my-frame", "my-web", "my-shell"], reason = "render depends only on data" },
+#     { crate = "my-frame",    wrappers = ["my-web", "my-shell"],             reason = "frame is shared by the native shell and the browser" },
+#     { crate = "my-emulator", wrappers = ["my-frame", "my-shell"],           reason = "emulator code never enters engine or render" },
+#     { crate = "sdl2",        wrappers = ["my-shell"],                       reason = "device code lives only in the shell" },
 # ]
 
 # --- Source restrictions ---

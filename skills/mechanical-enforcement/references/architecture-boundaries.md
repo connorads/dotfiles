@@ -314,7 +314,9 @@ and Biome 2.5.11 on one domain module holding every shape.
   `references/python-ast-grep.yml`.
 - **Rust**: clippy `disallowed-methods` (`std::env::var`,
   `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
-  crate-wide, so give the pure core its own crate.
+  one crate, so give the pure core its own crate and a crate-level
+  `clippy.toml`, which replaces the root file; see `references/rust.md`
+  (Boundaries).
 
 **Scoping is where this gate rots.** Keep the rules in the root `.oxlintrc.json` under
 `overrides[].files`; those globs resolve against *the directory containing the config file*, not
