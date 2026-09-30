@@ -84,7 +84,26 @@ plus `too_many_lines`, which clippy's docs name as the honest replacements.
 **Prefer `#[expect(...)]` over `#[allow(...)]`** for per-item suppressions of
 these lints (stable since Rust 1.81). `expect` fires
 `unfulfilled_lint_expectations` once the suppression stops being needed, which
-is the difference between a ratchet and permanent debt.
+is the difference between a ratchet and permanent debt. Enforce it with
+`allow_attributes = "warn"` (restriction tier, so nothing enables it for you),
+which flags every `#[allow]`; `allow_attributes_without_reason` is a separate
+lint for the `reason = ".."` half.
+
+Migrating an existing codebase to `expect`:
+
+1. Rewrite every `#[allow(..)]` / `#![allow(..)]` to `expect`.
+2. Build each target set with `--message-format=json` and collect the
+   `unfulfilled_lint_expectations` hits; those suppressions are stale.
+3. Delete the stale ones.
+4. For an item only tests use (`dead_code` fires in the lib build, not the test
+   build), write `#[cfg_attr(not(test), expect(dead_code))]`.
+
+Two gotchas in step 2. Cargo's JSON `target.test` is the target's test flag, not
+"this message came from a test build", so it cannot split the hits. Derive
+test-build hits as the count in an `--all-targets` run minus the count in a
+`--lib --bins` run. And `cfg_attr(not(test), ..)` on an item that is itself
+`#[cfg(test)]` is inert: the item never exists when `not(test)` holds, so put a
+plain `expect` there.
 
 Rust has no duplication lint, and the crates that claim the job are advisory at
 best - see `references/complexity.md` (Duplication).
@@ -163,6 +182,38 @@ simply has no path to infra). Back it with cargo-deny `[bans]` `wrappers`
 `disallowed-types` / `disallowed-methods` for coarse in-crate bans (see
 `references/clippy-thresholds.toml`). cargo-pup (declarative architecture
 lints; nightly-only) is a watch.
+
+`wrappers` applies to workspace path crates, not only registry ones (verified
+on cargo-deny 0.20.2: a planted engine → emulator edge fails
+`cargo deny check bans`). One `deny` entry per internal crate turns the layer
+diagram into a gate.
+
+**Purity bans belong in a crate-level `clippy.toml`.** A `clippy.toml` next to
+the pure crate's `Cargo.toml` bans `std::fs`, `std::env`, `std::process`,
+`std::net`, `std::thread`, `std::time::{Instant, SystemTime}`,
+`HashMap`/`HashSet` (iteration order) and `println!`/`eprintln!` there
+(`disallowed-methods`, `-types`, `-macros`), while the shell crates keep them.
+Clippy has no allow-in-tests key for these lints, so test modules that touch
+fixtures carry an `#[expect(..)]`.
+
+**A crate `clippy.toml` replaces the root file; clippy does not merge them.**
+Every root key missing from the crate file silently reverts to its default in
+that crate. Repeat every root key in the crate file, and add a sync check that
+fails when a root key is absent or differs. To test this, pick a value the
+default does not already cover: `foo`, `baz` and `quux` are clippy's default
+`disallowed-names`, so they fire either way and prove nothing; `bar` is not.
+
+**Feature-gated test harnesses leak through feature unification.** A
+`harness` feature on the engine, enabled by the CLI crate, is on for every
+member in a workspace build, so a workspace clippy run never compiles the
+production crates without it. Add a second run,
+`cargo clippy -p <prod crates> --lib`, to check the no-feature build. Guard
+against a production crate enabling the feature with
+`cargo tree -e features -e normal -i <engine> -p <prod crate>`, failing on a
+`feature "harness"` line. Make that check fail closed: when the inverted crate
+is an optional dependency the build does not resolve, `cargo tree` prints only
+"nothing to print" and exits 0, which reads as clean. Require the crate's own
+line in the output, and pass the features (and `--target`) that resolve it.
 
 The cross-stack boundary philosophy lives in
 `references/architecture-boundaries.md`.

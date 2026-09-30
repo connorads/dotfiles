@@ -16,6 +16,10 @@ pedantic = { level = "warn", priority = -1 }
 # cyclomatic count with no nesting term (see references/rust.md).
 cognitive_complexity      = "warn"
 
+# `restriction` too. Makes #[expect] mandatory so stale suppressions fire
+# unfulfilled_lint_expectations; allow_attributes_without_reason is separate.
+allow_attributes          = "warn"
+
 # --- Common allows (adjust per-project) ---
 
 # Numeric code (casts) — allow in emulator/embedded/math-heavy projects
