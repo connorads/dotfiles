@@ -10,6 +10,7 @@ VOX="$HOME/.config/zsh/functions/macos/vox"
 VOX_LIB_REAL="$HOME/.config/tmux/scripts/vox-lib.sh"
 MERGE_REAL="$HOME/.config/vox/merge.py"
 SEGMENTS_REAL="$HOME/.config/vox/segments.py"
+SNAPSHOT_REAL="$HOME/.config/vox/snapshot.py"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
 setup() {
@@ -17,6 +18,7 @@ setup() {
   export VOX_LIB="$VOX_LIB_REAL"
   export VOX_MERGE="$MERGE_REAL"
   export VOX_SEGMENTS="$SEGMENTS_REAL"
+  export VOX_SNAPSHOT="$SNAPSHOT_REAL"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
@@ -960,6 +962,139 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"vox transcribe <path>"* ]]
+}
+
+# --- grab: the call so far, while it is still recording ---------------------
+#
+# voxtap's WAVs claim to be empty until stop (ExtAudioFile writes the data size
+# on dispose), so grab reads them by length. live_wavs overwrites the stub's
+# placeholder tracks with that shape: a 4096-byte header whose data size is 0.
+
+# live_wavs DIR SECONDS - both tracks, SECONDS of 16 kHz silence, mid-write.
+live_wavs() {
+  python3 - "$1" "$2" <<'PY'
+import struct, sys
+d, secs = sys.argv[1], int(sys.argv[2])
+fmt = struct.pack("<HHIIHH", 1, 1, 16000, 32000, 2, 16)
+head = b"RIFF" + struct.pack("<I", 4088) + b"WAVE" + b"fmt " + struct.pack("<I", 16) + fmt
+head += b"FLLR" + struct.pack("<I", 4044) + bytes(4044) + b"data" + struct.pack("<I", 0)
+for t in ("mic", "sys"):
+    with open(f"{d}/{t}.wav", "wb") as f:
+        f.write(head + bytes(secs * 32000))
+PY
+}
+
+@test "grab transcribes the call so far and prints where it put it" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox --name standup
+  dir=$output
+  live_wavs "$dir" 3
+  vox grab
+  grabbed=$output
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  [ -f "$grabbed" ]
+  [[ "$(sed -n 1p "$grabbed")" == "# Call in progress: standup, 00:00:00-"*"auto-transcribed draft"* ]]
+  grep -qx "\[00:00:00\] Me: hello there" "$grabbed"
+  # No diarisation mid-call: labels from a partial run would contradict the
+  # final transcript's.
+  grep -qx "\[00:00:02\] Them: yes hello" "$grabbed"
+  ! grep -q "^fluidaudiocli process" "$TEST_LOG"
+}
+
+@test "grab never writes into the recording" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox
+  dir=$output
+  live_wavs "$dir" 3
+  before=$(ls "$dir")
+  vox grab
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != "$dir"/* ]]
+  [ "$(ls "$dir")" = "$before" ]
+}
+
+@test "grab with a window keeps the tail on the call's own clock" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox
+  dir=$output
+  live_wavs "$dir" 360
+  vox grab 5m
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  grep -qx "\[00:01:00\] Me: hello there" "$output"
+  [[ "$(sed -n 1p "$output")" == *"00:01:00-"* ]]
+}
+
+@test "grab follows a recording renamed mid-call" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox
+  vox rename "$output" "renamed later"
+  live_wavs "$output" 3
+  vox grab
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  [[ "$(sed -n 1p "$output")" == "# Call in progress: renamed-later,"* ]]
+}
+
+@test "a grab that recognised nothing fails, still naming the file" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox
+  live_wavs "$output" 3
+  FLUID_WORDS="" vox grab
+  kill_capture
+
+  [ "$status" -eq 1 ]
+  [ -f "$output" ]
+  [[ "$stderr" == *"no speech recognised"* ]]
+}
+
+@test "grab fails cleanly when nothing is recording" {
+  vox grab
+
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"not recording"* ]]
+}
+
+@test "grab rejects a window it cannot read" {
+  require_macos
+  stub_fluid
+  stub_voxtap
+
+  vox
+  vox grab soon
+  kill_capture
+
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"soon"* ]]
+}
+
+@test "help lists grab" {
+  vox help
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"vox grab [5m]"* ]]
 }
 
 # --- compact / prune: reclaiming disk ---------------------------------------
