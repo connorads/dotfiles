@@ -6,7 +6,8 @@ export type CycleState = "blocked" | "done"
 
 export interface Ports {
   readonly listPanes: () => Promise<Result<readonly Pane[]>>
-  readonly judge: (body: unknown) => Promise<Result<JevChoice>>
+  // question: the key under `questions` whose answer to read.
+  readonly judge: (body: unknown, question: string) => Promise<Result<JevChoice>>
   readonly jump: (pane: PaneId) => Promise<Result<void>>
   readonly currentPane: () => Promise<PaneId | undefined>
   readonly cycle: (state: CycleState, from: PaneId | undefined) => Promise<Result<void>>

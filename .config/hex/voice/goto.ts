@@ -38,9 +38,9 @@ export const gotoQuestion = (utterance: string, panes: readonly Pane[]) => ({
   },
 })
 
-export const parseJevChoice = (body: unknown): Result<JevChoice> => {
-  const a = (body as { answers?: { pane?: unknown } } | null)?.answers?.pane
-  if (typeof a !== "object" || a === null) return err("Jev response has no answers.pane")
+export const parseJevChoice = (body: unknown, question: string): Result<JevChoice> => {
+  const a = (body as { answers?: Record<string, unknown> } | null)?.answers?.[question]
+  if (typeof a !== "object" || a === null) return err(`Jev response has no answers.${question}`)
   const { choice, probabilities, confidence } = a as Record<string, unknown>
   if (typeof choice !== "string") return err("Jev answer has no choice")
   if (typeof probabilities !== "object" || probabilities === null) return err("Jev answer has no probabilities")
