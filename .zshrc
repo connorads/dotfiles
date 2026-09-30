@@ -141,6 +141,9 @@ export CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF=1
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
+# BB: disable PostHog usage telemetry.
+export BB_TELEMETRY=false
+
 # hyperframes/media-use skills: PostHog telemetry off (DO_NOT_TRACK also works;
 # explicit var survives if upstream drops the generic check). Also gates the
 # hyperframes-cli "report feedback after render" directive.
