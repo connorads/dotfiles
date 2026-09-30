@@ -3,11 +3,14 @@
 emulate -L zsh
 setopt localtraps
 
+# The dotfiles pin, not the first hk on PATH: a project's mise env can put its
+# own hk version there, and hk.pkl's `amends` needs the pinned one.
 local hk_bin=""
-if (( $+commands[hk] )); then
+if (( $+commands[mise] )); then
+  hk_bin="$(mise -C "$HOME" which hk 2>/dev/null)"
+fi
+if [[ -z "$hk_bin" ]] && (( $+commands[hk] )); then
   hk_bin="${commands[hk]}"
-elif (( $+commands[mise] )); then
-  hk_bin="$(mise which hk 2>/dev/null)"
 fi
 
 if [[ -z "$hk_bin" ]]; then

@@ -4,15 +4,23 @@ if [ "${HK:-1}" = "0" ]; then
 	exit 0
 fi
 
-HK_BIN=""
-if command -v hk >/dev/null 2>&1; then
-	HK_BIN="$(command -v hk)"
-elif command -v mise >/dev/null 2>&1; then
-	HK_BIN="$(mise which hk 2>/dev/null || true)"
+# The dotfiles pin, not the first hk on PATH: a project's mise env can put its
+# own hk version there, and hk.pkl's `amends` needs the pinned one.
+MISE=""
+if command -v mise >/dev/null 2>&1; then
+	MISE="$(command -v mise)"
 elif [ -x "$HOME/.nix-profile/bin/mise" ]; then
-	HK_BIN="$("$HOME/.nix-profile/bin/mise" which hk 2>/dev/null || true)"
+	MISE="$HOME/.nix-profile/bin/mise"
 elif [ -x "$HOME/.local/bin/mise" ]; then
-	HK_BIN="$("$HOME/.local/bin/mise" which hk 2>/dev/null || true)"
+	MISE="$HOME/.local/bin/mise"
+fi
+
+HK_BIN=""
+if [ -n "$MISE" ]; then
+	HK_BIN="$("$MISE" -C "$HOME" which hk 2>/dev/null || true)"
+fi
+if [ -z "$HK_BIN" ] && command -v hk >/dev/null 2>&1; then
+	HK_BIN="$(command -v hk)"
 fi
 
 if [ -z "$HK_BIN" ]; then
