@@ -14,6 +14,7 @@
 #   vox status               state + elapsed
 #   vox ls                   every recording, newest first, one path per line
 #   vox last                 newest recording's path
+#   vox grab [5m]            the call so far (or its last 5m), while it records
 #   vox <file>               transcribe an audio/video file that already exists
 #   vox transcribe <path>    re-run transcription on a recording, in place
 #   vox rename <path> <slug> retitle, preserving the timestamp prefix
@@ -66,6 +67,7 @@ local vox_mic_device="${VOX_MIC_DEVICE:-Microphone}"
 local vox_voxtap="${VOX_VOXTAP:-voxtap}"
 local vox_merge="${VOX_MERGE:-$HOME/.config/vox/merge.py}"
 local vox_segments="${VOX_SEGMENTS:-$HOME/.config/vox/segments.py}"
+local vox_snapshot="${VOX_SNAPSHOT:-$HOME/.config/vox/snapshot.py}"
 local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
 local vox_python="${VOX_PYTHON:-python3}"
 
@@ -326,16 +328,17 @@ _vox_track_audio() {
 	return 1
 }
 
-# _vox_scribe AUDIO DIR TRACK DIARISE - transcribe AUDIO into DIR/TRACK.json,
-# diarising it first when DIARISE is 1. The raw fluidaudiocli output is kept
-# beside it as TRACK.asr.json / TRACK.diar.json.
+# _vox_scribe AUDIO DIR TRACK DIARISE [OFFSET_MS] - transcribe AUDIO into
+# DIR/TRACK.json, diarising it first when DIARISE is 1. The raw fluidaudiocli
+# output is kept beside it as TRACK.asr.json / TRACK.diar.json. OFFSET_MS is
+# where AUDIO starts in the recording, for a tail cut from a live one.
 #
 # Every output is cleared up front so a failed run never leaves the previous
 # transcription looking current. `transcribe` exits 0 even when it cannot read
 # the audio, writing no JSON, so the file is the success signal rather than the
 # status. stdout carries only the recognised text, already in the JSON.
 _vox_scribe() {
-	local audio=$1 dir=$2 track=$3 diarise=$4
+	local audio=$1 dir=$2 track=$3 diarise=$4 offset_ms=${5:-0}
 	local asr="$dir/$track.asr.json" diar="$dir/$track.diar.json"
 	rm -f "$asr" "$diar"
 	: >"$dir/$track.json"
@@ -349,7 +352,7 @@ _vox_scribe() {
 		diar_args=(--diar "$diar")
 	fi
 	"$vox_python" "$vox_segments" --asr "$asr" "${diar_args[@]}" \
-		>"$dir/$track.json" 2>>"$dir/vox.log"
+		--offset-ms "$offset_ms" >"$dir/$track.json" 2>>"$dir/vox.log"
 }
 
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
@@ -446,6 +449,102 @@ _vox_retranscribe() {
 	local rc=$?
 	vox_clear_job "$rec"
 	print -r -- "$rec"
+	return "$rc"
+}
+
+# _vox_window_secs SPEC - "5m" / "90s" / "1h" / a bare number of minutes, in
+# seconds.
+_vox_window_secs() {
+	local spec=${1:-}
+	local n=${spec%%[a-zA-Z]*} unit=${spec##*[0-9]}
+	[[ -n "$n" && "$n" != *[!0-9]* ]] || return 1
+	case "$unit" in
+	s) print -r -- "$n" ;;
+	'' | m) print -r -- $((n * 60)) ;;
+	h) print -r -- $((n * 3600)) ;;
+	*) return 1 ;;
+	esac
+}
+
+# _vox_grab [WINDOW] - transcribe the live recording up to now, or its last
+# WINDOW, into a fresh temp directory, and print the transcript's path.
+#
+# For handing the call to an agent mid-meeting without stopping it. Nothing is
+# written into the recording: stop, the pill and compaction never see a grab,
+# and the recording's path is read from the statefile at the moment of asking,
+# so a rename since start is followed. Both tracks transcribe at once, since
+# the wait is the whole cost. Neither is diarised - speaker labels from a
+# partial run would contradict the final transcript's - so the far side is
+# one `Them`.
+_vox_grab() {
+	local window=${1:-} secs=""
+	vox_active || {
+		_vox_die "not recording — \`vox last\` is the newest transcript"
+		return 1
+	}
+	if [[ -n "$window" ]]; then
+		secs=$(_vox_window_secs "$window") || {
+			_vox_die "can't read the window \"$window\" — try 5m, 90s or 1h"
+			return 1
+		}
+	fi
+	_vox_need fluidaudiocli "$vox_python" || return 1
+	local dir
+	dir=$(vox_dir)
+	local out
+	out=$(mktemp -d "${TMPDIR:-/tmp}/vox-grab.XXXXXX") || return 1
+
+	local track
+	local -a last=() tracks=()
+	[[ -n "$secs" ]] && last=(--last "$secs")
+	print -u2 -- "vox: transcribing the call so far…"
+	for track in mic sys; do
+		[[ -s "$dir/$track.wav" ]] || continue
+		tracks+=("$track")
+		{
+			local offset
+			offset=$("$vox_python" "$vox_snapshot" "$dir/$track.wav" "$out/$track.wav" \
+				"${last[@]}" 2>>"$out/vox.log") &&
+				print -r -- "$offset" >"$out/$track.offset" &&
+				_vox_scribe "$out/$track.wav" "$out" "$track" 0 "$offset" ||
+				print -u2 -- "vox: transcribing $track failed — see $out/vox.log"
+		} &
+	done
+	wait
+	(( $#tracks )) || {
+		_vox_die "no audio in ${dir:t} yet"
+		return 1
+	}
+
+	local from_ms=0 f
+	for f in "$out"/{mic,sys}.offset(N); do
+		from_ms=$(<"$f")
+		break
+	done
+	local title=${${dir:t}#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]}
+	title=${title#-}
+	local from=$(( from_ms / 1000 )) to
+	to=$(vox_elapsed_secs)
+	(( to < from )) && to=$from
+	local -a merge_args=(--me "$out/mic.json" --them "$out/sys.json")
+	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
+	{
+		printf '# Call in progress: %s, %02d:%02d:%02d-%02d:%02d:%02d so far. An auto-transcribed draft; Me = me, Them = the other side.\n\n' \
+			"${title:-untitled}" $((from / 3600)) $((from % 3600 / 60)) $((from % 60)) \
+			$((to / 3600)) $((to % 3600 / 60)) $((to % 60))
+		"$vox_python" "$vox_merge" "${merge_args[@]}"
+	} >"$out/grab.md" || {
+		_vox_die "merge failed — see $out/vox.log"
+		return 1
+	}
+	# Same contract as `vox stop`: the path either way, the status says whether
+	# there is anything past the header.
+	local rc=0
+	(( $(wc -l <"$out/grab.md") > 2 )) || {
+		print -u2 -- "vox: no speech recognised in the call so far — see $out/vox.log"
+		rc=1
+	}
+	print -r -- "$out/grab.md"
 	return "$rc"
 }
 
@@ -773,6 +872,7 @@ _vox_help() {
   vox status               state + elapsed
   vox ls                   every recording, newest first
   vox last                 newest recording
+  vox grab [5m]            the call so far (or its last 5m) while recording
   vox <file>               transcribe an existing audio/video file
   vox transcribe <path>    re-run transcription on a recording, in place
   vox rename <path> <slug> retitle, keeping the timestamp prefix
@@ -819,6 +919,10 @@ compact | prune)
 transcribe)
 	shift
 	_vox_retranscribe "${1:-}"
+	;;
+grab)
+	shift
+	_vox_grab "${1:-}"
 	;;
 -h | --help | help) _vox_help ;;
 *)
