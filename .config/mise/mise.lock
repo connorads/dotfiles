@@ -247,23 +247,23 @@ url = "https://github.com/anthropics/claude-code/releases/download/v2.1.285/clau
 url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/598796737"
 
 [[tools.codex]]
-version = "0.159.1"
+version = "0.159.2"
 backend = "aqua:openai/codex"
 
 [tools.codex."platforms.linux-arm64"]
-checksum = "sha256:63b3b5a4e76b4174d651d2d363ac028fdb4961ba47eca9946da3c35267999aec"
-url = "https://github.com/openai/codex/releases/download/rust-v0.159.1/codex-package-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/599151423"
+checksum = "sha256:05a524a463cadf7e3e22c7f923539c0d0b74c3e78b1f5f1fab52e50e6fb3312f"
+url = "https://github.com/openai/codex/releases/download/rust-v0.159.2/codex-package-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/599529372"
 
 [tools.codex."platforms.linux-x64"]
-checksum = "sha256:9a2dff8e1eb9bad83f52edb6f91175efeb5c68a316f880c95d7770f87a34fc5c"
-url = "https://github.com/openai/codex/releases/download/rust-v0.159.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/599140838"
+checksum = "sha256:9e2d29a713b94478b240dec2f10e11324cd05fad76dc43e7c639bdf8a1337a6b"
+url = "https://github.com/openai/codex/releases/download/rust-v0.159.2/codex-package-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/599522399"
 
 [tools.codex."platforms.macos-arm64"]
-checksum = "sha256:a8fc76ccb5230dd97fb6db01873fa9c12b5e1efdf32d13c2ba7f6e8489ccd893"
-url = "https://github.com/openai/codex/releases/download/rust-v0.159.1/codex-package-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/599157482"
+checksum = "sha256:38aaf6dce63099fd10988948d03bbc6c0474253aef6961fcbe60f8d154b39101"
+url = "https://github.com/openai/codex/releases/download/rust-v0.159.2/codex-package-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/599532693"
 
 [[tools.deno]]
 version = "2.9.7"
@@ -420,23 +420,23 @@ provenance = "github-attestations"
 provenance_verified = true
 
 [[tools."github:redhat-et/ripwire"]]
-version = "0.6.3"
+version = "0.6.4"
 backend = "github:redhat-et/ripwire"
 
 [tools."github:redhat-et/ripwire"."platforms.linux-arm64"]
-checksum = "sha256:964f24dee750126d88f0620a24a1cd7e3e33392ecadcbe80c3fb7d4cae38f1a3"
-url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.3/ripwire-0.6.3-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/588219532"
+checksum = "sha256:a863c228b860ebf91920a58fa40ac5ef88157f5799f1187b6d662f2a03ff78e0"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.4/ripwire-0.6.4-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/590167412"
 
 [tools."github:redhat-et/ripwire"."platforms.linux-x64"]
-checksum = "sha256:569d37557c3441ac7860c59fd7fcc7842470af7292ee1e2cdf6ef3c98f6935b5"
-url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.3/ripwire-0.6.3-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/588219529"
+checksum = "sha256:e235c4616d5c9222e0fcd7b8c15e490ff46aca329614cde80b24b5c1560e84c4"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.4/ripwire-0.6.4-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/590167408"
 
 [tools."github:redhat-et/ripwire"."platforms.macos-arm64"]
-checksum = "sha256:a2eb732f803bac1f880d66446bcb9c6909b966ee69b760223842f3231d982e49"
-url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.3/ripwire-0.6.3-macos-arm64.tar.gz"
-url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/588219533"
+checksum = "sha256:ad82f00bd7da95557b5124f41eb93ecdafb9db18d7208f181e6a858e4b6101f0"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.6.4/ripwire-0.6.4-macos-arm64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/590167413"
 
 [[tools."github:tamnd/kage"]]
 version = "0.3.12"
@@ -685,7 +685,7 @@ version = "2.3.10"
 backend = "npm:deepsec"
 
 [[tools."npm:droid"]]
-version = "0.227.0"
+version = "0.228.0"
 backend = "npm:droid"
 
 [[tools."npm:eas-cli"]]
@@ -705,7 +705,7 @@ version = "0.22.0"
 backend = "npm:hunkdiff"
 
 [[tools."npm:lavish-axi"]]
-version = "0.1.78"
+version = "0.1.79"
 backend = "npm:lavish-axi"
 
 [[tools."npm:node-gyp"]]
@@ -868,22 +868,22 @@ url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588119307"
 provenance = "github-attestations"
 
 [[tools.python]]
-version = "3.14.7"
+version = "3.14.6"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:4dba8d7e06199f841a9d6b54e4eb58d446a5c20c65085a916190dd0162c6e93b"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7+20260807-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:8ad1ec529cd1708245e8661a463245fc1479c43cbfd66e58b095456ebf77180a"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:a2478d654ed51d443bae21ec20ad927f116b4f5aae4094ab74918a6aa38f0575"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7+20260807-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:ba960817e542642021135db330d875f410f4e14c64a62e2ae5faf3697ada08b2"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:532645be202d3df8510ab318ca5faed92060a694c8327144e14fa81f31af0f6d"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7+20260807-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:e0d4e5066aef3248c22e08a07546bfd5edeaca904c91fadc296be720998ec2ec"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.ruff]]
