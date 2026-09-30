@@ -89,7 +89,7 @@ Change as a set:
   call is testable with fixtures and no audio hardware. Sourced, never run.
 - [`../zsh/functions/macos/vox`](../../zsh/functions/macos/vox) - the dual-mode
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
-  `<file>` / `transcribe` / `rename` / `compact` / `prune`). Every subcommand
+  `grab` / `<file>` / `transcribe` / `rename` / `compact` / `prune`). Every subcommand
   prints **bare paths to stdout, one per line**, with progress and diagnostics on
   stderr, so it composes without glue. **Exit 0 means the transcript has
   content**: `stop`, `transcribe` and `<file>` print the recording's path either way - the audio is intact, so there
@@ -122,6 +122,17 @@ Change as a set:
   `drs`**: `voxtap --probe 1` in the foreground takes the microphone TCC prompt
   (a detached first start would sit behind it until the 10 s wait expired; the
   grant is to the terminal and persists across rebuilds).
+- **`vox grab [5m]`** transcribes the call in progress on demand, for pasting
+  into an agent mid-meeting ([ADR 0019](../../../docs/adr/0019-vox-transcribes-a-live-call-on-demand.md)).
+  Both tracks are snapshotted, transcribed in parallel without diarisation and
+  merged under a one-line context header into `grab.md` in a fresh temp
+  directory - never the recording's own. It follows the same exit contract as
+  `stop`. [`scripts/vox-grab.sh`](../scripts/vox-grab.sh) is its clipboard
+  end: `prefix + Alt+y` copies the whole call, the pill menu the last 5 min.
+- [`../vox/snapshot.py`](../../vox/snapshot.py) - copies a WAV voxtap is still
+  writing into a complete one. The header says the data is empty until stop, so
+  the file length is trusted instead, rounded down to whole frames; `--last`
+  keeps the tail and prints where it starts, for `segments.py --offset-ms`.
 - [`../vox/segments.py`](../../vox/segments.py) - a real Unix filter:
   `fluidaudiocli` word timings plus optional diarisation in, the per-track
   segment JSON out (the schema `mw` wrote, so older recordings read the same).
