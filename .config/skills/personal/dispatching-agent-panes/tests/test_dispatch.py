@@ -206,3 +206,99 @@ class TestLaunch:
         runtime.existing_window_names = lambda _session: {"alpha"}
         with pytest.raises(dispatch.DispatchError, match="window already exists"):
             dispatch.retry_assignment(path, "alpha", runtime)
+
+
+class TestLaunchCommand:
+    def default_prefix(self, yolo):
+        return ["claude", "--append", *(["--yolo-flags"] if yolo else [])]
+
+    def test_default_claude_uses_the_launch_flags_helper(self):
+        item = assignment("alpha", provider="claude", mode="implement")
+        assert dispatch.provider_command(item, self.default_prefix) == ["claude", "--append"]
+
+    def test_custom_command_replaces_the_claude_prefix(self):
+        item = assignment("alpha", provider="claude", mode="plan", command=["ccp", "str"])
+        assert dispatch.provider_command(item, self.default_prefix) == [
+            "ccp",
+            "str",
+            "--permission-mode",
+            "plan",
+        ]
+
+    def test_auto_permission_sets_claude_auto_mode(self):
+        item = assignment(
+            "alpha", provider="claude", mode="implement", permission="auto", command=["ccp", "str"]
+        )
+        assert dispatch.provider_command(item, self.default_prefix) == [
+            "ccp",
+            "str",
+            "--permission-mode",
+            "auto",
+        ]
+
+    def test_bypass_with_custom_command_skips_permissions(self):
+        item = assignment(
+            "alpha",
+            provider="claude",
+            mode="implement",
+            permission="bypass",
+            command=["ccp", "str"],
+        )
+        assert dispatch.provider_command(item, self.default_prefix) == [
+            "ccp",
+            "str",
+            "--dangerously-skip-permissions",
+        ]
+
+    def test_rejects_auto_permission_for_codex(self):
+        value = manifest([assignment("alpha", permission="auto")])
+        with pytest.raises(dispatch.DispatchError, match="auto"):
+            dispatch.validate_manifest(value)
+
+    def test_rejects_auto_permission_in_plan_mode(self):
+        value = manifest([assignment("alpha", provider="claude", permission="auto")])
+        with pytest.raises(dispatch.DispatchError, match="auto"):
+            dispatch.validate_manifest(value)
+
+    def test_rejects_an_empty_command(self):
+        value = manifest([assignment("alpha", command=[])])
+        with pytest.raises(dispatch.DispatchError, match="command"):
+            dispatch.validate_manifest(value)
+
+    def test_custom_command_is_the_required_executable(self):
+        item = assignment("alpha", provider="claude", command=["ccp", "str"])
+        names = dispatch._required_commands([item])
+        assert "ccp" in names
+        assert "claude-launch-flags" not in names
+
+
+class RecordingRuntime(dispatch.Runtime):
+    def __init__(self, screen=""):
+        self.screen = screen
+        self.argvs = []
+
+    def run(self, argv, *, cwd=None, check=True):
+        self.argvs.append(argv)
+        stdout = self.screen if argv[:2] == ["tmux", "capture-pane"] else ""
+        return dispatch.subprocess.CompletedProcess(argv, 0, stdout, "")
+
+
+class TestRuntime:
+    def test_commands_run_with_stdin_closed(self, monkeypatch):
+        seen = {}
+
+        def fake_run(argv, **kwargs):
+            seen.update(kwargs)
+            return dispatch.subprocess.CompletedProcess(argv, 0, "", "")
+
+        monkeypatch.setattr(dispatch.subprocess, "run", fake_run)
+        dispatch.Runtime().run(["true"])
+        assert seen["stdin"] is dispatch.subprocess.DEVNULL
+
+    def test_folder_trust_dialog_is_not_treated_as_idle(self):
+        runtime = RecordingRuntime(" Yes, I trust this folder\n")
+        with pytest.raises(dispatch.DispatchError, match="trust"):
+            runtime.wait_idle("%3")
+
+    def test_idle_composer_passes(self):
+        RecordingRuntime("> \n").wait_idle("%3")

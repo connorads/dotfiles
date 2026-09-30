@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -20,7 +21,9 @@ SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 WINDOW_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$")
 VALID_PROVIDERS = {"claude", "codex"}
 VALID_MODES = {"plan", "implement"}
-VALID_PERMISSIONS = {"normal", "bypass"}
+VALID_PERMISSIONS = {"normal", "auto", "bypass"}
+# Claude's first-run folder-trust dialog, which `agent` reports as idle.
+TRUST_DIALOG = "trust this folder"
 VALID_STATES = {"pending", "launched", "complete", "failed"}
 
 
@@ -106,7 +109,18 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         if mode not in VALID_MODES:
             raise DispatchError(f"{context}.mode must be plan or implement")
         if permission not in VALID_PERMISSIONS:
-            raise DispatchError(f"{context}.permission must be normal or bypass")
+            raise DispatchError(f"{context}.permission must be normal, auto, or bypass")
+        if permission == "auto" and (provider != "claude" or mode != "implement"):
+            raise DispatchError(
+                f"{context}.permission auto needs provider claude in implement mode"
+            )
+        command = item.get("command")
+        if command is not None and (
+            not isinstance(command, list)
+            or not command
+            or not all(isinstance(part, str) and part for part in command)
+        ):
+            raise DispatchError(f"{context}.command must be a non-empty array of strings")
         if state not in VALID_STATES:
             raise DispatchError(f"{context}.state must be pending, launched, complete, or failed")
         window = _required_string(item, "window_name", context)
@@ -208,6 +222,7 @@ class Runtime:
                 check=check,
                 text=True,
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
             )
         except subprocess.CalledProcessError as error:
             detail = error.stderr.strip() or error.stdout.strip() or f"exit {error.returncode}"
@@ -286,19 +301,11 @@ class Runtime:
         return path
 
     def provider_command(self, item: dict[str, Any]) -> list[str]:
-        if item["provider"] == "codex":
-            command = ["codex"]
-            if item["permission"] == "bypass":
-                command.append("--dangerously-bypass-approvals-and-sandbox")
-            return command
-        flags_command = ["claude-launch-flags"]
-        if item["permission"] == "bypass":
-            flags_command.append("--yolo")
-        flags = shlex.split(self.run(flags_command).stdout)
-        command = ["claude", *flags]
-        if item["mode"] == "plan":
-            command.extend(["--permission-mode", "plan"])
-        return command
+        def claude_prefix(yolo: bool) -> list[str]:
+            flags_command = ["claude-launch-flags", *(["--yolo"] if yolo else [])]
+            return ["claude", *shlex.split(self.run(flags_command).stdout)]
+
+        return provider_command(item, claude_prefix)
 
     def launch_pane(self, session: str, window_name: str, cwd: str, command: list[str]) -> str:
         result = self.run(
@@ -325,6 +332,11 @@ class Runtime:
 
     def wait_idle(self, pane: str) -> None:
         self.run(["agent", "wait", pane, "--for", "idle,done", "--timeout", "60"])
+        capture = self.run(["tmux", "capture-pane", "-p", "-t", pane]).stdout
+        if TRUST_DIALOG in capture:
+            raise DispatchError(
+                f"pane {pane} is asking whether to trust its folder; answer it there, then retry"
+            )
 
     def name_agent(self, pane: str, name: str) -> None:
         self.run(["agent", "name", pane, name])
@@ -344,13 +356,37 @@ class Runtime:
         return self.run(["agent", "state", pane]).stdout.strip()
 
 
+def provider_command(item: dict[str, Any], claude_prefix: Callable[[bool], list[str]]) -> list[str]:
+    """Build the pane command; `command` replaces the provider's default prefix."""
+    custom = item.get("command")
+    bypass = item["permission"] == "bypass"
+    if item["provider"] == "codex":
+        command = list(custom or ["codex"])
+        if bypass:
+            command.append("--dangerously-bypass-approvals-and-sandbox")
+        return command
+    if custom:
+        command = list(custom)
+        if bypass:
+            command.append("--dangerously-skip-permissions")
+    else:
+        command = claude_prefix(bypass)
+    if item["mode"] == "plan":
+        command.extend(["--permission-mode", "plan"])
+    elif item["permission"] == "auto":
+        command.extend(["--permission-mode", "auto"])
+    return command
+
+
 def _required_commands(assignments: list[dict[str, Any]]) -> list[str]:
     names = ["agent", "tmux"]
-    providers = {item["provider"] for item in assignments}
-    if "codex" in providers:
-        names.append("codex")
-    if "claude" in providers:
-        names.extend(["claude", "claude-launch-flags"])
+    for item in assignments:
+        if item.get("command"):
+            names.append(item["command"][0])
+        elif item["provider"] == "codex":
+            names.append("codex")
+        else:
+            names.extend(["claude", "claude-launch-flags"])
     if any(item["mode"] == "implement" for item in assignments):
         names.extend(["git", "zsh"])
     return names

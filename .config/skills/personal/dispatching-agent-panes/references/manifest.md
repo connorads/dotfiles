@@ -36,8 +36,13 @@ waves. The launcher updates it atomically after each assignment.
 - `max_concurrency` is an integer from 1 to 6.
 - `provider` is `claude` or `codex`.
 - `mode` is `plan` or `implement`.
-- `permission` is `normal` or `bypass`; bypass must be explicit in the approved
-  table.
+- `permission` is `normal`, `auto`, or `bypass`; anything but `normal` must be
+  explicit in the approved table. `auto` starts Claude with
+  `--permission-mode auto` and is valid only for Claude in `implement` mode.
+- `command` (optional) is an argv array that replaces the provider's default
+  prefix, for example `["ccp", "str"]` to launch Claude under a profile. The
+  launcher still appends mode and permission flags; for Claude it skips
+  `claude-launch-flags`, so the wrapper must inject those itself.
 - `dependencies` contains assignment IDs from this manifest.
 - `agent_name` matches `[a-z][a-z0-9_-]{0,31}` and is globally unique among
   live agents.

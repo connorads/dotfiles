@@ -91,10 +91,14 @@ The launcher uses `agent` for readiness, stable names, prompting, and start
 verification. Claude enters planning through its launch flag. Codex changes
 mode only after an observed idle screen and must display `Plan mode` before
 the prompt is sent. A prompt visible in the composer is not evidence that the
-agent started.
+agent started. Claude's folder-trust dialog in a new checkout reads as idle, so
+the launcher fails that assignment instead of prompting into it; answer the
+dialog in the kept pane, then retry.
 
 Permission bypass is never a default. Preserve normal provider permissions
-unless the approved manifest explicitly says `bypass` for that assignment.
+unless the approved manifest explicitly says `auto` or `bypass` for that
+assignment. When the user names a launch wrapper, such as a profile command,
+set the assignment's `command` rather than wrapping the launcher.
 
 If a launch fails, stop the wave. Keep successful panes, record the failed
 assignment, and do not launch the remaining assignments. Never delete a pane
