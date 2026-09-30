@@ -4,7 +4,7 @@ import { err, ok, paneLabel, type Pane, type Result } from "./pane.ts"
 // Spike: a "none" option plus this floor gave zero wrong jumps over 11 phrases.
 export const JUMP_FLOOR = 0.7
 export const JEV_MODEL = "jev-latest"
-const NONE = "none"
+export const NONE = "none"
 
 export interface JevChoice {
   readonly choice: string

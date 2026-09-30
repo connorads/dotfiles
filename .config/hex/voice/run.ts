@@ -1,6 +1,7 @@
 // Use cases: gather, decide, act, log. Failures end as a notification, never a throw.
 import { decideGoto, gotoQuestion, type GotoDecision } from "./goto.ts"
 import type { CycleState, Ports } from "./ports.ts"
+import { decideStart, startQuestion, type StartDecision } from "./start.ts"
 
 const TITLE = "Go to pane"
 
@@ -64,4 +65,49 @@ export const runNext = async (ports: Ports, state: CycleState): Promise<boolean>
     ...(cycled.ok ? {} : { error: cycled.error }),
   })
   return cycled.ok
+}
+
+const START_TITLE = "Start agent"
+
+export type StartOutcome = StartDecision["kind"] | "error"
+
+const describeStart = (d: StartDecision) =>
+  d.kind === "start"
+    ? { dir: d.dir.path, p: d.p }
+    : d.kind === "ask"
+      ? { options: d.options.map((o) => ({ dir: o.dir.path, p: o.p })) }
+      : { reason: d.reason }
+
+export const runStart = async (ports: Ports, utterance: string): Promise<StartOutcome> => {
+  const started = ports.now()
+  const finish = async (outcome: StartOutcome, detail: Record<string, unknown>) => {
+    await ports.log({ command: "start", utterance, outcome, ms: ports.now() - started, ...detail })
+    return outcome
+  }
+  const fail = async (error: string) => {
+    await ports.notify(START_TITLE, error)
+    return finish("error", { error })
+  }
+
+  const dirs = await ports.listDirs()
+  if (!dirs.ok) return fail(dirs.error)
+
+  const answer = await ports.judge(startQuestion(utterance, dirs.value), "dir")
+  if (!answer.ok) return fail(answer.error)
+
+  const decision = decideStart(answer.value, dirs.value)
+  const detail = { dirs: dirs.value.length, confidence: answer.value.confidence, ...describeStart(decision) }
+  switch (decision.kind) {
+    case "start": {
+      const pane = await ports.startAgent(decision.dir.path)
+      if (!pane.ok) return fail(pane.error)
+      return finish("start", { ...detail, pane: pane.value })
+    }
+    case "ask":
+      await ports.notify(`${START_TITLE}: which one?`, decision.options.map((o) => o.dir.label).join(" or "))
+      return finish("ask", detail)
+    case "nomatch":
+      await ports.notify(START_TITLE, `No folder for "${utterance}"`)
+      return finish("nomatch", detail)
+  }
 }

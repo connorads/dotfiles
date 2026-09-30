@@ -2,16 +2,18 @@
 // and a bare PATH. Without a UTF-8 LANG, `agent ls --json` returns [] rather
 // than failing, so every spawn sets LANG and PATH and uses absolute paths.
 import { appendFile, mkdir } from "node:fs/promises"
-import { dirname } from "node:path"
+import { basename, dirname } from "node:path"
 import { parseJevChoice } from "./goto.ts"
 import { err, ok, parsePanes, type PaneId, type Result } from "./pane.ts"
 import type { Ports } from "./ports.ts"
+import { parseZoxide } from "./start.ts"
 
 const HOME = process.env.HOME ?? ""
 const USER = process.env.USER ?? ""
 const NIX_BIN = `/etc/profiles/per-user/${USER}/bin`
 const AGENT = `${HOME}/.local/bin/agent`
 const TMUX = `${NIX_BIN}/tmux`
+const ZOXIDE = `${NIX_BIN}/zoxide`
 const AGENT_POPUP = `${HOME}/.config/tmux/scripts/agent-popup.sh`
 const LOG_PATH = `${HOME}/.local/state/hex/voice.jsonl`
 const JEV_URL = "https://api.typesafe.ai/v1/systemone"
@@ -82,6 +84,26 @@ const currentPane: Ports["currentPane"] = async () => {
   return /^%\d+$/.test(id) ? (id as PaneId) : undefined
 }
 
+const listDirs: Ports["listDirs"] = async () => {
+  const r = await run([ZOXIDE, "query", "-l", "-s"])
+  return r.ok ? ok(parseZoxide(r.value, HOME)) : err(`zoxide: ${r.error}`)
+}
+
+// claude is typed into the window's login shell rather than run as the window
+// command, so it gets the normal shell env and the pane stays a shell after
+// claude exits, as when started by hand.
+const startAgent: Ports["startAgent"] = async (dir) => {
+  const session = await run([TMUX, "display-message", "-p", "#{session_name}"])
+  if (!session.ok) return err(`tmux session: ${session.error}`)
+  const target = `${session.value.trim()}:`
+  const window = await run([TMUX, "new-window", "-t", target, "-c", dir, "-n", basename(dir), "-P", "-F", "#{pane_id}"])
+  if (!window.ok) return err(`tmux new-window: ${window.error}`)
+  const pane = window.value.trim()
+  if (!/^%\d+$/.test(pane)) return err(`tmux new-window returned ${JSON.stringify(pane)}`)
+  const typed = await run([TMUX, "send-keys", "-t", pane, "claude", "Enter"])
+  return typed.ok ? ok(pane as PaneId) : err(`tmux send-keys: ${typed.error}`)
+}
+
 const notify: Ports["notify"] = async (title, message) => {
   await run([
     "/usr/bin/osascript",
@@ -110,6 +132,8 @@ export const systemPorts: Ports = {
   judge,
   jump: async (pane) => unit(await run([AGENT, "goto", pane])),
   currentPane,
+  listDirs,
+  startAgent,
   cycle: async (state, from) => unit(await run(["/bin/sh", AGENT_POPUP, "cycle", state, ...(from ? [from] : [])])),
   notify,
   log,
