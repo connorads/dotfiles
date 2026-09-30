@@ -5,7 +5,7 @@ A real Unix filter: it reads the per-track files `fluidaudiocli` writes and
 prints the segment JSON vox stores as `mic.json`/`sys.json`, the schema
 merge.py and vox-lib.sh read.
 
-    segments.py --asr sys.asr.json [--diar sys.diar.json] > sys.json
+    segments.py --asr sys.asr.json [--diar sys.diar.json] [--offset-ms N] > sys.json
 
 Input schemas:
 
@@ -110,8 +110,13 @@ def speaker_at(ms: float, turns: list[Turn]) -> str | None:
     return min(turns, key=lambda t: min(abs(ms - t.start), abs(ms - t.end))).speaker
 
 
-def segments(asr: object, diar: object | None, gap_ms: int = DEFAULT_GAP_MS) -> dict[str, object]:
-    """The whole filter as one pure function: parsed JSON in, vox segments out."""
+def segments(
+    asr: object, diar: object | None, gap_ms: int = DEFAULT_GAP_MS, offset_ms: int = 0
+) -> dict[str, object]:
+    """The whole filter as one pure function: parsed JSON in, vox segments out.
+
+    `offset_ms` moves every time onto the recording's clock, for audio cut from
+    partway through it (snapshot.py --last)."""
     turns = load_turns(diar) if diar is not None else []
     groups: list[tuple[str | None, list[Word]]] = []
     for w in load_words(asr):
@@ -136,10 +141,13 @@ def segments(asr: object, diar: object | None, gap_ms: int = DEFAULT_GAP_MS) -> 
     out: list[dict[str, object]] = []
     for speaker, words in groups:
         segment: dict[str, object] = {
-            "start": words[0].start,
-            "end": words[-1].end,
+            "start": words[0].start + offset_ms,
+            "end": words[-1].end + offset_ms,
             "text": " ".join(w.text for w in words),
-            "words": [{"start": w.start, "end": w.end, "text": w.text} for w in words],
+            "words": [
+                {"start": w.start + offset_ms, "end": w.end + offset_ms, "text": w.text}
+                for w in words
+            ],
         }
         if diar is not None and speaker is not None:
             segment["speaker"] = speaker
@@ -161,9 +169,16 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_GAP_MS,
         help=f"start a new segment after a pause this long (default {DEFAULT_GAP_MS})",
     )
+    parser.add_argument(
+        "--offset-ms",
+        type=int,
+        default=0,
+        help="add this to every time: where the transcribed audio starts in the recording",
+    )
     args = parser.parse_args(argv)
     diar = read_json(args.diar) if args.diar else None
-    json.dump(segments(read_json(args.asr), diar, args.gap_ms), sys.stdout, indent=2)
+    out = segments(read_json(args.asr), diar, args.gap_ms, args.offset_ms)
+    json.dump(out, sys.stdout, indent=2)
     sys.stdout.write("\n")
     return 0
 
