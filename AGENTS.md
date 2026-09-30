@@ -124,7 +124,7 @@ The block also leaves a repo's husky/hk hooks unarmed and skips its own `postins
 ## Git Hooks (hk)
 
 - `core.hooksPath` is `.hk-hooks`; pre-commit runs `hk run pre-commit -q` from `~/hk.pkl`.
-- The `amends`/`import` pin in `hk.pkl` must name the same version as the mise-installed `hk`. A mismatch makes builtin steps fail with `no command for test`.
+- The `amends`/`import` pin in `hk.pkl` must name the same version as the mise-installed `hk`. A mismatch makes builtin steps fail with `no command for test`. `dhk` and the pre-commit hook resolve hk through `mise -C $HOME`, so a project's own hk on PATH does not override the pin.
 - `dhk check`, `dhk fix`, `dhk test` (the steps' own `tests {}` blocks).
 - Gates fail open: a glob that matches nothing exits 0. After moving code between trees, run `mise run gate-coverage`.
 - There is deliberately no pre-push gate. `git push` holds the GitHub connection open while pre-push runs, and GitHub drops it before a whole-suite run ends. Run `mise run zsh-tests` by hand.
