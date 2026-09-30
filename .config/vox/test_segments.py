@@ -147,6 +147,17 @@ def test_top_level_text_joins_the_segments() -> None:
     assert out["text"] == "one two"
 
 
+def test_offset_shifts_every_time_onto_the_recording_clock() -> None:
+    out = segments(asr(word(0, 0.5, "late"), word(0.5, 1, "words")), None, offset_ms=60_000)
+    payload = out["segments"]
+    assert isinstance(payload, list)
+    assert [(s["start"], s["end"]) for s in payload] == [(60_000, 61_000)]
+    assert [(w["start"], w["end"]) for w in payload[0]["words"]] == [
+        (60_000, 60_500),
+        (60_500, 61_000),
+    ]
+
+
 def test_cli_reads_both_files_and_writes_json(tmp_path: Path) -> None:
     asr_path = tmp_path / "sys.asr.json"
     diar_path = tmp_path / "sys.diar.json"
@@ -178,3 +189,15 @@ def test_cli_without_diar(tmp_path: Path) -> None:
         check=True,
     )
     assert texts(json.loads(result.stdout)) == [("", "hi")]
+
+
+def test_cli_offset_ms(tmp_path: Path) -> None:
+    asr_path = tmp_path / "mic.asr.json"
+    asr_path.write_text(json.dumps(asr(word(1, 1.5, "hi"))), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SEGMENTS_PY), "--asr", str(asr_path), "--offset-ms", "300000"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout)["segments"][0]["start"] == 301_000
