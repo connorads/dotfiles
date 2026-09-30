@@ -378,23 +378,13 @@ url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-apple-
 url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
 
 [[tools."github:can1357/oh-my-pi"]]
-version = "18.3.1"
+version = "18.3.2"
 backend = "github:can1357/oh-my-pi"
 
-[tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
-checksum = "sha256:95b9e3dc3c2096885be2c9c923bd45bb3bf81d172367db7e7090936729261e2c"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.1/omp-linux-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/587496033"
-
-[tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
-checksum = "sha256:0806df602bf2bb9b202d152204b1bef6450eb6bcbfbf31d66e3767d1bbb3b3a7"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.1/omp-linux-x64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/587496036"
-
 [tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
-checksum = "sha256:67b807a99454a4d8e1cf982dce7b3343b2c2fc148f33e403dbfb3f1049b22570"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.1/omp-darwin-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/587496045"
+checksum = "sha256:9fccf2cdd7a472c93cb54d99d95d914c86b5f41652054e3cdd0b17c5d28393a6"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.2/omp-darwin-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/589507782"
 
 [[tools."github:herdrdev/herdr"]]
 version = "0.9.1"
@@ -753,7 +743,7 @@ version = "7.0.2"
 backend = "npm:typescript"
 
 [[tools."npm:vercel"]]
-version = "60.1.1"
+version = "60.1.3"
 backend = "npm:vercel"
 
 [[tools."npm:vgpu"]]
@@ -825,6 +815,7 @@ backend = "pipx:tau-ai"
 [[tools."pipx:ty"]]
 version = "0.0.84"
 backend = "pipx:ty"
+uv = { path = "locks/pipx-ty/0.0.84", digest = "sha256:3d99da369b4569e219a5f7bc19d88da7b599a78f1b1ab20c14605ba87b7019c7" }
 
 [[tools.pkl]]
 version = "0.32.1"
