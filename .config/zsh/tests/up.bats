@@ -85,13 +85,12 @@ exit 0
 EOF
   done
 
-  # mise: log; on \`upgrade\`, simulate a tool bump (lockfile change) when
-  # MISE_SIMULATE_BUMP is set, so the \`mise lock -g\` refresh gate is exercised.
-  # MISE_FAIL_UPGRADE exits non-zero *after* mutating the lock — the real shape
-  # of a partial failure (lock rewritten, one tool's install refused).
+  # mise: resolve a bump separately from installation. A failed resolution can
+  # leave a partial lock; a successful installer can still corrupt its format.
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
+echo "mise-cwd=$PWD" >>"$TEST_LOG"
 if [ "$1" = "which" ] && [ "$2" = "python" ]; then
   printf '%s\n' "$TEST_HOME/python runtime"
   exit 0
@@ -100,11 +99,18 @@ case "$1" in
   install|upgrade) echo "mise-python=${CLOUDSDK_PYTHON:-unset}" >>"$TEST_LOG" ;;
 esac
 [ -n "${MISE_DELAY:-}" ] && sleep "$MISE_DELAY"
-if [ "$1" = "upgrade" ] && [ -n "${MISE_SIMULATE_BUMP:-}" ]; then
-  echo "bumped" >>"$HOME/.config/mise/mise.lock"
+if [ "$*" = "lock --global --bump" ]; then
+  [ -n "${MISE_SIMULATE_BUMP:-}" ] && echo "bumped" >>"$HOME/.config/mise/mise.lock"
+  [ -n "${MISE_FAIL_LOCK:-}" ] && exit 1
 fi
-if [ "$1" = "upgrade" ] && [ -n "${MISE_FAIL_UPGRADE:-}" ]; then
-  exit 1
+if [ "$*" = "lock --global --dry-run --json" ]; then
+  if [ -n "${MISE_FAIL_VALIDATION:-}" ] || grep -qF 'uv = ' "$HOME/.config/mise/mise.lock"; then
+    echo 'Python dependency graphs require lockfile revision 2' >&2
+    exit 1
+  fi
+fi
+if [ "$1" = "install" ] && [ -n "${MISE_CORRUPT_LOCK:-}" ]; then
+  echo 'uv = { path = "locks/pipx-ty/0.0.84", digest = "sha256:bad" }' >>"$HOME/.config/mise/mise.lock"
 fi
 [ "$1" = "install" ] && [ -n "${MISE_FAIL_INSTALL:-}" ] && exit 1
 exit 0
@@ -237,12 +243,18 @@ EOF
   ! grep -qE "^brew (vulns|doctor)" "$TEST_LOG"
 }
 
-@test "up bumps both lockfiles: commit each, brew, flake; no separate mise lock" {
+@test "up resolves then installs and validates before committing each lock" {
   MISE_SIMULATE_BUMP=1 run_zsh_function "$UP"
   [ "$status" -eq 0 ]
-  grep -qF 'mise upgrade' "$TEST_LOG"
-  ! grep -qF 'mise lock' "$TEST_LOG"    # upgrade auto-locks all platforms; no refresh call
-  ! grep -qF 'mise install' "$TEST_LOG" # default path bumps, never frozen-installs
+  ! grep -qF 'mise upgrade' "$TEST_LOG"
+  local bump_line install_line validation_line commit_line
+  bump_line=$(grep -nFx 'mise lock --global --bump' "$TEST_LOG" | cut -d: -f1)
+  install_line=$(grep -nFx 'mise install --locked' "$TEST_LOG" | cut -d: -f1)
+  validation_line=$(grep -nFx 'mise lock --global --dry-run --json' "$TEST_LOG" | tail -1 | cut -d: -f1)
+  commit_line=$(grep -nF 'dotfiles commit -m chore(mise)' "$TEST_LOG" | cut -d: -f1)
+  [ "$bump_line" -lt "$install_line" ]
+  [ "$install_line" -lt "$validation_line" ]
+  [ "$validation_line" -lt "$commit_line" ]
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF "dotfiles commit -m chore(mise): update tool lock -- $TEST_HOME/.config/mise/mise.lock" "$TEST_LOG"
@@ -277,6 +289,15 @@ EOF
   [ "$status" -eq 0 ]
   grep -qFx "$HOME/.local/bin/gh" "$TEST_LOG"
   ! grep -qFx "$HOME/.local/share/mise/shims/gh" "$TEST_LOG"
+}
+
+@test "up uses home tool configuration without changing the caller directory" {
+  cd "$TEST_HOME/project"
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qFx "mise-cwd=$TEST_HOME" "$TEST_LOG"
+  ! grep -qFx "mise-cwd=$TEST_HOME/project" "$TEST_LOG"
+  [ "$PWD" = "$TEST_HOME/project" ]
 }
 
 @test "up lock commits leave unrelated staged files alone" {
@@ -317,7 +338,8 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"refusing to update a missing or dirty lock: .config/mise/mise.lock"* ]] || false
   [[ "$output" == *"Failed"*"preflight"* ]] || false
-  ! grep -qF 'mise upgrade' "$TEST_LOG"
+  ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
+  ! grep -qF 'mise install' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
   ! grep -qF 'nfu' "$TEST_LOG"
 }
@@ -337,10 +359,11 @@ EOF
   grep -qF 'drs' "$TEST_LOG"
 }
 
-@test "up skips the mise commit when the upgrade changed nothing" {
+@test "up skips the mise commit when resolution changed nothing" {
   run_zsh_function "$UP" # no MISE_SIMULATE_BUMP -> lock unchanged
   [ "$status" -eq 0 ]
-  grep -qF 'mise upgrade' "$TEST_LOG"
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
+  grep -qFx 'mise install --locked' "$TEST_LOG"
   ! grep -qF 'update tool lock' "$TEST_LOG"
   # the flake half still runs independently of the mise no-op
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
@@ -348,10 +371,11 @@ EOF
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
 }
 
-@test "up does not commit the lock when the upgrade failed" {
-  MISE_SIMULATE_BUMP=1 MISE_FAIL_UPGRADE=1 run_zsh_function "$UP"
+@test "up does not install or commit the lock when resolution failed" {
+  MISE_SIMULATE_BUMP=1 MISE_FAIL_LOCK=1 run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   ! grep -qF 'update tool lock' "$TEST_LOG" # the commit that must not happen
+  ! grep -qF 'mise install' "$TEST_LOG"
   [[ "$output" == *"NOT committing mise.lock"* ]] || false
   [[ "$output" != *"command not found"* ]] || false
   grep -qF "dotfiles diff --quiet -- $TEST_HOME/.config/mise/mise.lock" "$TEST_LOG"
@@ -360,6 +384,58 @@ EOF
   ! grep -qF 'brew update' "$TEST_LOG"
   ! grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'pin-audit' "$TEST_LOG"
+}
+
+@test "up rejects an unreadable committed lock before any mutation" {
+  local mode
+  for mode in --no-audit --frozen; do
+    MISE_FAIL_VALIDATION=1 run_zsh_function "$UP" "$mode"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Failed"*"preflight"* ]] || false
+    [[ "$output" == *"Python dependency graphs require lockfile revision 2"* ]] || false
+    ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
+    ! grep -qF 'mise install' "$TEST_LOG"
+    ! grep -qF 'dotfiles add' "$TEST_LOG"
+    ! grep -qF 'brew' "$TEST_LOG"
+    ! grep -qF 'nfu' "$TEST_LOG"
+    ! grep -qF 'drs' "$TEST_LOG"
+  done
+}
+
+@test "up does not commit a resolved lock when locked installation failed" {
+  MISE_SIMULATE_BUMP=1 MISE_FAIL_INSTALL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
+  grep -qFx 'mise install --locked' "$TEST_LOG"
+  ! grep -qF 'update tool lock' "$TEST_LOG"
+  ! grep -qF 'brew update' "$TEST_LOG"
+  ! grep -qF 'nfu' "$TEST_LOG"
+  [[ "$output" == *"NOT committing mise.lock"* ]] || false
+}
+
+@test "up rejects a lock corrupted by an installer that exits zero" {
+  MISE_SIMULATE_BUMP=1 MISE_CORRUPT_LOCK=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'mise install --locked' "$TEST_LOG"
+  [ "$(grep -cFx 'mise lock --global --dry-run --json' "$TEST_LOG")" -eq 2 ]
+  ! grep -qF 'update tool lock' "$TEST_LOG"
+  ! grep -qF 'brew update' "$TEST_LOG"
+  ! grep -qF 'nfu' "$TEST_LOG"
+  grep -qF 'uv = ' "$TEST_HOME/.config/mise/mise.lock"
+  [[ "$output" == *"NOT committing mise.lock"* ]] || false
+  [[ "$output" == *"Python dependency graphs require lockfile revision 2"* ]] || false
+}
+
+@test "up frozen mode stops rebuilding when installation corrupts the lock" {
+  MISE_CORRUPT_LOCK=1 run_zsh_function "$UP" --frozen
+  [ "$status" -eq 1 ]
+  grep -qFx 'mise install --locked' "$TEST_LOG"
+  [ "$(grep -cFx 'mise lock --global --dry-run --json' "$TEST_LOG")" -eq 2 ]
+  ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
+  ! grep -qF 'dotfiles commit' "$TEST_LOG"
+  ! grep -qF 'drs' "$TEST_LOG"
+  [[ "$output" == *"Failed"*"mise"* ]] || false
+  [[ "$output" == *"Next"*"reconcile mise.lock"* ]] || false
 }
 
 @test "up stops later mutations when Homebrew fails" {
@@ -505,13 +581,14 @@ EOF
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
 }
 
-@test "up --frozen converges via mise install with no bumps, brew, flake, or commit" {
+@test "up --frozen installs and validates with no bumps, brew, flake, or commit" {
   run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
-  grep -qF 'mise install' "$TEST_LOG"
+  grep -qFx 'mise install --locked' "$TEST_LOG"
+  [ "$(grep -cFx 'mise lock --global --dry-run --json' "$TEST_LOG")" -eq 2 ]
   grep -qF 'claude-telegram-clear-patch --reapply' "$TEST_LOG"
   ! grep -qF 'mise upgrade' "$TEST_LOG"
-  ! grep -qF 'mise lock' "$TEST_LOG"
+  ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
   ! grep -qF 'nfu' "$TEST_LOG"
   ! grep -qF 'dotfiles commit' "$TEST_LOG"
@@ -558,7 +635,7 @@ EOF
   SUDO_FAIL=1 run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   grep -qF 'osv-scanner scan source' "$TEST_LOG"
-  grep -qF 'mise upgrade' "$TEST_LOG"
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'sudo -n -v' "$TEST_LOG"
@@ -588,10 +665,10 @@ EOF
   run_zsh_function "$UP"
   [ "$status" -eq 0 ]
   grep -qF 'osv-scanner scan source' "$TEST_LOG"
-  # the audit line precedes the first mutation (mise upgrade)
+  # The audit precedes lock resolution, the first mutation.
   audit_line=$(grep -nF 'osv-scanner scan source' "$TEST_LOG" | head -1 | cut -d: -f1)
-  upgrade_line=$(grep -nF 'mise upgrade' "$TEST_LOG" | head -1 | cut -d: -f1)
-  [ "$audit_line" -lt "$upgrade_line" ]
+  bump_line=$(grep -nFx 'mise lock --global --bump' "$TEST_LOG" | cut -d: -f1)
+  [ "$audit_line" -lt "$bump_line" ]
 }
 
 @test "up --frozen skips the lockfile audit" {
@@ -604,14 +681,15 @@ EOF
   run_zsh_function "$UP" --no-audit
   [ "$status" -eq 0 ]
   ! grep -qF 'osv-scanner' "$TEST_LOG"
-  grep -qF 'mise upgrade' "$TEST_LOG"
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
 }
 
 @test "up aborts before any mutation on a MAL-* finding" {
   OSV_STUB_MODE=mal run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   grep -qF 'osv-scanner scan source' "$TEST_LOG"
-  ! grep -qF 'mise upgrade' "$TEST_LOG"
+  ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
+  ! grep -qF 'mise install' "$TEST_LOG"
   ! grep -qF 'dotfiles commit' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
   [[ "$output" == *"Failed"*"audit"* ]] || false
@@ -658,7 +736,7 @@ EOF
 @test "up proceeds when the scanner is offline (warn-not-block)" {
   OSV_STUB_MODE=offline run_zsh_function "$UP"
   [ "$status" -eq 0 ]
-  grep -qF 'mise upgrade' "$TEST_LOG"
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
 }
 
@@ -802,7 +880,7 @@ STUB
   run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
   ! grep -qF 'brew vulns' "$TEST_LOG"
-  MISE_FAIL_UPGRADE=1 run_zsh_function "$UP"
+  MISE_FAIL_LOCK=1 run_zsh_function "$UP"
   [ "$status" -eq 1 ]
   ! grep -qF 'brew vulns' "$TEST_LOG"
   ! grep -qF 'brew doctor' "$TEST_LOG"

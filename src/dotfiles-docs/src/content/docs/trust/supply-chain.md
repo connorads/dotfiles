@@ -81,6 +81,11 @@ provenance at install time, and a committed lockfile pins exact versions and
 checksums across the three platforms I run, so every machine installs the
 identical vetted artifact rather than re-resolving for itself.
 
+Routine updates resolve the mise lock first, install its recorded versions,
+then check that mise can still read it before committing. An installer exiting
+zero is not enough to accept an unreadable lock. This format locks tool
+versions and supported artifact hashes, not npm or Python transitive dependencies.
+
 ### A detective layer, because prevention is time-based
 
 Everything above buys time; none of it proves a package is clean. The 2026

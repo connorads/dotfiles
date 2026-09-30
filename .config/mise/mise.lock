@@ -381,6 +381,16 @@ url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
 version = "18.3.2"
 backend = "github:can1357/oh-my-pi"
 
+[tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
+checksum = "sha256:f56f4775abbf269c481c78799691eaa59a7d69644fa7d592c775e2c65f7b13da"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.2/omp-linux-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/589507781"
+
+[tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
+checksum = "sha256:8cbbcd4bea7a7b86116a13352f31e3778fd4d93df931036bb1771738b0702534"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.2/omp-linux-x64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/589507783"
+
 [tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
 checksum = "sha256:9fccf2cdd7a472c93cb54d99d95d914c86b5f41652054e3cdd0b17c5d28393a6"
 url = "https://github.com/can1357/oh-my-pi/releases/download/v18.3.2/omp-darwin-arm64"
@@ -815,7 +825,6 @@ backend = "pipx:tau-ai"
 [[tools."pipx:ty"]]
 version = "0.0.84"
 backend = "pipx:ty"
-uv = { path = "locks/pipx-ty/0.0.84", digest = "sha256:3d99da369b4569e219a5f7bc19d88da7b599a78f1b1ab20c14605ba87b7019c7" }
 
 [[tools.pkl]]
 version = "0.32.1"

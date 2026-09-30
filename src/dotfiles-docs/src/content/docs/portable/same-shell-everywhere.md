@@ -43,8 +43,8 @@ is that every function, alias, keybinding - and every agent rule, since
 history.
 
 **Convergence is one command.** A brand-new machine is
-`curl … install.sh | bash`. An existing one is `up` - bump the lockfiles,
-commit them, rebuild - or `up --frozen` to converge a drifted box onto
+`curl … install.sh | bash`. An existing one is `up` - resolve the lockfiles,
+install and validate mise's lock, commit the locks, rebuild - or `up --frozen` to converge a drifted box onto
 exactly the committed locks, no bumps. Drift isn't prevented by
 discipline; it's erased by rebuild.
 
