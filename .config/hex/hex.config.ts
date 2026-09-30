@@ -73,6 +73,30 @@ export default defineHexConfig({
         if (await runNext(systemPorts, captures.state)) await hex.openApplication("kitty")
       },
     },
+    // Claude Code's permission prompt and question menu both select on a bare
+    // digit, no Enter needed.
+    "choose-option": {
+      phrases: ["choose {n}"],
+      captures: { n: digit({ min: 1, max: 9 }) },
+      when: { application: "kitty" },
+      group: "Agents",
+      description: "Pick a numbered option in an agent menu",
+      run: ({ hex, captures }) => hex.press({ key: String(captures.n) }),
+    },
+    confirm: {
+      phrases: ["confirm"],
+      when: { application: "kitty" },
+      group: "Agents",
+      description: "Press Enter",
+      run: ({ hex }) => hex.press({ key: "enter" }),
+    },
+    cancel: {
+      phrases: ["cancel"],
+      when: { application: "kitty" },
+      group: "Agents",
+      description: "Press Escape",
+      run: ({ hex }) => hex.press({ key: "escape" }),
+    },
     "open-example": {
       phrases: ["open example"],
       group: "Websites",
