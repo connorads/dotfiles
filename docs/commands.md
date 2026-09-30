@@ -33,6 +33,7 @@ handoff                # translate a session between Claude Code and Codex
 shotpath [host]        # save or upload the clipboard image, copy its path
 annotate <sub>         # stash excerpts, then send them to an agent as one prompt
 vox                    # record mic + system audio; `vox stop` transcribes locally
+vox grab [5m]          # the live call so far, while recording (prefix + Alt+y copies it)
 ts | tsp               # Tailscale wrapper | serve/funnel ports (see Tailscale)
 svc <sub>              # agent services: ls, up, down, restart, ui
 wt-add <branch>        # new worktree under ~/.trees, set up, print path (agent-callable)
