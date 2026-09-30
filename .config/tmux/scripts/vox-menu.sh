@@ -4,7 +4,8 @@
 # Rows match the state, because a menu offering Stop with nothing to stop is
 # exactly the drift this subsystem's one-lib rule exists to prevent:
 #
-#   RECORDING      Stop · Name… · Discard (confirmed) · Recordings
+#   RECORDING      Stop · Name… · Copy call so far · Copy last 5 min ·
+#                  Discard (confirmed) · Recordings
 #   TRANSCRIBING   Recordings
 #   EMPTY          Recordings
 #   READY          Recordings
@@ -49,6 +50,7 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 VOX_BIN=${VOX_BIN:-$HOME/.local/bin/vox}
 TOGGLE="$SELF_DIR/vox-toggle.sh"
 POPUP="$SELF_DIR/vox-popup.sh"
+GRAB="$SELF_DIR/vox-grab.sh"
 # shellcheck source=/dev/null
 . "$SELF_DIR/vox-lib.sh"
 
@@ -68,6 +70,9 @@ if [ "$state" = RECORDING ]; then
 	menu+=(
 		"Stop and transcribe" s "run-shell '\"$TOGGLE\"'"
 		"Name…" n "run-shell '\"$TOGGLE\" prompt \"$dir\" \"$client\"'"
+		""
+		"Copy call so far" c "run-shell -b '\"$GRAB\"'"
+		"Copy last 5 min" 5 "run-shell -b '\"$GRAB\" 5m'"
 		""
 		"Discard without transcribing" d "confirm-before -p 'discard this recording? (y/n)' \"run-shell '\\\"$VOX_BIN\\\" cancel'\""
 		""

@@ -72,6 +72,24 @@ menu() {
   [[ "$rows" == *"Recordings…"* ]]
 }
 
+@test "a live capture can be copied whole or by its last five minutes" {
+  recording_state
+
+  menu
+
+  rows=$(cat "$TEST_LOG")
+  [[ "$rows" == *"Copy call so far"*"vox-grab.sh"* ]] || false
+  [[ "$rows" == *"Copy last 5 min"*"vox-grab.sh"*"5m"* ]]
+}
+
+@test "nothing to copy when nothing is recording" {
+  ready_state
+
+  menu
+
+  [[ "$(cat "$TEST_LOG")" != *"Copy"* ]]
+}
+
 @test "discarding is the only row that asks first" {
   recording_state
 
