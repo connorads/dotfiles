@@ -1,5 +1,5 @@
 import { choice, defineHexConfig, digit, letter, union } from "@hex/commands"
-import { runGoto, runNext } from "./voice/run.ts"
+import { runGoto, runNext, runStart } from "./voice/run.ts"
 import { systemPorts } from "./voice/system.ts"
 
 export default defineHexConfig({
@@ -71,6 +71,14 @@ export default defineHexConfig({
       description: "Cycle to the next blocked or done agent pane",
       run: async ({ hex, captures }) => {
         if (await runNext(systemPorts, captures.state)) await hex.openApplication("kitty")
+      },
+    },
+    "start-agent": {
+      phrases: ["start agent in {project}", "new agent in {project}"],
+      group: "Agents",
+      description: "Open a tmux window in the spoken project and start claude",
+      run: async ({ hex, captures }) => {
+        if ((await runStart(systemPorts, captures.project ?? "")) === "start") await hex.openApplication("kitty")
       },
     },
     // Claude Code's permission prompt and question menu both select on a bare
