@@ -28,7 +28,7 @@ export const runGoto = async (ports: Ports, utterance: string): Promise<GotoOutc
   if (!panes.ok) return fail(panes.error)
   if (panes.value.length === 0) return fail("no agent panes found")
 
-  const answer = await ports.judge(gotoQuestion(utterance, panes.value))
+  const answer = await ports.judge(gotoQuestion(utterance, panes.value), "pane")
   if (!answer.ok) return fail(answer.error)
 
   const decision = decideGoto(answer.value, panes.value)

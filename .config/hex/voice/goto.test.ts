@@ -66,13 +66,14 @@ test("gotoQuestion offers every pane by id plus none", () => {
 })
 
 describe("parseJevChoice", () => {
-  test("reads answers.pane", () => {
-    const r = parseJevChoice({ answers: { pane: { choice: "%1", probabilities: { "%1": 0.9 }, confidence: 0.8 } } })
+  test("reads the named question's answer", () => {
+    const r = parseJevChoice({ answers: { pane: { choice: "%1", probabilities: { "%1": 0.9 }, confidence: 0.8 } } }, "pane")
     expect(r).toEqual({ ok: true, value: { choice: "%1", probabilities: { "%1": 0.9 }, confidence: 0.8 } })
   })
 
   test("rejects a response without the answer", () => {
-    expect(parseJevChoice({ error: "bad key" }).ok).toBe(false)
-    expect(parseJevChoice(null).ok).toBe(false)
+    expect(parseJevChoice({ error: "bad key" }, "pane").ok).toBe(false)
+    expect(parseJevChoice(null, "pane").ok).toBe(false)
+    expect(parseJevChoice({ answers: { pane: { choice: "%1", probabilities: {} } } }, "dir").ok).toBe(false)
   })
 })

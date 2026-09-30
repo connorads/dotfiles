@@ -59,7 +59,7 @@ const listPanes: Ports["listPanes"] = async () => {
   return parsePanes(agents.value, titles.ok ? titles.value : "")
 }
 
-const judge: Ports["judge"] = async (body) => {
+const judge: Ports["judge"] = async (body, question) => {
   const key = await readApiKey()
   if (!key.ok) return key
   try {
@@ -70,7 +70,7 @@ const judge: Ports["judge"] = async (body) => {
       signal: AbortSignal.timeout(JEV_TIMEOUT_MS),
     })
     if (!res.ok) return err(`Jev HTTP ${res.status}`)
-    return parseJevChoice(await res.json())
+    return parseJevChoice(await res.json(), question)
   } catch (e) {
     return err(e instanceof Error && e.name === "TimeoutError" ? "Jev timed out" : `Jev: ${String(e)}`)
   }
