@@ -116,12 +116,23 @@ _up_logged() {
   fi
 }
 
-_up_mise() {
+_up_mise() (
+  cd "$HOME" || return $?
   local install_python=${CLOUDSDK_PYTHON:-}
   if [[ -z $install_python ]]; then
     install_python=$(mise which python) || return $?
   fi
   CLOUDSDK_PYTHON="$install_python" mise "$@"
+)
+
+_up_install_mise() {
+  _up_mise install --locked || return $?
+  _up_mise lock --global --dry-run --json
+}
+
+_up_update_mise() {
+  _up_mise lock --global --bump || return $?
+  _up_install_mise
 }
 
 _up_failure_excerpt() {
@@ -377,7 +388,14 @@ _up_preflight() {
     _up_record preflight FAILED $((SECONDS - started)) "${(j:, :)dirty}"
     return 1
   fi
-  _up_record preflight DONE $((SECONDS - started)) "locks clean"
+  if ! _up_logged preflight _up_mise lock --global --dry-run --json; then
+    _up_block preflight
+    _up_record preflight FAILED $((SECONDS - started)) "mise.lock unreadable"
+    _up_failure_excerpt preflight
+    _up_next "inspect and reconcile .config/mise/mise.lock, then rerun up"
+    return 1
+  fi
+  _up_record preflight DONE $((SECONDS - started)) "locks clean; mise.lock readable"
 }
 
 _up_commit_lock() {
@@ -516,20 +534,21 @@ fi
 
 local mise_ok=1
 if ((frozen)); then
-  _up_run required mise "install committed mise.lock" _up_mise install || mise_ok=0
+  _up_run required mise "install and validate committed mise.lock" _up_install_mise || mise_ok=0
+else
+  _up_run required mise "resolve ranges, locked install and validate" _up_update_mise || mise_ok=0
+fi
+if ((!mise_ok)); then
+  print -u2 "!! mise update failed - NOT committing mise.lock"
+  print -u2 "   inspect lock: dotfiles diff -- .config/mise/mise.lock"
+  _up_skip "mise lock" "mise update failed"
+  _up_track_lock_if_dirty ".config/mise/mise.lock" "$mise_lock"
+  _up_next "dotfiles diff -- .config/mise/mise.lock"
+  _up_next "reconcile mise.lock, then rerun up"
+elif ((frozen)); then
   _up_skip "mise lock" "frozen mode"
 else
-  _up_run required mise "upgrade within ranges" _up_mise upgrade || mise_ok=0
-  if ((mise_ok)); then
-    _up_commit_lock "mise lock" "$mise_lock" "chore(mise): update tool lock"
-  else
-    print -u2 "!! mise upgrade failed - NOT committing mise.lock"
-    print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
-    _up_skip "mise lock" "mise upgrade failed"
-    _up_track_lock_if_dirty ".config/mise/mise.lock" "$mise_lock"
-    _up_next "dotfiles diff -- .config/mise/mise.lock"
-    _up_next "reconcile mise.lock, then rerun up"
-  fi
+  _up_commit_lock "mise lock" "$mise_lock" "chore(mise): update tool lock"
 fi
 
 # Reassert Claude binary/plugin patches after the mise phase. Each --reapply
