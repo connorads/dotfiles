@@ -59,6 +59,10 @@ setup() {
   cp "$REAL_CLAUDE_LAUNCH" "$CLAUDE_LAUNCH"
   cp "$REAL_CODEX_LAUNCH" "$CODEX_LAUNCH"
   chmod +x "$SAVE_SESSIONS" "$CLAUDE_STRATEGY" "$CODEX_STRATEGY" "$OPENCODE_STRATEGY" "$CLAUDE_LAUNCH" "$CODEX_LAUNCH" "$FOREGROUND_STRATEGY"
+  # The save hook leaves the map alone for a save with no pane lines, so the
+  # default save file must hold one.
+  printf 'pane\tmain\t1\t1\t:*\t1\tclaude\t:/Users/connorads\t1\tclaude\t:claude\n' \
+    >"$HOME/.local/share/tmux/resurrect/save.txt"
 }
 
 teardown() {
@@ -149,7 +153,6 @@ EOF
   cat >"$HOME/.claude/sessions/902.json" <<'EOF'
 {"pid":902,"sessionId":"session-two","cwd":"/Users/connorads"}
 EOF
-  touch "$HOME/.local/share/tmux/resurrect/save.txt"
 
   run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
@@ -714,6 +717,28 @@ EOF
   [ "$output" = "old-two" ]
   run jq -r '.panes["main:1.2"].claudeConfigDir' "$SESSION_FILE"
   [ "$output" = "$cfg" ]
+}
+
+@test "save hook leaves the map untouched for a save with no pane lines" {
+  # A save taken while tmux is still starting holds only its state line. Treating
+  # it as "no agents" deleted the map and every pane restored as --continue.
+  jq -n '{version:2,panes:{"main:1.2":{dir:"/Users/connorads",claude:"old-two"}}}' \
+    >"$SESSION_FILE"
+  cp "$SESSION_FILE" "$BATS_TEST_TMPDIR/map.before"
+  printf 'state\t\t\n' >"$HOME/.local/share/tmux/resurrect/save.txt"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  cmp "$BATS_TEST_TMPDIR/map.before" "$SESSION_FILE"
 }
 
 @test "save hook removes the file when nothing resolves and no agent pane is live" {
