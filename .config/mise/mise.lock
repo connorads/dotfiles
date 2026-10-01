@@ -320,25 +320,6 @@ url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-586.0.0
 [tools.gcloud."platforms.macos-arm64"]
 url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-586.0.0-darwin-arm.tar.gz"
 
-[[tools."github:CosineAI/argusred-dist"]]
-version = "0.1.7"
-backend = "github:CosineAI/argusred-dist"
-
-[tools."github:CosineAI/argusred-dist"."platforms.linux-arm64"]
-checksum = "sha256:6f34cdd1c2f1873c80790829b6938c799f3ba01a470be04e8e42145b4be98bd3"
-url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452991385"
-
-[tools."github:CosineAI/argusred-dist"."platforms.linux-x64"]
-checksum = "sha256:cc30ecc61f2f9d9cab0b68d39338ae581ebb3efbfef4cf262f96b5caeba228e4"
-url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452990685"
-
-[tools."github:CosineAI/argusred-dist"."platforms.macos-arm64"]
-checksum = "sha256:90e57237ba3501a49fd019433d5aea5965f53efed98157624516296eaf7a7cc2"
-url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452990911"
-
 [[tools."github:CosineAI/cli"]]
 version = "2.0.29"
 backend = "github:CosineAI/cli"
@@ -676,10 +657,6 @@ backend = "npm:cf"
 version = "0.2.1"
 backend = "npm:critique"
 
-[[tools."npm:ctx7"]]
-version = "0.5.12"
-backend = "npm:ctx7"
-
 [[tools."npm:deepsec"]]
 version = "2.3.10"
 backend = "npm:deepsec"
@@ -791,10 +768,6 @@ url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/534533197"
 provenance = "github-attestations"
 provenance_verified = true
 
-[[tools."pipx:batrachian-toad"]]
-version = "0.6.20"
-backend = "pipx:batrachian-toad"
-
 [[tools."pipx:docling"]]
 version = "2.130.0"
 backend = "pipx:docling"
@@ -817,10 +790,6 @@ backend = "pipx:rembg"
 [tools."pipx:rembg".options]
 extras = "cli,cpu"
 uvx_args = "--with numpy<2.3"
-
-[[tools."pipx:tau-ai"]]
-version = "0.4.5"
-backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
 version = "0.0.84"
