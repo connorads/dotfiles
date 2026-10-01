@@ -9,6 +9,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 REAL_SAVE_SESSIONS="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-save-sessions.sh"
 REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
 REAL_ARGV_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/resurrect-argv.sh"
+REAL_ACCOUNT_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/claude-account.sh"
 REAL_CLAUDE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/claude_session_id.sh"
 REAL_CODEX_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/codex_session_id.sh"
 REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_session_id.sh"
@@ -53,6 +54,7 @@ setup() {
   cp "$REAL_SAVE_SESSIONS" "$SAVE_SESSIONS"
   cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/agent-session.sh"
   cp "$REAL_ARGV_LIB" "$ARGV_LIB"
+  cp "$REAL_ACCOUNT_LIB" "$HOME/.config/tmux/scripts/lib/claude-account.sh"
   cp "$REAL_CLAUDE_STRATEGY" "$CLAUDE_STRATEGY"
   cp "$REAL_CODEX_STRATEGY" "$CODEX_STRATEGY"
   cp "$REAL_OPENCODE_STRATEGY" "$OPENCODE_STRATEGY"
@@ -946,6 +948,18 @@ wait_for_pane_command() {
   [ "$status" -eq 1 ]
 }
 
+@test "claude resume-id reader finds the id in every resume spelling" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_resume_id 'claude --dangerously-skip-permissions --resume sid-one'"
+  [ "$output" = "sid-one" ]
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_resume_id 'claude -r sid-two --model fable'"
+  [ "$output" = "sid-two" ]
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_resume_id 'claude --resume=sid-three'"
+  [ "$output" = "sid-three" ]
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_resume_id 'claude --continue'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+}
+
 @test "codex flags emitter strips stale resume/last and keeps flags verbatim" {
   run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_codex_flags 'codex resume 11111111-2222-3333-4444-555555555555 --model gpt-5'"
   [ "$status" -eq 0 ]
@@ -969,6 +983,12 @@ wait_for_pane_command() {
   run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" "/Users/connorads"
   [ "$status" -eq 0 ]
   [ "$output" = "$CLAUDE_LAUNCH --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" ]
+}
+
+@test "claude strategy carries the saved resume id to the launcher" {
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions --resume sid-one" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "RESURRECT_SAVED_CLAUDE_SID='sid-one' $CLAUDE_LAUNCH --dangerously-skip-permissions" ]
 }
 
 @test "claude strategy emits a bare launcher when no flags remain" {
@@ -1095,6 +1115,77 @@ EOF
 
   [ "$status" -eq 0 ]
   [ "$output" = "CFG= args=--continue" ]
+}
+
+@test "claude launcher resumes the saved id under the account that owns it" {
+  # The map is gone (the 2026-10-01 pane-less save deleted it), so the saved
+  # argv id is all that is left.
+  rm -f "$SESSION_FILE"
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$cfg/projects/-proj"
+  touch "$cfg/projects/-proj/sid-one.jsonl"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  RESURRECT_SAVED_CLAUDE_SID=sid-one TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH" --model fable
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG=$cfg args=--model fable --resume sid-one" ]
+}
+
+@test "claude launcher resumes a saved id of the default account without a config dir" {
+  rm -f "$SESSION_FILE"
+  mkdir -p "$HOME/.claude/projects/-proj"
+  touch "$HOME/.claude/projects/-proj/sid-one.jsonl"
+  write_claude_launch_stub
+
+  RESURRECT_SAVED_CLAUDE_SID=sid-one run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--resume sid-one" ]
+}
+
+@test "claude launcher prefers the map's pane key over the saved id" {
+  # The map tracks in-pane /resume and /new; argv only records the launch.
+  mkdir -p "$HOME/.claude/projects/-proj"
+  touch "$HOME/.claude/projects/-proj/sid-old.jsonl"
+  jq -n '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"sid-new"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  RESURRECT_SAVED_CLAUDE_SID=sid-old TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--resume sid-new" ]
+}
+
+@test "claude launcher ignores a saved id with no transcript" {
+  rm -f "$SESSION_FILE"
+  write_claude_launch_stub
+
+  RESURRECT_SAVED_CLAUDE_SID=sid-gone run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--continue" ]
+}
+
+@test "claude launcher starts fresh, not --continue, when its cwd held several claude panes" {
+  # --continue in a cwd shared by several panes put every one of them on the
+  # same conversation.
+  rm -f "$SESSION_FILE"
+  mkdir -p "$HOME/proj"
+  cd "$HOME/proj"
+  local save="$HOME/.local/share/tmux/resurrect/tmux_resurrect_x.txt"
+  printf 'pane\tmain\t1\t1\t:*\t%s\tt\t:%s\t1\tclaude\t:claude --model fable\n' 1 "$PWD" 2 "$PWD" >"$save"
+  ln -sf tmux_resurrect_x.txt "$HOME/.local/share/tmux/resurrect/last"
+  write_claude_launch_stub
+
+  run "$REAL_BASH" "$CLAUDE_LAUNCH" --model fable
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--model fable" ]
 }
 
 @test "claude launcher continues when TMUX_PANE is absent" {

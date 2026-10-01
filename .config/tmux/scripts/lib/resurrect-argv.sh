@@ -72,6 +72,35 @@ resurrect_argv_claude_flags() {
 	echo "$kept"
 }
 
+# resurrect_argv_claude_resume_id <saved_command>
+# Echo the session id the saved claude argv resumed (--resume/-r <id> or
+# --resume=<id>), empty when there is none or argv0 is not claude.
+resurrect_argv_claude_resume_id() {
+	local -a tokens
+	read -ra tokens <<<"$1"
+	[ "${#tokens[@]}" -gt 0 ] || return 0
+	_resurrect_argv0_matches claude "${tokens[0]}" || return 0
+
+	local id="" i=1 tok
+	while [ "$i" -lt "${#tokens[@]}" ]; do
+		tok="${tokens[$i]}"
+		case "$tok" in
+		--resume | -r)
+			if [ $((i + 1)) -lt "${#tokens[@]}" ] && [[ "${tokens[$((i + 1))]}" != -* ]]; then
+				i=$((i + 1))
+				id="${tokens[$i]}"
+			fi
+			;;
+		--resume=*)
+			id="${tok#--resume=}"
+			;;
+		esac
+		i=$((i + 1))
+	done
+
+	[ -z "$id" ] || echo "$id"
+}
+
 # resurrect_argv_codex_flags <saved_command>
 # Echo the kept flags (space-joined, may be empty) from the saved codex argv;
 # return 1 when argv0 is not codex. Stale resume/--last state is stripped.

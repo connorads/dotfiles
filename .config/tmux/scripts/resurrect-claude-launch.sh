@@ -7,9 +7,13 @@
 # plain wrong with no client attached - every pane collapses onto the last
 # active one). Flags to preserve (permission mode, model, ...) arrive as "$@".
 #
-# Degrades to `claude "$@" --continue` whenever exact identity can't be resolved
-# (missing jq / session file / $TMUX_PANE, or an ambiguous cwd) - it never
-# guesses a wrong resume, which was the multi-pane-same-cwd bug this replaces.
+# Resolution order: the exact pane key in the map; then the id the saved argv
+# resumed (RESURRECT_SAVED_CLAUDE_SID, set by the strategy), under the account
+# whose projects/ tree holds its transcript; then the one map entry for this cwd.
+# The map comes first because it tracks in-pane /resume and /new, while argv
+# only records how the pane was launched. With none of those it never guesses a
+# resume: `--continue` when this cwd held at most one claude pane in the last
+# save, otherwise a fresh `claude "$@"`.
 # CLAUDE_CONFIG_DIR (a ccp client account, invisible in argv) is restored so the
 # pane keeps its billing account rather than reverting to the personal one.
 
@@ -38,26 +42,44 @@ fi
 unset TMUX_BASH5_REEXEC _b5
 # --- end bash5 preamble ---
 
-SESSION_FILE="$HOME/.local/share/tmux/resurrect/session_ids.json"
+RESURRECT_DIR="$HOME/.local/share/tmux/resurrect"
+SESSION_FILE="$RESURRECT_DIR/session_ids.json"
+
+# shellcheck source=lib/claude-account.sh disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/lib/claude-account.sh"
 
 resume=""
 config_dir=""
+saved_sid="${RESURRECT_SAVED_CLAUDE_SID:-}"
+unset RESURRECT_SAVED_CLAUDE_SID
+have_map=0
 
 if command -v jq &>/dev/null && [ -f "$SESSION_FILE" ] && [ -n "${TMUX_PANE:-}" ]; then
+	have_map=1
 	pane_key=$(tmux display-message -pt "$TMUX_PANE" '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || true)
 	if [ -n "$pane_key" ]; then
 		resume=$(jq -r --arg k "$pane_key" '.panes[$k].claude // empty' "$SESSION_FILE" 2>/dev/null || true)
 		config_dir=$(jq -r --arg k "$pane_key" '.panes[$k].claudeConfigDir // empty' "$SESSION_FILE" 2>/dev/null || true)
 	fi
+fi
 
-	# Safe cwd fallback on exact-key miss: use it only when EXACTLY one recorded
-	# pane owns this cwd. 0 or >1 -> do not guess (the regression guard).
-	if [ -z "$resume" ]; then
-		local_matches=$(jq -r --arg dir "$PWD" '[.panes[] | select(.dir == $dir and (.claude // "") != "")] | length' "$SESSION_FILE" 2>/dev/null || echo 0)
-		if [ "$local_matches" = "1" ]; then
-			resume=$(jq -r --arg dir "$PWD" 'first(.panes[] | select(.dir == $dir and (.claude // "") != "")) | .claude' "$SESSION_FILE" 2>/dev/null || true)
-			config_dir=$(jq -r --arg dir "$PWD" 'first(.panes[] | select(.dir == $dir and (.claude // "") != "")) | .claudeConfigDir // empty' "$SESSION_FILE" 2>/dev/null || true)
-		fi
+# The transcript's location names its account; the default one needs no export.
+if [ -z "$resume" ] && [ -n "$saved_sid" ]; then
+	saved_dir=$(claude_config_dir_for_session "$saved_sid")
+	if [ -n "$saved_dir" ]; then
+		resume="$saved_sid"
+		config_dir="$saved_dir"
+		[ "$config_dir" != "$HOME/.claude" ] || config_dir=""
+	fi
+fi
+
+# Safe cwd fallback on exact-key miss: use it only when EXACTLY one recorded
+# pane owns this cwd. 0 or >1 -> do not guess (the regression guard).
+if [ -z "$resume" ] && [ "$have_map" -eq 1 ]; then
+	local_matches=$(jq -r --arg dir "$PWD" '[.panes[] | select(.dir == $dir and (.claude // "") != "")] | length' "$SESSION_FILE" 2>/dev/null || echo 0)
+	if [ "$local_matches" = "1" ]; then
+		resume=$(jq -r --arg dir "$PWD" 'first(.panes[] | select(.dir == $dir and (.claude // "") != "")) | .claude' "$SESSION_FILE" 2>/dev/null || true)
+		config_dir=$(jq -r --arg dir "$PWD" 'first(.panes[] | select(.dir == $dir and (.claude // "") != "")) | .claudeConfigDir // empty' "$SESSION_FILE" 2>/dev/null || true)
 	fi
 fi
 
@@ -74,5 +96,17 @@ fi
 
 if [ -n "$resume" ]; then
 	exec claude "$@" --resume "$resume"
+fi
+
+# Several claude panes in this cwd would all --continue onto one conversation.
+cwd_claude_panes=0
+[ -f "$RESURRECT_DIR/last" ] && cwd_claude_panes=$(awk -F'\t' -v dir=":$PWD" '
+	$1 == "pane" && $8 == dir {
+		cmd = $11; sub(/^:/, "", cmd); split(cmd, argv, " "); n = split(argv[1], parts, "/")
+		if (parts[n] == "claude") count++
+	}
+	END { print count + 0 }' "$RESURRECT_DIR/last")
+if [ "$cwd_claude_panes" -gt 1 ]; then
+	exec claude "$@"
 fi
 exec claude "$@" --continue

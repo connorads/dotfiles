@@ -27,9 +27,23 @@ The strategy must **not** resolve the session itself - the old eval-time
 last-active pane when no client is attached (continuum/auto-restore) and races
 even interactively, collapsing multiple panes onto one conversation.
 
-Safe cwd fallback: on an exact-key miss the launcher resumes only when *exactly
-one* recorded `.panes[]` entry has `.dir == $PWD`; 0 or >1 → `--continue` /
-`--last`, never a guessed resume. Because resolution is exact, no save-time
+On an exact-key miss the Claude launcher falls back in order:
+
+1. The id the saved argv resumed. The strategy passes it as
+   `RESURRECT_SAVED_CLAUDE_SID`, and the launcher uses it only when a
+   `<config_dir>/projects/*/<id>.jsonl` exists, restoring the account whose tree
+   holds it (`claude_config_dir_for_session` in
+   [`scripts/lib/claude-account.sh`](../scripts/lib/claude-account.sh)). The map
+   still wins over it, because the map tracks in-pane `/resume` and `/new`
+   while argv only records the launch.
+2. The one recorded `.panes[]` entry with `.dir == $PWD`, when there is exactly
+   one.
+3. A fresh `claude` when the `last` save holds more than one claude pane in
+   `$PWD`, else `--continue`. Several panes continuing in one cwd all land on
+   the same conversation.
+
+The Codex launcher uses only the cwd step, then `--last`. Neither guesses a
+resume. Because resolution is exact, no save-time
 disambiguation is needed - the save hook just records `.panes[$key] = {dir,
 claude|codex, claudeConfigDir?}`. A Claude id comes only from the pane's
 foreground pid's `<config_dir>/sessions/<pid>.json`; with no marker the pane

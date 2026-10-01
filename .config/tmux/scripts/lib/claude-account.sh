@@ -56,6 +56,26 @@ account_candidates() {
 	done
 }
 
+# claude_config_dir_for_session <sid>
+# Print the config dir (default account first, then each profile) whose
+# projects/ tree holds <sid>.jsonl; empty when none does. A sid that is not a
+# plain id prints nothing, so it can never widen the glob. The source `/` names
+# no account, so account_candidates excludes none.
+claude_config_dir_for_session() {
+	local sid="${1:-}"
+	[[ "$sid" =~ ^[A-Za-z0-9-]+$ ]] || return 0
+
+	local _label dir match
+	while IFS=$'\037' read -r _label dir; do
+		for match in "$dir"/projects/*/"$sid".jsonl; do
+			if [ -f "$match" ]; then
+				printf '%s\n' "$dir"
+				return 0
+			fi
+		done
+	done < <(account_candidates /)
+}
+
 # stage_session_for_fork <src_config_dir> <dst_config_dir> <cwd> <sid>
 # Copy the source account's live transcript into the target account's projects/
 # tree and stage its active plan under the target account's plans/ directory so
