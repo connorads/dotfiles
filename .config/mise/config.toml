@@ -92,7 +92,6 @@ fnox = "1"
 "github:tamnd/kage" = "0.3"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
-"github:CosineAI/argusred-dist" = { version = "0.1", bin = "argusred" }
 # vercel-labs/fx (Zig coding-agent harness), not the registry's `fx`, which is
 # antonmedv's JSON viewer - a name clash, so spell the owner. Its release
 # workflow attests nothing, so the exact pin is the only control: pre-1.0 and
@@ -161,7 +160,6 @@ fnox = "1"
 "npm:apify-cli" = "1"
 "npm:cf" = "latest"
 "npm:critique" = "0"
-"npm:ctx7" = "0"
 "npm:deepsec" = "2"
 "npm:droid" = "0"
 "npm:eas-cli" = "24"
@@ -188,8 +186,6 @@ fnox = "1"
 "npm:vgpu" = "0"
 "npm:wrangler" = "4"
 
-"pipx:batrachian-toad" = "0"
-"pipx:tau-ai" = "0"
 # extras: the document/media set. NOT "all" — that drags in az-doc-intel /
 # azure-ai-contentunderstanding which only ships as a pre-release, so the
 # resolver fails closed (no pre-releases enabled).
