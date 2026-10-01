@@ -13,9 +13,8 @@
 # exit codes: 0 approve · 1 needs-attention · 2 usage · 3 every reviewer
 # failed, or --post failed. `xreview --help` for the full contract.
 #
-# Unlike annotate this sits on no keybinding, so a missing bun is an error, not
-# a SKIP: a caller branching on the exit code must not read "nothing ran" as
-# approve. Never `exec` here - this file is also autoloaded as a zsh function,
+# A missing bun is an error: a caller branching on the exit code must not
+# read "nothing ran" as approve. Never `exec` here - this file is also autoloaded as a zsh function,
 # and exec would replace the caller's interactive shell.
 emulate -L zsh
 

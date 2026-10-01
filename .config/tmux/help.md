@@ -71,9 +71,7 @@
 | `Ctrl+b Alt+j` | jjui (jj TUI) |
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff (no changes → status-line message, no float) |
-| `Ctrl+b Alt+e` | annotate draft: everything `a` stashed → one prompt, in `$EDITOR`. Save+quit sends; save then `:cq` keeps it unsent |
 | `Ctrl+b Alt+d` | coordinator: jump to the `coord` agent (launched in `~/git/coord` if absent); press again inside it to return to the pane you came from |
-| `Ctrl+b Alt+Shift+E` | annotate transcript picker: stash a Claude message *untruncated* (the screen elides; the session JSONL does not) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b f` | Fresh editor |
@@ -101,7 +99,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, Claude plan viewer, annotate undo/reset, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; hand off to the other agent Claude↔Codex via handoff; copy cmd/id) |
@@ -270,38 +268,6 @@ one until you open the picker - which clears both. The picker labels such a
 recording `empty` and its preview says so; the audio is intact, and `ctrl-d`
 throws it away.
 
-## Annotate (status bar)
-
-A muted pill (width ≥ 80) while there are corrections you have not sent. Reviewing
-an agent's work produces several at once, but the clipboard holds one thing and the
-next copy clobbers it - so this is a spool with a slot per excerpt, each keeping its
-own provenance and getting its own comment in the draft.
-
-`a` in copy mode stashes the selection, with no popup and no comment - at capture
-there is nothing to say yet. `Ctrl+b Alt+e` renders everything stashed into one
-markdown draft, opens it in `$EDITOR`, and delivers it to the pane the excerpts came
-from. `Ctrl+b Alt+Shift+E` stashes a Claude message from the session transcript
-instead of the screen, which is the only way to get it untruncated. Clicking the pill
-opens a menu whose rows match the state - draft/send, drop the newest excerpt, clear
-the spool, discard the draft. Clearing and discarding ask first, because only those
-two lose writing.
-
-| Pill | State | Meaning |
-|------|-------|---------|
-| `✎ 3` muted | spooled | that many excerpts waiting, no draft yet |
-| `◍ 3` blue | drafting | a draft is open with writing you have not sent |
-| (hidden) | idle | spool empty and no draft |
-
-Drafting outranks spooled, and takes the same blue as an unread agent tab: a blue
-pill always means there is something of yours waiting on you.
-
-In the editor, save and quit to send. To keep comments without sending, save then
-exit non-zero (`:w` then `:cq` in vim); a draft you did not change is never sent, so
-quitting an editor that has no `:cq` is safe too. Quitting keeps the draft - reopening
-resumes with comments intact and anything stashed meanwhile appended below. After a
-send, `annotate undo` restores the draft verbatim, so a mis-targeted one is
-`annotate undo` then `annotate send --to %19` with nothing retyped.
-
 ## Copy mode navigation
 
 | Key | Action |
@@ -329,7 +295,6 @@ send, `annotate undo` restores the draft verbatim, so a mis-targeted one is
 | `Ctrl+b d` | detach |
 | `Ctrl+b [` | scroll/copy mode |
 | `]` / `[` (in copy mode) | jump to next/previous shell prompt |
-| `a` (in copy mode) | stash the selection for `annotate` (several corrections, one prompt) |
 | `Ctrl+b r` | reload config |
 | `Ctrl+b H` | toggle hostname |
 | `Ctrl+b ?` | this help |

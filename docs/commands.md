@@ -31,7 +31,6 @@ coord                  # jump to the coordinator agent, launching it if absent
 atp                    # teleport a live Claude/Codex session to another host
 handoff                # translate a session between Claude Code and Codex
 shotpath [host]        # save or upload the clipboard image, copy its path
-annotate <sub>         # stash excerpts, then send them to an agent as one prompt
 vox                    # record mic + system audio; `vox stop` transcribes locally
 vox grab [5m]          # the live call so far, while recording (prefix + Alt+y copies it)
 ts | tsp               # Tailscale wrapper | serve/funnel ports (see Tailscale)
