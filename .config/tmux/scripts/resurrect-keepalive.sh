@@ -82,7 +82,16 @@ if ! tmux_default list-sessions >/dev/null 2>&1; then
 	exit 0
 fi
 
-# 2. Save, capturing rc + stderr (the exact opposite of continuum's >/dev/null
+# 2. Young server ⇒ a restore may still be running. Saving now would replace
+#    `last` with a pane-less file, so a second crash would restore nothing.
+server_start=$(tmux_default display-message -p '#{start_time}' 2>/dev/null || true)
+if [ -n "$server_start" ] &&
+	[ $(($(date +%s) - server_start)) -lt "$RESURRECT_MIN_SERVER_AGE_SECS" ]; then
+	log "server young, skip"
+	exit 0
+fi
+
+# 3. Save, capturing rc + stderr (the exact opposite of continuum's >/dev/null
 #    2>&1). save.sh sources the same post-save hooks (strip-nix-paths,
 #    session-ids) automatically.
 set +e
@@ -90,7 +99,7 @@ save_err=$(env -u TMUX "$SAVE_SH" quiet 2>&1 >/dev/null)
 rc=$?
 set -e
 
-# 3. Verify against the shared lib: age of the newest save + its state, plus the
+# 4. Verify against the shared lib: age of the newest save + its state, plus the
 #    newest save's *content*. Freshness alone is not enough: a corrupt save is
 #    still a new file, so its mtime reads FRESH — the locale bug wrote 12-byte
 #    pane-less saves for two days behind a green pill. A server always has at
@@ -108,7 +117,7 @@ else
 	log "saved ok panes=$saved_panes age=${age}s state=$state"
 fi
 
-# 4. Alarm on staleness or a pane-less save (independent of this run's rc — a
+# 5. Alarm on staleness or a pane-less save (independent of this run's rc — a
 #    rc=0 save that still leaves the newest file older than the stale line is
 #    the failure we care about; NONE = no save file at all is worse, and a
 #    pane-less save is a fresh file with nothing to restore from). Set the

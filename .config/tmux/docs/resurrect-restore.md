@@ -47,7 +47,10 @@ moved keys are pruned by the same rule, so the file stays self-cleaning and the
 save idempotent; it is removed only when nothing resolves and nothing is
 carryable. A save file with no `pane` lines never touches the map: a live server
 always has a pane, so such a save was taken while tmux was still starting, and
-reading it as "no agents" deleted the map the next restore needed. The legacy top-level per-dir keys (OpenCode's single-pane-per-cwd
+reading it as "no agents" deleted the map the next restore needed. The
+keepalive also skips saving while the server is under 3 min old, so a restore
+still in progress is never saved over `last`
+([save freshness](./save-freshness.md)). The legacy top-level per-dir keys (OpenCode's single-pane-per-cwd
 fallback) are deliberately rebuilt from live findings rather than carried - their
 whole value is being live.
 

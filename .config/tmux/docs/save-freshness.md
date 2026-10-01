@@ -46,7 +46,11 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   mtime-only pill reads it as healthy; a server always has at least one pane and
   the no-server case exits earlier, so zero pane lines is unambiguous corruption.
   The success log carries `panes=N`, an empty save logs `SAVE EMPTY`. No tmux
-  server ⇒ logs `no server, skip` and exits 0. continuum stays enabled as cross-platform
+  server ⇒ logs `no server, skip` and exits 0. A server younger than
+  `RESURRECT_MIN_SERVER_AGE_SECS` (180) ⇒ logs `server young, skip` and exits 0:
+  a restore runs for 1-2 min after start, and a save inside that window repoints
+  `last` at a file with few or no panes, so a second crash would restore
+  nothing. continuum stays enabled as cross-platform
   redundancy (Linux hosts get the detect pill but no keepalive yet - a deferred
   systemd-timer follow-up); the minor double-save on macs is harmless.
   It **requires a UTF-8 locale**, which it forces when the environment carries
@@ -56,8 +60,8 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   output delimits fields with to `_`, so `save.sh` reads an empty session name,
   treats every pane as a grouped session, skips it, and writes a state-only save
   with no panes, while the session-ids hook matches no agent panes and records
-  nothing (the map itself survives such a save: unconfirmed entries are carried,
-  not rewritten - see [resurrect restore](./resurrect-restore.md)).
+  nothing (the map itself survives such a save: a save with no `pane` lines
+  never touches it - see [resurrect restore](./resurrect-restore.md)).
   Its plist `PATH` must also carry **`/usr/sbin`**, where macOS keeps `lsof`: the
   session-ids hook needs it for Codex ids and fails open on a missing tool, so
   without it Codex panes save no session id at all. The lib's `/usr/sbin/lsof`
@@ -71,6 +75,6 @@ Tests: [`../zsh/tests/resurrect-lib.bats`](../../zsh/tests/resurrect-lib.bats)
 colour/glyph/token, `last`-target deref) and
 [`../zsh/tests/resurrect-keepalive.bats`](../../zsh/tests/resurrect-keepalive.bats)
 (integration: drives a real save against a throwaway default-socket server, the
-skip/alarm/clear/error-capture paths, the locale-less environment, and the
+skip/young-server/alarm/clear/error-capture paths, the locale-less environment, and the
 pane-less-save alarm). The pill itself is verified manually
 (`status-right.sh 200 "$HOME" "" "" ""`, then `touch -t` an aged save and re-run).
