@@ -5,8 +5,10 @@
 # deliberately NOT done here: at eval time the active-pane read is a race, and
 # plain wrong with no client attached (every pane collapses onto one). This
 # only carries the saved flags (permission mode, system-prompt append, model,
-# ...) across, since none of them are persisted in the session. Falls back to
-# the bare saved command when argv0 is not claude.
+# ...) across, since none of them are persisted in the session, plus the saved
+# resume id as RESURRECT_SAVED_CLAUDE_SID for the launcher to fall back on when
+# session_ids.json has no entry. Falls back to the bare saved command when argv0
+# is not claude.
 
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -41,13 +43,15 @@ LAUNCHER="$HOME/.config/tmux/scripts/resurrect-claude-launch.sh"
 	. "$HOME/.config/tmux/scripts/lib/resurrect-argv.sh"
 
 main() {
-	local flags=""
+	local flags="" sid="" prefix=""
 	if command -v resurrect_argv_claude_flags &>/dev/null; then
 		flags=$(resurrect_argv_claude_flags "$SAVED_COMMAND") || {
 			echo "$SAVED_COMMAND"
 			return
 		}
+		sid=$(resurrect_argv_claude_resume_id "$SAVED_COMMAND")
 	fi
-	echo "$LAUNCHER${flags:+ $flags}"
+	[ -z "$sid" ] || prefix="RESURRECT_SAVED_CLAUDE_SID=$(_resurrect_squote "$sid") "
+	echo "$prefix$LAUNCHER${flags:+ $flags}"
 }
 main
