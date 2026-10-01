@@ -32,6 +32,9 @@ setup() {
 
   export RESURRECT_PLUGIN_DIR="$REAL_PLUGIN_DIR"
   export RESURRECT_KEEPALIVE_LOG="$BATS_TEST_TMPDIR/keepalive.log"
+  # Every test starts its server moments before the keepalive runs; only the
+  # start-up test exercises the young-server skip.
+  export RESURRECT_MIN_SERVER_AGE_SECS=0
 
   SAVE_DIR="$HOME/.local/share/tmux/resurrect"
 }
@@ -102,6 +105,18 @@ stale_opt() { "$TMUX_BIN" show -gv @resurrect_stale 2>/dev/null; }
   [ "$status" -eq 0 ]
   grep -q "no server, skip" "$RESURRECT_KEEPALIVE_LOG"
   [ ! -d "$SAVE_DIR" ] || ! compgen -G "$SAVE_DIR/tmux_resurrect_*.txt" >/dev/null
+}
+
+# --- young server: a restore may still be running, so do not save ---------
+
+@test "young server: logs skip and does not call save.sh" {
+  unset RESURRECT_MIN_SERVER_AGE_SECS
+  start_server
+  stub_plugin_empty_save
+  run bash "$KEEPALIVE"
+  [ "$status" -eq 0 ]
+  grep -q "server young, skip" "$RESURRECT_KEEPALIVE_LOG"
+  [ ! -e "$SAVE_DIR/last" ]
 }
 
 # --- happy path: real save.sh writes a file, no alarm ---------------------

@@ -24,6 +24,11 @@
 RESURRECT_AGING_SECS=${RESURRECT_AGING_SECS:-600}
 RESURRECT_STALE_SECS=${RESURRECT_STALE_SECS:-900}
 
+# A restore runs for about 1-2 min after the server starts. A save inside that
+# window holds few or no panes and repoints `last` at it, so the keepalive waits
+# out this age before saving.
+RESURRECT_MIN_SERVER_AGE_SECS=${RESURRECT_MIN_SERVER_AGE_SECS:-180}
+
 # Sentinel age when no save file exists at all (NONE): larger than any real age
 # so state maps to NONE without a separate flag.
 RESURRECT_NONE_AGE=999999999
