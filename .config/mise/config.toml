@@ -260,7 +260,6 @@ set -e
 cd "$HOME"
 (cd src/skl && bun install --frozen-lockfile && tsc -p tsconfig.json)
 (cd src/pin-audit && bun install --frozen-lockfile && tsc -p tsconfig.json)
-(cd src/annotate && bun install --frozen-lockfile && tsc -p tsconfig.json)
 (cd src/xreview && bun install --frozen-lockfile && tsc -p tsconfig.json)
 (cd .config/opencode && bun install --frozen-lockfile && tsc -p tsconfig.json)
 # @hex/commands resolves to .hex-sdk, which only the HEX app writes.

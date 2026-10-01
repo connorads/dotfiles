@@ -96,12 +96,6 @@ suites=$(
 		src/skl/bin/*)
 			echo "$TESTS_DIR/skl-pick.bats"
 			;;
-		# annotate's implementation is TypeScript under ~/src; the bats suite is
-		# still its CLI contract and covers the copy-mode capture key, so staged
-		# sources have to run it.
-		src/annotate/*)
-			echo "$TESTS_DIR/annotate.bats"
-			;;
 		# Same shape for xreview: TypeScript under ~/src, CLI contract in bats.
 		src/xreview/*)
 			echo "$TESTS_DIR/xreview.bats"

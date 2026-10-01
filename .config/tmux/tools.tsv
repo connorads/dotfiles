@@ -2,8 +2,6 @@ Tmux: join all windows into panes (tiled)	~/.local/bin/tmjoin "${TMUX_TOOLS_WIND
 Tmux: burst panes into windows	~/.local/bin/tmburst "${TMUX_TOOLS_WINDOW:-}"; echo; print -n "Press any key…"; read -sk1
 Git: review commits (critique)	review; echo; print -n "Press any key..."; read -sk1
 Claude: view plan (pane or picker)	~/.config/tmux/scripts/claude-plan-popup.sh "${TMUX_TOOLS_PANE:-}"
-Annotate: undo last send (restore the draft)	~/.local/bin/annotate undo; echo; print -n "Press any key…"; read -sk1
-Annotate: reset (clear spool + discard draft)	~/.local/bin/annotate list; echo; print -n "clear the spool and discard the draft? (y/N) "; read -sk1 ans; echo; [[ $ans == [yY] ]] && { ~/.local/bin/annotate draft --discard; ~/.local/bin/annotate clear }; echo; print -n "Press any key…"; read -sk1
 Connections (netstat / sockets)	conns | less -R --mouse
 Ports (inspect / kill)	ports -k
 Kill process (user)	pclose
