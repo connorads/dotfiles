@@ -204,6 +204,7 @@ Already built; extend it, do not re-implement it.
   pane and collapses several panes onto one conversation.
 - `session_ids.json` is merged, not rewritten. An entry a save cannot confirm
   is carried while its pane still holds a live agent in the recorded dir.
+- A pane-less save never touches `session_ids.json`.
 - Only `CLAUDE_CONFIG_DIR` is persisted from an agent's environment. The
   sources expose the full environment, secrets included.
 - A restored, forked or handed-off pane keeps its source's launch flags, via

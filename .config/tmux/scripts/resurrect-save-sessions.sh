@@ -34,6 +34,13 @@ SAVE_FILE="$1"
 RESURRECT_DIR="$(dirname "$SAVE_FILE")"
 SESSION_FILE="$RESURRECT_DIR/session_ids.json"
 
+# A live server always has a pane, so a save with no pane lines was taken while
+# tmux was still starting (or is corrupt). Reading it as "no agents" would delete
+# the map the coming restore needs.
+if [ "$(grep -c '^pane' "$SAVE_FILE" 2>/dev/null || true)" = "0" ]; then
+	exit 0
+fi
+
 # Shared pane -> agent PID -> live session-file resolver.
 # shellcheck source=lib/agent-session.sh disable=SC1091
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
