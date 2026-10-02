@@ -3,7 +3,7 @@ name: loop-supervisor
 description: >
   Scaffolds a SUPERVISOR.md runbook for watching a long-running agent
   loop in tmux. Use when asked to "supervise a loop", "watch a loop",
-  "babysit a loop", "set up a supervisor", or when a task-loop / rl
+  "babysit a loop", "set up a supervisor", or when a task-loop
   run needs someone operating the harness around it.
 disable-model-invocation: true
 ---
@@ -23,7 +23,7 @@ vs "inner work" is project-specific - that's what discovery pins down.
 
 Invoke when the user has (or is about to have):
 
-- A task-loop / ralph-loop / rl-style outer runner driving fresh agent
+- A task-loop / ralph-loop outer runner driving fresh agent
   sessions against a `PROMPT.md` or equivalent contract
 - State artefacts like `run-log.md`, `loop-state.md`, `backlog.md`, or
   a domain-specific index (hypothesis tree, frontier state, etc.)
@@ -78,16 +78,11 @@ Before asking any questions, read what's already on disk:
 - **Stop token** - whatever the loop's own contract declares as its
   completion signal. Grep `PROMPT.md` / `README.md` / project docs
   for file-existence markers (e.g. `FOUND_SECRET.txt`) and emit tokens
-  (e.g. `__PROMISE_RL_DONE__` if the loop is task-loop / rl-shaped).
+  (e.g. `__PROMISE_RL_DONE__` if the loop is task-loop-shaped).
   Inherit what the loop already says rather than imposing a default.
-- **Launch command** - if the loop ships a run command in its README
-  or `PROMPT.md`, use it verbatim. For task-loop / rl-shaped loops
-  this typically looks like
-  `rl <N> -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md"`
-  (`cxys` for a codex loop - mirror the agent the loop was built for,
-  and keep a per-iteration `-t` timeout so one stuck iteration can't
-  hang the run). Iteration count defaults to 100 unless specified or
-  mentioned.
+- **Launch command** - use the project's documented runner command.
+  If no command is documented, ask for it. Include the runner's
+  timeout and iteration limits in the runbook.
 - **Existing contract / preconditions** - read the loop's `PROMPT.md`
   (or equivalent) end-to-end. Absorb its declared preconditions
   (e.g. "build must be green before committing"), its own stop

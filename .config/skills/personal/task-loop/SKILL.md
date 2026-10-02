@@ -3,7 +3,7 @@ name: task-loop
 description: >
   Scaffolds a loop directory for automated agent task execution.
   Use when asked to "create a task loop", "set up a loop", "scaffold
-  a loop directory", "prepare tasks for rl", or "set up automated
+  a loop directory", or "set up automated
   execution" for a backlog. Takes an existing backlog and generates
   PROMPT.md (loop contract), run-log.md (execution history), and
   .gitignore for ephemeral loop-state.md.
@@ -74,9 +74,8 @@ has the complete protocol. Built from the core protocol template
 - **File paths** - point to this directory's loop-state.md, run-log.md,
   and backlog.md
 - **Loop completion token** - emit `__PROMISE_RL_DONE__` as a standalone
-  final line when no unchecked tasks remain so the default `rl`
-  promise-token handling can stop cleanly. This is the Ralph-loop
-  "completion promise" expressed as a plain token.
+  final line when no unchecked tasks remain. Configure the project
+  runner to recognise that completion token.
 - **Verification rules** - extracted from the backlog's global and
   per-task verification patterns. Reference external docs if the backlog
   mentions them
@@ -114,12 +113,7 @@ Show the user:
 
 - The generated directory structure
 - The PROMPT.md content (or a summary if long)
-- How to run it, e.g.:
-  `rl <n> -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md"`
-
-Use `cys` (claude yolo stream: skip-permissions + `-p` baked in), not
-bare `claude -p` - interactive-permission claude stalls the loop the
-first time it hits a permission prompt with nobody watching.
+- The project runner's launch command and completion-token configuration.
 
 ## PROMPT.md anatomy
 

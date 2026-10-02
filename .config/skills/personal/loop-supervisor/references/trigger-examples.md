@@ -58,7 +58,7 @@ Each trigger has three parts:
 
 ### Loop silently stopped
 
-- **Detection:** tmux pane shows shell prompt (not an `rl`
+- **Detection:** tmux pane shows shell prompt (not an agent
   iteration), `run-log.md` hasn't grown in > threshold wall-clock,
   and no completion token was emitted.
 - **Response:** Capture the pane tail into the supervisor's notes,

@@ -16,7 +16,7 @@ now=$(date +%s)
 
 # Resolve this function file's directory (autoload, ~/.local/bin symlink, or
 # direct run) so the shared cache/lock/backoff engine sources cleanly. Mirrors
-# the agent-usage-log idiom used by pis/cys.
+# the shared agent-usage-log idiom.
 local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
 local self_file= candidate_dir
 for candidate_dir in $fpath; do
