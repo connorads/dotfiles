@@ -1,316 +1,50 @@
+<p align="center">
+  <img alt="dotfiles in pixel letters inside a terminal window, above the stack: nix, homebrew, mise, zsh, tmux, neovim, claude, codex, pi" src="docs/banner.svg" width="720">
+</p>
+
 # dotfiles
 
-Use `git` to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to set up and install software, and [`mise`](https://github.com/jdx/mise) to manage runtimes.
-
-> **Quick start:** `curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash` -
-> bootstraps macOS, Linux, or Codespaces.
->
-> ⚠️ Tailored to my specific machines (usernames `connor`/`connorads` and a handful of
-> named host configs). **Forking? See [Setup](#setup) below** for what to change
-> (`flake.nix` configs + the `VALID_DARWIN` / `VALID_HM` lists in `install.sh`).
-
-## Why this setup
-
-- No symlinks: tracked files live directly in `$HOME`.
-- Git metadata stays out of the way in `~/git/dotfiles`.
-- Bootstrap is safer on existing machines where dotfiles may already exist.
-- Day-to-day Git UX stays reliable, including ahead-behind and push state in LazyGit.
-
-Under the hood, git metadata is stored at `~/git/dotfiles`, and `core.worktree` points at `$HOME`.
-
-## Usage
-
-If you've already got your dotfiles setup you can use the following commands to manage your dotfiles.
-
-### Updating dotfiles
-
-#### Track file
-
-First un-ignore the file/path in `~/.gitignore`, then add it:
-
-```sh
-dotfiles add .somefile
-```
-
-#### Untrack file
-
-```sh
-dotfiles rm --cached .somefile
-```
-
-### Code quality hooks (hk)
-
-Dotfiles use [`hk`](https://hk.jdx.dev/) for fast staged-file checks on commit.
-
-```sh
-dotfiles config core.hooksPath .hk-hooks
-mise install
-dhk check
-```
-
-`dotfiles commit` then runs `.hk-hooks/pre-commit`, which calls `hk run pre-commit`.
-
-For shell-function regression tests:
-
-```sh
-mise run zsh-tests
-```
-
-### Managing system
-
-#### macOS (nix-darwin)
-
-Build and activate nix-darwin config. This will make changes to the system and update packages as per [`flake.nix`](.config/nix/flake.nix)
-
-```sh
-darwin-rebuild switch --flake ~/.config/nix
-# alias: drs
-```
-
-Update everything: bump `mise.lock` + `flake.lock` (committing each), upgrade brew, then rebuild.
-
-```sh
-up
-# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
-```
-
-`up` is the canonical updater; see [mise and update guidance](.config/mise/AGENTS.md) for lockfile commits and [supply-chain controls](docs/supply-chain.md) for package quarantine. Its mise phase resolves versions with `mise lock --global --bump`, installs with `mise install --locked`, then validates before committing. The other steps (`nfu` for `flake.lock`, `brew upgrade`) can still be run individually.
-
-On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and uninstalling undeclared packages. Their app data stays on disk.
-
-On normal macOS runs, `up` runs `brew vulns --list-skipped` after the rebuild if the standalone Brew phase was attempted. It reports findings and coverage gaps for installed formulae, including installed formula dependencies. It does not scan casks or libraries bundled inside formulae. A failed standalone Brew update or upgrade also runs `brew doctor`. Both reports are advisory and retain their native output in the terminal and log. `--no-audit` skips both the lockfile and Brew vulnerability scans; it keeps failure diagnostics enabled. Frozen mode skips the Brew scan. These checks target Homebrew 7; unavailable commands warn without failing the update.
-
-#### Linux (home-manager)
-
-Build and activate home-manager config. This will update packages as per [`flake.nix`](.config/nix/flake.nix)
-
-```sh
-home-manager switch --flake ~/.config/nix
-# alias: hms
-```
-
-Update everything: bump `mise.lock` + `flake.lock` (committing each), then rebuild (`nrs` + `hms` on NixOS).
-
-```sh
-up
-# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
-```
-
-`up` is the canonical updater; see [mise and update guidance](.config/mise/AGENTS.md) for lockfile commits and [supply-chain controls](docs/supply-chain.md) for package quarantine. Its mise phase resolves versions with `mise lock --global --bump`, installs with `mise install --locked`, then validates before committing. `nfu` can still update `flake.lock` independently.
-
-#### Cleanup
-
-The `up` summary separates cleanup policy from update results. Homebrew manages automatic cleanup during upgrades. A successful upgrade or rebuild does not report what cleanup removed. On non-NixOS Linux with APT, `up` runs autoremove after a successful upgrade; frozen mode skips this phase. `up` does not explicitly prune mise versions or caches.
-
-Nix garbage collection runs separately each day at 03:15 with `--delete-older-than 14d`. macOS also schedules store optimisation at 03:30. Linux home-manager schedules collection for user profiles; the rpi5 repo owns its system collection policy. See [macOS policy](.config/nix/modules/darwin-shared.nix) and [Linux policy](.config/nix/modules/linux-base.nix). The summary does not check scheduler health or scan reclaimable space.
-
-## Setup
-
-### Quick start (recommended)
-
-If you are setting up this exact repo on macOS, Linux, or Codespaces, use the bootstrap script:
+My macOS and Linux setup, tracked with git straight in `$HOME` with no symlinks.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 ```
 
-It installs dotfiles and sets upstream tracking so `git status`/LazyGit show ahead-behind correctly.
+This bootstraps macOS, Linux or Codespaces. It targets my machines: users `connor`/`connorads` and the hosts listed in `install.sh`. To fork it, edit the host configs in [`flake.nix`](.config/nix/flake.nix) and the `VALID_DARWIN`/`VALID_HM` lists in `install.sh`. On a fresh machine, set `DARWIN_HOST` or `HM_HOST` to pick the config.
 
-**Fresh machine - selecting the host config.** The script activates a specific config
-(`nix-darwin` on macOS, `home-manager` on Linux), normally resolved from the machine's
-hostname. On a freshly reset/provisioned box the hostname rarely matches yet, so:
+The stack is nix-darwin or home-manager for packages, Homebrew for macOS apps, mise for runtimes and hk for commit checks.
 
-- Set the override env var to pick explicitly:
-  - macOS: `DARWIN_HOST=Connors-Mac-mini` (or `Connors-MacBook-Air`)
-  - Linux: `HM_HOST=dev` (or `penguin` / `rpi5`)
-- …or answer the interactive prompt. For the prompt to get a terminal, prefer
-  `bash <(curl -fsSL …/install.sh)` or download-then-run over a bare `curl … | bash` pipe.
-- Picking the wrong host is refused rather than silently applied; an unknown/undecidable
-  host fails loudly with the valid list.
+## Why
 
-The first activation passes the config explicitly (`--flake …#<attr>`) and then **converges
-the hostname** (macOS via `networking.hostName`, Linux via `hostnamectl`). After that, bare
-`drs`/`hms`/`up` resolve the right config from the hostname with no `#attr` needed.
+Symlink managers keep a second copy of the tree and break when a tool replaces a file. Here the git metadata lives in `~/git/dotfiles` and `core.worktree` points at `$HOME`, so tracked files are the real files. `~/.gitignore` ignores everything by default, so an existing home directory stays untouched until a path is un-ignored. Ahead-behind and push state work as normal in LazyGit.
 
-The valid host names are hardcoded in `install.sh` (`VALID_DARWIN` / `VALID_HM`) - keep them
-in sync with `flake.nix` if you add or rename a config.
-
-### Manual setup (from this repo)
-
-If you want to follow the manual path (or fork this repo), use this.
-
-1. Clone using a separate git dir
-
-    ```sh
-    DOTFILES_REPO=https://github.com/connorads/dotfiles.git
-    DOTFILES_DIR=$HOME/git/dotfiles
-    BOOTSTRAP_WORKTREE=$(mktemp -d "$HOME/.dotfiles-bootstrap.XXXXXX")
-
-    git clone --separate-git-dir="$DOTFILES_DIR" "$DOTFILES_REPO" "$BOOTSTRAP_WORKTREE"
-    rm -rf "$BOOTSTRAP_WORKTREE"
-    ```
-
-   Why the temporary `BOOTSTRAP_WORKTREE` dir? `git clone` needs a checkout target path, and `$HOME` is non-empty. The temp dir keeps bootstrap safe and disposable.
-
-2. Point the repo at `$HOME` and ensure tracking refs
-
-    ```sh
-    git --git-dir="$DOTFILES_DIR" config core.bare false
-    git --git-dir="$DOTFILES_DIR" config core.worktree "$HOME"
-    git --git-dir="$DOTFILES_DIR" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-    git --git-dir="$DOTFILES_DIR" fetch origin --prune
-    ```
-
-3. Check out dotfiles into `$HOME` (⚠️ this overwrites conflicting files)
-
-    ```sh
-    git --git-dir="$DOTFILES_DIR" checkout 2>&1 | sed -n 's/^[[:space:]]\+//p' | while IFS= read -r file; do
-      if [ -f "$file" ]; then
-        mv "$file" "$file.bak"
-      fi
-    done
-
-    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" checkout -f
-    ```
-
-4. Set upstream for the current branch
-
-    ```sh
-    CURRENT_BRANCH=$(git --git-dir="$DOTFILES_DIR" symbolic-ref --quiet --short HEAD)
-    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" branch --set-upstream-to="origin/$CURRENT_BRANCH" "$CURRENT_BRANCH"
-    ```
-
-5. Set up nix, brew and install software
-
-   **macOS (nix-darwin):**
-
-    ```sh
-    # Install Homebrew
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-
-    # Install Nix (vanilla, not Determinate Nix)
-    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false
-    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-
-    # Build and activate nix-darwin configuration
-    nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
-    ```
-
-   **Linux (home-manager):**
-
-    ```sh
-    # Install Nix (vanilla, not Determinate Nix)
-    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false
-    . ~/.nix-profile/etc/profile.d/nix.sh
-
-    # Build and activate home-manager configuration
-    nix run home-manager/master -- switch --flake ~/.config/nix
-    ```
-
-6. Reload your shell
-
-    ```sh
-    exec zsh
-    ```
-
-### Migration helper (if needed)
-
-If an existing machine has an older setup, run:
+## Use
 
 ```sh
-DOTFILES_DIR=$HOME/git/dotfiles
-if [ "$(git --git-dir=$DOTFILES_DIR rev-parse --is-bare-repository 2>/dev/null || true)" = "true" ]; then
-  git --git-dir=$DOTFILES_DIR config --unset core.bare || true
-fi
-git --git-dir=$DOTFILES_DIR config core.worktree $HOME
-CURRENT_BRANCH=$(git --git-dir=$DOTFILES_DIR/ symbolic-ref --quiet --short HEAD)
-git --git-dir=$DOTFILES_DIR/ config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-git --git-dir=$DOTFILES_DIR/ fetch origin --prune
-git --git-dir=$DOTFILES_DIR/ --work-tree=$HOME branch --set-upstream-to=origin/$CURRENT_BRANCH $CURRENT_BRANCH
+dotfiles add .somefile    # after un-ignoring it in ~/.gitignore
+dotfiles rm --cached .somefile
+up                        # bump mise.lock and flake.lock, upgrade, rebuild
+drs                       # rebuild macOS (darwin-rebuild switch)
+hms                       # rebuild Linux (home-manager switch)
 ```
 
-### Create from scratch (optional)
+## Agents
 
-This section is for anyone who wants to build their own dotfiles repo using the same git-dir + work-tree technique (not specifically this repo).
+Claude, Codex and pi run in tmux panes. Each window tab shows a state dot for its agents: ◐ working, ◆ needs you, ● ready, ○ idle.
 
-<details>
-<summary>Show from-scratch setup</summary>
+<img alt="Staged demo: four agents in one tmux window move from working to ready, and one waits on a sudo prompt" src="docs/agents.gif" width="720">
 
-1. Create the git dir and point work-tree at `$HOME`
+## Docs
 
-    ```sh
-    DOTFILES_DIR=$HOME/git/dotfiles
-    mkdir -p "$DOTFILES_DIR"
-    git init "$DOTFILES_DIR"
-    git --git-dir="$DOTFILES_DIR" config core.worktree "$HOME"
-    git --git-dir="$DOTFILES_DIR" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-    ```
-
-2. Add a safe default ignore policy (ignore everything, then un-ignore specific files)
-
-    ```sh
-    touch "$HOME/.gitignore"
-    grep -qxF '/*' "$HOME/.gitignore" || printf '%s\n' '/*' >> "$HOME/.gitignore"
-    grep -qxF '!.gitignore' "$HOME/.gitignore" || printf '%s\n' '!.gitignore' >> "$HOME/.gitignore"
-    ```
-
-3. Start tracking files by un-ignoring paths in `~/.gitignore`, then adding them
-
-    ```sh
-    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" add .gitignore
-    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" commit -m "chore(dotfiles): initialise from scratch"
-    ```
-
-4. Optional: connect a remote and push
-
-    ```sh
-    DOTFILES_REPO=git@github.com:your-user/dotfiles.git
-    dotfiles remote add origin "$DOTFILES_REPO"
-    dotfiles push -u origin HEAD
-    ```
-
-   Git also supports separate fetch and push URLs for the same remote. This is useful when a clone should pull over HTTPS but only push through SSH:
-
-    ```sh
-    dotfiles remote set-url origin https://github.com/your-user/dotfiles.git
-    dotfiles remote set-url --push origin git@github.com:your-user/dotfiles.git
-    ```
-
-   After this, `dotfiles pull` uses HTTPS and `dotfiles push` uses SSH. This can be handy on machines where read-only updates should not depend on SSH agent forwarding, while write access still uses the normal SSH path.
-
-</details>
-
-### Setup YubiKey for `sudo`
-
-macOS `sudo` auth is configured in [`darwin-desktop.nix`](.config/nix/modules/darwin-desktop.nix):
-
-- Touch ID is enabled for both Macs
-- `pam_reattach` is enabled so Touch ID works inside `tmux`
-- `pam_u2f` remains in the sudo PAM stack for YubiKey auth
-
-In practice:
-
-- MacBook Air uses Touch ID first, with YubiKey as fallback
-- Mac mini falls through to YubiKey unless it has a Touch ID-capable keyboard
-
-The YubiKey mapping file is local per machine and is not tracked in dotfiles:
-
-```sh
-mkdir ~/.config/Yubico
-pamu2fcfg > ~/.config/Yubico/u2f_keys
-```
-
-Add a second key if you like
-
-```sh
-pamu2fcfg -n >> ~/.config/Yubico/u2f_keys
-```
+- [Setup: host selection, manual install, migration, your own repo from scratch](docs/setup.md)
+- [System platforms: Nix targets, cleanup, sudo with YubiKey](docs/system-platforms.md)
+- [`up`, mise and lockfiles](.config/mise/AGENTS.md)
+- [Supply-chain controls](docs/supply-chain.md)
+- [Commands](docs/commands.md)
+- [Decision records](docs/adr/README.md)
 
 ## Credit
 
-Inspired by
-
-- [StreakyCobra's comment on Hacker News for idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
-- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo) (historical reference; lazygit is the day-to-day tool)
-- [Using a YubiKey (or other security key) for sudo via pam](https://neilzone.co.uk/2022/11/using-a-yubikey-or-other-security-key-for-sudo-via-pam/)
+- [StreakyCobra on Hacker News](https://news.ycombinator.com/item?id=11071754), for avoiding symlinks with a bare repo
+- [zwyx's blog post](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo), for the Sublime Merge integration
+- [Using a YubiKey for sudo via PAM](https://neilzone.co.uk/2022/11/using-a-yubikey-or-other-security-key-for-sudo-via-pam/)

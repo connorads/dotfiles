@@ -60,3 +60,27 @@ Rule of thumb: host-global and well-packaged -> Nix; project/version-selected ->
 mise; macOS vendor bundle -> Homebrew.
 
 Claude Code is mise-owned. Do not install it natively or re-enable its self-updater. Why: [docs/adr/0011](../docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
+
+## Cleanup
+
+Homebrew manages automatic cleanup during upgrades. On non-NixOS Linux with APT, `up` runs autoremove after a successful upgrade; frozen mode skips this phase. `up` does not prune mise versions or caches, and its summary does not report what cleanup removed.
+
+Nix garbage collection runs each day at 03:15 with `--delete-older-than 14d`. macOS also schedules store optimisation at 03:30. Linux home-manager schedules collection for user profiles; the rpi5 repo owns its system collection policy. See [macOS policy](../.config/nix/modules/darwin-shared.nix) and [Linux policy](../.config/nix/modules/linux-base.nix).
+
+## sudo with Touch ID and YubiKey
+
+[darwin-desktop.nix](../.config/nix/modules/darwin-desktop.nix) configures macOS `sudo`:
+
+- Touch ID is enabled on both Macs.
+- `pam_reattach` makes Touch ID work inside tmux.
+- `pam_u2f` stays in the stack for YubiKey auth.
+
+The MacBook Air tries Touch ID first, with YubiKey as fallback. The Mac mini falls through to YubiKey unless it has a Touch ID keyboard.
+
+The YubiKey mapping file is per machine and untracked:
+
+```sh
+mkdir ~/.config/Yubico
+pamu2fcfg > ~/.config/Yubico/u2f_keys
+pamu2fcfg -n >> ~/.config/Yubico/u2f_keys   # optional second key
+```
