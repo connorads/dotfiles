@@ -217,7 +217,13 @@ This enables VS Code Remote-SSH to show the server in the dropdown.
 
 ## Optional: Restrict SSH to Tailscale only
 
-After `ts up` and confirming SSH works via Tailscale (`ts ssh connor@dev`), run `tsonlyssh` on the server to remove public port 22 from UFW. This leaves SSH accessible only via the Tailscale interface.
+After `ts up` and confirming SSH works via Tailscale (`ts ssh connor@dev`), run these commands on the server to restrict SSH to the Tailscale interface:
+
+```bash
+sudo ufw delete allow 22/tcp
+sudo ufw allow in on tailscale0 to any port 22 proto tcp comment 'SSH via Tailscale'
+sudo ufw reload
+```
 
 Fallback: Hetzner Cloud Console VNC if locked out.
 

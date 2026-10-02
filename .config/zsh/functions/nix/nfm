@@ -1,5 +1,0 @@
-#!/usr/bin/env zsh
-# nfm: format all nix files in ~/.config/nix
-emulate -L zsh
-
-(cd ~/.config/nix && nix fmt ./*.nix ./modules/*.nix)
