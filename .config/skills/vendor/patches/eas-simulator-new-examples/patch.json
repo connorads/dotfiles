@@ -1,0 +1,6 @@
+{
+  "reason": "Simulator crash reads use the existing eas CLI without task-time npm downloads.",
+  "files": [
+    "expo/.agents/skills/eas-simulator/references/logs-and-crashes.md"
+  ]
+}

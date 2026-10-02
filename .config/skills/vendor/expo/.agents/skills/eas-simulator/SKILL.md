@@ -162,7 +162,7 @@ Quick decision — **default to C; A and B are explicit-only:**
 - **A:** only an explicit one-shot **static** screenshot on a Mac.
 - **B:** only when the user names an existing/EAS build or wants a static EAS artifact (CI/sharing) — see the box above for why a static build is the wrong tool for "iterate."
 
-Before starting a Mode C tunnel, read [Tunnel scope and approvals](./references/run-your-app.md#tunnel-scope-and-approvals) for its data flow, authorization context, and handling approval rejections.
+Before starting a Mode C tunnel or connecting the dev client, read [Tunnel scope and approvals](./references/run-your-app.md#tunnel-scope-and-approvals). Carry existing authorization for this project's remote development transport through tunnel creation, connection, and live edits; include its source and the concrete data flow in any approval request.
 
 ## Driving the device (agent-device)
 
@@ -186,6 +186,12 @@ If a controller fails to download a recording, retrieve it from [EAS session art
 **Screenshots vs. video.** Default to `screenshot` for static state, but for anything that *moves* — an animation, a transition, a gesture, a timing/jank question — **record a video and inspect the frames** instead; a still can't prove motion. Both controllers record (agent-device `record start`/`stop`, argent `screen-recording-start`/`stop`). Recordings sample at ~30fps — enough to see visible jank, not to prove sub-frame 60/120Hz hitches. For **timing** specifically, argent drops static frames by default (turn `trimStatic` off) — that plus other per-controller gotchas are in [references/controllers.md](./references/controllers.md).
 
 For the full verb set and the `argent` controller alternative, see [references/controllers.md](./references/controllers.md).
+
+## When the app crashes: device logs and crash reports (iOS)
+
+When the app crashes or closes on launch, read the iOS session's crash reports and device log before guessing from screenshots. Read them from the preview API URL in `simulator:get --json`. That URL carries the session token, so never print it.
+
+**Hold the device log before you reproduce the crash.** Without the hold, the crash gets a report but an empty log tail. Commands, fields, and fallbacks are in [references/logs-and-crashes.md](./references/logs-and-crashes.md).
 
 ## Operating principles
 
@@ -217,6 +223,7 @@ printf '# managed by eas-cli\n' > .env.eas-simulator   # clear the stale session
 
 - [references/run-your-app.md](./references/run-your-app.md) — full command sequences for modes A, B, and C (read before running a mode).
 - [references/controllers.md](./references/controllers.md) — agent-device verb reference and the `argent` alternative.
+- [references/logs-and-crashes.md](./references/logs-and-crashes.md) — device logs and crash reports from an iOS session (read when the app crashes or misbehaves).
 - [references/troubleshooting.md](./references/troubleshooting.md) — concrete errors and fixes.
 
 Source of truth: Expo docs and the `eas` / `agent-device` CLIs (`npx --yes eas-cli@latest simulator:* --help`, `agent-device --help`). This skill teaches how to apply them; it doesn't replace them.

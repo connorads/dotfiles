@@ -1,0 +1,6 @@
+{
+  "reason": "Android simulator boot uses existing CLIs without task-time npm downloads.",
+  "files": [
+    "expo/.agents/skills/eas-simulator/references/troubleshooting.md"
+  ]
+}
