@@ -356,7 +356,6 @@ DISCOVERY_EXCLUDE = re.compile(
 # root here is a decision, not an oversight - the point of (c) is that a new
 # project cannot arrive silently.
 UNGATED: dict[str, str] = {
-    "src/dotfiles-docs": "Astro site; `astro check` needs the Astro toolchain, not tsc",
     "src/raycast/shotpath": "Raycast extension; typechecked by `ray build` against raycast-env.d.ts",
     "src/raycast/skl": "Raycast extension; typechecked by `ray build` against raycast-env.d.ts",
     "skills/cloudflare-mcp/assets/stateless-server": "Skill template copied into new projects; ships no node_modules, so it is installed, typechecked and tested in a fresh copy (skill's references/refresh.md step 4)",

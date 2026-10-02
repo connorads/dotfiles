@@ -29,13 +29,7 @@ fi
 
 # Vendored mirrors carry upstream's own broken links - 15 of them - which are
 # not ours to fix and would come back on every `skills update`.
-#
-# src/dotfiles-docs is Astro: its internal links are extensionless routes
-# (/trust/supply-chain/) that no filesystem resolver can follow, so lychee calls
-# all 40 broken while every target exists, and --root-dir does not help.
-# starlight-links-validator gates those at build time instead, where the route
-# table is known.
-EXCLUDE_RE='^(\.config/skills/vendor|\.codex/skills|src/dotfiles-docs)/'
+EXCLUDE_RE='^(\.config/skills/vendor|\.codex/skills)/'
 
 # Under hk there is always a work-tree to discover: $HOME via the exported
 # GIT_DIR/GIT_WORK_TREE split locally, the checkout in CI. Run by hand from

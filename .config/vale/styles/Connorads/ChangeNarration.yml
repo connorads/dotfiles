@@ -42,10 +42,9 @@ ignorecase: true
 # `currently`, `supersede`, `moved to`, `new X`, `now` with a verb gap - is
 # essay prose or subject vocabulary at 0-10% precision and stays out.
 #
-# ~/.vale.ini switches this rule off under docs/adr/ and src/dotfiles-docs/:
+# ~/.vale.ini switches this rule off under docs/adr/:
 # an ADR is a dated record, so `is now testable` in its Consequences is
-# relative to the decision date and never rots, and the docs site is
-# first-person essay where `there are now two panes` is narrative.
+# relative to the decision date and never rots.
 #
 # A rule that quotes its own banned phrases must put them in code spans. Vale
 # skips code spans but not double quotes, so a quoted `now uses Y` in prose is
