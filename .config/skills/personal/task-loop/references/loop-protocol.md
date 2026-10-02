@@ -53,11 +53,8 @@ Only set `status: done` when ALL are true:
 Record in loop-state.md. If durable, update code comments or docs.
 ```
 
-Run the outer loop with `rl -- ...` so the default promise-token
-handling stops the shell runner once the backlog is exhausted. In
-Ralph-loop terms this token is the completion promise. Use
-`--promise-token` to override the token or `--no-promise-token` to
-disable this behaviour for a specific run.
+Configure the project runner to stop on the completion token once the
+backlog is exhausted.
 
 ## Adaptation Points
 

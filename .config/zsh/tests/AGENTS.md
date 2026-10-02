@@ -60,7 +60,7 @@ one. Three shapes to recognise:
 `BATS_TEST_RETRIES` is deliberately not used. Re-running until green hides the
 defect and ships it. Bounded polling is the opposite: it waits on a genuinely
 asynchronous result and still fails if it never arrives. `BATS_TEST_TIMEOUT` *is*
-used, in `rl.bats`'s `setup_file`, as a hang backstop rather than a budget.
+a hang backstop rather than a synchronisation budget.
 
 ### The rule is enforced, not remembered
 

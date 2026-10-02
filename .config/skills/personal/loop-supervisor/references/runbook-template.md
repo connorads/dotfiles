@@ -32,7 +32,7 @@ job."
 - <success condition — e.g. `FOUND_SECRET.txt` exists at repo root>
 - <exhaustion condition — e.g. all items in `backlog.md` checked, or
   all hypotheses in terminal state in `INDEX.md`>
-- <budget condition — e.g. `rl 100` complete, intervention budget
+- <budget condition — e.g. 100 iterations complete, intervention budget
   (3) spent, or wall-clock cap (12h) reached>
 - <hard-failure condition — e.g. novel failure class, runner fix
   didn't hold, anything outside the taxonomy below>
@@ -130,9 +130,8 @@ There is no dedicated escalation file or notification channel.
 When you need to stop (success, exhaustion, budget, hard failure, or
 anything you can't classify):
 
-1. Send Ctrl-C to the tmux pane (see §8 for pane coordinates). First
-   Ctrl-C interrupts the current iteration cleanly; second Ctrl-C
-   exits the `rl` outer loop if you need to end immediately.
+1. Stop the runner using its documented interrupt procedure
+   (see §8 for pane coordinates).
 2. Capture the pane tail into your message.
 3. Summarise in your final chat turn:
    - What you supervised (wall-clock, iterations run)
@@ -151,7 +150,7 @@ anything you can't classify):
 **Launch command (only if the session doesn't already exist):**
 
 ```bash
-<launch command, e.g. rl 100 -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md">
+<project runner launch command>
 ```
 
 **Startup sequence:**

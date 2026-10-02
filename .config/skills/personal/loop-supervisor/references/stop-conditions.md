@@ -26,7 +26,7 @@ when it achieves its goal. Supervisor polls for the file each cycle.
 ### Emit-token
 
 The loop prints a sentinel string on its own final line when done.
-`rl` picks this up and exits the outer runner; the supervisor sees
+The project runner recognises it and exits; the supervisor sees
 the tmux pane return to a shell prompt.
 
 - **Default:** `__PROMISE_RL_DONE__` (task-loop's built-in)
@@ -34,7 +34,7 @@ the tmux pane return to a shell prompt.
 - **Detection:** grep the tmux pane for the token, *or* watch for
   the shell prompt returning without a re-launch
 - **Why it works:** No extra file state; cleanly integrates with
-  `rl`'s promise-token handling
+  the project runner's completion-token handling
 
 ### All-work-exhausted
 
@@ -53,7 +53,7 @@ All tracked work items reach a terminal state.
 
 The outer runner's iteration count is complete.
 
-- **Detection:** `rl N` runs the loop N times then exits; the tmux
+- **Detection:** the runner reaches its configured iteration limit and exits; the tmux
   pane returns to a shell prompt. Or: count `run-log.md` entries
   and compare to N.
 - **Why it works:** Guarantees bounded wall-clock; forces periodic
