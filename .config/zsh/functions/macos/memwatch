@@ -23,6 +23,13 @@
 # a proxy for watchdogd's thread rather than the same thread, so the thresholds
 # sit well inside the kernel's ~90 s deadline.
 #
+# Wired memory is the third memwatch-local cause. Kernel and GPU pages are
+# wired: they can be neither compressed nor swapped, so a GPU-heavy process
+# can fill RAM while the compressor stays nearly empty. Wired at or over
+# MEMWATCH_WIRED_CRITICAL_MB makes the tick CRITICAL with cause=wired.
+# WindowServer RSS is logged and bannered beside it, because footprint needs
+# root for WindowServer and so the top-5 rows never show it.
+#
 # No shebang: this is a daemon, not a dual-mode PATH command, so it is autoload-
 # only (run `memwatch` interactively to watch in the foreground, or `memwatch
 # --once` for a single evaluation). Launched unattended by the nix-darwin
@@ -62,6 +69,7 @@ local log=${MEMWATCH_LOG:-$HOME/.cache/memwatch.log}
 local sample=${MEMWATCH_SAMPLE:-15} # procs footprinted per evaluation
 local stall_log_secs=${MEMWATCH_STALL_LOG_SECS:-2}
 local stall_critical_secs=${MEMWATCH_STALL_CRITICAL_SECS:-5}
+local wired_critical_mb=${MEMWATCH_WIRED_CRITICAL_MB:-12288}
 local ticks=${MEMWATCH_TICKS:-0} # 0 = run forever
 [[ "${1:-}" == "--once" ]] && ticks=1
 
@@ -94,7 +102,7 @@ top_apps() {
 local prev=OK now=0 last_notify=0 tick=0 stall_s=0
 local last_state=OK last_cause=none last_slots=0 last_segs=0 moved=0
 local pressure pages plimit segments slimit slots segs ratio state cause
-local grouped swap hog t0 slip
+local grouped swap hog t0 slip wired wired_h ws_h
 while :; do
 	tick=$((tick + 1))
 	# Two forks, five readings. The lib splits its own gather; the pressure
@@ -106,6 +114,11 @@ while :; do
 	ratio=$(mem_ratio_from "$pages" "$segments")
 	state=$(mem_state_from "$pressure" "$slots" "$segs")
 	cause=$(mem_cause_from "$pressure" "$slots" "$segs")
+	wired=$(mem_wired_mb)
+	if ((wired >= wired_critical_mb)); then
+		state=CRITICAL
+		cause=wired
+	fi
 	if ((stall_s >= stall_critical_secs)); then
 		state=CRITICAL
 		cause=stall
@@ -128,15 +141,17 @@ while :; do
 		if [[ "$state" != "$prev" ]] || ((now - last_notify >= cooldown && moved)); then
 			grouped=$(top_apps)
 			swap=$(mem_swap_human)
+			wired_h=$(mem_human_mb "$wired")
+			ws_h=$(mem_human_mb "$(mem_rss_mb WindowServer)")
 			hog=$(printf '%s\n' "$grouped" | awk -F '\037' 'NR==1 {
 				printf "%s ≈%s", $3, ($1 >= 1024 ? sprintf("%.1fG", $1/1024) : $1 "M") }')
 			[[ -n "$hog" ]] || hog="(no footprint data)"
 
-			osascript -e "display notification \"slots ${slots}% ($(mem_arm_gap "$slots" "$MEM_BUSY_SLOTS_PCT" "$MEM_CRITICAL_SLOTS_PCT")) · segs ${segs}% ($(mem_arm_gap "$segs" "$MEM_BUSY_SEGS_PCT" "$MEM_CRITICAL_SEGS_PCT")) · swap ${swap} · top: ${hog}\" with title \"Memory ${state}\"" 2>/dev/null || true
+			osascript -e "display notification \"slots ${slots}% ($(mem_arm_gap "$slots" "$MEM_BUSY_SLOTS_PCT" "$MEM_CRITICAL_SLOTS_PCT")) · segs ${segs}% ($(mem_arm_gap "$segs" "$MEM_BUSY_SEGS_PCT" "$MEM_CRITICAL_SEGS_PCT")) · swap ${swap} · wired ${wired_h} · WS ${ws_h} · top: ${hog}\" with title \"Memory ${state}\"" 2>/dev/null || true
 
 			{
-				printf '%s  state=%s  cause=%s  pressure=%s  swap=%s  slots=%s%%  segs=%s%%  ratio=%s\n' \
-					"$(stamp)" "$state" "$cause" "$pressure" "$swap" "$slots" "$segs" "$ratio"
+				printf '%s  state=%s  cause=%s  pressure=%s  swap=%s  wired=%s  ws=%s  slots=%s%%  segs=%s%%  ratio=%s\n' \
+					"$(stamp)" "$state" "$cause" "$pressure" "$swap" "$wired_h" "$ws_h" "$slots" "$segs" "$ratio"
 				printf '%s\n' "$grouped" | head -5 | while IFS=$'\037' read -r mb cnt app; do
 					printf '  %-24s ≈%s (%s)\n' "$app" "$(mem_human_mb "$mb")" "$cnt"
 				done
