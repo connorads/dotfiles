@@ -1,1 +1,1 @@
-to apply your own brand, run a flow from [`references/onboarding.md`](references/onboarding.md) and save the result as a profile per [`references/profiles.md`](references/profiles.md). Editing the installed `style-guide.md` is not an option here - see the read-only rule in section 0.
+To apply a brand, run a flow from [`references/onboarding.md`](references/onboarding.md) and save the result as a named profile per [`references/profiles.md`](references/profiles.md). Keep the installed `style-guide.md` read-only.

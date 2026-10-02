@@ -1,0 +1,6 @@
+{
+  "reason": "upstream repository verifiers are absent from packaged skills; installed copies use available checks and manual verification",
+  "files": [
+    ".agents/skills/diagram-design/references/type-architecture-delta.md"
+  ]
+}

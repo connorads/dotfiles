@@ -40,7 +40,7 @@ Multiple audio tracks can be layered by adding multiple `<Audio>` components.
 
 ## Trimming
 
-Use `trimBefore` and `trimAfter` to remove portions of the audio. Values are in frames.
+Use `trimBefore` to skip the beginning of the audio and `durationInFrames` to end it early. Values are in frames.
 
 ```tsx
 const { fps } = useVideoConfig();
@@ -49,7 +49,7 @@ return (
   <Audio
     src={staticFile("audio.mp3")}
     trimBefore={2 * fps} // Skip the first 2 seconds
-    trimAfter={10 * fps} // End at the 10 second mark
+    durationInFrames={8 * fps} // Play 8 seconds, until the 10 second mark
   />
 );
 ```
@@ -58,18 +58,16 @@ The audio still starts playing at the beginning of the composition - only the sp
 
 ## Delaying
 
-Wrap the audio in a `<Sequence>` to delay when it starts:
+Set `from` directly on `<Audio>` to delay when it starts:
 
 ```tsx
-import { Sequence, staticFile } from "remotion";
+import { staticFile, useVideoConfig } from "remotion";
 import { Audio } from "@remotion/media";
 
 const { fps } = useVideoConfig();
 
 return (
-  <Sequence from={1 * fps}>
-    <Audio src={staticFile("audio.mp3")} />
-  </Sequence>
+  <Audio from={fps} src={staticFile("audio.mp3")} />
 );
 ```
 
@@ -83,24 +81,35 @@ Set a static volume (0 to 1):
 <Audio src={staticFile("audio.mp3")} volume={0.5} />
 ```
 
-Or use a callback for dynamic volume based on the current frame:
+Use `useCurrentFrame()` and `interpolate()` for keyframed volume:
 
 ```tsx
-import { interpolate } from "remotion";
+import { interpolate, useCurrentFrame } from "remotion";
 
+const frame = useCurrentFrame();
 const { fps } = useVideoConfig();
 
 return (
   <Audio
     src={staticFile("audio.mp3")}
-    volume={(f) =>
-      interpolate(f, [0, 1 * fps], [0, 1], { extrapolateRight: "clamp" })
-    }
+    volume={interpolate(frame, [0, 1 * fps], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })}
   />
 );
 ```
 
-The value of `f` starts at 0 when the audio begins to play, not the composition frame.
+With Studio interactivity enabled, these keyframes can be edited and are shown as a volume curve in the timeline.
+
+The `volume` prop also accepts a callback for procedural or media-relative volume. The callback frame starts at 0 when the audio begins to play, not at the composition frame:
+
+```tsx
+<Audio
+  src={staticFile("audio.mp3")}
+  volume={(mediaFrame) => interpolate(mediaFrame, [0, 30], [0, 1])}
+/>
+```
 
 ## Muting
 
@@ -136,8 +145,10 @@ Reverse playback is not supported.
 Use `loop` to loop the audio indefinitely:
 
 ```tsx
-<Audio src={staticFile("audio.mp3")} loop />
+<Audio src={staticFile("audio.mp3")} loop premountFor={fps} />
 ```
+
+Put `name`, `from`, `loop`, `volume`, and `premountFor` directly on `<Audio>`.
 
 Use `loopVolumeCurveBehavior` to control how the frame count behaves when looping:
 

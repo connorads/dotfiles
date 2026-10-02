@@ -32,6 +32,10 @@ from typing import Any, NoReturn
 MAX_SOURCE_BYTES = 4 * 1024 * 1024
 MAX_NODES = 2000
 MAX_EDGES = 5000
+# One logical flowchart statement, whether it spans lines or shares a line
+# with others. Real statements are a few hundred characters at most; the cap
+# keeps per-statement parsing work bounded.
+MAX_STATEMENT_CHARS = 4096
 SUPPORTED_KINDS = "flowchart, sequenceDiagram, stateDiagram-v2, erDiagram"
 UNSUPPORTED_KINDS = {
     "pie",
@@ -405,6 +409,13 @@ def _statement_complete(text: str) -> bool:
     return quote is None and not stack
 
 
+def _statement_too_long(line_number: int) -> NoReturn:
+    _fail(
+        f"statement at line {line_number} exceeds the "
+        f"{MAX_STATEMENT_CHARS}-character limit"
+    )
+
+
 def _logical_statements(
     lines: list[tuple[int, str]],
 ) -> list[tuple[int, str]]:
@@ -419,13 +430,22 @@ def _logical_statements(
             start_line = line_number
         pending.append(raw)
         combined = "\n".join(pending)
-        if not _statement_complete(combined):
+        statements = _split_top_level(combined, ";")
+        complete = _statement_complete(combined)
+        # Everything before the last top-level semicolon is finished even while
+        # a quote or bracket after it stays open, so only that open statement is
+        # carried to the next line. Each statement is bounded on its own, and
+        # the open one is bounded before the next line joins and rescans it.
+        for statement in statements if complete else statements[:-1]:
+            if len(statement) > MAX_STATEMENT_CHARS:
+                _statement_too_long(start_line)
+            logical.append((start_line, statement))
+        if complete:
+            pending = []
             continue
-        logical.extend(
-            (start_line, statement)
-            for statement in _split_top_level(combined, ";")
-        )
-        pending = []
+        if len(statements[-1]) > MAX_STATEMENT_CHARS:
+            _statement_too_long(start_line)
+        pending = [statements[-1]]
     if pending:
         _fail(f"unterminated statement at line {start_line}")
     return logical
@@ -606,51 +626,70 @@ def _edge_operators(text: str) -> list[_Operator]:
     # `A-- text -->B`, `A-. retry .-> B`, `A== critical ==> B`, and the
     # undirected forms of each. The compact form drops the spaces —
     # `B--yes-->C` — and may retain a left arrow/circle/cross marker, as in
-    # `A<--yes-->B` or `A o--yes--o B`. Its label may not contain whitespace,
-    # and the operator characters themselves may not open one (keeping
-    # `A----->B` unlabeled and `A --o B --> C` two separate links).
+    # `A<--yes-->B` or `A o--yes--o B`. The spaced form consumes exactly one
+    # whitespace character next to each operator; any further padding falls
+    # inside the label span, which `clean_label` strips, so the operator
+    # boundaries are never ambiguous. For the dash and equals forms, the
+    # compact label may not contain whitespace, and the operator characters
+    # themselves may not open one (keeping `A----->B` unlabeled and
+    # `A --o B --> C` two separate links). The dotted form's closing operator
+    # always opens with a literal `.`, which a dash/equals label can't
+    # produce, so its compact label may contain internal whitespace (as in
+    # `A-.next candidate.->B`) without that ambiguity.
     text_edge = re.compile(
         r"(?P<opening>"
-        r"<(?:--|-\.|==)"
-        r"|(?<![\w.:-])[xo](?:--|-\.|==)"
-        r"|(?:--|-\.|==)"
+        r"<(?:--|==)"
+        r"|(?<![\w.:-])[xo](?:--|==)"
+        r"|(?:--|==)"
         r")"
-        r"(?:\s+(?P<spaced>.+?)\s+|(?![-=.\s])(?P<compact>[^\s|<>]+?))"
-        r"(?P<closing>\.-+[>xo]|\.-+|-{2,}>|--[xo]|=+>|={2,}|-{3,})"
+        r"(?:\s(?P<spaced>.+?)\s|(?![-=.\s])(?P<compact>[^\s|<>]+?))"
+        r"(?P<closing>-{2,}>|--[xo]|=+>|={2,}|-{3,})"
+    )
+    dotted_edge = re.compile(
+        r"(?P<opening>"
+        r"<-\."
+        r"|(?<![\w.:-])[xo]-\."
+        r"|-\."
+        r")"
+        r"(?:\s(?P<spaced>.+?)\s|(?![-=.\s])(?P<compact>[^\n|<>]+?))"
+        r"(?P<closing>\.-+[>xo]|\.-+)"
     )
     trailing_operator = re.compile(
         r"(?:\.-+[>xo]|\.-+|-{2,}>|--[xo]|=+>|={2,}|-{3,})"
         r"(?:\|[^|\n]*\|)?\s*$"
     )
-    for match in text_edge.finditer(mask):
-        opening = match.group("opening")
-        operator_start = match.start()
-        if opening.startswith(("x", "o")):
-            prefix = mask[:operator_start]
-            if not prefix.strip() or trailing_operator.search(prefix):
-                # Here x/o is the endpoint before a regular opening operator,
-                # not a left marker: `x--yes-->B` or `A-->x--go-->B`.
-                operator_start += 1
-                opening = opening[1:]
-        token = opening + match.group("closing")
-        style, arrowhead, bidirectional, undirected = _operator_style(token)
-        # Read the label from the whole span between the operators rather than
-        # from the matched group. The mask blanks quoted spans, so a quoted
-        # label — `A-- "text" -->B` — leaves the spaced group nothing but
-        # blanks to settle on, and slicing that group returns a stray quote
-        # instead of the text. `clean_label` strips the padding and quotes.
-        operators.append(
-            _Operator(
-                operator_start,
-                match.end(),
-                clean_label(text[match.end("opening") : match.start("closing")]),
-                style,
-                arrowhead,
-                bidirectional,
-                undirected,
+    for edge_pattern in (text_edge, dotted_edge):
+        for match in edge_pattern.finditer(mask):
+            opening = match.group("opening")
+            operator_start = match.start()
+            if opening.startswith(("x", "o")):
+                prefix = mask[:operator_start]
+                if not prefix.strip() or trailing_operator.search(prefix):
+                    # Here x/o is the endpoint before a regular opening
+                    # operator, not a left marker: `x--yes-->B` or
+                    # `A-->x--go-->B`.
+                    operator_start += 1
+                    opening = opening[1:]
+            token = opening + match.group("closing")
+            style, arrowhead, bidirectional, undirected = _operator_style(token)
+            # Read the label from the whole span between the operators rather
+            # than from the matched group. The mask blanks quoted spans, so a
+            # quoted label — `A-- "text" -->B` — leaves the spaced group
+            # nothing but blanks to settle on, and slicing that group returns
+            # a stray quote instead of the text. `clean_label` strips the
+            # padding and quotes.
+            operators.append(
+                _Operator(
+                    operator_start,
+                    match.end(),
+                    clean_label(text[match.end("opening") : match.start("closing")]),
+                    style,
+                    arrowhead,
+                    bidirectional,
+                    undirected,
+                )
             )
-        )
-        occupied.append((operator_start, match.end()))
+            occupied.append((operator_start, match.end()))
 
     pattern = re.compile(
         r"[xo][-=.]+[xo]|<[-=.]+>|-+\.-+>|=+>|-+(?:>|x|o)|-+\.-+|={3,}|-{3,}"
