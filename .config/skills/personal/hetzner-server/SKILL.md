@@ -19,7 +19,7 @@ Reusable firewall profiles applied at server creation. Firewalls can be swapped 
 
 | Firewall | Rules | Use case |
 |----------|-------|----------|
-| `ts-ssh` | UDP 41641 (Tailscale) + TCP 22 (SSH) | Dev boxes - initial setup, swap to `ts-only` after `tsonlyssh` |
+| `ts-ssh` | UDP 41641 (Tailscale) + TCP 22 (SSH) | Dev boxes - initial setup, swap to `ts-only` after restricting UFW to Tailscale |
 | `ts-only` | UDP 41641 (Tailscale) | Tailscale-only access, no public ports |
 | `ts-web` | UDP 41641 (Tailscale) + TCP 80,443 (HTTP/S) | Servers accepting public web traffic |
 
