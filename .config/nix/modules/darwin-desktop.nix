@@ -109,6 +109,7 @@
       "figma"
       "opencode-desktop"
       "executor"
+      "cuadriver"
       "knockknock"
       "lulu"
       "slack"
