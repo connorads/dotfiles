@@ -340,6 +340,37 @@ mem_footprint_mb() {
 	mem_parse_mb $_fp
 }
 
+# mem_vm_stat_mb FIELD - the vm_stat counter whose line matches FIELD, pages
+# converted to integer MB by the page size vm_stat reports. 0 when absent.
+mem_vm_stat_mb() {
+	vm_stat 2>/dev/null | awk -v field="$1" '
+		/page size of/ { for (i = 1; i <= NF; i++) if ($i == "of") { ps = $(i + 1); break } }
+		$0 ~ field {
+			n = $NF; gsub(/[^0-9]/, "", n)
+			printf "%d", n * ps / 1048576
+			found = 1; exit
+		}
+		END { if (!found) print 0 }'
+}
+
+# mem_wired_mb - wired memory in integer MB: kernel and GPU pages that can be
+# neither compressed nor swapped, so the compressor never sees them fill RAM.
+mem_wired_mb() {
+	mem_vm_stat_mb 'Pages wired down'
+}
+
+# mem_rss_mb NAME - summed RSS in integer MB of every process named exactly
+# NAME, 0 when none runs. RSS, not footprint: footprint needs root for
+# WindowServer, RSS does not.
+mem_rss_mb() {
+	_pids=$(pgrep -x "$1" 2>/dev/null | tr '\n' ',')
+	if [ -z "$_pids" ]; then
+		echo 0
+		return
+	fi
+	ps -o rss= -p "${_pids%,}" 2>/dev/null | awk '{ kb += $1 } END { printf "%d", kb / 1024 }'
+}
+
 # mem_app_name COMMAND — the group key for a process command line: the .app
 # bundle name when present (truncated at the FIRST .app so nested helper
 # bundles like "Google Chrome.app/.../Google Chrome Helper.app" roll up to the
