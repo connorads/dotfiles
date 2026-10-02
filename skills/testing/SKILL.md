@@ -175,6 +175,10 @@ checks and exhaustive domain tests. See
 `references/scenario-testing.md` when designing a scenario suite, choosing
 setup/cleanup seams, or debugging scenario flakiness.
 
+When an e2e test uses natural-language agent steps (TesterArmy e2e, Stagehand,
+Midscene, `agent.act`-style APIs), read `references/agentic-e2e.md` before
+writing or qualifying it.
+
 ### Testing at multiple boundaries
 
 "Narrowest layer" is the default, not an absolute. Deliberately re-test the same
@@ -361,6 +365,9 @@ time/network coupling (see Core Rules).
 - [scenario-testing.md](references/scenario-testing.md) - Critical-journey
   selection, setup/cleanup through public surfaces, external fakes, accessible
   selectors, runtime policy, and anti-patterns for scenario/e2e suites.
+- [agentic-e2e.md](references/agentic-e2e.md) - When an AI agent step beats
+  a locator, pinning agent goals, visible pending state, replay-cache cost,
+  qualifying a test before CI, and TesterArmy e2e gotchas.
 - [shell-testing.md](references/shell-testing.md) - Bats/ShellSpec/shUnit2/cram
   trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, driving a
   tty and answering a prompt on a pty, and keeping suites fast (parallelism,
