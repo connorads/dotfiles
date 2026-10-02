@@ -118,10 +118,6 @@
 /.config/vox/__pycache__/
 /.config/vox/.pytest_cache/
 
-# coord: launch spec for the coordinator agent (read by the `coord` function)
-!/.config/coord/
-!/.config/coord/**
-
 # vale: the Connorads prose style. Nix symlinks it into the macOS global styles
 # dir, so this is the one real copy every consumer resolves through.
 !/.config/vale/
@@ -180,10 +176,6 @@
 /src/raycast/**/raycast-env.d.ts
 /src/raycast/**/*.js.map
 /src/raycast/**/*.tsbuildinfo
-
-# oyp: shared terminal PR review command
-!/src/oyp/
-!/src/oyp/**
 
 # handoff: Claude Code <-> Codex session translator
 !/src/handoff/
