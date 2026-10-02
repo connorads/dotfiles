@@ -60,6 +60,7 @@ case "$*" in
 1 100
 OUT
     ;;
+  *'-o rss= -p 77') echo ' 2097152' ;;
   *'-p 1 -o command='*) echo '/Applications/App1.app/Contents/MacOS/App1' ;;
   *'-p 2 -o command='*) echo '/Applications/App2.app/Contents/MacOS/App2' ;;
   *'-p 3 -o command='*) echo '/Applications/App3.app/Contents/MacOS/App3' ;;
@@ -67,6 +68,20 @@ OUT
   *'-p 5 -o command='*) echo '/Applications/App5.app/Contents/MacOS/App5' ;;
   *'-p 6 -o command='*) echo '/Applications/App6.app/Contents/MacOS/App6' ;;
 esac
+STUB
+
+  # vm_stat at a 1 MB page size, so FAKE_WIRED_MB pages are that many MB.
+  write_stub vm_stat <<'STUB'
+#!/usr/bin/env bash
+printf 'Mach Virtual Memory Statistics: (page size of 1048576 bytes)\n'
+printf 'Pages wired down: %s.\n' "${FAKE_WIRED_MB:-3686}"
+STUB
+
+  # pgrep: WindowServer is pid 77 (2.0G RSS in the ps stub); nothing else runs.
+  write_stub pgrep <<'STUB'
+#!/usr/bin/env bash
+[ "$*" = "-x WindowServer" ] && echo 77 && exit 0
+exit 1
 STUB
 
   write_stub osascript <<'STUB'
@@ -99,7 +114,7 @@ STUB
   run_zsh_function "$MEMWATCH" --once
 
   [ "$status" -eq 0 ]
-  grep -Eq '^[0-9T:-]+  state=BUSY  cause=slots  pressure=1  swap=6\.0G  slots=62%  segs=27%  ratio=2\.3$' "$MEMWATCH_LOG"
+  grep -Eq '^[0-9T:-]+  state=BUSY  cause=slots  pressure=1  swap=6\.0G  wired=3\.6G  ws=2\.0G  slots=62%  segs=27%  ratio=2\.3$' "$MEMWATCH_LOG"
 }
 
 @test "the banner names both arms with their distance to the next line, swap and the top app" {
@@ -108,7 +123,7 @@ STUB
   run_zsh_function "$MEMWATCH" --once
 
   [ "$status" -eq 0 ]
-  grep -q 'display notification "slots 62% (18 to red) · segs 27% (43 to amber) · swap 6.0G · top: App6 ≈6M" with title "Memory BUSY"' "$OSASCRIPT_LOG"
+  grep -q 'display notification "slots 62% (18 to red) · segs 27% (43 to amber) · swap 6.0G · wired 3.6G · WS 2.0G · top: App6 ≈6M" with title "Memory BUSY"' "$OSASCRIPT_LOG"
 }
 
 @test "warn pressure with a resting compressor logs nothing and posts no banner" {
@@ -129,6 +144,16 @@ STUB
   [ "$status" -eq 0 ]
   grep -q '  state=CRITICAL  cause=pressure  pressure=4  ' "$MEMWATCH_LOG"
   grep -q 'with title "Memory CRITICAL"' "$OSASCRIPT_LOG"
+}
+
+@test "wired at the critical line is CRITICAL with cause wired while the compressor idles" {
+  export FAKE_WIRED_MB=13000
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  grep -q '  state=CRITICAL  cause=wired  pressure=1  swap=0M  wired=12\.7G  ws=2\.0G  slots=0%' "$MEMWATCH_LOG"
+  grep -q '· wired 12.7G · WS 2.0G · .*with title "Memory CRITICAL"' "$OSASCRIPT_LOG"
 }
 
 @test "a sustained unchanged reading is logged once, even with the cooldown lapsed" {

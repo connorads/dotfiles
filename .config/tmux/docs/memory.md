@@ -83,9 +83,9 @@ distance, and the help section reads as a procedure. Change as a set:
   Every 5 s (`MEMWATCH_INTERVAL`) it reads the pressure level and the four
   compressor counters, derives state and cause through the lib, and on a
   transition into BUSY/CRITICAL posts a banner - `slots 62% (18 to red) · segs
-  27% (43 to amber) · swap 6.0G · top: <app>`, the distance via `mem_arm_gap` -
-  and appends `<ts>  state=  cause=  pressure=  swap=  slots=  segs=  ratio=`
-  plus the top-5 footprint rows to `~/.cache/memwatch.log`. A sustained bad
+  27% (43 to amber) · swap 6.0G · wired 3.6G · WS 2.0G · top: <app>`, the
+  distance via `mem_arm_gap` - and appends `<ts>  state=  cause=  pressure=
+  swap=  wired=  ws=  slots=  segs=  ratio=` plus the top-5 footprint rows to `~/.cache/memwatch.log`. A sustained bad
   state is re-logged and re-bannered only once per `MEMWATCH_COOLDOWN` (600 s)
   *and* only when the reading has moved against the last line written: state
   or cause differs, or either arm by `MEMWATCH_DELTA_PCT` (3) points or more.
@@ -98,7 +98,12 @@ distance, and the help section reads as a procedure. Change as a set:
   **liveness probe**: a wake later than `MEMWATCH_STALL_LOG_SECS` (2) logs
   `<ts>  stall=Ns  interval=Ns`, and one later than
   `MEMWATCH_STALL_CRITICAL_SECS` (5) makes the next tick CRITICAL with the
-  memwatch-local cause `stall`. An observed compressor panic was preceded by
+  memwatch-local cause `stall`. Wired memory (`mem_wired_mb`, one `vm_stat`
+  fork a tick) at or over `MEMWATCH_WIRED_CRITICAL_MB` (12288) makes the tick
+  CRITICAL with the memwatch-local cause `wired`: wired pages are neither
+  compressed nor swapped, so a GPU-heavy process can exhaust RAM with the
+  compressor nearly empty. `ws=` is WindowServer's RSS (`mem_rss_mb`), since
+  `footprint` needs root for WindowServer and the top-5 rows never show it. An observed compressor panic was preceded by
   ~2 min of userspace stall, which a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.
