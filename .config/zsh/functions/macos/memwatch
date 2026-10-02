@@ -27,8 +27,9 @@
 # wired: they can be neither compressed nor swapped, so a GPU-heavy process
 # can fill RAM while the compressor stays nearly empty. Wired at or over
 # MEMWATCH_WIRED_CRITICAL_MB makes the tick CRITICAL with cause=wired.
-# WindowServer RSS is logged and bannered beside it, because footprint needs
-# root for WindowServer and so the top-5 rows never show it.
+# WindowServer's footprint, read through top, is logged and bannered beside
+# it, because footprint(1) needs root for WindowServer and so the top-5 rows
+# never show it.
 #
 # One automatic action (docs/adr/0020): on every CRITICAL tick, whatever the
 # cause, every chrome-headless-shell is SIGKILLed, logged as a killed= line and
@@ -51,7 +52,7 @@ setopt no_unset
 zmodload zsh/datetime # $EPOCHREALTIME for the stall probe
 
 # System tools live outside a login agent's minimal PATH; mem-lib calls sysctl
-# (/usr/sbin), footprint/vm_stat/osascript/ps (/usr/bin, /bin). Appended (not
+# (/usr/sbin), footprint/vm_stat/osascript/ps/top/pgrep (/usr/bin, /bin). Appended (not
 # prepended) so a real environment still resolves these while a test PATH shim
 # can still take precedence.
 export PATH="$PATH:/usr/bin:/usr/sbin:/bin"
@@ -162,7 +163,7 @@ while :; do
 			grouped=$(top_apps)
 			swap=$(mem_swap_human)
 			wired_h=$(mem_human_mb "$wired")
-			ws_h=$(mem_human_mb "$(mem_rss_mb WindowServer)")
+			ws_h=$(mem_human_mb "$(mem_top_mem_mb WindowServer)")
 			hog=$(printf '%s\n' "$grouped" | awk -F '\037' 'NR==1 {
 				printf "%s ≈%s", $3, ($1 >= 1024 ? sprintf("%.1fG", $1/1024) : $1 "M") }')
 			[[ -n "$hog" ]] || hog="(no footprint data)"

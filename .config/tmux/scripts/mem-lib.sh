@@ -371,6 +371,34 @@ mem_rss_mb() {
 	ps -o rss= -p "${_pids%,}" 2>/dev/null | awk '{ kb += $1 } END { printf "%d", kb / 1024 }'
 }
 
+# mem_top_mem_mb NAME - summed phys_footprint in integer MB of every process
+# named exactly NAME, 0 when none runs. Read from top's MEM column, which is
+# phys_footprint and, unlike footprint(1), needs no root for WindowServer.
+# RSS is no substitute there: WindowServer's GPU and IOSurface memory is
+# outside RSS, which reads ~64M while its footprint is ~700M.
+# The split is on the command substitution, as in mem_compressor_raw.
+mem_top_mem_mb() {
+	_name=$1
+	# shellcheck disable=SC2046  # deliberate split into repeated -pid flags
+	set -- $(pgrep -x "$_name" 2>/dev/null | sed 's/^/-pid /')
+	if [ "$#" -eq 0 ]; then
+		echo 0
+		return
+	fi
+	top -l 1 "$@" -stats pid,mem 2>/dev/null | awk '
+		f && $1 ~ /^[0-9]+$/ {
+			v = $2; gsub(/[+-]$/, "", v)
+			u = substr(v, length(v), 1); n = substr(v, 1, length(v) - 1) + 0
+			if (u == "G") n *= 1024
+			else if (u == "K") n /= 1024
+			else if (u == "B") n /= 1048576
+			else if (u != "M") n = v / 1048576
+			mb += n
+		}
+		$1 == "PID" { f = 1 }
+		END { printf "%d", mb }'
+}
+
 # mem_app_name COMMAND — the group key for a process command line: the .app
 # bundle name when present (truncated at the FIRST .app so nested helper
 # bundles like "Google Chrome.app/.../Google Chrome Helper.app" roll up to the
