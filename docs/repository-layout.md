@@ -63,7 +63,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [~/src/skl](../src/skl/CONTEXT.md) | `skl` (bun/TS); config `.config/skl/config.json`. Tests: `bun test` there, plus `skl-pick.bats` |
 | [~/src/xreview](../src/xreview/CONTEXT.md)                              | `xreview`: headless, read-only review of a change, PR or plan by another agent (Codex when Claude calls, Claude when Codex does; `--reviewer codex,claude` for a panel). bun/TS, zero runtime deps, own [ADRs](../src/xreview/docs/adr/). One Review JSON document out, exit 0 approve / 1 needs-attention / 2 usage / 3 failed; `--post` creates a pending GitHub review. Read-only is enforced per reviewer (codex `-s read-only`; claude with no setting sources, `dontAsk` and its native sandbox), not asked for. Wrapper in `functions/agents`; skill `personal/xreview`. Tests: `cd ~/src/xreview && bun test`, plus `.config/zsh/tests/xreview.bats` (CLI contract, stubbed reviewers) |
 | [~/src/raycast/skl](../src/raycast/skl/README.md) | Raycast extension over the `skl` catalogue; couples to the `~/.local/bin/skl` shim |
-| `src/oyp/oyp.sh` | `oyp`: open the current PR in the terminal (via `.local/bin/oyp`) |
 
 ## Scripts
 

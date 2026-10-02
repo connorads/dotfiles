@@ -27,7 +27,6 @@ ccp [-y] [<name>]      # launch Claude Code on an account (bare = picker); --mcp
 claude-usage --all     # refresh usage for every Claude account
 mcpz                   # MCP bundles: list, show, render, run per agent
 agent <sub>            # live agent panes: ls, state, wait, prompt, name, pick, goto, hibernate, thaw, auto, pin
-coord                  # jump to the coordinator agent, launching it if absent
 atp                    # teleport a live Claude/Codex session to another host
 handoff                # translate a session between Claude Code and Codex
 shotpath [host]        # save or upload the clipboard image, copy its path

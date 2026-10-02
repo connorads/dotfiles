@@ -71,7 +71,6 @@
 | `Ctrl+b Alt+j` | jjui (jj TUI) |
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff (no changes → status-line message, no float) |
-| `Ctrl+b Alt+d` | coordinator: jump to the `coord` agent (launched in `~/git/coord` if absent); press again inside it to return to the pane you came from |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b f` | Fresh editor |
@@ -115,7 +114,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+y` | grab (vox) - while recording, copy the call's transcript so far (both sides, no speaker labels) to paste into an agent; the pill menu also copies the last 5 min |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
-| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui · `o` Oyo current PR/local review) |
+| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
 
