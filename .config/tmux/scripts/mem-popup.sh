@@ -57,17 +57,6 @@ group_rows() {
 	awk -F '\037' 'NF >= 3 { print $1 "\037" $2 }' | mem_group_apps
 }
 
-vm_stat_mb() {
-	vm_stat 2>/dev/null | awk -v field="$1" '
-		/page size of/ { for (i = 1; i <= NF; i++) if ($i == "of") { ps = $(i + 1); break } }
-		$0 ~ field {
-			n = $NF; gsub(/[^0-9]/, "", n)
-			printf "%d", n * ps / 1048576
-			found = 1; exit
-		}
-		END { if (!found) print 0 }'
-}
-
 agent_rows() {
 	tmux list-panes -a -F "#{@agent_state}${_US}#{window_name}${_US}#{pane_pid}" 2>/dev/null |
 		awk -F '\037' '$1 != ""'
@@ -195,7 +184,7 @@ render_header() {
 	esac
 	printf '%s %s  Memory   pressure %s/4%s   wired %s\n' \
 		"$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" "$_state")" "$_level" "$_marker" \
-		"$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")"
+		"$(mem_human_mb "$(mem_wired_mb)")"
 	render_arm ⬡ Slots "$_slots_pct" "$MEM_BUSY_SLOTS_PCT" "$MEM_CRITICAL_SLOTS_PCT" \
 		"$(gib_of "$_pages" "$_pgsz")" "$(gib_of "$_plimit" "$_pgsz")"
 	printf '           pages held; fall only when the owning process frees or exits\n'

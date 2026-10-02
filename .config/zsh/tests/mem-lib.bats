@@ -415,3 +415,49 @@ EOF
   lib 'mem_bar 20 10 6'
   [ "$output" = "▓▓▓▓▓▓" ]
 }
+
+# --- wired memory and per-name RSS -----------------------------------------
+
+@test "wired reads the vm_stat wired line in MB at the reported page size" {
+  write_stub vm_stat <<'STUB'
+#!/usr/bin/env bash
+cat <<'OUT'
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                               12345.
+Pages wired down:                        230000.
+OUT
+STUB
+  lib mem_wired_mb
+  [ "$output" = "3593" ]
+}
+
+@test "wired reads 0 when vm_stat is unavailable" {
+  write_stub vm_stat <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+  lib mem_wired_mb
+  [ "$output" = "0" ]
+}
+
+@test "rss sums every process with the exact name, in MB" {
+  write_stub pgrep <<'STUB'
+#!/usr/bin/env bash
+[ "$1 $2" = "-x WindowServer" ] && printf '11\n12\n'
+STUB
+  write_stub ps <<'STUB'
+#!/usr/bin/env bash
+[ "$*" = "-o rss= -p 11,12" ] && printf ' 1048576\n 524288\n'
+STUB
+  lib 'mem_rss_mb WindowServer'
+  [ "$output" = "1536" ]
+}
+
+@test "rss reads 0 when no process has the name" {
+  write_stub pgrep <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+  lib 'mem_rss_mb WindowServer'
+  [ "$output" = "0" ]
+}
