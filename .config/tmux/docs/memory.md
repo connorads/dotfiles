@@ -102,8 +102,10 @@ distance, and the help section reads as a procedure. Change as a set:
   fork a tick) at or over `MEMWATCH_WIRED_CRITICAL_MB` (12288) makes the tick
   CRITICAL with the memwatch-local cause `wired`: wired pages are neither
   compressed nor swapped, so a GPU-heavy process can exhaust RAM with the
-  compressor nearly empty. `ws=` is WindowServer's RSS (`mem_rss_mb`), since
-  `footprint` needs root for WindowServer and the top-5 rows never show it. An observed compressor panic was preceded by
+  compressor nearly empty. `ws=` is WindowServer's footprint from `top`'s MEM
+  column (`mem_top_mem_mb`), since `footprint` needs root for WindowServer and
+  the top-5 rows never show it. Its RSS is no substitute: GPU and IOSurface
+  memory sits outside RSS. An observed compressor panic was preceded by
   ~2 min of userspace stall, which a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.

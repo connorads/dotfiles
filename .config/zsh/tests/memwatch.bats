@@ -60,7 +60,6 @@ case "$*" in
 1 100
 OUT
     ;;
-  *'-o rss= -p 77') echo ' 2097152' ;;
   *'-o rss= -p 91,92') printf ' 1048576\n 1048576\n' ;;
   *'-p 1 -o command='*) echo '/Applications/App1.app/Contents/MacOS/App1' ;;
   *'-p 2 -o command='*) echo '/Applications/App2.app/Contents/MacOS/App2' ;;
@@ -78,7 +77,13 @@ printf 'Mach Virtual Memory Statistics: (page size of 1048576 bytes)\n'
 printf 'Pages wired down: %s.\n' "${FAKE_WIRED_MB:-3686}"
 STUB
 
-  # pgrep: WindowServer is pid 77 (2.0G RSS in the ps stub); with FAKE_CHROME
+  # top: WindowServer (pid 77) has a 2.0G footprint.
+  write_stub top <<'STUB'
+#!/usr/bin/env bash
+[ "$*" = "-l 1 -pid 77 -stats pid,mem" ] && printf 'Processes: 1 total\nPID  MEM\n77   2048M+\n'
+STUB
+
+  # pgrep: WindowServer is pid 77 (2.0G footprint in the top stub); with FAKE_CHROME
   # set, chrome-headless-shell is pids 91 and 92 (1.0G each).
   write_stub pgrep <<'STUB'
 #!/usr/bin/env bash

@@ -461,3 +461,26 @@ STUB
   lib 'mem_rss_mb WindowServer'
   [ "$output" = "0" ]
 }
+
+@test "top footprint sums every process with the exact name across units" {
+  write_stub pgrep <<'STUB'
+#!/usr/bin/env bash
+[ "$1 $2" = "-x WindowServer" ] && printf '11\n12\n'
+STUB
+  write_stub top <<'STUB'
+#!/usr/bin/env bash
+[ "$*" = "-l 1 -pid 11 -pid 12 -stats pid,mem" ] || exit 1
+printf 'Processes: 2 total\nLoad Avg: 1.0\nPID  MEM\n11   1536M+\n12   2G-\n'
+STUB
+  lib 'mem_top_mem_mb WindowServer'
+  [ "$output" = "3584" ]
+}
+
+@test "top footprint reads 0 when no process has the name" {
+  write_stub pgrep <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+  lib 'mem_top_mem_mb WindowServer'
+  [ "$output" = "0" ]
+}
