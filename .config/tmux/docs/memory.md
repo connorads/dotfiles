@@ -107,10 +107,14 @@ distance, and the help section reads as a procedure. Change as a set:
   ~2 min of userspace stall, which a 5 s sleeper sees as it starts; the probe measures
   memwatch's own scheduling, a proxy for watchdogd's thread and not that
   thread, so the thresholds sit well inside the kernel's ~90 s deadline.
-  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). It never
-  hibernates a pane. Reload after edits:
+  `MEMWATCH_TICKS` bounds the loop (`--once` = 1, and never sleeps). Its one
+  automatic action ([ADR 0020](../../../docs/adr/0020-memwatch-kills-headless-chrome-at-critical.md)):
+  on every CRITICAL tick, any cause, it SIGKILLs every `chrome-headless-shell`,
+  logs `<ts>  killed=chrome-headless-shell  n=  rss=  cause=` and posts a
+  "Memory CRITICAL: killed headless Chrome" banner. `MEMWATCH_KILL=0` turns it
+  off. It never hibernates a pane. Reload after edits:
   `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`; a dry run is
-  `MEM_CRITICAL_SLOTS_PCT=1 memwatch --once`.
+  `MEMWATCH_KILL=0 MEM_CRITICAL_SLOTS_PCT=1 memwatch --once`.
 
 Tests: [`../zsh/tests/mem-lib.bats`](../../zsh/tests/mem-lib.bats) (lib vocabulary,
 including the gather under zsh with `no_unset`),
@@ -118,8 +122,8 @@ including the gather under zsh with `no_unset`),
 the two-arm header and the hibernate flow),
 [`../zsh/tests/memwatch.bats`](../../zsh/tests/memwatch.bats) (the watcher: log
 grammar, banner, the top-5 rows with no leaked parameter echo, the stall
-probe against a real overrunning `sleep` stub, `--once`, and the emergency
-tier's mode / pins / refusal / lock / cooldown cases against a stub engine),
+probe against a real overrunning `sleep` stub, `--once`, the `wired` cause,
+and the headless Chrome kill against `pgrep` / `pkill` stubs),
 and the RAM/mem
 pills in [`../zsh/tests/status-right.bats`](../../zsh/tests/status-right.bats).
 Keep the gauge legend in [`help.md`](../help.md) in sync with the lib.
