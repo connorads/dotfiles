@@ -1032,7 +1032,6 @@ local fast_steps = new Mapping<String, Step> {
             ".config/opencode/plugin/**/*.ts",
             ".config/opencode/plugins-v1/**/*.ts",
             ".config/opencode/plugins-v2/**/*.ts",
-            ".config/opencode/plugin-disabled/**/*.ts",
             ".config/opencode/tsconfig.json"
         )
         check = "bash .hk-hooks/ts-typecheck.sh .config/opencode"

@@ -32,16 +32,13 @@ http-server -a 127.0.0.1
 
 ### Serve port registry
 
-Each service uses a dedicated external HTTPS port so multiple services can coexist:
+The managed service uses a dedicated local port and the apex HTTPS endpoint:
 
 | Service   | `svc` name  | Local port | External HTTPS |
 | --------- | ----------- | ---------- | -------------- |
 | remobi    | `remobi`    | 7682       | **443** (apex) |
-| toad      | `toad`      | 8000       | 8000           |
-| gigacode  | `gigacode`  | 2468       | 2468           |
-| companion | `companion` | 3456       | 3456           |
 
-Pattern: `ts serve --bg --https=$port $port` - remobi is the exception, omitting `--https=` to claim the apex `:443`.
+`svc up remobi` exposes local port 7682 with `ts serve --bg --https=443 7682`.
 
 ### Public access options
 

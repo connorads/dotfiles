@@ -45,9 +45,9 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"SERVICE"* ]]
   [[ "$output" == *"remobi"* ]]
-  [[ "$output" == *"toad"* ]]
-  [[ "$output" == *"gigacode"* ]]
-  [[ "$output" == *"companion"* ]]
+  [[ "$output" != *"toad"* ]]
+  [[ "$output" != *"gigacode"* ]]
+  [[ "$output" != *"companion"* ]]
 }
 
 @test "ls probes service status without starting or stopping services" {
@@ -56,11 +56,7 @@ EOF
   run_zsh_function "$SVC" ls
 
   [ "$status" -eq 0 ]
-  grep -q '^tmux has-session -t remobi$' "$TEST_LOG"
-  grep -q '^tmux has-session -t toad$' "$TEST_LOG"
-  grep -q '^tmux has-session -t gigacode$' "$TEST_LOG"
-  grep -q '^tmux has-session -t companion$' "$TEST_LOG"
-  ! grep -q '^ts serve' "$TEST_LOG"
+  [ "$(cat "$TEST_LOG")" = 'tmux has-session -t remobi' ]
 }
 
 @test "unknown service fails before mutating anything" {
@@ -70,8 +66,20 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: unknown service 'bogus'"* ]]
-  [[ "$output" == *"available: remobi, toad, gigacode, companion"* ]]
+  [[ "$output" == *"available: remobi"* ]]
   [ ! -s "$TEST_LOG" ]
+}
+
+@test "removed services fail before starting processes or exposing ports" {
+  write_svc_stubs
+
+  for name in toad gigacode companion; do
+    run_zsh_function "$SVC" up "$name"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"error: unknown service '$name'"* ]]
+    [ ! -s "$TEST_LOG" ]
+  done
 }
 
 @test "ui reports missing fzf" {
@@ -83,40 +91,40 @@ EOF
   [[ "$output" == *"fzf required"* ]]
 }
 
-@test "up toad aborts when hostname lookup fails" {
+@test "up remobi aborts when hostname lookup fails" {
   write_svc_stubs
   export TS_HOSTNAME_STATUS=42
 
-  run_zsh_function "$SVC" up toad
+  run_zsh_function "$SVC" up remobi
 
   [ "$status" -eq 1 ]
   [ ! -s "$TEST_LOG" ]
 }
 
-@test "up gigacode uses custom local port and fixed external https port" {
+@test "up remobi uses custom local port and fixed external https port" {
   write_svc_stubs
 
-  run_zsh_function "$SVC" up gigacode 9999
+  run_zsh_function "$SVC" up remobi 9999
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"gigacode: https://host.tailnet.ts.net:2468"* ]]
-  grep -Fxq 'tmux kill-session -t gigacode' "$TEST_LOG"
-  grep -Fq 'tmux new-session -d -s gigacode' "$TEST_LOG"
-  grep -Fq 'gigacode server --host 127.0.0.1 --port 9999 --no-token' "$TEST_LOG"
-  grep -Fxq 'ts serve --bg --https=2468 9999' "$TEST_LOG"
+  [[ "$output" == *"remobi: https://host.tailnet.ts.net"* ]]
+  grep -Fxq 'tmux kill-session -t remobi' "$TEST_LOG"
+  grep -Fq 'tmux new-session -d -s remobi' "$TEST_LOG"
+  grep -Fq 'remobi serve --no-sleep --port 9999 -- tmux new-session -A -s main' "$TEST_LOG"
+  grep -Fxq 'ts serve --bg --https=443 9999' "$TEST_LOG"
 }
 
 @test "restart tears down then starts the selected service" {
   write_svc_stubs
 
-  run_zsh_function "$SVC" restart toad
+  run_zsh_function "$SVC" restart remobi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"toad stopped"* ]]
-  [[ "$output" == *"toad: https://host.tailnet.ts.net:8000"* ]]
-  expected=$'tmux kill-session -t toad\nts serve --https=8000 off\ntmux kill-session -t toad'
+  [[ "$output" == *"remobi stopped"* ]]
+  [[ "$output" == *"remobi: https://host.tailnet.ts.net"* ]]
+  expected=$'tmux kill-session -t remobi\nts serve --https=443 off\ntmux kill-session -t remobi'
   [[ "$(head -n 3 "$TEST_LOG")" = "$expected" ]]
-  grep -Fxq 'ts serve --bg --https=8000 8000' "$TEST_LOG"
+  grep -Fxq 'ts serve --bg --https=443 7682' "$TEST_LOG"
 }
 
 @test "up remobi runs in a managed tmux session on its collision-free port" {

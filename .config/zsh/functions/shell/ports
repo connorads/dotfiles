@@ -85,9 +85,6 @@ selected=$(printf '%s\n' "${rows[@]}" | sort -n -k1,1 | uniq | fzf --reverse --m
 
     case "$port" in
       7681) echo "Hint: webterm service (try: webtermdown $port)" ;;
-      2468) echo "Hint: gigacode service (try: gigadown)" ;;
-      3456) echo "Hint: companion service (try: companiondown)" ;;
-      8000) echo "Hint: toad service (try: toaddown)" ;;
     esac
 
     if [ "$pid" != "-" ] && command -v ps >/dev/null 2>&1; then
