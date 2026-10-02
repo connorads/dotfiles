@@ -1,0 +1,2 @@
+{{marker}}
+From the recorded upstream repository checkout, run `python3 <repo-root>/scripts/verify-architecture-delta.py --all` (or pass explicit HTML paths) and `python3 <repo-root>/scripts/test-verify-architecture-delta.py`. These verifiers are not packaged in the installed skill. From an installed copy, run `python3 scripts/self_check.py <html-file>` and manually verify the declared metadata, differential semantics, grid/bounds, relationship endpoints, budgets and exact ledger coverage described above. Do not claim that manual checks execute the missing verifier.

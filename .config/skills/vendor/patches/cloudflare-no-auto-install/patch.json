@@ -1,0 +1,6 @@
+{
+  "reason": "tool versions and installation remain under local runtime and package protections",
+  "files": [
+    ".agents/skills/cloudflare/SKILL.md"
+  ]
+}

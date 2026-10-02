@@ -1,0 +1,6 @@
+{
+  "reason": "use the existing emulate executable instead of per-call npm downloads",
+  "files": [
+    ".agents/skills/emulate/SKILL.md"
+  ]
+}

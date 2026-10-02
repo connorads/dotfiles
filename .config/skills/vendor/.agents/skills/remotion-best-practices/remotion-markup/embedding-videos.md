@@ -38,7 +38,7 @@ Remote URLs are also supported:
 
 ## Trimming
 
-Use `trimBefore` and `trimAfter` to remove portions of the video. Values are in seconds.
+Use `trimBefore` to skip the beginning of the video and `durationInFrames` to end it early. Values are in frames.
 
 ```tsx
 const { fps } = useVideoConfig();
@@ -47,25 +47,23 @@ return (
   <Video
     src={staticFile("video.mp4")}
     trimBefore={2 * fps} // Skip the first 2 seconds
-    trimAfter={10 * fps} // End at the 10 second mark
+    durationInFrames={8 * fps} // Play 8 seconds, until the 10 second mark
   />
 );
 ```
 
 ## Delaying
 
-Wrap the video in a `<Sequence>` to delay when it appears:
+Set `from` directly on `<Video>` to delay when it appears:
 
 ```tsx
-import { Sequence, staticFile } from "remotion";
+import { staticFile, useVideoConfig } from "remotion";
 import { Video } from "@remotion/media";
 
 const { fps } = useVideoConfig();
 
 return (
-  <Sequence from={1 * fps}>
-    <Video src={staticFile("video.mp4")} />
-  </Sequence>
+  <Video from={fps} src={staticFile("video.mp4")} />
 );
 ```
 
@@ -97,22 +95,26 @@ Set a static volume (0 to 1):
 <Video src={staticFile("video.mp4")} volume={0.5} />
 ```
 
-Or use a callback for dynamic volume based on the current frame:
+Use `useCurrentFrame()` and `interpolate()` for keyframed volume:
 
 ```tsx
-import { interpolate } from "remotion";
+import { interpolate, useCurrentFrame } from "remotion";
 
+const frame = useCurrentFrame();
 const { fps } = useVideoConfig();
 
 return (
   <Video
     src={staticFile("video.mp4")}
-    volume={(f) =>
-      interpolate(f, [0, 1 * fps], [0, 1], { extrapolateRight: "clamp" })
-    }
+    volume={interpolate(frame, [0, 1 * fps], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })}
   />
 );
 ```
+
+With Studio interactivity enabled, these keyframes can be edited and are shown as a volume curve in the timeline. A callback is still supported when the curve should be procedural or relative to the start of the media.
 
 Use `muted` to silence the video entirely:
 

@@ -165,7 +165,7 @@ Write the new tokens to `~/.diagram-design/profiles/<slug>.md` per [`profiles.md
 
 After onboarding, the user should:
 
-1. Open `assets/index.html` (gallery) and confirm the new palette feels coherent across all 40 types.
+1. Open `assets/index.html` (gallery) and confirm the new palette feels coherent across all 42 types.
 2. If any type looks off, they usually need to tune `muted` (often too dark or too light against the new `paper`).
 
 ---

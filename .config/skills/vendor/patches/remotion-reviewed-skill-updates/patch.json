@@ -1,0 +1,6 @@
+{
+  "reason": "skill refreshes require recorded Git snapshots and instruction review, including during runtime upgrades",
+  "files": [
+    ".agents/skills/remotion-best-practices/remotion-upgrade/REFERENCE.md"
+  ]
+}

@@ -229,6 +229,7 @@ slack:
       name: My Slack App
       redirect_uris:
         - http://localhost:3000/api/auth/callback/slack
+  signing_secret: my_signing_secret
 
 linear:
   organization:
@@ -421,6 +422,8 @@ twilio:
       - friendly_name: Local Conversations
 ```
 
+`slack.signing_secret` signs every outbound event subscription callback. Signed callbacks include `X-Slack-Request-Timestamp` and `X-Slack-Signature`, calculated as `v0=<HMAC-SHA256(secret, "v0:<timestamp>:<raw-body>")>` over the exact serialized callback body. Configure the receiver with the same secret and verify the unparsed request body. Callbacks are unsigned when the secret is absent or empty.
+
 GitHub App `private_key` values are intentionally omitted from starter configuration. Programmatic `createEmulator` calls generate an RSA key and expose it through `generatedSecrets`. CLI startup generates omitted keys only when `--generated-secrets-file <path>` is provided; otherwise the seed must contain an explicit, valid private key. Never use a placeholder PEM value.
 
 GitHub organization `members` are optional. Entries reference seeded users by `login`; `role` defaults to `member`, while `admin` creates an organization administrator. Unknown users are ignored.
@@ -541,3 +544,8 @@ packages/
 ```
 
 The core provides a generic `Store` with typed `Collection<T>` instances supporting CRUD, indexing, filtering, and pagination. Each service plugin registers routes with the shared internal app and uses the store for state.
+
+## Custom emulators alongside built-ins
+
+<!-- LOCAL PATCH (connorads dotfiles): use the existing emulate executable instead of per-call npm downloads -->
+Use `emulate init --custom inventory` to scaffold a third-party API emulator and test. The command registers it in a discovered YAML, JSON, TypeScript, or JavaScript config, including one with existing services; unusual executable configs get printed manual registration steps. Run `emulate start --watch` to reload imports. Use the service URL and Inspector link in the startup banner for requests because the port depends on the config. Creating a missing local import outside the config directory also retries a failed reload. Successful reloads reset the run to seed. Existing flat seed configs still work; `--config` selects an explicit file. Node 26 loads erasable TypeScript; compile enums and parameter properties to JavaScript first. Node 24 also supports native TypeScript transforms. For authoring and testing third-party API emulators, see https://emulate.dev/docs/custom-emulators.

@@ -1,0 +1,6 @@
+{
+  "reason": "retain existing tool permissions without authorising npm downloads",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}

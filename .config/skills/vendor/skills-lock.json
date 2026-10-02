@@ -43,7 +43,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "c9b25ff6c3be26e74162e7df183990f8ee76ad6d1ee37d9ca50b4dd23cb06ad1"
+      "computedHash": "6f0a70840cad114f020e5950874f255b22e669f07036cf4f81d8f733ae0233a0"
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
@@ -74,7 +74,7 @@
       "source": "cathrynlavery/diagram-design",
       "sourceType": "github",
       "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "02da87e79bc19ec9a09931fa998828e30ff63f8512f4d8b453b0a9cd59c94eaa"
+      "computedHash": "beb273b3cdce9021c6c28fc5de2fa7b62d0f13e7d69d506126072409124314f6"
     },
     "dream-loop": {
       "source": "achimala/dream-loop",
@@ -92,7 +92,7 @@
       "source": "vercel-labs/emulate",
       "sourceType": "github",
       "skillPath": "skills/emulate/SKILL.md",
-      "computedHash": "d8d1777a0deeb922b25bc6116e98fbe2af82ca2f412ed13312bb43ff785e8f40"
+      "computedHash": "2a1e296eba9a59cbc4c7c1463948f5b4d5611e1a65f4f48836eba4780d03b69c"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -110,13 +110,13 @@
       "source": "github/gh-stack",
       "sourceType": "github",
       "skillPath": "skills/gh-stack/SKILL.md",
-      "computedHash": "28d42250d52f33424b807add6fbdec75736e835f98752311db321ab51733fea6"
+      "computedHash": "6a5289601eedbeedc2d79c2d8627277afb9b9a3fbd78b4da3399a46dd788ae0a"
     },
     "humanizer": {
       "source": "blader/humanizer",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "0a4518725b506f6c83e65f2d6d87cb56fbc042ba92de5eecb1ef8b995ec69d70"
+      "computedHash": "fa4ffac562a8e7349282f606391ede22d23118e998dc8b5ac931662fa734c1b7"
     },
     "i-have-adhd": {
       "source": "ayghri/i-have-adhd",
@@ -134,7 +134,7 @@
       "source": "kunchenguid/lavish-axi",
       "sourceType": "github",
       "skillPath": "skills/lavish/SKILL.md",
-      "computedHash": "5ff18ff1fb92bda3049037e08d1f7db31f7667bc90635677c37dcf620fd0c1a4"
+      "computedHash": "7a82385996353d525e181bbcef8d95c4d43bfdbc666cd4e91d073d32201c5dcd"
     },
     "lean-proof": {
       "source": "leanprover/skills",
@@ -194,13 +194,13 @@
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "1e6cef0264b72fbf47618ccb82644b9a72934b2eeb35186842332928492a3cd2"
+      "computedHash": "ffbd59a973d4e2c19c6ecc31254a14497069c362f1d1820b6a6cfbe62de34a73"
     },
     "portless": {
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "167f39fe23acb521875ce1a1c9a4af08ca5a5f5d42fdb380f78f64779d5c03b9"
+      "computedHash": "1ca59a35c9654ca7a8e034c99a2375b1b14bf9b6cfa93f491850de58afd7aa81"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
@@ -218,7 +218,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "d733df539b855462d037968a8fe6c349072579d9cdfa1151d00cee8d09c1087e"
+      "computedHash": "bac35fc4933aedc4d971ba2e6254e6f8d5b1d987c26503726e29f7237a7b7205"
     },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
@@ -281,7 +281,7 @@
       "source": "vercel-labs/vgpu",
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
-      "computedHash": "da4c3dfe0af5dd1e2771e6004927f9394aa130bded4bc60f0be21a4f442dd08f"
+      "computedHash": "be4dfa7e50c0b8769f22e9761334d96343627a25ef06dbdb193f7772c54f98be"
     },
     "visual-pr": {
       "source": "humanlayer/skills",

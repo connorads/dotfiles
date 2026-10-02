@@ -1,0 +1,1 @@
+Install the latest release from npm, for example with `npm install --global cf@latest`. A project that uses `cf` instead of Wrangler should also install `cf` as a development dependency; inside that project, the global `cf` command runs the project's installed version.
