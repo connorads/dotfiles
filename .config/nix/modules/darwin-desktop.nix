@@ -124,7 +124,6 @@
       "linear"
       "miro"
 
-      "blackhole-16ch"
     ];
     # Requires an Apple Account signed in to the App Store; nothing here installs
     # without it (nix-darwin puts pkgs.mas on PATH for the bundle run only, so

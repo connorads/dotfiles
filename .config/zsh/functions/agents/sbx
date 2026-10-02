@@ -1,8 +1,6 @@
 #!/usr/bin/env zsh
 # sbx: run UNTRUSTED software in a throwaway, VM-isolated container (no host mounts)
-# Sibling of `agentbox`, opposite trust posture: agentbox mounts your home in
-# because it trusts the agent; sbx mounts nothing because it does not trust the
-# code. Isolation is the colima Linux VM + a hardened container (cap-drop ALL,
+# Isolation is the colima Linux VM + a hardened container (cap-drop ALL,
 # no-new-privileges, offline by default). Reconnect resumes an in-container tmux.
 #
 # usage: sbx <subcommand> [name]              (name defaults to "default")
