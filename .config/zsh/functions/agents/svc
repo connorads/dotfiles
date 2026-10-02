@@ -17,13 +17,10 @@ emulate -L zsh
 typeset -A SVC_REGISTRY
 SVC_REGISTRY=(
   remobi  'remobi serve --no-sleep --port $port -- tmux new-session -A -s main|7682|443|tmux|remobi'
-  toad    'toad serve --host 127.0.0.1 --port $port --public-url https://$hostname:$https_port|8000|8000|tmux|toad'
-  gigacode 'gigacode server --host 127.0.0.1 --port $port --no-token|2468|2468|tmux|gigacode'
-  companion 'PORT=$port the-vibe-companion|3456|3456|tmux|companion'
 )
 
 # Ordered list for display
-typeset -a SVC_NAMES=(remobi toad gigacode companion)
+typeset -a SVC_NAMES=(remobi)
 
 _svc_parse_entry() {
   local entry=$1
@@ -43,7 +40,7 @@ Usage:
   svc ls                     list all services with status
   svc ui                     fzf picker for service management
 
-Services: remobi, toad, gigacode, companion
+Services: remobi
 EOF
 }
 

@@ -12,7 +12,7 @@ Hard-coupled, staying put:
 | `.config/nix/{voxtap,biokc,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
 | `.hk-hooks` | `core.hooksPath` is set to `.hk-hooks` |
 | `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
-| `.config/opencode/{plugin,plugins-v1,plugins-v2,plugin-disabled}` | `opencode.json`'s `plugin` array names each file by `file://` absolute path, so a moved file stops loading with no error. `.config/opencode/tsconfig.json` follows the code rather than the reverse: its `include` covers all four dirs |
+| `.config/opencode/{plugin,plugins-v1,plugins-v2}` | `opencode.json`'s `plugin` array names each file by `file://` absolute path, so a moved file stops loading with no error. `.config/opencode/tsconfig.json` follows the code rather than the reverse: its `include` covers all three dirs |
 
 Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS` (Python: `py-typecheck-*`, the `py-tests-scoped` glob *and* `py-tests.sh`'s `ROOTS`), the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
 

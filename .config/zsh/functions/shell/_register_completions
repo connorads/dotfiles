@@ -3,7 +3,7 @@
 
 _svc() {
   local -a subcmds=(up down restart ls ui help)
-  local -a services=(remobi toad gigacode companion)
+  local -a services=(remobi)
   if (( CURRENT == 2 )); then
     _describe 'subcommand' subcmds
   elif (( CURRENT == 3 )); then

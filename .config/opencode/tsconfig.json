@@ -21,7 +21,6 @@
   "include": [
     "plugin/**/*.ts",
     "plugins-v1/**/*.ts",
-    "plugins-v2/**/*.ts",
-    "plugin-disabled/**/*.ts"
+    "plugins-v2/**/*.ts"
   ]
 }

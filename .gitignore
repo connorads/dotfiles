@@ -83,8 +83,6 @@
 !/.config/opencode/plugins-v1/**
 !/.config/opencode/plugins-v2/
 !/.config/opencode/plugins-v2/**
-!/.config/opencode/plugin-disabled/
-!/.config/opencode/plugin-disabled/**
 !/.config/opencode/opencode2.json
 !/.config/opencode/opencode2-yolo.json
 !/.config/opencode/package.json
