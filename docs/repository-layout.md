@@ -29,7 +29,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [packages/footswitch.nix](../.config/nix/packages/footswitch.nix) | Builds `footswitch` for the foot pedal, driven by `pedal-flash`; desktop macOS only |
 | [config.toml](../.config/mise/config.toml) | mise tools; maintenance: [.config/mise/AGENTS.md](../.config/mise/AGENTS.md) |
 | [.config/srt/base.json](../.config/srt/base.json) | `agent-sandbox` (`asb`) OS sandbox policies; docs: [.config/srt/AGENTS.md](../.config/srt/AGENTS.md) |
-| [.config/sbx/Dockerfile](../.config/sbx/Dockerfile) | Image for `sbx`: VM-isolated box for UNTRUSTED software. No host mounts, cap-drop ALL, offline by default |
 | [.vale.ini](../.vale.ini) | Vale config for the house prose rules; applies to markdown and code comments |
 | [.config/vale/styles/Connorads/](../.config/vale/styles/Connorads/) | The house style rules; tests: [vale-style.bats](../.config/zsh/tests/vale-style.bats) |
 | [.oxlintrc.json](../.oxlintrc.json) | The tree's only oxlint config, type-aware rules on |

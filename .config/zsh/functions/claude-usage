@@ -50,7 +50,7 @@ fi
 
 # Resolve this function file's directory (autoload, ~/.local/bin symlink, or
 # direct run) so the shared cache/lock/backoff engine sources cleanly and --all
-# can re-invoke this script per account. Mirrors the agent-usage-log idiom.
+# can re-invoke this script per account.
 local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
 local self_file= candidate_dir
 for candidate_dir in $fpath; do

@@ -111,10 +111,6 @@
 !/.config/srt/
 !/.config/srt/**
 
-# sbx: Dockerfile for the untrusted-software sandbox container (see sbx function)
-!/.config/sbx/
-!/.config/sbx/**
-
 # vox: the merge filter, its tests and the vocabulary map. Recordings live in
 # ~/Recordings, which the /* deny-all already covers.
 !/.config/vox/
