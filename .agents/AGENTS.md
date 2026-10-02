@@ -43,7 +43,8 @@ If a sentence can't be restated as a concrete instruction, fact, or number, cut 
 Cut a bold label plus colon that restates its own line (`**Performance:** Performance improved...`); a bold lead-in ending in a period followed by genuinely new detail is fine.
 Do not append an unrequested moralising endcap, caveat or counterargument to a sharp claim for balance. A boundary condition that changes the claim's truth goes into the mechanism or scopes the claim; otherwise cut it. Accuracy belongs in the argument; model self-protection does not.
 Lead with the answer or decision, then the reasoning.
-One idea per sentence; prefer short, literal, common words, and explain unavoidable jargon inline.
+Write explanations to ASD-STE100 sentence rules: one idea per sentence, max 20 words per instruction and 25 per description, active voice, one word for one meaning. Prefer short, literal, common words; keep technical names and explain unavoidable jargon inline.
+When the answer is a structure, flow, sequence or state machine with 3+ parts, add a diagram: ASCII in the terminal, mermaid in docs and PRs.
 Break procedures into separate ordered steps and keep the critical path short.
 Restate what each step needs; don't assume the reader is holding earlier context.
 
