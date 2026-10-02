@@ -11,9 +11,6 @@
 # codex) should NOT be enrolled - nesting Seatbelt profiles double-confines and
 # breaks them. Leave them to their own sandbox.
 #
-# NAME COLLISION: `agentbox` is a *Docker* sandbox; `agent-sandbox`/`asb` is
-# this srt (OS-level) wrapper. Different mechanisms, similar names.
-#
 # Generated policy: ~/.config/srt/<tool>.json is rendered from base.json +
 # <tool>.overlay.json by `asb sync`. Edit base/overlay then `asb sync`, never
 # the generated file (clobbered on next sync).

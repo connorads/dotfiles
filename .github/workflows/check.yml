@@ -62,7 +62,6 @@ jobs:
   # pre-existing failures on Linux that have nothing to do with what is gated
   # here, and a permanently red job gates nothing. Excluded, each with one
   # unrelated platform-specific failure:
-  #   papercut.bats        - "repeated adds in the same second get unique ids"
   #   rl.bats              - "autoload resolves sibling helpers from fpath"
   #   agent-teleport.bats  - "copy mode ships a rewritten fork" (needs a clipboard)
   # Add a file here once it is green on Linux.
