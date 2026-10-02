@@ -22,7 +22,6 @@ when the task needs them.
 | Change MCP bundles | [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
 | Change agent sandbox policies | [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
 | Expose a service or run remote commands | [Remote access](./docs/remote-access.md) |
-| Update the published workflow site | [src/dotfiles-docs/AGENTS.md](./src/dotfiles-docs/AGENTS.md) |
 
 System overview: [README.md](./README.md). Decision records: [docs/adr/README.md](./docs/adr/README.md).
 Use the `adr` skill for decision-record format and mechanics.
@@ -84,7 +83,7 @@ Run `mise run gate-coverage` after moves; a hook glob matching nothing exits 0.
 - Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit, and sorts keys (`jq -S`) so the reordering Claude Code does on every rewrite stays out of git; permission arrays keep their authored order.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
-- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `xreview`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Vendored `src/` subprojects (`handoff`, `pin-audit`, `skl`, `xreview`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
 
 ## Verification by Change
 
@@ -181,8 +180,3 @@ Update the owning documentation:
 - This file (`AGENTS.md`) - for standing rules and task routes
 - The relevant subsystem guide - for commands, configuration and procedures
 - [README.md](./README.md) - for changes to the dotfiles system itself
-- [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md) - the "How I work" site
-  justifies subsystems these dotfiles encode (keybindings, aliases, tool
-  choices, security posture). When a change alters something a page covers,
-  update that page in the same commit; check the sidebar in
-  `src/dotfiles-docs/astro.config.mjs` for what's covered

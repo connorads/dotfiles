@@ -412,16 +412,15 @@ local fast_steps = new Mapping<String, Step> {
                 }
             }
 
-            ["vendor, Codex skills and site routes are excluded"] {
+            ["vendor and Codex skills are excluded"] {
                 tmpdir = true
                 write {
                     ["README.md"] = "[Target](target.txt)\n"
                     ["target.txt"] = "present\n"
                     [".config/skills/vendor/upstream.md"] = "[Missing](missing.txt)\n"
                     [".codex/skills/upstream.md"] = "[Missing](missing.txt)\n"
-                    ["src/dotfiles-docs/route.md"] = "[Route](/missing-route/)\n"
                 }
-                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md target.txt .config/skills/vendor/upstream.md .codex/skills/upstream.md src/dotfiles-docs/route.md"
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md target.txt .config/skills/vendor/upstream.md .codex/skills/upstream.md"
                 expect { code = 0 }
             }
 

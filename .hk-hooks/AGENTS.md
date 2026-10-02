@@ -108,8 +108,7 @@ commit-time complement to the edit-time `tmux-freekeys` advisor).
 
 `link-check` validates local file destinations, including hidden first-party
 Markdown. It does not check external URLs, heading anchors or factual claims.
-It excludes vendored skills, `.codex/skills/` and `src/dotfiles-docs/`; the
-site's build validates its routes. Locally, unavailable lychee warns and skips.
+It excludes vendored skills and `.codex/skills/`. Locally, unavailable lychee warns and skips.
 CI installs the pinned lychee and requires `lychee --version` to pass before
 `hk check --all`. Run `dhk test --step link-check` with lychee installed to test
 valid and broken links, hidden files, exclusions and the unavailable-tool path.

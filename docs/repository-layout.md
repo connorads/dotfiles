@@ -56,7 +56,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [~/.config/zsh/aliases/](../.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 | [~/.config/remobi/remobi.config.ts](../.config/remobi/remobi.config.ts) | remobi config ([connorads/remobi](https://github.com/connorads/remobi)) |
 | [~/src/raycast/shotpath](../src/raycast/shotpath) | Raycast extension for `shotpath`; outside dot dirs because Raycast rejects hidden source paths |
-| [~/src/dotfiles-docs](../src/dotfiles-docs/AGENTS.md) | "How I work" Starlight site; commit with `dotfiles commit -- src/dotfiles-docs` |
 | [gh-gate](../.config/zsh/functions/git/gh-gate) | Scoped gh tokens via a GitHub App; `gh-gate --help` for setup |
 | [mcpz](../.config/zsh/functions/agents/mcpz) | Render and launch MCP bundles per agent; docs: [.config/mcp/AGENTS.md](../.config/mcp/AGENTS.md) |
 | [.config/vox/](../.config/vox/) | `vox` merge filter and vocabulary map; docs: [.config/tmux/docs/vox.md](../.config/tmux/docs/vox.md) |

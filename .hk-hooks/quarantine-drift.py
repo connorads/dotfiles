@@ -11,7 +11,7 @@ checker tells you which files still disagree. To add a newly gated manager:
 append a row to CHECKS (path, key, one-capture regex, unit).
 
 A second, warn-only section greps the docs that cite literal values
-(docs/supply-chain.md, the dotfiles-docs supply-chain page) and warns when
+(docs/supply-chain.md) and warns when
 they no longer contain the current spellings - documentation staleness never
 blocks a commit.
 
@@ -52,7 +52,6 @@ CHECKS: list[tuple[str, str, str, str]] = [
 # warning (never a failure) is printed.
 DOC_CITES = [
     "docs/supply-chain.md",
-    "src/dotfiles-docs/src/content/docs/trust/supply-chain.md",
 ]
 
 
