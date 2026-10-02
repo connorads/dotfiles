@@ -163,6 +163,7 @@ let
     poppler-utils
     presenterm
     charm-freeze
+    vhs
 
     # Sync & backup
     rclone
