@@ -61,6 +61,7 @@ case "$*" in
 OUT
     ;;
   *'-o rss= -p 77') echo ' 2097152' ;;
+  *'-o rss= -p 91,92') printf ' 1048576\n 1048576\n' ;;
   *'-p 1 -o command='*) echo '/Applications/App1.app/Contents/MacOS/App1' ;;
   *'-p 2 -o command='*) echo '/Applications/App2.app/Contents/MacOS/App2' ;;
   *'-p 3 -o command='*) echo '/Applications/App3.app/Contents/MacOS/App3' ;;
@@ -77,11 +78,19 @@ printf 'Mach Virtual Memory Statistics: (page size of 1048576 bytes)\n'
 printf 'Pages wired down: %s.\n' "${FAKE_WIRED_MB:-3686}"
 STUB
 
-  # pgrep: WindowServer is pid 77 (2.0G RSS in the ps stub); nothing else runs.
+  # pgrep: WindowServer is pid 77 (2.0G RSS in the ps stub); with FAKE_CHROME
+  # set, chrome-headless-shell is pids 91 and 92 (1.0G each).
   write_stub pgrep <<'STUB'
 #!/usr/bin/env bash
 [ "$*" = "-x WindowServer" ] && echo 77 && exit 0
+[ "$*" = "-x chrome-headless-shell" ] && [ -n "${FAKE_CHROME:-}" ] && printf '91\n92\n' && exit 0
 exit 1
+STUB
+
+  export PKILL_LOG="$BATS_TEST_TMPDIR/pkill.log"
+  write_stub pkill <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PKILL_LOG"
 STUB
 
   write_stub osascript <<'STUB'
@@ -251,12 +260,62 @@ STUB
 
 # --- CRITICAL ----------------------------------------------------------------
 
-@test "CRITICAL reports and never hibernates" {
+@test "CRITICAL kills every headless Chrome, logs it and posts a banner" {
+  export FAKE_SLOTS=820 FAKE_CHROME=1
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$PKILL_LOG")" = "-KILL -x chrome-headless-shell" ]
+  grep -Eq '^[0-9T:-]+  killed=chrome-headless-shell  n=2  rss=2\.0G  cause=slots$' "$MEMWATCH_LOG"
+  grep -q 'display notification "2 chrome-headless-shell ≈2.0G · cause slots" with title "Memory CRITICAL: killed headless Chrome"' "$OSASCRIPT_LOG"
+  grep -q '  state=CRITICAL  cause=slots  ' "$MEMWATCH_LOG"
+}
+
+@test "CRITICAL with no headless Chrome kills nothing" {
   export FAKE_SLOTS=820
 
   run_zsh_function "$MEMWATCH" --once
 
   [ "$status" -eq 0 ]
+  [ ! -e "$PKILL_LOG" ]
+  ! grep -q 'killed=' "$MEMWATCH_LOG"
+}
+
+@test "BUSY with headless Chrome kills nothing" {
+  export FAKE_SLOTS=620 FAKE_CHROME=1
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$PKILL_LOG" ]
+  ! grep -q 'killed=' "$MEMWATCH_LOG"
+}
+
+@test "MEMWATCH_KILL=0 reports CRITICAL and kills nothing" {
+  export FAKE_SLOTS=820 FAKE_CHROME=1 MEMWATCH_KILL=0
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$PKILL_LOG" ]
   grep -q '  state=CRITICAL  cause=slots  ' "$MEMWATCH_LOG"
+}
+
+@test "a sustained CRITICAL kills a respawned Chrome on every tick" {
+  export FAKE_SLOTS=820 FAKE_CHROME=1 MEMWATCH_TICKS=2 MEMWATCH_INTERVAL=0.1
+
+  run_zsh_function "$MEMWATCH"
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c -- '-KILL -x chrome-headless-shell' "$PKILL_LOG")" -eq 2 ]
+}
+
+@test "CRITICAL never hibernates" {
+  export FAKE_SLOTS=820 FAKE_CHROME=1
+
+  run_zsh_function "$MEMWATCH" --once
+
+  [ "$status" -eq 0 ]
   ! grep -q 'hibernat' "$MEMWATCH_LOG"
 }

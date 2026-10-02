@@ -30,6 +30,13 @@
 # WindowServer RSS is logged and bannered beside it, because footprint needs
 # root for WindowServer and so the top-5 rows never show it.
 #
+# One automatic action (docs/adr/0020): on every CRITICAL tick, whatever the
+# cause, every chrome-headless-shell is SIGKILLed, logged as a killed= line and
+# bannered. A starved browser may not handle TERM in time. Every tick, not
+# only transitions, so a Playwright retry that respawns Chrome dies again; no
+# cooldown, because a kill needs a process to exist. MEMWATCH_KILL=0 disables
+# it. Nothing else is killed, and panes are never hibernated (ADR 0017).
+#
 # No shebang: this is a daemon, not a dual-mode PATH command, so it is autoload-
 # only (run `memwatch` interactively to watch in the foreground, or `memwatch
 # --once` for a single evaluation). Launched unattended by the nix-darwin
@@ -70,6 +77,7 @@ local sample=${MEMWATCH_SAMPLE:-15} # procs footprinted per evaluation
 local stall_log_secs=${MEMWATCH_STALL_LOG_SECS:-2}
 local stall_critical_secs=${MEMWATCH_STALL_CRITICAL_SECS:-5}
 local wired_critical_mb=${MEMWATCH_WIRED_CRITICAL_MB:-12288}
+local kill=${MEMWATCH_KILL:-1}
 local ticks=${MEMWATCH_TICKS:-0} # 0 = run forever
 [[ "${1:-}" == "--once" ]] && ticks=1
 
@@ -102,7 +110,7 @@ top_apps() {
 local prev=OK now=0 last_notify=0 tick=0 stall_s=0
 local last_state=OK last_cause=none last_slots=0 last_segs=0 moved=0
 local pressure pages plimit segments slimit slots segs ratio state cause
-local grouped swap hog t0 slip wired wired_h ws_h
+local grouped swap hog t0 slip wired wired_h ws_h chrome_pids chrome_n chrome_h
 while :; do
 	tick=$((tick + 1))
 	# Two forks, five readings. The lib splits its own gather; the pressure
@@ -122,6 +130,18 @@ while :; do
 	if ((stall_s >= stall_critical_secs)); then
 		state=CRITICAL
 		cause=stall
+	fi
+
+	# Kill before reporting: the report's footprint sampling takes ~1.3 s.
+	if [[ "$state" == CRITICAL ]] && ((kill)); then
+		chrome_pids=$(pgrep -x chrome-headless-shell 2>/dev/null) || chrome_pids=""
+		if [[ -n "$chrome_pids" ]]; then
+			chrome_n=${#${(f)chrome_pids}}
+			chrome_h=$(mem_human_mb "$(mem_rss_mb chrome-headless-shell)")
+			pkill -KILL -x chrome-headless-shell 2>/dev/null || true
+			mw_log "killed=chrome-headless-shell  n=${chrome_n}  rss=${chrome_h}  cause=${cause}"
+			osascript -e "display notification \"${chrome_n} chrome-headless-shell ≈${chrome_h} · cause ${cause}\" with title \"Memory CRITICAL: killed headless Chrome\"" 2>/dev/null || true
+		fi
 	fi
 
 	if [[ "$state" != OK ]]; then
