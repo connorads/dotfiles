@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+<style>
+.bg{fill:#eff1f5}.bar{fill:#dce0e8}.t{fill:#4c4f69}.d{fill:#8c8fa1}.p{fill:#40a02b}.c0{fill:#1e66f5}.c1{fill:#1e66f5}.c2{fill:#7287fd}.c3{fill:#8839ef}.c4{fill:#8839ef}.c5{fill:#ea76cb}.c6{fill:#d20f39}.c7{fill:#fe640b}
+@media (prefers-color-scheme: dark){.bg{fill:#1e1e2e}.bar{fill:#181825}.t{fill:#cdd6f4}.d{fill:#6c7086}.p{fill:#a6e3a1}.c0{fill:#89b4fa}.c1{fill:#89b4fa}.c2{fill:#b4befe}.c3{fill:#cba6f7}.c4{fill:#cba6f7}.c5{fill:#f5c2e7}.c6{fill:#f38ba8}.c7{fill:#fab387}}
+</style>
+<rect width="1000" height="360" rx="14" class="bg"/><path d="M0 14a14 14 0 0 1 14-14h972a14 14 0 0 1 14 14v22H0z" class="bar"/>
+<circle cx="22" cy="18" r="6" fill="#f38ba8"/>
+<circle cx="42" cy="18" r="6" fill="#f9e2af"/>
+<circle cx="62" cy="18" r="6" fill="#a6e3a1"/>
+<text x="500" y="23" font-size="12" text-anchor="middle" class="d">zsh · ~</text>
+<text x="40" y="76" font-size="15"><tspan class="p">~ ❯</tspan><tspan class="t" dx="9">git --git-dir=~/git/dotfiles --work-tree=~</tspan></text>
+<rect x="227" y="108" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="122" width="12" height="12" rx="2" class="c0"/>
+<rect x="185" y="136" width="12" height="12" rx="2" class="c0"/>
+<rect x="199" y="136" width="12" height="12" rx="2" class="c0"/>
+<rect x="213" y="136" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="136" width="12" height="12" rx="2" class="c0"/>
+<rect x="171" y="150" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="150" width="12" height="12" rx="2" class="c0"/>
+<rect x="171" y="164" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="164" width="12" height="12" rx="2" class="c0"/>
+<rect x="171" y="178" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="178" width="12" height="12" rx="2" class="c0"/>
+<rect x="185" y="192" width="12" height="12" rx="2" class="c0"/>
+<rect x="199" y="192" width="12" height="12" rx="2" class="c0"/>
+<rect x="213" y="192" width="12" height="12" rx="2" class="c0"/>
+<rect x="227" y="192" width="12" height="12" rx="2" class="c0"/>
+<rect x="269" y="136" width="12" height="12" rx="2" class="c1"/>
+<rect x="283" y="136" width="12" height="12" rx="2" class="c1"/>
+<rect x="297" y="136" width="12" height="12" rx="2" class="c1"/>
+<rect x="255" y="150" width="12" height="12" rx="2" class="c1"/>
+<rect x="311" y="150" width="12" height="12" rx="2" class="c1"/>
+<rect x="255" y="164" width="12" height="12" rx="2" class="c1"/>
+<rect x="311" y="164" width="12" height="12" rx="2" class="c1"/>
+<rect x="255" y="178" width="12" height="12" rx="2" class="c1"/>
+<rect x="311" y="178" width="12" height="12" rx="2" class="c1"/>
+<rect x="269" y="192" width="12" height="12" rx="2" class="c1"/>
+<rect x="283" y="192" width="12" height="12" rx="2" class="c1"/>
+<rect x="297" y="192" width="12" height="12" rx="2" class="c1"/>
+<rect x="353" y="108" width="12" height="12" rx="2" class="c2"/>
+<rect x="353" y="122" width="12" height="12" rx="2" class="c2"/>
+<rect x="339" y="136" width="12" height="12" rx="2" class="c2"/>
+<rect x="353" y="136" width="12" height="12" rx="2" class="c2"/>
+<rect x="367" y="136" width="12" height="12" rx="2" class="c2"/>
+<rect x="381" y="136" width="12" height="12" rx="2" class="c2"/>
+<rect x="353" y="150" width="12" height="12" rx="2" class="c2"/>
+<rect x="353" y="164" width="12" height="12" rx="2" class="c2"/>
+<rect x="353" y="178" width="12" height="12" rx="2" class="c2"/>
+<rect x="395" y="178" width="12" height="12" rx="2" class="c2"/>
+<rect x="367" y="192" width="12" height="12" rx="2" class="c2"/>
+<rect x="381" y="192" width="12" height="12" rx="2" class="c2"/>
+<rect x="451" y="108" width="12" height="12" rx="2" class="c3"/>
+<rect x="465" y="108" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="122" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="136" width="12" height="12" rx="2" class="c3"/>
+<rect x="423" y="150" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="150" width="12" height="12" rx="2" class="c3"/>
+<rect x="451" y="150" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="164" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="178" width="12" height="12" rx="2" class="c3"/>
+<rect x="437" y="192" width="12" height="12" rx="2" class="c3"/>
+<rect x="535" y="108" width="12" height="12" rx="2" class="c4"/>
+<rect x="521" y="136" width="12" height="12" rx="2" class="c4"/>
+<rect x="535" y="136" width="12" height="12" rx="2" class="c4"/>
+<rect x="535" y="150" width="12" height="12" rx="2" class="c4"/>
+<rect x="535" y="164" width="12" height="12" rx="2" class="c4"/>
+<rect x="535" y="178" width="12" height="12" rx="2" class="c4"/>
+<rect x="521" y="192" width="12" height="12" rx="2" class="c4"/>
+<rect x="535" y="192" width="12" height="12" rx="2" class="c4"/>
+<rect x="549" y="192" width="12" height="12" rx="2" class="c4"/>
+<rect x="605" y="108" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="108" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="122" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="136" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="150" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="164" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="178" width="12" height="12" rx="2" class="c5"/>
+<rect x="605" y="192" width="12" height="12" rx="2" class="c5"/>
+<rect x="619" y="192" width="12" height="12" rx="2" class="c5"/>
+<rect x="633" y="192" width="12" height="12" rx="2" class="c5"/>
+<rect x="689" y="136" width="12" height="12" rx="2" class="c6"/>
+<rect x="703" y="136" width="12" height="12" rx="2" class="c6"/>
+<rect x="717" y="136" width="12" height="12" rx="2" class="c6"/>
+<rect x="675" y="150" width="12" height="12" rx="2" class="c6"/>
+<rect x="731" y="150" width="12" height="12" rx="2" class="c6"/>
+<rect x="675" y="164" width="12" height="12" rx="2" class="c6"/>
+<rect x="689" y="164" width="12" height="12" rx="2" class="c6"/>
+<rect x="703" y="164" width="12" height="12" rx="2" class="c6"/>
+<rect x="717" y="164" width="12" height="12" rx="2" class="c6"/>
+<rect x="731" y="164" width="12" height="12" rx="2" class="c6"/>
+<rect x="675" y="178" width="12" height="12" rx="2" class="c6"/>
+<rect x="689" y="192" width="12" height="12" rx="2" class="c6"/>
+<rect x="703" y="192" width="12" height="12" rx="2" class="c6"/>
+<rect x="717" y="192" width="12" height="12" rx="2" class="c6"/>
+<rect x="773" y="136" width="12" height="12" rx="2" class="c7"/>
+<rect x="787" y="136" width="12" height="12" rx="2" class="c7"/>
+<rect x="801" y="136" width="12" height="12" rx="2" class="c7"/>
+<rect x="815" y="136" width="12" height="12" rx="2" class="c7"/>
+<rect x="759" y="150" width="12" height="12" rx="2" class="c7"/>
+<rect x="773" y="164" width="12" height="12" rx="2" class="c7"/>
+<rect x="787" y="164" width="12" height="12" rx="2" class="c7"/>
+<rect x="801" y="164" width="12" height="12" rx="2" class="c7"/>
+<rect x="815" y="178" width="12" height="12" rx="2" class="c7"/>
+<rect x="759" y="192" width="12" height="12" rx="2" class="c7"/>
+<rect x="773" y="192" width="12" height="12" rx="2" class="c7"/>
+<rect x="787" y="192" width="12" height="12" rx="2" class="c7"/>
+<rect x="801" y="192" width="12" height="12" rx="2" class="c7"/>
+<rect x="843" y="136" width="26" height="68" class="t"><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.5;0.5;1" dur="1.1s" repeatCount="indefinite"/></rect>
+<text x="500" y="258" font-size="19" text-anchor="middle" class="t">macOS and Linux, tracked in $HOME with no symlinks</text>
+<text x="500" y="290" font-size="14" text-anchor="middle" class="d">nix · homebrew · mise · zsh · tmux · neovim · claude · codex · pi</text>
+</svg>
