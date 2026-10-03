@@ -1,0 +1,438 @@
+[
+  {
+    "slug": "leeds-headingley",
+    "city": "Leeds Headingley",
+    "hasPremises": true,
+    "clinic": {
+      "street": "14 Otley Road",
+      "postcode": "LS6 2AL",
+      "phone": "0113 496 0101",
+      "lat": 53.82,
+      "lng": -1.58,
+      "smilebookId": "ngd-leeds-headingley"
+    }
+  },
+  {
+    "slug": "leeds-city-centre",
+    "city": "Leeds City Centre",
+    "hasPremises": true,
+    "clinic": {
+      "street": "3 Park Row",
+      "postcode": "LS1 5HD",
+      "phone": "0113 496 0102",
+      "lat": 53.8,
+      "lng": -1.55,
+      "smilebookId": "ngd-leeds-city-centre"
+    }
+  },
+  {
+    "slug": "bradford",
+    "city": "Bradford",
+    "hasPremises": true,
+    "clinic": {
+      "street": "27 Manor Row",
+      "postcode": "BD1 4PS",
+      "phone": "01632 960103",
+      "lat": 53.8,
+      "lng": -1.75,
+      "smilebookId": "ngd-bradford"
+    }
+  },
+  {
+    "slug": "harrogate",
+    "city": "Harrogate",
+    "hasPremises": true,
+    "clinic": {
+      "street": "8 Victoria Avenue",
+      "postcode": "HG1 1EL",
+      "phone": "01632 960104",
+      "lat": 53.99,
+      "lng": -1.54,
+      "smilebookId": "ngd-harrogate"
+    }
+  },
+  {
+    "slug": "york",
+    "city": "York",
+    "hasPremises": true,
+    "clinic": {
+      "street": "41 Micklegate",
+      "postcode": "YO1 6LJ",
+      "phone": "01632 960105",
+      "lat": 53.96,
+      "lng": -1.09,
+      "smilebookId": "ngd-york"
+    }
+  },
+  {
+    "slug": "wakefield",
+    "city": "Wakefield",
+    "hasPremises": true,
+    "clinic": {
+      "street": "19 Westgate",
+      "postcode": "WF1 1JY",
+      "phone": "01632 960106",
+      "lat": 53.68,
+      "lng": -1.5,
+      "smilebookId": "ngd-wakefield"
+    }
+  },
+  {
+    "slug": "huddersfield",
+    "city": "Huddersfield",
+    "hasPremises": true,
+    "clinic": {
+      "street": "6 New North Road",
+      "postcode": "HD1 5JP",
+      "phone": "01632 960107",
+      "lat": 53.65,
+      "lng": -1.79,
+      "smilebookId": "ngd-huddersfield"
+    }
+  },
+  {
+    "slug": "halifax",
+    "city": "Halifax",
+    "hasPremises": true,
+    "clinic": {
+      "street": "33 Harrison Road",
+      "postcode": "HX1 2AF",
+      "phone": "01632 960108",
+      "lat": 53.72,
+      "lng": -1.86,
+      "smilebookId": "ngd-halifax"
+    }
+  },
+  {
+    "slug": "burley",
+    "city": "Burley",
+    "hasPremises": true,
+    "clinic": {
+      "street": "12 Brook Street",
+      "postcode": "LS29 8DE",
+      "phone": "01632 960109",
+      "lat": 53.93,
+      "lng": -1.82,
+      "smilebookId": "ngd-burley"
+    }
+  },
+  {
+    "slug": "otley",
+    "city": "Otley",
+    "hasPremises": true,
+    "clinic": {
+      "street": "5 Kirkgate",
+      "postcode": "LS21 3HJ",
+      "phone": "01632 960110",
+      "lat": 53.91,
+      "lng": -1.69,
+      "smilebookId": "ngd-otley"
+    }
+  },
+  {
+    "slug": "wetherby",
+    "city": "Wetherby",
+    "hasPremises": true,
+    "clinic": {
+      "street": "22 High Street",
+      "postcode": "LS22 6LT",
+      "phone": "01632 960111",
+      "lat": 53.93,
+      "lng": -1.39,
+      "smilebookId": "ngd-wetherby"
+    }
+  },
+  {
+    "slug": "skipton",
+    "city": "Skipton",
+    "hasPremises": true,
+    "clinic": {
+      "street": "9 Otley Street",
+      "postcode": "BD23 1DY",
+      "phone": "01632 960112",
+      "lat": 53.96,
+      "lng": -2.02,
+      "smilebookId": "ngd-skipton"
+    }
+  },
+  {
+    "slug": "pudsey",
+    "city": "Pudsey",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "leeds-city-centre"
+  },
+  {
+    "slug": "horsforth",
+    "city": "Horsforth",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "leeds-headingley"
+  },
+  {
+    "slug": "garforth",
+    "city": "Garforth",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "leeds-city-centre"
+  },
+  {
+    "slug": "rothwell",
+    "city": "Rothwell",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "leeds-city-centre"
+  },
+  {
+    "slug": "morley",
+    "city": "Morley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "leeds-city-centre"
+  },
+  {
+    "slug": "shipley",
+    "city": "Shipley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "bradford"
+  },
+  {
+    "slug": "keighley",
+    "city": "Keighley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "skipton"
+  },
+  {
+    "slug": "bingley",
+    "city": "Bingley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "bradford"
+  },
+  {
+    "slug": "knaresborough",
+    "city": "Knaresborough",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "harrogate"
+  },
+  {
+    "slug": "ripon",
+    "city": "Ripon",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "harrogate"
+  },
+  {
+    "slug": "selby",
+    "city": "Selby",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "york"
+  },
+  {
+    "slug": "tadcaster",
+    "city": "Tadcaster",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wetherby"
+  },
+  {
+    "slug": "castleford",
+    "city": "Castleford",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wakefield"
+  },
+  {
+    "slug": "pontefract",
+    "city": "Pontefract",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wakefield"
+  },
+  {
+    "slug": "ossett",
+    "city": "Ossett",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wakefield"
+  },
+  {
+    "slug": "dewsbury",
+    "city": "Dewsbury",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wakefield"
+  },
+  {
+    "slug": "batley",
+    "city": "Batley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "huddersfield"
+  },
+  {
+    "slug": "holmfirth",
+    "city": "Holmfirth",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "huddersfield"
+  },
+  {
+    "slug": "brighouse",
+    "city": "Brighouse",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "halifax"
+  },
+  {
+    "slug": "elland",
+    "city": "Elland",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "halifax"
+  },
+  {
+    "slug": "sowerby-bridge",
+    "city": "Sowerby Bridge",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "halifax"
+  },
+  {
+    "slug": "hebden-bridge",
+    "city": "Hebden Bridge",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "halifax"
+  },
+  {
+    "slug": "todmorden",
+    "city": "Todmorden",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "halifax"
+  },
+  {
+    "slug": "burley-in-wharfedale",
+    "city": "Burley-in-Wharfedale",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "burley"
+  },
+  {
+    "slug": "menston",
+    "city": "Menston",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "otley"
+  },
+  {
+    "slug": "guiseley",
+    "city": "Guiseley",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "otley"
+  },
+  {
+    "slug": "yeadon",
+    "city": "Yeadon",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "otley"
+  },
+  {
+    "slug": "boston-spa",
+    "city": "Boston Spa",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wetherby"
+  },
+  {
+    "slug": "collingham",
+    "city": "Collingham",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "wetherby"
+  },
+  {
+    "slug": "pocklington",
+    "city": "Pocklington",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "york"
+  },
+  {
+    "slug": "malton",
+    "city": "Malton",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "york"
+  },
+  {
+    "slug": "easingwold",
+    "city": "Easingwold",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "york"
+  },
+  {
+    "slug": "haxby",
+    "city": "Haxby",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "york"
+  },
+  {
+    "slug": "settle",
+    "city": "Settle",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "skipton"
+  },
+  {
+    "slug": "barnoldswick",
+    "city": "Barnoldswick",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "skipton"
+  },
+  {
+    "slug": "silsden",
+    "city": "Silsden",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "skipton"
+  },
+  {
+    "slug": "baildon",
+    "city": "Baildon",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "bradford"
+  },
+  {
+    "slug": "mirfield",
+    "city": "Mirfield",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "huddersfield"
+  },
+  {
+    "slug": "cleckheaton",
+    "city": "Cleckheaton",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "bradford"
+  },
+  {
+    "slug": "heckmondwike",
+    "city": "Heckmondwike",
+    "hasPremises": false,
+    "clinic": null,
+    "nearest": "huddersfield"
+  }
+]

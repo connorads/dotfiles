@@ -1,0 +1,151 @@
+{
+  "skill_name": "seo-geo",
+  "how_to_run": "Run each query 3 times in a fresh session with the skill installed and record whether seo-geo loaded. Pass: a should-trigger query loads in at least 2 of 3 runs; a near-miss loads in 0 of 3. Tune wording on the train split only; pick the final wording by the validation pass rate. Soft queries are recorded but not tuned for (scored: false).",
+  "runs": 3,
+  "queries": [
+    {
+      "id": 1,
+      "query": "built this in lovable, live 6 weeks, google shows nothing for our brand name",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 2,
+      "query": "migrated wordpress -> nextjs last month, organic down 40%",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 3,
+      "query": "should we block gptbot and perplexity?",
+      "should_trigger": true,
+      "split": "validation",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 4,
+      "query": "we have 12 dental clinics, why do we never show in the map pack for 'dentist near me'",
+      "should_trigger": true,
+      "split": "validation",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 5,
+      "query": "marketing left a plan in /docs, sanity check it",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 6,
+      "query": "optimise /services for 'emergency plumber leeds', mention it 2-4 times, put it in the slug",
+      "should_trigger": true,
+      "split": "validation",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 7,
+      "query": "add schema markup + reviews stars pls",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 8,
+      "query": "make a weekly seo check that opens issues",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 9,
+      "query": "write our pricing page so ai assistants quote it right",
+      "should_trigger": true,
+      "split": "train",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 10,
+      "query": "our gbp booking button goes to classpass not us",
+      "should_trigger": true,
+      "split": "validation",
+      "class": "should",
+      "scored": true
+    },
+    {
+      "id": 11,
+      "query": "hero LCP 4.2s, fix it",
+      "should_trigger": false,
+      "split": "train",
+      "class": "near-miss",
+      "scored": true
+    },
+    {
+      "id": 12,
+      "query": "what topics does competitor.com cover that we dont",
+      "should_trigger": false,
+      "split": "validation",
+      "class": "near-miss",
+      "scored": true
+    },
+    {
+      "id": 13,
+      "query": "write google ads headlines for our physio clinic",
+      "should_trigger": false,
+      "split": "train",
+      "class": "near-miss",
+      "scored": true
+    },
+    {
+      "id": 14,
+      "query": "set up GA4 event tracking on the signup button",
+      "should_trigger": false,
+      "split": "train",
+      "class": "near-miss",
+      "scored": true
+    },
+    {
+      "id": 15,
+      "query": "translate the site to spanish",
+      "should_trigger": false,
+      "split": "validation",
+      "class": "near-miss",
+      "scored": true
+    },
+    {
+      "id": 16,
+      "query": "add open graph image so links look nice in slack",
+      "should_trigger": false,
+      "split": "train",
+      "class": "soft",
+      "scored": false
+    },
+    {
+      "id": 17,
+      "query": "add a canonical tag to this one component",
+      "should_trigger": true,
+      "split": "train",
+      "class": "soft",
+      "scored": false
+    },
+    {
+      "id": 18,
+      "query": "write release notes for v2.3",
+      "should_trigger": false,
+      "split": "train",
+      "class": "soft",
+      "scored": false
+    }
+  ]
+}
