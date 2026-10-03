@@ -22,9 +22,15 @@ assets-only Worker uses:
   "compatibility_date": "<yyyy-mm-dd>",
   "assets": {
     "directory": "./dist"
-  }
+  },
+  "workers_dev": true,
+  "preview_urls": true,
+  "previews": {}
 }
 ```
+
+Keep `"previews": {}` when Workers Builds deploys branch previews with
+`wrangler preview`; see `troubleshooting.md`.
 
 Do not assume every Worker is assets-only:
 
@@ -83,14 +89,23 @@ Before creating or updating routing:
 ## Read Checks
 
 ```bash
-cf workers domains list --hostname <hostname>
-cf workers routes list --zone-id <zone-id>
-cf dns records list --zone-id <zone-id> --name <hostname>
+cf dns records list --zone <zone-name-or-id> --name <hostname>
 ```
 
-If the `cf` command shape differs, inspect `cf schema <command>` or use the
-current Cloudflare API docs before writing. `cf agent-context workers` (and
-`dns`, `zones`) prints the current command surface for these read checks.
+cf v0.15.0 (2026-10) has no command for Worker custom domains or zone Worker
+routes. `cf workers domains list` and `cf workers routes list` are gone, and
+no replacement appears in `cf schema --list`. Until one does, read them through
+the REST API with `CF_API_TOKEN` (check paths in the current API docs):
+
+```bash
+curl -sS -H "Authorization: Bearer $CF_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/accounts/<account-id>/workers/domains?hostname=<hostname>"
+curl -sS -H "Authorization: Bearer $CF_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/zones/<zone-id>/workers/routes"
+```
+
+Re-check with `cf schema --list | jq -r '.[].command' | grep -i domain` on a
+newer cf. Use `cf <command> --help` and `cf schema <command>` before any write.
 
 ## Verification
 
