@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claude Code status line: context % | model | dir
+# Claude Code status line: context % | model | dir | prompt cache
 # Input: JSON from Claude Code via stdin
 
 input=$(cat)
@@ -12,6 +12,18 @@ ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 ctx_size=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
 # Effort level: only emitted for effort-capable models (e.g. Opus 4.8, Sonnet 4.6); absent otherwise
 effort=$(echo "$input" | jq -r '.effort.level // empty')
+# Prompt cache (main thread only; absent before the first API response).
+# Unit-separated so empty fields survive `read` (tab IFS would collapse them).
+IFS=$'\x1f' read -r pc_present pc_observed pc_ttl pc_expires pc_hit pc_misses pc_causes pc_recache last_write last_read < <(
+	echo "$input" | jq -r '
+		.prompt_cache as $p | .context_window.current_usage as $u |
+		[ ($p != null), ($p.caching_observed // false), ($p.ttl // ""),
+		  ($p.expires_at // ""), ($p.hit_ratio // ""), ($p.misses // 0),
+		  (($p.last_miss_cause.causes // []) | join(",")),
+		  ($p.recache_tokens_if_cold // ""),
+		  ($u.cache_creation_input_tokens // ""), ($u.cache_read_input_tokens // "") ]
+		| map(tostring) | join("\u001f")'
+)
 
 # Shorten directory (replace $HOME with ~)
 dir="${dir/#$HOME/\~}"
@@ -85,7 +97,53 @@ if [ -n "$ctx_pct" ]; then
 	fi
 fi
 
-# Build single-line output (context % | model+effort | dir)
+# Token count as 950 / 1.3k / 130k
+fmt_k() {
+	local n=$1
+	if [ "$n" -lt 1000 ]; then
+		printf '%d' "$n"
+	elif [ "$n" -lt 10000 ]; then
+		printf '%d.%dk' $((n / 1000)) $((n % 1000 / 100))
+	else
+		printf '%dk' $((n / 1000))
+	fi
+}
+
+# Cache: warm -> TTL countdown, hit %, last turn write/read, misses + last cause;
+# cold -> tokens the next request re-caches. Countdown colour by TTL fraction left.
+cache_seg=""
+if [ "$pc_present" = "true" ]; then
+	if [ "$pc_observed" != "true" ]; then
+		cache_seg="${DIM}${WHITE}cache off${RESET}"
+	else
+		now=$(date +%s)
+		left=0
+		[ -n "$pc_expires" ] && left=$((pc_expires - now))
+		if [ "$left" -gt 0 ]; then
+			case "$pc_ttl" in 1h) ttl_s=3600 ;; *) ttl_s=300 ;; esac
+			if [ $((left * 100 / ttl_s)) -gt 50 ]; then
+				ttl_col="$GREEN"
+			elif [ $((left * 100 / ttl_s)) -gt 20 ]; then
+				ttl_col="$YELLOW"
+			else
+				ttl_col="$RED"
+			fi
+			cache_seg="${ttl_col}● ${pc_ttl} $(printf '%d:%02d' $((left / 60)) $((left % 60)))${RESET}"
+		else
+			cache_seg="${RED}○ cold${RESET}"
+			[ -n "$pc_recache" ] && cache_seg+=" · rebuild $(fmt_k "$pc_recache")"
+		fi
+		[ -n "$pc_hit" ] && cache_seg+=" · hit $(awk -v r="$pc_hit" 'BEGIN { printf "%d%%", r * 100 + 0.5 }')"
+		[ -n "$last_write" ] && [ -n "$last_read" ] &&
+			cache_seg+=" · ${DIM}+$(fmt_k "$last_write")/$(fmt_k "$last_read")${RESET}"
+		if [ "$pc_misses" -gt 0 ] 2>/dev/null; then
+			cache_seg+=" · ${YELLOW}${pc_misses} miss${RESET}"
+			[ -n "$pc_causes" ] && cache_seg+=" (${pc_causes})"
+		fi
+	fi
+fi
+
+# Build single-line output (context % | model+effort | dir | cache)
 line=""
 if [ -n "$ctx_pct" ] && [ -n "$ctx_size" ]; then
 	# Calculate used tokens and format as k
@@ -102,6 +160,7 @@ else
 	line+="${MAGENTA}${model}${RESET} | ${CYAN}${dir}${RESET}"
 fi
 [ -n "$branch" ] && line+=" on ${GREEN}${branch}${RESET}"
+[ -n "$cache_seg" ] && line+=" | ${cache_seg}"
 
 # Lead with the account tag (leftmost survives width truncation best)
 line="${acct_col}${acct}${RESET} | ${line}"
