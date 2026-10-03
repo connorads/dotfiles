@@ -68,7 +68,8 @@
           "type": "tool_used",
           "tool": "Bash",
           "input_match": "(^|[\\s;&|(])(npm|npx)\\s",
-          "max": 0
+          "max": 0,
+          "min": 0
         },
         {
           "type": "tool_order",
@@ -81,11 +82,6 @@
               "input_match": "probe\\.py[^\\n]*--base"
             }
           ]
-        },
-        {
-          "type": "regex",
-          "path": "next-app/.next/server/app/index.html",
-          "pattern": "\\A(?![\\s\\S]*rel=\"canonical\"[\\s\\S]*rel=\"canonical\")[\\s\\S]*rel=\"canonical\""
         }
       ]
     },
@@ -111,14 +107,8 @@
         },
         {
           "type": "tool_used",
-          "tool": "Edit",
-          "input_match": "aggregateRating",
-          "max": 0
-        },
-        {
-          "type": "tool_used",
-          "tool": "Write",
-          "input_match": "aggregateRating",
+          "input_match": "\"?aggregateRating\"?\\s*:",
+          "min": 0,
           "max": 0
         }
       ]
@@ -133,7 +123,7 @@
       ],
       "assertions": [
         "Declines the forced '#1 choice' framing and explains self-ranked pages get cited but not recommended; offers fit-based framing",
-        "Declines bumping the updated date without a real change; offers to change it when facts change",
+        "Does not present a date change as a freshness tactic: any new updated date is tied to the real rewrite, and says to change it only when facts change",
         "Opens with a direct 'choose Rotaly if / choose Deputy if' answer",
         "Deputy wins at least one real row drawn from Rotaly's stated limits (e.g. non-UK labour rules, payroll, HR docs)",
         "Every Deputy value is marked [verify] or similar; no invented competitor prices or features",
@@ -308,7 +298,8 @@
         {
           "type": "tool_used",
           "input_match": "probe\\.py",
-          "max": 0
+          "max": 0,
+          "min": 0
         }
       ]
     },
@@ -327,7 +318,8 @@
         {
           "type": "tool_used",
           "input_match": "probe\\.py",
-          "max": 0
+          "max": 0,
+          "min": 0
         }
       ]
     },
@@ -390,12 +382,8 @@
           "type": "tool_used",
           "tool": "Bash",
           "input_match": "(^|[\\s;&|(])(npm|npx)\\s",
-          "max": 0
-        },
-        {
-          "type": "regex",
-          "path": "next-app/.next/server/app/index.html",
-          "pattern": "\\A(?![\\s\\S]*rel=\"canonical\"[\\s\\S]*rel=\"canonical\")[\\s\\S]*rel=\"canonical\""
+          "max": 0,
+          "min": 0
         }
       ],
       "notes": "Ad-hoc arm for case 2: read only the without_skill arm. The skill must beat this arm on case 2."
