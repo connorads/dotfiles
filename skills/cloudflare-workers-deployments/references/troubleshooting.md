@@ -9,6 +9,8 @@ Use this reference for common failures seen while setting up Workers Builds.
 - [`ERR_PNPM_IGNORED_BUILDS`](#err_pnpm_ignored_builds)
 - [`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`](#err_pnpm_lockfile_config_mismatch)
 - [`ERR_PNPM_NOTHING_TO_DEPLOY`](#err_pnpm_nothing_to_deploy)
+- [Missing `previews` Block](#missing-previews-block)
+- [First Deploy Returns 404](#first-deploy-returns-404)
 - [workers.dev Shows Disabled](#workersdev-shows-disabled)
 - [`Resource not found`](#resource-not-found)
 - [Empty Worker Project](#empty-worker-project)
@@ -136,10 +138,7 @@ Cloudflare expects the immutable Worker tag, documented as `external_script_id`.
 Diagnose:
 
 ```bash
-curl -sS \
-  -H "Authorization: Bearer $CF_API_TOKEN" \
-  "https://api.cloudflare.com/client/v4/accounts/<account-id>/workers/scripts" |
-  jq -r '.result[] | {name: .id, tag: .tag}'
+cf workers get <worker-name> | jq -r '.id'
 ```
 
 Then call Builds endpoints with `<worker-tag>`, not `<worker-name>`.
@@ -152,7 +151,8 @@ Builds API rejects account-scoped tokens.
 Dashboard message: "This Worker has no versions or deployments associated with
 it."
 
-Meaning: a Worker shell exists, but no build/deploy has produced a version yet.
+Meaning: the Worker exists (for example created through the REST API), but no
+build/deploy has produced a version yet.
 
 Fix:
 
@@ -166,7 +166,7 @@ Fix:
 If package-manager changes do not seem to take effect:
 
 ```bash
-cf workers-builds triggers purge-cache <trigger-uuid> --force
+cf builds triggers cache purge <trigger-uuid> --force
 ```
 
 Temporarily set `build_caching_enabled` to `false` if debugging. Re-enable it
@@ -186,7 +186,9 @@ shape correctly. Symptoms include:
 - Empty arrays becoming `[""]` or `["[]"]`.
 - Manual build seed fields rejected as an invalid body.
 
-Use `cf schema <command>` to confirm the endpoint and then call the official REST
+Run the command with `--dry-run` to see the exact request it would send. Use
+`cf schema <command>` to confirm the endpoint and body schema. Switch to
+`--body` if the flags serialise wrongly; otherwise call the official REST
 endpoint directly with a small Node or curl script. Use `CF_API_TOKEN`; do not
 read local Cloudflare CLI OAuth session JSON.
 
@@ -212,6 +214,39 @@ curl --resolve <hostname>:443:<cloudflare-edge-ip> https://<hostname>/
 If Access protects the hostname, success for unauthenticated verification is a
 redirect/challenge, not the application HTML.
 
+## Missing `previews` Block
+
+Log line: the wrangler configuration is missing a `previews` block, in a
+non-production branch build whose deploy command runs `wrangler preview`.
+
+Meaning: `wrangler preview` (open beta, wrangler >= ~4.135, 2026-10) refuses to
+run without a `previews` key in the wrangler config.
+
+Fix: add the key. It can be empty:
+
+```jsonc
+{
+  "previews": {}
+}
+```
+
+The next branch build prints preview URLs such as
+`https://<branch>-<worker>.<subdomain>.workers.dev`.
+
+## First Deploy Returns 404
+
+A brand-new Worker's first workers.dev deploy returned 404 for about 30-60 s,
+then 200 (2026-10). The build had succeeded; the route was still propagating.
+
+Retry the smoke check for a minute before calling the deploy failed:
+
+```bash
+for i in 1 2 3 4 5 6; do
+  code=$(curl -sS -o /dev/null -w '%{http_code}' https://<worker>.<subdomain>.workers.dev/)
+  echo "$code"; [ "$code" = 200 ] && break; sleep 10
+done
+```
+
 ## workers.dev Shows Disabled
 
 Dashboard shows `workers.dev: Disabled` next to the expected
@@ -224,7 +259,7 @@ before mutating:
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://<worker>.<subdomain>.workers.dev/
-# API: GET /accounts/<account-id>/workers/scripts/<worker>/subdomain
+cf workers get <worker> | jq '.subdomain'   # enabled, previews_enabled, url
 ```
 
 Pin the route in Wrangler config so later deploys cannot flip it back off:

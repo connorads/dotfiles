@@ -22,10 +22,14 @@ deploy`.
 
 - Check current Cloudflare docs or API schema before control-plane changes.
   Workers Builds and the `cf` CLI move quickly.
-- Load the CLI's own context before control-plane work:
-  `cf agent-context workers-builds` (also `workers` for Worker scripts,
-  `zero-trust` for Access) prints the current command surface and per-command
-  usage - fresher than any snapshot in this skill.
+- Discover the CLI surface live; command snapshots here go stale. `cf agent-context`
+  is gone (cf v0.15.0, 2026-10). Use `cf <command> --help`,
+  `cf schema <command>` and `cf schema --list` (method, API path and command
+  for every endpoint).
+- Run every write command with `--dry-run` first. It prints the exact method,
+  URL and JSON body without sending them, so it checks a `--body` payload.
+  Exception: skip it for calls whose body carries a secret (for example
+  `cf builds tokens create`); dry-run prints the body verbatim.
 - Discover available tools before choosing a path: `cf`, `wrangler`, `jq`,
   package manager, and whether the Cloudflare dashboard is already configured.
 - Read existing state first. Do not create duplicate Workers, repo connections,
@@ -53,14 +57,16 @@ deploy`.
 
 Read only the reference needed for the task:
 
-- `references/workers-builds.md` - create a Worker project, connect GitHub,
-  create/update triggers, trigger builds, inspect logs, verify deployments.
+- `references/workers-builds.md` - create a Worker, connect GitHub, set up
+  production and preview builds, trigger builds, inspect logs, verify
+  deployments.
 - `references/routing-and-assets.md` - static-assets Worker config, custom
   domains versus routes, DNS prerequisites, and asset-routing gotchas.
 - `references/access.md` - protect a hostname with Cloudflare Access and reusable
   policies.
 - `references/troubleshooting.md` - known failures: pnpm workspace/lockfile
-  mismatch, `pnpm deploy`, empty Worker projects, DNS propagation, stale caches.
+  mismatch, `pnpm deploy`, empty Worker projects, missing `previews` block,
+  first-deploy 404s, DNS propagation, stale caches.
 
 ## Standard Workflow
 
@@ -81,26 +87,24 @@ Read only the reference needed for the task:
      builds use the same Wrangler major/minor.
 
 3. Inspect Cloudflare state.
-   - `cf auth whoami`
-   - `cf context show`
-   - `cf workers scripts search --name <worker-name>`
-   - `cf workers beta workers versions list --worker-id <worker-id>` when the
-     Worker is a beta Worker shell.
-   - Get the Worker tag before Builds API calls; see
-     `references/workers-builds.md`.
-   - `cf workers-builds triggers list --external-script-id <worker-tag>`
+   - `cf auth whoami` (also shows the account; `cf context show` is gone in
+     cf v0.15.0)
+   - `cf workers get <worker-name>` - Worker id (the Builds script tag),
+     workers.dev URL and preview URL suffix. A missing Worker returns API error 10007.
+   - `cf workers versions list --worker-id <worker-name>`
    - `cf workers deployments list --script-name <worker-name>`
-   - `cf workers domains list --hostname <hostname>`
+   - `cf builds workers get <worker-tag>` and
+     `cf builds triggers list --external-script-id <worker-tag>`
+   - Custom domains: cf v0.15.0 has no domains command; see
+     `references/routing-and-assets.md`.
 
 4. Configure Workers Builds.
-   - For a missing Worker project, prefer creating a Worker shell without a live
-     version, then attaching a Git build trigger. See `references/workers-builds.md`.
+   - cf v0.15.0 cannot create a Worker. For a missing Worker, use the REST
+     API or one bootstrap `wrangler deploy`. See `references/workers-builds.md`.
    - Pick the setup path by context: interactive with a browser -> hand the user
      the dashboard deep link (it authorises GitHub and creates the build token);
-     headless, scripted, or reproducible -> the cf CLI path. See
+     headless, scripted, or reproducible -> `cf builds workers create`. See
      `references/workers-builds.md` (Choose A Setup Path).
-   - Connect the Git repository, select/create a build token, and create a
-     production trigger.
    - Use build/deploy commands that work in a non-interactive CI environment.
 
 5. Verify in layers.
