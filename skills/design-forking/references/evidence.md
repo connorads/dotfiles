@@ -23,14 +23,22 @@ Condensed research base for each rule in SKILL.md. Findings graded: [robust] = m
 - The enforcement-locus axis (types / boundary parser / tests / runtime / process) is our synthesis from "Parse, Don't Validate" (Alexis King 2019) + "make illegal states unrepresentable" (Minsky; Feldman): the same invariant enforced at different loci yields radically different designs with different cost/safety/reversibility profiles. Not a cited technique - an original contribution, but exactly the kind of structural axis denial-prompting research exploits.
 - Analogy: far-but-retrievable beats near or random - an inverted-U in analogical distance (Chan et al. 2011; Fu et al. 2013), and models don't analogise spontaneously, so the source domain must be named. [supported]
 
-## Why converge separately with an independent judge (step 3)
+## Why spike when sketches cannot settle it (step 3)
+
+- Dow et al. 2010 (above) compared parallel *prototypes*, not sketches: building several variants before feedback beat iterating one. [supported]
+- Differential spec analysis (Snyder, "Claude Is Not a Compiler", exe.dev 2026): several agents built a distributed DNS server in parallel from one design sketch, then fresh agents compared the builds. "It was shocking how many important decisions the agents never asked about but simply made - and made differently" - for example, how replication survives a database rollback. He codified each decision into terse guidance, threw the builds away, and repeated twice before building the keeper. [practitioner]
+- Spike before spec (Larridin, via CTO Ameya Kanitkar): a spec written around unresolved options is "contaminated", so a throwaway spike answers "does this actually work?" first. Larridin keeps the spike only as a commented reference, not as product code. [practitioner]
+- Pocock ("the more I replace plans with prototypes, the better the outputs") and pstack's competing throwaway prototypes behind a switcher reach the same practice independently. [practitioner]
+- Brooks, "plan to throw one away; you will, anyhow": hence spikes are throwaway by default. [practitioner]
+
+## Why converge separately with an independent judge (step 4)
 
 - Generating well does not select well: groups systematically pick early, feasible, unoriginal ideas (Rietzschel, Nijstad & Stroebe 2006; Johnson & D'Lauro 2018). Discernment is the binding constraint (Girotra 2010, lever 4). [supported]
 - LLM judges self-prefer their own outputs, traced to self-recognition; it survives prompt-level debiasing and amplifies in self-refinement loops (Zheng et al. 2023; Xu et al. 2024; Panickssery et al. 2024). Mitigation is architectural: fresh-context or different-family judges; panels of disjoint judges beat one big judge (PoLL, Verga et al. 2024). [supported]
 - Per-attribute scoring over overall marks: ATAM (SEI - Kazman/Klein): quality attributes inherently conflict; the analysis output is sensitivity and trade-off points, not a total score. [practitioner, heavily codified]
 - Multi-agent debate is not a diversity engine - it roughly matches self-consistency at equal budget (arXiv 2505.22960). Independent generation + rubric judge is cheaper and as good. [supported]
 
-## Why record the losers (step 4)
+## Why record the losers (step 5)
 
 - MADR / ADR practice: "Considered Options" with per-option pros and cons as a first-class, required section - the analysis is the reusable artefact, and it cannot be faked convincingly post-hoc. [practitioner]
 
