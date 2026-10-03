@@ -37,11 +37,24 @@ Assign each candidate a different **axis** of structural difference. Menu (pick 
 
 For one-way doors, generate candidates in parallel subagents with fresh contexts - none may see the others or your leaning. Inline sequential generation with the mechanism ban is fine for smaller forks.
 
-Fidelity: sketch level - the interface as its callers see it, the failure modes, the migration cost. No implementations.
+Fidelity: sketch level - the interface as its callers see it, the failure modes, the migration cost. Step 3 says when to build instead.
 
 Done when: N sketches exist, each naming its axis, no two sharing a central mechanism, null candidate present.
 
-## 3 - Converge, as a separate pass
+## 3 - Spike what sketches cannot settle
+
+A sketch hides decisions. Whoever builds it makes dozens the sketch never named, and different builders make them differently. On a one-way door, spike by default whenever agents can build in parallel. Skip only when a build costs more than the decision is worth, or there is nowhere to build.
+
+Feeling that the sketches already settle it is not a reason to skip. The decisions a spike surfaces are the ones nobody knew to ask about, so they cannot show up in a sketch comparison. A decision list from a fresh agent also costs the user less attention than reviewing one build.
+
+- Cut to the top 2-3 at sketch level first. The null candidate needs no spike.
+- Build each in its own worktree with a fresh context, from the same brief. Time-box it and skip polish.
+- A fresh agent compares the spikes by the decisions each one made, not by their code. Every difference is a question the brief must answer.
+- Spikes are throwaway. One may be kept only if it passes the same bar as any other change.
+
+Done when: each deciding question has an answer from running code, and the decisions the spikes differed on are written down.
+
+## 4 - Converge, as a separate pass
 
 Selection is the weak link: the early, feasible, unoriginal candidate wins by default, and a generator judging its own output self-prefers. Counter it:
 
@@ -53,9 +66,9 @@ Selection is the weak link: the early, feasible, unoriginal candidate wins by de
 
 Done when: a recommendation exists with the per-attribute comparison, and every rejected candidate has a stated reason.
 
-## 4 - Record
+## 5 - Record
 
-The losers are the record's value: a decision that lists only the winner cannot defend itself later. Capture considered options and why each lost wherever the project keeps decisions (ADR, design doc, commit message). One paragraph, written now - a post-hoc rationalisation is worthless.
+The losers are the record's value: a decision that lists only the winner cannot defend itself later. Capture considered options and why each lost wherever the project keeps decisions (ADR, design doc, commit message), plus each decision the spikes surfaced and the answer chosen. One paragraph, written now - a post-hoc rationalisation is worthless.
 
 ## Present the outcome, not the process
 
@@ -80,6 +93,7 @@ Decision: search results and the RSS feed apply visibility rules independently a
 - Three variants of one centroid - same mechanism wearing different names. You decorated; you did not fork.
 - Skipping the gate because the task looks simple.
 - Judging while generating, or the generator picking its own winner on a one-way door.
+- Merging a spike because it works. Its silent decisions ship with it unexamined.
 - Reaching for temperature or "be creative" phrasing - weak levers; axes and bans are the strong ones.
 - A null candidate written as a strawman and dismissed unexamined.
 - Narrating the methodology in the answer - jibber-jabber. The reader gets the comparison and the justification, not the ceremony that produced them.

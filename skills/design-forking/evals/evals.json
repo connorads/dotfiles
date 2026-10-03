@@ -13,7 +13,11 @@
 			"eval_name": "two-way-door-should-not-fork",
 			"prompt": "quick one - should i use zod or valibot for validating the config file in my internal CLI? its like 40 lines of schema, only i use this tool",
 			"expected_output": "Classifies this as a reversible two-way door, gives a fast direct recommendation with a one-line reversal note, and does NOT produce a heavyweight multi-candidate analysis.",
-			"files": []
+			"files": [],
+			"assertions": [
+				"Gives a direct recommendation without a multi-candidate analysis",
+				"Does not propose building spikes or prototypes"
+			]
 		},
 		{
 			"id": 3,
@@ -21,6 +25,19 @@
 			"prompt": "my express app calculates order totals in three places - the cart endpoint, the checkout endpoint and an admin refund script. they have drifted before (discount handling bug last month). whats the best way to make sure they cant disagree? we have decent integration tests and a small team",
 			"expected_output": "Forks across enforcement loci rather than three variants of 'extract a shared function': e.g. shared calculator module (code seam), differential/agreement test (test locus), single pricing service/endpoint (runtime locus), delete duplicate paths (null). Converges with per-attribute comparison and stated rejections.",
 			"files": []
+		},
+		{
+			"id": 4,
+			"eval_name": "spike-when-sketches-cannot-settle",
+			"prompt": "ok so our gym check-in app needs to work when studio wifi dies. plan is: central postgres (supabase) is source of truth, each studio runs a little edge box with sqlite that replicates bookings + memberships down and queues check-ins back up. we restore postgres from PITR maybe twice a year when someone fat-fingers a migration. i can have claude + codex build stuff in parallel worktrees, compute isnt the issue, my attention is. how should i design the replication? dont just give me a list of options",
+			"expected_output": "Treats replication design as expensive to reverse and sketches structurally different candidates. Because sketches cannot settle failure behaviour (a PITR restore breaking the edge's sync cursor, conflicting check-ins), it builds the top 2-3 as throwaway parallel spikes from one brief, then has a fresh agent compare the spikes by the decisions each made and feeds the differences back into the brief.",
+			"files": [],
+			"assertions": [
+				"Recommends building 2-3 candidates as throwaway spikes or prototypes rather than deciding from sketches alone",
+				"Proposes comparing the spikes by the decisions each implementation made, not by reading or scoring the code",
+				"Identifies that a Postgres point-in-time restore can break the edge's replication cursor or append-only assumption and treats it as a deciding question",
+				"Keeps spikes throwaway by default, keeping one only if it passes the normal quality bar"
+			]
 		}
 	]
 }
