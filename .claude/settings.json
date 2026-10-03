@@ -1181,6 +1181,7 @@
   "skipDangerousModePermissionPrompt": true,
   "statusLine": {
     "command": "~/.claude/statusline.sh",
+    "refreshInterval": 60,
     "type": "command"
   },
   "subagentStatusLine": {
