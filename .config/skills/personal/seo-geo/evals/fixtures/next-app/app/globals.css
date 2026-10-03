@@ -1,0 +1,7 @@
+body { margin: 0; color: #111; }
+.site-header { display: flex; justify-content: space-between; padding: 16px 24px; }
+.site-header nav a { margin-left: 16px; }
+main { max-width: 960px; margin: 0 auto; padding: 24px; }
+.plans { display: flex; gap: 24px; }
+.plan { border: 1px solid #ddd; border-radius: 8px; padding: 24px; flex: 1; }
+.hero img { width: 100%; height: auto; }

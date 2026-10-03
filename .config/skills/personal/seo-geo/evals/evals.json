@@ -1,0 +1,462 @@
+{
+  "skill_name": "seo-geo",
+  "how_to_run": "Run with the writing-skills run_evals.py: run_evals.py <skill-dir> --agent claude --runs 3 --max-cost-usd 15, then once with --agent codex. Use -j 1 for spa-shell cases or let serve.py pick a free port (it prints the URL). By hand: for each eval, run the prompt with-skill and baseline (no skill) in fresh sessions against a scratch dir. Copy each `files` entry into the scratch dir under its basename and replace <workspace> in the prompt with the scratch dir. Cases named *-adhoc are the ad-hoc arm: read only their without_skill results. Cases with should_trigger false are near-misses: the skill should not load, or should load and run no probe. Grade transcripts against the assertions and checks. evals/README.md lists every planted defect.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "live-audit-spa",
+      "prompt": "can u audit our marketing site? run `python3 <workspace>/spa-shell/serve.py 8811` and its at http://127.0.0.1:8811 (if the port's taken it prints the one it used). lighthouse says 92 for seo so tech should be fine?? but we get basically nothing from chatgpt or perplexity. what do we fix first",
+      "expected_output": "Top findings, each with evidence from fetches made this session: the raw HTML has a title and canonical but an empty #root, no h1 and no body text, so non-rendering AI crawlers see an empty page; /robots.txt and /sitemap.xml return the HTML shell; every unknown path returns 200 with a self-canonical (soft-404 host) and /pricing shows a client-side 404. Lighthouse 92 is explained as a rendered-DOM score that cannot show this. Fixes fit an Express SPA: prerender or SSR the marketing routes, serve real robots.txt and sitemap.xml and true 404s before the catch-all.",
+      "files": [
+        "evals/fixtures/spa-shell"
+      ],
+      "assertions": [
+        "Ranks 'no body content or h1 in the raw HTML; AI crawlers do not run JavaScript' as finding 1 or 2, backed by a fetch made in this session",
+        "Names /robots.txt and /sitemap.xml being served as the HTML page (no real robots.txt or sitemap)",
+        "Names the soft-404 host: unknown paths return 200 with their own self-canonical",
+        "Notices /pricing renders a client-side 404 while the server returns 200",
+        "Says the Lighthouse SEO score audits the rendered DOM, so 92 proves nothing about AI crawler access",
+        "Fixes fit the detected stack (Express/SPA: prerender or SSR, real files and real 404s served before the catch-all), not Next.js generateMetadata advice",
+        "Does not recommend llms.txt as a fix",
+        "Each top finding cites its evidence (a command output or saved file), not repo or memory"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "serve\\.py"
+        },
+        {
+          "type": "tool_used",
+          "input_match": "probe\\.py"
+        },
+        {
+          "type": "tool_used",
+          "input_match": "references/technical\\.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "next-basics",
+      "prompt": "add proper seo to this nextjs app before launch - meta tags, og images, sitemap, robots, the lot. code in <workspace>/next-app, pnpm. dont break the build pls",
+      "expected_output": "Pricing metadata moves to a Server Component with the client logic in a child; metadataBase is set; each page has exactly one canonical (the hard-coded layout link is removed); the sitemap uses content dates with no priority or changeFrequency; robots.txt allows search and user-fetch bots; slow streamed blog metadata is made prerenderable or htmlLimitedBots is set; an unknown blog slug calls notFound(); the existing Organization @graph is kept, not duplicated; FaqSchema is flagged; the staging custom-domain noindex gap is named; the city pages are flagged, not silently expanded. pnpm build passes and the local build is probed after the edits.",
+      "files": [
+        "evals/fixtures/next-app"
+      ],
+      "assertions": [
+        "Pricing metadata comes from a Server Component (page split into server page + client child); no document.title in useEffect remains",
+        "Sets metadataBase in the root layout so relative OG and canonical URLs resolve",
+        "Each page ends with exactly one canonical: the hard-coded layout <link rel=canonical> is removed",
+        "sitemap.ts uses real content dates (not new Date()) and drops priority/changeFrequency",
+        "robots.txt allows search and user-fetch bots (OAI-SearchBot, ChatGPT-User, PerplexityBot); any training-bot block is presented as a separate licensing choice",
+        "Handles streamed metadata on /blog/[slug] (makes metadata prerenderable, or sets htmlLimitedBots: /.*/ and names the TTFB cost)",
+        "Unknown blog slug returns a real 404 via notFound()",
+        "Finds the existing Organization/WebSite @graph in the layout and does not add a second Organization",
+        "Flags the sitewide self-promotional FaqSchema (no FAQ rich results; not visible content)",
+        "Names the staging custom domain on a non-production Vercel branch as indexable and suggests a host-scoped noindex header",
+        "Flags the city pages as doorway / scaled-content risk and does not silently expand or 'fix' them",
+        "Uses pnpm only"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "pnpm (run )?build"
+        },
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "(^|[\\s;&|(])(npm|npx)\\s",
+          "max": 0
+        },
+        {
+          "type": "tool_order",
+          "steps": [
+            {
+              "input_match": "metadataBase"
+            },
+            {
+              "tool": "Bash",
+              "input_match": "probe\\.py[^\\n]*--base"
+            }
+          ]
+        },
+        {
+          "type": "regex",
+          "path": "next-app/.next/server/app/index.html",
+          "pattern": "\\A(?![\\s\\S]*rel=\"canonical\"[\\s\\S]*rel=\"canonical\")[\\s\\S]*rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "schema-pressure",
+      "prompt": "add schema markup to all pages in <workspace>/next-app, faq schema on the product pages and reviews stars pls - we're 4.8 on g2 so put that in",
+      "expected_output": "Finds the existing Organization/WebSite @graph and builds on it; declines the G2 aggregateRating (self-serving, third-party ratings ineligible) and offers visible quotes linking to the review profile; says FAQ rich results are no longer shown, citing the ledger; adds only eligible types whose values are visible; validates from built HTML.",
+      "files": [
+        "evals/fixtures/next-app"
+      ],
+      "assertions": [
+        "Finds the existing Organization/WebSite @graph and extends it rather than duplicating it",
+        "Declines G2 aggregateRating in markup with the reason (self-serving / third-party aggregated ratings are ineligible) and offers visible review quotes or a link to the G2 profile",
+        "Says FAQ rich results are no longer shown, and removes or does not extend the sitewide FaqSchema",
+        "Every value in added schema is visible on the page; no placeholders",
+        "Validates from built or served HTML, not from source alone"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "volatile-facts\\.md"
+        },
+        {
+          "type": "tool_used",
+          "tool": "Edit",
+          "input_match": "aggregateRating",
+          "max": 0
+        },
+        {
+          "type": "tool_used",
+          "tool": "Write",
+          "input_match": "aggregateRating",
+          "max": 0
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "vs-page",
+      "prompt": "rewrite our rotaly vs deputy page so chatgpt recommends us. current page and our facts are in <workspace>/product-facts. make it clear we're the #1 choice obvs and update the date so it looks fresh",
+      "expected_output": "A rewritten comparison page that declines the forced #1 claim and the date bump, each with an alternative; opens with a 'choose Rotaly if / choose Deputy if' block; lets Deputy win at least one real row (US/AU rules, payroll); marks every Deputy value [verify]; uses an HTML table with a checked-date caption; uses only quotes and numbers from facts.md; adds no year bait and no FAQPage schema; asks for first-party data.",
+      "files": [
+        "evals/fixtures/product-facts"
+      ],
+      "assertions": [
+        "Declines the forced '#1 choice' framing and explains self-ranked pages get cited but not recommended; offers fit-based framing",
+        "Declines bumping the updated date without a real change; offers to change it when facts change",
+        "Opens with a direct 'choose Rotaly if / choose Deputy if' answer",
+        "Deputy wins at least one real row drawn from Rotaly's stated limits (e.g. non-UK labour rules, payroll, HR docs)",
+        "Every Deputy value is marked [verify] or similar; no invented competitor prices or features",
+        "Uses only the quotes and numbers in facts.md; invents none",
+        "No year in the title as freshness bait; no FAQPage schema",
+        "Asks for first-party data (switching stories, migration time) to add information gain"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "references/pages\\.md"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "local-chain",
+      "prompt": "we do seo for northgate dental, 12 clinics (<workspace>/local-chain/data/cities.json). make a landing page for every town within 20 miles of each so we show for 'dentist near me', and wire review asks after appointments - nps first then send the 9-10s to google. code in <workspace>/local-chain",
+      "expected_output": "Refuses pages for the 40 towns without premises (doorway) and offers enriched clinic pages with an 'areas we serve / getting here' section; measures the city-swap template with a similarity test; refuses NPS-gated and staff-named review asks (Google policy, UK CMA cherry-picking) and implements one neutral, paced ask to every patient; fixes location JSON-LD (Dentist with parentOrganization @id, brand-only name, no branchOf, no aggregateRating, precise geo, values visible); moves hours out of the iframe into server-rendered HTML; points GBP website links at location pages; orders work worst locations first.",
+      "files": [
+        "evals/fixtures/local-chain"
+      ],
+      "assertions": [
+        "Refuses pages for towns with no premises as doorway pages and offers enrichment of the 12 real clinic pages with an 'areas we serve / getting here' section",
+        "Identifies the location template as a city-name swap and backs it with a measured similarity result",
+        "Refuses NPS gating (Google review policy; UK CMA guidance calls selective asking cherry-picking) and the 'mention your dentist by name' line",
+        "Implements one neutral review ask sent to every patient after the visit, off-premises, paced per clinic",
+        "Location JSON-LD uses a LocalBusiness subtype (Dentist) with parentOrganization pointing at the Organization @id, brand-only name, no branchOf, no aggregateRating",
+        "Notes geo precision (2 decimals) and that every schema value must be visible on the page (address, phone, hours)",
+        "Moves opening hours out of the iframe into server-rendered HTML",
+        "Recommends each Google Business Profile website link points to its location page, not the homepage",
+        "Does not add routes or sitemap entries for the 40 non-premises towns"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "footprint\\.py"
+        },
+        {
+          "type": "tool_used",
+          "input_match": "references/local\\.md"
+        },
+        {
+          "type": "regex",
+          "path": "local-chain/lib/reviews.ts",
+          "pattern": "\\A(?![\\s\\S]*(score|nps|rating)\\s*(>=?\\s*[6-9]|===?\\s*(9|10)))"
+        },
+        {
+          "type": "regex",
+          "path": "local-chain/app/locations/[[]slug]/page.tsx",
+          "pattern": "\\A(?![\\s\\S]*(aggregateRating|branchOf))"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "gsc-drop",
+      "prompt": "organic down ~30% since june, gsc export in <workspace>/gsc-export. we pivoted from table booking to guest marketing last year. what happened and what do we do",
+      "expected_output": "Totals come from Dates.csv (4,210 clicks), with the query-row sum (2,950) named as an anonymisation undercount. The Jun-Aug 2026 drop is matched against Jun-Aug 2025 (flat or up year on year) before the site is blamed. The mid-Sept 2025 impressions drop and position jump are named as a reporting artefact. The 'restaurant email marketing' cannibal pair is named, with the fix deferred until both pages are read. Legacy table-booking queries are framed as past demand. Striking-distance and CTR-gap pages give next steps. Every number is labelled Measured with its file.",
+      "files": [
+        "evals/fixtures/gsc-export"
+      ],
+      "assertions": [
+        "States total clicks from Dates.csv (4,210), not from summed query rows, and names the gap to the query-row sum (2,950) as anonymised queries",
+        "Compares the Jun-Sep 2026 drop with the same months of 2025 and names it seasonal before blaming the site",
+        "Names the mid-September 2025 impressions drop and position jump as a reporting change, so impressions and position are not comparable across it",
+        "Names the 'restaurant email marketing' cannibalisation pair (blog guide ~6 vs features/email-campaigns ~9) and says to read both pages before merging or retargeting",
+        "Frames legacy table-booking queries and pages as past demand, not product direction",
+        "Names striking-distance pages (loyalty guide, guest CRM, SMS marketing) and the CTR-gap pages (newsletter examples, OpenTable integration) as next steps",
+        "Labels numbers with their source file; invents no search volumes or competitor data"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "Dates\\.csv"
+        },
+        {
+          "type": "tool_used",
+          "input_match": "references/measurement\\.md"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "bot-policy",
+      "prompt": "should we block gptbot and perplexity? worried about content theft but we still want to be in ai answers. we're on cloudflare. current robots is <workspace>/bot-policy/robots.txt",
+      "expected_output": "Separates search, user-fetch and training bots; defaults to allowing all, with a training-only block as a licensing choice; explains Google-Extended (Gemini grounding yes, Search and AI Overviews no); catches that the OAI-SearchBot group ignores the * group so it may crawl /admin, /checkout, /search; checks or asks about Cloudflare's AI bot setting; states the spoofed-UA test limit.",
+      "files": [
+        "evals/fixtures/bot-policy"
+      ],
+      "assertions": [
+        "Separates three bot classes (search, user-triggered fetch, training) with an example token for each",
+        "Default keeps search and user-fetch bots allowed; blocking training bots only is framed as a licensing choice that does not remove the site from AI answers",
+        "Explains Google-Extended controls Gemini training and grounding, not Google Search or AI Overviews",
+        "Catches that the named OAI-SearchBot group ignores the * group, so /admin, /checkout, /search and /account are open to it",
+        "Names the Cloudflare AI bot / bot management setting as a separate block to check",
+        "States that a spoofed user agent test only proves the UA rule; logs or verified IPs settle what real bots get",
+        "Notes PerplexityBot currently falls under * and Crawl-delay is ignored by Google"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "probe\\.py[^\\n]*--robots"
+        },
+        {
+          "type": "tool_used",
+          "input_match": "references/technical\\.md"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "measurement",
+      "prompt": "how do i actually know if chatgpt / perplexity / google ai overviews are citing us or sending traffic? marketing wants a £500/mo 'AI visibility' tracker. worth it?",
+      "expected_output": "A minimal stack: GA4's default AI Assistant channel (and its gaps: AI Overviews and AI Mode are not in it, app visits arrive as Direct), Search Console (AI features blended into Web), Bing Webmaster Tools AI performance, a 'how did you hear about us' field, and repeated prompt runs reporting cited and recommended rates separately. Tracker buying questions instead of a yes/no.",
+      "files": [],
+      "assertions": [
+        "Names GA4's default AI Assistant channel and that it excludes AI Overviews/AI Mode traffic",
+        "Says AI Overviews/AI Mode data sits inside Search Console Web totals",
+        "Names Bing Webmaster Tools AI performance reporting",
+        "Recommends a self-reported 'how did you hear about us' field with an AI option",
+        "Recommends repeated runs per prompt and separates cited from recommended rates",
+        "Gives tracker buying questions (prompt set, sample size, models, run count) instead of a single 'AI rank' score",
+        "Does not state 'ChatGPT search uses Bing' as settled fact"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "references/measurement\\.md"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "plan-check",
+      "prompt": "marketing left a plan in <workspace>/plan/MARKETING_PLAN.md, sanity check it before i sign off. we're 3 ppl",
+      "expected_output": "Each plan item is kept, changed or cut with a labelled source: cut the 40 templated vs pages, self-ranked listicles, 400 city pages and AI blog volume (scaled content abuse, cited not recommended); llms.txt is not a lever (Google's AI guide quoted); sitewide FAQ schema earns nothing; Lighthouse 100 first is wrong order; bought links are link spam; monthly date refresh is a warning sign; the tracker is reframed with buying questions; a few honest bottom-of-funnel pages built one at a time are kept.",
+      "files": [
+        "evals/fixtures/plan"
+      ],
+      "assertions": [
+        "Cuts the 40 templated vs pages and 400 city pages as scaled content abuse / doorway risk",
+        "Cuts self-ranked listicles (cited but not recommended)",
+        "Says llms.txt is not a ranking or citation lever, quoting or citing Google's guidance",
+        "Calls bought guest-post links link spam",
+        "Rejects Lighthouse 100 first; field Core Web Vitals out of 'poor' is enough",
+        "Rejects the monthly date refresh without real changes",
+        "Reframes the tracker (buying questions, repeated runs) and replaces the 'AI rank score' metric",
+        "Keeps a few honest bottom-of-funnel pages, built one at a time, sized for 3 people"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "references/evidence\\.md"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "near-miss-perf",
+      "should_trigger": false,
+      "prompt": "pricing page flashes unstyled then jumps, CLS 0.31 in pagespeed on mobile. next app router, next/font. fix it, code in <workspace>/next-app",
+      "expected_output": "Works on layout shift: next/font fallback metrics (adjustFontFallback), reserved space for the client-loaded pricing plans or server rendering them. No SEO audit.",
+      "files": [
+        "evals/fixtures/next-app"
+      ],
+      "assertions": [
+        "Fixes font-swap shift (adjustFontFallback / fallback metrics) and the pricing plans popping in without reserved space",
+        "Does not turn the task into an SEO audit (no robots, schema or crawler findings)"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "probe\\.py",
+          "max": 0
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "near-miss-gap",
+      "should_trigger": false,
+      "prompt": "find content gaps between us (rotaly.io) and deputy.com - what topics do they cover that we dont? want a list for the editorial calendar",
+      "expected_output": "A topic gap list for the editorial calendar. No crawl audit, robots or schema findings.",
+      "files": [],
+      "assertions": [
+        "Produces a topic gap list suited to an editorial calendar",
+        "Does not run a crawl or technical audit or give robots/schema findings"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "probe\\.py",
+          "max": 0
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "live-audit-spa-adhoc",
+      "prompt": "can u audit our marketing site? run `python3 <workspace>/spa-shell/serve.py 8811` and its at http://127.0.0.1:8811 (if the port's taken it prints the one it used). lighthouse says 92 for seo so tech should be fine?? but we get basically nothing from chatgpt or perplexity. what do we fix first check what the live site actually serves to crawlers before claiming anything, and don't make doorway pages, fake review stars or gated review asks.",
+      "expected_output": "Top findings, each with evidence from fetches made this session: the raw HTML has a title and canonical but an empty #root, no h1 and no body text, so non-rendering AI crawlers see an empty page; /robots.txt and /sitemap.xml return the HTML shell; every unknown path returns 200 with a self-canonical (soft-404 host) and /pricing shows a client-side 404. Lighthouse 92 is explained as a rendered-DOM score that cannot show this. Fixes fit an Express SPA: prerender or SSR the marketing routes, serve real robots.txt and sitemap.xml and true 404s before the catch-all.",
+      "files": [
+        "evals/fixtures/spa-shell"
+      ],
+      "assertions": [
+        "Ranks 'no body content or h1 in the raw HTML; AI crawlers do not run JavaScript' as finding 1 or 2, backed by a fetch made in this session",
+        "Names /robots.txt and /sitemap.xml being served as the HTML page (no real robots.txt or sitemap)",
+        "Names the soft-404 host: unknown paths return 200 with their own self-canonical",
+        "Notices /pricing renders a client-side 404 while the server returns 200",
+        "Says the Lighthouse SEO score audits the rendered DOM, so 92 proves nothing about AI crawler access",
+        "Fixes fit the detected stack (Express/SPA: prerender or SSR, real files and real 404s served before the catch-all), not Next.js generateMetadata advice",
+        "Does not recommend llms.txt as a fix",
+        "Each top finding cites its evidence (a command output or saved file), not repo or memory"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "serve\\.py"
+        }
+      ],
+      "notes": "Ad-hoc arm for case 1: read only the without_skill arm. The skill must beat this arm on case 1."
+    },
+    {
+      "id": 13,
+      "name": "next-basics-adhoc",
+      "prompt": "add proper seo to this nextjs app before launch - meta tags, og images, sitemap, robots, the lot. code in <workspace>/next-app, pnpm. dont break the build pls check what the live site actually serves to crawlers before claiming anything, and don't make doorway pages, fake review stars or gated review asks.",
+      "expected_output": "Pricing metadata moves to a Server Component with the client logic in a child; metadataBase is set; each page has exactly one canonical (the hard-coded layout link is removed); the sitemap uses content dates with no priority or changeFrequency; robots.txt allows search and user-fetch bots; slow streamed blog metadata is made prerenderable or htmlLimitedBots is set; an unknown blog slug calls notFound(); the existing Organization @graph is kept, not duplicated; FaqSchema is flagged; the staging custom-domain noindex gap is named; the city pages are flagged, not silently expanded. pnpm build passes and the local build is probed after the edits.",
+      "files": [
+        "evals/fixtures/next-app"
+      ],
+      "assertions": [
+        "Pricing metadata comes from a Server Component (page split into server page + client child); no document.title in useEffect remains",
+        "Sets metadataBase in the root layout so relative OG and canonical URLs resolve",
+        "Each page ends with exactly one canonical: the hard-coded layout <link rel=canonical> is removed",
+        "sitemap.ts uses real content dates (not new Date()) and drops priority/changeFrequency",
+        "robots.txt allows search and user-fetch bots (OAI-SearchBot, ChatGPT-User, PerplexityBot); any training-bot block is presented as a separate licensing choice",
+        "Handles streamed metadata on /blog/[slug] (makes metadata prerenderable, or sets htmlLimitedBots: /.*/ and names the TTFB cost)",
+        "Unknown blog slug returns a real 404 via notFound()",
+        "Finds the existing Organization/WebSite @graph in the layout and does not add a second Organization",
+        "Flags the sitewide self-promotional FaqSchema (no FAQ rich results; not visible content)",
+        "Names the staging custom domain on a non-production Vercel branch as indexable and suggests a host-scoped noindex header",
+        "Flags the city pages as doorway / scaled-content risk and does not silently expand or 'fix' them",
+        "Uses pnpm only"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "pnpm (run )?build"
+        },
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "(^|[\\s;&|(])(npm|npx)\\s",
+          "max": 0
+        },
+        {
+          "type": "regex",
+          "path": "next-app/.next/server/app/index.html",
+          "pattern": "\\A(?![\\s\\S]*rel=\"canonical\"[\\s\\S]*rel=\"canonical\")[\\s\\S]*rel=\"canonical\""
+        }
+      ],
+      "notes": "Ad-hoc arm for case 2: read only the without_skill arm. The skill must beat this arm on case 2."
+    },
+    {
+      "id": 14,
+      "name": "local-chain-adhoc",
+      "prompt": "we do seo for northgate dental, 12 clinics (<workspace>/local-chain/data/cities.json). make a landing page for every town within 20 miles of each so we show for 'dentist near me', and wire review asks after appointments - nps first then send the 9-10s to google. code in <workspace>/local-chain check what the live site actually serves to crawlers before claiming anything, and don't make doorway pages, fake review stars or gated review asks.",
+      "expected_output": "Refuses pages for the 40 towns without premises (doorway) and offers enriched clinic pages with an 'areas we serve / getting here' section; measures the city-swap template with a similarity test; refuses NPS-gated and staff-named review asks (Google policy, UK CMA cherry-picking) and implements one neutral, paced ask to every patient; fixes location JSON-LD (Dentist with parentOrganization @id, brand-only name, no branchOf, no aggregateRating, precise geo, values visible); moves hours out of the iframe into server-rendered HTML; points GBP website links at location pages; orders work worst locations first.",
+      "files": [
+        "evals/fixtures/local-chain"
+      ],
+      "assertions": [
+        "Refuses pages for towns with no premises as doorway pages and offers enrichment of the 12 real clinic pages with an 'areas we serve / getting here' section",
+        "Identifies the location template as a city-name swap and backs it with a measured similarity result",
+        "Refuses NPS gating (Google review policy; UK CMA guidance calls selective asking cherry-picking) and the 'mention your dentist by name' line",
+        "Implements one neutral review ask sent to every patient after the visit, off-premises, paced per clinic",
+        "Location JSON-LD uses a LocalBusiness subtype (Dentist) with parentOrganization pointing at the Organization @id, brand-only name, no branchOf, no aggregateRating",
+        "Notes geo precision (2 decimals) and that every schema value must be visible on the page (address, phone, hours)",
+        "Moves opening hours out of the iframe into server-rendered HTML",
+        "Recommends each Google Business Profile website link points to its location page, not the homepage",
+        "Does not add routes or sitemap entries for the 40 non-premises towns"
+      ],
+      "checks": [
+        {
+          "type": "regex",
+          "path": "local-chain/lib/reviews.ts",
+          "pattern": "\\A(?![\\s\\S]*(score|nps|rating)\\s*(>=?\\s*[6-9]|===?\\s*(9|10)))"
+        },
+        {
+          "type": "regex",
+          "path": "local-chain/app/locations/[[]slug]/page.tsx",
+          "pattern": "\\A(?![\\s\\S]*(aggregateRating|branchOf))"
+        }
+      ],
+      "notes": "Ad-hoc arm for case 5: read only the without_skill arm. The skill must beat this arm on case 5."
+    },
+    {
+      "id": 15,
+      "name": "gsc-drop-adhoc",
+      "prompt": "organic down ~30% since june, gsc export in <workspace>/gsc-export. we pivoted from table booking to guest marketing last year. what happened and what do we do check what the live site actually serves to crawlers before claiming anything, and don't make doorway pages, fake review stars or gated review asks.",
+      "expected_output": "Totals come from Dates.csv (4,210 clicks), with the query-row sum (2,950) named as an anonymisation undercount. The Jun-Aug 2026 drop is matched against Jun-Aug 2025 (flat or up year on year) before the site is blamed. The mid-Sept 2025 impressions drop and position jump are named as a reporting artefact. The 'restaurant email marketing' cannibal pair is named, with the fix deferred until both pages are read. Legacy table-booking queries are framed as past demand. Striking-distance and CTR-gap pages give next steps. Every number is labelled Measured with its file.",
+      "files": [
+        "evals/fixtures/gsc-export"
+      ],
+      "assertions": [
+        "States total clicks from Dates.csv (4,210), not from summed query rows, and names the gap to the query-row sum (2,950) as anonymised queries",
+        "Compares the Jun-Sep 2026 drop with the same months of 2025 and names it seasonal before blaming the site",
+        "Names the mid-September 2025 impressions drop and position jump as a reporting change, so impressions and position are not comparable across it",
+        "Names the 'restaurant email marketing' cannibalisation pair (blog guide ~6 vs features/email-campaigns ~9) and says to read both pages before merging or retargeting",
+        "Frames legacy table-booking queries and pages as past demand, not product direction",
+        "Names striking-distance pages (loyalty guide, guest CRM, SMS marketing) and the CTR-gap pages (newsletter examples, OpenTable integration) as next steps",
+        "Labels numbers with their source file; invents no search volumes or competitor data"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "input_match": "Dates\\.csv"
+        }
+      ],
+      "notes": "Ad-hoc arm for case 6: read only the without_skill arm. The skill must beat this arm on case 6."
+    }
+  ]
+}

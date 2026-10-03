@@ -1,0 +1,16 @@
+# robots.txt - managed by the web team
+User-agent: *
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /search
+Disallow: /account/
+Crawl-delay: 10
+
+# Keep OpenAI out of unpublished posts
+User-agent: OAI-SearchBot
+Disallow: /blog/drafts/
+
+User-agent: GPTBot
+Disallow: /
+
+Sitemap: https://www.harbourandpine.co.uk/sitemap.xml
