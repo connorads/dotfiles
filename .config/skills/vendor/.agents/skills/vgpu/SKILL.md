@@ -18,6 +18,11 @@ hosted MCP server when local package docs are available.
 This skill is vendored in this repo; refreshes go through the dotfiles `update-vendored-skills`
 review flow. Do **not** run `npx skills add vercel-labs/vgpu`.
 
+## 3D scenes
+
+If you need to work with 3D scenes, read [Scene composition](./scene.md) before implementing
+scene hierarchies, transforms, instances, cameras, or animation and physics integration.
+
 ## Blender assets
 
 For Blender modeling, high/low-poly workflows, normal or ambient occlusion baking, LODs, and

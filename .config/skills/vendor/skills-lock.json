@@ -86,7 +86,7 @@
       "source": "kitlangton/skills",
       "sourceType": "github",
       "skillPath": "skills/effect/SKILL.md",
-      "computedHash": "f4e0cfeee135a1569fc9e511c26d74fcd29d5ce03bc8066aea268fc87a88019e"
+      "computedHash": "d88417dca5f22fcc80b03ebd4096dfa6113a50cc6bb574bf53f75248cd321e35"
     },
     "emulate": {
       "source": "vercel-labs/emulate",
@@ -200,7 +200,7 @@
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "1ca59a35c9654ca7a8e034c99a2375b1b14bf9b6cfa93f491850de58afd7aa81"
+      "computedHash": "fffa128d19849b3b7815cd3ecd62e2e999c2b2b237a6fcb6ec89c296bce80254"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
@@ -281,7 +281,7 @@
       "source": "vercel-labs/vgpu",
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
-      "computedHash": "be4dfa7e50c0b8769f22e9761334d96343627a25ef06dbdb193f7772c54f98be"
+      "computedHash": "833afea625ffec41cca8710a7d3782b6067508cdf5ee96ef799c3adedf0eb4c0"
     },
     "visual-pr": {
       "source": "humanlayer/skills",
