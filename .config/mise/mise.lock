@@ -601,7 +601,7 @@ version = "0.38.1"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
-version = "0.21.16"
+version = "0.21.17"
 backend = "npm:agent-device"
 
 [[tools."npm:apify-cli"]]
