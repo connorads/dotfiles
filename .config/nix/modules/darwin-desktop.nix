@@ -67,7 +67,6 @@
       "bitwarden"
       "chatgpt"
       "claude"
-      "codex-app"
       "blender"
       "comfy"
       "gimp"
