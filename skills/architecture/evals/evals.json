@@ -1,0 +1,40 @@
+{
+  "skill_name": "architecture",
+  "evals": [
+    {
+      "id": 1,
+      "name": "sequential-cli",
+      "prompt": "i have a CLI that reads a csv, validates rows, calculates totals, writes a report and exits. someone suggested xstate for its lifecycle. sketch the smallest sensible design and explain whether to use it.",
+      "assertions": [
+        "Keeps ordinary sequential functions rather than introducing named states or a statechart runtime",
+        "Separates parsing and calculations from file access",
+        "Names a concrete additional requirement before considering lifecycle machinery"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "tycoon-entity-lifecycles",
+      "prompt": "design a tycoon game core: factories build, produce, break and repair; workers choose jobs based on distance/pay, travel, work and rest. inventory/cash change each tick. would one big state machine work? propose the smallest suitable structure.",
+      "assertions": [
+        "Separates factory and worker lifecycles rather than enumerating global combinations",
+        "Keeps job scoring and economic calculations outside lifecycle states",
+        "Keeps cash, inventory and progress as data rather than enumerating their values as states",
+        "Justifies any statechart library with a concrete required runtime feature, or keeps plain transition functions"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "approval-agent-recovery",
+      "prompt": "design an email agent that drafts, waits for human approval, edits on feedback and sends. approvals may arrive late; drafts may change; users cancel; provider results arrive later; process can restart. can a statechart handle it? what owns decisions, effects, recovery and tests?",
+      "assertions": [
+        "Separates model proposals, authoritative lifecycle decisions and external effects",
+        "Approval binds to an exact draft revision and edits invalidate approval",
+        "Defines handling of stale approvals and late provider results after cancellation",
+        "Does not claim local cancellation reverses an external send already accepted",
+        "Defines persistence and effect recovery separately from legal transitions",
+        "Justifies any statechart runtime with a required feature, or keeps a typed transition function",
+        "Tests event sequences and recovery boundaries"
+      ]
+    }
+  ]
+}
