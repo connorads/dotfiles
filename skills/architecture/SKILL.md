@@ -45,6 +45,8 @@ What kind of change is this?
 |   `-- separate decisions from effects; introduce purpose-named ports
 |-- Domain states are unclear
 |   `-- model states explicitly and parse untrusted input at boundaries
+|-- Behaviour depends on lifecycle or event order
+|   `-- references/state-machines.md
 |-- Failures are unclear
 |   `-- make domain/application errors explicit and translate at the shell
 |-- Boundaries unknown / new domain / experts disagree
@@ -395,7 +397,10 @@ when-to-read line.
 | Reference | Read when |
 |---|---|
 | references/balancing-coupling.md | a boundary feels wrong, "decouple it" is proposed, a rule ripples across services |
+| references/state-machines.md | lifecycle or event order controls legal actions; choosing functions, a transition function, or statecharts |
 | references/workflows-transactions.md | operations span aggregates/services; retries, sagas, idempotency, lost updates |
 | references/reads-and-writes.md | query shapes fight the domain model; CQRS or a read model is on the table |
 | references/observability.md | designing a new boundary; production behaviour is hard to debug |
 | references/configuration-lifecycle.md | wiring a service: config parsing, bootstrap, composition root, DI |
+
+`evals/` holds lifecycle-selection prompts and assertions for skill revisions.
