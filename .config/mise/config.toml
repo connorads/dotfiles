@@ -90,8 +90,6 @@ fnox = "1"
 "github:ahkohd/oyo" = "0.1.57"
 "github:can1357/oh-my-pi" = "18"
 "github:tamnd/kage" = "0.3"
-# prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
-"github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
 # vercel-labs/fx (Zig coding-agent harness), not the registry's `fx`, which is
 # antonmedv's JSON viewer - a name clash, so spell the owner. Its release
 # workflow attests nothing, so the exact pin is the only control: pre-1.0 and

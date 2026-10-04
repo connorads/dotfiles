@@ -320,25 +320,6 @@ url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-586.0.0
 [tools.gcloud."platforms.macos-arm64"]
 url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-586.0.0-darwin-arm.tar.gz"
 
-[[tools."github:CosineAI/cli"]]
-version = "2.0.29"
-backend = "github:CosineAI/cli"
-
-[tools."github:CosineAI/cli"."platforms.linux-arm64"]
-checksum = "sha256:05231ce4314261da3ef2a32e7e69cc531eefa34db8e55b4a0fb7a0595e2f1428"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.29/cos-linux-arm64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/565785725"
-
-[tools."github:CosineAI/cli"."platforms.linux-x64"]
-checksum = "sha256:f595cf5f5f61d294c2946c6c1e93214a6482b24068f8638c981090983f326717"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.29/cos-linux-amd64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/565785721"
-
-[tools."github:CosineAI/cli"."platforms.macos-arm64"]
-checksum = "sha256:cde1e951168530d70a5c1f3398954a9126339cf6b0a9e608945edb62df57035e"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.29/cos-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/565785720"
-
 [[tools."github:ahkohd/oyo"]]
 version = "0.1.57"
 backend = "github:ahkohd/oyo"
