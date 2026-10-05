@@ -94,6 +94,12 @@
       "skillPath": "skills/emulate/SKILL.md",
       "computedHash": "2a1e296eba9a59cbc4c7c1463948f5b4d5611e1a65f4f48836eba4780d03b69c"
     },
+    "explain-then-fix": {
+      "source": "jnsahaj/skills",
+      "sourceType": "github",
+      "skillPath": "skills/explain-then-fix/SKILL.md",
+      "computedHash": "220649b2d4dc320877d43df714d82c9148c9000b5b9f999fc31a6e237d0b52f8"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
