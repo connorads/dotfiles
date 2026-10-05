@@ -1,0 +1,23 @@
+[project]
+name = "codex-recover"
+version = "0.1.0"
+description = "Opt-in recovery of one live Codex task"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-timeout", "pytest-randomly", "pytest-socket"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra --disable-socket --allow-unix-socket"
+strict_markers = true
+strict_config = true
+strict_xfail = true
+empty_parameter_set_mark = "fail_at_collect"
+required_plugins = ["pytest-timeout", "pytest-randomly", "pytest-socket"]
+timeout = 60
+timeout_method = "signal"
+filterwarnings = ["error", "ignore:A test tried to use socket:UserWarning"]

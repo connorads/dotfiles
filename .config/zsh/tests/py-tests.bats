@@ -166,12 +166,14 @@ EOF
 @test "--all discovers every project under the roots and never a .venv" {
   write_uv_stub
   make_project src/handoff
+  make_project src/codex-recover
   mkdir -p "$HOME/src/handoff/.venv/lib/dep"
   printf '[project]\nname = "dep"\n' >"$HOME/src/handoff/.venv/lib/dep/pyproject.toml"
 
   run bash "$SCRIPT" --all
 
   [ "$status" -eq 0 ]
-  [ "$(wc -l <"$RUNNER_LOG" | tr -d ' ')" -eq 1 ]
+  [ "$(wc -l <"$RUNNER_LOG" | tr -d ' ')" -eq 2 ]
   [[ "$(cat "$RUNNER_LOG")" == *"cwd=src/handoff GIT"* ]]
+  [[ "$(cat "$RUNNER_LOG")" == *"cwd=src/codex-recover GIT"* ]]
 }

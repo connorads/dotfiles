@@ -1075,6 +1075,10 @@ local fast_steps = new Mapping<String, Step> {
         glob = List("src/handoff/src/**/*.py", "src/handoff/pyrefly.toml")
         check = "bash .hk-hooks/py-typecheck.sh src/handoff"
     }
+    ["py-typecheck-codex-recover"] {
+        glob = List("src/codex-recover/src/**/*.py", "src/codex-recover/pyrefly.toml")
+        check = "bash .hk-hooks/py-typecheck.sh src/codex-recover"
+    }
 
     // First-party Python project gate, scoped to the change: each staged file
     // resolves to its nearest pyproject.toml and that project's pytest runs
@@ -1084,7 +1088,7 @@ local fast_steps = new Mapping<String, Step> {
     // discovering step, roots duplicated in py-tests.sh's ROOTS, gate-coverage
     // asserts the two agree. Missing uv warns and passes.
     ["py-tests-scoped"] {
-        glob = List("src/handoff/**")
+        glob = List("src/handoff/**", "src/codex-recover/**")
         check = "bash .hk-hooks/py-tests.sh {{files}}"
     }
 

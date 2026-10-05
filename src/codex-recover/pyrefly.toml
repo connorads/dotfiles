@@ -1,0 +1,6 @@
+project-includes = ["src/**/*.py"]
+search-path = ["src"]
+preset = "strict"
+
+[errors]
+unused-type-ignore = true

@@ -25,7 +25,7 @@ unset GIT_DIR GIT_WORK_TREE
 
 # Invariant: these roots are duplicated in hk.pkl's `py-tests-scoped` glob;
 # gate-coverage.py asserts the two agree.
-ROOTS="src/handoff"
+ROOTS="src/handoff src/codex-recover"
 
 # Whether a tool can actually RUN, not merely resolve - a mise shim resolves on
 # a machine with no version set and then exits 1.
