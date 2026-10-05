@@ -100,6 +100,18 @@
       "skillPath": "skills/explain-then-fix/SKILL.md",
       "computedHash": "220649b2d4dc320877d43df714d82c9148c9000b5b9f999fc31a6e237d0b52f8"
     },
+    "explainer-motion": {
+      "source": "kitlangton/psychopomp",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/explainer-motion/SKILL.md",
+      "computedHash": "f28ada84e12e09d03dc65d7a08dafd835a74ce140c2c37830744d2b26cd5171d"
+    },
+    "fframes-video": {
+      "source": "dmtrKovalenko/fframes",
+      "sourceType": "github",
+      "skillPath": "skills/fframes-video/SKILL.md",
+      "computedHash": "cd94e0f3a86c9e9e43a4f769ada38ac4750107365c0f20325c16bf00f7657596"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -219,6 +231,12 @@
       "sourceType": "github",
       "skillPath": "skills/pr-lens/SKILL.md",
       "computedHash": "5cb468838959a36faedd5105a343fd8056a8bb44225b520679f864c9348ae944"
+    },
+    "psychopomp": {
+      "source": "kitlangton/psychopomp",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/psychopomp/SKILL.md",
+      "computedHash": "9a86ee47a3a1eb5a130f359e8b21dd5a37a32addd041a11cd0a20305e44bde54"
     },
     "redesign-existing-projects": {
       "source": "leonxlnx/taste-skill",
