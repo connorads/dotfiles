@@ -189,6 +189,13 @@
 /src/handoff/.import_linter_cache/
 /src/handoff/**/__pycache__/
 
+# codex-recover: opt-in recovery of one live Codex task
+!/src/codex-recover/
+!/src/codex-recover/**
+/src/codex-recover/.venv/
+/src/codex-recover/.pytest_cache/
+/src/codex-recover/**/__pycache__/
+
 # pin-audit: conditional-pin recheck (bun/TS; zsh wrapper in functions/nix)
 !/src/pin-audit/
 !/src/pin-audit/**

@@ -198,7 +198,8 @@ discovery roots are spelled in both `hk.pkl`'s glob and the script; the
 
 The `py-typecheck-*` steps are the Python analogue: `pyrefly` (`preset =
 "strict"`, invoked with `-c`) gates the four script dirs (`.claude/hooks`,
-`.hk-hooks`, `.config/vox`, `.config/tmux`) and `src/handoff`, one glob-scoped
+`.hk-hooks`, `.config/vox`, `.config/tmux`) and `src/handoff` and
+`src/codex-recover`, one glob-scoped
 step per root with a per-root `pyrefly.toml` (each root its own project so
 intra-package imports resolve). What is gated is decided by import
 resolvability, not by directory: a file importing an uninstalled third-party
