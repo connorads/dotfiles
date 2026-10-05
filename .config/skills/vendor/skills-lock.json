@@ -112,6 +112,12 @@
       "skillPath": "skills/firecrawl/SKILL.md",
       "computedHash": "d4aeeccee5e30d0b41db63cbae1bf99627ada6ed2939701453c80dd8a15d6e75"
     },
+    "gdp-ts": {
+      "source": "rauchg/gdp-ts",
+      "sourceType": "github",
+      "skillPath": "skills/gdp-ts/SKILL.md",
+      "computedHash": "77779b495dbb6291b953d87610e394319f85430fbb4b4b09c8c8a1e06d92e1e3"
+    },
     "gh-stack": {
       "source": "github/gh-stack",
       "sourceType": "github",
