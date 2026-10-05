@@ -58,6 +58,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [gh-gate](../.config/zsh/functions/git/gh-gate) | Scoped gh tokens via a GitHub App; `gh-gate --help` for setup |
 | [mcpz](../.config/zsh/functions/agents/mcpz) | Render and launch MCP bundles per agent; docs: [.config/mcp/AGENTS.md](../.config/mcp/AGENTS.md) |
 | [.config/vox/](../.config/vox/) | `vox` merge filter and vocabulary map; docs: [.config/tmux/docs/vox.md](../.config/tmux/docs/vox.md) |
+| [~/src/codex-recover](../src/codex-recover/README.md) | `agent recover` (Python). Tests: `cd ~/src/codex-recover && uv run --group dev pytest -c pyproject.toml` |
 | [~/src/handoff](../src/handoff/README.md) | `handoff` (Python). Tests: `cd ~/src/handoff && uv run --group dev pytest -c pyproject.toml` |
 | [~/src/pin-audit](../src/pin-audit/) | `pin-audit` (bun/TS). Tests: `bun test` there, plus `pin-audit.bats` |
 | [~/src/skl](../src/skl/CONTEXT.md) | `skl` (bun/TS); config `.config/skl/config.json`. Tests: `bun test` there, plus `skl-pick.bats` |

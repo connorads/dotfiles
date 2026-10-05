@@ -1,5 +1,10 @@
 # AGENTS.md - tmux config
 
+Codex recovery commands and lifecycle are owned by
+[`src/codex-recover`](../../src/codex-recover/README.md). See
+[agent task recovery](./docs/agent-state.md#opt-in-codex-task-recovery) before changing
+recovery or its pane identity checks.
+
 ## Interpreter contract: every bash script here runs under bash >= 5
 
 **Invariant: a script behaves identically whichever interpreter the caller's PATH

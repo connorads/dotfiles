@@ -81,6 +81,7 @@ class Rechecked:
     snapshot: Snapshot
     pane_valid: bool
     client_id: str
+    failed_turn: str
 
 
 type Event = Tick | Stop | TurnChanged | GoalChanged | UserSubmitted | Rechecked
@@ -160,6 +161,8 @@ def arm(
     )
     if snapshot.interactive:
         return Stopped(data, "interactive-request")
+    if snapshot.queued:
+        return Stopped(data, "manual-prompt")
     if snapshot.thread_status in ("notLoaded", "systemError"):
         return Stopped(data, "thread-unavailable")
     reason = goal_stop(data, snapshot.goal)
@@ -224,7 +227,11 @@ def step(state: State, event: Event, now: float) -> Transition:
         return state, ()
     if not isinstance(state, Recovering) or state.sent:
         return state, ()
+    if event.failed_turn != state.failed_turn:
+        return state, ()
     snapshot = event.snapshot
+    if snapshot.queued:
+        return Stopped(data, "manual-prompt"), ()
     reason = goal_stop(data, snapshot.goal)
     if reason:
         return Stopped(data, reason), ()

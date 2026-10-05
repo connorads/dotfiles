@@ -144,19 +144,24 @@ def test_requests_are_disarming_events_without_responses():
     assert event.user.client_id == "own"
 
 
-PEER = """
+PEER = (
+    "import sys; sys.path.insert(0, "
+    + repr(str(__import__("pathlib").Path(__file__).parent))
+    + ");\n"
+    + """
 import json, sys
-for line in sys.stdin:
-    m = json.loads(line)
+from wire_peer import messages, send
+for m in messages():
     method = m.get("method")
     if "id" not in m: continue
-    print(json.dumps({"method": "requestSeen", "params": {"method": method}}), flush=True)
+    send({"method": "requestSeen", "params": {"method": method}})
     if method == "disconnect": sys.exit(0)
     if method == "hang": continue
-    print(json.dumps({"id": 800, "method": "item/tool/requestUserInput", "params": {"threadId": "t"}}), flush=True)
-    print(json.dumps({"method": "item/started", "params": {"threadId": "t", "item": {"type": "userMessage", "id": "u", "clientId": "own"}}}), flush=True)
-    print(json.dumps({"id": m["id"], "result": {"method": method}}), flush=True)
+    send({"id": 800, "method": "item/tool/requestUserInput", "params": {"threadId": "t"}})
+    send({"method": "item/started", "params": {"threadId": "t", "item": {"type": "userMessage", "id": "u", "clientId": "own"}}})
+    send({"id": m["id"], "result": {"method": method}})
 """
+)
 
 
 def test_stdio_peer_preserves_notifications_before_response_and_never_answers_requests():
@@ -216,6 +221,8 @@ class FakeRpc:
                 return {"data": [self.turn]}
             case "thread/goal/get":
                 return {"goal": None}
+            case "thread/queue/list":
+                return {"data": []}
             case _:
                 return {}
 
@@ -276,5 +283,19 @@ def test_mutation_wire_payloads_preserve_goal_settings():
                 },
             ),
         ]
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("response", ["HTTP/1.1 500 Failure\\r\\n\\r\\n", ""])
+def test_proxy_handshake_failure_never_sends_an_rpc(response):
+    async def run():
+        peer = (
+            "import sys,time; sys.stdout.write("
+            + repr(response)
+            + "); sys.stdout.flush(); time.sleep(10)"
+        )
+        with pytest.raises(TransportFailure, match="proxy-handshake-failed"):
+            await Rpc.open((sys.executable, "-u", "-c", peer), lambda _: None, rpc_deadline=0.05)
 
     asyncio.run(run())

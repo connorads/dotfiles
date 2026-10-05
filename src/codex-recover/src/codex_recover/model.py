@@ -44,6 +44,7 @@ class Snapshot:
     interactive: bool
     turn: Turn | None
     goal: Goal | None
+    queued: bool = False
 
 
 RECOVERABLE = frozenset(
