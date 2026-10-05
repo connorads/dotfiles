@@ -25,7 +25,7 @@ prose [path...]        # lint markdown and code comments against the house rules
 ccp [-y] [<name>]      # launch Claude Code on an account (bare = picker); --mcp <bundle> adds MCP
 claude-usage --all     # refresh usage for every Claude account
 mcpz                   # MCP bundles: list, show, render, run per agent
-agent <sub>            # live agent panes: ls, state, wait, prompt, name, pick, goto, hibernate, thaw, auto, pin
+agent <sub>            # live agent panes: ls, state, wait, prompt, name, pick, goto, hibernate, thaw, recover, auto, pin
 atp                    # teleport a live Claude/Codex session to another host
 handoff                # translate a session between Claude Code and Codex
 shotpath [host]        # save or upload the clipboard image, copy its path
@@ -48,6 +48,10 @@ ghfzf [pr|issue|run]   # fzf triage for PRs, issues and Actions runs
 gh-gate <sub> <host>   # scoped gh tokens on a remote: init, grant, revoke, status, ui
 lazydocker             # container TUI
 ```
+
+`agent recover on <target>` enables eight-hour Codex task recovery.
+`agent recover status [<target>]` reports workers; `agent recover off <target>`
+cancels pending recovery. See [task recovery](../src/codex-recover/README.md).
 
 ### ccp account config inheritance
 

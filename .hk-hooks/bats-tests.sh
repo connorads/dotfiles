@@ -76,6 +76,9 @@ suites=$(
 		src/pin-audit/*)
 			echo "$TESTS_DIR/pin-audit.bats"
 			;;
+		src/codex-recover/*)
+			echo "$TESTS_DIR/agent-recover.bats"
+			;;
 		# .zshenv sits under no functions/** root, so the stem rule cannot
 		# reach it; name its suite explicitly.
 		.zshenv)

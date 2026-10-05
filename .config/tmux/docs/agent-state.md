@@ -210,3 +210,22 @@ Tests (run `mise run zsh-tests`):
   mechanics + stall/refusal via a PATH tmux stub; name uniqueness.
 
 Keep the dot legend in [`help.md`](../help.md) in sync with `@agent_dotfmt`.
+
+## Opt-in Codex task recovery
+
+`agent recover on <target>` attaches an eight-hour detached recovery worker to
+one running Codex task or its latest eligible failure. `agent recover status`
+lists records; a target filters them. `agent recover off <target>` cancels
+pending recovery without interrupting Codex. Targets use the shared agent name,
+pane ID and tmux address resolver.
+
+The worker uses the installed app-server proxy and the SessionStart-published
+thread identity. It checks pane identity every five seconds and before recovery.
+It does not write agent state or inject tmux keys. Human prompts, interruptions,
+questions and approvals stop recovery so the Codex UI retains control. Native
+goal continuations remain armed; goal recovery preserves objective, budget and
+accumulated usage.
+
+The [recovery project](../../../src/codex-recover/README.md) owns failure
+eligibility, backoff, private metadata, lifecycle and the manual-action race.
+Daemon disconnect and reboot require explicit rearming.

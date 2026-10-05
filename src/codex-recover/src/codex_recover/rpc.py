@@ -8,6 +8,8 @@ import json
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
+from codex_recover.websocket import WebSocket
+
 
 class TransportFailure(Exception):
     """A content-free transport or RPC stop reason."""
@@ -41,6 +43,8 @@ class Rpc:
         self.pending: dict[str, asyncio.Future[dict[str, object]]] = {}
         self._sequence = 0
         self.failure: str | None = None
+        assert process.stdout is not None and process.stdin is not None
+        self.websocket = WebSocket(process.stdout, process.stdin)
         self.reader_task = asyncio.create_task(self._read())
 
     @classmethod
@@ -58,6 +62,19 @@ class Rpc:
             stderr=asyncio.subprocess.DEVNULL,
             limit=16 * 1024 * 1024,
         )
+        assert process.stdout is not None and process.stdin is not None
+        try:
+            await asyncio.wait_for(WebSocket(process.stdout, process.stdin).connect(), rpc_deadline)
+        except asyncio.CancelledError:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+            await process.wait()
+            raise
+        except (OSError, ValueError, TimeoutError) as exc:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+            await process.wait()
+            raise TransportFailure("proxy-handshake-failed") from exc
         return cls(process, on_event, rpc_deadline)
 
     def _fail(self, reason: str) -> None:
@@ -72,7 +89,8 @@ class Rpc:
     async def _read(self) -> None:
         assert self.process.stdout is not None
         try:
-            while line := await self.process.stdout.readline():
+            while True:
+                line = await self.websocket.receive()
                 value: object = json.loads(line)
                 message = object_map(value)
                 if "method" in message:
@@ -88,7 +106,10 @@ class Rpc:
                     future.set_exception(TransportFailure("rpc-rejected"))
                 else:
                     future.set_result(object_map(message.get("result")))
+        except (EOFError, asyncio.IncompleteReadError):
             self._fail("daemon-disconnected")
+        except TimeoutError:
+            self._fail("rpc-timeout")
         except (ValueError, OSError, TransportFailure):
             self._fail("invalid-protocol")
 
@@ -97,9 +118,11 @@ class Rpc:
             raise TransportFailure(self.failure)
         assert self.process.stdin is not None
         try:
-            self.process.stdin.write(json.dumps(message, separators=(",", ":")).encode() + b"\n")
-            await asyncio.wait_for(self.process.stdin.drain(), self.timeout)
-        except (OSError, TimeoutError) as exc:
+            await asyncio.wait_for(
+                self.websocket.send(json.dumps(message, separators=(",", ":")).encode()),
+                self.timeout,
+            )
+        except (OSError, TimeoutError, ValueError) as exc:
             self._fail("rpc-write-uncertain")
             raise TransportFailure("rpc-write-uncertain") from exc
 

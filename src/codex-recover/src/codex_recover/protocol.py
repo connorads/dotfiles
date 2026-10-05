@@ -110,6 +110,8 @@ def decode_event(message: Mapping[str, object], thread_id: str) -> Event | None:
         return Stop(text(params.get("reason")))
     if target != thread_id:
         return None
+    if method == "thread/queue/changed":
+        return Stop("manual-prompt")
     if method in ("thread/closed", "thread/archived", "thread/deleted", "thread/reverted"):
         return Stop("thread-unavailable")
     if method == "thread/goal/cleared":
@@ -152,6 +154,9 @@ class Codex:
             },
         )
         goal_result = await self.peer.request("thread/goal/get", {"threadId": self.thread_id})
+        queued = await self.peer.request(
+            "thread/queue/list", {"threadId": self.thread_id, "limit": 1}
+        )
         thread_result = await self.peer.request(
             "thread/read", {"threadId": self.thread_id, "includeTurns": False}
         )
@@ -169,6 +174,7 @@ class Codex:
             bool(flags),
             parse_turn(page[0], full=True) if page else None,
             parse_goal(raw_goal) if raw_goal is not None else None,
+            bool(array(queued.get("data"))),
         )
 
     async def attach(

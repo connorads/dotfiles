@@ -37,7 +37,9 @@ def ready(state, now=0, snap=None, client_id="own-1"):
     state, effects = step(state, Tick(), now)
     assert effects == (Recheck("t1"),)
     return step(
-        state, Rechecked(snap or snapshot("failed", error="cyberPolicy"), True, client_id), now
+        state,
+        Rechecked(snap or snapshot("failed", error="cyberPolicy"), True, client_id, "t1"),
+        now,
     )
 
 
@@ -122,7 +124,7 @@ def test_backoff_caps_and_goal_success_resets_it():
             snapshot("failed", goal("blocked"), "cyberPolicy"),
             turn=Turn(turn_id, "failed", "cyberPolicy"),
         )
-        state, effects = step(state, Rechecked(snap, True, "unused"), now)
+        state, effects = step(state, Rechecked(snap, True, "unused", turn_id), now)
         assert effects == (Mutation(turn_id, None, True),)
         next_turn = f"t{index + 2}"
         state, _ = step(state, TurnChanged(Turn(next_turn, "inProgress")), now)
@@ -145,7 +147,7 @@ def test_backoff_caps_and_goal_success_resets_it():
 def test_final_recheck_prevents_mutation(changed):
     state = arm(snapshot("failed", error="cyberPolicy"), 0)
     state, _ = step(state, Tick(), 0)
-    state, effects = step(state, Rechecked(changed, True, "own"), 0)
+    state, effects = step(state, Rechecked(changed, True, "own", "t1"), 0)
     assert isinstance(state, Stopped)
     assert not effects
 
@@ -170,3 +172,30 @@ def test_deadline_and_persistent_consumption():
 )
 def test_ineligible_attachment(snap):
     assert isinstance(arm(snap, 0), Stopped)
+
+
+def test_stale_recheck_cannot_recover_a_different_failure():
+    state = arm(snapshot("failed", error="cyberPolicy"), 0)
+    state, _ = step(state, Tick(), 0)
+    unchanged, effects = step(
+        state, Rechecked(snapshot("failed", error="cyberPolicy"), True, "own", "older"), 0
+    )
+    assert unchanged == state
+    assert not effects
+
+
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [
+        ("complete", "goal-complete"),
+        ("paused", "goal-paused"),
+        ("usageLimited", "goal-limit"),
+        ("budgetLimited", "goal-limit"),
+    ],
+)
+def test_goal_terminal_states_stop_recovery(status, reason):
+    state = arm(snapshot(current_goal=goal()), 0)
+    state, effects = step(state, GoalChanged(goal(status), None), 1)
+    assert isinstance(state, Stopped)
+    assert state.reason == reason
+    assert not effects

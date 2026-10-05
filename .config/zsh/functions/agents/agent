@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # agent: orchestrate coding-agent panes and their hibernation lifecycle.
-# usage: agent <ls|state|wait|prompt|name|unname|pick|goto|hibernate|thaw> [args]
+# usage: agent <ls|state|wait|prompt|name|unname|pick|goto|hibernate|thaw|recover> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -11,6 +11,7 @@ local _agent_state_sh=${AGENT_STATE_SH:-$_agent_scripts/agent-state.sh}
 local _agent_sweep=${AGENT_SWEEP:-$_agent_scripts/agent-sweep.sh}
 local _agent_hibernate=${AGENT_HIBERNATE_SH:-$_agent_scripts/agent-hibernate.sh}
 local _agent_popup=${AGENT_POPUP:-$_agent_scripts/agent-popup.sh}
+local _agent_recover_python=${AGENT_RECOVER_PYTHON:-python3}
 local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
 
 [[ -r $_agent_cli_lib ]] || {
@@ -46,10 +47,16 @@ usage: agent <subcommand> [args]
                     idle/done panes hibernate without --force
   thaw [<target>]   resume a hibernated pane (or, with no target, pick from
                     parked panes plus orphaned records)
+  recover on <target>
+                    recover eligible Codex task failures for eight hours
+  recover status [<target>]
+                    show recovery state (no target lists retained records)
+  recover off <target>
+                    cancel pending recovery without interrupting Codex
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
-exit codes: 0 ok · 1 wait timeout · 2 usage · 3 target unresolvable/pane gone
+exit codes: 0 ok · 1 timeout/recovery failure · 2 usage · 3 target unresolvable/pane gone
             · 4 prompt refused · 5 prompt stall (sent but agent never started)
             · 6 hibernate refused (pane is blocked/working/untracked)
 EOF
@@ -198,7 +205,7 @@ _agent_prompt_verify() {
   return 1
 }
 
-# agent prompt — the only mutating verb: paste the prompt into the pane and
+# agent prompt — paste the prompt into the pane and
 # submit it, never touching @agent_state (it only sends keystrokes and observes
 # the option the agent's own hooks set).
 _agent_prompt() {
@@ -423,6 +430,29 @@ _agent_goto() {
   sh "$_agent_popup" jump "$pane"
 }
 
+_agent_recover() {
+  local verb=${1:-} pane=
+  (( $# )) && shift
+  case $verb in
+    -h|--help) _agent_usage; return 0 ;;
+    on|off)
+      (( $# == 1 )) || { print -u2 "usage: agent recover $verb <target>"; return 2; }
+      ;;
+    status)
+      (( $# <= 1 )) || { print -u2 "usage: agent recover status [<target>]"; return 2; }
+      ;;
+    *) print -u2 "usage: agent recover <on|status|off> [<target>]"; return 2 ;;
+  esac
+  local -a args
+  if (( $# )); then
+    [[ $1 != -* ]] || { print -u2 "agent recover: unknown flag: $1"; return 2; }
+    pane=$(agent_resolve_target "$1") || return $?
+    args=(--pane "$pane")
+  fi
+  PYTHONPATH="$HOME/src/codex-recover/src${PYTHONPATH:+:$PYTHONPATH}" \
+    "$_agent_recover_python" -m codex_recover "$verb" "${args[@]}"
+}
+
 local _agent_sub=${1:-}
 (( $# )) && shift
 case ${_agent_sub:-ls} in
@@ -436,6 +466,7 @@ case ${_agent_sub:-ls} in
   goto) _agent_goto "$@" ;;
   hibernate) _agent_hibernate "$@" ;;
   thaw) _agent_thaw "$@" ;;
+  recover) _agent_recover "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"
