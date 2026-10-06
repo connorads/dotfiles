@@ -141,6 +141,11 @@ export CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF=1
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
+export T3CODE_TELEMETRY_ENABLED=false
+export T3CODE_OTEL_SDK_DISABLED=true
+export ASTRO_TELEMETRY_DISABLED=1
+export NEXT_TELEMETRY_DISABLED=1
+
 # BB: disable PostHog usage telemetry.
 export BB_TELEMETRY=false
 
