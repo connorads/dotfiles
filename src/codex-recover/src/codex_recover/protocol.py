@@ -133,7 +133,7 @@ def decode_event(message: Mapping[str, object], thread_id: str) -> Event | None:
         status = object_map(params.get("status"))
         if status.get("activeFlags"):
             return Stop("interactive-request")
-        if status.get("type") in ("notLoaded", "systemError"):
+        if status.get("type") == "notLoaded":
             return Stop("thread-unavailable")
     return None
 

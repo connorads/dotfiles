@@ -299,3 +299,16 @@ def test_proxy_handshake_failure_never_sends_an_rpc(response):
             await Rpc.open((sys.executable, "-u", "-c", peer), lambda _: None, rpc_deadline=0.05)
 
     asyncio.run(run())
+
+
+def test_idle_system_error_notification_waits_for_a_terminal_turn():
+    assert (
+        decode_event(
+            {
+                "method": "thread/status/changed",
+                "params": {"threadId": "thread", "status": {"type": "systemError"}},
+            },
+            "thread",
+        )
+        is None
+    )

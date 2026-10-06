@@ -199,3 +199,12 @@ def test_goal_terminal_states_stop_recovery(status, reason):
     assert isinstance(state, Stopped)
     assert state.reason == reason
     assert not effects
+
+
+def test_idle_system_error_can_recover_only_an_eligible_failed_turn():
+    failed = replace(snapshot("failed", error="cyberPolicy"), thread_status="systemError")
+    state = arm(failed, 0)
+    assert isinstance(state, Backoff)
+    state, effects = ready(state, snap=failed)
+    assert effects == (Mutation("t1", "own-1", False),)
+    assert isinstance(arm(replace(failed, turn=Turn("t1", "failed", "ineligible")), 0), Stopped)

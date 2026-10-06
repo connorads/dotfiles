@@ -54,6 +54,7 @@ def commands():
                     if goal:
                         goal["status"] = "blocked"
                         notification("thread/goal/updated", goal=goal, turnId=turn["id"])
+                    notification("thread/status/changed", status={"type": "systemError"})
                     notification(
                         "turn/completed", turn={**turn, "items": [], "itemsView": "notLoaded"}
                     )
@@ -117,7 +118,7 @@ for request in messages():
             "thread": {
                 "status": {"type": "active", "activeFlags": []}
                 if turn["status"] == "inProgress"
-                else {"type": "idle"}
+                else {"type": "systemError" if turn["status"] == "failed" else "idle"}
             }
         }
     elif method == "thread/resume":
