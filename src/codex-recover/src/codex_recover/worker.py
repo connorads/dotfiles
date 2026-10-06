@@ -245,7 +245,7 @@ class Worker:
         if isinstance(self.state, Stopped):
             self.stop(self.state.reason)
             return
-        if attachment.after.thread_status in ("notLoaded", "systemError"):
+        if attachment.after.thread_status == "notLoaded":
             self.stop("thread-unavailable")
             return
         self.ready = True

@@ -163,7 +163,7 @@ def arm(
         return Stopped(data, "interactive-request")
     if snapshot.queued:
         return Stopped(data, "manual-prompt")
-    if snapshot.thread_status in ("notLoaded", "systemError"):
+    if snapshot.thread_status == "notLoaded":
         return Stopped(data, "thread-unavailable")
     reason = goal_stop(data, snapshot.goal)
     if reason:
@@ -239,7 +239,8 @@ def step(state: State, event: Event, now: float) -> Transition:
         return Stopped(data, "pane-changed"), ()
     if snapshot.interactive:
         return Stopped(data, "interactive-request"), ()
-    if snapshot.thread_status != "idle" or snapshot.turn is None:
+    # systemError is the daemon's idle error flag; running turns take precedence.
+    if snapshot.thread_status not in ("idle", "systemError") or snapshot.turn is None:
         return Stopped(data, "recheck-changed"), ()
     turn = snapshot.turn
     if (
