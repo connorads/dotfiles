@@ -3,6 +3,7 @@
   stdenv,
   rustPlatform,
   fetchFromGitHub,
+  callPackage,
   zig_0_15,
   cctools,
 }:
@@ -31,6 +32,12 @@ rustPlatform.buildRustPackage rec {
     hash = "sha256-1Zz65SCk3rkJ9+Q0MmyNOTNiDSLBRIHRd3IvFM4iNXw=";
   };
 
+  # ghostty's `zig build` fetches its build.zig.zon deps from the network,
+  # which the Linux sandbox blocks (the darwin sandbox is off, so darwin hides
+  # this). Generated: ${ghosttySrc}/build.zig.zon.nix run through nixfmt; redo it
+  # whenever ghosttySrc.rev changes.
+  zigDeps = callPackage ./terminal-control-zig-deps.nix { };
+
   # ghostty pins zig 0.15 (requireZig rejects newer zig); cctools supplies the
   # Apple libtool ghostty's fat-static-lib install step spawns on darwin.
   nativeBuildInputs = [ zig_0_15 ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ cctools ];
@@ -45,6 +52,7 @@ rustPlatform.buildRustPackage rec {
     cp -r ${ghosttySrc} ghostty-src
     chmod -R u+w ghostty-src
     export GHOSTTY_SOURCE_DIR=$PWD/ghostty-src
+    export GHOSTTY_ZIG_SYSTEM_DIR=${zigDeps}
     export ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zig-global-cache
   ''
   + lib.optionalString stdenv.hostPlatform.isDarwin ''
