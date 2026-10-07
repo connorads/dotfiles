@@ -1,11 +1,11 @@
 ---
 name: distilling-domain-language
-description: Choose or distil canonical domain language through structured interrogation. Use when naming a new domain concept, pinning down a project's ubiquitous language, when a term fights its own definition, several words compete for one concept, a glossary has bloated, or a hidden concept needs surfacing before terms are written into CONTEXT.md.
+description: Choose or distil canonical domain language through structured interrogation. Use when naming a new domain concept, pinning down a project's ubiquitous language, when a term fights its own definition, several words compete for one concept, a glossary has bloated, or a hidden concept needs surfacing before terms are written into GLOSSARY.md.
 ---
 
 # Distilling Domain Language
 
-The workshop, not the maintenance habit. Run an intensive interrogation to decide what a domain concept *should* be called - whether you are naming it for the first time or reopening a word the domain has outgrown - then hand the verdict to the `domain-modeling` skill to write into `CONTEXT.md`. That sibling owns the steady-state glossary and ADRs; **do not write `CONTEXT.md` yourself here.**
+The workshop, not the maintenance habit. Run an intensive interrogation to decide what a domain concept *should* be called - whether you are naming it for the first time or reopening a word the domain has outgrown - then hand the verdict to the `domain-modeling` skill to write into `GLOSSARY.md`. That sibling owns the steady-state glossary and ADRs; **do not write `GLOSSARY.md` yourself here.**
 
 This is a grilling protocol: you drive it with named moves, one question at a time. But talk alone reaches false agreement - people nod at a word while meaning different things. So the instant a term resists, externalise the fight into a small forcing artifact (a scenario table, a hotspot register, a Given/When/Then). The artifact makes the contradiction impossible to hand-wave.
 
@@ -22,7 +22,7 @@ The same moves serve both entry points: a brand-new coinage earns the exact gril
 
 - **One question at a time.** Wait for the answer before the next. Multiple at once is bewildering.
 - **Always recommend an answer.** You are grilling, not surveying.
-- **Explore before you ask.** If the codebase, `CONTEXT.md` or docs settle it, go look instead of asking.
+- **Explore before you ask.** If the codebase, `GLOSSARY.md` or docs settle it, go look instead of asking.
 - **Over-generate, then converge.** Diverge cheaply first - bad candidates cost nothing to discard. Being "too correct too soon" is the biggest mistake.
 - **Provisional until proven.** Hold several candidate names in play at once. Expect churn. Never defend your first coinage.
 
@@ -37,7 +37,7 @@ Run the phases in order. Refuse to settle a noun before the process around it ex
 ### 1. Diverge - surface raw material
 
 - **Event walk.** When the user opens with a noun or a data model, refuse to model it. "Before we name anything: walk me through what actually happens, step by step, each step as a past-tense event - an invitation was sent, a reply was submitted." The contested noun must earn its place as the thing a command acts on. *(Household surfaces only as "the group that redeems one code and submits one reply" - a lead, not yet a name.)*
-- **Candidate dump.** "Give me every word you, a guest, or the code uses for this - synonyms, the wrong-sounding ones, all of them." No judging yet. Grep the repo and `CONTEXT.md` for the synonym cluster first.
+- **Candidate dump.** "Give me every word you, a guest, or the code uses for this - synonyms, the wrong-sounding ones, all of them." No judging yet. Grep the repo and `GLOSSARY.md` for the synonym cluster first.
 
 ### 2. Interrogate - the grilling
 
@@ -96,6 +96,6 @@ Distillation is multi-session - sleeping on it surfaces missing concepts. End ev
 2. **Open hotspots** still unresolved.
 3. **Parked debt** - decisions deferred, with a note to resume.
 
-Then hand each settled term to the **`domain-modeling`** skill to write into `CONTEXT.md`: the term, a tight definition (what it *is*, not what it does), and the rejected words under the `_Avoid_` slot in that skill's `CONTEXT-FORMAT.md`. If a genuine boundary emerged (one word, two coherent context-scoped meanings), that is a `CONTEXT-MAP.md` split - `domain-modeling` owns it, and opens an ADR if the resolution was a hard-to-reverse, surprising trade-off. Keep implementation detail out; `CONTEXT.md` is a glossary and nothing else. If no `domain-modeling` skill is installed, record the outcome yourself in the project's glossary (or `CONTEXT.md`): term, tight definition, rejected words under an `_Avoid_` heading.
+Then hand each settled term to the **`domain-modeling`** skill to write into `GLOSSARY.md`: the term, a tight definition (what it *is*, not what it does), and the rejected words under the `_Avoid_` slot in that skill's `GLOSSARY-FORMAT.md`. If a genuine boundary emerged (one word, two coherent context-scoped meanings), that is a `CONTEXT-MAP.md` split - `domain-modeling` owns it, and opens an ADR if the resolution was a hard-to-reverse, surprising trade-off. Keep implementation detail out; `GLOSSARY.md` is a glossary and nothing else. If no `domain-modeling` skill is installed, record the outcome yourself in the project's glossary (or `GLOSSARY.md`): term, tight definition, rejected words under an `_Avoid_` heading.
 
 **Propagate.** "One concept, one word, everywhere" means everywhere: a crowned term only pays off where it is spoken and written. After the handoff, sweep the surfaces the losing words still touch - code identifiers, schema, API routes, event and analytics names, UI copy, tests, docs. A rename that stops at the glossary leaves the fight alive.
