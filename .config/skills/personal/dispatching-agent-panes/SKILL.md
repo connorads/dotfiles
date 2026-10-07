@@ -17,8 +17,8 @@ disable-model-invocation: true
 
 This skill owns triage, grouping, an approval manifest, and verified launch.
 Use `task-plan` when the wanted output is only a durable backlog,
-`coding-agents` to control sessions after launch, `tmux` for a blocked modal
-prompt, and `task-loop` for unattended sequential execution.
+`coding-agents` to control sessions after launch, and `tmux` for a blocked modal
+prompt.
 
 ## Build the manifest
 

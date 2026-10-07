@@ -466,7 +466,7 @@ procedure before replacing vetted content.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them, and they are **absent from any `skills-lock.json` by design**.
-  `govuk-style`, `ponytail`, `bro`, `agent-ergonomics`, `deepsec`, `deepsec-docs`,
+  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs`,
   `product-description` and `alchemy` live in the manual bucket at `vendor/manual/<name>/`
   (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
   / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
@@ -503,15 +503,6 @@ procedure before replacing vetted content.
   (`x.com/dillon_mulroy/status/2079257150824620312`), so there's no repo/gist for `skills
   update` to refresh. Single `SKILL.md`, no scripts. Restates your last message in plain
   human language, no jargon; `disable-model-invocation: true` (deliberate `/bro` invoke only).
-
-  `agent-ergonomics` - from a **tweet** by Jeffrey Emanuel
-  (`x.com/doodlestein/status/2094288037458882668`), so there's no repo/gist for `skills
-  update` to refresh. Single `SKILL.md`, no scripts. A post-planning pass: the verbatim
-  prompt asks the model to re-derive an existing plan from the point of view of the agent
-  that will operate the system, then rewrite the design documents. The prompt is fenced so
-  Vale skips it and the wording stays exactly as published; the surrounding prose is
-  authored here (precondition, one-pass, what a wrong-shaped output looks like).
-  `disable-model-invocation: true` - it is a heavyweight rewrite, chosen deliberately.
 
   `deepsec` (the `/deepsec` scan runbook) and `deepsec-docs` (init, config, matchers,
   plugins) - from [`vercel-labs/deepsec`](https://github.com/vercel-labs/deepsec)
