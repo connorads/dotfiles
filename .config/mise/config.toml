@@ -55,7 +55,6 @@ actionlint = "1"
 zizmor = "1"
 # Powers the hk `bats-lint` step's rules (.hk-hooks/bats-lint/, docs/adr/0004).
 ast-grep = "0.45"
-gcloud = "latest"
 aws = "2"
 codex = "latest"
 usage = "6"

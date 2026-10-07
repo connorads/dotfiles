@@ -59,7 +59,6 @@ Use the cheapest live observation that distinguishes the cause before editing.
 | Mise refuses a replacement lock entry | Reproduce only that tool with verbose resolution. Inspect signature, platform and artifact errors. |
 | Packslip signer changes | Verify the vendor workflow and release evidence. Present the identity change and ask before forgetting its pin. |
 | PyPI or another registry times out | Check reachability, then retry the failed locked installs. Keep quarantine settings. |
-| Gcloud reports missing `virtenv/bin/pip3` | Inspect only the generated environment's interpreter links and configuration. A present script can reference a deleted Python. |
 | Homebrew cannot verify a bottle | Check credential availability and retry with attestation verification enabled. A plain successful install does not test verification. |
 | Sudo is unavailable | Retry through an attached terminal so the user can authenticate. Do not change sudo policy to bypass authentication. |
 | Pin audit reports an older installed binary | Compare `mise exec -- <tool> --version` with the shell's binary. An old PATH does not prove installation failed. |
@@ -73,10 +72,6 @@ Ask only when progress requires a user decision, credential renewal or authentic
 Show findings before asking about signer changes, build-script approvals, quarantine exceptions,
 compatibility, app replacement, destructive cleanup or OS installation.
 Keep those decisions pending until answered. Reuse approval already given for the same action.
-
-The secret-path guard covers gcloud configuration. Use an explicit permitted exception only for
-the generated environment needed by the repair. Do not inspect credentials or print tokens.
-Preserve a broken generated environment with Trash before recreating it when repair requires replacement.
 
 ## Reconcile and resume
 
