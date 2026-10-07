@@ -93,6 +93,11 @@ Caveats:
   hooks are silently skipped - no capture until trusted.
 - Codex has no `PostToolUseFailure` event; that entry in `hooks.json` is inert
   there and mirrors the `atuin hook install codex` layout.
+- Codex sends `PostToolUse.tool_response` as the output string, and atuin
+  (18.21) parses only an object, so it drops the event and leaves the row at
+  exit/duration `-1`. The Codex `PostToolUse` entry pipes through `jq` to
+  replace the string with `{}`. Codex sends no exit code, so its rows record
+  exit 0 and a real duration.
 - `atuin hook install <agent>` rewrites the whole config with its own formatting
   and writes plain `atuin hook ...` commands, which would log to `history.db` -
   hand-edit tracked files instead.
