@@ -116,6 +116,10 @@
     "command": "thread.next"
   },
   {
+    "key": "mod+alt+g",
+    "command": "script.smerge.run"
+  },
+  {
     "key": "mod+1",
     "command": "thread.jump.1"
   },
