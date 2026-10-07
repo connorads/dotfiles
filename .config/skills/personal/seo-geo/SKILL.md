@@ -12,8 +12,7 @@ description: >-
   to rank; local SEO for multi-location businesses (Google Business Profile,
   reviews, location pages); measuring AI referrals and citations; or
   sanity-checking an SEO, GEO or AEO plan. Not for page speed, LCP, CLS or
-  Lighthouse performance (use web-perf), competitor topic-gap maps (use
-  content-gap-analysis) or paid ads.
+  Lighthouse performance (use web-perf), competitor topic-gap maps or paid ads.
 compatibility: Scripts need python3 and network access; uv for the robots matrix; Google Chrome for rendered checks.
 ---
 
@@ -103,8 +102,8 @@ Google Business Profile access. Proceed with what exists and label the rest
 | Sanity-check a plan or agency proposal | Label each claim | `references/evidence.md`; `references/measurement.md` for tracker or metric items | Each item kept, changed or cut, with a labelled source |
 | Change slugs, URLs or domains | Export old URLs; probe them | `references/technical.md` | Every old URL -> one 301/308 hop -> 200 self-canonical |
 
-Page speed, LCP, CLS and Lighthouse performance go to `web-perf`. A
-competitor topic-gap map goes to `content-gap-analysis`.
+Page speed, LCP, CLS and Lighthouse performance go to `web-perf`.
+Competitor topic-gap maps are outside this skill's scope.
 
 ## Defaults
 
