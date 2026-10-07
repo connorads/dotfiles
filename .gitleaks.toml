@@ -13,3 +13,10 @@ regexes = ['''^phc_[A-Za-z0-9]{30,}$''']
 description = "The 0123456789abcdef... counting placeholder upstream docs use as an example id (vendored alchemy docs: accountId in cli/profile)"
 regexTarget = "secret"
 regexes = ['''^(0123456789abcdef){2,}$''']
+
+[[allowlists]]
+description = "T3 Code keybinding shortcuts (\"key\": \"mod+shift+enter\") trip generic-api-key"
+condition = "AND"
+paths = ['''^\.t3/userdata/keybindings\.json$''']
+regexTarget = "secret"
+regexes = ['''^(mod|meta|cmd|ctrl|alt|shift)(\+[a-z0-9]+)+$''']

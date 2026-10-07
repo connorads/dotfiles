@@ -68,6 +68,11 @@
 !/.codex/skills/playwright-interactive/
 !/.codex/skills/playwright-interactive/**
 
+!/.t3/
+/.t3/**
+!/.t3/userdata/
+!/.t3/userdata/keybindings.json
+
 !/.config/
 /.config/**
 !/.config/opencode/
