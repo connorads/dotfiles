@@ -21,7 +21,7 @@ Deliberately narrow:
 
 Note: a "deny" here overrides a matching permissions.allow rule and holds even
 under bypassPermissions (PreToolUse fires before the permission-mode check). So
-allow-listed tools like `npx convex` are blocked in favour of `pnpm dlx convex`.
+an allow rule like `Bash(npx convex:*)` is dead; settings.json carries none.
 If that friction outweighs the nudge, set NUDGE_NPX = False below, or use the
 NPM_OK=1 escape for a one-off.
 
