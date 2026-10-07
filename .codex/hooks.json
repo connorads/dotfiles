@@ -18,7 +18,7 @@
     ],
     "PostToolUse": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] },
-      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "jq -c 'if (.tool_response|type) == \"string\" then .tool_response = {} else . end' | \"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
     ],
     "PostToolUseFailure": [
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
