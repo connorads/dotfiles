@@ -16,7 +16,7 @@ If you make use of WebGL during renders, you need to enable it:
 From the CLI:
 
 ```bash
-npx remotion render --gl=angle
+pnpm exec remotion render --gl=angle
 ```
 
 Set it as the default for Studio and CLI (advised):

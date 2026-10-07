@@ -40,7 +40,7 @@ Procedure APIs are available in both SDKs starting in `2.60.0`. Earlier versions
 
 ```bash
 pip install "elevenlabs>=2.60.0"
-npm install @elevenlabs/elevenlabs-js@^2.60.0
+pnpm add @elevenlabs/elevenlabs-js@^2.60.0
 ```
 
 For JavaScript, use `@elevenlabs/elevenlabs-js`. The unscoped `elevenlabs` npm package is the deprecated v1.x and has no procedures client at any version.

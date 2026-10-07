@@ -1,0 +1,1 @@
+  - `pnpm dlx @next/codemod@<verified-version> upgrade latest` to apply the version-to-version codemods.

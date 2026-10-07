@@ -1,0 +1,6 @@
+{
+  "reason": "use pnpm for project tools, mise-managed CLIs, and explicit versions for one-off downloads",
+  "files": [
+    ".agents/skills/remotion-best-practices/remotion-markup/gifs.md"
+  ]
+}

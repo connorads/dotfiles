@@ -16,7 +16,7 @@ Requires FFmpeg — see [ffmpeg.md](./ffmpeg.md) for how to invoke it in Remotio
 Use the `loudnorm` filter in JSON mode to get the EBU R128 integrated loudness and gating threshold for each file:
 
 ```bash
-npx remotion ffmpeg -i public/video.mov -map 0:a -af loudnorm=print_format=json -f null /dev/null
+pnpm exec remotion ffmpeg -i public/video.mov -map 0:a -af loudnorm=print_format=json -f null /dev/null
 ```
 
 As output you will get:
@@ -28,7 +28,7 @@ As output you will get:
 Pass the `input_thresh` value from step 1 as the `noise` parameter to `silencedetect`:
 
 ```bash
-npx remotion ffmpeg -i public/video.mov -map 0:a -af "silencedetect=noise=${THRESH}dB:d=0.5" -f null /dev/null
+pnpm exec remotion ffmpeg -i public/video.mov -map 0:a -af "silencedetect=noise=${THRESH}dB:d=0.5" -f null /dev/null
 ```
 
 Parameters:

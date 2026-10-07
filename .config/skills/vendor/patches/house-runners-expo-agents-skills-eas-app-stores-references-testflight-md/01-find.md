@@ -1,0 +1,1 @@
+For a SwiftUI/UIKit app with no React Native runtime, start with [native-ios.md](native-ios.md). EAS can build and submit it without adding Expo or React Native. For an established Expo/React Native app, `npx testflight` is also a convenient setup flow.

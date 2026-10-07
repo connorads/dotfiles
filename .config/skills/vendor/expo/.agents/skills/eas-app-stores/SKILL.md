@@ -36,14 +36,14 @@ Consult these resources as needed:
 ### Install EAS CLI
 
 ```bash
-npm install -g eas-cli
+mise install
 eas login
 ```
 
 ### Initialize EAS
 
 ```bash
-npx eas-cli@latest init
+eas init
 ```
 
 `eas init` links or creates the EAS project. Run `eas build:configure` to create build profiles in `eas.json`; preserve existing project and store identifiers when a release setup already exists.
@@ -54,31 +54,31 @@ npx eas-cli@latest init
 
 ```bash
 # iOS App Store build
-npx eas-cli@latest build -p ios --profile production
+eas build -p ios --profile production
 
 # Android Play Store build
-npx eas-cli@latest build -p android --profile production
+eas build -p android --profile production
 
 # Both platforms
-npx eas-cli@latest build --profile production
+eas build --profile production
 ```
 
 ### Submit to Stores
 
 ```bash
 # iOS: Build and submit to App Store Connect
-npx eas-cli@latest build -p ios --profile production --auto-submit
+eas build -p ios --profile production --auto-submit
 
 # Android: Build and submit to Play Store
-npx eas-cli@latest build -p android --profile production --auto-submit
+eas build -p android --profile production --auto-submit
 
 # Expo / React Native shortcut for iOS TestFlight
-npx testflight
+pnpm exec testflight
 ```
 
 ## Web & API Route Hosting
 
-Deploying an Expo website or Expo Router API routes to EAS Hosting (`npx expo export -p web` then `eas deploy`) is covered by the `eas-hosting` skill. This skill focuses on native app store releases.
+Deploying an Expo website or Expo Router API routes to EAS Hosting (`pnpm exec expo export -p web` then `eas deploy`) is covered by the `eas-hosting` skill. This skill focuses on native app store releases.
 
 ## EAS Configuration
 
@@ -122,7 +122,7 @@ Example for an Expo / React Native project (native Swift profiles are in `refere
 ### iOS
 
 - For native Swift apps, use the explicit build/submit flow in `references/native-ios.md`
-- For Expo / React Native apps, `npx testflight` provides a quick TestFlight flow
+- For Expo / React Native apps, `pnpm exec testflight` provides a quick TestFlight flow
 - Configure Apple credentials via `eas credentials`
 - See ./references/testflight.md for credential setup
 - See ./references/ios-app-store.md for App Store submission
@@ -165,12 +165,12 @@ eas submit:list -p ios --json
 eas submit:view SUBMISSION_ID --json
 ```
 
-Check the CLI version before interpreting a missing command: these submission commands are available in 23.2.0 but not in the tested 18.6.0 installation. A pinned `npx eas-cli@23.2.0` invocation can use them without changing the global installation. See `references/testflight.md` for live Apple status and retry guidance. Follow the returned log URLs when the JSON result omits the underlying failure. Report the exact build ID/version and the furthest verified release state.
+Check the CLI version before interpreting a missing command: these submission commands are available in 23.2.0 but not in the tested 18.6.0 installation. A pinned `eas` invocation can use them without changing the global installation. See `references/testflight.md` for live Apple status and retry guidance. Follow the returned log URLs when the JSON result omits the underlying failure. Report the exact build ID/version and the furthest verified release state.
 
 ## Submitting Feedback
 If you encounter errors, misleading or outdated information in this skill, report it so Expo can improve:
 ```bash
-npx --yes submit-expo-feedback@latest --category skills --subject "eas-app-stores" "<actionable feedback>"
+pnpm dlx submit-expo-feedback@<verified-version> --category skills --subject "eas-app-stores" "<actionable feedback>"
 ```
 Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
 <!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.

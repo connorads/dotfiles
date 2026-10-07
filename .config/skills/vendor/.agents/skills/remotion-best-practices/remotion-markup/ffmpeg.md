@@ -7,11 +7,11 @@ metadata:
 
 ## FFmpeg in Remotion
 
-`ffmpeg` and `ffprobe` do not need to be installed. They are available via the `npx remotion ffmpeg` and `npx remotion ffprobe`:
+`ffmpeg` and `ffprobe` do not need to be installed. They are available via the `pnpm exec remotion ffmpeg` and `pnpm exec remotion ffprobe`:
 
 ```bash
-npx remotion ffmpeg -i input.mp4 output.mp3
-npx remotion ffprobe input.mp4
+pnpm exec remotion ffmpeg -i input.mp4 output.mp3
+pnpm exec remotion ffprobe input.mp4
 ```
 
 ### Trimming videos
@@ -34,5 +34,5 @@ import {Video} from '@remotion/media';
 
 ```bash
 # Re-encodes from the exact frame
-npx remotion ffmpeg -ss 00:00:05 -i public/input.mp4 -to 00:00:10 -c:v libx264 -c:a aac public/output.mp4
+pnpm exec remotion ffmpeg -ss 00:00:05 -i public/input.mp4 -to 00:00:10 -c:v libx264 -c:a aac public/output.mp4
 ```

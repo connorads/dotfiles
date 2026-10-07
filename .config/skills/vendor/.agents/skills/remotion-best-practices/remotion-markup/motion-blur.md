@@ -1,7 +1,7 @@
 # Motion blur
 
 Use `@remotion/motion-blur` for frame-driven motion blur.  
-Install it with `npx remotion add @remotion/motion-blur`.
+Install it with `pnpm exec remotion add @remotion/motion-blur`.
 
 `<HtmlInCanvasMotionBlur>` is the state of the art in Remotion for blurring animated HTML. It captures the content at fractional frames and averages its pixels in a canvas.
 

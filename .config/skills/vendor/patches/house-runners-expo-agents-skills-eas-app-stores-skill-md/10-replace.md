@@ -1,0 +1,1 @@
+- For Expo / React Native apps, `pnpm exec testflight` provides a quick TestFlight flow

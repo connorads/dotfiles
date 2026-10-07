@@ -13,7 +13,7 @@ First, the @remotion/media package needs to be installed.
 If it is not installed, use the following command:
 
 ```bash
-npx remotion add @remotion/media
+pnpm exec remotion add @remotion/media
 ```
 
 ## Importing Audio

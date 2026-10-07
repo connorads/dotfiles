@@ -15,7 +15,7 @@ Custom effect docs: https://www.remotion.dev/docs/create-effect
 Install the package that provides the chosen effect:
 
 ```bash
-npx remotion add @remotion/effects
+pnpm exec remotion add @remotion/effects
 ```
 
 Effects are functions passed to the `effects` prop of canvas-based components such as `<Video>` from `@remotion/media`, `<Solid>`, `<CanvasImage>`, and `<HtmlInCanvas>`.

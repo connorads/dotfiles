@@ -5,7 +5,7 @@ For local font files, use the `@remotion/fonts` package.
 First, install @remotion/fonts:
 
 ```bash
-npx remotion add @remotion/fonts # If project uses npm
+pnpm exec remotion add @remotion/fonts # If project uses npm
 bunx remotion add @remotion/fonts # If project uses bun
 yarn remotion add @remotion/fonts # If project uses yarn
 pnpm exec remotion add @remotion/fonts # If project uses pnpm

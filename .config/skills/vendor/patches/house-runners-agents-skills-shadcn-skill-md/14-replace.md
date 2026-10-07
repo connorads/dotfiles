@@ -1,0 +1,6 @@
+   - **Inspect current preset**: `pnpm exec shadcn preset resolve`. Use `--json` when you need structured values.
+   - **Inspect incoming preset**: `pnpm exec shadcn preset decode <code>`. Use `preset url <code>` or `preset open <code>` to share or open the preset builder.
+   - **Overwrite**: `pnpm exec shadcn apply <code>`. Overwrites detected components, fonts, and CSS variables.
+   - **Partial**: `pnpm exec shadcn apply <code> --only theme,font`. Updates only the selected preset parts without reinstalling UI components. Supported values are `theme` and `font`; comma-separated combinations are allowed. `icon` is intentionally not supported, because icon changes may require full component reinstall and transforms.
+   - **Merge**: `pnpm exec shadcn init --preset <code> --force --no-reinstall`, then run `pnpm exec shadcn info` to list installed components, then for each installed component use `--dry-run` and `--diff` to [smart merge](#updating-components) it individually.
+   - **Skip**: `pnpm exec shadcn init --preset <code> --force --no-reinstall`. Only updates config and CSS, leaves components as-is.

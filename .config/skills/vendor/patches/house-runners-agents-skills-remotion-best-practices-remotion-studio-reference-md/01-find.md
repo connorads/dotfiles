@@ -1,0 +1,3 @@
+```bash
+npx remotion studio
+```

@@ -1,0 +1,1 @@
+- Install or upgrade `agent-browser`: `mise install npm:agent-browser`.

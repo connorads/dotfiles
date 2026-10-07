@@ -1,0 +1,2 @@
+- **Never decode preset codes or build preset URLs manually.** Use `pnpm exec shadcn preset decode <code>`, `preset url <code>`, or `preset open <code>`. For project-aware preset detection, use `pnpm exec shadcn preset resolve`.
+- **Apply preset codes directly with the CLI.** Use `pnpm exec shadcn apply <code>` for existing projects, or `pnpm exec shadcn init --preset <code>` when initializing.

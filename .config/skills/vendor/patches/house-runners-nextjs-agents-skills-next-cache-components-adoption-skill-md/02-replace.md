@@ -1,0 +1,1 @@
+- **Older versions without bundled docs.** Suggest `pnpm dlx @next/codemod@<verified-version> agents-md` to the user before starting: it downloads a version-matched copy to `.next-docs/` and writes an index into `AGENTS.md`. It touches files in their repo, so ask first and run it only if they want it.

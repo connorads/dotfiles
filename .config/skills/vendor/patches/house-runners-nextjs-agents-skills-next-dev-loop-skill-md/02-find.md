@@ -1,0 +1,1 @@
+- Install or upgrade `agent-browser`: `npm i -g agent-browser@latest`.

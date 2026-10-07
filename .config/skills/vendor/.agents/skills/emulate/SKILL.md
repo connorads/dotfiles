@@ -1,7 +1,7 @@
 ---
 name: emulate
-description: Local drop-in API emulator for Vercel, GitHub, Google, Slack, Apple, Microsoft, AWS, Clerk, Linear, Twilio, and other developer APIs. Use when the user needs to start emulated services, configure seed data, write tests against local APIs, set up CI without network access, or work with the emulate CLI or programmatic API. Triggers include "start the emulator", "emulate services", "mock API locally", "create emulator config", "test against local API", "npx emulate", or any task requiring local service emulation.
-allowed-tools: Bash(npx emulate:*)
+description: Local drop-in API emulator for Vercel, GitHub, Google, Slack, Apple, Microsoft, AWS, Clerk, Linear, Twilio, and other developer APIs. Use when the user needs to start emulated services, configure seed data, write tests against local APIs, set up CI without network access, or work with the emulate CLI or programmatic API. Triggers include "start the emulator", "emulate services", "mock API locally", "create emulator config", "test against local API", "pnpm exec emulate", or any task requiring local service emulation.
+allowed-tools: Bash(pnpm exec emulate:*)
 ---
 
 # Service Emulation with emulate
@@ -11,7 +11,7 @@ Local drop-in replacement services for CI and no-network sandboxes. Fully statef
 ## Quick Start
 
 ```bash
-npx emulate
+pnpm exec emulate
 ```
 
 All services start with sensible defaults:
@@ -37,28 +37,28 @@ All services start with sensible defaults:
 
 ```bash
 # Start all services (zero-config)
-npx emulate
+pnpm exec emulate
 
 # Start specific services
-npx emulate --service vercel,github
+pnpm exec emulate --service vercel,github
 
 # Custom base port (auto-increments per service)
-npx emulate --port 3000
+pnpm exec emulate --port 3000
 
 # Use a seed config file
-npx emulate --seed config.yaml
+pnpm exec emulate --seed config.yaml
 
 # Generate omitted service secrets into a private file
-npx emulate start --seed config.yaml --generated-secrets-file .emulate-secrets.json
+pnpm exec emulate start --seed config.yaml --generated-secrets-file .emulate-secrets.json
 
 # Generate a starter config
-npx emulate init
+pnpm exec emulate init
 
 # Generate config for a specific service
-npx emulate init --service vercel
+pnpm exec emulate init --service vercel
 
 # List available services
-npx emulate list
+pnpm exec emulate list
 ```
 
 ### Options
@@ -81,7 +81,7 @@ The advertised base URL (used in OAuth redirects, webhook URLs, etc.) can be ove
 ## Programmatic API
 
 ```bash
-npm install emulate
+pnpm add emulate
 ```
 
 Each call to `createEmulator` starts a single service:
@@ -148,7 +148,7 @@ Configuration is optional. The CLI auto-detects config files in this order:
 3. `service-emulator.config.yaml` / `.yml`
 4. `service-emulator.config.json`
 
-Or pass `--seed <file>` explicitly. Run `npx emulate init` to generate a starter file.
+Or pass `--seed <file>` explicitly. Run `pnpm exec emulate init` to generate a starter file.
 
 ### Config Structure
 
@@ -439,7 +439,7 @@ Each service also has a fallback user. If no token is provided, requests authent
 [portless](https://github.com/vercel-labs/portless) gives emulators trusted HTTPS URLs with auto-generated certs. Use the `--portless` flag to auto-register each service as a portless alias:
 
 ```bash
-npx emulate start --portless
+pnpm exec emulate start --portless
 # github  https://github.emulate.localhost
 # google  https://google.emulate.localhost
 # ...
@@ -458,9 +458,9 @@ portless github.emulate emulate start --service github
 For a custom base URL without portless (any reverse proxy):
 
 ```bash
-npx emulate start --base-url "https://{service}.myproxy.test"
+pnpm exec emulate start --base-url "https://{service}.myproxy.test"
 # or
-EMULATE_BASE_URL="https://{service}.myproxy.test" npx emulate start
+EMULATE_BASE_URL="https://{service}.myproxy.test" pnpm exec emulate start
 ```
 
 The `PORTLESS_URL` env var is automatically set by the `portless` CLI wrapper when running a command through it (e.g. `portless github.emulate emulate start`), typically to a value like `https://{service}.emulate.localhost`. It supports `{service}` interpolation, just like `--base-url` and `EMULATE_BASE_URL`. When no explicit `baseUrl` is provided, it is used as a fallback.

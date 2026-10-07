@@ -1,0 +1,6 @@
+{
+  "reason": "require the configured tool without automatic installation",
+  "files": [
+    ".agents/skills/shadcn/SKILL.md"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "reason": "use pnpm for project tools, mise-managed CLIs, and explicit versions for one-off downloads",
+  "files": [
+    "elevenlabs/.agents/skills/agents/references/installation.md"
+  ]
+}

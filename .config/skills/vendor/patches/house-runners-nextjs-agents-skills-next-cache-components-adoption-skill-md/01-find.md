@@ -1,0 +1,1 @@
+  - `npx @next/codemod@latest upgrade latest` to apply the version-to-version codemods.
