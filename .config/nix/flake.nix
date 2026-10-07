@@ -6,7 +6,7 @@
 #   - darwinConfigurations."Connors-MacBook-Air"  : macOS desktop workstation (nix-darwin + home-manager)
 #   - darwinConfigurations."Connors-Mac-mini"     : macOS headless Tailscale-only dev server (nix-darwin + home-manager)
 #   - homeConfigurations."connor@penguin"         : Chromebook Linux container (x86_64)
-#   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (x86_64; aarch64 variant: connor@dev-aarch64-linux)
+#   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (aarch64; x86_64 variant: connor@dev-x86_64-linux)
 #   - homeConfigurations."codespace"              : GitHub Codespaces (minimal)
 #
 # RPi5 config: github.com/connorads/rpi5 (system) + homeConfigurations."connor@rpi5" (user env)
@@ -179,7 +179,7 @@
 
       # Bare name resolves for install.sh / `hms` (hostname carries no arch);
       # points at the live box's arch. Both arch variants are always buildable.
-      homeConfigurations."connor@dev" = mkHome "x86_64-linux" devModules;
+      homeConfigurations."connor@dev" = mkHome "aarch64-linux" devModules;
       homeConfigurations."connor@dev-aarch64-linux" = mkHome "aarch64-linux" devModules;
       homeConfigurations."connor@dev-x86_64-linux" = mkHome "x86_64-linux" devModules;
 
