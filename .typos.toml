@@ -16,7 +16,6 @@ extend-exclude = [
   ".config/skills/personal/summon/references/",
   ".config/skills/personal/summon/tests/fixtures/",
   ".config/nvim/lazy-lock.json",
-  ".config/nix/packages/terminal-control-zig-deps.nix",
   "*.patch",
   "*.png",
   "*.jpg",
