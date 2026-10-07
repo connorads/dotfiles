@@ -7,7 +7,7 @@
   "autoMemoryEnabled": false,
   "cleanupPeriodDays": 365,
   "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": false
   },
   "env": {
     "CLAUDE_AFK_TIMEOUT_MS": "2147483647",
