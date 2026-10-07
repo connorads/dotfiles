@@ -9,7 +9,7 @@ license: MIT
 
 > **EAS service - costs apply.** EAS Hosting is a paid Expo Application Services product with free-tier limits; production deploys use your plan's request and bandwidth allowance. See https://expo.dev/pricing. Authoring API routes and exporting the web bundle are free and open source, and you can self-host the exported server output instead of EAS Hosting.
 
-EAS Hosting deploys your Expo **web app and API routes** to Expo's managed edge (Cloudflare Workers). Export the web bundle with `npx expo export -p web` and ship it with `eas deploy` - the same command deploys any Expo Router API routes bundled alongside it. This skill covers deploying a website, authoring API routes, and the hosting runtime; see the Deployment section below for the deploy workflow.
+EAS Hosting deploys your Expo **web app and API routes** to Expo's managed edge (Cloudflare Workers). Export the web bundle with `pnpm exec expo export -p web` and ship it with `eas deploy` - the same command deploys any Expo Router API routes bundled alongside it. This skill covers deploying a website, authoring API routes, and the hosting runtime; see the Deployment section below for the deploy workflow.
 
 ## When to Use API Routes
 
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
 Start the development server with API routes:
 
 ```bash
-npx expo serve
+pnpm exec expo serve
 ```
 
 This starts a local server at `http://localhost:8081` with full API route support.
@@ -221,7 +221,7 @@ curl -X POST http://localhost:8081/api/users -H "Content-Type: application/json"
 ### Prerequisites
 
 ```bash
-npm install -g eas-cli
+mise install npm:eas-cli
 eas login
 ```
 
@@ -231,13 +231,13 @@ Deploying ships your web bundle and any Expo Router API routes together - `eas d
 
 ```bash
 # Export the web bundle (includes any API routes)
-npx expo export -p web
+pnpm exec expo export -p web
 
 # Deploy a preview (PR-style URL)
-npx eas-cli@latest deploy
+eas deploy
 
 # Deploy to production
-npx eas-cli@latest deploy --prod
+eas deploy --prod
 ```
 
 Everything lands on EAS Hosting (Cloudflare Workers).
@@ -425,7 +425,7 @@ export async function GET(request: Request) {
 ## Submitting Feedback
 If you encounter errors, misleading or outdated information in this skill, report it so Expo can improve:
 ```bash
-npx --yes submit-expo-feedback@latest --category skills --subject "eas-hosting" "<actionable feedback>"
+pnpm dlx submit-expo-feedback@<verified-version> --category skills --subject "eas-hosting" "<actionable feedback>"
 ```
 Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
 <!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.

@@ -12,7 +12,7 @@ metadata:
 Install @remotion/layout-utils if it is not already installed:
 
 ```bash
-npx remotion add @remotion/layout-utils
+pnpm exec remotion add @remotion/layout-utils
 ```
 
 ## Measuring text dimensions

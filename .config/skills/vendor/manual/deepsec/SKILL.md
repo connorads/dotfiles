@@ -60,15 +60,15 @@ phase. The scoped processing happens in step 4 instead.
 From the repository root, inspect the read-only plan, then run setup:
 
 ```bash
-npx -y deepsec init --plan --output json
-npx -y deepsec init --yes --through coverage --output jsonl
+deepsec init --plan --output json
+deepsec init --yes --through coverage --output jsonl
 ```
 
 Parse every output line as JSON. On a `needs_input` event, show the supplied
 message and actions to the user rather than inventing remediation. In
 particular, `VERCEL_AUTH_REQUIRED` normally asks the user to run
-`npx vercel login`; after they do, follow the returned link action from
-inside `.deepsec` (use `npx vercel link` when the user needs to choose a
+`vercel login`; after they do, follow the returned link action from
+inside `.deepsec` (use `vercel link` when the user needs to choose a
 project), then re-run the same init command. Exit code 2 means input is
 needed; exit code 3 means a cost/duration boundary stopped the resumable
 run — re-running the same command resumes it. Never expose credential
@@ -79,14 +79,14 @@ or launch an interactive login yourself.
 
 Run from inside `.deepsec/` (the config loader only finds
 `deepsec.config.ts` in the current directory or its ancestors; after step 3,
-`npx deepsec` resolves to the copy installed there):
+`deepsec` resolves to the copy installed there):
 
 | Scope | Command |
 | --- | --- |
-| Uncommitted changes | `cd .deepsec && npx deepsec process --diff-working` |
-| Diff to main | `cd .deepsec && npx deepsec process --diff origin/main` |
-| Entire codebase, right after step 3 | `cd .deepsec && npx deepsec process` (the final scan from setup already produced the candidate set) |
-| Entire codebase, previously onboarded | `cd .deepsec && npx deepsec scan && npx deepsec process` |
+| Uncommitted changes | `cd .deepsec && deepsec process --diff-working` |
+| Diff to main | `cd .deepsec && deepsec process --diff origin/main` |
+| Entire codebase, right after step 3 | `cd .deepsec && deepsec process` (the final scan from setup already produced the candidate set) |
+| Entire codebase, previously onboarded | `cd .deepsec && deepsec scan && deepsec process` |
 
 ## 5. Interpret results
 
@@ -94,8 +94,8 @@ Run from inside `.deepsec/` (the config loader only finds
   least one net-new finding (not an error), anything else = runtime error.
   Pre-existing findings on touched files are excluded from the gate.
 - Summarize any findings for the user, then offer follow-ups (all from
-  inside `.deepsec/`): `npx deepsec report`, `npx deepsec revalidate`, and
-  `npx deepsec export --format md-dir --out ./findings`.
+  inside `.deepsec/`): `deepsec report`, `deepsec revalidate`, and
+  `deepsec export --format md-dir --out ./findings`.
 
 ## Going deeper
 

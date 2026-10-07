@@ -90,7 +90,7 @@ For adding a color picker, use `zColor()` from `@remotion/zod-types`.
 If it is not installed, use the following command:
 
 ```bash
-npx remotion add @remotion/zod-types # If project uses npm
+pnpm exec remotion add @remotion/zod-types # If project uses npm
 bunx remotion add @remotion/zod-types # If project uses bun
 yarn remotion add @remotion/zod-types # If project uses yarn
 pnpm exec remotion add @remotion/zod-types # If project uses pnpm

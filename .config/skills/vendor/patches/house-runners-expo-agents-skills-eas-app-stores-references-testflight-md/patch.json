@@ -1,0 +1,6 @@
+{
+  "reason": "use pnpm for project tools, mise-managed CLIs, and explicit versions for one-off downloads",
+  "files": [
+    "expo/.agents/skills/eas-app-stores/references/testflight.md"
+  ]
+}

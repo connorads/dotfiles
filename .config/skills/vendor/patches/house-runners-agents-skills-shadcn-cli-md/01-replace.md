@@ -1,0 +1,1 @@
+> **IMPORTANT:** Always run commands using the project's package runner: `pnpm exec shadcn`, `pnpm exec shadcn`, or `pnpm exec shadcn`. Check `packageManager` from project context to choose the right one. Examples below use `pnpm exec shadcn` but substitute the correct runner for the project.

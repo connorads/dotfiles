@@ -84,7 +84,7 @@ eas build -p ios --profile production --auto-submit
 eas submit -p ios --profile production --id BUILD_ID
 
 # Expo / React Native TestFlight shortcut
-npx testflight
+pnpm exec testflight
 ```
 
 ## App Store Connect Configuration

@@ -1,0 +1,1 @@
+- For Expo / React Native apps, `npx testflight` provides a quick TestFlight flow

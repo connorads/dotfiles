@@ -45,7 +45,7 @@ As soon as the project can run, start Studio and open the preview in the browser
 Run Studio without `--no-open` so it opens the browser automatically:
 
 ```bash
-npx remotion studio
+pnpm exec remotion studio
 ```
 
 ### If you are using another agent client with an in-app browser
@@ -53,7 +53,7 @@ npx remotion studio
 You can use the command above to let Studio open the browser, or run:
 
 ```bash
-npx remotion studio --no-open
+pnpm exec remotion studio --no-open
 ```
 
 This will start a long-running process and print the server URL for the preview.  
@@ -70,7 +70,7 @@ The Studio supports WebMCP tools.
 This will open the Studio in the browser or refocus it if it is already open.
 
 ```bash
-npx remotion studio
+pnpm exec remotion studio
 ```
 
 ### More options
@@ -85,12 +85,12 @@ E.g. "Render the video", "Export", "Give me the MP4".
 The preview also has a more intuitive rendering interface, so consider using it instead of the command line for rendering.
 
 ```
-npx remotion render
+pnpm exec remotion render
 ```
 
 For more options, see [Rendering](./remotion-render/REFERENCE.md).
 
-For advanced rendering beyond simple `npx remotion render`, see: [Rendering Best Practices](./remotion-render/REFERENCE.md)
+For advanced rendering beyond simple `pnpm exec remotion render`, see: [Rendering Best Practices](./remotion-render/REFERENCE.md)
 
 ## Captions
 

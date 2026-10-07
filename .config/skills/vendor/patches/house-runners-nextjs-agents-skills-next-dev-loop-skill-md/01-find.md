@@ -1,0 +1,1 @@
+- Upgrade Next.js: `pnpm next upgrade` (or `npx next upgrade`).

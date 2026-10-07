@@ -1,0 +1,1 @@
+> **IMPORTANT:** To compare local components against upstream or to preview changes, ALWAYS use `pnpm exec shadcn add <component> --dry-run`, `--diff`, or `--view`. NEVER fetch raw files from GitHub or other sources manually. The CLI handles registry resolution, file paths, and CSS diffing automatically.

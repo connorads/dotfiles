@@ -1,0 +1,1 @@
+- **"How do I install/init deepsec?"** → `getting-started.md`; default to `npx deepsec init`, not a manual install/scan recipe.

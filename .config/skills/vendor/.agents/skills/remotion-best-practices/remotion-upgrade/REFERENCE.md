@@ -10,7 +10,7 @@ version: 4.0.532
 2. Determine whether `@remotion/cli` is locally available. If it is, run:
 
    ```bash
-   npx remotion upgrade
+   pnpm exec remotion upgrade
    ```
 
    Check whether this CLI version refreshes project-local skills. If it does, use the manual package upgrade below instead; skill refreshes use the recorded-revision review workflow.
@@ -23,6 +23,6 @@ version: 4.0.532
 4. <!-- LOCAL PATCH (connorads dotfiles): skill refreshes require recorded Git snapshots and instruction review, including during runtime upgrades -->
    Refresh installed Remotion skills only through the separate recorded-revision preview and review workflow. Package upgrades do not authorise replacing reviewed skill instructions.
 
-5. Review the manifest and lockfile diff. Ensure all Remotion packages use one version and installed auxiliary packages use their recommended versions. If the CLI is available, run `npx remotion versions` as an additional check.
+5. Review the manifest and lockfile diff. Ensure all Remotion packages use one version and installed auxiliary packages use their recommended versions. If the CLI is available, run `pnpm exec remotion versions` as an additional check.
 
 The [Remotion releases](https://github.com/remotion-dev/remotion/releases) contain the changelog and may be useful for summarizing relevant changes after the upgrade.

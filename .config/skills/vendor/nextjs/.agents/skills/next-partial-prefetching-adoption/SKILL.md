@@ -28,7 +28,7 @@ Talk to the user in terms of what they'll see — PRs, features, and how the app
 
 - **Next.js 16.3 or later.** `partialPrefetching`, the `prefetch` route segment config, and the prefetch insights all land there.
 
-- **A browser you can drive.** Test-backed preservation uses an existing or minimal production-mode Playwright suite; manual preservation and the final demonstration use the running production app. <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time `npx skills add .../next-dev-loop`; next-dev-loop is vendored alongside this skill instead, and refreshes go through the vendored-skills review flow, not runtime installs. --> The development insight path and the post-flag URL-data sweep use `next-dev-loop`, which is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before either development pass. Do **not** run `npx skills add`; if it is missing, surface that instead of installing it. If the app is webpack-pinned, drive a browser directly (`agent-browser`, Playwright) — you lose the framework cross-checks, not the insights; they're still in the overlay and the dev log.
+- **A browser you can drive.** Test-backed preservation uses an existing or minimal production-mode Playwright suite; manual preservation and the final demonstration use the running production app. <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time `npx skills add .../next-dev-loop`; next-dev-loop is vendored alongside this skill instead, and refreshes go through the vendored-skills review flow, not runtime installs. --> The development insight path and the post-flag URL-data sweep use `next-dev-loop`, which is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before either development pass. Do **not** run `pnpm exec skills add`; if it is missing, surface that instead of installing it. If the app is webpack-pinned, drive a browser directly (`agent-browser`, Playwright) — you lose the framework cross-checks, not the insights; they're still in the overlay and the dev log.
 
 - **A runnable app.** Preservation and the final demonstration need a production-like build because automatic prefetching runs only in production. The development server is required only when using the insight path or running the post-flag URL-data sweep; do not start it merely to confirm a test-backed preservation case. If the app reads a database or required environment at import, confirm the environment used by the chosen path can start before step 1.
 
@@ -36,7 +36,7 @@ Talk to the user in terms of what they'll see — PRs, features, and how the app
 
 - **Offline docs.** Guide links have offline copies under `node_modules/next/dist/docs/` (bundled since Next.js 16.2), with the directory layout numbered for ordering (e.g. `node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md`). If you can't predict the numbered prefix, `find node_modules/next/dist/docs -name '<slug>.md'` resolves it. The `/docs/messages/*` error pages are not bundled.
 
-- **Older versions without bundled docs.** Suggest `npx @next/codemod@latest agents-md` to the user before starting: it downloads a version-matched copy to `.next-docs/` and writes an index into `AGENTS.md`. It touches files in their repo, so ask first and run it only if they want it.
+- **Older versions without bundled docs.** Suggest `pnpm dlx @next/codemod@<verified-version> agents-md` to the user before starting: it downloads a version-matched copy to `.next-docs/` and writes an index into `AGENTS.md`. It touches files in their repo, so ask first and run it only if they want it.
 
 ## background
 
@@ -124,7 +124,7 @@ Once every audited destination has `prefetch = 'partial'`, finish in two moves.
 2. **Strip the redundant `prefetch = 'partial'` exports.** Run the first-party `remove-partial-prefetch` codemod rather than a text find-and-replace. It removes every `export const prefetch = 'partial'`, including exports below a `TODO(per-link-prefetch)` marker, and removes its generated Partial Prefetching guide comment. The TODO marker and its Optimizing prefetching guide link stay for step 7. Other values such as `prefetch = 'force-disabled'` stay in place.
 
    ```bash
-   npx @next/codemod@canary remove-partial-prefetch ./app
+   pnpm dlx @next/codemod@<verified-version> remove-partial-prefetch ./app
    ```
 
    Use `./src/app` in a `src/` project and check the reported file count. The codemod refuses to run on a dirty working tree. Commit or stash unrelated work first, or pass `--force` to let its edits land alongside your WIP. If the codemod isn't available (older `@next/codemod`, sandboxed environment, offline run), reproduce it by hand by removing `export const prefetch = 'partial'` and its generated Partial Prefetching guide comment from every `app/**/{page,layout}.{js,jsx,ts,tsx}` — leave other `prefetch` values in place, and leave the `TODO(per-link-prefetch)` markers and Optimizing prefetching guide links where they are. Don't hand-edit when the codemod can run.

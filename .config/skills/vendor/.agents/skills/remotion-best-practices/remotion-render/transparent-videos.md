@@ -16,7 +16,7 @@ Ideal for when importing into video editing software.
 **CLI:**
 
 ```bash
-npx remotion render --image-format=png --pixel-format=yuva444p10le --codec=prores --prores-profile=4444 MyComp out.mov
+pnpm exec remotion render --image-format=png --pixel-format=yuva444p10le --codec=prores --prores-profile=4444 MyComp out.mov
 ```
 
 **Default in Studio** (restart Studio after changing):
@@ -65,7 +65,7 @@ Ideal for when playing in a browser.
 **CLI:**
 
 ```bash
-npx remotion render --image-format=png --pixel-format=yuva420p --codec=vp9 MyComp out.webm
+pnpm exec remotion render --image-format=png --pixel-format=yuva420p --codec=vp9 MyComp out.webm
 ```
 
 **Default in Studio** (restart Studio after changing):

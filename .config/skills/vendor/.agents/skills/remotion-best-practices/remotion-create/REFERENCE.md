@@ -23,7 +23,7 @@ Do not treat all hidden files as disposable: files such as `.env` and directorie
 Scaffold in existing folder:
 
 ```bash
-npx create-video@latest --yes --blank --no-tailwind .
+pnpm dlx create-video@<verified-version> --yes --blank --no-tailwind .
 npm i
 ```
 
@@ -33,7 +33,7 @@ If the current folder contains meaningful contents and no project already exists
 Replace `my-video` with a suitable project name.
 
 ```bash
-npx create-video@latest --yes --blank --no-tailwind my-video
+pnpm dlx create-video@<verified-version> --yes --blank --no-tailwind my-video
 cd my-video
 npm i
 ```

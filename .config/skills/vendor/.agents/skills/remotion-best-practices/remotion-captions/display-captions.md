@@ -17,7 +17,7 @@ First, the [`@remotion/captions`](https://www.remotion.dev/docs/captions.md) pac
 If it is not installed, use the following command:
 
 ```bash
-npx remotion add @remotion/captions # If project uses npm
+pnpm exec remotion add @remotion/captions # If project uses npm
 bunx remotion add @remotion/captions # If project uses bun
 yarn remotion add @remotion/captions # If project uses yarn
 pnpm exec remotion add @remotion/captions # If project uses pnpm

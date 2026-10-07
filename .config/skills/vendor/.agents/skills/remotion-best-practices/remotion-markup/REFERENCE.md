@@ -418,10 +418,10 @@ See [sequencing.md](sequencing.md) for more sequencing patterns - delay, trim, l
 
 ## Install modules
 
-Use `npx remotion add` to add new packages with the right version:
+Use `pnpm exec remotion add` to add new packages with the right version:
 
 ```
-npx remotion add @remotion/media
+pnpm exec remotion add @remotion/media
 ```
 
 This goes for `@remotion/*` packages, `mediabunny`, `@mediabunny/*`, `zod`, and `@huggingface/transformers`.

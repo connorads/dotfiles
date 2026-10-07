@@ -1,0 +1,1 @@
+Plan / generate / heal lean on the same mechanic: run `pnpm exec playwright test --debug=cli` in the background, then `playwright-cli attach tw-XXXX` to drive the paused page interactively. See [playwright-tests.md](playwright-tests.md) for the debug/attach mechanics.

@@ -1,0 +1,1 @@
+Older CLIs such as 18.6.0 lack these commands. Check `eas --version` and command help, or use a pinned `npx eas-cli@23.2.0` invocation. Prefer the supported CLI over importing its internal Node modules or writing private GraphQL queries. An errored `submit:view --json` result can still omit the underlying error; follow its log URLs to diagnose it.

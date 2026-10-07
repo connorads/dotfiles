@@ -9,13 +9,13 @@ When creating or editing a video, start Studio and open its preview as soon as t
 In Cursor, run Studio without `--no-open` so the browser opens automatically:
 
 ```bash
-npx remotion studio
+pnpm exec remotion studio
 ```
 
 In other agent clients, you can also let Studio open the browser automatically with the command above. If you have an in-app browser and intend to use it, run:
 
 ```bash
-npx remotion studio --no-open
+pnpm exec remotion studio --no-open
 ```
 
 If the Studio is already opened, the URL will be printed and the command will exit.

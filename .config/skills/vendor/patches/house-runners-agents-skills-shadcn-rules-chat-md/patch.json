@@ -1,0 +1,6 @@
+{
+  "reason": "use pnpm for project tools, mise-managed CLIs, and explicit versions for one-off downloads",
+  "files": [
+    ".agents/skills/shadcn/rules/chat.md"
+  ]
+}

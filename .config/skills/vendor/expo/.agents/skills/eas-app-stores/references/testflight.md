@@ -1,6 +1,6 @@
 # TestFlight
 
-For a SwiftUI/UIKit app with no React Native runtime, start with [native-ios.md](native-ios.md). EAS can build and submit it without adding Expo or React Native. For an established Expo/React Native app, `npx testflight` is also a convenient setup flow.
+For a SwiftUI/UIKit app with no React Native runtime, start with [native-ios.md](native-ios.md). EAS can build and submit it without adding Expo or React Native. For an established Expo/React Native app, `pnpm exec testflight` is also a convenient setup flow.
 
 ## Submit an identified build
 
@@ -28,7 +28,7 @@ eas submit:status --platform ios --profile testflight --json --non-interactive
 
 Use the project's actual profile. `submit:view` reports the EAS job; `submit:status` reads App Store Connect and reports App Store versions and TestFlight processing/internal/external states. The latter needs an App Store Connect API key from the selected profile, environment, or existing EAS credentials. In noninteractive mode, a missing key is a setup error; it does not mean the build failed or does not exist. A beta state alone does not establish that a particular tester has access.
 
-Older CLIs such as 18.6.0 lack these commands. Check `eas --version` and command help, or use a pinned `npx eas-cli@23.2.0` invocation. Prefer the supported CLI over importing its internal Node modules or writing private GraphQL queries. An errored `submit:view --json` result can still omit the underlying error; follow its log URLs to diagnose it.
+Older CLIs such as 18.6.0 lack these commands. Check `eas --version` and command help, or use a pinned `eas` invocation. Prefer the supported CLI over importing its internal Node modules or writing private GraphQL queries. An errored `submit:view --json` result can still omit the underlying error; follow its log URLs to diagnose it.
 
 ## Track the release state
 

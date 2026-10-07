@@ -32,7 +32,7 @@ clone, `<deepsec-clone>/docs/`:
 
 ## How to answer common questions
 
-- **"How do I install/init deepsec?"** → `getting-started.md`; default to `npx deepsec init`, not a manual install/scan recipe.
+- **"How do I install/init deepsec?"** → `getting-started.md`; default to `deepsec init`, not a manual install/scan recipe.
 - **"Setup stopped; how do I resume?"** → `getting-started.md` + `data-layout.md`; re-run init or `deepsec setup`.
 - **"How do I run another scan?"** → `getting-started.md` after noting the first scan/process already ran during setup.
 - **"What goes in `deepsec.config.ts`?"** → `configuration.md` + `samples/webapp/deepsec.config.ts`.
@@ -53,20 +53,20 @@ When you are asked to initialize Deepsec from a non-TTY agent session, first
 inspect the read-only plan:
 
 ```bash
-npx deepsec init --plan --output json
+deepsec init --plan --output json
 ```
 
 Then run the requested policy, normally:
 
 ```bash
-npx deepsec init --yes --model-profile value --output jsonl
+deepsec init --yes --model-profile value --output jsonl
 ```
 
 Parse every output line as JSON. On `needs_input`, show the supplied message
 and actions to the user rather than inventing remediation. In particular,
-`VERCEL_AUTH_REQUIRED` normally asks the user to run `npx vercel login`; after
+`VERCEL_AUTH_REQUIRED` normally asks the user to run `vercel login`; after
 they do, follow the returned link action from inside `.deepsec`. Use
-`npx vercel link` when the user needs to choose, or the returned parameterized
+`vercel link` when the user needs to choose, or the returned parameterized
 `--yes --team <team-slug> --project <project-name>` form for a known existing
 project. Then rerun the same Deepsec command. Exit code 2 means input is needed
 and exit code 3 means a requested cost/duration boundary stopped the resumable

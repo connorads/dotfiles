@@ -6,10 +6,10 @@ Stream audio from the browser directly to ElevenLabs for real-time transcription
 
 ```bash
 # React
-npm install @elevenlabs/react@latest @elevenlabs/elevenlabs-js@latest
+pnpm add @elevenlabs/react@<verified-version> @elevenlabs/elevenlabs-js@<verified-version>
 
 # JavaScript
-npm install @elevenlabs/client@latest @elevenlabs/elevenlabs-js@latest
+pnpm add @elevenlabs/client@<verified-version> @elevenlabs/elevenlabs-js@<verified-version>
 ```
 
 > **Warning:** Always use the `@elevenlabs/*` namespace for client-side packages.

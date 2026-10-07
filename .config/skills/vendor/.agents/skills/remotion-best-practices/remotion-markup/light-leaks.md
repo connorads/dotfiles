@@ -7,7 +7,7 @@ metadata:
 
 ## Light Leaks
 
-This only works from Remotion 4.0.500 and up. Use `npx remotion versions` to check your Remotion version and `npx remotion upgrade` to upgrade your Remotion version.
+This only works from Remotion 4.0.500 and up. Use `pnpm exec remotion versions` to check your Remotion version and `pnpm exec remotion upgrade` to upgrade your Remotion version.
 
 Apply `lightLeak()` from `@remotion/effects/light-leak` to a canvas-based component such as `<Solid>`. Animate `progress` from `0` to `1`; the light leak reveals during the first half and retracts during the second half.
 
@@ -16,7 +16,7 @@ Typically use it inside a `<TransitionSeries.Overlay>` to play over the cut poin
 ## Prerequisites
 
 ```bash
-npx remotion add @remotion/effects
+pnpm exec remotion add @remotion/effects
 ```
 
 ## Light leak overlay component

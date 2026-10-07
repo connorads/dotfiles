@@ -1,0 +1,3 @@
+```
+pnpm exec remotion render
+```

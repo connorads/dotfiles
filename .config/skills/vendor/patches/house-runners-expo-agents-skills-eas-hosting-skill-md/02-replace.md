@@ -1,0 +1,1 @@
+pnpm exec expo serve

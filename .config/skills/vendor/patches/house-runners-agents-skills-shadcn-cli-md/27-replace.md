@@ -1,0 +1,3 @@
+- **Overwrite / Re-install** → `pnpm exec shadcn apply --preset <code>`. Overwrites all detected component files with the new preset styles. Use when the user hasn't customized components.
+- **Merge** → `pnpm exec shadcn init --preset <code> --force --no-reinstall`, then run `pnpm exec shadcn info` to get the list of installed components and use the [smart merge workflow](./SKILL.md#updating-components) to update them one by one, preserving local changes. Use when the user has customized components.
+- **Skip** → `pnpm exec shadcn init --preset <code> --force --no-reinstall`. Only updates config and CSS variables, leaves existing components as-is.
