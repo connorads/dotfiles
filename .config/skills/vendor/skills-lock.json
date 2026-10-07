@@ -52,18 +52,6 @@
       "skillPath": "skills/code-simplification/SKILL.md",
       "computedHash": "7973e746e8e2ea5004d520da970c15a106824b8d6be1bcff48908aec021f3677"
     },
-    "competitor-analysis": {
-      "source": "aaron-he-zhu/aaron-marketing-skills",
-      "sourceType": "github",
-      "skillPath": "seo-geo/survey/competitor-analysis/SKILL.md",
-      "computedHash": "c980ac8d1bf984c0ae86fe3209253d0e24ce1668dd1fe522fbd137a21bb7d883"
-    },
-    "content-gap-analysis": {
-      "source": "aaron-he-zhu/aaron-marketing-skills",
-      "sourceType": "github",
-      "skillPath": "seo-geo/survey/content-gap-analysis/SKILL.md",
-      "computedHash": "2a89cb928510499eb2294c30f468ad0e8ab17673918ca2bd634569ab9f18adc6"
-    },
     "design-taste-frontend": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
