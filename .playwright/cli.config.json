@@ -2,7 +2,7 @@
   "browser": {
     "browserName": "chromium",
     "launchOptions": {
-      "args": ["--enable-gpu"]
+      "args": ["--enable-gpu", "--mute-audio"]
     }
   }
 }
