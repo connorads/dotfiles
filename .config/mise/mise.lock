@@ -299,19 +299,6 @@ checksum = "sha256:b1de28349089d62b24518f1a6103005f9f3c82aaf5ca7872e65bf3fc349e4
 url = "https://github.com/jdx/fnox/releases/download/v1.36.0/fnox-aarch64-apple-darwin.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/fnox/.github/workflows/release.yml"
 
-[[tools.gcloud]]
-version = "587.0.0"
-backend = "vfox:mise-plugins/vfox-gcloud"
-
-[tools.gcloud."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-587.0.0-linux-arm.tar.gz"
-
-[tools.gcloud."platforms.linux-x64"]
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-587.0.0-linux-x86_64.tar.gz"
-
-[tools.gcloud."platforms.macos-arm64"]
-url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-587.0.0-darwin-arm.tar.gz"
-
 [[tools."github:ahkohd/oyo"]]
 version = "0.1.57"
 backend = "github:ahkohd/oyo"

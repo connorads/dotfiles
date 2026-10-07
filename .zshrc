@@ -162,10 +162,6 @@ export GH_TELEMETRY=false
 # default; not covered by DO_NOT_TRACK.
 export WRANGLER_SEND_METRICS=false
 
-# Google Cloud SDK (gcloud): usage-statistics reporting, off by default until
-# opted in at install, but the property survives a fresh gcloud install/reset.
-export CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=true
-
 # Expo/EAS CLI: anonymous usage analytics, not covered by DO_NOT_TRACK.
 export EXPO_NO_TELEMETRY=1
 

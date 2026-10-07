@@ -13,7 +13,6 @@ setup() {
   local jq_dir
   jq_dir="$(dirname "$(command -v jq)")" # capture before PATH is isolated
   setup_test_home
-  unset CLOUDSDK_PYTHON
   export PATH="$PATH:$jq_dir"
 
   mkdir -p "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"
@@ -47,7 +46,6 @@ EOF
   write_stub drs <<'EOF'
 #!/usr/bin/env bash
 echo "drs $*" >>"$TEST_LOG"
-echo "rebuild-python=${CLOUDSDK_PYTHON:-unset}" >>"$TEST_LOG"
 [ -n "${DRS_FAIL:-}" ] && exit 1
 exit 0
 EOF
@@ -91,13 +89,6 @@ EOF
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
 echo "mise-cwd=$PWD" >>"$TEST_LOG"
-if [ "$1" = "which" ] && [ "$2" = "python" ]; then
-  printf '%s\n' "$TEST_HOME/python runtime"
-  exit 0
-fi
-case "$1" in
-  install|upgrade) echo "mise-python=${CLOUDSDK_PYTHON:-unset}" >>"$TEST_LOG" ;;
-esac
 [ -n "${MISE_DELAY:-}" ] && sleep "$MISE_DELAY"
 if [ "$*" = "lock --global --bump" ]; then
   [ -n "${MISE_SIMULATE_BUMP:-}" ] && echo "bumped" >>"$HOME/.config/mise/mise.lock"
@@ -528,13 +519,6 @@ EOF
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
-if [ "$1" = "which" ] && [ "$2" = "python" ]; then
-  printf '%s\n' "$TEST_HOME/python runtime"
-  exit 0
-fi
-case "$1" in
-  install|upgrade) echo "mise-python=${CLOUDSDK_PYTHON:-unset}" >>"$TEST_LOG" ;;
-esac
 echo 'mise noisy output'
 exit 0
 EOF
@@ -553,13 +537,6 @@ EOF
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
-if [ "$1" = "which" ] && [ "$2" = "python" ]; then
-  printf '%s\n' "$TEST_HOME/python runtime"
-  exit 0
-fi
-case "$1" in
-  install|upgrade) echo "mise-python=${CLOUDSDK_PYTHON:-unset}" >>"$TEST_LOG" ;;
-esac
 echo 'mise verbose output'
 exit 0
 EOF
@@ -740,26 +717,6 @@ EOF
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
 }
 
-@test "up supplies mise Python to gcloud installation without leaking it to rebuild" {
-  run_zsh_function "$UP"
-  [ "$status" -eq 0 ]
-  grep -qFx "mise-python=$TEST_HOME/python runtime" "$TEST_LOG"
-  grep -qFx 'rebuild-python=unset' "$TEST_LOG"
-}
-
-@test "up --frozen supplies mise Python to installation" {
-  run_zsh_function "$UP" --frozen
-  [ "$status" -eq 0 ]
-  grep -qFx "mise-python=$TEST_HOME/python runtime" "$TEST_LOG"
-}
-
-@test "up honours an explicit gcloud Python interpreter" {
-  CLOUDSDK_PYTHON="$TEST_HOME/custom python" run_zsh_function "$UP"
-  [ "$status" -eq 0 ]
-  grep -qFx "mise-python=$TEST_HOME/custom python" "$TEST_LOG"
-  ! grep -qF 'mise which python' "$TEST_LOG"
-}
-
 @test "up refreshes metadata before counting formula and cask progress" {
   write_stub brew <<'EOF'
 #!/usr/bin/env bash
@@ -929,10 +886,6 @@ _mise_github_401_fixture() {
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
-if [ "$1" = "which" ] && [ "$2" = "python" ]; then
-  printf '%s\n' "$TEST_HOME/python runtime"
-  exit 0
-fi
 if [ "$1" = "upgrade" ] || [ "$1" = "install" ]; then
   for repo in herdrdev/herdr aws/aws-cli cli/cli; do
     echo "mise WARN  Error getting latest version for github:$repo: HTTP status client error (401 Unauthorized) for url (https://api.github.com/repos/$repo/releases?per_page=100)" >&2

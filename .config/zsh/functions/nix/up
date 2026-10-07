@@ -118,11 +118,7 @@ _up_logged() {
 
 _up_mise() (
   cd "$HOME" || return $?
-  local install_python=${CLOUDSDK_PYTHON:-}
-  if [[ -z $install_python ]]; then
-    install_python=$(mise which python) || return $?
-  fi
-  CLOUDSDK_PYTHON="$install_python" mise "$@"
+  mise "$@"
 )
 
 _up_install_mise() {
