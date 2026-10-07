@@ -17,7 +17,7 @@ verifiable, and completable in a single iteration.
 
 **Boundaries:** `prd` decides the WHAT and WHY and produces the spec; this
 skill decomposes a *committed* spec into tasks (a PRD is the primary step-1
-input); `task-loop` scaffolds the loop directory that executes the backlog.
+input).
 If the what/why is still open, route to `prd` first.
 
 ## When to use
@@ -155,6 +155,3 @@ Iterate until approved, then write the file.
 
 Write to the path specified by the user (default: `TASKS/<name>/backlog.md`).
 Create the directory if needed.
-
-If the user plans to use `/task-loop` next, mention that the backlog is
-ready for loop scaffolding.
