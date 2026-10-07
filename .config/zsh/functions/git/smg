@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+# smg: Sublime Merge on the current repo, or the bare dotfiles repo outside one
+emulate -L zsh
+
+local top
+if top=$(command git rev-parse --show-toplevel 2>/dev/null); then
+  smerge "$top"
+  return
+fi
+
+# Same stat refresh as lgdf: keeps clean-filter-only churn out of the GUI.
+dotfiles status --short .codex/config.toml .claude/settings.json \
+  .pi/agent/settings.json >/dev/null 2>&1
+smerge "$HOME/git/dotfiles"
