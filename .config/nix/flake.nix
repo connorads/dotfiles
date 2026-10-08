@@ -28,6 +28,10 @@
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    # No `nixpkgs.follows`: a different nixpkgs changes the store path and
+    # misses connorads.cachix.org, so the Air would build T3 Code locally.
+    t3code-patched.url = "github:connorads/t3code-patched";
   };
 
   outputs =
@@ -36,6 +40,7 @@
       nix-darwin,
       nixpkgs,
       home-manager,
+      t3code-patched,
     }:
     let
       mkPkgs =
@@ -149,6 +154,11 @@
         ./modules/darwin-desktop.nix
         {
           homebrew.casks = [ "logitech-camera-settings" ];
+          environment.systemPackages = [ t3code-patched.packages.aarch64-darwin.default ];
+          nix.settings.extra-substituters = [ "https://connorads.cachix.org" ];
+          nix.settings.extra-trusted-public-keys = [
+            "connorads.cachix.org-1:1jyIQBqFUQ1wAHi1DEOdBOIXTX1u8tJOYapXw4fOQFg="
+          ];
           # Overlay packages: nix-darwin's own `pkgs` has no overlay, so
           # `pkgs.footswitch` in a module would be nixpkgs' Linux-only one.
           home-manager.users.connorads.home.packages = with (mkPkgs "aarch64-darwin"); [
