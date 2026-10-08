@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claude Code status line: context % | model | dir | prompt cache
+# Claude Code status line: context % | model | dir | account quota | prompt cache
 # Input: JSON from Claude Code via stdin
 
 input=$(cat)
@@ -109,6 +109,52 @@ fmt_k() {
 	fi
 }
 
+now=$(date +%s)
+
+fmt_reset() {
+	local reset=$1 minutes
+	if [ -z "$reset" ]; then
+		printf '?'
+	elif [ "$reset" -le "$now" ]; then
+		printf 'refresh needed'
+	else
+		minutes=$(((reset - now + 59) / 60))
+		if [ "$minutes" -ge 1440 ]; then
+			printf '%dd %dh' $((minutes / 1440)) $((minutes % 1440 / 60))
+		elif [ "$minutes" -ge 60 ]; then
+			printf '%dh %dm' $((minutes / 60)) $((minutes % 60))
+		else
+			printf '%dm' "$minutes"
+		fi
+	fi
+}
+
+# Native quota data belongs to the account running this session.
+usage_seg=""
+while IFS=$'\t' read -r label pct pct_int resets; do
+	usage_colour="$GREEN"
+	if [ "$pct_int" -ge 90 ]; then
+		usage_colour="$RED"
+	elif [ "$pct_int" -ge 70 ]; then
+		usage_colour="$YELLOW"
+	fi
+	[ -n "$usage_seg" ] && usage_seg+=" | "
+	usage_seg+="${usage_colour}${label} ${pct}%${RESET} ↻ $(fmt_reset "$resets")"
+done < <(
+	echo "$input" | jq -r '
+		[["five_hour", "5h"], ["seven_day", "weekly"]][] as $window
+		| .rate_limits[$window[0]]
+		| select(.used_percentage | type == "number")
+		| [$window[1], .used_percentage, (.used_percentage | floor),
+		   (.resets_at | if type == "number" then floor else "" end)]
+		| @tsv'
+)
+if [ -n "$usage_seg" ]; then
+	usage_seg="usage ${usage_seg}"
+else
+	usage_seg="${DIM}${WHITE}usage unavailable${RESET}"
+fi
+
 # Cache: warm -> TTL countdown, hit %, last turn write/read, misses + last cause;
 # cold -> tokens the next request re-caches. Countdown colour by TTL fraction left.
 cache_seg=""
@@ -116,7 +162,6 @@ if [ "$pc_present" = "true" ]; then
 	if [ "$pc_observed" != "true" ]; then
 		cache_seg="${DIM}${WHITE}cache off${RESET}"
 	else
-		now=$(date +%s)
 		left=0
 		[ -n "$pc_expires" ] && left=$((pc_expires - now))
 		if [ "$left" -gt 0 ]; then
@@ -143,7 +188,7 @@ if [ "$pc_present" = "true" ]; then
 	fi
 fi
 
-# Build single-line output (context % | model+effort | dir | cache)
+# Build single-line output (context % | model+effort | dir | quota | cache)
 line=""
 if [ -n "$ctx_pct" ] && [ -n "$ctx_size" ]; then
 	# Calculate used tokens and format as k
@@ -160,6 +205,7 @@ else
 	line+="${MAGENTA}${model}${RESET} | ${CYAN}${dir}${RESET}"
 fi
 [ -n "$branch" ] && line+=" on ${GREEN}${branch}${RESET}"
+line+=" | ${usage_seg}"
 [ -n "$cache_seg" ] && line+=" | ${cache_seg}"
 
 # Lead with the account tag (leftmost survives width truncation best)
