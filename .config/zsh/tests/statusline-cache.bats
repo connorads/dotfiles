@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 bats_require_minimum_version 1.5.0
+load test_helper
 
 # Drives the real status line with fixture payloads and asserts on the cache
 # segment only. No claude - the contract is the stdin JSON's prompt_cache and
@@ -11,7 +12,15 @@ SCRIPT="$BATS_TEST_DIRNAME/../../../.claude/statusline.sh"
 setup() {
   [ -f "$SCRIPT" ] || skip "statusline.sh not found at $SCRIPT"
   command -v jq >/dev/null || skip "jq not installed"
-  now=$(date +%s)
+  # A fixed clock keeps TTL assertions independent of render time.
+  now=1760000000
+  TEST_BIN="$BATS_TEST_TMPDIR/bin"
+  mkdir -p "$TEST_BIN"
+  export PATH="$TEST_BIN:$PATH"
+  write_stub date <<'SH'
+#!/bin/sh
+printf '%s\n' 1760000000
+SH
 }
 
 plain() { sed $'s/\033\\[[0-9;]*m//g'; }
@@ -22,7 +31,7 @@ render() {
     context_window:{used_percentage:13,context_window_size:1000000,
       current_usage:{input_tokens:2,output_tokens:249,
         cache_creation_input_tokens:1340,cache_read_input_tokens:129691}}}' |
-    jq -c "$1" | bash "$SCRIPT" | plain
+    jq -c "$1" | "$BASH5" "$SCRIPT" | plain
 }
 
 @test "warm cache shows TTL countdown, hit %, last-turn write/read" {
