@@ -36,6 +36,13 @@ ALLOW_PATTERN_PATHS = {
     ".zshrc.local.example",
 }
 
+# The claude-profiles BB plugin strips these auth env names from the Claude CLI
+# it spawns, so it must name them. Generic checks only, as for vendored skills.
+GENERIC_PATTERN_PATHS = {
+    "src/bb-plugins/claude-profiles/src/claude.ts",
+    "src/bb-plugins/claude-profiles/src/claude.test.ts",
+}
+
 TOKEN_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]+")
 AUTH_ENV_RE = re.compile(
     r"\b(?:ANTHROPIC_API_KEY|ANTHROPIC_AUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN|"
@@ -95,8 +102,10 @@ def main() -> int:
                 break
 
     for path in paths:
-        allow_generic_patterns = path in ALLOW_PATTERN_PATHS or path.startswith(
-            VENDORED_SKILL_PREFIXES
+        allow_generic_patterns = (
+            path in ALLOW_PATTERN_PATHS
+            or path in GENERIC_PATTERN_PATHS
+            or path.startswith(VENDORED_SKILL_PREFIXES)
         )
         allow_profile_patterns = path in ALLOW_PATTERN_PATHS
         for diff_line, line in added_lines(path):
