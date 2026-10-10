@@ -1,5 +1,5 @@
 {
-  "name": "bb-plugin-preferences-spike",
+  "name": "bb-plugin-preferences",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "bbPluginSdk": ">=0.6.15"
   },
   "bb": {
-    "name": "Preferences spike",
+    "name": "Preferences",
     "description": "Apply file-managed keyboard overrides on the BB server.",
     "branding": {
       "icon": "Settings"
