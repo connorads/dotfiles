@@ -4,3 +4,4 @@
 .ch-dot[data-level="high"] { background: #f85149; }
 .ch-muted { opacity: .6; }
 .ch-miss { color: #d29922; }
+.ch-dot[data-cold="true"] { background: none; box-shadow: inset 0 0 0 1.5px #f85149; }

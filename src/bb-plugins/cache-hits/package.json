@@ -14,6 +14,7 @@
       "icon": "DatabaseZap"
     },
     "server": "./server.ts",
+    "host": "./host.ts",
     "app": "./app.tsx",
     "skills": []
   },
