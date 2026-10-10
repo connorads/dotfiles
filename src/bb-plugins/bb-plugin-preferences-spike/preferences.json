@@ -1,0 +1,22 @@
+{
+  "keyboard": [
+    {
+      "command": "thread.previous",
+      "platform": "mac",
+      "shortcut": {
+        "key": "H",
+        "mod": true,
+        "shift": true
+      }
+    },
+    {
+      "command": "thread.next",
+      "platform": "mac",
+      "shortcut": {
+        "key": "L",
+        "mod": true,
+        "shift": true
+      }
+    }
+  ]
+}
