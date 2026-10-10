@@ -4,6 +4,9 @@ Show each thread's prompt-cache state in the thread header.
 
 ## Use
 
+`Cmd+Shift+A` opens BB's full-page Provider usage settings. The command palette
+also lists **Open agent usage**. Rebind it in Settings → Keyboard.
+
 The header chip shows the share of the last request read from cache, and a
 miss count once the thread has one. Claude Code threads also count down to cache
 expiry, then show `cold`. The dot follows time left (green over 50%, yellow
