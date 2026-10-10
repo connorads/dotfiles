@@ -3,7 +3,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 
 type Overrides = Parameters<BbPluginApi['sdk']['system']['updateKeyboardSettings']>[0];
 const shortcut = z.object({
-  key: z.string().min(1),
+  key: z.string().min(1).max(32),
   mod: z.boolean().default(false), meta: z.boolean().default(false),
   control: z.boolean().default(false), alt: z.boolean().default(false),
   shift: z.boolean().default(false),
@@ -27,9 +27,9 @@ export function parsePreferences(value: unknown) {
   return preferences.parse(value);
 }
 
-export function mergePreferences(current: Overrides, desired: Overrides): Overrides {
+export function mergePreferences(current: Overrides, desired: Overrides, previous: Overrides): Overrides {
   return [
-    ...current.filter(entry => !desired.some(item => item.command === entry.command && item.platform === entry.platform)),
+    ...current.filter(entry => ![...previous, ...desired].some(item => item.command === entry.command && item.platform === entry.platform)),
     ...desired,
   ];
 }

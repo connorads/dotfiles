@@ -20,3 +20,8 @@ to rebuild and reload on save.
 - `pnpm -r test` and `pnpm -r typecheck` run every plugin.
 - The `ts-tests-scoped` and `ts-typecheck-bb-plugins` hooks gate commits.
 - Each `tsconfig.json` must also pass the global `tsc` 7 that the hook runs.
+
+## File-managed preferences
+
+[Preferences](preferences/README.md) applies tracked keyboard settings from
+`~/.config/bb/preferences.json`. Its guide covers installation and ownership.

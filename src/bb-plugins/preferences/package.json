@@ -19,7 +19,8 @@
     "test": "node --experimental-strip-types --test *.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "bb plugin build",
-    "dev": "bb plugin dev"
+    "dev": "bb plugin dev",
+    "install:bb": "node --experimental-strip-types install.ts"
   },
   "dependencies": {
     "zod": "4.3.6"
