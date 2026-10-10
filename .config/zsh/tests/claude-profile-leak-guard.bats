@@ -130,3 +130,25 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"staged concrete .claude-profiles path"* ]]
 }
+
+@test "guard allows auth env names the claude-profiles plugin clears" {
+  mkdir -p src/bb-plugins/claude-profiles/src
+  echo "export const authOverrides = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN'] as const;" \
+    >src/bb-plugins/claude-profiles/src/claude.ts
+  git add src/bb-plugins/claude-profiles/src/claude.ts
+
+  run_guard
+
+  [ "$status" -eq 0 ]
+}
+
+@test "guard still blocks concrete profile paths in the claude-profiles plugin" {
+  mkdir -p src/bb-plugins/claude-profiles/src
+  echo "const dir = '/Users/me/.claude-profiles/code/work';" >src/bb-plugins/claude-profiles/src/claude.ts
+  git add src/bb-plugins/claude-profiles/src/claude.ts
+
+  run_guard
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"staged concrete .claude-profiles path"* ]]
+}
