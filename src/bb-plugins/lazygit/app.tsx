@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { definePluginApp, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_Icon as Icon, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
+import './app.css';
 
 export default definePluginApp(app => {
   const openers = new Map<string, () => Promise<void>>();
@@ -28,8 +29,8 @@ export default definePluginApp(app => {
       return () => { if (openers.get(threadId) === open) openers.delete(threadId); };
     }, [threadId, open]);
     return <span>
-      <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={open}
-        title="Open lazygit (Cmd+Shift+G)">Lazygit</button>
+      <button type="button" className="lazygit-button" onClick={open}
+        aria-label="Open lazygit" title="Open lazygit (Cmd+Shift+G)"><Icon name="GitBranch" className="size-4" /></button>
       {error && <span role="alert" className="text-sm text-destructive">{error}</span>}
     </span>;
   }
