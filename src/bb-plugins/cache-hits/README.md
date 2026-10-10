@@ -31,7 +31,7 @@ flowchart LR
 | Provider | Source | Prompt size | Lifetime |
 | --- | --- | --- | --- |
 | Codex | `thread/tokenUsage/updated` | `inputTokens` (includes cached tokens) | not reported |
-| Pi | `thread/tokenUsage/updated` | `inputTokens + cachedInputTokens` | not reported |
+| Pi | `thread/tokenUsage/updated`, last request of each turn | `inputTokens + cachedInputTokens` | not reported |
 | Claude Code | `~/.claude/projects/*/<session>.jsonl` | `input + cache read + cache write` | `cache_creation.ephemeral_5m/1h` |
 
 BB sums Claude Code usage per turn, so the plugin reads per-request usage from
@@ -51,7 +51,12 @@ refreshes a cache entry each time a request reads it. The transcript stamps
 the response, not the request start, so the countdown runs a few seconds long.
 
 BB keeps only recent usage events, so Codex and Pi turns from before
-installation are not counted. Pi's event granularity in BB is unverified.
+installation are not counted.
+
+BB emits Pi usage once per turn, at `agent_end`, from the turn's last
+request only. Pi hit rates are exact for that request. Pi misses are
+undercounted: a turn that starts cold rebuilds the cache on its first request,
+so its last request reads cache again.
 
 ## Develop
 
