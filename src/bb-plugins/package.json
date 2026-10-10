@@ -1,0 +1,5 @@
+{
+  "name": "bb-plugins",
+  "private": true,
+  "packageManager": "pnpm@12.9.0"
+}

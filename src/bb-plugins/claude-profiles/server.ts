@@ -1,0 +1,149 @@
+import type { BbPluginApi } from '@get-bb/plugin-sdk';
+import { hostContract, rpcContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
+import { authOverrides } from './src/claude.ts';
+import type { Usage } from './src/usage.ts';
+import { decodeResourceId, measurement } from './src/usage-source.ts';
+export { rpcContract } from './contracts.ts';
+
+export default function plugin(bb: BbPluginApi) {
+  const settings = bb.settings.define({
+    profileRoot: { type: 'string', label: 'Claude profile root on each host', default: '~/.claude-profiles/code' },
+    executable: { type: 'string', label: 'Native Claude executable', default: 'claude' },
+  });
+  const host = bb.hosts.experimental_client({ contract: hostContract });
+  const switching = new Set<string>();
+  const cache = new Map<string, Usage>();
+  const probes = new Map<string, Promise<Usage>>();
+  const key = (id: string) => `thread:${id}`;
+  async function context(threadId: string) {
+    const thread = await bb.sdk.threads.get({ threadId });
+    if (thread.providerId !== 'claude-code') throw new Error('This thread does not use Claude Code.');
+    if (!thread.environmentId) throw new Error('Send the first message before choosing a profile.');
+    const environment = await bb.sdk.environments.get({ environmentId: thread.environmentId });
+    return { thread, environment, config: await settings.get() };
+  }
+  function requireIdle(thread: Awaited<ReturnType<typeof bb.sdk.threads.get>>) {
+    if (!['idle', 'error'].includes(thread.status) || thread.activeBackgroundAgentCount || thread.queuedMessageCount) {
+      throw new Error('Finish or stop the turn and clear queued messages before switching profiles.');
+    }
+  }
+  bb.experimental_hooks.on('message.dispatch', input => switching.has(input.thread.id)
+    ? { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' }
+    : { action: 'proceed' });
+  bb.providers.experimental_contributeEnv('claude-code', async input => {
+    const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
+    if (!selected || selected.hostId !== input.hostId) return [];
+    return [{ name: 'CLAUDE_CONFIG_DIR', value: selected.profile.configDir ?? '', reason: 'Thread Claude profile' },
+      ...authOverrides.map(name => ({ name, value: '', reason: 'Use selected profile native login' }))];
+  });
+  async function hostUsage(hostId: string, config: Awaited<ReturnType<typeof settings.get>>, profileId: string, refresh: boolean): Promise<Usage> {
+    const cacheKey = JSON.stringify([hostId, config.profileRoot, config.executable, profileId]);
+    const cached = cache.get(cacheKey);
+    if (!refresh && cached?.status === 'ok' && cached.observedAt && Date.now() - cached.observedAt < 60000) return cached;
+    const running = probes.get(cacheKey);
+    if (running) return running;
+    const request = host.call('usage', { root: config.profileRoot, executable: config.executable, profileId },
+      { hostId, timeoutMs: 30000 }).then(result => {
+      const value = { ...result, observedAt: result.observedAt ?? cached?.observedAt ?? null };
+      cache.set(cacheKey, value); return value;
+    }).finally(() => probes.delete(cacheKey));
+    probes.set(cacheKey, request);
+    return request;
+  }
+  async function usage(threadId: string, profileId: string, refresh: boolean): Promise<Usage> {
+    const { environment, config } = await context(threadId);
+    return hostUsage(environment.hostId, config, profileId, refresh);
+  }
+  async function select(threadId: string, profileId: string): Promise<Selection> {
+    if (switching.has(threadId)) throw new Error('A profile switch is already running.');
+    switching.add(threadId);
+    try {
+      const { thread, environment, config } = await context(threadId);
+      requireIdle(thread);
+      const profiles = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
+      const profile = profiles.find(value => value.id === profileId);
+      if (!profile) throw new Error('Profile does not exist.');
+      const selected = await bb.storage.kv.get<Selection>(key(threadId));
+      if (selected?.hostId === environment.hostId && selected.profile.configDir === profile.configDir) return selected;
+      await host.call('validate', { root: config.profileRoot, executable: config.executable, profileId }, { hostId: environment.hostId });
+      const [identities, environments] = await Promise.all([
+        bb.sdk.threads.events.list({ threadId, types: ['thread/identity'], order: 'desc', limit: '1' }),
+        bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' }),
+      ]);
+      const identity = identities[0];
+      const resolved = environments[0];
+      const directoryEntry = resolved?.type === 'provider.env-resolved'
+        ? resolved.data.entries.find(entry => entry.name === 'CLAUDE_CONFIG_DIR') : undefined;
+      if (directoryEntry && typeof directoryEntry.value !== 'string') throw new Error('Current profile directory is masked. Cannot safely identify the source transcript.');
+      const sourceDir = directoryEntry && typeof directoryEntry.value === 'string'
+        ? directoryEntry.value || null : selected?.profile.configDir ?? null;
+      await bb.sdk.threads.stop({ threadId });
+      requireIdle(await bb.sdk.threads.get({ threadId }));
+      if (identity?.type === 'thread/identity') {
+        await host.call('transfer', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
+          { hostId: environment.hostId });
+      }
+      const value: Selection = { hostId: environment.hostId, profile };
+      await bb.storage.kv.set(key(threadId), value);
+      bb.realtime.publish('profiles-changed', { threadId });
+      return value;
+    } finally { switching.delete(threadId); }
+  }
+  bb.rpc.register(rpcContract, {
+    thread: async input => {
+      const thread = await bb.sdk.threads.get({ threadId: input.threadId });
+      if (thread.providerId !== 'claude-code' || !thread.environmentId) return { supported: false, profiles: [], selection: null };
+      const { environment, config } = await context(input.threadId);
+      return { supported: true, profiles: await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId }),
+        selection: await bb.storage.kv.get<Selection>(key(input.threadId)) ?? null };
+    },
+    switch: input => select(input.threadId, input.profileId),
+    usage: input => usage(input.threadId, input.profileId, input.refresh),
+  });
+  bb.rpc.register(usageSourceContract, {
+    'provider-usage.v1.listResources': async () => {
+      const config = await settings.get();
+      const hosts = await bb.sdk.hosts.list();
+      const groups = await Promise.all(hosts.map(async machine => {
+        const inventoryKey = `inventory:${JSON.stringify([machine.id, config.profileRoot])}`;
+        let profiles = await bb.storage.kv.get<Profile[]>(inventoryKey) ?? [];
+        if (machine.status === 'connected') {
+          try {
+            profiles = await host.call('profiles', { root: config.profileRoot }, { hostId: machine.id });
+            await bb.storage.kv.set(inventoryKey, profiles);
+          } catch { bb.log.warn(`Could not list Claude profiles on host ${machine.id}.`); }
+        }
+        return profiles.map(profile => ({
+          id: JSON.stringify([machine.id, config.profileRoot, profile.id]), accountKey: null,
+          providerId: 'claude-code', label: `Claude · ${profile.label}`,
+          scope: { kind: 'host' as const, hostId: machine.id, hostName: machine.name },
+        }));
+      }));
+      return { resources: groups.flat() };
+    },
+    'provider-usage.v1.getResource': async input => {
+      const [hostId, root, profileId] = decodeResourceId(input.resourceId);
+      const config = await settings.get();
+      if (root !== config.profileRoot) throw new Error('Profile root changed. Refresh the resource list.');
+      try { return measurement(await hostUsage(hostId, config, profileId, input.refresh)); }
+      catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
+    },
+  }, { experimental_discoverable: true, experimental_description: 'Claude profile quota through native CLI authentication.' });
+  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread or read quota',
+    async run(argv) {
+      try {
+        const [command, threadId, profileId, ...extra] = argv;
+        if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error('Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE');
+        let value: unknown;
+        if (command === 'list') {
+          if (profileId) throw new Error('list takes only a thread ID.');
+          const { environment, config } = await context(threadId);
+          value = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
+        } else if (command === 'switch' && profileId) value = await select(threadId, profileId);
+        else if (command === 'usage' && profileId) value = await usage(threadId, profileId, true);
+        else throw new Error('Unknown command. Use list, switch or usage.');
+        return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };
+      } catch (error) { return { exitCode: 1, stderr: (error instanceof Error ? error.message : 'Profile command failed.') + '\n' }; }
+    },
+  });
+}

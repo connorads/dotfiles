@@ -206,6 +206,12 @@
 !/src/opencode-plugins/**
 /src/opencode-plugins/node_modules/
 
+# bb-plugins: BB plugin pnpm workspace, one dir per plugin
+!/src/bb-plugins/
+!/src/bb-plugins/**
+/src/bb-plugins/**/node_modules/
+/src/bb-plugins/*/dist/
+
 # skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
 !/src/skl/
 !/src/skl/**
