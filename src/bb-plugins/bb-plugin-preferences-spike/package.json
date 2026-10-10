@@ -1,0 +1,34 @@
+{
+  "name": "bb-plugin-preferences-spike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.15"
+  },
+  "bb": {
+    "name": "Preferences spike",
+    "description": "Apply file-managed keyboard overrides on the BB server.",
+    "branding": {
+      "icon": "Settings"
+    },
+    "server": "./server.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test *.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": {
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.15",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.15.30",
+    "hono": "4.11.9",
+    "typescript": "5.8.3"
+  }
+}
