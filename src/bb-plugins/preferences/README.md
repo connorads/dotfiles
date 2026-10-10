@@ -1,37 +1,58 @@
 # Declarative keyboard preferences
 
 This headless plugin applies `~/.config/bb/preferences.json` through BB's public SDK.
-The file lives on the BB server machine. It contains the desired previous and next
-thread shortcuts, scoped by platform. Other overrides stay unchanged.
+The file lives on the BB server machine and wins over UI edits to its shortcuts.
+Only `thread.previous` and `thread.next` are supported.
 
 ```mermaid
 flowchart LR
-  File[preferences.json] --> Validate[Validate JSON]
-  Validate --> Merge[Preserve unmanaged overrides]
-  Merge --> API[BB keyboard settings API]
+  File[Tracked preferences file] --> Validate[Validate JSON]
+  UI[BB settings changes] --> Validate
+  Validate --> Reconcile[Reconcile managed overrides]
+  Reconcile --> API[BB keyboard settings API]
 ```
 
-The background service reads the file on startup and watches its parent directory.
-Valid file changes apply automatically. Invalid files leave existing bindings intact
-and produce a plugin log entry. The watcher stops on disable, reload or shutdown.
+## Install on a BB server
 
-Run `bb preferences apply` to reapply the file explicitly.
-Inspect errors with `bb plugin logs preferences`.
-Disable with `bb plugin disable preferences` to stop watching.
-Disabling keeps the applied shortcuts.
+1. Check out the dotfiles, including `~/.config/bb/preferences.json` and this workspace.
+2. Install workspace dependencies with `pnpm --dir ~/src/bb-plugins install --frozen-lockfile`.
+3. Run `pnpm --dir ~/src/bb-plugins/preferences install:bb`.
 
-## Limits
+The installation script builds, installs and applies preferences. It accepts the
+`BB_CLI` path supplied inside BB, or `bb` on PATH. Repeating installation reloads
+this plugin. BB must be running. Node and pnpm must be available on PATH.
 
-- Only `thread.previous` and `thread.next` are supported.
-- The file path is fixed to `~/.config/bb/preferences.json`.
-- Removing an entry leaves its last applied override under UI control.
-- UI edits remain until the file changes, the plugin restarts, or explicit apply runs.
-- Conflict display, settings-file precedence and remote host file access are outside this plugin.
-- The SDK pin is the workspace's existing 0.6.15. BB reports 0.6.37; the used API
-  passes typecheck, build and live verification on the installed BB.
+## Ownership
+
+Each entry manages one command and platform. Omit `platform` to manage the
+cross-platform override. Omitted shortcut modifiers default to false.
+Use `"shortcut": null` to disable a command explicitly.
+
+File changes and settings-change events trigger reconciliation. Managed entries
+replace UI edits. Other command/platform overrides remain unchanged.
+Removing a managed entry deletes its override. BB then uses any remaining
+platform fallback or its built-in default.
+
+Ownership persists in plugin-scoped storage so removal works after restart.
+Ownership is recorded before settings updates so an interrupted apply can recover.
+Invalid or missing files leave existing shortcuts and ownership intact.
+Errors appear in `bb plugin logs preferences`.
+
+Run `bb preferences apply` to apply the file explicitly. A failed apply returns
+exit code 1. The background service also reapplies after its connection returns.
+
+Disable with `bb plugin disable preferences`. Disabling stops watching and
+settings reconciliation but keeps applied shortcuts. Enable with
+`bb plugin enable preferences` to reapply the file.
+To restore defaults, remove entries while the plugin is enabled before uninstalling.
+Uninstalling deletes ownership history and keeps already applied shortcuts.
 
 ## Verification
 
 Run `pnpm test`, `pnpm typecheck` and `pnpm build` in this directory.
-Live verification changes a shortcut in the file, observes the API, submits invalid
-JSON, and restores the desired shortcuts. No database files enter source control.
+The SDK pin is the workspace's 0.6.15. The installed BB reports 0.6.37;
+the used API passes typecheck, build and live verification.
+
+Live checks cover UI edits, atomic file replacement, invalid JSON, removed entries
+after restart, disable/enable, reload and preservation of unmanaged shortcuts.
+No database files enter source control.
