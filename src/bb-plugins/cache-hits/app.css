@@ -1,0 +1,6 @@
+.cache-hits { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--foreground); cursor: default; }
+.ch-dot { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; }
+.ch-dot[data-level="warn"] { background: #d29922; }
+.ch-dot[data-level="high"] { background: #f85149; }
+.ch-muted { opacity: .6; }
+.ch-miss { color: #d29922; }
