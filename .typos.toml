@@ -29,7 +29,8 @@ extend-exclude = [
 [default]
 # C4 docs spell out the four diagram names with a bold initial (**C**ontext),
 # which tokenises as headless word fragments.
-extend-ignore-re = ["\\*\\*C\\*\\*(ontext|ontainers|omponents|ode)"]
+# BB resource IDs (thr_7jfrxpcc7x) tokenise as the misspelling "thr".
+extend-ignore-re = ["\\*\\*C\\*\\*(ontext|ontainers|omponents|ode)", "\\bthr_[a-z0-9]+\\b"]
 
 [default.extend-words]
 # Accepted variant spellings used consistently in first-party prose - not
