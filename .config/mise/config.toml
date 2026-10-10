@@ -258,6 +258,7 @@ if [ -d .config/hex/.hex-sdk ]; then
   (cd .config/hex && bun install --frozen-lockfile && tsc -p tsconfig.json)
 fi
 (cd src/opencode-plugins && pnpm install --frozen-lockfile && pnpm run typecheck)
+(cd src/bb-plugins && pnpm install --frozen-lockfile && pnpm -r run typecheck)
 for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows .pi/agent/extensions/agent-guard; do
   (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck)
 done
