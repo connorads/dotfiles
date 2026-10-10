@@ -5,7 +5,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { mergePreferences, parsePreferences } from './preferences.ts';
 
 export default function plugin(bb: BbPluginApi) {
-  const path = join(homedir(), 'src/bb-plugins/bb-plugin-preferences-spike/preferences.json');
+  const path = join(homedir(), '.config/bb/preferences.json');
   let queue = Promise.resolve();
   function apply() {
     const next = queue.then(async () => {
@@ -21,11 +21,11 @@ export default function plugin(bb: BbPluginApi) {
     return next;
   }
   bb.cli.register({
-    name: 'preferences-spike',
+    name: 'preferences',
     summary: 'Apply file-managed keyboard shortcuts',
-    commands: [{ name: 'apply', summary: 'Apply preferences file', usage: 'bb preferences-spike apply' }],
+    commands: [{ name: 'apply', summary: 'Apply preferences file', usage: 'bb preferences apply' }],
     async run(argv) {
-      if (argv.length !== 1 || argv[0] !== 'apply') return { exitCode: 1, stdout: 'Usage: bb preferences-spike apply' };
+      if (argv.length !== 1 || argv[0] !== 'apply') return { exitCode: 1, stdout: 'Usage: bb preferences apply' };
       return { exitCode: 0, stdout: await apply() };
     },
   });

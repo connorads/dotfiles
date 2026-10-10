@@ -366,3 +366,7 @@ __pycache__/
 !/.config/zsh/tests/agent-branch-menu.bats
 !/.config/zsh/tests/codex-branch-menu.bats
 !/.config/zsh/tests/agent-session-lib.bats
+
+# BB file-managed keyboard preferences
+!/.config/bb/
+!/.config/bb/preferences.json
