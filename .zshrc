@@ -48,6 +48,8 @@ setopt HIST_IGNORE_SPACE
 
 # Key bindings for special keys (not provided by OMZ lib/key-bindings.zsh)
 bindkey "^[[3~" delete-char
+bindkey "^[[1;3D" backward-word
+bindkey "^[[1;3C" forward-word
 
 # https://github.com/mattmc3/antidote
 # Pinned bootstrap: fresh machines fetch exactly this commit (a SHA, not a
