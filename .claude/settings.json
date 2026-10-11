@@ -483,7 +483,6 @@
       "Bash(gh version:*)",
       "Bash(gh workflow list:*)",
       "Bash(gh workflow view:*)",
-      "Bash(gh-gate status:*)",
       "Bash(gigacode --help:*)",
       "Bash(gigacode --version)",
       "Bash(gigacode api --help)",

@@ -51,11 +51,9 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [.fresh/config.json](../.fresh/config.json) | Fresh project config for this work-tree (shows hidden files) |
 | [~/.config/zsh/functions/](../.config/zsh/functions/) | Custom shell functions (autoloaded in zsh, also on PATH) |
 | [~/.local/bin/](../.local/bin/) | Symlinks to dual-mode zsh functions; includes `git-hunks` |
-| [~/.local/bin/gh](../.local/bin/gh) | `gh` wrapper; keyring auth unless gh-gate token files exist |
 | [~/.config/zsh/aliases/](../.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 | [~/.config/remobi/remobi.config.ts](../.config/remobi/remobi.config.ts) | remobi config ([connorads/remobi](https://github.com/connorads/remobi)) |
 | [~/src/raycast/shotpath](../src/raycast/shotpath) | Raycast extension for `shotpath`; outside dot dirs because Raycast rejects hidden source paths |
-| [gh-gate](../.config/zsh/functions/git/gh-gate) | Scoped gh tokens via a GitHub App; `gh-gate --help` for setup |
 | [mcpz](../.config/zsh/functions/agents/mcpz) | Render and launch MCP bundles per agent; docs: [.config/mcp/AGENTS.md](../.config/mcp/AGENTS.md) |
 | [.config/vox/](../.config/vox/) | `vox` merge filter and vocabulary map; docs: [.config/tmux/docs/vox.md](../.config/tmux/docs/vox.md) |
 | [~/src/codex-recover](../src/codex-recover/README.md) | `agent recover` (Python). Tests: `cd ~/src/codex-recover && uv run --group dev pytest -c pyproject.toml` |

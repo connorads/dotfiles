@@ -5,7 +5,7 @@
 #
 # A full URL passes through untouched; a bare owner/repo shorthand is rewritten
 # to SSH. SSH rather than `gh repo clone` so repo access follows the SSH key,
-# not gh's API token - a gh-gate readonly PAT may lack the grant. Order is
+# not gh's API token - a remote host's fine-grained PAT may not cover it. Order is
 # load-bearing: the URL test must come first, or `git@github.com:owner/repo.git`
 # would be treated as shorthand.
 _ghcl_ssh_url() {

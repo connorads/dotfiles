@@ -46,7 +46,6 @@ wt-prune | wt-repair   # fix stale or moved worktree metadata
 ghcl [owner]           # fzf clone from GitHub
 ghcl-org <org>         # bulk-clone or re-sync an org into cwd
 ghfzf [pr|issue|run]   # fzf triage for PRs, issues and Actions runs
-gh-gate <sub> <host>   # scoped gh tokens on a remote: init, grant, revoke, status, ui
 lazydocker             # container TUI
 ```
 
@@ -67,9 +66,11 @@ config while keeping their own auth/session and per-account `model`/`theme`.
 
 ### GitHub CLI auth
 
-Desktop/granting hosts use normal `gh auth` keyring auth. `gh-gate` controls `gh`
-only where `~/.config/gh-gate/readonly-token` or `active-token` exists; config
-alone does not mean read-only.
+The desktop uses normal `gh auth` keyring auth. Remote agent hosts hold a
+fine-grained PAT with Contents, Issues, Pull requests and Actions write and no
+Administration, Workflows or Secrets, so agents cannot delete repos or change
+rulesets. [repo-guard](https://github.com/connorads/repo-guard) keeps a ruleset
+blocking force pushes and branch deletion on every repo.
 
 ### Agent command history (atuin)
 

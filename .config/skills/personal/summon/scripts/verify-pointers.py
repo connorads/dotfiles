@@ -744,7 +744,7 @@ def fetch(url: str, kind: str) -> tuple[str | None, str | None]:
     if kind == "github_comment":
         if missing := _require("gh"):
             return None, missing
-        # gh-gate's wrapper; a read-only token is enough for `gh api`.
+        # A read-only token is enough for `gh api`.
         return _run(["gh", "api", "-H", "Accept: application/vnd.github+json", url])
 
     if kind == "pdf":

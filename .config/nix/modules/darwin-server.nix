@@ -123,7 +123,7 @@
 
   # -- Home Manager (server additions) --
   # Full toolkit (matches connor@dev). No duti/pngpaste, no defaultAppAssociations,
-  # no osxkeychain credential helper (SSH remotes + gh-gate instead).
+  # no osxkeychain credential helper (SSH remotes + gh's PAT instead).
   home-manager.users.connorads = {
     home.packages = packages.sharedPackages;
   };
