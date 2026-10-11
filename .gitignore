@@ -373,4 +373,5 @@ __pycache__/
 
 # BB file-managed keyboard preferences
 !/.config/bb/
+!/.config/bb/AGENTS.md
 !/.config/bb/preferences.json
