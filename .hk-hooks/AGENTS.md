@@ -91,6 +91,9 @@ worked example is embedded, never pointed at),
 `adr-unique-number` (`~/.hk-hooks/adr-unique-number.sh`: a staged ADR fails
 when its dir already holds another record with the same `NNNN-` prefix; links
 cite the number, so a repeat makes the citation ambiguous),
+`no-gitlinks` (`~/.hk-hooks/no-gitlinks.sh`: globless, fails when the index
+holds a mode-160000 gitlink; `$HOME` contains other git checkouts, and an add
+that reaches one records a content-free pointer),
 `oxlint`
 (first-party JS/TS, correctness **and type-aware** rules, `--deny-warnings`;
 vendored skills and eval-fixture/reference snippets excluded - see the

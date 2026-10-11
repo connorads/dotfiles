@@ -85,7 +85,8 @@ local fast_steps = new Mapping<String, Step> {
             ".hk-hooks/quarantine-drift.py",
             ".hk-hooks/tsv-separator-lint.py",
             ".hk-hooks/skills-no-local-paths.sh",
-            ".hk-hooks/adr-unique-number.sh"
+            ".hk-hooks/adr-unique-number.sh",
+            ".hk-hooks/no-gitlinks.sh"
         )
         check = new CommandSpec {
             command = "env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE hk test --quiet"
@@ -969,6 +970,34 @@ local fast_steps = new Mapping<String, Step> {
                 }
                 before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/adr-unique-number.sh .hk-hooks/"
                 files = List("{{tmp}}/docs/adr/0002-second.md")
+                expect { code = 0 }
+            }
+        }
+    }
+
+    // $HOME holds other git checkouts, and an add that reaches one records a
+    // mode-160000 gitlink: a content-free pointer that every other host checks
+    // out as an empty dir. Globless, like link-check, and index-wide.
+    ["no-gitlinks"] {
+        check = "bash .hk-hooks/no-gitlinks.sh"
+
+        local setup = "mkdir -p .hk-hooks && cp '{{root}}/.hk-hooks/no-gitlinks.sh' .hk-hooks/ && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git init -q ."
+
+        tests {
+            ["a staged gitlink fails"] {
+                tmpdir = true
+                write { ["README.md"] = "probe\n" }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git update-index --add --cacheinfo 160000,0123456789abcdef0123456789abcdef01234567,nested/repo"
+                expect {
+                    code = 1
+                    stdout = "nested/repo"
+                }
+            }
+
+            ["regular files pass"] {
+                tmpdir = true
+                write { ["README.md"] = "probe\n" }
+                before = setup + " && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f README.md"
                 expect { code = 0 }
             }
         }
