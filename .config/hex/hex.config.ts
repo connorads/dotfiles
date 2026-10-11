@@ -80,6 +80,20 @@ export default defineHexConfig({
       description: "Open a draft in a named BB project",
       run: async ({ captures }) => { await matchBb(bbPorts, "project", captures.project ?? "") },
     },
+    "bb-projects": {
+      phrases: ["show projects", "list projects"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Choose a project for a new draft",
+      run: async () => { await matchBb(bbPorts, "project", "") },
+    },
+    "bb-project": {
+      phrases: ["select project {project}", "switch project to {project}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open a new draft in the named project",
+      run: async ({ captures }) => { await matchBb(bbPorts, "project", captures.project ?? "") },
+    },
     "bb-model": {
       phrases: ["use {model}"],
       when: { application: "bb" },

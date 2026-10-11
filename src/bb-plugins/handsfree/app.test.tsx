@@ -131,3 +131,21 @@ test('model selection uses the visible composer and its machine without sending 
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
+
+test('project choices open a draft without moving the existing thread', async () => {
+  const view = await render();
+  const list = await view.command({ action: 'list', kind: 'project' });
+  if (!list.context || !list.candidates) throw new Error('Missing project list');
+  await view.command({ action: 'choices', kind: 'project', context: list.context, options: list.candidates, message: 'Choose a project' });
+  await view.command({ action: 'choose', number: 1 });
+  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'openNewThread', options: { projectId: 'p1', focusPrompt: true } }]);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('voice feedback retains the heard target alongside the result', async () => {
+  const view = await render();
+  await view.command({ action: 'notice', message: 'Heard thread target: access thread' });
+  await view.command({ action: 'new' });
+  expect(view.slot.getByText('Heard thread target: access thread')).toBeTruthy();
+  expect(view.slot.getAllByText(/Draft ready/).length).toBeGreaterThan(0);
+});

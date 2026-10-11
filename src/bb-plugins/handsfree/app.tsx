@@ -29,6 +29,8 @@ function VoiceCard() {
   const [choices, setChoices] = useState<Choices | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const observedThread = useRef(context.threadId);
   const [windowId] = useState(() => crypto.randomUUID());
   const [steer, setSteer] = useState<boolean | null>(null);
   const thread = sidebar.threads.find(row => row.id === context.threadId);
@@ -51,6 +53,13 @@ function VoiceCard() {
   }, [sdk]);
 
   useEffect(() => { setChoices(null); setHighlight(0); }, [contextKey]);
+  useEffect(() => {
+    if (observedThread.current === context.threadId) return;
+    observedThread.current = context.threadId;
+    const destination = thread ? `Viewing ${thread.displayTitle} (${projectName(thread.projectId)}).` : 'Viewing a new thread draft.';
+    setMessage(destination);
+    setHistory(items => [...items, destination].slice(-10));
+  }, [context.threadId, thread, sidebar.projects]);
 
   const list = async (kind: Kind): Promise<Candidate[]> => {
     if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
@@ -75,7 +84,7 @@ function VoiceCard() {
     setChoices(null);
     if (kind === 'thread') {
       actions.open(id);
-      return { ok: true, message: `Opened ${candidate.label}` };
+      return { ok: true, message: `Opening ${candidate.label}` };
     }
     if (kind === 'project') {
       actions.openNewThread({ projectId: id, focusPrompt: true });
@@ -143,7 +152,7 @@ function VoiceCard() {
         if (key.control) modifiers.push('control');
         if (key.alt) modifiers.push('option');
         if (key.shift) modifiers.push('shift');
-        return { ok: true, message: `${command.action === 'next' ? 'Next' : 'Previous'} thread`, press: { key: key.key.toLowerCase(), modifiers } };
+        return { ok: true, message: `${command.action === 'next' ? 'Next' : 'Previous'} thread requested. Check the destination above.`, press: { key: key.key.toLowerCase(), modifiers } };
       }
     }
   };
@@ -152,11 +161,16 @@ function VoiceCard() {
     setBusy(true);
     try {
       const reply = await handle(command);
-      if (command.action !== 'list') setMessage(reply.message);
+      if (command.action !== 'list') {
+        setMessage(reply.message);
+        setHistory(items => [...items, reply.message].slice(-10));
+        setExpanded(true);
+      }
       return reply;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setMessage(message);
+      setHistory(items => [...items, message].slice(-10));
       setExpanded(true);
       return { ok: false, message };
     } finally { setBusy(false); }
@@ -213,8 +227,13 @@ function VoiceCard() {
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
+        <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Use Sonnet” / “Choose two”</dt><dd>Select a model or numbered match</dd>
       </dl>}
+      {history.length > 0 && <details>
+        <summary>Recent voice results</summary>
+        <ol aria-label="Recent voice results">{history.map((entry, index) => <li key={index}>{entry}</li>)}</ol>
+      </details>}
       <p className="handsfree-pedals">Right Alt: dictate · Enter: {choices ? 'choose highlighted match' : composer.isRunning ? steer === null ? 'BB send setting' : steer ? 'steer running agent' : 'queue message' : 'send'} · Escape: close voice help</p>
     </div>}
   </aside>;
