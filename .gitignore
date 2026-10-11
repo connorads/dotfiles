@@ -213,9 +213,7 @@
 /src/bb-plugins/**/dist/
 /src/bb-plugins/.pnpm-store/
 /src/bb-plugins/.playwright-cli/
-/src/bb-plugins/spikes/agent-switcher-lifecycle/live-*.json
-/src/bb-plugins/spikes/agent-switcher-lifecycle/live-*.jsonl
-/src/bb-plugins/spikes/agent-switcher-lifecycle/post-cleanup-plugins.json
+/src/bb-plugins/spikes/
 
 # skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
 !/src/skl/
