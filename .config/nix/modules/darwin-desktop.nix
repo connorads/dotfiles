@@ -92,6 +92,7 @@
       "native-access"
       "google-chrome"
       "google-gemini"
+      "grok-bot"
       "brave-browser"
       "firefox"
       "tor-browser"
