@@ -75,10 +75,12 @@ named `secrets`:
 - Superset fields (sse, tool filters, timeouts, `enabled`) are reserved for
   later renderers; v1 renderers ignore them.
 
-The concrete trigger is Executor.app's local MCP gateway, whose bearer token
-(`~/.executor/server-control/server.json`) rotates on daemon restart - so a
-`cmd` producer that reads it fresh each launch is the whole point. Executor is
-just one `cmd` resolver, not a special case.
+The concrete trigger is Executor.app's local MCP gateway. Its bearer token lives
+in `~/.executor/server-control/auth.json` and is copied into `server.json` at
+each daemon start. It survives restarts and changes only on an explicit rotation
+(Executor Settings, or `executor server rotate-token`). A `cmd` producer that
+reads it fresh each launch picks up a rotation without a registry edit. Executor
+is just one `cmd` resolver, not a special case.
 
 ## Commands
 
