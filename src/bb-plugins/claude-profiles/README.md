@@ -11,7 +11,9 @@ when switching profiles. Read each account's quota through the native Claude CLI
 4. Click an account, or press its number. Arrow keys and `Enter` also work.
 5. Send the next message. Claude resumes the same native conversation.
 
-The header button shows the current account and its five-hour usage. The menu
+The header button shows the current account and its labelled five-hour and
+seven-day usage. Percentages turn amber at 70% and red at 90%.
+Missing limits appear as unavailable. The menu
 shows five-hour and seven-day usage and reset times for every account. Press `R`
 to refresh usage and `Esc` to close. Rebind `⌘⇧A` in BB's keyboard settings
 under **Claude: switch account**. Quota reads send no model prompt. Missing quota
