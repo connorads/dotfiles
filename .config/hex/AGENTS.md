@@ -107,7 +107,8 @@ navigation phrases within BB.
 
 `voice/bb.ts` invokes the installed BB CLI and the
 [Handsfree plugin](../../src/bb-plugins/handsfree/README.md). Exact names match
-locally. Jev matches descriptions using the existing Keychain adapter.
+locally. Thread searches strip a leading `the` and trailing `thread` or `threads`.
+`go to next thread` and `go to the next thread` use navigation shortcuts. Jev matches descriptions using the existing Keychain adapter.
 Ambiguous names produce numbered choices in BB. The `dotfiles` alias matches
 the home project named `connorads`.
 

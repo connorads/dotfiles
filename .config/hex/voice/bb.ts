@@ -50,11 +50,20 @@ export const runBb = async (ports: BbPorts, command: Command): Promise<Reply> =>
 const normalise = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
 
 export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
+  const spoken = normalise(utterance)
+  if (kind === "thread") {
+    const navigation = spoken.replace(/^the /, "")
+    if (navigation === "next thread" || navigation === "previous thread") {
+      return runBb(ports, { action: navigation === "next thread" ? "next" : "previous" })
+    }
+  }
   const list = await runBb(ports, { action: "list", kind })
   if (!list.ok) return list
   const { candidates = [], context } = list
   if (!context || candidates.length === 0) return runBb(ports, { action: "notice", message: `No ${kind} choices are available here.` })
-  const target = normalise(kind === "project" && normalise(utterance) === "dotfiles" ? "connorads" : utterance)
+  const target = kind === "thread"
+    ? spoken.replace(/^the /, "").replace(/ threads?$/, "") || spoken
+    : kind === "project" && spoken === "dotfiles" ? "connorads" : spoken
   const exact = candidates.filter(candidate => normalise(candidate.label) === target || normalise(candidate.id) === target)
   let matches = exact.length ? exact : candidates.filter(candidate => normalise(candidate.label).includes(target))
   const show = (options: Candidate[]) => runBb(ports, {
