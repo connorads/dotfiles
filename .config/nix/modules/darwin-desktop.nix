@@ -250,12 +250,31 @@
   # Merges into the shared home-manager.users.connorads submodule, closing over
   # this module's `pkgs`/`packages` args.
   home-manager.users.connorads =
-    { lib, ... }:
+    { lib, config, ... }:
     {
       home.packages = packages.sharedPackages ++ [
         pkgs.duti
         pkgs.pngpaste
       ];
+
+      home.file."Library/Application Support/Code/User/settings.json".source =
+        config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/vscode/settings.json";
+
+      home.activation.braveTelemetry = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run ${pkgs.python3}/bin/python3 ${./brave-telemetry.py}
+      '';
+
+      home.activation.firefoxTelemetry = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        for profile in "$HOME/Library/Application Support/Firefox/Profiles/"*; do
+          [ -d "$profile" ] || continue
+          if [ ! -e "$profile/user.js" ] && [ ! -L "$profile/user.js" ]; then
+            run ln -s "$HOME/.config/firefox/user.js" "$profile/user.js"
+          elif [ "$(readlink "$profile/user.js")" != "$HOME/.config/firefox/user.js" ]; then
+            echo "Firefox telemetry settings conflict: $profile/user.js" >&2
+            exit 1
+          fi
+        done
+      '';
 
       # Set default macOS app associations declaratively.
       # Uses duti because nix-darwin has no built-in file association support

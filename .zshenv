@@ -18,6 +18,8 @@ for _hm_vars in \
 done
 unset _hm_vars
 
+[[ -f "$HOME/.config/telemetry/environment.sh" ]] && source "$HOME/.config/telemetry/environment.sh"
+
 # 4. ~/.local/bin for user executables (XDG standard, zsh function symlinks)
 [[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
 

@@ -1,0 +1,85 @@
+# Telemetry controls
+
+CLI opt-outs live in [the Nix telemetry module](../.config/nix/modules/telemetry.nix).
+It renders shell exports and BB's variable list from one declaration.
+
+```mermaid
+flowchart TD
+    A[Nix telemetry declaration] --> B[Shell exports]
+    B --> C[.zshenv]
+    A --> D[BB variable list]
+    D --> E[telemetry-bb-sync]
+    E --> F[BB agents and commands]
+    A --> G[macOS login agent]
+    G --> H[launchd environment]
+```
+
+## Shells and BB
+
+`.zshenv` loads `~/.config/telemetry/environment.sh` for interactive and
+non-interactive zsh. Home Manager installs the rendered files during activation.
+
+1. Apply Nix configuration with `drs` on macOS or `hms` on Linux.
+2. Run `telemetry-bb-sync` to copy the declared variables into BB's global environment.
+3. Start fresh shells and provider sessions to check the effective variables.
+
+The sync command updates declared names only. It does not delete other BB variables.
+Removed declarations need an explicit `bb machine env unset NAME` when retiring
+their BB overrides. BB project variables and provider contributions can override
+global values. Cached provider processes can retain their launch environment.
+
+Targeted installations protect their Nix outputs with indirect garbage-collection
+roots under `~/.local/state/telemetry/nix-roots`.
+
+BB discovers the shell's `PATH`; its shell discovery does not copy other exports.
+Use `bb machine env` to manage agent variables.
+BB's own telemetry switch lives in its native settings.
+
+The macOS login agent sets the declared variables in the user launchd environment.
+Existing applications retain their launch environment. Check environment-only
+desktop controls after relaunch; a shell export alone does not prove GUI coverage.
+
+`cspy` removes `DISABLE_TELEMETRY` and `DO_NOT_TRACK` for its Claude process.
+It refreshes cached feature flags. Claude's native settings do not duplicate
+these opt-outs, so the explicit exception remains effective.
+
+## Desktop settings
+
+| Application | Persistent control | Verification |
+| --- | --- | --- |
+| Zed | [Native settings](../.config/zed/settings.json) disable metrics and diagnostics | Inspect effective settings |
+| VS Code | [Native settings](../.config/vscode/settings.json) disable telemetry | Relaunch after changing settings |
+| Firefox | [Profile preferences](../.config/firefox/user.js) disable uploads, studies and automatic crash uploads | Relaunch each profile |
+| BB | Native `telemetryEnabled=false` setting | `bb settings show --json` |
+| Chrome | Native usage-reporting preference | Inspect browser settings |
+| Brave | Nix activation disables analytics, usage-ping and crash reporting | Three native preferences verified false |
+| Discord | Account-level improvement-data switch | Inspect Data & Privacy |
+| Android Studio | Native Data Sharing consent | Inspect application settings |
+| T3 Code | Launch environment variables | Inspect the desktop server's environment after relaunch |
+
+The desktop Nix module links VS Code's native settings path to its tracked file.
+Its Firefox activation links existing profiles to the tracked `user.js`.
+An existing conflicting `user.js` stops activation rather than losing its preferences.
+New Firefox profiles receive the link on the next activation.
+
+Brave activation merges three opt-outs into its existing `Local State`.
+It preserves other preferences and refuses to write while Brave runs.
+Firefox controls passed a disposable headless-profile check. VS Code runtime
+verification needs an installed editor. Discord and Android Studio remain manual checks.
+
+Browser profiles and application databases stay untracked. Account settings need
+manual checks where applications expose no supported declarative control.
+
+## Sources
+
+- [Turbo telemetry](https://turborepo.dev/docs/telemetry)
+- [Vercel telemetry](https://vercel.com/docs/cli/about-telemetry)
+- [Claude environment variables](https://code.claude.com/docs/en/env-vars)
+- [VS Code telemetry](https://code.visualstudio.com/docs/configure/telemetry)
+- [Firefox telemetry preferences](https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/internals/preferences.html)
+- [Firefox daily usage ping](https://support.mozilla.org/en-US/kb/usage-ping-settings)
+- [Brave privacy controls](https://support.brave.app/hc/en-us/articles/360017989132-How-do-I-change-my-Privacy-Settings)
+- [Discord improvement data](https://support.discord.com/hc/en-us/articles/21864805694999-Data-Used-to-Improve-Discord)
+
+Amp and Droid opt-outs remain unverified. Droid's customer-exporter settings
+do not disable its vendor collector.

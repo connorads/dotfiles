@@ -52,6 +52,8 @@ First run of a fresh Xcode needs `sudo xcodebuild -license accept` and
 
 ## Dependency ownership: Nix, mise, Homebrew
 
+[Telemetry controls](./telemetry.md) describes shell, agent and desktop opt-outs.
+
 - **Nix** owns the machine layer: base shell tools, services, fonts, native libraries, patched builds, tools mise needs, and GUI apps that are healthy in nixpkgs.
 - **mise** owns the developer-tool layer: runtimes, package managers, project tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs like Claude and Codex.
 - **Homebrew** is the macOS app lane: casks, MAS apps, vendor bundles, self-updating apps, drivers, and anything whose signing or app-bundle integration works better through brew.

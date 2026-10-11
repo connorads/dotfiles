@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+# telemetry-bb-sync: apply Nix telemetry defaults to BB's global environment
+emulate -L zsh
+
+local declaration="${XDG_CONFIG_HOME:-$HOME/.config}/telemetry/environment.json"
+local bb_cli="${BB_CLI:-bb}" rows name value node_bin
+if [[ ! -f "$declaration" ]]; then
+  print -u2 "Missing $declaration. Apply the Nix telemetry configuration first."
+  return 1
+fi
+rows=$(jq -er 'to_entries | sort_by(.key) | .[] | .key + "\u001f" + .value' "$declaration") || return 1
+node_bin=$(mise -C "$HOME" which node) || return 1
+export PATH="${node_bin:h}:$PATH"
+while IFS=$'\037' read -r name value; do
+  print -rn -- "$value" | "$bb_cli" machine env set "$name" --json >/dev/null || return 1
+  print -r -- "Applied $name"
+done <<<"$rows"
