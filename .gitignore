@@ -209,8 +209,13 @@
 # bb-plugins: BB plugin pnpm workspace, one dir per plugin
 !/src/bb-plugins/
 !/src/bb-plugins/**
-/src/bb-plugins/**/node_modules/
-/src/bb-plugins/*/dist/
+/src/bb-plugins/**/node_modules
+/src/bb-plugins/**/dist/
+/src/bb-plugins/.pnpm-store/
+/src/bb-plugins/.playwright-cli/
+/src/bb-plugins/spikes/agent-switcher-lifecycle/live-*.json
+/src/bb-plugins/spikes/agent-switcher-lifecycle/live-*.jsonl
+/src/bb-plugins/spikes/agent-switcher-lifecycle/post-cleanup-plugins.json
 
 # skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
 !/src/skl/
@@ -348,6 +353,7 @@ __pycache__/
 !/.local/bin/
 !/.local/bin/**
 /.local/bin/claude
+/.local/bin/bb
 /.local/bin/browser-harness
 /.local/bin/kbi
 
