@@ -88,6 +88,9 @@ skill tiers `skills/` and `.config/skills/personal/` are public, so no file in
 them may name a path on this machine - `~/git/<repo>`, `/Users/<user>/`;
 angle-bracket placeholders and the generic users me/you/alice/bob pass; a
 worked example is embedded, never pointed at),
+`adr-unique-number` (`~/.hk-hooks/adr-unique-number.sh`: a staged ADR fails
+when its dir already holds another record with the same `NNNN-` prefix; links
+cite the number, so a repeat makes the citation ambiguous),
 `oxlint`
 (first-party JS/TS, correctness **and type-aware** rules, `--deny-warnings`;
 vendored skills and eval-fixture/reference snippets excluded - see the

@@ -84,7 +84,8 @@ local fast_steps = new Mapping<String, Step> {
             ".hk-hooks/oxlintrc.json",
             ".hk-hooks/quarantine-drift.py",
             ".hk-hooks/tsv-separator-lint.py",
-            ".hk-hooks/skills-no-local-paths.sh"
+            ".hk-hooks/skills-no-local-paths.sh",
+            ".hk-hooks/adr-unique-number.sh"
         )
         check = new CommandSpec {
             command = "env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE hk test --quiet"
@@ -933,6 +934,41 @@ local fast_steps = new Mapping<String, Step> {
                 write { ["{{tmp}}/probe.md"] = "Default `~/git/<name>`; the ISO at /Users/me/Downloads/x.iso.\n" }
                 before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/skills-no-local-paths.sh .hk-hooks/"
                 files = List("{{tmp}}/probe.md")
+                expect { code = 0 }
+            }
+        }
+    }
+
+    // ADR numbers are never reused (docs/adr/README.md), and links cite the
+    // number. The script reads each staged record's whole dir, because the
+    // clash is usually with a record already committed.
+    ["adr-unique-number"] {
+        glob = List("docs/adr/*.md", "src/*/docs/adr/*.md")
+        check = "bash .hk-hooks/adr-unique-number.sh {{files}}"
+
+        tests {
+            ["a number already on disk fails"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/docs/adr/0001-first.md"] = "# First\n"
+                    ["{{tmp}}/docs/adr/0001-second.md"] = "# Second\n"
+                }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/adr-unique-number.sh .hk-hooks/"
+                files = List("{{tmp}}/docs/adr/0001-second.md")
+                expect {
+                    code = 1
+                    stderr = "0001"
+                }
+            }
+
+            ["distinct numbers pass"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/docs/adr/0001-first.md"] = "# First\n"
+                    ["{{tmp}}/docs/adr/0002-second.md"] = "# Second\n"
+                }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/adr-unique-number.sh .hk-hooks/"
+                files = List("{{tmp}}/docs/adr/0002-second.md")
                 expect { code = 0 }
             }
         }
