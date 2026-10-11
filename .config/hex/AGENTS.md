@@ -109,7 +109,8 @@ navigation phrases within BB.
 [Handsfree plugin](../../src/bb-plugins/handsfree/README.md). Exact names match
 locally. Thread searches strip a leading `the` and trailing `thread` or `threads`.
 `go to next thread` and `go to the next thread` use navigation shortcuts. Jev matches descriptions using the existing Keychain adapter.
-Ambiguous names produce numbered choices in BB. The `dotfiles` alias matches
+Ambiguous names produce numbered choices in BB. `show projects` lists draft projects.
+`select project kb` opens a draft in the named project. The `dotfiles` alias matches
 the home project named `connorads`.
 
 Right Alt controls dictation. Enter selects a highlighted voice match or follows

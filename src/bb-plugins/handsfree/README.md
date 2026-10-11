@@ -17,6 +17,8 @@ thread, project, model, command help and numbered matches.
 | `who needs me` / `next waiting` | Show threads with pending questions or approvals |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
+| `show projects` / `list projects` | Show numbered projects for a new draft |
+| `select project kb` / `switch project to kb` | Open a draft in that project |
 | `new thread in dotfiles` | Match a project and open its draft |
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match |
@@ -25,6 +27,11 @@ thread, project, model, command help and numbered matches.
 Enter selects the highlighted voice match while choices are open. Escape closes
 the card and restores composer focus. Outside the card, BB handles both pedals.
 The card labels Enter as send, queue or steer from BB's current setting.
+
+Project selection opens a new draft; it does not move an existing conversation.
+The Voice card keeps ten recent results in memory, including heard search targets.
+Reloading clears this card history. Hex's diagnostic logs have separate retention.
+Navigation requests report the observed destination when the selected thread changes.
 
 Model selection changes the next message. It does not switch agent providers or
 interrupt a running turn. A draft retains its text until the user submits it.

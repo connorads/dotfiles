@@ -80,3 +80,16 @@ test("thread filler words do not prevent a local title match", async () => {
   expect(w.commands.at(-1)).toMatchObject({ action: "select", id: "0" })
   expect(w.judged()).toBe(false)
 })
+
+test("show projects offers numbered choices even for one project", async () => {
+  const w = setup(["kb"])
+  await matchBb(w.ports, "project", "")
+  expect(w.commands.at(-1)).toMatchObject({ action: "choices", kind: "project", options: [{ id: "0", label: "kb" }] })
+  expect(w.judged()).toBe(false)
+})
+
+test("search feedback preserves the heard target", async () => {
+  const w = setup(["Access"])
+  await matchBb(w.ports, "thread", "access thread")
+  expect(w.commands[0]).toEqual({ action: "notice", message: "Heard thread target: “access thread”." })
+})

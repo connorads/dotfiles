@@ -50,6 +50,7 @@ export const runBb = async (ports: BbPorts, command: Command): Promise<Reply> =>
 const normalise = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
 
 export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
+  if (utterance) await runBb(ports, { action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
   const spoken = normalise(utterance)
   if (kind === "thread") {
     const navigation = spoken.replace(/^the /, "")
@@ -67,8 +68,9 @@ export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Pr
   const exact = candidates.filter(candidate => normalise(candidate.label) === target || normalise(candidate.id) === target)
   let matches = exact.length ? exact : candidates.filter(candidate => normalise(candidate.label).includes(target))
   const show = (options: Candidate[]) => runBb(ports, {
-    action: "choices", kind, context, options: options.slice(0, 9), message: `Choose a ${kind} for “${utterance}”.`,
+    action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : "Choose a project for a new draft.",
   })
+  if (!spoken) return show(candidates)
   const [single] = matches
   if (matches.length === 1 && single) return runBb(ports, { action: "select", kind, context, id: single.id })
   if (matches.length > 1) return show(matches)
