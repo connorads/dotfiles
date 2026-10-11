@@ -1,6 +1,9 @@
 import { choice, defineHexConfig, digit, letter, union } from "@hex/commands"
 import { runGoto, runNext, runStart } from "./voice/run.ts"
 import { systemPorts } from "./voice/system.ts"
+import { matchBb, requestBb, runBb } from "./voice/bb.ts"
+
+const bbPorts = { ...systemPorts, request: requestBb }
 
 export default defineHexConfig({
   // Transformations appear as optional final steps in every dictation mode.
@@ -19,12 +22,90 @@ export default defineHexConfig({
   //   cancel: ["discard note"],
   // },
   commands: {
+    "bb-go-to": {
+      phrases: ["go to {target}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Find a BB thread by title or description",
+      run: async ({ captures }) => { await matchBb(bbPorts, "thread", captures.target ?? "") },
+    },
+    "bb-next": {
+      phrases: ["next thread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Go to the next BB thread",
+      run: async ({ hex }) => {
+        const reply = await runBb(bbPorts, { action: "next" })
+        if (reply.ok && reply.press) await hex.press(reply.press)
+      },
+    },
+    "bb-previous": {
+      phrases: ["previous thread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Go to the previous BB thread",
+      run: async ({ hex }) => {
+        const reply = await runBb(bbPorts, { action: "previous" })
+        if (reply.ok && reply.press) await hex.press(reply.press)
+      },
+    },
+    "bb-waiting": {
+      phrases: ["who needs me", "next waiting"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show BB threads waiting for a reply",
+      run: async () => { await runBb(bbPorts, { action: "attention" }) },
+    },
+    "bb-finished": {
+      phrases: ["next finished"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show unread completed BB threads",
+      run: async () => { await runBb(bbPorts, { action: "finished" }) },
+    },
+    "bb-new": {
+      phrases: ["new thread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open a draft in the current BB project",
+      run: async () => { await runBb(bbPorts, { action: "new" }) },
+    },
+    "bb-new-in": {
+      phrases: ["new thread in {project}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open a draft in a named BB project",
+      run: async ({ captures }) => { await matchBb(bbPorts, "project", captures.project ?? "") },
+    },
+    "bb-model": {
+      phrases: ["use {model}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Select a model for the next BB message",
+      run: async ({ captures }) => { await matchBb(bbPorts, "model", captures.model ?? "") },
+    },
+    "bb-choose": {
+      phrases: ["choose {n}"],
+      captures: { n: digit({ min: 1, max: 9 }) },
+      when: { application: "bb" },
+      group: "BB",
+      description: "Choose a numbered BB voice match",
+      run: async ({ captures }) => { await runBb(bbPorts, { action: "choose", number: captures.n }) },
+    },
+    "bb-help": {
+      phrases: ["voice help"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show BB voice commands and pedal actions",
+      run: async () => { await runBb(bbPorts, { action: "help" }) },
+    },
     // Choice aliases must be single words; keys are the macOS app names.
     "open-app": {
       phrases: ["open {app}", "switch to {app}"],
       captures: {
         app: choice({
           Slack: ["slack"],
+          bb: ["bb"],
           "Brave Browser": ["brave", "browser"],
           kitty: ["kitty", "terminal"],
           Obsidian: ["obsidian"],
