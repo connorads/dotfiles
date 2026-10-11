@@ -5,7 +5,7 @@
       "platform": "mac",
       "shortcut": {
         "key": "H",
-        "mod": true,
+        "alt": true,
         "shift": true
       }
     },
@@ -14,7 +14,7 @@
       "platform": "mac",
       "shortcut": {
         "key": "L",
-        "mod": true,
+        "alt": true,
         "shift": true
       }
     }
