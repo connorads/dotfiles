@@ -23,27 +23,27 @@ const setup = (labels: string[], probabilities: Record<string, number> = {}) => 
 test("exact names use the list's window context without calling Jev", async () => {
   const w = setup(["Login", "Billing"])
   await matchBb(w.ports, "thread", "login")
-  expect(w.commands[1]).toEqual({ action: "select", kind: "thread", id: "0", context: "window|thread:project:provider" })
+  expect(w.commands.at(-1)).toEqual({ action: "select", kind: "thread", id: "0", context: "window|thread:project:provider" })
   expect(w.judged()).toBe(false)
 })
 
 test("ambiguous model families show choices rather than guessing a version", async () => {
   const w = setup(["Claude Sonnet 4.5", "Claude Sonnet 4.6"])
   await matchBb(w.ports, "model", "Sonnet")
-  expect(w.commands[1]?.action).toBe("choices")
+  expect(w.commands.at(-1)?.action).toBe("choices")
   expect(w.judged()).toBe(false)
 })
 
 test("uncertain semantic matches show numbered candidates", async () => {
   const w = setup(["Login", "Billing"], { "0": 0.55, "1": 0.4, none: 0.05 })
   await matchBb(w.ports, "thread", "authentication bug")
-  expect(w.commands[1]?.action).toBe("choices")
+  expect(w.commands.at(-1)?.action).toBe("choices")
 })
 
 test("confident semantic matches select a known candidate", async () => {
   const w = setup(["Login", "Billing"], { "0": 0.9, "1": 0.05, none: 0.05 })
   await matchBb(w.ports, "thread", "authentication bug")
-  expect(w.commands[1]?.action).toBe("select")
+  expect(w.commands.at(-1)?.action).toBe("select")
 })
 
 test("unknown Jev choices never navigate", async () => {
@@ -55,7 +55,7 @@ test("unknown Jev choices never navigate", async () => {
 test("dotfiles names the live home project", async () => {
   const w = setup(["connorads", "kb"])
   await matchBb(w.ports, "project", "dotfiles")
-  expect(w.commands[1]).toMatchObject({ action: "select", kind: "project", id: "0" })
+  expect(w.commands.at(-1)).toMatchObject({ action: "select", kind: "project", id: "0" })
 })
 
 test("reply parsing rejects invalid keypresses and candidate records", () => {
@@ -63,4 +63,20 @@ test("reply parsing rejects invalid keypresses and candidate records", () => {
   expect(() => parseReply({ ok: true, message: "", candidates: [{ id: "a" }] })).toThrow()
   const reply: Reply = { ok: true, message: "", press: { key: "Tab", modifiers: ["control"] } }
   expect(parseReply(reply)).toEqual(reply)
+})
+
+test("navigation descriptions do not enter title search", async () => {
+  for (const target of ["next thread", "the next thread", "previous thread"]) {
+    const w = setup(["Next thread investigation"])
+    await matchBb(w.ports, "thread", target)
+    expect(w.commands.at(-1)?.action).toBe(target.includes("previous") ? "previous" : "next")
+    expect(w.commands.some(c => c.action === "list")).toBe(false)
+  }
+})
+
+test("thread filler words do not prevent a local title match", async () => {
+  const w = setup(["Set up secure BB access across Mac devices (connorads, codex)", "Billing"])
+  await matchBb(w.ports, "thread", "the access thread")
+  expect(w.commands.at(-1)).toMatchObject({ action: "select", id: "0" })
+  expect(w.judged()).toBe(false)
 })

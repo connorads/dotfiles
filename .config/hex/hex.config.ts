@@ -27,7 +27,10 @@ export default defineHexConfig({
       when: { application: "bb" },
       group: "BB",
       description: "Find a BB thread by title or description",
-      run: async ({ captures }) => { await matchBb(bbPorts, "thread", captures.target ?? "") },
+      run: async ({ hex, captures }) => {
+        const reply = await matchBb(bbPorts, "thread", captures.target ?? "")
+        if (reply.ok && reply.press) await hex.press(reply.press)
+      },
     },
     "bb-next": {
       phrases: ["next thread"],
