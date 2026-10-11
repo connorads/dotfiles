@@ -9,7 +9,10 @@
   ...
 }:
 {
-  imports = [ ./telemetry.nix ];
+  imports = [
+    ./telemetry.nix
+    ./bb-services.nix
+  ];
 
   xdg.enable = true;
 

@@ -32,13 +32,45 @@ http-server -a 127.0.0.1
 
 ### Serve port registry
 
-The managed service uses a dedicated local port and the apex HTTPS endpoint:
+BB can use a machine's apex HTTPS endpoint:
 
-| Service   | `svc` name  | Local port | External HTTPS |
-| --------- | ----------- | ---------- | -------------- |
-| remobi    | `remobi`    | 7682       | **443** (apex) |
+| Service | Local port | External HTTPS |
+| ------- | ---------- | -------------- |
+| BB | 38886 | **443** (apex) |
 
-`svc up remobi` exposes local port 7682 with `ts serve --bg --https=443 7682`.
+Use `ts serve --bg --https=443 http://127.0.0.1:38886` and set BB's `BB_APP_URL` to the machine's HTTPS URL.
+`svc up remobi` replaces the BB route on port 443.
+
+For mobile access, connect Tailscale on the phone and open the required BB server's HTTPS URL.
+
+### BB service ownership
+
+[bb-services.nix](../.config/nix/modules/bb-services.nix) declares macOS user services.
+mise owns Node and BB installations. Services resolve installed versions at startup without installing packages or enabling BB auto-updates.
+The desktop app owns its local server when the declarative server service is disabled.
+
+Each service reads `~/.config/bb/services.local.json` at runtime. This file is untracked and must have mode `0600`.
+Missing configuration disables both services. A worker also requires an existing BB enrolment.
+
+```json
+{
+  "server": { "enabled": false },
+  "worker": { "enabled": false, "dataDir": "/absolute/private/enrolment/directory" }
+}
+```
+
+Set `server.enabled` for a standalone server. Set `worker.enabled` only after deliberate enrolment with a trusted server.
+Restart the relevant launch agent after changing this file. Services start at user login, not before FileVault unlock.
+Server URLs, enrolment credentials and BB state stay outside Nix and Git.
+
+```mermaid
+flowchart LR
+  Nix[Public Nix module] --> Launchd[User launch agents]
+  Local[Private runtime configuration] --> Launchd
+  State[Private BB enrolment state] --> Worker[Execution daemon]
+  Launchd --> Worker
+  Launchd --> Server[Loopback BB server]
+```
 
 ### Public access options
 
