@@ -143,5 +143,5 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
 export default definePluginApp(app => {
   app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Provider usage', component: ThreadUsage });
   app.slots.experimental_appOverlay({ id: 'overview', component: UsageOverlay });
-  app.commands.register({ id: 'open', title: 'Agent usage: show all accounts', defaultShortcut: { key: 'u', mod: true, shift: true }, run: openUsage });
+  app.commands.register({ id: 'open', title: 'Agent usage: show all accounts', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });

@@ -65,9 +65,5 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
 }
 
 export default definePluginApp(app => {
-  app.commands.register({
-    id: 'usage', title: 'Open agent usage', defaultShortcut: { key: 'a', mod: true, shift: true },
-    run: () => { window.location.assign('/settings/plugins/bb--provider-usage'); },
-  });
   app.slots.experimental_threadHeaderAction({ id: 'cache-hits', title: 'Prompt cache', component: CacheChip });
 });

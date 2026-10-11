@@ -7,17 +7,17 @@ when switching profiles. Read each account's quota through the native Claude CLI
 
 1. Open a Claude Code thread and send its first message.
 2. Finish or stop its turn. Clear queued messages.
-3. Press `⌘⇧A`, or click the account button in the thread header.
+3. Click the account button, or run **Claude: switch account** from the command palette.
 4. Click an account, or press its number. Arrow keys and `Enter` also work.
 5. Send the next message. Claude resumes the same native conversation.
 
-The header button shows the current account and its labelled five-hour and
-seven-day usage. Percentages turn amber at 70% and red at 90%.
-Missing limits appear as unavailable. The menu
-shows five-hour and seven-day usage and reset times for every account. Press `R`
-to refresh usage and `Esc` to close. Rebind `⌘⇧A` in BB's keyboard settings
-under **Claude: switch account**. Quota reads send no model prompt. Missing quota
-information appears as unavailable, never as zero usage.
+The header button shows the selected account. The menu lists accounts with a
+selection tick and number shortcuts. Press `Esc` to close. **Claude: switch account**
+has no default shortcut. Assign one in BB's keyboard settings if needed.
+
+[Agent usage](../agent-usage/README.md) shows quota in a separate header badge and
+all-account overlay. Its shortcut is `⌘⇧A`. Claude Profiles supplies quota through
+its native CLI backend. Quota reads send no model prompt.
 
 Profiles come from `~/.claude-profiles/code/` on the thread's host. **Default** uses
 the native default configuration. Plugin settings accept another profile root
@@ -50,7 +50,7 @@ sequenceDiagram
 
 The server owns thread selection and checks BB state. The host worker owns local
 directory discovery, transcript copying and native CLI calls. The app uses typed
-RPC and displays account selection and quota.
+RPC and displays account selection.
 
 The plugin reuses BB's Claude Code provider. It contributes `CLAUDE_CONFIG_DIR`
 and clears API-key and alternate-provider overrides for selected threads.
@@ -82,7 +82,7 @@ Choose the account after the first turn. Sessions with subagent sidecars cannot
 switch profiles in this version. BB forks do not inherit plugin selections.
 Switching a thread to another host requires selecting a profile on that host.
 
-The plugin supports manual Claude switching and current quota. It does not
+The plugin supports manual Claude switching and quota collection. It does not
 rotate accounts automatically, track historical token costs, or switch Codex
 accounts. Disabling it removes account selection from future provider launches.
 
