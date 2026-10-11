@@ -22,7 +22,7 @@ export default function plugin(bb: BbPluginApi) {
         // Record ownership before changing settings so interrupted applies can remove stale overrides.
         await bb.storage.kv.set(ownershipKey, { keyboard: mergePreferences(previous, desired, []) });
       }
-      if (JSON.stringify(merged) !== JSON.stringify(current)) {
+      if (merged !== current) {
         await bb.sdk.system.updateKeyboardSettings(merged);
         bb.log.info(`Applied ${desired.length} file-managed shortcuts from ${path}`);
       }

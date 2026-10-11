@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDeepStrictEqual } from 'node:util';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 
 type Overrides = Parameters<BbPluginApi['sdk']['system']['updateKeyboardSettings']>[0];
@@ -28,8 +29,9 @@ export function parsePreferences(value: unknown) {
 }
 
 export function mergePreferences(current: Overrides, desired: Overrides, previous: Overrides): Overrides {
-  return [
+  const merged = [
     ...current.filter(entry => ![...previous, ...desired].some(item => item.command === entry.command && item.platform === entry.platform)),
     ...desired,
   ];
+  return isDeepStrictEqual(merged, current) ? current : merged;
 }

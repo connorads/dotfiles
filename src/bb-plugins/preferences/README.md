@@ -33,6 +33,9 @@ replace UI edits. Other command/platform overrides remain unchanged.
 Removing a managed entry deletes its override. BB then uses any remaining
 platform fallback or its built-in default.
 
+Reconciliation compares values independently of JSON property order. Unchanged
+overrides skip settings writes, so settings-change events settle without another write.
+
 Ownership persists in plugin-scoped storage so removal works after restart.
 Ownership is recorded before settings updates so an interrupted apply can recover.
 Invalid or missing files leave existing shortcuts and ownership intact.

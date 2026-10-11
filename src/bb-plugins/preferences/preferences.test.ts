@@ -46,3 +46,28 @@ test('file ownership replaces UI edits and supports explicit disable', () => {
   ] }).keyboard;
   assert.deepEqual(mergePreferences(ui, desired, desired), desired);
 });
+
+test('reconciliation preserves unchanged BB overrides despite JSON property order', () => {
+  const desired = parsePreferences({ keyboard: [
+    { command: 'thread.next', platform: 'mac', shortcut: { key: 'L', mod: true, shift: true } },
+  ] }).keyboard;
+  const current = [{
+    command: 'thread.next' as const,
+    shortcut: { shift: true, alt: false, control: false, meta: false, mod: true, key: 'L' },
+    platform: 'mac' as const,
+  }];
+  assert.notEqual(JSON.stringify(current), JSON.stringify(desired));
+  assert.strictEqual(mergePreferences(current, desired, desired), current);
+});
+
+test('reconciliation returns new overrides for a changed managed shortcut', () => {
+  const current = parsePreferences({ keyboard: [
+    { command: 'thread.next', platform: 'mac', shortcut: { key: 'J', mod: true, shift: true } },
+  ] }).keyboard;
+  const desired = parsePreferences({ keyboard: [
+    { command: 'thread.next', platform: 'mac', shortcut: { key: 'L', mod: true, shift: true } },
+  ] }).keyboard;
+  const merged = mergePreferences(current, desired, desired);
+  assert.notStrictEqual(merged, current);
+  assert.deepEqual(merged, desired);
+});
