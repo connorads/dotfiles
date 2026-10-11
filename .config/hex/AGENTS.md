@@ -98,3 +98,21 @@ See `.agents/skills/personal-commands/SKILL.md` for examples.
   the host process's life. Restart HEX after changing the key.
 - Every request appends a line to `~/.local/state/hex/voice.jsonl`. Tune
   `JUMP_FLOOR` in `goto.ts` from it.
+
+## BB voice controls
+
+The `bb-*` commands apply only when the active application is `bb`.
+Global `open BB` activates it. BB-specific commands override global terminal
+navigation phrases within BB.
+
+`voice/bb.ts` invokes the installed BB CLI and the
+[Handsfree plugin](../../src/bb-plugins/handsfree/README.md). Exact names match
+locally. Jev matches descriptions using the existing Keychain adapter.
+Ambiguous names produce numbered choices in BB. The `dotfiles` alias matches
+the home project named `connorads`.
+
+Right Alt controls dictation. Enter selects a highlighted voice match or follows
+BB's normal send action. Escape closes the voice card and focuses the composer.
+Commands do not submit drafts or approve agent requests. Run `bun test` and
+`bun run check` after changes. The managed host validates registration; HEX
+also checks native phrase conflicts at runtime.
