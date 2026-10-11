@@ -41,6 +41,11 @@ What is the task?
 
 - Prefer TDD for behavioural changes: see the failure, make it pass, then
   refactor.
+- Tests an agent writes for its own change restate the agent's reading of the
+  intent, so they share the implementation's mistakes. Judge done-ness against
+  an oracle the agent did not write: human-stated cases or a black-box check of
+  the system from outside. A test that mirrors the code line by line (a
+  change-detector test) fails on every refactor and catches no defect.
 - Test observable behaviour through public APIs, not implementation details.
 - Keep tests deterministic and order-independent.
 - Make each test's why clear from its name, setup, and assertions.
