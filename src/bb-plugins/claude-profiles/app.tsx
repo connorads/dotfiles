@@ -113,13 +113,21 @@ function ProfileControl({ threadId, isCompactViewport }: PluginThreadHeaderActio
   }
 
   if (!profiles.length) return null;
-  const fiveHour = quotas[currentId]?.windows.find(window => window.id === 'five_hour');
+  const usage = quotas[currentId];
   return <div className="claude-profiles" ref={root}>
     <button ref={trigger} className="cp-trigger" onClick={() => open ? close() : openMenu()} aria-haspopup="menu"
       aria-expanded={open} aria-label={`Claude account ${current?.label ?? 'Default'}`} title="Switch Claude account (⌘⇧A)">
       <span className="cp-dot" />
       {!isCompactViewport && <span>{current?.label ?? 'Default'}</span>}
-      {fiveHour && <span className="cp-muted">{Math.round(fiveHour.usedPercent)}%</span>}
+      {usage && shownWindows.map(([id, label]) => {
+        const window = usage.windows.find(item => item.id === id);
+        const used = window ? Math.round(window.usedPercent) : null;
+        return <span key={id} className="cp-header-window">
+          <span className="cp-muted">{label}</span>{' '}
+          {used === null ? <span className="cp-muted">unavailable</span>
+            : <span className="cp-header-value" data-level={used >= 90 ? 'high' : used >= 70 ? 'warn' : 'ok'}>{used}%</span>}
+        </span>;
+      })}
     </button>
     {open && <div className="cp-menu" role="menu" aria-label="Claude accounts" onKeyDown={onKeyDown}>
       {profiles.map((profile, index) => <button key={profile.id} ref={item => { items.current[index] = item; }}

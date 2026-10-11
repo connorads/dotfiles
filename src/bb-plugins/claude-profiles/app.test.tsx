@@ -32,6 +32,24 @@ async function render(rpc: Partial<PluginRpcTestHandlers<typeof rpcContract>> = 
   return { app, slot };
 }
 
+test('the header labels session and weekly usage', async () => {
+  const { slot } = await render();
+  try {
+    const button = await slot.findByRole('button', { name: /Claude account/ });
+    await waitFor(() => expect(button.textContent).toContain('5h 6%'));
+    expect(button.textContent).toContain('7d 78%');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the header marks a missing weekly limit as unavailable', async () => {
+  const { slot } = await render({ usage: () => ({ ...quota(18), windows: quota(18).windows.slice(0, 1) }) });
+  try {
+    const button = await slot.findByRole('button', { name: /Claude account/ });
+    await waitFor(() => expect(button.textContent).toContain('5h 18%'));
+    expect(button.textContent).toContain('7d unavailable');
+  } finally { slot.lifecycle.unmount(); }
+});
+
 test('one click on an account row switches the thread and closes the menu', async () => {
   const { slot } = await render();
   try {
