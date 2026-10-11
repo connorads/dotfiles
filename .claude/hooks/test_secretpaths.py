@@ -18,7 +18,7 @@ class TestMatches:
         [
             "cat ~/.ssh/id_rsa",
             "xxd ~/.aws/credentials",
-            "base64 ~/.config/gh-gate/app.pem",
+            "base64 ~/.config/gcloud/application_default_credentials.json",
             "cd ~/.ssh",
             "ls ~/.ssh",
             "cat .ssh/id_rsa",

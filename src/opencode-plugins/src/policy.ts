@@ -10,7 +10,7 @@ export type Request =
   | { readonly kind: "path"; readonly path: string }
 
 export const SECRET_PATHS = [
-  ".ssh", ".config/gh-gate", ".config/gh", ".aws", ".config/gcloud", ".netrc",
+  ".ssh", ".config/gh", ".aws", ".config/gcloud", ".netrc",
   ".config/fnox", ".fnox", "Library/Keychains", ".zshrc.local", ".docker/config.json",
   ".gnupg", ".cloudflared", ".gemini", ".config/op", ".kube", ".password-store",
 ] as const

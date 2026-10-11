@@ -13,7 +13,7 @@ test("secret paths: home-anchored forms are blocked", () => {
   for (const cmd of [
     "cat ~/.ssh/id_rsa",
     "xxd ~/.aws/credentials",
-    "base64 ~/.config/gh-gate/app.pem",
+    "base64 ~/.config/gcloud/application_default_credentials.json",
     "cd ~/.ssh",
     "cat .ssh/id_rsa",
     "cat $HOME/.ssh/id_rsa",
@@ -100,7 +100,7 @@ test("file tools: secret paths blocked, others pass", () => {
   assert.ok(blockReason("grep", { path: ".aws" }, HOME));
   assert.ok(blockReason("ls", { path: "~/.gnupg" }, HOME));
   assert.ok(blockReason("edit", { path: `${HOME}/.zshrc.local` }, HOME));
-  assert.ok(blockReason("write", { path: ".config/gh-gate/token" }, HOME));
+  assert.ok(blockReason("write", { path: ".config/op/config" }, HOME));
   assert.equal(blockReason("read", { path: "README.md" }, HOME), undefined);
   assert.equal(blockReason("read", { path: "/etc/hosts" }, HOME), undefined);
   // absent path = cwd default, never a secret
@@ -126,5 +126,5 @@ test("matchedSecret is component-aware", () => {
 test("SECRET_PATHS has the srt denyRead cardinality", () => {
   // Full parity with srt base.json is enforced by the secret-path-parity hk
   // step; this catches accidental local edits.
-  assert.equal(SECRET_PATHS.length, 17);
+  assert.equal(SECRET_PATHS.length, 16);
 });

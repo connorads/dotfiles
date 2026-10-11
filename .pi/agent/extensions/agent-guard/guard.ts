@@ -15,7 +15,6 @@
 // Mirror of srt denyRead - home-relative secret paths.
 export const SECRET_PATHS = [
   ".ssh",
-  ".config/gh-gate",
   ".config/gh",
   ".aws",
   ".config/gcloud",
