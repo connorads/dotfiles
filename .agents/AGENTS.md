@@ -17,7 +17,7 @@
 
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
-Do not read or write secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh-gate`, ... - the srt
+Do not read or write secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh`, ... - the srt
 `denyRead` list in `~/.config/srt/base.json`); the deny rules and the Bash guard hold even
 under `--dangerously-skip-permissions`. For a deliberate exception, prefix the command with
 `SECRETS_OK=1`.

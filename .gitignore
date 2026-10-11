@@ -330,9 +330,6 @@
 !/.config/zsh/tests/
 !/.config/zsh/tests/**
 
-# gh-gate secrets (tokens, PEM, config with IDs)
-/.config/gh-gate/
-
 .DS_Store
 __pycache__/
 

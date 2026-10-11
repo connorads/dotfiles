@@ -36,7 +36,6 @@ import _shellparse
 # The secret-path-parity hk step asserts this covers that list exactly.
 SECRET_PATHS = (
     ".ssh",
-    ".config/gh-gate",
     ".config/gh",
     ".aws",
     ".config/gcloud",
