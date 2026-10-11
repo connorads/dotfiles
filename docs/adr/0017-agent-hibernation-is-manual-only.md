@@ -2,7 +2,7 @@
 
 ## Context
 
-[0011](0011-automatic-agent-hibernation-is-pressure-gated.md) shipped the sweep
+[0021](0021-automatic-agent-hibernation-is-pressure-gated.md) shipped the sweep
 policy in `observe` and waited for real `CRITICAL` episodes before deciding whether
 to turn it on. memwatch's emergency tier read the same tmux mode, so it stayed in
 `observe` too.
