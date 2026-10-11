@@ -30,6 +30,8 @@ hms                       # rebuild Linux (home-manager switch)
 
 ## Agents
 
+[Telemetry controls](docs/telemetry.md) covers persistent CLI and desktop opt-outs.
+
 Claude, Codex and pi run in tmux panes. Each window tab shows a state dot for its agents: ◐ working, ◆ needs you, ● ready, ○ idle.
 
 <img alt="Staged demo: four agents in one tmux window move from working to ready, and one waits on a sudo prompt" src="docs/agents.gif" width="720">

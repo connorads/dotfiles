@@ -129,8 +129,6 @@ eval "$(zoxide init zsh)"
 eval "$(atuin init zsh --disable-up-arrow)"
 
 # https://github.com/anthropics/claude-code
-export DISABLE_TELEMETRY=1
-export DISABLE_ERROR_REPORTING=1
 export CLAUDE_CODE_NO_FLICKER=1
 # Claude Code resolves feature flags from a disk cache in ~/.claude.json. With
 # telemetry disabled the client returns bundled defaults instead, which gates
@@ -138,54 +136,16 @@ export CLAUDE_CODE_NO_FLICKER=1
 # cached values are this account's own.
 export CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF=1
 
-# https://donottrack.sh/
-export DO_NOT_TRACK=1
-
-export T3CODE_TELEMETRY_ENABLED=false
-export T3CODE_OTEL_SDK_DISABLED=true
-export ASTRO_TELEMETRY_DISABLED=1
-export NEXT_TELEMETRY_DISABLED=1
-
-# BB: disable PostHog usage telemetry.
-export BB_TELEMETRY=false
-
-# hyperframes/media-use skills: PostHog telemetry off (DO_NOT_TRACK also works;
-# explicit var survives if upstream drops the generic check). Also gates the
-# hyperframes-cli "report feedback after render" directive.
-export HYPERFRAMES_NO_TELEMETRY=1
-# ...and stop `npx hyperframes init` silently refreshing installed skills at
-# scaffold time (--skip-skills is neutered upstream; only this var opts out).
-# The full skill set is vendored + diff-reviewed in ~/.config/skills/vendor.
+# Stop `hyperframes init` silently refreshing installed skills at scaffold
+# time (--skip-skills is neutered upstream; only this variable opts out).
+# The skill set is vendored and reviewed in ~/.config/skills/vendor.
 export HYPERFRAMES_SKIP_SKILLS=1
-
-# GitHub CLI (gh): telemetry shipped default-on from v2.91.0 (2026-04-22).
-# DO_NOT_TRACK is honoured too, but the tool-specific var is documented and
-# survives if that generic check ever gets dropped.
-export GH_TELEMETRY=false
-
-# Cloudflare Wrangler: anonymous usage pings to sparrow.cloudflare.com, on by
-# default; not covered by DO_NOT_TRACK.
-export WRANGLER_SEND_METRICS=false
-
-# Expo/EAS CLI: anonymous usage analytics, not covered by DO_NOT_TRACK.
-export EXPO_NO_TELEMETRY=1
-
-# Apify CLI: usage telemetry, not covered by DO_NOT_TRACK.
-export APIFY_CLI_DISABLE_TELEMETRY=1
-
-# Hugging Face Hub (pulled in by docling/markitdown/rembg for model downloads):
-# DO_NOT_TRACK is documented as equivalent, but the explicit var survives if
-# that check is ever dropped.
-export HF_HUB_DISABLE_TELEMETRY=1
 
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
 # Homebrew supply chain: verify bottle provenance via Sigstore/GitHub attestations
 [[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_VERIFY_ATTESTATIONS=1
-
-# Homebrew analytics: anonymous InfluxDB usage events, on by default.
-[[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_NO_ANALYTICS=1
 
 # uv supply chain: abort sync if a locked dependency matches an OSV MAL-* malware
 # advisory. Runs before download, incl. `uv sync --frozen` - the one path

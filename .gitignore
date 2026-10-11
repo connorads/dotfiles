@@ -267,6 +267,10 @@
 !/.config/zed/
 !/.config/zed/settings.json
 !/.config/zed/keymap.json
+!/.config/firefox/
+!/.config/firefox/user.js
+!/.config/vscode/
+!/.config/vscode/settings.json
 
 !/.config/tmux/
 !/.config/tmux/**

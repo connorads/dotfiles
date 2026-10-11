@@ -9,6 +9,8 @@
   ...
 }:
 {
+  imports = [ ./telemetry.nix ];
+
   xdg.enable = true;
 
   manual = {

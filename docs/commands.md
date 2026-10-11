@@ -22,6 +22,7 @@ mise run py-checks     # lint + typecheck + test all first-party Python
 mise run skill-checks  # colocated skill-script tests, all tiers
 mise run zsh-tests     # the whole bats suite
 prose [path...]        # lint markdown and code comments against the house rules, in any repo
+telemetry-bb-sync      # apply Nix telemetry defaults to BB's global environment
 ccp [-y] [<name>]      # launch Claude Code on an account (bare = picker); --mcp <bundle> adds MCP
 claude-usage --all     # refresh usage for every Claude account
 mcpz                   # MCP bundles: list, show, render, run per agent
