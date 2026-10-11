@@ -1,7 +1,7 @@
 # Agent usage for BB
 
 Show the current provider's quota in the thread header. Open a large account
-usage overlay with `⌘⇧U`. Press `Esc`, click outside, or click Close to dismiss it.
+usage overlay with `⌘⇧A`. Press `Esc`, click outside, or click Close to dismiss it.
 The shortcut is rebindable under **Agent usage: show all accounts** in BB's keyboard settings.
 Clicking the header badge opens the same overlay.
 

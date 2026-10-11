@@ -65,7 +65,7 @@ test('the rebindable usage command opens the overlay', async () => {
   const actions = Reflect.get(app, 'commandPaletteActions') as PluginCommandRegistration[];
   const command = actions.find(action => action.id === 'open');
   if (!command) throw new Error('Missing usage command');
-  expect(command.defaultShortcut).toMatchObject({ key: 'u', mod: true, shift: true });
+  expect(command.defaultShortcut).toMatchObject({ key: 'a', mod: true, shift: true });
   const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async () => snapshot } });
   await act(async () => { await command.run({ threadId: null, projectId: null, openPanel: () => false }); });
   expect(await slot.findByRole('dialog', { name: 'Agent usage' })).toBeTruthy();

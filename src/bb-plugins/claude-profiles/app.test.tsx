@@ -5,7 +5,6 @@ import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
 import type { rpcContract } from './contracts.ts';
 import type { PluginCommandContext, PluginCommandRegistration, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
-import type { Usage } from './src/usage.ts';
 
 const props = { threadId: 'thread-test', projectId: 'project-test', isCompactViewport: false };
 const profiles = [
@@ -13,12 +12,6 @@ const profiles = [
   { id: 'work', label: 'work', configDir: '/profiles/work' },
   { id: 'client', label: 'client', configDir: '/profiles/client' },
 ];
-const quota = (fiveHour: number): Usage => ({ status: 'ok', message: null, observedAt: 1, windows: [
-  { id: 'five_hour', label: 'Five hours', usedPercent: fiveHour, resetsAt: null },
-  { id: 'seven_day', label: 'Seven days', usedPercent: 78.4, resetsAt: null },
-  { id: 'iguana_necktie', label: 'iguana necktie', usedPercent: 0.0252824, resetsAt: null },
-] });
-
 async function render(rpc: Partial<PluginRpcTestHandlers<typeof rpcContract>> = {}) {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const registration = app.threadHeaderActions[0];
@@ -26,27 +19,21 @@ async function render(rpc: Partial<PluginRpcTestHandlers<typeof rpcContract>> = 
   const slot = renderSlot<PluginThreadHeaderActionProps, typeof rpcContract>(registration, props, { rpc: {
     thread: () => ({ supported: true, profiles, selection: null }),
     switch: input => ({ hostId: 'host-test', profile: profiles.find(profile => profile.id === input.profileId)! }),
-    usage: input => quota(input.profileId === 'work' ? 10 : 6),
+    usage: () => { throw new Error('The switcher must not request quota.'); },
     ...rpc,
   } });
   return { app, slot };
 }
 
-test('the header labels session and weekly usage', async () => {
+test('the switcher shows account names without requesting quota', async () => {
   const { slot } = await render();
   try {
     const button = await slot.findByRole('button', { name: /Claude account/ });
-    await waitFor(() => expect(button.textContent).toContain('5h 6%'));
-    expect(button.textContent).toContain('7d 78%');
-  } finally { slot.lifecycle.unmount(); }
-});
-
-test('the header marks a missing weekly limit as unavailable', async () => {
-  const { slot } = await render({ usage: () => ({ ...quota(18), windows: quota(18).windows.slice(0, 1) }) });
-  try {
-    const button = await slot.findByRole('button', { name: /Claude account/ });
-    await waitFor(() => expect(button.textContent).toContain('5h 18%'));
-    expect(button.textContent).toContain('7d unavailable');
+    expect(button.textContent).toBe('Default');
+    fireEvent.click(button);
+    expect((await slot.findByRole('menuitemradio', { name: /work/ })).textContent).toBe('2work');
+    expect(slot.inspection.rpcCalls.filter(call => call.method === 'usage')).toHaveLength(0);
+    expect(slot.getByRole('menu').textContent).not.toContain('refresh');
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -58,17 +45,6 @@ test('one click on an account row switches the thread and closes the menu', asyn
     await waitFor(() => expect(slot.queryByRole('menu')).toBe(null));
     expect(slot.getByRole('button', { name: /Claude account/ }).textContent).toContain('work');
     expect(slot.inspection.rpcCalls.filter(call => call.method === 'switch')).toHaveLength(1);
-  } finally { slot.lifecycle.unmount(); }
-});
-
-test('opening the menu shows rounded session and weekly quota for every account', async () => {
-  const { slot } = await render();
-  try {
-    fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
-    const row = await slot.findByRole('menuitemradio', { name: /work/ });
-    await waitFor(() => expect(row.textContent).toContain('10%'));
-    expect(row.textContent).toContain('78%');
-    expect(row.textContent).not.toContain('iguana');
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -115,7 +91,7 @@ test('the open-switcher command opens the menu for the thread in view', async ()
     const { commandPaletteActions } = app as unknown as { commandPaletteActions: (PluginCommandRegistration & { target: string })[] };
     const command = commandPaletteActions.find(action => action.id === 'open-switcher');
     if (!command || command.target !== 'app') throw new Error('Missing open-switcher command.');
-    expect(command.defaultShortcut).toMatchObject({ key: 'a', mod: true, shift: true });
+    expect(command.defaultShortcut).toBeNull();
     const context = { threadId: 'thread-test', projectId: 'project-test', openPanel: () => false } satisfies PluginCommandContext;
     await waitFor(() => expect(command.isAvailable?.(context)).toBe(true));
     expect(command.isAvailable?.({ ...context, threadId: 'other-thread' })).toBe(false);
