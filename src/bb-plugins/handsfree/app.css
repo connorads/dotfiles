@@ -1,0 +1,47 @@
+.handsfree {
+  position: fixed;
+  right: 18px;
+  top: 70px;
+  z-index: 40;
+  max-width: min(360px, calc(100vw - 36px));
+  color: var(--ink);
+  font-size: 13px;
+}
+.handsfree-toggle {
+  display: block;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
+  border-radius: 16px;
+  background: var(--canvas);
+  cursor: pointer;
+}
+.handsfree-card {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
+  border-radius: 12px;
+  background: var(--canvas);
+  box-shadow: 0 8px 28px color-mix(in oklab, var(--ink) 15%, transparent);
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.handsfree-card p { margin: 8px 0; }
+.handsfree-card dl { margin: 16px 0; }
+.handsfree-card dt { margin-top: 10px; font-weight: 600; }
+.handsfree-card dd { margin: 2px 0; opacity: .7; }
+.handsfree-card ol { list-style: none; padding: 0; }
+.handsfree-card li button {
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.handsfree-card li button[aria-current="true"] {
+  border-color: color-mix(in oklab, var(--ink) 40%, transparent);
+  background: color-mix(in oklab, var(--ink) 8%, var(--canvas));
+}
+.handsfree-pedals { border-top: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); padding-top: 10px; }

@@ -25,3 +25,8 @@ to rebuild and reload on save.
 
 [Preferences](preferences/README.md) applies tracked keyboard settings from
 `~/.config/bb/preferences.json`. Its guide covers installation and ownership.
+
+## Voice controls
+
+[Handsfree](handsfree/README.md) connects Hex commands to the focused BB window.
+It provides thread navigation, draft creation, model selection and a command card.
