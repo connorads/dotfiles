@@ -109,7 +109,7 @@ Change as a set:
   track is silent: that is a delete-the-recording decision, not a reclaim one.
 - [`../nix/voxtap/main.swift`](../../nix/voxtap/main.swift) - the capture engine,
   built by [`../nix/modules/voxtap.nix`](../../nix/modules/voxtap.nix) with the
-  system `swiftc` (desktop-only, like `biokc`/`imagepaste`). `voxtap record
+  system `swiftc` (desktop-only, like `imagepaste`). `voxtap record
   <dir> --mic <name> [--no-sys]` puts the microphone (named by a case-insensitive
   substring of its Core Audio name, or its exact UID) and a process tap in one
   aggregate device with the mic as clock master, and writes `mic.wav` and
