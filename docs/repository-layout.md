@@ -9,7 +9,7 @@ Hard-coupled, staying put:
 | Path | Why it cannot move |
 | --- | --- |
 | `.pi/agent/extensions` | pi composes the dir as `join(<agent dir>, "extensions")`. The `extensions` settings key is an enable/disable pattern list, not a search path; only `PI_CODING_AGENT_DIR` relocates it, and that drags auth + sessions too |
-| `.config/nix/{voxtap,biokc,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
+| `.config/nix/{voxtap,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
 | `.hk-hooks` | `core.hooksPath` is set to `.hk-hooks` |
 | `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
 | `.config/opencode/{plugin,plugins-v1,plugins-v2}` | `opencode.json`'s `plugin` array names each file by `file://` absolute path, so a moved file stops loading with no error. `.config/opencode/tsconfig.json` follows the code rather than the reverse: its `include` covers all three dirs |
@@ -23,7 +23,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | File | Purpose |
 | --- | --- |
 | [flake.nix](../.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager) |
-| [modules/biokc.nix](../.config/nix/modules/biokc.nix) | Builds `biokc`, the Touch ID keychain helper gh-gate uses; desktop-only |
 | [modules/imagepaste.nix](../.config/nix/modules/imagepaste.nix) | Builds `imagepaste`, which keeps clipboard GIF bytes for `shotpath` |
 | [packages/terminal-control.nix](../.config/nix/packages/terminal-control.nix) | Builds `termctrl` (drive and render terminal apps in a real PTY); pairs with the `terminal-control` skill |
 | [packages/footswitch.nix](../.config/nix/packages/footswitch.nix) | Builds `footswitch` for the foot pedal, driven by `pedal-flash`; desktop macOS only |

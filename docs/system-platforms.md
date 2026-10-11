@@ -37,9 +37,8 @@ developer portal rather than the App Store.
 entry stays on disk until deleted by hand.
 
 The Command Line Tools stay installed as the baseline: `xcode-select -p` points
-at `/Library/Developer/CommandLineTools` until something moves it. Three
+at `/Library/Developer/CommandLineTools` until something moves it. Two
 derivations compile against whatever `xcrun --show-sdk-path` returns -
-[biokc.nix](../.config/nix/modules/biokc.nix),
 [imagepaste.nix](../.config/nix/modules/imagepaste.nix),
 [voxtap.nix](../.config/nix/modules/voxtap.nix), plus the shim in
 [terminal-control.nix](../.config/nix/packages/terminal-control.nix) - so

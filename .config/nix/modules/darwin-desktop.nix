@@ -19,7 +19,6 @@
 }:
 {
   imports = [
-    ./biokc.nix
     ./imagepaste.nix
     ./voxtap.nix
   ];

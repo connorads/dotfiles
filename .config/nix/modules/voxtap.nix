@@ -9,7 +9,7 @@
 # ExtAudioFile does the WAV muxing and resampling; it lives in AudioToolbox.
 #
 # Built here, not vendored or pulled from nixpkgs, for the same reason as
-# biokc/imagepaste: the tap API (AudioHardwareCreateProcessTap, macOS 14.2+) is
+# imagepaste: the tap API (AudioHardwareCreateProcessTap, macOS 14.2+) is
 # reachable only from the macOS SDK. We compile the committed source with the
 # SYSTEM /usr/bin/swiftc (Command Line Tools) inside a nix derivation — nix
 # orchestrates and pins the result into the store, but ships no Swift of its own.
