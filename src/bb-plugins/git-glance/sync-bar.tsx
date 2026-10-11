@@ -1,0 +1,64 @@
+import { experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
+import type { FailureReason, OpKind, OpState, Repo } from './contracts.ts';
+import { plural } from './src/format.ts';
+
+export const opNames: Record<OpKind, string> = { fetch: 'Fetch', pull: 'Pull', push: 'Push' };
+export const hints: Record<FailureReason, string | null> = {
+  rejected: 'The remote has commits you do not have. Pull first, then push.',
+  diverged: 'Local and remote both have new commits. Rebase or merge in lazygit.',
+  dirty: 'Local changes would be overwritten. Commit or stash them first.',
+  conflict: 'The pull stopped on conflicts. Resolve them in lazygit.',
+  auth: 'Git could not sign in without a prompt. Run the command once in a terminal to authenticate.',
+  network: 'Could not reach the remote. Check the connection and try again.',
+  locked: 'Another git process is busy here. Try again in a moment.',
+  'no-remote': null, timeout: null, cancelled: null, unknown: null,
+};
+
+export type Availability = Record<OpKind, { enabled: boolean; title: string }>;
+/** Which remote operations make sense now, and why not when they do not. */
+export function available(repo: Repo, op: OpState | null): Availability {
+  const { branch, remotes } = repo;
+  const busy = op?.status === 'running' ? `${opNames[op.kind]} is running.` : null;
+  const none = remotes.length === 0 ? 'This repository has no remotes.' : null;
+  const detached = branch.head ? null : 'HEAD is detached. Check out a branch first.';
+  const diverged = branch.ahead > 0 && branch.behind > 0;
+  const reason = {
+    fetch: busy ?? none,
+    pull: busy ?? none ?? detached ?? (!branch.upstream ? 'No upstream branch to pull from.'
+      : diverged ? 'Local and remote have diverged. Rebase or merge in lazygit (⌘⇧G).' : branch.behind === 0 ? 'Nothing to pull. Fetch to check for new commits.' : null),
+    push: busy ?? none ?? detached ?? (branch.upstream && branch.ahead === 0 ? 'Nothing to push.' : null),
+  };
+  const titles = {
+    fetch: 'Fetch from the remote (f)',
+    pull: `Pull ${plural(branch.behind, 'commit')} from ${branch.upstream} (p)`,
+    push: branch.upstream ? `Push ${plural(branch.ahead, 'commit')} to ${branch.upstream} (⇧P)` : `Publish ${branch.head} to ${remotes.includes('origin') ? 'origin' : remotes[0]} (⇧P)`,
+  };
+  return Object.fromEntries((['fetch', 'pull', 'push'] as const).map(kind =>
+    [kind, { enabled: reason[kind] === null, title: reason[kind] ?? titles[kind] }])) as Availability;
+}
+
+export function SyncBar({ repo, op, fetched, onSync, onCancel }: {
+  repo: Repo; op: OpState | null; fetched: string | null; onSync: (op: OpKind) => void; onCancel: () => void;
+}) {
+  const can = available(repo, op);
+  const running = op?.status === 'running' ? op : null;
+  const { branch } = repo;
+  const button = ({ kind, icon, label, count, tone }: { kind: OpKind; icon: string; label: string; count: number | null; tone: string }) => {
+    const active = running?.kind === kind;
+    return <button type="button" className="gg-sync" data-tone={tone} data-active={active || undefined}
+      disabled={!can[kind].enabled && !active} title={active ? running?.progress?.phase ?? `${opNames[kind]}ing…` : can[kind].title}
+      onClick={() => active ? onCancel() : onSync(kind)} aria-label={active ? `Cancel ${kind}` : can[kind].title}>
+      {active ? <span className="gg-spinner gg-spinner-sm" /> : <Icon name={icon} className="size-3.5" />}
+      <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : `${opNames[kind]}ing` : label}</span>
+      {!active && count !== null && count > 0 && <span className="gg-sync-count">{count}</span>}
+      {active && <Icon name="X" className="gg-sync-cancel" />}
+    </button>;
+  };
+  return <div className="gg-sync-bar" role="group" aria-label="Sync with remote">
+    {button({ kind: 'pull', icon: 'ArrowDown', label: 'Pull', count: branch.upstream ? branch.behind : null, tone: branch.behind > 0 ? 'behind' : 'quiet' })}
+    {button({ kind: 'push', icon: 'ArrowUp', label: branch.upstream || repo.remotes.length === 0 ? 'Push' : 'Publish',
+      count: branch.upstream ? branch.ahead : null, tone: branch.ahead > 0 || (!branch.upstream && repo.remotes.length > 0) ? 'ahead' : 'quiet' })}
+    {button({ kind: 'fetch', icon: 'ArrowReloadHorizontal', label: 'Fetch', count: null, tone: 'quiet' })}
+    {fetched && !running && <span className="gg-fetched" title="Last fetch">{fetched === 'now' ? 'just now' : `${fetched} ago`}</span>}
+  </div>;
+}
