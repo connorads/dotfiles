@@ -34,13 +34,13 @@ test('Claude header follows the selected profile rather than the native default 
     listPlugins: async () => ({ plugins: [{ id: 'claude-profiles', enabled: true }] }),
     callRpc: async input => {
       inputs.push(input);
-      return input.outputSchema.parse(input.method === 'thread'
-        ? { supported: true, selection: { profile: { id: 'work', label: 'Work' } } }
+      return input.outputSchema.parse(input.method === 'accounts'
+        ? { supported: true, currentId: 'work', profiles: [{ id: 'default', label: 'Default' }, { id: 'work', label: 'Work' }] }
         : { status: 'ok', message: null, windows: [{ id: 'seven_day', usedPercent: 81, resetsAt: null }] });
     },
   });
   expect(await reader.header('thread-one')).toMatchObject({ accountLabel: 'Work', windows: [{ label: 'Weekly', period: 'week', usedPercent: 81 }] });
-  expect(inputs).toMatchObject([{ method: 'thread' }, { method: 'usage', input: { profileId: 'work', refresh: false } }]);
+  expect(inputs).toMatchObject([{ method: 'accounts' }, { method: 'usage', input: { profileId: 'work', refresh: false } }]);
 });
 
 test('Codex header uses the thread host and displays only the windows reported', async () => {
