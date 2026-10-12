@@ -123,6 +123,22 @@ checksum = "sha256:87f811032b727806158111856b77be076d2c923cc013de20d744405eb4dfe
 url = "https://github.com/shenwei356/rush/releases/download/v0.11.0/rush_darwin_arm64.tar.gz"
 url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/579424349"
 
+[[tools."aqua:x.ai/cli/grok"]]
+version = "1.0.50"
+backend = "aqua:x.ai/cli/grok"
+
+[tools."aqua:x.ai/cli/grok"."platforms.linux-arm64"]
+checksum = "sha256:947eea63e52393e00778d651d22e0dad22d30e9ee5b2af7944efc3fd4438ecc0"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-linux-aarch64"
+
+[tools."aqua:x.ai/cli/grok"."platforms.linux-x64"]
+checksum = "sha256:c80de0155706ff2d995623887b102f2d0abd2c62b2643dea3a0cebaf7dd724d5"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-linux-x86_64"
+
+[tools."aqua:x.ai/cli/grok"."platforms.macos-arm64"]
+checksum = "blake3:7a3c34ec6c15cd2264a3906151fa3fb2c865ccbaf4bdaa7bc10d4cf5c9d234c0"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-macos-aarch64"
+
 [[tools.ast-grep]]
 version = "0.45.3"
 backend = "aqua:ast-grep/ast-grep"

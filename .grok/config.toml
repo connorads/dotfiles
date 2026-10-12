@@ -1,0 +1,13 @@
+[cli]
+auto_update = false
+
+[features]
+telemetry = false
+feedback = false
+
+[harness]
+disable_workspace_teleport = true
+
+[telemetry]
+trace_upload = false
+otel_enabled = false
