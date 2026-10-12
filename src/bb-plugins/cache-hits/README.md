@@ -4,9 +4,10 @@ Show each thread's prompt-cache state in the thread header.
 
 ## Use
 
-The header chip shows the share of the last request read from cache, and a
-miss count once the thread has one. Claude Code threads also count down to cache
-expiry, then show `cold`. The dot follows time left (green over 50%, yellow
+The header chip counts down to cache expiry in whole minutes, with seconds in
+the last two, then shows `cold`. Without a lifetime, as on Codex, it shows the
+share of the last request read from cache. A miss count sits beside the dot once
+the thread has one. The dot follows time left (green over 50%, yellow
 over 20%, then red). Without a lifetime, as on Codex, it follows the hit rate
 (green 80%+, yellow 50%+, then red).
 
