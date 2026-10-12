@@ -96,6 +96,13 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     element.showModal(); searchInput.current?.focus();
     return () => { element.close(); };
   }, []);
+  // Rows load after the dialog opens, so the first loaded list scrolls once to the selected row without taking focus.
+  const revealed = useRef(false);
+  useLayoutEffect(() => {
+    if (loading || revealed.current) return;
+    revealed.current = true;
+    dialog.current?.querySelector('.mf-list [data-selected]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [loading]);
   // The account list loads after the dialog opens, so account focus waits for the button.
   const accountFocused = useRef(false);
   useEffect(() => {
@@ -197,7 +204,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         <span className="mf-model-name">{name}</span>
         {(reason || saved || search) && <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>}
       </button>
-      {saved && model && (levels.length > 0 || favourite.reasoningLevel) && <EffortPill name={name} saved={favourite.reasoningLevel}
+      {saved && model && (levels.length > 0 || favourite.reasoningLevel) && <EffortPill name={name} saved={favourite.reasoningLevel} fallback={model.defaultReasoningEffort}
         levels={levels} disabled={blocked} onChange={effort => setEffort(favourite, effort)} />}
       <span className="mf-check" aria-hidden="true">{selected && <Icon name="Check" className="mf-check-icon" />}</span>
       <button type="button" className="mf-star" data-saved={saved || undefined} aria-label={`${saved ? 'Unfavourite' : 'Favourite'} ${name}`} aria-pressed={saved}
