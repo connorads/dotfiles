@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeAll, expect, test } from 'vitest';
-import { fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, waitFor, within } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
@@ -56,7 +56,11 @@ function render(initial = [first, second], error: string | null = null, account?
         currentId = input.profileId;
         return { currentId };
       },
-      usage: () => { throw new Error('The picker must not request quota.'); },
+      usage: input => input.profileId === 'work'
+        ? { status: 'ok', message: null, observedAt: 0, windows: [
+          { id: 'five_hour', label: 'Five hours', usedPercent: 12.4, resetsAt: null, cost: null },
+          { id: 'seven_day', label: 'Seven days', usedPercent: 30, resetsAt: null, cost: null }] }
+        : { status: 'unavailable', message: 'No quota', observedAt: null, windows: [] },
       'usage.overview': () => { throw new Error('The picker must not request usage.'); },
       'usage.header': () => { throw new Error('The picker must not request usage.'); },
       'usage.inspection': () => { throw new Error('The picker must not request usage.'); },
@@ -85,9 +89,16 @@ function render(initial = [first, second], error: string | null = null, account?
 const calls = (slot: ReturnType<typeof render>, method: string) => slot.inspection.rpcCalls.filter(call => call.method === method);
 async function enabledRow(slot: ReturnType<typeof render>, name: string) {
   const row = await slot.findByRole('button', { name });
-  await waitFor(() => expect(row.hasAttribute('disabled')).toBe(false));
+  await waitFor(() => expect(row.getAttribute('aria-disabled')).toBeNull());
   return row;
 }
+const disabled = (element: HTMLElement) => element.getAttribute('aria-disabled') === 'true';
+// Opens a saved effort pill's listbox and returns it.
+function effortMenu(slot: ReturnType<typeof render>, model: string) {
+  fireEvent.click(slot.getByRole('button', { name: new RegExp(`^Saved effort for ${model}:`) }));
+  return slot.getByRole('listbox', { name: `Saved effort for ${model}` });
+}
+const optionNames = (listbox: HTMLElement) => within(listbox).getAllByRole('option').map(option => option.textContent);
 
 test('one click applies a saved favourite with its saved effort, without sending or replacing the draft', async () => {
   const slot = render();
@@ -112,29 +123,104 @@ test('a favourite without saved effort applies the model default, not the compos
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('an unsupported saved effort disables the row with its reason and keeps the row effort editable', async () => {
+test('an unsupported saved effort disables the row with its reason and keeps the saved effort editable', async () => {
   const slot = render([{ ...first, reasoningLevel: 'ultra' }]);
   try {
     await slot.findByText('Saved effort ultra is not available for this model');
-    expect(slot.getByRole('button', { name: 'Select model-a' }).hasAttribute('disabled')).toBe(true);
-    const effort = slot.getByLabelText('Saved effort for model-a') as HTMLSelectElement;
-    expect(effort.hasAttribute('disabled')).toBe(false);
-    expect(effort.value).toBe('ultra');
-    expect(Array.from(effort.options).map(option => option.textContent)).toEqual(['Default', 'high', 'low', 'ultra (unavailable)']);
-    fireEvent.change(effort, { target: { value: 'low' } });
-    await waitFor(() => expect(slot.getByRole('button', { name: 'Select model-a' }).hasAttribute('disabled')).toBe(false));
+    const row = slot.getByRole('button', { name: 'Select model-a' });
+    expect(disabled(row)).toBe(true);
+    fireEvent.click(row);
+    expect(slot.inspection.composer.selections).toEqual([]);
+    const pill = slot.getByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    expect(pill.hasAttribute('disabled')).toBe(false);
+    const menu = effortMenu(slot, 'model-a');
+    expect(optionNames(menu)).toEqual(['DefaultModel default', 'high', 'low', 'ultra (unavailable)']);
+    expect(within(menu).getByRole('option', { selected: true }).textContent).toBe('ultra (unavailable)');
+    fireEvent.click(within(menu).getByRole('option', { name: 'low' }));
+    await waitFor(() => expect(disabled(slot.getByRole('button', { name: 'Select model-a' }))).toBe(false));
     expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'low' }]);
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('the row effort select saves the effort without changing the composer', async () => {
+test('the saved effort pill saves the effort without changing the composer', async () => {
   const slot = render();
   try {
     await enabledRow(slot, 'Select model-a');
-    fireEvent.change(slot.getByLabelText('Saved effort for model-b'), { target: { value: '' } });
+    expect(slot.getByRole('button', { name: 'Saved effort for model-b: low' })).toBeTruthy();
+    fireEvent.click(within(effortMenu(slot, 'model-b')).getByRole('option', { name: /^Default/ }));
     await waitFor(() => expect(calls(slot, 'favourites.setEffort')).toHaveLength(1));
     expect(calls(slot, 'favourites.setEffort')[0]?.input).toEqual({ id: 'b', reasoningLevel: null });
+    await slot.findByRole('button', { name: 'Saved effort for model-b: Default' });
     expect(slot.inspection.composer.selections).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the effort listbox works by keyboard and Escape closes it before the picker', async () => {
+  const slot = render();
+  try {
+    await enabledRow(slot, 'Select model-a');
+    const menu = effortMenu(slot, 'model-a');
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('high'));
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('low'));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(slot.queryByRole('listbox')).toBeNull();
+    expect(document.activeElement).toBe(slot.getByRole('button', { name: /^Saved effort for model-a:/ }));
+    expect(menu.isConnected).toBe(false);
+    fireEvent(slot.getByRole('dialog', { name: 'Switch model' }), new Event('cancel', { bubbles: false, cancelable: true }));
+    expect(slot.inspection.composer.focusCount).toBe(1);
+    effortMenu(slot, 'model-a');
+    fireEvent(slot.getByRole('dialog', { name: 'Switch model' }), new Event('cancel', { bubbles: false, cancelable: true }));
+    expect(slot.queryByRole('listbox')).toBeNull();
+    expect(slot.inspection.composer.focusCount).toBe(1);
+    expect(calls(slot, 'favourites.setEffort')).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('left and right arrows on a favourite row step its saved effort through Default and the model efforts', async () => {
+  const slot = render();
+  try {
+    const row = await enabledRow(slot, 'Select model-b');
+    fireEvent.keyDown(row, { key: 'ArrowLeft' });
+    await waitFor(() => expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'b', reasoningLevel: 'high' }]));
+    await slot.findByRole('button', { name: 'Saved effort for model-b: high' });
+    await enabledRow(slot, 'Select model-b');
+    fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
+    await slot.findByRole('button', { name: 'Saved effort for model-b: Default' });
+    await enabledRow(slot, 'Select model-b');
+    fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
+    expect(calls(slot, 'favourites.setEffort')).toHaveLength(2);
+    fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowRight' });
+    await slot.findByRole('button', { name: 'Saved effort for model-b: high' });
+    expect(slot.inspection.composer.selections).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Cmd+S or Ctrl+S toggles the focused row favourite and blocks the browser save', async () => {
+  const slot = render([first]);
+  try {
+    const row = await enabledRow(slot, 'Select model-b');
+    expect(fireEvent.keyDown(row, { key: 's', metaKey: true })).toBe(false);
+    await slot.findByRole('button', { name: 'Unfavourite model-b' });
+    expect(calls(slot, 'favourites.add').map(call => call.input)).toEqual([{ name: '', providerId: 'codex', model: 'model-b' }]);
+    await enabledRow(slot, 'Select model-a');
+    expect(fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-a' }), { key: 's', ctrlKey: true })).toBe(false);
+    await waitFor(() => expect(calls(slot, 'favourites.remove').map(call => call.input)).toEqual([{ id: 'a' }]));
+    expect(fireEvent.keyDown(slot.getByLabelText('Search models'), { key: 's', metaKey: true })).toBe(false);
+    expect(slot.inspection.composer.selections).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('favourite rows show their slot and the selected row is marked current', async () => {
+  const slot = render();
+  try {
+    const row = await enabledRow(slot, 'Select model-b');
+    expect(row.querySelector('kbd')?.textContent).toBe('3');
+    expect(row.getAttribute('aria-current')).toBe('true');
+    expect(slot.getByRole('button', { name: 'Select model-a' }).getAttribute('aria-current')).toBeNull();
+    expect(within(slot.getByRole('group', { name: 'Filter models' })).getAllByRole('button').map(chip => chip.textContent))
+      .toEqual(['All', 'Favourites2', 'Codex']);
+    expect(slot.queryByLabelText('Claude account')).toBeNull();
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -142,7 +228,7 @@ test('catalogue failures explain disabled rows instead of hiding saved favourite
   const slot = render([first], 'Sign in required');
   try {
     await slot.findAllByText('Sign in required');
-    expect(slot.getByRole('button', { name: 'Select model-a' }).hasAttribute('disabled')).toBe(true);
+    expect(disabled(slot.getByRole('button', { name: 'Select model-a' }))).toBe(true);
     expect(slot.inspection.composer.selections).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -251,15 +337,23 @@ test('arrow keys move from search to models and a slot number selects its favour
   } finally { slot.lifecycle.unmount(); }
 });
 
+// Opens the account menu and returns its listbox.
+function accountMenu(slot: ReturnType<typeof render>) {
+  fireEvent.click(slot.getByLabelText('Claude account'));
+  return slot.getByRole('listbox', { name: 'Claude accounts' });
+}
+
 test('Claude account switching uses this plugin\'s accounts and choose, and preserves model and draft', async () => {
   const slot = render([], null, {});
   try {
-    const accounts = await slot.findByLabelText('Claude account') as HTMLSelectElement;
-    expect(accounts.value).toBe('default');
-    expect(Array.from(accounts.options).map(option => option.textContent)).toEqual(['Default', 'Work']);
+    const button = await slot.findByLabelText('Claude account');
+    expect(button.textContent).toBe('Default');
     expect(calls(slot, 'accounts')[0]?.input).toEqual({ threadId: 'thread-test' });
-    fireEvent.change(accounts, { target: { value: 'work' } });
-    await waitFor(() => expect(accounts.value).toBe('work'));
+    const menu = accountMenu(slot);
+    expect(within(menu).getAllByRole('option').map(option => option.querySelector('.mf-option-label')?.textContent)).toEqual(['Default', 'Work']);
+    expect(within(menu).getByRole('option', { selected: true }).textContent).toContain('Default');
+    fireEvent.click(within(menu).getByRole('option', { name: /^Work/ }));
+    await waitFor(() => expect(button.textContent).toBe('Work'));
     expect(calls(slot, 'choose').map(call => call.input)).toEqual([{ threadId: 'thread-test', profileId: 'work' }]);
     expect(slot.inspection.composer.selection?.model).toBe('model-b');
     expect(slot.inspection.composer.text).toBe('Do not send this draft');
@@ -267,13 +361,29 @@ test('Claude account switching uses this plugin\'s accounts and choose, and pres
   } finally { slot.lifecycle.unmount(); }
 });
 
+test('the account menu shows each account\'s cached quota once it opens', async () => {
+  const slot = render([], null, {});
+  try {
+    await slot.findByLabelText('Claude account');
+    expect(calls(slot, 'usage')).toEqual([]);
+    const menu = accountMenu(slot);
+    await waitFor(() => expect(within(menu).getByRole('option', { name: /^Work/ }).textContent).toBe('Work5h 12% · 7d 30%'));
+    expect(within(menu).getByRole('option', { name: /^Default/ }).textContent).toBe('Default');
+    expect(calls(slot, 'usage').map(call => call.input)).toEqual([
+      { threadId: 'thread-test', profileId: 'default', refresh: false }, { threadId: 'thread-test', profileId: 'work', refresh: false }]);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    accountMenu(slot);
+    expect(calls(slot, 'usage')).toHaveLength(2);
+  } finally { slot.lifecycle.unmount(); }
+});
+
 test('Claude account switch failure retains the selected account and reports the refusal', async () => {
   const slot = render([], null, { failSwitch: true });
   try {
-    const accounts = await slot.findByLabelText('Claude account') as HTMLSelectElement;
-    fireEvent.change(accounts, { target: { value: 'work' } });
+    const button = await slot.findByLabelText('Claude account');
+    fireEvent.click(within(accountMenu(slot)).getByRole('option', { name: /^Work/ }));
     await slot.findByText('Clear queued messages before switching profiles.');
-    expect(accounts.value).toBe('default');
+    expect(button.textContent).toBe('Default');
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -290,11 +400,12 @@ test('running Claude chats disable account switching', async () => {
 test('the new-thread composer lists accounts and remembers the choice for the next thread', async () => {
   const slot = render([], null, { newThread: true });
   try {
-    const accounts = await slot.findByLabelText('Claude account');
+    await slot.findByLabelText('Claude account');
     expect(calls(slot, 'accounts')[0]?.input).toEqual({ threadId: null });
-    fireEvent.change(accounts, { target: { value: 'work' } });
+    fireEvent.click(within(accountMenu(slot)).getByRole('option', { name: /^Work/ }));
     await waitFor(() => expect(calls(slot, 'choose').map(call => call.input)).toEqual([{ threadId: null, profileId: 'work' }]));
     expect(slot.getByText('New Claude threads start on this account.')).toBeTruthy();
+    expect(calls(slot, 'usage')).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -307,13 +418,17 @@ test('an account failure does not prevent selecting models', async () => {
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('footer effort and tier update the composer without changing favourites or sending', async () => {
+test('the current effort and tier controls update the composer without changing favourites or sending', async () => {
   const slot = render();
   try {
-    const effort = await slot.findByLabelText('Reasoning effort');
-    fireEvent.change(effort, { target: { value: 'high' } });
+    const effort = await slot.findByRole('radiogroup', { name: 'Reasoning effort' });
+    expect(within(effort).getByRole('radio', { checked: true }).textContent).toBe('low');
+    fireEvent.click(within(effort).getByRole('radio', { name: 'high' }));
     await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high'));
-    fireEvent.change(slot.getByLabelText('Service tier'), { target: { value: 'fast' } });
+    fireEvent.keyDown(within(effort).getByRole('radio', { name: 'high' }), { key: 'ArrowRight' });
+    await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('low'));
+    const tier = slot.getByRole('radiogroup', { name: 'Service tier' });
+    fireEvent.click(within(tier).getByRole('radio', { name: 'Fast' }));
     await waitFor(() => expect(slot.inspection.composer.selection?.serviceTier).toBe('fast'));
     expect(calls(slot, 'favourites.add')).toEqual([]);
     expect(calls(slot, 'favourites.setEffort')).toEqual([]);

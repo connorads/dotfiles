@@ -6,7 +6,10 @@ import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Effort, Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
+import { AccountMenu } from './account-menu.tsx';
+import { EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
+import { closeInnermostPopover } from './popover.tsx';
 import { close, open, openedState, subscribe, type Focus } from './store.ts';
 import './picker.css';
 
@@ -53,7 +56,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
   const [profilesLoading, setProfilesLoading] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const accountSelect = useRef<HTMLSelectElement>(null);
+  const accountButton = useRef<HTMLButtonElement>(null);
   const generation = useRef(0);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   // Queued-message editors cannot change a thread's account; choosing there would rewrite the next-thread account.
@@ -91,11 +94,11 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     element.showModal(); searchInput.current?.focus();
     return () => { element.close(); };
   }, []);
-  // The account list loads after the dialog opens, so account focus waits for the select.
+  // The account list loads after the dialog opens, so account focus waits for the button.
   const accountFocused = useRef(false);
   useEffect(() => {
-    if (focus !== 'account' || accountFocused.current || !accountSelect.current) return;
-    accountFocused.current = true; accountSelect.current.focus();
+    if (focus !== 'account' || accountFocused.current || !accountButton.current) return;
+    accountFocused.current = true; accountButton.current.focus();
   }, [focus, accounts]);
   async function run(work: () => Promise<unknown>, reload = false) {
     if (working.current) return;
@@ -105,137 +108,181 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     finally { working.current = false; setBusy(false); }
   }
   function choose(favourite: Favourite) { void run(async () => { await controller.apply(favourite); onClose(); }); }
+  function toggleFavourite(row: Row) {
+    void run(async () => {
+      if (row.saved) await rpc.call('favourites.remove', { id: row.favourite.id });
+      else await rpc.call('favourites.add', { name: '', ...capture(row.favourite) });
+    }, true);
+  }
+  function setEffort(favourite: Favourite, effort: Effort | null) {
+    void run(() => rpc.call('favourites.setEffort', { id: favourite.id, reasoningLevel: effort }), true);
+  }
   const providerName = (id: string) => catalog.find(p => p.providerId === id)?.providerName ?? id;
-  const modelName = (id: string, model: string) => catalog.find(p => p.providerId === id)?.models.find(m => m.model === model)?.displayName ?? model;
+  const modelOf = (id: string, model: string) => catalog.find(p => p.providerId === id)?.models.find(m => m.model === model);
   const search = query.trim().toLowerCase();
   const visible = (providerId: string, text: string) => (filter === 'all' || filter === 'favourites' || filter === providerId) && text.toLowerCase().includes(search);
-  const favourites = list.filter(f => visible(f.providerId, `${modelName(f.providerId, f.model)} ${providerName(f.providerId)} ${f.model}`));
-  const groups = filter === 'favourites' ? [] : catalog.filter(p => filter === 'all' || filter === p.providerId).map(p => ({ ...p,
-    models: p.models.filter(m => !list.some(f => f.providerId === p.providerId && f.model === m.model) && visible(p.providerId, `${m.displayName} ${m.model} ${p.providerName}`)),
+  const favouriteRows: Row[] = list.filter(f => visible(f.providerId, `${modelOf(f.providerId, f.model)?.displayName ?? f.model} ${providerName(f.providerId)} ${f.model}`))
+    .map(f => {
+      const providerCatalog = catalog.find(p => p.providerId === f.providerId);
+      return { favourite: f, saved: true, reason: providerCatalog
+        ? availability(f, { available: true, error: providerCatalog.error, models: providerCatalog.models }) : 'Provider unavailable on this machine' };
+    });
+  const providers = catalog.filter(p => p.models.length > 0 || p.error);
+  const groups = filter === 'favourites' ? [] : providers.filter(p => filter === 'all' || filter === p.providerId).map(p => ({ ...p,
+    rows: p.models.filter(m => !list.some(f => f.providerId === p.providerId && f.model === m.model) && visible(p.providerId, `${m.displayName} ${m.model} ${p.providerName}`))
+      .map((m): Row => ({ favourite: { id: `${p.providerId}:${m.model}`, slot: 1, name: '', providerId: p.providerId, model: m.model }, saved: false, reason: null })),
   }));
-  const currentCatalog = catalog.find(p => p.providerId === currentProvider);
-  const currentModel = currentCatalog?.models.find(m => m.model === composer.selection?.model);
-  const hasResults = favourites.length > 0 || groups.some(p => p.models.length > 0 || p.error);
+  const rows = [...favouriteRows, ...groups.flatMap(group => group.rows)];
+  const currentModel = modelOf(currentProvider ?? '', composer.selection?.model ?? '');
+  const hasResults = favouriteRows.length > 0 || groups.some(p => p.rows.length > 0 || p.error);
+  const blocked = busy || loading;
+  const rowOf = (target: EventTarget) => {
+    const id = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-row]')?.dataset.row : undefined;
+    return rows.find(row => row.favourite.id === id);
+  };
+  function step(row: Row, direction: -1 | 1) {
+    const levels = modelOf(row.favourite.providerId, row.favourite.model)?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
+    const sequence: (Effort | null)[] = [null, ...levels];
+    const index = sequence.indexOf(row.favourite.reasoningLevel ?? null);
+    const next = sequence[index === -1 ? 0 : Math.min(sequence.length - 1, Math.max(0, index + direction))];
+    if (next !== undefined && (index === -1 || next !== sequence[index])) setEffort(row.favourite, next);
+  }
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
-    if (event.nativeEvent.isComposing || event.target instanceof HTMLSelectElement || event.metaKey || event.ctrlKey || event.altKey) return;
-    if ((event.key === 'q' || event.key === 'Q') && !(event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')))) {
-      event.preventDefault(); if (!working.current) onClose();
-    } else if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
-      event.preventDefault(); dialog.current?.querySelector<HTMLButtonElement>('[data-model]:not(:disabled)')?.click();
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (event.nativeEvent.isComposing) return;
+    const target = event.target;
+    const inSearch = target === searchInput.current;
+    const onRow = target instanceof HTMLElement && target.hasAttribute('data-model');
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 's') {
       event.preventDefault();
-      const rows = Array.from(dialog.current?.querySelectorAll<HTMLButtonElement>('[data-model]:not(:disabled)') ?? []);
-      const current = rows.findIndex(row => row === document.activeElement);
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      const next = rows[current < 0 ? (step === 1 ? 0 : rows.length - 1) : (current + step + rows.length) % rows.length];
+      const row = rowOf(target);
+      if (row && !blocked && (row.saved || (list.length < 9 && !row.reason))) toggleFavourite(row);
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if ((event.key === 'q' || event.key === 'Q') && !(event.defaultPrevented || (target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')))) {
+      event.preventDefault(); if (!working.current) onClose();
+    } else if (event.key === 'Enter' && inSearch) {
+      event.preventDefault(); dialog.current?.querySelector<HTMLButtonElement>('[data-model]:not([aria-disabled=true])')?.click();
+    } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && (inSearch || onRow)) {
+      event.preventDefault();
+      const buttons = Array.from(dialog.current?.querySelectorAll<HTMLButtonElement>('[data-model]') ?? []);
+      const current = buttons.findIndex(button => button === target);
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      if (current === 0 && direction === -1) { searchInput.current?.focus(); return; }
+      const next = buttons[current < 0 ? (direction === 1 ? 0 : buttons.length - 1) : Math.min(buttons.length - 1, current + direction)];
       next?.focus(); next?.scrollIntoView?.({ block: 'nearest' });
-    } else if ((!(event.target instanceof HTMLInputElement) || query === '') && /^[1-9]$/.test(event.key)) {
+    } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && onRow) {
+      const row = rowOf(target);
+      if (row?.saved) { event.preventDefault(); if (!blocked) step(row, event.key === 'ArrowRight' ? 1 : -1); }
+    } else if ((!inSearch || query === '') && /^[1-9]$/.test(event.key)) {
       const favourite = list.find(f => f.slot === Number(event.key));
-      if (favourite && !loading && !busy) { event.preventDefault(); choose(favourite); }
+      if (favourite && !blocked) { event.preventDefault(); choose(favourite); }
     }
   }
-  function row(favourite: Favourite, saved: boolean, reason: string | null = null) {
+  function row({ favourite, saved, reason }: Row) {
     const selected = matches(favourite, composer.selection);
-    const name = modelName(favourite.providerId, favourite.model);
-    const model = catalog.find(p => p.providerId === favourite.providerId)?.models.find(m => m.model === favourite.model);
+    const model = modelOf(favourite.providerId, favourite.model);
+    const name = model?.displayName ?? favourite.model;
     const levels = model?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
-    const savedLevel = favourite.reasoningLevel;
-    return <div className="mf-row" key={favourite.id} data-selected={selected || undefined}>
-      <button type="button" data-model className="mf-select" disabled={busy || loading || Boolean(reason)}
-        aria-label={`Select ${name}`} aria-pressed={selected} onClick={() => choose(favourite)}>
-        <span className="mf-model-name">{name}</span><span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>
+    const unavailable = Boolean(reason);
+    const starBlocked = !saved && (list.length >= 9 || unavailable);
+    return <li className="mf-row" key={favourite.id} data-row={favourite.id} data-selected={selected || undefined} data-unavailable={unavailable || undefined}>
+      <button type="button" data-model className="mf-select" aria-disabled={blocked || unavailable || undefined}
+        aria-label={`Select ${name}`} aria-current={selected || undefined} aria-keyshortcuts={saved ? `${favourite.slot}` : undefined}
+        onClick={() => { if (!blocked && !unavailable) choose(favourite); }}>
+        {saved ? <kbd className="mf-slot" aria-hidden="true">{favourite.slot}</kbd> : <span className="mf-slot" aria-hidden="true" />}
+        <span className="mf-model-name">{name}</span>
+        <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>
       </button>
-      {selected && <Icon name="Check" className="mf-check" />}
-      {saved && model && (levels.length > 0 || savedLevel) && <select className="mf-effort" aria-label={`Saved effort for ${name}`}
-        title="Effort this favourite selects" disabled={busy || loading} value={savedLevel ?? ''}
-        onChange={event => { const value = event.target.value as Effort | '';
-          void run(() => rpc.call('favourites.setEffort', { id: favourite.id, reasoningLevel: value || null }), true); }}>
-        <option value="">Default</option>
-        {levels.map(level => <option key={level} value={level}>{level}</option>)}
-        {savedLevel && !levels.includes(savedLevel) && <option value={savedLevel}>{savedLevel} (unavailable)</option>}
-      </select>}
-      {saved && <kbd className="mf-kbd">{favourite.slot}</kbd>}
-      <button type="button" className="mf-star" data-saved={saved} aria-label={`${saved ? 'Unfavourite' : 'Favourite'} ${name}`} aria-pressed={saved}
+      {saved && model && (levels.length > 0 || favourite.reasoningLevel) && <EffortPill name={name} saved={favourite.reasoningLevel}
+        levels={levels} disabled={blocked} onChange={effort => setEffort(favourite, effort)} />}
+      <span className="mf-check" aria-hidden="true">{selected && <Icon name="Check" className="mf-check-icon" />}</span>
+      <button type="button" className="mf-star" data-saved={saved || undefined} aria-label={`${saved ? 'Unfavourite' : 'Favourite'} ${name}`} aria-pressed={saved}
         title={saved ? 'Remove favourite' : list.length >= 9 ? 'Nine favourites saved. Remove one to make space.' : 'Favourite model'}
-        disabled={busy || loading || (!saved && (list.length >= 9 || Boolean(reason)))} onClick={() => { void run(async () => {
-          if (saved) await rpc.call('favourites.remove', { id: favourite.id });
-          else await rpc.call('favourites.add', { name: '', ...capture(favourite) });
-        }, true); }}><Icon name="Star" className="mf-star-icon" /></button>
-    </div>;
+        aria-disabled={blocked || starBlocked || undefined} onClick={() => { if (!blocked && !starBlocked) toggleFavourite({ favourite, saved, reason }); }}>
+        <Icon name="Star" className="mf-star-icon" />
+      </button>
+    </li>;
   }
   async function changeOption(field: 'reasoningLevel' | 'serviceTier', value: string) {
     const selection = { providerId: composer.selection?.providerId, model: composer.selection?.model, [field]: value };
     const settled = await composer.setSelection(selection);
     if (settled[field] !== value) throw new Error('This option is unavailable for the current model.');
   }
+  const tiers = currentModel?.supportedServiceTiers ?? [];
+  const chips = [{ id: 'all', label: 'All' }, { id: 'favourites', label: 'Favourites', count: list.length },
+    ...providers.map(p => ({ id: p.providerId, label: p.providerName }))];
   return <dialog ref={dialog} className="mf-dialog" aria-label="Switch model" onKeyDown={keyboard}
-    onCancel={event => { event.preventDefault(); if (!working.current) onClose(); }}
+    onCancel={event => { event.preventDefault(); if (!closeInnermostPopover() && !working.current) onClose(); }}
     onPointerDown={event => { if (event.target === event.currentTarget && !working.current) {
       const bounds = event.currentTarget.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) onClose();
     } }}>
     <div className="mf-picker">
-      <div className="mf-search"><Icon name="Search" className="mf-search-icon" />
-        <input ref={searchInput} aria-label="Search models" placeholder="Search any model or provider…" value={query} onChange={event => setQuery(event.target.value)} />
-        <button type="button" className="mf-dismiss" aria-label="Close model switcher" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button>
-      </div>
-      <div className="mf-body">
-        <nav className="mf-nav" aria-label="Filter models">
-          <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All models</button>
-          <button type="button" aria-pressed={filter === 'favourites'} onClick={() => setFilter('favourites')}><Icon name="Star" className="size-3 mf-gold" />Favourites<span className="mf-count">{list.length}</span></button>
-          <div className="mf-divider" />
-          {catalog.map(p => <button type="button" key={p.providerId} aria-pressed={filter === p.providerId} onClick={() => setFilter(p.providerId)}>{p.providerName}</button>)}
-        </nav>
-        <div className="mf-content">
-          {error && <div role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { setError(null); void refresh(); }}>Retry</button></div>}
-          <div className="mf-list" aria-label="Models" aria-busy={loading || busy}>
-            {loading && <p role="status" className="mf-empty">Loading models…</p>}
-            {!loading && !hasResults && <div className="mf-empty">{filter === 'favourites' && !query ? 'Star a model to keep it here.' : 'No models found.'}<br /><span>{filter === 'favourites' && !query ? 'Browse All models to choose your favourites.' : 'Try another name or provider.'}</span></div>}
-            {favourites.length > 0 && <section aria-label="Favourites"><div className="mf-section">Favourites <span>{list.length}/9</span></div>
-              {favourites.map(f => {
-                const providerCatalog = catalog.find(p => p.providerId === f.providerId);
-                return row(f, true, providerCatalog ? availability(f, { available: true, error: providerCatalog.error, models: providerCatalog.models }) : 'Provider unavailable on this machine');
-              })}</section>}
-            {groups.map(p => (p.models.length > 0 || p.error) && <section key={p.providerId} aria-label={p.providerName}>
-              <div className="mf-section">{p.providerName}</div>
-              {p.error ? <p className="mf-empty">{p.error}</p> : p.models.map(m => row({ id: `${p.providerId}:${m.model}`, slot: 1, name: '', providerId: p.providerId, model: m.model }, false))}
-            </section>)}
-          </div>
+      <div className="mf-head">
+        <div className="mf-search"><Icon name="Search" className="mf-search-icon" />
+          <input ref={searchInput} aria-label="Search models" placeholder="Search models or providers…" value={query}
+            autoComplete="off" spellCheck={false} onChange={event => setQuery(event.target.value)} />
+          <button type="button" className="mf-dismiss" aria-label="Close model switcher" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button>
+        </div>
+        <div className="mf-chips" role="group" aria-label="Filter models">
+          {chips.map(chip => <button type="button" key={chip.id} aria-pressed={filter === chip.id} onClick={() => setFilter(chip.id)}>
+            {chip.id === 'favourites' && <Icon name="Star" className="mf-chip-star" />}{chip.label}
+            {'count' in chip && <span className="mf-count">{chip.count}</span>}
+          </button>)}
         </div>
       </div>
-      <div className="mf-settings">
-        <div className="mf-current"><span>{composer.selection?.model ? modelName(currentProvider ?? '', composer.selection.model) : 'Choose a model'}</span><small>{currentProvider ? providerName(currentProvider) : ''} · current selection</small></div>
-        <div className="mf-options">
-          {currentModel && currentModel.supportedReasoningEfforts.length > 0 && <label>Effort<select aria-label="Reasoning effort" disabled={busy || loading} value={composer.selection?.reasoningLevel ?? currentModel.defaultReasoningEffort}
-            onChange={event => { void run(() => changeOption('reasoningLevel', event.target.value)); }}>
-            {currentModel.supportedReasoningEfforts.map(e => <option key={e.reasoningEffort} value={e.reasoningEffort}>{e.reasoningEffort}</option>)}
-          </select></label>}
-          {currentModel && (currentModel.supportedServiceTiers?.length ?? 0) > 0 && <label>Tier<select aria-label="Service tier" disabled={busy || loading} value={composer.selection?.serviceTier ?? 'default'}
-            onChange={event => { void run(() => changeOption('serviceTier', event.target.value)); }}>
-            <option value="default">Default</option>{currentModel.supportedServiceTiers?.filter(t => t.id !== 'default').map(t => <option key={t.id} value={t.id}>{t.label ?? t.id}</option>)}
-          </select></label>}
+      {error && <div role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { setError(null); void refresh(); }}>Retry</button></div>}
+      <div className="mf-list" aria-label="Models" aria-busy={loading || busy}>
+        {loading && <p role="status" className="mf-empty">Loading models…</p>}
+        {!loading && !hasResults && <div className="mf-empty">{filter === 'favourites' && !query ? 'Star a model to keep it here.' : 'No models found.'}<br /><span>{filter === 'favourites' && !query ? 'Browse All to choose your favourites.' : 'Try another name or provider.'}</span></div>}
+        {favouriteRows.length > 0 && <section aria-labelledby="mf-favourites"><h3 id="mf-favourites" className="mf-section">Favourites <span>{list.length}/9</span></h3>
+          <ul>{favouriteRows.map(row)}</ul></section>}
+        {groups.map(p => (p.rows.length > 0 || p.error) && <section key={p.providerId} aria-label={p.providerName}>
+          <h3 className="mf-section">{p.providerName}</h3>
+          {p.error ? <p className="mf-empty">{p.error}</p> : <ul>{p.rows.map(row)}</ul>}
+        </section>)}
+      </div>
+      <div className="mf-now" role="group" aria-label="Current selection">
+        <div className="mf-now-model"><span className="mf-now-label">Now</span>
+          <span className="mf-now-name">{currentModel?.displayName ?? composer.selection?.model ?? 'Choose a model'}</span>
+          {currentProvider && <span className="mf-now-provider">{providerName(currentProvider)}</span>}
+        </div>
+        <div className="mf-now-options">
+          {currentModel && currentModel.supportedReasoningEfforts.length > 0 && <div className="mf-field"><span aria-hidden="true">Effort</span><Segmented label="Reasoning effort" disabled={blocked}
+            value={composer.selection?.reasoningLevel ?? currentModel.defaultReasoningEffort}
+            options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: e.reasoningEffort }))}
+            onChange={value => { void run(() => changeOption('reasoningLevel', value)); }} /></div>}
+          {tiers.length > 0 && <div className="mf-field"><span aria-hidden="true">Tier</span><Segmented label="Service tier" disabled={blocked} value={composer.selection?.serviceTier ?? 'default'}
+            options={[{ value: 'default', label: 'Default' }, ...tiers.filter(t => t.id !== 'default').map(t => ({ value: t.id, label: t.label ?? t.id }))]}
+            onChange={value => { void run(() => changeOption('serviceTier', value)); }} /></div>}
         </div>
       </div>
       {claude && <div className="mf-account">
-        <Icon name="Users" className="size-4" />
-        {accounts?.supported ? <label>Claude account<select ref={accountSelect} aria-label="Claude account" value={accounts.currentId}
-          disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting} onChange={event => { const profileId = event.target.value;
-            void run(async () => {
-              const { currentId } = await rpc.call('choose', { threadId, profileId });
-              setAccounts(previous => previous ? { ...previous, currentId } : previous);
-            }); }}>
-          {accounts.profiles.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select></label> : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? 'Choose an account after the first message.'}</span>}
-        {!threadId && accounts?.supported && <small>New Claude threads start on this account.</small>}
-        <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="RefreshCw" className="size-3" /></button>
-        {accounts?.supported && composer.isRunning && <small>Available when this turn finishes.</small>}
+        {accounts?.supported ? <AccountMenu threadId={threadId} profiles={accounts.profiles} currentId={accounts.currentId} buttonRef={accountButton}
+          disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting}
+          onChoose={profileId => { void run(async () => {
+            const { currentId } = await rpc.call('choose', { threadId, profileId });
+            setAccounts(previous => previous ? { ...previous, currentId } : previous);
+          }); }} />
+          : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? 'Choose an account after the first message.'}</span>}
+        {accounts?.supported && composer.isRunning ? <small>Available when this turn finishes.</small>
+          : !threadId && accounts?.supported && <small>New Claude threads start on this account.</small>}
         {accounts?.supported && profileError && <small role="alert">{profileError}</small>}
+        <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" title="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="RefreshCw" className="mf-refresh-icon" /></button>
       </div>}
-      <div className="mf-footer"><span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> Navigate</span><span><kbd className="mf-kbd">↵</kbd> Select</span><span><kbd className="mf-kbd">1-9</kbd> Favourites</span><span>★ Save model</span></div>
+      <div className="mf-footer" aria-hidden="true">
+        <span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> move</span>
+        <span><kbd className="mf-kbd">↵</kbd> select</span>
+        <span><kbd className="mf-kbd">1-9</kbd> favourite</span>
+        <span><kbd className="mf-kbd">←</kbd><kbd className="mf-kbd">→</kbd> effort</span>
+        <span><kbd className="mf-kbd">⌘S</kbd> star</span>
+      </div>
     </div>
   </dialog>;
 }
+type Row = { favourite: Favourite; saved: boolean; reason: string | null };
 
 export async function command(composer: PluginComposerApi, work: (controller: Controller) => Promise<void>) {
   const controller = controllers.get(composer.key);

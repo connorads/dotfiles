@@ -17,11 +17,18 @@ model** in the composer's plus menu. The picker opens on the focused composer, i
 or a new-thread composer. It changes the next turn and keeps the draft. It never
 sends a prompt.
 
-1. Search by model or provider. Favourites appear first.
-2. Click a model to select it, or click its star to save it as a favourite.
-3. Set the effort and tier for this turn in the footer.
-4. Choose the Claude account in the **Claude account** select. It shows while
+1. Search by model or provider. Filter with the chips under the search field:
+   **All**, **Favourites** or one provider.
+2. Click a model to select it. Click its star to save or remove it as a
+   favourite. The star shows on hover or focus until the model is a favourite.
+3. Set the effort and tier for this turn in the **Now** strip. It shows the
+   current model and only the efforts and tiers that model supports.
+4. Choose the Claude account in the **Claude account** menu. It shows while
    Claude Code is the selected provider.
+
+The list shows **Favourites** first, then one section per provider. A
+favourite row shows its slot number and its saved effort. The selected row has
+a check. An unavailable row is dimmed and shows the reason.
 
 ### Favourites and effort
 
@@ -30,14 +37,16 @@ is filled gold when it is. Click it to save the current model with the current
 effort, or to remove it. Its tooltip names the model and effort.
 
 Up to nine favourites fit in numbered slots. Removing one leaves the other slot
-numbers unchanged. Each favourite has a **Saved effort** select.
+numbers unchanged. Each favourite has a **Saved effort** pill. Click it to choose
+**Default** or an effort the model supports. With a favourite row focused,
+Left and Right step the saved effort.
 
 | Case | Behaviour |
 | --- | --- |
 | Saved effort that the model supports | Selecting the favourite sets that effort. |
-| Saved effort that the model no longer supports | The row is disabled with the reason. Its effort select stays editable. |
+| Saved effort that the model no longer supports | The row is disabled with the reason. Its pill shows **(unavailable)** in amber and stays editable. |
 | No saved effort (**Default**) | Selecting the favourite uses the model's default effort, not the composer's current one. |
-| Footer effort changed | Only this composer changes. Saved efforts stay. |
+| **Now** effort changed | Only this composer changes. Saved efforts stay. |
 
 Cycling skips disabled favourites. A favourite whose provider is unavailable on
 this machine stays visible with a reason. Favourites persist in plugin storage
@@ -47,13 +56,18 @@ and update across open views.
 
 The account status shows in the composer while Claude Code is the selected
 provider. It shows the current account. Clicking it opens the picker with the
-**Claude account** select focused. The picker is the only place to change the
+**Claude account** menu focused. The picker is the only place to change the
 account.
+
+In a thread, the menu shows each account's five-hour and seven-day quota, for
+example `5h 12% · 7d 30%`. The quota loads after the menu opens and comes from
+the server's one-minute quota cache. A new-thread composer has no host yet, so
+its menu shows no quota.
 
 New thread:
 
 1. Click the account status, or run **Agent Switcher: switch account** with the caret in the composer.
-2. Choose an account in the **Claude account** select.
+2. Choose an account in the **Claude account** menu.
 3. Send the first message. The thread starts on that account.
 
 The new-thread choice is remembered, like the model picker. A new Claude thread
@@ -62,7 +76,7 @@ starts on it until you choose another, unless another thread starts it. See the
 
 Existing thread:
 
-1. Finish or stop the turn. Clear queued messages. The account select is disabled during a turn.
+1. Finish or stop the turn. Clear queued messages. The account menu is disabled during a turn.
 2. Click the account status and choose an account.
 3. Send the next message. Claude resumes the same native conversation.
 
@@ -111,7 +125,7 @@ providers other than Claude.
 | Next favourite | Alt+Shift+F |
 | Previous favourite | Assign in BB keyboard settings |
 | Select favourite 1-9 | Assign in BB keyboard settings |
-| Switch account (opens the picker on the account select) | Assign in BB keyboard settings |
+| Switch account (opens the picker on the account menu) | Assign in BB keyboard settings |
 | Show usage | ⌘⇧A |
 
 Inside the picker:
@@ -121,6 +135,9 @@ Inside the picker:
 | Move between models | Up / Down |
 | Select the focused model or first search result | Enter |
 | Select a favourite slot | 1-9 when search is empty, or outside the search field |
+| Step the focused favourite's saved effort | Left / Right |
+| Star or unstar the focused model | ⌘S or Ctrl+S |
+| Close the open effort or account menu | Escape |
 | Close and return to the composer | Escape, or Q outside text fields |
 
 ## New-thread rule

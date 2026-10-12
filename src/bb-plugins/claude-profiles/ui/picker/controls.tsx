@@ -1,0 +1,61 @@
+import { useRef, useState } from 'react';
+import type { Effort } from '../../src/models/contract.ts';
+import { ListPopover } from './popover.tsx';
+
+const LEVEL: Record<Effort, number> = { none: 0, low: 1, medium: 2, high: 3, xhigh: 3, max: 3, ultra: 3, ultracode: 3 };
+
+/** Three bars, filled to the effort's level; none for Default. */
+export function EffortGlyph({ effort }: { effort: Effort | undefined }) {
+  const level = effort ? LEVEL[effort] : 0;
+  return <svg className="mf-glyph" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+    {[0, 1, 2].map(bar => <rect key={bar} x={1 + bar * 4} y={8 - bar * 3} width="2.5" height={3 + bar * 3} rx="1"
+      data-on={bar < level || undefined} />)}
+  </svg>;
+}
+
+/** A favourite's saved effort as a pill that opens a listbox of the model's efforts plus Default. */
+export function EffortPill({ name, saved, levels, disabled, onChange }: {
+  name: string; saved: Effort | undefined; levels: readonly Effort[]; disabled: boolean; onChange: (effort: Effort | null) => void;
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const unavailable = saved !== undefined && !levels.includes(saved);
+  const label = saved === undefined ? 'Default' : unavailable ? `${saved} (unavailable)` : saved;
+  return <>
+    <button ref={button} type="button" className="mf-pill" data-tone={unavailable ? 'warning' : undefined} disabled={disabled}
+      aria-label={`Saved effort for ${name}: ${label}`} aria-haspopup="listbox" aria-expanded={open}
+      title="Effort this favourite selects" onClick={() => setOpen(value => !value)}>
+      <EffortGlyph effort={saved} />{label}
+    </button>
+    {open && <ListPopover anchor={button} label={`Saved effort for ${name}`} align="end" value={saved ?? ''}
+      choices={[{ value: '', label: 'Default', detail: 'Model default' },
+        ...levels.map(level => ({ value: level, label: <><EffortGlyph effort={level} />{level}</> })),
+        ...(unavailable ? [{ value: saved, label: `${saved} (unavailable)`, tone: 'warning' as const }] : [])]}
+      onSelect={value => { if (value !== (saved ?? '')) onChange(value === '' ? null : value as Effort); }}
+      onClose={() => setOpen(false)} />}
+  </>;
+}
+
+/** A radiogroup of mutually exclusive options; arrow keys move and select, as native radios do. */
+export function Segmented({ label, options, value, disabled, onChange }: {
+  label: string; options: readonly { value: string; label: string }[]; value: string; disabled: boolean; onChange: (value: string) => void;
+}) {
+  const group = useRef<HTMLDivElement>(null);
+  const current = Math.max(0, options.findIndex(option => option.value === value));
+  function keyboard(event: React.KeyboardEvent) {
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    event.preventDefault(); event.stopPropagation();
+    if (disabled) return;
+    const next = (current + step + options.length) % options.length;
+    group.current?.querySelectorAll<HTMLElement>('[role=radio]')[next]?.focus();
+    const option = options[next];
+    if (option) onChange(option.value);
+  }
+  return <div ref={group} role="radiogroup" aria-label={label} aria-disabled={disabled || undefined} className="mf-segmented" onKeyDown={keyboard}>
+    {options.map((option, index) => <button key={option.value} type="button" role="radio" aria-checked={index === current}
+      tabIndex={index === current ? 0 : -1} disabled={disabled} onClick={() => { if (option.value !== value) onChange(option.value); }}>
+      {option.label}
+    </button>)}
+  </div>;
+}
