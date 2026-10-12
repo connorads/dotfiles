@@ -329,6 +329,25 @@ Commit: usage module, header badge, overlay and the merged host entry.
 
 ## Step C. One account control
 
+**Status: done.** Core tests stay at 80. UI tests go from 45 to 42: nine
+account menu cases give way to six status and picker cases. Deviations from
+the plan below:
+
+- The status styles move to `ui/account-status.css`. `app.css` is deleted.
+- The status stays clickable during a turn. The picker's account select is
+  disabled then and says "Available when this turn finishes."
+- The status keeps its own `claude-account` customisation. Only the popup goes.
+- `ui/picker/store.ts` exports `openedState()`, which holds the key and focus.
+  It replaces `openedKey()`. The picker focuses the account select once the
+  account list loads.
+- The `app.test.tsx` cases render every composer action and the picker
+  overlay together. One more case checks the `open-switcher` title, its
+  missing shortcut and its account focus.
+- The README use section names the status and the picker. Step E still
+  rewrites the README.
+
+### Changes
+
 - In `app.tsx`, delete `AccountMenu`, the `accounts` popup and the
   `cp-menu`/`cp-item` CSS rules.
 - Rename `AccountButton` to `ui/account-status.tsx`. It shows the dot and,

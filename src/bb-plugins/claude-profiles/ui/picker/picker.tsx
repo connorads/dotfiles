@@ -7,7 +7,7 @@ import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Effort, Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
 import { createController, type Controller } from './controller.ts';
-import { close, open, openedKey, subscribe } from './store.ts';
+import { close, open, openedState, subscribe, type Focus } from './store.ts';
 import './picker.css';
 
 const controllers = new Map<string, Controller>();
@@ -34,14 +34,15 @@ export function Trigger() {
   </button>;
 }
 export function Overlay() {
-  const key = useSyncExternalStore(subscribe, openedKey);
+  const opened = useSyncExternalStore(subscribe, openedState);
   const composers = useComposers();
-  const composer = composers.find(candidate => candidate.key === key);
-  useEffect(() => { if (key && !composer) close(); }, [key, composer]);
-  return composer ? <ModelPicker key={composer.key} composer={composer} onClose={() => { close(); composer.focus(); }} /> : null;
+  const composer = composers.find(candidate => candidate.key === opened?.key);
+  useEffect(() => { if (opened && !composer) close(); }, [opened, composer]);
+  return composer ? <ModelPicker key={composer.key} composer={composer} focus={opened?.focus}
+    onClose={() => { close(); composer.focus(); }} /> : null;
 }
 
-export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi; onClose: () => void }) {
+export function ModelPicker({ composer, focus = 'search', onClose }: { composer: PluginComposerApi; focus?: Focus | undefined; onClose: () => void }) {
   const ownController = useController(composer);
   const controller = controllers.get(composer.key) ?? ownController;
   const rpc = useRpc<typeof rpcContract>();
@@ -58,6 +59,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const [profilesLoading, setProfilesLoading] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const accountSelect = useRef<HTMLSelectElement>(null);
   const generation = useRef(0);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   // Queued-message editors cannot change a thread's account; choosing there would rewrite the next-thread account.
@@ -95,6 +97,12 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     element.showModal(); searchInput.current?.focus();
     return () => { element.close(); };
   }, []);
+  // The account list loads after the dialog opens, so account focus waits for the select.
+  const accountFocused = useRef(false);
+  useEffect(() => {
+    if (focus !== 'account' || accountFocused.current || !accountSelect.current) return;
+    accountFocused.current = true; accountSelect.current.focus();
+  }, [focus, accounts]);
   async function run(work: () => Promise<unknown>, reload = false) {
     if (working.current) return;
     working.current = true; setBusy(true); setError(null);
@@ -217,7 +225,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
       </div>
       {claude && <div className="mf-account">
         <Icon name="Users" className="size-4" />
-        {accounts?.supported ? <label>Claude account<select aria-label="Claude account" value={accounts.currentId}
+        {accounts?.supported ? <label>Claude account<select ref={accountSelect} aria-label="Claude account" value={accounts.currentId}
           disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting} onChange={event => { const profileId = event.target.value;
             void run(async () => {
               const { currentId } = await rpc.call('choose', { threadId, profileId });
