@@ -123,9 +123,9 @@ async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default',
   await bb.storage.kv.set('next-thread-profile', 'personal');
   const hook = harness.inspection.registrations.hooks['message.dispatch'];
   if (!hook) throw new Error('Missing dispatch hook.');
-  const firstSend = ({ parentThreadId = null, ...thread }: ThreadFields = {}) => hook(makeMessageDispatchHookContext({
+  const firstSend = ({ parentThreadId = null, ...thread }: ThreadFields = {}, hostId: string | null = 'h1') => hook(makeMessageDispatchHookContext({
     thread: { id: 'child', providerId: 'claude-code', status: 'pending', parentThreadId, ...thread },
-    host: { id: 'h1' }, parentThreadId }));
+    host: hostId ? { id: hostId } : null, parentThreadId }));
   const binding = () => bb.storage.kv.get<{ hostId: string; profile: { id: string } }>('thread:child');
   return { bb, firstSend, binding };
 }
@@ -192,4 +192,16 @@ test('a child that already has an account keeps it', async () => {
   await bb.storage.kv.set('thread:child', { hostId: 'h1', profile: personal });
   assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
   assert.equal((await binding())?.profile.id, 'personal');
+});
+
+test('a fork of an unbound thread stays on Default, where BB wrote its session', async () => {
+  const { firstSend, binding } = await newThreadSetup();
+  assert.deepEqual(await firstSend({ originKind: 'fork', sourceThreadId: 'source' }), { action: 'proceed' });
+  assert.equal(await binding(), undefined);
+});
+
+test('a child of a thread on Default needs no machine to start', async () => {
+  const { bb, firstSend } = await newThreadSetup();
+  await bb.storage.kv.set('thread:parent', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+  assert.deepEqual(await firstSend({ parentThreadId: 'parent' }, null), { action: 'proceed' });
 });

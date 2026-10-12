@@ -126,7 +126,8 @@ included:
 
 - A child created with `--parent-self`, `--parent-thread` or an SDK
   `parentThreadId` takes its parent's account.
-- A fork takes its source thread's account.
+- A fork takes its source thread's account. A fork of a thread with no
+  account chosen stays on Default, where BB writes the forked session.
 - A parent that never had an account chosen, a non-Claude parent and a
   `bb thread spawn` without a parent use the remembered composer choice.
 

@@ -43,8 +43,8 @@ export default function plugin(bb: BbPluginApi) {
     if (await bb.storage.kv.get<Selection>(key(thread.id))) return;
     const startingId = startingThreadId(thread, parentThreadId);
     const account = newThreadAccount(startingId ? await bb.storage.kv.get<Selection>(key(startingId)) ?? null : null,
-      await bb.storage.kv.get<string>(nextKey) ?? null);
-    if (account.kind === 'default') return;
+      await bb.storage.kv.get<string>(nextKey) ?? null, !parentThreadId && thread.originKind === 'fork');
+    if (account.kind === 'default' || (account.profileId === 'default' && !hostId)) return;
     if (!hostId) throw new Error('Choose a machine before starting a thread on another Claude account.');
     const config = await settings.get();
     const profile = (await host.call('profiles', { root: config.profileRoot }, { hostId })).find(value => value.id === account.profileId);

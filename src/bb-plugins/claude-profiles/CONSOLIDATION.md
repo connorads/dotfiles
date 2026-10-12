@@ -576,6 +576,7 @@ Bindings never moved, so rollback restores only code and UI.
    so the fork then resumes under the named account and cannot find it. Bind
    forks of an unbound source to Default, or copy the forked session with the
    `transfer` host call?
+   Answered: bind them to Default.
 6. Should `engines.bb` be `>=0.46`? The picker code comes from Model
    Favourites, which declared `>=0.46`. `bb --version` reports 0.45.0 for the
    CLI that builds the plugin.
