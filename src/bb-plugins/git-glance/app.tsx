@@ -1,6 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
+import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { rpcContract } from './contracts.ts';
 import { GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renewAll, useRepo } from './repo-store.ts';
@@ -51,16 +52,15 @@ function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
     ? [`Git: ${branch}`, data.branch.ahead && `${data.branch.ahead} to push`, data.branch.behind && `${data.branch.behind} to pull`,
       files ? `${files} changed` : 'clean'].filter(Boolean).join(', ')
     : `Git status unavailable: ${error}`;
-  return <button type="button" className="gg-chip" data-git-glance={threadId} aria-expanded={isOpen} aria-haspopup="dialog"
-    data-tone={error ? 'error' : danger ? 'danger' : files ? 'dirty' : 'clean'} aria-label={label} title={`${label} (⌥G)`}
-    onClick={event => toggle(threadId, event.detail === 0 ? 'keyboard' : 'pointer')}>
-    {op?.status === 'running' ? <span className="gg-spinner gg-spinner-sm" aria-hidden />
-      : <Icon name={data?.operation ? 'AlertTriangle' : 'GitBranch'} className="gg-chip-icon" />}
-    {!isCompactViewport && <span className="gg-chip-branch">{data?.operation ? data.operation : branch}</span>}
+  return <GlanceChip data-git-glance={threadId} expanded={isOpen} tone={error ? 'warn' : danger ? 'danger' : undefined}
+    aria-label={label} title={`${label} (⌥G)`} onClick={event => toggle(threadId, event.detail === 0 ? 'keyboard' : 'pointer')}
+    icon={op?.status === 'running' ? <span className="gg-spinner gg-spinner-sm" />
+      : <Icon name={data?.operation || error ? 'AlertTriangle' : 'GitBranch'} />}>
+    {!isCompactViewport && <ChipValue className="gg-chip-branch">{data?.operation ? data.operation : branch}</ChipValue>}
     {data && data.branch.ahead > 0 && !isCompactViewport && <span className="gg-chip-ahead">↑{data.branch.ahead}</span>}
     {data && data.branch.behind > 0 && !isCompactViewport && <span className="gg-chip-behind">↓{data.branch.behind}</span>}
-    {files > 0 && <span className="gg-chip-dirty"><i />{files}</span>}
-  </button>;
+    {files > 0 && <ChipDot tone="warn">{files}</ChipDot>}
+  </GlanceChip>;
 }
 
 export default definePluginApp(app => {

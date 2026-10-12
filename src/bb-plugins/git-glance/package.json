@@ -19,7 +19,7 @@
     "build": "bb plugin build",
     "dev": "bb plugin dev"
   },
-  "dependencies": { "zod": "catalog:" },
+  "dependencies": { "@bb-plugins/chip": "workspace:*", "zod": "catalog:" },
   "devDependencies": {
     "@get-bb/plugin-sdk": "catalog:",
     "@types/better-sqlite3": "catalog:",
