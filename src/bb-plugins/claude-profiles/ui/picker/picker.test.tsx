@@ -471,3 +471,55 @@ test('a queued-message editor shows no account control and never changes the acc
     expect(accountCalls).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('rows name their provider only where the section heading does not', async () => {
+  const slot = render([first]);
+  try {
+    const favourite = await enabledRow(slot, 'Select model-a');
+    expect(favourite.textContent).toBe('1model-aCodex');
+    expect(slot.getByRole('button', { name: 'Select model-b' }).textContent).toBe('model-b');
+    fireEvent.change(slot.getByLabelText('Search models'), { target: { value: 'model' } });
+    expect(slot.getByRole('button', { name: 'Select model-b' }).textContent).toBe('model-bCodex');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('effort glyphs keep Default aligned and tell levels above high apart', async () => {
+  const slot = render([{ ...first, reasoningLevel: 'ultra' }, { ...second, reasoningLevel: 'xhigh' }]);
+  try {
+    await slot.findByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    const bars = (element: Element | null | undefined) => element?.querySelectorAll('.mf-glyph rect[data-on]').length;
+    const menu = effortMenu(slot, 'model-a');
+    const option = (name: RegExp) => within(menu).getByRole('option', { name });
+    expect(option(/^Default/).querySelector('.mf-glyph')).not.toBeNull();
+    expect([bars(option(/^Default/)), bars(option(/^low/)), bars(option(/^high/))]).toEqual([0, 1, 3]);
+    const xhigh = slot.getByRole('button', { name: 'Saved effort for model-b: xhigh (unavailable)' });
+    const ultra = slot.getByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    expect(bars(xhigh)).toBe(4);
+    expect(bars(ultra)).toBe(4);
+    expect(xhigh.querySelector('.mf-glyph')?.getAttribute('data-peak')).toBeNull();
+    expect(ultra.querySelector('.mf-glyph')?.getAttribute('data-peak')).toBe('true');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the Claude account refresh button uses an icon BB provides', async () => {
+  const slot = render([], null, {});
+  try {
+    const refresh = await slot.findByRole('button', { name: 'Refresh Claude accounts' });
+    expect(refresh.querySelector('[data-icon]')?.getAttribute('data-icon')).toBe('ArrowReloadHorizontal');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the provider chip strip fades whichever edge hides chips', async () => {
+  const slot = render();
+  try {
+    await enabledRow(slot, 'Select model-a');
+    const strip = slot.getByRole('group', { name: 'Filter models' });
+    Object.defineProperties(strip, { clientWidth: { value: 200 }, scrollWidth: { value: 400 }, scrollLeft: { value: 0, writable: true } });
+    fireEvent.scroll(strip);
+    expect([strip.hasAttribute('data-more-start'), strip.hasAttribute('data-more-end')]).toEqual([false, true]);
+    strip.scrollLeft = 100; fireEvent.scroll(strip);
+    expect([strip.hasAttribute('data-more-start'), strip.hasAttribute('data-more-end')]).toEqual([true, true]);
+    strip.scrollLeft = 200; fireEvent.scroll(strip);
+    expect([strip.hasAttribute('data-more-start'), strip.hasAttribute('data-more-end')]).toEqual([true, false]);
+  } finally { slot.lifecycle.unmount(); }
+});

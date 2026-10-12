@@ -2,13 +2,14 @@ import { useRef, useState } from 'react';
 import type { Effort } from '../../src/models/contract.ts';
 import { ListPopover } from './popover.tsx';
 
-const LEVEL: Record<Effort, number> = { none: 0, low: 1, medium: 2, high: 3, xhigh: 3, max: 3, ultra: 3, ultracode: 3 };
+const LEVEL: Record<Effort, number> = { none: 0, low: 1, medium: 2, high: 3, xhigh: 4, max: 4, ultra: 4, ultracode: 4 };
 
-/** Three bars, filled to the effort's level; none for Default. */
+/** Four bars, filled to the effort's level and tinted beyond xhigh; none for Default. */
 export function EffortGlyph({ effort }: { effort: Effort | undefined }) {
   const level = effort ? LEVEL[effort] : 0;
-  return <svg className="mf-glyph" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-    {[0, 1, 2].map(bar => <rect key={bar} x={1 + bar * 4} y={8 - bar * 3} width="2.5" height={3 + bar * 3} rx="1"
+  return <svg className="mf-glyph" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"
+    data-peak={(level === 4 && effort !== 'xhigh') || undefined}>
+    {[0, 1, 2, 3].map(bar => <rect key={bar} x={0.5 + bar * 3} y={9 - bar * 2.5} width="2" height={2.5 + bar * 2.5} rx="0.75"
       data-on={bar < level || undefined} />)}
   </svg>;
 }
@@ -28,9 +29,9 @@ export function EffortPill({ name, saved, levels, disabled, onChange }: {
       <EffortGlyph effort={saved} />{label}
     </button>
     {open && <ListPopover anchor={button} label={`Saved effort for ${name}`} align="end" value={saved ?? ''}
-      choices={[{ value: '', label: 'Default', detail: 'Model default' },
+      choices={[{ value: '', label: <><EffortGlyph effort={undefined} />Default</>, detail: 'Model default' },
         ...levels.map(level => ({ value: level, label: <><EffortGlyph effort={level} />{level}</> })),
-        ...(unavailable ? [{ value: saved, label: `${saved} (unavailable)`, tone: 'warning' as const }] : [])]}
+        ...(unavailable ? [{ value: saved, label: <><EffortGlyph effort={saved} />{saved} (unavailable)</>, tone: 'warning' as const }] : [])]}
       onSelect={value => { if (value !== (saved ?? '')) onChange(value === '' ? null : value as Effort); }}
       onClose={() => setOpen(false)} />}
   </>;
