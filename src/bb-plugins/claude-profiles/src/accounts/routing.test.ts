@@ -25,3 +25,8 @@ test('an unbound parent and no parent use the composer account', () => {
   assert.deepEqual(newThreadAccount(null, 'default'), { kind: 'default' });
   assert.deepEqual(newThreadAccount(null, null), { kind: 'default' });
 });
+
+test('a fork with no account to inherit stays on Default, whatever the composer shows', () => {
+  assert.deepEqual(newThreadAccount(null, 'personal', true), { kind: 'default' });
+  assert.deepEqual(newThreadAccount(work, 'personal', true), { kind: 'inherit', profileId: 'work', label: 'Work' });
+});

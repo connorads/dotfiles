@@ -14,11 +14,14 @@ export function startingThreadId(thread: { originKind: 'fork' | null; sourceThre
   return parentThreadId ?? (thread.originKind === 'fork' ? thread.sourceThreadId : null);
 }
 
-/** Any binding passes on, Default included, so a child of a thread on Default and its own children stay on Default. */
-export function newThreadAccount(startingBinding: Selection | null, composerProfileId: string | null): NewThreadAccount {
+/**
+ * Any binding passes on, Default included, so a child of a thread on Default and its own children stay on Default.
+ * A fork of an unbound thread stays on Default: BB writes the forked session under the default config directory.
+ */
+export function newThreadAccount(startingBinding: Selection | null, composerProfileId: string | null, fork = false): NewThreadAccount {
   if (startingBinding) {
     return { kind: 'inherit', profileId: startingBinding.profile.id, label: startingBinding.profile.label };
   }
-  if (!composerProfileId || composerProfileId === 'default') return { kind: 'default' };
+  if (fork || !composerProfileId || composerProfileId === 'default') return { kind: 'default' };
   return { kind: 'composer', profileId: composerProfileId };
 }
