@@ -100,6 +100,7 @@ focused popup own dismissal and focus restoration. Nested popups close one layer
 at a time.
 
 Thread searches compare titles separately from project and provider labels.
+Literal thread searches also compare joined words, so `kbsync` matches `KB sync`.
 Clear literal matches navigate immediately. Reordered words, singular/plural
 forms and one small spelling error offer up to three numbered matches.
 Approximate matches require at least two words and one exact word. They do not
