@@ -33,13 +33,13 @@ function render(initial = [first, second], error: string | null = null, account?
     sdk: {
       plugins: { callRpc: async args => {
         if (account?.missing) throw new Error('Claude Profiles is disabled');
-        if (args.method === 'switch') {
+        if (args.method === 'choose') {
           if (account?.failSwitch) throw new Error('Clear queued messages before switching profiles.');
           profileId = 'work';
-          return args.outputSchema.parse({ hostId: 'host-test', profile: { id: 'work', label: 'Work', configDir: '/profiles/work' } });
+          return args.outputSchema.parse({ currentId: 'work' });
         }
         return args.outputSchema.parse({ supported: true, profiles: [{ id: 'default', label: 'Default' }, { id: 'work', label: 'Work' }],
-          selection: profileId ? { profile: { id: profileId, label: 'Work' } } : null });
+          currentId: profileId ?? 'default' });
       } },
       threads: { get: async () => ({
         id: 'thread-test', providerId, environmentId: 'environment-test', projectId: 'project-test', status: 'idle',

@@ -40,3 +40,24 @@ Verified 2026-10-10 against BB 0.45.0 and Claude Code 2.1.293:
 The temporary proof plugin is removed and the disposable thread is archived.
 The installed `claude-profiles` plugin is enabled and running. The built-in
 Account Pooler and Provider Usage panel remain disabled.
+
+## Composer picker verification
+
+Verified 2026-10-12 against BB 0.46.0 and SDK 0.6.15:
+
+- Passed: on a new thread's first send, `message.dispatch` ran with the thread
+  `pending` and its host resolved. The provider env contribution ran 29 ms later
+  and read the value that hook stored. A disposable spike plugin proved the order.
+- Passed: a remembered `stretch` choice started a new thread with
+  `CLAUDE_CONFIG_DIR` set to the stretch profile, and the turn completed.
+- Failed, then fixed: switching that thread to Default contributed an empty
+  `CLAUDE_CONFIG_DIR`. Claude resolved it against the working directory, created
+  `sessions/` and `seed-admin/` there and reported `No conversation found`.
+  Default now contributes nothing. The retried turn recalled the earlier word
+  with `CLAUDE_CONFIG_DIR` unset.
+- Passed: 21 core tests, 9 SDK app-harness tests, TypeScript checks and BB builds.
+- Skipped: desktop visual confirmation. Screen capture is unavailable to the agent.
+
+`ComposerSubmitOptions.experimental_data` reaches dispatch hooks only through
+plugin-initiated `composer.submit`, not a plain Enter. So the new-thread choice
+is remembered rather than bound to one draft.

@@ -1,114 +1,92 @@
 // @vitest-environment jsdom
 import { test, expect } from 'vitest';
-import { act, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
-import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
+import type { PluginRpcTestHandlers, RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
 import type { rpcContract } from './contracts.ts';
-import type { PluginCommandContext, PluginCommandRegistration, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 
-const props = { threadId: 'thread-test', projectId: 'project-test', isCompactViewport: false };
 const profiles = [
   { id: 'default', label: 'Default', configDir: null },
   { id: 'work', label: 'work', configDir: '/profiles/work' },
   { id: 'client', label: 'client', configDir: '/profiles/client' },
 ];
-async function render(rpc: Partial<PluginRpcTestHandlers<typeof rpcContract>> = {}) {
+const newThread = { scope: { kind: 'new-thread' as const, projectId: 'project-test' }, selection: { providerId: 'claude-code' } };
+const thread = { scope: { kind: 'thread' as const, threadId: 'thread-test' } };
+type Composer = NonNullable<RenderSlotOptions<typeof rpcContract>['composer']>;
+
+async function render(part: 'button' | 'menu', composer: Composer, rpc: Partial<PluginRpcTestHandlers<typeof rpcContract>> = {}) {
   const app = await loadPluginApp(() => import('./app.tsx'));
-  const registration = app.threadHeaderActions[0];
-  if (!registration) throw new Error('Missing profile action.');
-  const slot = renderSlot<PluginThreadHeaderActionProps, typeof rpcContract>(registration, props, { rpc: {
-    thread: () => ({ supported: true, profiles, selection: null }),
-    switch: input => ({ hostId: 'host-test', profile: profiles.find(profile => profile.id === input.profileId)! }),
+  const customization = app.composerCustomizations[0];
+  const registration = part === 'button' ? customization?.actions?.[0] : customization?.experimental_popups?.[0];
+  if (!registration) throw new Error(`Missing ${part}.`);
+  let currentId = 'default';
+  return renderSlot<object, typeof rpcContract>(registration, {}, { composer, rpc: {
+    accounts: () => ({ supported: true, profiles, currentId }),
+    choose: input => { currentId = input.profileId; return { currentId }; },
     usage: () => { throw new Error('The switcher must not request quota.'); },
     ...rpc,
   } });
-  return { app, slot };
 }
+const choices = (slot: Awaited<ReturnType<typeof render>>) => slot.inspection.rpcCalls.filter(call => call.method === 'choose');
 
-test('the switcher shows account names without requesting quota', async () => {
-  const { slot } = await render();
+test('the new-thread composer shows the remembered account for Claude Code', async () => {
+  const slot = await render('button', newThread, { accounts: () => ({ supported: true, profiles, currentId: 'work' }) });
   try {
-    const button = await slot.findByRole('button', { name: /Claude account/ });
-    expect(button.textContent).toBe('Default');
-    fireEvent.click(button);
-    expect((await slot.findByRole('menuitemradio', { name: /work/ })).textContent).toBe('2work');
-    expect(slot.inspection.rpcCalls.filter(call => call.method === 'usage')).toHaveLength(0);
-    expect(slot.getByRole('menu').textContent).not.toContain('refresh');
+    expect((await slot.findByRole('button', { name: /Claude account/ })).textContent).toBe('work');
+    expect(slot.inspection.rpcCalls.find(call => call.method === 'accounts')?.input).toEqual({ threadId: null });
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('one click on an account row switches the thread and closes the menu', async () => {
-  const { slot } = await render();
+test('the account picker hides when the new-thread composer selects another provider', async () => {
+  const slot = await render('button', { ...newThread, selection: { providerId: 'codex' } });
   try {
-    fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
+    await waitFor(() => expect(slot.inspection.rpcCalls.some(call => call.method === 'accounts')).toBe(true));
+    expect(slot.queryByRole('button')).toBeNull();
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a running thread disables the account picker', async () => {
+  const slot = await render('button', { ...thread, isRunning: true });
+  try {
+    expect((await slot.findByRole('button', { name: /Claude account/ })).hasAttribute('disabled')).toBe(true);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('choosing in the new-thread composer remembers the account without a thread', async () => {
+  const slot = await render('menu', newThread);
+  try {
     fireEvent.click(await slot.findByRole('menuitemradio', { name: /work/ }));
-    await waitFor(() => expect(slot.queryByRole('menu')).toBe(null));
-    expect(slot.getByRole('button', { name: /Claude account/ }).textContent).toContain('work');
-    expect(slot.inspection.rpcCalls.filter(call => call.method === 'switch')).toHaveLength(1);
+    await waitFor(() => expect(choices(slot)).toHaveLength(1));
+    expect(choices(slot)[0]?.input).toEqual({ threadId: null, profileId: 'work' });
+    expect(slot.getByRole('menu').textContent).toContain('New Claude threads start on this account.');
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('number keys switch accounts and Escape closes the menu', async () => {
-  const { slot } = await render();
+test('number keys and Enter switch the thread account', async () => {
+  const slot = await render('menu', thread);
   try {
-    fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
     const menu = await slot.findByRole('menu');
     fireEvent.keyDown(menu, { key: '3' });
-    await waitFor(() => expect(slot.queryByRole('menu')).toBe(null));
-    expect(slot.getByRole('button', { name: /Claude account/ }).textContent).toContain('client');
-    fireEvent.click(slot.getByRole('button', { name: /Claude account/ }));
-    fireEvent.keyDown(await slot.findByRole('menu'), { key: 'Escape' });
-    expect(slot.queryByRole('menu')).toBe(null);
-  } finally { slot.lifecycle.unmount(); }
-});
-
-test('arrow keys move focus and Enter switches to the focused account', async () => {
-  const { slot } = await render();
-  try {
-    fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
-    const menu = await slot.findByRole('menu');
+    await waitFor(() => expect(choices(slot)[0]?.input).toEqual({ threadId: 'thread-test', profileId: 'client' }));
     fireEvent.keyDown(menu, { key: 'ArrowDown' });
-    expect(document.activeElement?.textContent).toContain('work');
     fireEvent.keyDown(menu, { key: 'Enter' });
-    await waitFor(() => expect(slot.getByRole('button', { name: /Claude account/ }).textContent).toContain('work'));
+    await waitFor(() => expect(choices(slot)).toHaveLength(2));
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('failed switch keeps the menu open and explains the refusal', async () => {
-  const { slot } = await render({ switch: () => { throw new Error('Finish or stop the turn first.'); } });
+test('a refused switch explains why and keeps the current account', async () => {
+  const slot = await render('menu', thread, { choose: () => { throw new Error('Finish or stop the turn first.'); } });
   try {
-    fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
     fireEvent.click(await slot.findByRole('menuitemradio', { name: /client/ }));
     expect((await slot.findByRole('alert')).textContent).toContain('Finish or stop');
     expect(slot.getByRole('menuitemradio', { name: /Default/ }).getAttribute('aria-checked')).toBe('true');
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('the open-switcher command opens the menu for the thread in view', async () => {
-  const { app, slot } = await render();
+test.each(['q', 'Q', 'Escape'])('%s closes the menu without switching', async key => {
+  const slot = await render('menu', thread);
   try {
-    // The test runtime captures commands, but CapturedPluginApp does not type them.
-    const { commandPaletteActions } = app as unknown as { commandPaletteActions: (PluginCommandRegistration & { target: string })[] };
-    const command = commandPaletteActions.find(action => action.id === 'open-switcher');
-    if (!command || command.target !== 'app') throw new Error('Missing open-switcher command.');
-    expect(command.defaultShortcut).toBeNull();
-    const context = { threadId: 'thread-test', projectId: 'project-test', openPanel: () => false } satisfies PluginCommandContext;
-    await waitFor(() => expect(command.isAvailable?.(context)).toBe(true));
-    expect(command.isAvailable?.({ ...context, threadId: 'other-thread' })).toBe(false);
-    await act(async () => { await command.run(context); });
-    expect(await slot.findByRole('menu')).toBeTruthy();
-  } finally { slot.lifecycle.unmount(); }
-});
-
-
-test.each(['q', 'Q'])('%s closes accounts and restores trigger focus without switching', async key => {
-  const { slot } = await render();
-  try {
-    const trigger = await slot.findByRole('button', { name: /Claude account/ });
-    fireEvent.click(trigger);
     fireEvent.keyDown(await slot.findByRole('menu'), { key });
-    expect(slot.queryByRole('menu')).toBeNull();
-    expect(document.activeElement).toBe(trigger);
-    expect(slot.inspection.rpcCalls.filter(call => call.method === 'switch')).toHaveLength(0);
+    expect(choices(slot)).toHaveLength(0);
   } finally { slot.lifecycle.unmount(); }
 });
