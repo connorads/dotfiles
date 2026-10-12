@@ -62,6 +62,14 @@ mise; macOS vendor bundle -> Homebrew.
 
 Claude Code is mise-owned. Do not install it natively or re-enable its self-updater. Why: [docs/adr/0011](../docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
 
+## Mouse buttons
+
+The desktop declares LinearMouse as a Homebrew cask and starts it at login through
+launchd. Home Manager writes its mutable JSON configuration on activation.
+UI edits last until the next rebuild. macOS requires Accessibility approval.
+The Evoluent VerticalMouse 4 Left maps Button 5 to Forward. Other devices use
+their existing button behaviour.
+
 ## Cleanup
 
 Homebrew manages automatic cleanup during upgrades. On non-NixOS Linux with APT, `up` runs autoremove after a successful upgrade; frozen mode skips this phase. `up` does not prune mise versions or caches, and its summary does not report what cleanup removed.
