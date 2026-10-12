@@ -5,6 +5,7 @@ import {
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
+import type { ArchiveTarget } from './archive.ts';
 import './app.css';
 
 interface Choices {
@@ -27,6 +28,7 @@ function VoiceCard() {
   const [expanded, setExpanded] = useState(false);
   const [message, setMessage] = useState('Say “voice help” to see commands.');
   const [choices, setChoices] = useState<Choices | null>(null);
+  const [archiveConfirmation, setArchiveConfirmation] = useState<{ target: ArchiveTarget; context: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
@@ -52,7 +54,7 @@ function VoiceCard() {
     return () => { active = false; };
   }, [sdk]);
 
-  useEffect(() => { setChoices(null); setHighlight(0); }, [contextKey]);
+  useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
   useEffect(() => {
     if (observedThread.current === context.threadId) return;
     observedThread.current = context.threadId;
@@ -97,7 +99,37 @@ function VoiceCard() {
   };
 
   const handle = async (command: Command): Promise<Reply> => {
+    if (command.action !== 'confirm-archive' && command.action !== 'cancel-archive') setArchiveConfirmation(null);
     switch (command.action) {
+      case 'archive':
+      case 'confirm-archive': {
+        if (!context.threadId) throw new Error('Select an existing thread to archive.');
+        const expectedContext = contextKey;
+        const pending = command.action === 'confirm-archive' ? archiveConfirmation : null;
+        if (command.action === 'confirm-archive' && (!pending || pending.context !== expectedContext)) {
+          throw new Error('There is no archive to confirm. Say “archive this thread”.');
+        }
+        const target = pending?.target ?? await rpc.call('archiveTarget', { threadId: context.threadId });
+        if (latestContext.current !== expectedContext || !document.hasFocus()) throw new Error('BB focus changed. Say the archive command again.');
+        const result = await rpc.call('archive', { target, confirmed: command.action === 'confirm-archive' });
+        setChoices(null);
+        if (result.outcome === 'confirmation' && result.target) {
+          setArchiveConfirmation({ target: result.target, context: expectedContext });
+        } else {
+          setArchiveConfirmation(null);
+          if (result.outcome === 'archived' && latestContext.current === expectedContext) actions.openNewThread({ projectId: target.projectId, focusPrompt: true });
+        }
+        return { ok: true, message: result.message };
+      }
+      case 'cancel-archive':
+        setArchiveConfirmation(null);
+        return { ok: true, message: 'Archive cancelled.' };
+      case 'restore': {
+        const expectedContext = contextKey;
+        const result = await rpc.call('restore', {});
+        if (result.outcome === 'restored' && result.target && latestContext.current === expectedContext && document.hasFocus()) actions.open(result.target.threadId);
+        return { ok: result.outcome === 'restored', message: result.message };
+      }
       case 'list': return { ok: true, message: 'Choices loaded.', candidates: await list(command.kind), context: contextKey };
       case 'select': return select(command.kind, command.id, command.context);
       case 'choices': {
@@ -196,6 +228,7 @@ function VoiceCard() {
       if (event.key === 'Escape' && expanded) {
         event.preventDefault(); event.stopImmediatePropagation();
         setChoices(null); setExpanded(false); composer.focus();
+        setArchiveConfirmation(null);
       } else if (expanded && choices && event.key === 'Enter') {
         event.preventDefault(); event.stopImmediatePropagation();
         if (!busy) void run({ action: 'choose', number: highlight + 1 });
@@ -219,6 +252,10 @@ function VoiceCard() {
       <strong>{thread?.displayTitle ?? 'New thread'}</strong>
       <p>{projectId ? projectName(projectId) : 'Choose a project'} · {composer.selection?.model ?? composer.selection?.providerId ?? 'Choose an agent'}</p>
       <p role="status">{message}</p>
+      {archiveConfirmation && <div role="group" aria-label="Confirm archive">
+        <button type="button" disabled={busy} onClick={() => void run({ action: 'confirm-archive' })}>Confirm archive</button>
+        <button type="button" disabled={busy} onClick={() => void run({ action: 'cancel-archive' })}>Cancel archive</button>
+      </div>}
       {choices ? <ol>{choices.options.map((option, index) => <li key={option.id}>
         <button type="button" disabled={busy} aria-current={index === highlight ? 'true' : undefined}
           onClick={() => void run({ action: 'choose', number: index + 1 })}>{index + 1}. {option.label}</button>
@@ -227,6 +264,7 @@ function VoiceCard() {
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
+        <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Use Sonnet” / “Choose two”</dt><dd>Select a model or numbered match</dd>
       </dl>}

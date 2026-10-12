@@ -116,6 +116,34 @@ export default defineHexConfig({
       description: "Show BB voice commands and pedal actions",
       run: async () => { await runBb(bbPorts, { action: "help" }) },
     },
+    "bb-archive": {
+      phrases: ["archive this thread", "archive thread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Archive the selected BB thread",
+      run: async () => { await runBb(bbPorts, { action: "archive" }) },
+    },
+    "bb-confirm-archive": {
+      phrases: ["confirm archive"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Confirm the pending BB archive",
+      run: async () => { await runBb(bbPorts, { action: "confirm-archive" }) },
+    },
+    "bb-cancel-archive": {
+      phrases: ["cancel archive"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Cancel the pending BB archive",
+      run: async () => { await runBb(bbPorts, { action: "cancel-archive" }) },
+    },
+    "bb-restore": {
+      phrases: ["unarchive last thread", "restore last thread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Restore the last BB voice archive",
+      run: async () => { await runBb(bbPorts, { action: "restore" }) },
+    },
     // Choice aliases must be single words; keys are the macOS app names.
     "open-app": {
       phrases: ["open {app}", "switch to {app}"],

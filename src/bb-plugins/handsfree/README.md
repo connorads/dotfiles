@@ -23,6 +23,9 @@ thread, project, model, command help and numbered matches.
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match |
 | `voice help` | Show the command card |
+| `archive this thread` / `archive thread` | Archive the selected thread |
+| `confirm archive` / `cancel archive` | Answer an archive confirmation |
+| `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
 
 Enter selects the highlighted voice match while choices are open. Escape closes
 the card and restores composer focus. Outside the card, BB handles both pedals.
@@ -32,6 +35,16 @@ Project selection opens a new draft; it does not move an existing conversation.
 The Voice card keeps ten recent results in memory, including heard search targets.
 Reloading clears this card history. Hex's diagnostic logs have separate retention.
 Navigation requests report the observed destination when the selected thread changes.
+
+Idle threads archive immediately. Running or queued work and child threads require
+confirmation. Changing the selected context or issuing another command cancels
+the pending confirmation. Archive targets the selected thread without title matching.
+
+The server retains ten voice archives across plugin reloads. Repeated restore
+commands reverse those archives in order. Each restore includes the threads that
+BB archived with the parent. Partial restores retain the remaining threads for retry.
+Restoration opens the conversation; it does not restart stopped work or restore
+retired workspaces. BB keeps running turns and terminals for a 30-second archive grace period.
 
 Model selection changes the next message. It does not switch agent providers or
 interrupt a running turn. A draft retains its text until the user submits it.

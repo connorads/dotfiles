@@ -16,6 +16,10 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('finished') }).strict(),
   z.object({ action: z.literal('new') }).strict(),
   z.object({ action: z.literal('help') }).strict(),
+  z.object({ action: z.literal('archive') }).strict(),
+  z.object({ action: z.literal('confirm-archive') }).strict(),
+  z.object({ action: z.literal('cancel-archive') }).strict(),
+  z.object({ action: z.literal('restore') }).strict(),
   z.object({ action: z.literal('notice'), message: z.string().max(1024) }).strict(),
 ]);
 export const replySchema = z.object({
