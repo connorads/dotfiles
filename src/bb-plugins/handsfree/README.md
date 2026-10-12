@@ -26,12 +26,18 @@ New drafts provide the same control beside the composer actions.
 | `select project kb` / `switch project to kb` | Open a draft in that project |
 | `new thread in dotfiles` | Match a project and open its draft |
 | `use Sonnet` | Match a model offered by the selected agent |
-| `choose two` | Select a numbered voice match |
+| `choose two` | Select a numbered voice match or native question answer |
 | `voice help` | Open the monitor command list |
 | `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
+
+"Choose" uses BB's active choice panel. A focused voice picker owns its choices.
+Otherwise the focused pane's native question panel receives the option number.
+Returning to the composer makes old voice choices inactive. Selecting an answer
+keeps the question open; submit it separately. Missing options do not select from
+another panel. Hidden, disabled and unfocused question panels reject selection.
 
 Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
@@ -115,6 +121,25 @@ flowchart LR
   Match --> Card[Numbered choices]
   Card --> Action
 ```
+
+## Development SDK
+
+The active choice-panel API requires the local BB SDK in `~/git/getbb`.
+Build that SDK before installing this workspace:
+
+```sh
+cd ~/git/getbb
+pnpm exec turbo run build build:types --filter=@get-bb/plugin-sdk
+```
+
+The desktop must include `experimental_useChoicePanels` before loading this plugin.
+To build with the checkout's CLI, run from `~/git/getbb`:
+
+```sh
+env -u BB_CLI pnpm bb:dev plugin build ~/src/bb-plugins/handsfree
+```
+
+`BB_CLI` redirects CLI entrypoints to the installed binary. Unset it for source builds.
 
 ## Install and verify
 

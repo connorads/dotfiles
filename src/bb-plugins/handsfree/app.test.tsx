@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { useEffect, useRef, useState } from 'react';
+import { experimental_useChoicePanels } from '@get-bb/plugin-sdk/app';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
@@ -24,7 +26,8 @@ let headerSlot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[], diagnostics: () => Diagnostics | Promise<Diagnostics> = () => unavailableDiagnostics) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean } } = {}) {
+  const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
@@ -40,7 +43,12 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
   const app = await loadPluginApp(() => import('./app.tsx'));
   const registration = app.appOverlays[0];
   if (!registration) throw new Error('Voice overlay missing');
-  slot = renderSlot<object, typeof rpcContract>(registration, {}, {
+  const VoiceComponent = registration.component;
+  const wrapped = { ...registration, component: () => <>
+    {nativeQuestion && <NativeQuestion {...nativeQuestion} />}
+    <VoiceComponent />
+  </> };
+  slot = renderSlot<object, typeof rpcContract>(wrapped, {}, {
     context: { threadId: 't1', projectId: 'p1' },
     composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' } },
     sidebarThreads: {
@@ -78,6 +86,68 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
     },
   };
 }
+
+function NativeQuestion({ multi = false, disabled = false }: { multi?: boolean; disabled?: boolean }) {
+  const choices = experimental_useChoicePanels();
+  const element = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<number[]>([]);
+  useEffect(() => {
+    if (!element.current) return;
+    return choices.register({
+      element: element.current,
+      isAvailable: () => !disabled,
+      select: number => {
+        if (number > 2) return { outcome: 'unavailable', message: `Answer ${number} is unavailable.` };
+        setSelected(current => multi ? current.includes(number) ? current.filter(item => item !== number) : [...current, number] : [number]);
+        return { outcome: 'selected', message: `Selected answer ${number}.` };
+      },
+    });
+  }, [choices, multi, disabled]);
+  return <div ref={element} role="group" aria-label="Native question">
+    <button aria-pressed={selected.includes(1)}>Answer one</button>
+    <button aria-pressed={selected.includes(2)}>Answer two</button>
+  </div>;
+}
+
+test('spoken choose selects a native answer without submitting', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({ ok: true, message: 'Selected answer 1.' });
+  expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('true');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('spoken choose preserves multiple selection toggles', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: { multi: true } });
+  await view.command({ action: 'choose', number: 1 });
+  await view.command({ action: 'choose', number: 2 });
+  expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('true');
+  expect(view.slot.getByRole('button', { name: 'Answer two' }).getAttribute('aria-pressed')).toBe('true');
+  await view.command({ action: 'choose', number: 1 });
+  expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('false');
+});
+
+test('a focused voice list owns choices without falling through to a native answer', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  await view.command({ action: 'attention' });
+  expect((await view.command({ action: 'choose', number: 2 })).ok).toBe(false);
+  expect(view.slot.getByRole('button', { name: 'Answer two' }).getAttribute('aria-pressed')).toBe('false');
+  expect((await view.command({ action: 'choose', number: 1 })).ok).toBe(true);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'waiting' }]);
+});
+
+test('returning focus to a native question makes an old voice list inactive', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  await view.command({ action: 'attention' });
+  view.slot.getByRole('button', { name: 'Answer two' }).focus();
+  expect(await view.command({ action: 'choose', number: 2 })).toMatchObject({ ok: true, message: 'Selected answer 2.' });
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
+});
+
+test('disabled native answers reject spoken selection', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: { disabled: true } });
+  expect((await view.command({ action: 'choose', number: 1 })).ok).toBe(false);
+  expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('false');
+});
 
 test('next unread opens the oldest unseen stopped reply, including a text question or error', async () => {
   const view = await render('idle', undefined, [
@@ -205,10 +275,10 @@ test('new thread opens a draft in the current project without submitting text', 
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
 
-test('choose without an open voice list returns an immediate explanation', async () => {
+test('choose without an active panel returns an immediate explanation', async () => {
   const view = await render();
   expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({
-    ok: false, message: 'There is no such numbered voice choice. Say “voice help”.',
+    ok: false, message: 'There is no active choice panel.',
   });
   expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
@@ -336,18 +406,18 @@ test('monitor activity exposes failed attempts without opening a disclosure', as
   await view.command({ action: 'choose', number: 1 });
   fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor\./ }));
   fireEvent.click(view.slot.getByRole('tab', { name: 'Activity' }));
-  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no such numbered voice choice/);
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active choice panel/);
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Failed/);
 });
 
 
 test('monitor shows actual Hex transcription and details without marking background speech as failure', async () => {
   const now = Date.now();
-  const view = await render('idle', undefined, undefined, () => ({ available: true,
+  const view = await render('idle', undefined, undefined, { diagnostics: () => ({ available: true,
     state: { at: now, state: 'transcribing' },
     transcript: { at: now, phase: 'updated', latency: 120, text: 'go to access thread' },
     attempts: [{ at: now, kind: 'command', heard: 'background conversation', command: null,
-      result: 'Unmatched speech', problem: false, unmatched: true, context: 'bb' }] }));
+      result: 'Unmatched speech', problem: false, unmatched: true, context: 'bb' }] }) });
   await waitFor(() => expect(view.slot.getByRole('button', { name: /Voice monitor.*Transcribing/ })).toBeTruthy());
   expect(view.slot.queryByRole('dialog')).toBeNull();
   fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor/ }));
@@ -359,9 +429,9 @@ test('monitor shows actual Hex transcription and details without marking backgro
 });
 
 test('voice monitor command opens Activity and exposes native failure details', async () => {
-  const view = await render('idle', undefined, undefined, () => ({ available: true, state: null, transcript: null,
+  const view = await render('idle', undefined, undefined, { diagnostics: () => ({ available: true, state: null, transcript: null,
     attempts: [{ at: Date.now(), kind: 'command', heard: 'next thread', command: 'next_thread',
-      result: 'No focused window', problem: true, unmatched: false, context: 'bb' }] }));
+      result: 'No focused window', problem: true, unmatched: false, context: 'bb' }] }) });
   await view.command({ action: 'monitor' });
   await waitFor(() => expect(view.slot.getByText('No focused window')).toBeTruthy());
   expect(view.slot.getByRole('tab', { name: 'Activity' }).getAttribute('aria-selected')).toBe('true');
@@ -374,7 +444,7 @@ test('capture feedback expires and polling stops when the controller unmounts', 
   vi.useFakeTimers();
   const now = Date.now();
   const read = vi.fn(() => ({ available: true, state: { at: now, state: 'dictating' as const }, transcript: null, attempts: [] }));
-  const view = await render('idle', undefined, undefined, read);
+  const view = await render('idle', undefined, undefined, { diagnostics: read });
   await act(async () => { await vi.advanceTimersByTimeAsync(750); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*Recording/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
