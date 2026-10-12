@@ -2,7 +2,7 @@
 // the detail rows. The tmux pills carried state in fixed colours only; here
 // each metric gets a tone so a bad reading surfaces even in the compact tier.
 import { gaugeLabel } from './format.ts';
-import { stateGlyph, type Gauge, type State } from './gauge.ts';
+import type { Gauge, State } from './gauge.ts';
 import type { Battery, Disk, Memory, Reboot, Ssh } from './vitals-parse.ts';
 
 export type Platform = 'darwin' | 'linux' | 'other';
@@ -65,26 +65,9 @@ export function hostLabel(name: string, mode: LabelMode, hostname?: string, max 
   return chars.length > max ? `…${chars.slice(-(max - 1)).join('')}` : name;
 }
 
-export type Tier = 'full' | 'medium' | 'compact';
-
-/** status-right.sh gates at 80/45 columns; a header chip gates on its pane's pixel width. */
-export function tierFor(paneWidthPx: number, isCompactViewport: boolean): Tier {
-  if (isCompactViewport || paneWidthPx < 560) return 'compact';
-  return paneWidthPx < 900 ? 'medium' : 'full';
-}
-
-export type SegmentKey = 'offline' | 'memory' | 'reboot' | 'cpu' | 'disk' | 'battery' | 'ssh';
-export type Segment = { key: SegmentKey; text: string; tone: Tone; title: string };
-
-export function sshText(ssh: Ssh): string | null {
-  if (ssh.inbound === 0 && ssh.outbound === 0) return null;
-  const arrows = `${ssh.inbound ? `${ssh.inbound}↓` : ''}${ssh.outbound ? `${ssh.outbound}↑` : ''}`;
-  return `SSH ${arrows}${ssh.agent === 'keys' ? ' key' : ''}`;
-}
-
-export function batteryText(battery: Battery): string {
-  return `Bat ${battery.pct}%${battery.charging ? '+' : battery.onAc ? ' AC' : ''}`;
-}
+export type SegmentKey = 'offline' | 'memory' | 'reboot' | 'cpu' | 'disk' | 'battery';
+/** The chip draws each key's icon; `value` is the figure beside it. */
+export type Segment = { key: SegmentKey; value: string; tone: Tone; title: string };
 
 const rebootWhy: Record<NonNullable<Reboot>, string> = {
   debian: '/var/run/reboot-required exists',
@@ -92,61 +75,55 @@ const rebootWhy: Record<NonNullable<Reboot>, string> = {
 };
 
 /**
- * Memory leads the chip. On macOS it is the compressor gauge's state and
- * figure; elsewhere RAM% stands in, since Linux reports a usable figure.
+ * Memory leads the chip. On macOS it is the compressor gauge's figure;
+ * elsewhere RAM% stands in, since Linux reports a usable figure.
  */
 function memorySegment(machine: Machine, v: Vitals): Segment | null {
   if (machine.gauge) {
     const { state, token } = machine.gauge;
-    return { key: 'memory', text: `${stateGlyph[state]} ${token}`, tone: stateTone[state], title: gaugeLabel(machine.gauge) };
+    return { key: 'memory', value: token, tone: stateTone[state], title: gaugeLabel(machine.gauge) };
   }
   if (!v.memory) return null;
-  return { key: 'memory', text: `RAM ${v.memory.usedPct}%`, tone: memoryTone(v.memory, v.platform),
+  return { key: 'memory', value: `${v.memory.usedPct}%`, tone: memoryTone(v.memory, v.platform),
     title: `RAM ${humanBytes(v.memory.usedBytes)} of ${humanBytes(v.memory.totalBytes)}` };
 }
 
 function segments(machine: Machine): Segment[] {
   const v = machine.vitals;
   if (machine.status === 'disconnected' || !v) {
-    return [{ key: 'offline', text: machine.status === 'disconnected' ? 'offline' : 'no reading', tone: 'off',
+    return [{ key: 'offline', value: machine.status === 'disconnected' ? 'offline' : 'no reading', tone: 'off',
       title: machine.error ?? `${machine.name} is ${machine.status}` }];
   }
   const out: Segment[] = [];
   const memory = memorySegment(machine, v);
   if (memory) out.push(memory);
-  if (v.reboot) out.push({ key: 'reboot', text: 'reboot', tone: 'warn', title: `Reboot required: ${rebootWhy[v.reboot]}` });
   out.push(v.cpuPct === null
-    ? { key: 'cpu', text: 'CPU --%', tone: 'off', title: 'CPU not sampled yet' }
-    : { key: 'cpu', text: `CPU ${Math.round(v.cpuPct)}%`, tone: cpuTone(v.cpuPct), title: `CPU ${v.cpuPct}% across ${v.cores} cores` });
-  if (v.disk) out.push({ key: 'disk', text: `Disk ${v.disk.usedPct}%`, tone: diskTone(v.disk),
+    ? { key: 'cpu', value: '--%', tone: 'off', title: 'CPU not sampled yet' }
+    : { key: 'cpu', value: `${Math.round(v.cpuPct)}%`, tone: cpuTone(v.cpuPct), title: `CPU ${v.cpuPct}% across ${v.cores} cores` });
+  if (v.disk) out.push({ key: 'disk', value: `${v.disk.usedPct}%`, tone: diskTone(v.disk),
     title: `Disk ${humanBytes(v.disk.freeBytes)} free of ${humanBytes(v.disk.totalBytes)}` });
-  if (v.battery) out.push({ key: 'battery', text: batteryText(v.battery), tone: batteryTone(v.battery),
-    title: v.battery.charging ? 'Charging' : v.battery.onAc ? 'On AC power' : 'On battery' });
-  const ssh = v.ssh && sshText(v.ssh);
-  if (v.ssh && ssh) out.push({ key: 'ssh', text: ssh, tone: 'ok',
-    title: `${v.ssh.inbound} inbound, ${v.ssh.outbound} outbound SSH; agent ${v.ssh.agent}` });
+  if (v.battery && batteryTone(v.battery) !== 'ok') out.push({ key: 'battery', value: `${v.battery.pct}%`, tone: batteryTone(v.battery),
+    title: `Battery ${v.battery.pct}%, on battery` });
+  if (v.reboot) out.push({ key: 'reboot', value: 'reboot', tone: 'warn', title: `Reboot required: ${rebootWhy[v.reboot]}` });
   return out;
 }
 
 export type Chip = { label: string; remote: boolean; tone: Tone; segments: Segment[]; summary: string };
 
 /**
- * Memory shows in every tier. Full adds every other pill. Medium mirrors
- * print_medium: CPU, SSH and whatever is not ok. Compact adds only what is not ok.
- * The chip's own tone is memory's: other pills carry their own tone.
+ * Memory, CPU and disk always show; a low battery and a due reboot join them.
+ * A compact viewport keeps memory and whatever is not ok. The chip's tone is
+ * the worst segment's, so its border flags any reading that needs a look.
  */
-export function chip(machine: Machine, tier: Tier, mode: LabelMode): Chip {
+export function chip(machine: Machine, compact: boolean, mode: LabelMode): Chip {
   const all = segments(machine);
-  const loud = (s: Segment) => s.tone === 'warn' || s.tone === 'critical' || s.key === 'offline' || s.key === 'memory';
-  const shown = tier === 'full' ? all
-    : tier === 'medium' ? all.filter(s => loud(s) || s.key === 'ssh' || s.key === 'cpu')
-    : all.filter(loud);
+  const loud = (s: Segment) => s.tone === 'warn' || s.tone === 'critical';
+  const shown = compact ? all.filter(s => loud(s) || s.key === 'memory' || s.key === 'offline') : all;
   const label = hostLabel(machine.name, mode, machine.vitals?.hostname);
   const remote = !machine.isServer;
-  const lead = all[0];
   return {
     label, remote, segments: shown,
-    tone: lead?.key === 'offline' ? 'off' : lead?.key === 'memory' ? lead.tone : 'ok',
+    tone: all.some(s => s.tone === 'critical') ? 'critical' : all.some(loud) ? 'warn' : all[0]?.key === 'offline' ? 'off' : 'ok',
     summary: [`${machine.name}${remote ? ' (remote)' : ''}`, ...all.map(s => s.title)].join('. '),
   };
 }

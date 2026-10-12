@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readGauge, type RawGauge } from './gauge.ts';
-import { chip, detailRows, hostLabel, humanAge, humanBytes, tierFor, type Machine, type Vitals } from './present.ts';
+import { chip, detailRows, hostLabel, humanAge, humanBytes, type Machine, type Vitals } from './present.ts';
 
 const GiB = 1024 ** 3;
 const vitals = (over: Partial<Vitals> = {}): Vitals => ({
@@ -22,62 +22,58 @@ const machine = (over: Partial<Machine> = {}): Machine => ({
   hostId: 'host_1', name: 'Connor’s MacBook Air', isServer: true, status: 'connected', lastSeenAt: 1_000,
   vitals: vitals(), gauge: readGauge(raw()), error: null, ...over,
 });
-const texts = (c: ReturnType<typeof chip>) => c.segments.map(s => s.text);
+const texts = (c: ReturnType<typeof chip>) => c.segments.map(s => `${s.key} ${s.value}`);
 
-test('full tier leads with the memory gauge, then every vitals pill', () => {
-  const c = chip(machine(), 'full', 'short');
-  assert.deepEqual(texts(c), ['⬡ 21%', 'CPU 12%', 'Disk 70%', 'Bat 100% AC']);
+test('memory, CPU and disk always show; a healthy battery stays out', () => {
+  const c = chip(machine(), false, 'short');
+  assert.deepEqual(texts(c), ['memory 21%', 'cpu 12%', 'disk 70%']);
   assert.equal(c.tone, 'ok');
   assert.equal(c.remote, false);
 });
 
-test('compact tier on a healthy machine shows only memory', () => {
-  assert.deepEqual(texts(chip(machine(), 'compact', 'short')), ['⬡ 21%']);
+test('a compact viewport on a healthy machine shows only memory', () => {
+  assert.deepEqual(texts(chip(machine(), true, 'short')), ['memory 21%']);
 });
 
-test('memory pressure sets the chip tone; another bad pill keeps its own tone', () => {
-  const busy = chip(machine({ gauge: readGauge(raw({ pages: 620, pressure: 2 })) }), 'compact', 'short');
-  assert.deepEqual(texts(busy), ['⊟ ▲62%']);
+test('the worst reading sets the chip tone; each segment keeps its own', () => {
+  const busy = chip(machine({ gauge: readGauge(raw({ pages: 620, pressure: 2 })) }), true, 'short');
+  assert.deepEqual(texts(busy), ['memory ▲62%']);
   assert.equal(busy.tone, 'warn');
-  const disk = chip(machine({ vitals: vitals({ disk: { usedPct: 97, freeBytes: GiB, totalBytes: 460 * GiB } }) }), 'compact', 'short');
-  assert.deepEqual(texts(disk), ['⬡ 21%', 'Disk 97%']);
-  assert.equal(disk.tone, 'ok');
-  assert.equal(disk.segments[1]?.tone, 'critical');
+  const disk = chip(machine({ vitals: vitals({ disk: { usedPct: 97, freeBytes: GiB, totalBytes: 460 * GiB } }) }), true, 'short');
+  assert.deepEqual(texts(disk), ['memory 21%', 'disk 97%']);
+  assert.equal(disk.tone, 'critical');
+  assert.equal(disk.segments[0]?.tone, 'ok');
 });
 
 test('macOS without a readable gauge falls back to a quiet RAM figure', () => {
-  const c = chip(machine({ gauge: null }), 'compact', 'short');
-  assert.deepEqual(texts(c), ['RAM 91%']);
+  const c = chip(machine({ gauge: null }), true, 'short');
+  assert.deepEqual(texts(c), ['memory 91%']);
   assert.equal(c.tone, 'ok');
+  assert.match(c.summary, /RAM .* of /);
 });
 
-test('medium tier keeps memory, CPU and SSH, like print_medium keeps git and ssh', () => {
-  const c = chip(machine({ vitals: vitals({ ssh: { inbound: 1, outbound: 2, agent: 'keys' } }) }), 'medium', 'short');
-  assert.deepEqual(texts(c), ['⬡ 21%', 'CPU 12%', 'SSH 1↓2↑ key']);
-});
-
-test('Linux RAM drives the tone; an unplugged low battery raises its own pill', () => {
-  const linux = chip(machine({ gauge: null, vitals: vitals({ platform: 'linux', memory: { usedPct: 88, usedBytes: 7 * GiB, totalBytes: 8 * GiB } }) }), 'compact', 'short');
-  assert.deepEqual(texts(linux), ['RAM 88%']);
+test('Linux RAM has a tone; an unplugged low battery joins the chip', () => {
+  const linux = chip(machine({ gauge: null, vitals: vitals({ platform: 'linux', memory: { usedPct: 88, usedBytes: 7 * GiB, totalBytes: 8 * GiB } }) }), true, 'short');
+  assert.deepEqual(texts(linux), ['memory 88%']);
   assert.equal(linux.tone, 'warn');
-  const low = chip(machine({ vitals: vitals({ battery: { pct: 9, onAc: false, charging: false } }) }), 'compact', 'short');
-  assert.deepEqual(texts(low), ['⬡ 21%', 'Bat 9%']);
+  const low = chip(machine({ vitals: vitals({ battery: { pct: 9, onAc: false, charging: false } }) }), true, 'short');
+  assert.deepEqual(texts(low), ['memory 21%', 'battery 9%']);
   assert.equal(low.segments[1]?.tone, 'critical');
 });
 
-test('a NixOS rpi due a reboot shows the marker in every tier, with the reason', () => {
+test('a NixOS rpi due a reboot shows the marker even when compact, with the reason', () => {
   const pi = machine({ name: 'rpi5', isServer: false, gauge: null,
     vitals: vitals({ platform: 'linux', battery: null, reboot: 'nixos', memory: { usedPct: 40, usedBytes: 3 * GiB, totalBytes: 8 * GiB } }) });
-  const c = chip(pi, 'compact', 'short');
-  assert.deepEqual(texts(c), ['RAM 40%', 'reboot']);
+  const c = chip(pi, true, 'short');
+  assert.deepEqual(texts(c), ['memory 40%', 'reboot reboot']);
   assert.equal(c.remote, true);
   assert.match(c.summary, /^rpi5 \(remote\)/);
   assert.match(c.summary, /booted kernel differs/);
 });
 
 test('a disconnected machine shows offline and no figures', () => {
-  const c = chip(machine({ status: 'disconnected', vitals: null, gauge: null }), 'full', 'short');
-  assert.deepEqual(texts(c), ['offline']);
+  const c = chip(machine({ status: 'disconnected', vitals: null, gauge: null }), false, 'short');
+  assert.deepEqual(texts(c), ['offline offline']);
   assert.equal(c.tone, 'off');
 });
 
@@ -86,13 +82,6 @@ test('host label keeps the distinctive tail; full mode adds the OS hostname', ()
   assert.equal(hostLabel('Connor’s MacBook Air', 'short'), '…s MacBook Air');
   assert.equal(hostLabel('Connor’s MacBook Air', 'full', 'connors-mbair.local'), 'Connor’s MacBook Air (connors-mbair.local)');
   assert.equal(hostLabel('rpi5', 'full', 'rpi5'), 'rpi5');
-});
-
-test('tier follows pane width, and a compact viewport always wins', () => {
-  assert.equal(tierFor(1200, false), 'full');
-  assert.equal(tierFor(700, false), 'medium');
-  assert.equal(tierFor(400, false), 'compact');
-  assert.equal(tierFor(1200, true), 'compact');
 });
 
 test('detail rows give the memory state, the macOS RAM caveat and the sample age', () => {

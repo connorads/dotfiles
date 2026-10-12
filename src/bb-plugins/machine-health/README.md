@@ -7,19 +7,18 @@ enrolled machine at once.
 
 ## Chip
 
-- Memory leads the chip and sets its colour. On macOS it shows the compressor
-  state and the fill of the binding arm: `⬡ 21%` (OK), `⊟ 62%` (BUSY) or
-  `⊠ 85%` (CRITICAL). `▲` marks warn or critical kernel pressure. On Linux,
-  RAM% stands in.
-- Vitals follow, gated on pane width. Full shows CPU, disk, battery, SSH and a
-  reboot marker. Medium shows CPU, SSH and anything not ok. Compact shows only
-  what is not ok.
-- Each pill has its own tone, and the text carries every state without colour.
-- bb caps the header slot at 256 px. Pills that do not fit drop whole from the
-  end; the tooltip lists every reading.
+- Memory, CPU and disk always show, each as an icon and a figure. On macOS
+  memory is the fill of the compressor's binding arm (`21%`); `▲` marks warn or
+  critical kernel pressure. On Linux, RAM% stands in.
+- An unplugged low battery and a due reboot join them. A compact viewport keeps
+  memory and any reading that is not ok.
+- A reading that needs a look turns its figure and icon amber or red. The
+  chip's border takes the worst reading's tone. The tooltip names every reading
+  and the memory state.
+- bb caps the header slot at 256 px. The chip clips at that width.
 - A remote machine shows `⇄` and its name.
 
-| Pill | Warn | Critical |
+| Reading | Warn | Critical |
 | --- | --- | --- |
 | Memory (macOS) | slots 60% or segments 70% | slots 80%, segments 85% or pressure 4 |
 | RAM (Linux only) | 85% | 95% |
@@ -162,8 +161,7 @@ Keyboard. The hostname mode is stored per window.
 - bb gives no thread-to-process mapping. Attribution relies on `BB_THREAD_ID`
   and the bridge worker's script name, which are internal.
 - The only header slot is per thread, so split panes on one machine show one
-  chip each. The chip estimates its pane width from the split layout times the
-  window width, which over-counts by the sidebar.
+  chip each.
 - The sidebar footer item is an icon button with a disclosure; no surface gives
   an always-visible fleet line.
 - No plugin API raises an OS notification. memwatch stays a launchd daemon for

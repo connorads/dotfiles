@@ -8,26 +8,25 @@
 [data-tone="warn"] { --mh-tone: var(--mh-warn); }
 [data-tone="critical"] { --mh-tone: var(--mh-critical); }
 [data-tone="off"] { --mh-tone: var(--muted-foreground); }
-/* Memory's own state: OK reads green, as the tmux pill did. */
-[data-state="OK"], .mh-pill[data-key="memory"][data-tone="ok"] { --mh-tone: var(--mh-ok); }
+[data-state="OK"] { --mh-tone: var(--mh-ok); }
 [data-state="BUSY"] { --mh-tone: var(--mh-warn); }
 [data-state="CRITICAL"] { --mh-tone: var(--mh-critical); }
 
-.mh-chip, .mh-machine-row {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; max-width: 100%;
-  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--foreground);
-  font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
-}
-/* BB caps the header slot at 256 px: pills that do not fit wrap onto a hidden second line, whole. */
-.mh-chip { flex-wrap: wrap; align-content: flex-start; gap: 0 5px; padding: 0 8px; overflow: hidden; line-height: 26px; }
-.mh-chip[data-tone="critical"] { font-weight: 700; border-color: color-mix(in oklch, var(--mh-critical) 45%, var(--border)); }
-.mh-chip[data-tone="warn"] { border-color: color-mix(in oklch, var(--mh-warn) 45%, var(--border)); }
-.mh-chip[data-tone="off"] .mh-label { color: var(--muted-foreground); }
-.mh-chip:hover, .mh-chip[aria-expanded="true"], .mh-machine-row:hover { background: var(--state-hover); }
-.mh-chip:focus-visible, .mh-machine-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Chip anatomy from @bb-plugins/chip: muted icons, figures in foreground, colour only on a reading that needs a look. */
+/* bb caps the header slot at 256 px; the tooltip lists every reading. */
+.mh-chip { gap: 10px; max-width: 256px; overflow: hidden; }
+.mh-metric { display: inline-flex; align-items: center; gap: 4px; color: var(--foreground); }
+.mh-metric[data-tone="warn"], .mh-metric[data-tone="critical"], .mh-metric[data-tone="off"] { color: var(--mh-tone); }
+.mh-icon { width: 13px; height: 13px; flex: none; color: var(--muted-foreground); }
+.mh-metric[data-tone="warn"] .mh-icon, .mh-metric[data-tone="critical"] .mh-icon { color: inherit; }
 .mh-label { overflow: hidden; text-overflow: ellipsis; }
-.mh-pill { color: var(--mh-tone); }
-.mh-pill[data-tone="warn"], .mh-pill[data-tone="critical"] { font-weight: 700; }
+.mh-machine-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; min-height: 28px; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--foreground);
+  font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; text-align: left; cursor: pointer;
+}
+.mh-machine-row:hover { background: var(--state-hover); }
+.mh-machine-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 .mh-dialog {
   position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
@@ -96,5 +95,4 @@
 .mh-footer { display: flex; justify-content: flex-end; gap: 8px; }
 
 .mh-machines { display: flex; flex-direction: column; gap: 6px; padding: 8px; font-size: var(--text-xs, 12px); }
-.mh-machine-row { width: 100%; flex-wrap: wrap; height: auto; min-height: 28px; padding: 4px 8px; text-align: left; }
 .mh-machine .mh-rows { padding: 6px 8px; font-size: var(--text-xs, 12px); }
