@@ -60,7 +60,8 @@ function ProfileControl({ threadId, isCompactViewport }: PluginThreadHeaderActio
     const focus = (index: number) => items.current[(index + profiles.length) % profiles.length]?.focus();
     const digit = Number(event.key);
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === 'Escape') close();
+    if (event.nativeEvent.isComposing || event.defaultPrevented) return;
+    if (event.key === 'Escape' || event.key === 'q' || event.key === 'Q') close();
     else if (event.key === 'ArrowDown') focus(focused + 1);
     else if (event.key === 'ArrowUp') focus(focused - 1);
     else if (event.key === 'Home') focus(0);
@@ -89,7 +90,7 @@ function ProfileControl({ threadId, isCompactViewport }: PluginThreadHeaderActio
       {error && <p className="cp-error" role="alert">{error}</p>}
       <p className="cp-note cp-muted">Finish or stop the turn and clear queued messages before switching.</p>
       <footer className="cp-muted"><span><kbd>1</kbd>-<kbd>{Math.min(profiles.length, 9)}</kbd> switch</span>
-        <span><kbd>Esc</kbd> close</span></footer>
+        <span><kbd>Q / Esc</kbd> close</span></footer>
     </div>}
   </div>;
 }

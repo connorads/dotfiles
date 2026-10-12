@@ -45,7 +45,7 @@ test('opening the overlay shows all accounts and forced refresh keeps the previo
   expect(requests).toEqual([{ refresh: false }, { refresh: true }]);
 });
 
-test('Escape dismisses the overlay and restores focus to the previous control', async () => {
+test.each(['Escape', 'q', 'Q'])('%s dismisses the overlay and restores focus to the previous control', async key => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async () => snapshot } });
   const origin = document.createElement('button');
@@ -54,7 +54,7 @@ test('Escape dismisses the overlay and restores focus to the previous control', 
     origin.focus();
     act(() => openUsage());
     const dialog = await slot.findByRole('dialog');
-    fireEvent.keyDown(dialog, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key });
     await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(origin));
   } finally { origin.remove(); }

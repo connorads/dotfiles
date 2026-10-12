@@ -12,7 +12,7 @@ when switching profiles. Read each account's quota through the native Claude CLI
 5. Send the next message. Claude resumes the same native conversation.
 
 The header button shows the selected account. The menu lists accounts with a
-selection tick and number shortcuts. Press `Esc` to close. **Claude: switch account**
+selection tick and number shortcuts. Press `Q` or `Esc` to close. **Claude: switch account**
 has no default shortcut. Assign one in BB's keyboard settings if needed.
 
 [Agent usage](../agent-usage/README.md) shows quota in a separate header badge and
