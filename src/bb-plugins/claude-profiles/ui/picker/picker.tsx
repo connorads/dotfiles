@@ -101,7 +101,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
   useLayoutEffect(() => {
     if (loading || revealed.current) return;
     revealed.current = true;
-    dialog.current?.querySelector('.mf-list [data-selected]')?.scrollIntoView?.({ block: 'nearest' });
+    dialog.current?.querySelector('.mf-list [data-selected]')?.scrollIntoView?.({ block: 'center' });
   }, [loading]);
   // The account list loads after the dialog opens, so account focus waits for the button.
   const accountFocused = useRef(false);

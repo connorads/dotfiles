@@ -224,15 +224,17 @@ test('favourite rows show their slot and the selected row is marked current', as
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('opening scrolls the selected model into view and leaves focus in search', async () => {
+test('opening centres the selected model so rows on both sides stay visible, and leaves focus in search', async () => {
   const scrolled: Element[] = [];
+  const options: unknown[] = [];
   // jsdom has no scrollIntoView, so the test installs one and removes it afterwards.
-  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value(this: Element) { scrolled.push(this); } });
+  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value(this: Element, option: unknown) { scrolled.push(this); options.push(option); } });
   const slot = render([first]);
   try {
     const row = await enabledRow(slot, 'Select model-b');
     await waitFor(() => expect(scrolled.some(element => element.contains(row))).toBe(true));
     expect(scrolled).toHaveLength(1);
+    expect(options).toEqual([{ block: 'center' }]);
     expect(document.activeElement).toBe(slot.getByRole('textbox'));
   } finally { slot.lifecycle.unmount(); Reflect.deleteProperty(Element.prototype, 'scrollIntoView'); }
 });
