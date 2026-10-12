@@ -1,19 +1,19 @@
 #!/usr/bin/env zsh
-# pedal-flash: flash the PCsensor 3-pedal USB foot switch (left right Control, centre right Option, right Enter)
+# pedal-flash: flash the PCsensor 3-pedal USB foot switch (left F18, centre right Option, right Enter)
 #
-# Left emits the command helper's held Right Control trigger. Centre emits
-# Right Option for dictation. The firmware holds each modifier until release.
+# Left emits the command helper's held F18 trigger. Centre emits
+# Right Option for dictation. The firmware holds each key until release.
 #
 # Write all three pedals together: a single-pedal write clears the other mappings.
 # Verifies by readback: `footswitch` exits 0 even when a write does not stick.
 emulate -L zsh
 setopt pipefail
 
-local -r LEFT=r_ctrl   # -m: modifier bits (no key)
+local -r LEFT=f18      # -k: key slot
 local -r CENTRE=r_alt  # -m: modifier bits (no key)
 local -r RIGHT=enter   # -k: key slot
 
-local -a flash_args=(-1 -m $LEFT -2 -m $CENTRE -3 -k $RIGHT)
+local -a flash_args=(-1 -k $LEFT -2 -m $CENTRE -3 -k $RIGHT)
 local -a want=($LEFT $CENTRE $RIGHT)
 
 usage() {
