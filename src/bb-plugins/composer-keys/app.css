@@ -1,0 +1,75 @@
+.ck-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: color-mix(in oklab, var(--canvas, #000) 40%, transparent);
+}
+.ck-picker {
+  width: min(640px, calc(100vw - 32px));
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklab, var(--ink, #fff) 18%, transparent);
+  border-radius: 12px;
+  background: var(--canvas, #111);
+  color: var(--ink, #eee);
+  font-size: 13px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.35);
+  overflow: hidden;
+}
+.ck-picker header,
+.ck-picker footer {
+  padding: 8px 12px;
+  color: color-mix(in oklab, var(--ink, #eee) 60%, transparent);
+}
+.ck-picker header { font-weight: 600; }
+.ck-picker footer {
+  border-top: 1px solid color-mix(in oklab, var(--ink, #fff) 10%, transparent);
+  font-size: 12px;
+}
+.ck-picker ol {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  overflow-y: auto;
+}
+.ck-picker li {
+  display: flex;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ck-picker li[aria-selected="true"] {
+  background: color-mix(in oklab, var(--ink, #fff) 12%, transparent);
+}
+.ck-num {
+  min-width: 2ch;
+  text-align: right;
+  color: color-mix(in oklab, var(--ink, #eee) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.ck-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ck-picker textarea {
+  margin: 8px 12px;
+  min-height: 120px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid color-mix(in oklab, var(--ink, #fff) 18%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.ck-error {
+  margin: 0 12px 8px;
+  color: #e5484d;
+}
