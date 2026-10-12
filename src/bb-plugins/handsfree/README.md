@@ -18,7 +18,7 @@ New drafts provide the same control beside the composer actions.
 | `next unread` | Open the oldest unread stopped thread, including text questions and errors |
 | `show threads` | Show up to nine recently updated threads as numbered choices |
 | `show git` / `show usage` | Open Git status for the selected thread or usage for all agent accounts |
-| `close popup` | Send Escape to dismiss the top popup |
+| `close popup` / `close pop up` / `close voice monitor` | Close voice controls and send Escape to dismiss the top popup |
 | `who needs me` / `next waiting` | Show threads with pending questions or approvals |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
@@ -95,7 +95,7 @@ Opening a thread follows BB's read behaviour; it does not archive the conversati
 
 `show git` and `show usage` use the existing header buttons. Repeated commands
 keep the view open. Missing controls report that the view is unavailable.
-`close popup` dismisses voice choices and sends Escape through Hex. BB and the
+`close popup`, `close pop up` and `close voice monitor` close voice controls and send Escape through Hex. BB and the
 focused popup own dismissal and focus restoration. Nested popups close one layer
 at a time.
 

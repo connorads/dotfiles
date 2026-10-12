@@ -405,7 +405,7 @@ function VoiceCard() {
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
         <dt>“Show Git” / “Show usage”</dt><dd>Open Git status or all agent accounts</dd>
-        <dt>“Close popup”</dt><dd>Dismiss the top popup with Escape</dd>
+        <dt>“Close popup” / “Close voice monitor”</dt><dd>Close voice controls and dismiss the top popup with Escape</dd>
         <dt>“Who needs me?” / “Next finished”</dt><dd>Show pending questions or unread successful results</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
