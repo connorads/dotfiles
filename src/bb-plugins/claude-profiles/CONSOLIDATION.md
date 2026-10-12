@@ -376,10 +376,11 @@ Commit: replace the account menu with a status that opens the picker.
 **Status: done.** Core tests go from 80 to 90. UI tests stay at 42.
 Deviations from the plan below:
 
-- A Claude parent that is unbound, or bound to Default, gives the composer
-  account, not `default`. This follows the decided rule. The `parentIsClaude`
-  input is gone: only Claude threads have a binding, so a non-Claude parent is
-  unbound.
+- A Claude parent with no binding gives the composer account, not `default`.
+  This follows the decided rule. A parent bound to Default passes Default on
+  and the child gets an explicit Default binding, so its own children stay on
+  Default too. The `parentIsClaude` input is gone: only Claude threads have a
+  binding, so a non-Claude parent is unbound.
 - `routing.ts` has two functions. `startingThreadId(thread, parentThreadId)`
   picks the dispatch `parentThreadId`, else `sourceThreadId` for a fork.
   `newThreadAccount(startingBinding, composerProfileId)` gives the result.
@@ -555,8 +556,9 @@ Bindings never moved, so rollback restores only code and UI.
    by another thread"? Answered in step D: no.
 4. A Codex parent that starts a Claude child: use the composer account (as
    planned) or refuse? Answered in step D: the composer account.
-5. A fork of an unbound source while the composer shows a named account binds
-   that account. BB writes the forked session in the bridge's config directory,
+5. A fork of a source with no binding while the composer shows a named
+   account binds that account. A source bound to Default passes Default on,
+   so only a source with no binding hits this. BB writes the forked session in the bridge's config directory,
    so the fork then resumes under the named account and cannot find it. Bind
    forks of an unbound source to Default, or copy the forked session with the
    `transfer` host call?

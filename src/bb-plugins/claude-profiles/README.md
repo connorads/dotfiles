@@ -20,13 +20,14 @@ New thread:
 The new-thread choice is remembered, like the model picker. A new Claude
 thread starts on it until you choose another.
 
-A thread that another thread starts takes that thread's named account instead:
+A thread that another thread starts takes that thread's account instead,
+Default included:
 
 - A child created with `--parent-self`, `--parent-thread` or an SDK
   `parentThreadId` takes its parent's account.
 - A fork takes its source thread's account.
-- A parent on Default, a non-Claude parent and a `bb thread spawn` without a
-  parent use the remembered choice.
+- A parent that never had an account chosen, a non-Claude parent and a
+  `bb thread spawn` without a parent use the remembered choice.
 
 If the inherited account does not exist on the new thread's machine, the first
 send is refused. The plugin never falls back to another account.
