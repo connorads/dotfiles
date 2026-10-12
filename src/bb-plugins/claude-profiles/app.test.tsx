@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, test } from 'vitest';
-import { cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers, RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
@@ -46,7 +46,7 @@ async function render(composer: Composer, rpc: Partial<PluginRpcTestHandlers<typ
     accounts: () => ({ supported: true, profiles, currentId }),
     choose: input => { currentId = input.profileId; return { currentId }; },
     'favourites.list': () => [],
-    usage: () => { throw new Error('The switcher must not request quota.'); },
+    usage: () => ({ status: 'unavailable', windows: [], message: null, observedAt: null }),
     ...rpc,
   } as PluginRpcTestHandlers<typeof rpcContract> });
   return { slot, app, switcher };
@@ -88,13 +88,15 @@ test('the composer customisation registers no popups', async () => {
 test('exactly one control in the composer and picker can change the account', async () => {
   const { slot } = await render(thread);
   fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
+  const dialog = await slot.findByRole('dialog', { name: 'Switch model' });
   await slot.findByLabelText('Claude account');
-  expect(slot.queryAllByRole('menuitemradio')).toEqual([]);
-  expect(slot.getAllByRole('combobox', { name: 'Claude account' })).toHaveLength(1);
+  expect(within(dialog).getAllByRole('button', { name: /^Claude account/ })).toHaveLength(1);
+  expect(slot.queryAllByRole('combobox')).toEqual([]);
   // Pressing an account digit in the picker must not switch the account.
-  fireEvent.keyDown(slot.getByRole('dialog', { name: 'Switch model' }), { key: '2' });
+  fireEvent.keyDown(dialog, { key: '2' });
   expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose')).toEqual([]);
-  fireEvent.change(slot.getByLabelText('Claude account'), { target: { value: 'work' } });
+  fireEvent.click(slot.getByLabelText('Claude account'));
+  fireEvent.click(within(slot.getByRole('listbox', { name: 'Claude accounts' })).getByRole('option', { name: /^work/ }));
   await waitFor(() => expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose').map(call => call.input))
     .toEqual([{ threadId: 'thread-test', profileId: 'work' }]));
 });
