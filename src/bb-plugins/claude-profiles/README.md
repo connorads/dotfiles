@@ -278,3 +278,22 @@ Tests cover transcript copying, return switching, conflicts, symlinks, subagent
 refusal, quota parsing, control requests, cancellation, the new-thread rule,
 favourites with saved effort, migration, the picker and the usage views.
 The disposable live proof is documented in [SPIKE.md](./SPIKE.md).
+
+## Rollback to the three plugins
+
+Account bindings stay in this plugin's storage, so rollback restores only code
+and UI.
+
+1. `bb plugin enable model-favourites` and `bb plugin enable agent-usage`.
+   Their storage is untouched.
+2. Restore the source from before the consolidation, then rebuild:
+
+   ```sh
+   cd ~ && dotfiles restore --source=46da5dfb --worktree -- src/bb-plugins/claude-profiles
+   cd ~/src/bb-plugins/claude-profiles && pnpm build && bb plugin reload claude-profiles
+   ```
+
+3. To keep the restore, also restore the `claude-profile-leak-guard` hook and
+   its Bats cases, which name `src/accounts/claude.ts`.
+
+The `favourites` key stays in storage. The older code ignores it.
