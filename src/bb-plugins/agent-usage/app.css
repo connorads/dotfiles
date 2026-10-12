@@ -98,7 +98,7 @@
 .au-badge[data-tone="critical"] { color: var(--au-critical-text); }
 .au-badge-muted { color: var(--au-subtle); }
 
-.au-overlay:focus { outline: none; }
+.au-overlay:focus, .au-body:focus { outline: none; }
 .au-icon-button:focus-visible, .au-badge:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -185,6 +185,7 @@ function Summary({ accounts, now, readings }: { accounts: Account[]; now: Date; 
 export function UsageOverlay() {
   const open = useUsageOpen();
   const panel = useRef<HTMLDivElement>(null);
+  const scrollArea = useRef<HTMLDivElement>(null);
   const rpc = useRpc<typeof rpcContract>();
   const now = useNow(30_000, open);
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -228,9 +229,8 @@ export function UsageOverlay() {
   const showMachines = machines.length > 1 || machines.some(machine => machine.status === 'disconnected');
   return <Dialog open={open} onOpenChange={value => { if (!value) closeUsage(); }}>
     <DialogContent ref={panel} className="au-overlay" hideCloseButton tabIndex={-1} onOpenAutoFocus={event => {
-      // Focus the panel rather than its first button, so opening does not paint a focus ring on Refresh.
       event.preventDefault();
-      panel.current?.focus();
+      scrollArea.current?.focus();
     }} onCloseAutoFocus={event => { event.preventDefault(); }} onAfterCloseAutoFocus={restoreUsageFocus}>
       <header className="au-head">
         <div className="au-head-title">
@@ -245,7 +245,7 @@ export function UsageOverlay() {
         </button>
         <DialogClose className="au-icon-button" aria-label="Close" title="Close"><Icon name="X" className="size-4" /></DialogClose>
       </header>
-      <div className="au-body" aria-busy={loading}>
+      <div ref={scrollArea} className="au-body" role="region" aria-label="Usage details" tabIndex={-1} aria-busy={loading}>
         {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
         {!snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
         {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}

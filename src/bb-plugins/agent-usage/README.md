@@ -4,6 +4,7 @@ Show the limit most likely to stop the current thread in its header. Open an
 account usage overlay with `⌘⇧A`. Press `Q` or `Esc`, click outside, or click
 Close to dismiss it. The shortcut is rebindable under **Agent usage: show all
 accounts** in BB's keyboard settings. Clicking the header badge opens the same overlay.
+On desktop, the contents receive focus so Page Down and Page Up scroll the panel.
 
 ## Pace
 
