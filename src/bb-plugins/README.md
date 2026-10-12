@@ -2,7 +2,8 @@
 
 One pnpm workspace with one directory per BB plugin. Each plugin keeps its own
 `package.json`, tests and SDK pin. The workspace shares one lockfile and the
-pnpm quarantine settings.
+pnpm quarantine settings. Decisions that span plugins are recorded in
+[docs/adr/](docs/adr/).
 
 ## Add a plugin
 
@@ -26,6 +27,13 @@ to rebuild and reload on save.
 Every thread-header action uses the shared [chip](chip/README.md) package. After a
 change to `chip/`, rebuild and reload each plugin that depends on it.
 [ADR 0002](docs/adr/0002-shared-header-chip-package.md) records why.
+
+## Agent Switcher
+
+[Agent Switcher](claude-profiles/README.md) chooses the model, saved effort and
+Claude Code account for a thread, and shows agent usage. Its plugin ID is
+`claude-profiles`. [ADR 0001](docs/adr/0001-consolidate-agent-switcher.md)
+records why it absorbs Model Favourites and Agent Usage.
 
 ## File-managed preferences
 
