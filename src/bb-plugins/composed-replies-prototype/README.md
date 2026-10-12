@@ -96,7 +96,9 @@ Style properties use named options rather than arbitrary CSS.
 to equal heights in each row and stack in narrow containers.
 
 `Flow(nodes, edges)` represents downward processes with explicit relationships.
-It supports splits, joins and edge labels. Node IDs must be unique. Edges must
+It supports splits, joins and edge labels. Straight connectors share branch
+lines and use one arrowhead per destination. Captions wrap at eleven pixels;
+row spacing grows to fit their height. Node IDs must be unique. Edges must
 reference existing nodes and form an acyclic graph. Graphs allow twelve nodes
 and eighteen edges. Dense parallel layers scroll inside the diagram. Each edge
 also appears in an expandable textual connection list.

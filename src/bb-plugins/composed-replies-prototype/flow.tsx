@@ -63,6 +63,7 @@ type Connection = {
   x2: number;
   y2: number;
   skip: boolean;
+  labelWidth: number;
 };
 function layers(graph: Graph) {
   const depths = new Map<string, number>();
@@ -89,6 +90,7 @@ export function Flow(input: Graph) {
     for (const node of row) levels.set(node.id, index);
   const root = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [gap, setGap] = useState(72);
   const marker = useId().replaceAll(":", "");
   const signature = JSON.stringify(graph);
   useLayoutEffect(() => {
@@ -114,6 +116,12 @@ export function Flow(input: Graph) {
                   y1: a.bottom - bounds.top,
                   x2: b.left + b.width / 2 - bounds.left,
                   y2: b.top - bounds.top,
+                  labelWidth: Math.max(
+                    80,
+                    (graph.edges.filter((e) => e.to === edge.to).length > 1
+                      ? a.width
+                      : b.width) - 12,
+                  ),
                   skip:
                     (levels.get(edge.to) ?? 0) - (levels.get(edge.from) ?? 0) >
                     1,
@@ -132,6 +140,26 @@ export function Flow(input: Graph) {
     return () => observer.disconnect();
     // Equivalent renderer props do not restart observation.
   }, [signature]);
+  useLayoutEffect(() => {
+    const captions = root.current?.querySelectorAll<HTMLElement>(
+      "[data-flow-caption]",
+    );
+    if (!captions?.length) return;
+    const measure = () =>
+      setGap(
+        Math.max(
+          72,
+          ...Array.from(
+            captions,
+            (caption) => Math.ceil(caption.getBoundingClientRect().height) + 40,
+          ),
+        ),
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    captions.forEach((caption) => observer.observe(caption));
+    return () => observer.disconnect();
+  }, [connections]);
   return (
     <div style={{ minWidth: 0, overflowX: "auto" }}>
       <div
@@ -141,7 +169,7 @@ export function Flow(input: Graph) {
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
-          gap: 56,
+          gap,
           paddingInline: 24,
           minWidth:
             Math.max(
@@ -175,48 +203,75 @@ export function Flow(input: Graph) {
           </defs>
           {connections.map(({ edge, x1, y1, x2, y2, skip }, index) => {
             const lane = 8 + index * 0.6;
-            const middle = (y1 + y2) / 2;
             const joins =
               graph.edges.filter((connection) => connection.to === edge.to)
                 .length > 1;
-            const label =
-              edge.label &&
-              (edge.label.length > 18
-                ? `${edge.label.slice(0, 17)}…`
-                : edge.label);
+            const splits =
+              graph.edges.filter((connection) => connection.from === edge.from)
+                .length > 1;
+            const rail = joins ? y2 - 14 : splits ? y1 + 14 : (y1 + y2) / 2;
+            const arrow =
+              connections.findIndex(
+                (connection) => connection.edge.to === edge.to,
+              ) === index;
             return (
-              <g key={JSON.stringify([edge.from, edge.to])}>
-                <path
-                  data-flow-edge={`${edge.from}→${edge.to}`}
-                  d={
-                    skip
-                      ? `M${x1},${y1} V${y1 + 18} H${lane} V${y2 - 18} H${x2} V${y2}`
-                      : `M${x1},${y1} C${x1},${middle} ${x2},${middle} ${x2},${y2}`
-                  }
-                  fill="none"
-                  stroke="var(--muted-foreground)"
-                  strokeWidth="1.5"
-                  markerEnd={`url(#${marker})`}
-                />
-                {label && (
-                  <text
-                    x={skip ? (x2 + lane) / 2 : joins ? x1 : x2}
-                    y={skip ? y2 - 22 : middle - 4}
-                    textAnchor="middle"
-                    fontSize="11"
-                    fill="var(--foreground)"
-                    stroke="var(--background)"
-                    strokeWidth="3"
-                    paintOrder="stroke"
-                  >
-                    <title>{edge.label}</title>
-                    {label}
-                  </text>
-                )}
-              </g>
+              <path
+                key={JSON.stringify([edge.from, edge.to])}
+                data-flow-edge={`${edge.from}→${edge.to}`}
+                d={
+                  skip
+                    ? `M${x1},${y1} V${y1 + 14} H${lane} V${y2 - 14} H${x2} V${y2}`
+                    : `M${x1},${y1} V${rail} H${x2} V${y2}`
+                }
+                fill="none"
+                stroke="var(--muted-foreground)"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                markerEnd={arrow ? `url(#${marker})` : undefined}
+              />
             );
           })}
         </svg>
+        {connections.map(({ edge, x1, y1, x2, y2, skip, labelWidth }) => {
+          if (!edge.label) return null;
+          const joins =
+            graph.edges.filter((connection) => connection.to === edge.to)
+              .length > 1;
+          return (
+            <div
+              key={JSON.stringify([edge.from, edge.to])}
+              data-flow-caption={`${edge.from}→${edge.to}`}
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                zIndex: 1,
+                left: skip ? (x2 + 8) / 2 : joins ? x1 : x2,
+                top: skip ? y2 - gap / 2 : (y1 + y2) / 2,
+                width: labelWidth,
+                transform: "translate(-50%, -50%)",
+                textAlign: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  padding: "2px 4px",
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  overflowWrap: "anywhere",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderRadius: 3,
+                }}
+              >
+                {edge.label}
+              </span>
+            </div>
+          );
+        })}
         {rows.map((row, i) => (
           <div
             key={i}
