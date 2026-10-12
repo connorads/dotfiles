@@ -52,6 +52,13 @@ export default defineHexConfig({
         if (reply.ok && reply.press) await hex.press(reply.press)
       },
     },
+    "bb-unread": {
+      phrases: ["next unread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open the oldest unread stopped BB thread",
+      run: async () => { await runBb(bbPorts, { action: "unread" }) },
+    },
     "bb-waiting": {
       phrases: ["who needs me", "next waiting"],
       when: { application: "bb" },

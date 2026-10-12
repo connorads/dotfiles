@@ -173,6 +173,18 @@ function VoiceCard() {
         if (!choices || !option) throw new Error('There is no such numbered voice choice. Say “voice help”.');
         return select(choices.kind, option.id, choices.context);
       }
+      case 'unread': {
+        if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
+        setChoices(null);
+        const next = threads.filter(row => row.id !== context.threadId && row.isUnread
+          && (row.runtimeStatus === 'idle' || row.runtimeStatus === 'error')
+          && row.queuedWork !== 'waiting' && Object.values(row.activity).every(count => count === 0))
+          .sort((a, b) => a.latestAttentionAt - b.latestAttentionAt || a.id.localeCompare(b.id))[0];
+        if (!next) return { ok: true, outcome: 'empty', message: 'No unread stopped threads.' };
+        trackNavigation(next.id);
+        actions.open(next.id);
+        return { ok: true, outcome: 'requested', message: `Opening ${threadCandidate(next).label}` };
+      }
       case 'attention':
       case 'finished': {
         setChoices(null);
@@ -290,6 +302,7 @@ function VoiceCard() {
       </li>)}</ol> : !archiveConfirmation && <dl>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
+        <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
         <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
