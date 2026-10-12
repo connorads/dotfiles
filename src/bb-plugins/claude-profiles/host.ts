@@ -6,6 +6,7 @@ import { hostContract, type Profile } from './contracts.ts';
 import { checkLogin, collectUsage } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
 import type { Usage } from './src/accounts/quota.ts';
+import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
 
 function rootPath(root: string) {
   const path = root.startsWith('~/') ? join(homedir(), root.slice(2)) : root;
@@ -57,5 +58,6 @@ export default experimental_defineHostEntry({
       await transferSession(source.configDir ?? join(homedir(), '.claude'), selected.configDir ?? join(homedir(), '.claude'), input.sessionId);
       return { copied: true };
     },
+    resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
   },
 });

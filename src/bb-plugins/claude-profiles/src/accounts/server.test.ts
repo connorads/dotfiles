@@ -56,3 +56,54 @@ test('a send from another machine is refused before Claude starts on its native 
   assert.equal(stops.length, 0);
   assert.deepEqual(await dispatch('h1'), { action: 'proceed' });
 });
+
+async function usageSetup() {
+  const thread = makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'idle', environmentId: 'e1' });
+  const hostCalls: { method: string; input: unknown; hostId: string }[] = [];
+  const quota = { status: 'ok', message: null, observedAt: Date.now(), windows: [
+    { id: 'five_hour', label: 'Five hours', usedPercent: 12, resetsAt: null, cost: null },
+    { id: 'seven_day', label: 'Seven days', usedPercent: 64, resetsAt: null, cost: null }] };
+  const { bb, harness } = createFakePluginHost({
+    sdk: {
+      threads: { get: async () => thread },
+      environments: { get: async () => ({ id: 'e1', hostId: 'h1' }) },
+      providers: { list: async () => [{ id: 'claude-code', displayName: 'Claude Code' }] },
+      plugins: { callRpc: async (args: { pluginId: string }) => { throw new Error(`Unexpected RPC to ${args.pluginId}`); } },
+    } as never,
+    experimental_callHostRpc: call => {
+      hostCalls.push(call);
+      if (call.method === 'profiles') return [{ id: 'default', label: 'Default', configDir: null }, profile];
+      if (call.method === 'usage') return quota;
+      throw new Error(`Unexpected host call ${call.method}`);
+    },
+  });
+  plugin(bb);
+  await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile });
+  return { harness, hostCalls };
+}
+
+test('the usage header for a bound thread shows that profile\'s quota without calling another plugin', async () => {
+  const { harness, hostCalls } = await usageSetup();
+  assert.deepEqual(await harness.behavior.callRpc('usage.header', { threadId: 't1' }), {
+    providerId: 'claude-code', label: 'Claude Code', accountLabel: 'stretch', message: null, windows: [
+      { label: '5-hour', period: 'five-hour', usedPercent: 12, resetsAt: null, cost: null },
+      { label: 'Weekly', period: 'week', usedPercent: 64, resetsAt: null, cost: null }] });
+  assert.deepEqual(hostCalls.filter(call => call.method === 'usage').map(call => [call.hostId, (call.input as { profileId: string }).profileId]),
+    [['h1', 'stretch']]);
+});
+
+test('the header and the usage RPC share one quota reading per minute', async () => {
+  const { harness, hostCalls } = await usageSetup();
+  await harness.behavior.callRpc('usage.header', { threadId: 't1' });
+  await harness.behavior.callRpc('usage', { threadId: 't1', profileId: 'stretch', refresh: false });
+  await harness.behavior.callRpc('usage.header', { threadId: 't1' });
+  assert.equal(hostCalls.filter(call => call.method === 'usage').length, 1);
+});
+
+test('the header CLI prints a thread\'s usage', async () => {
+  const { harness } = await usageSetup();
+  const result = await harness.behavior.runCli(['header', 't1']);
+  assert.equal(result.exitCode, 0);
+  assert.equal(JSON.parse(result.stdout).accountLabel, 'stretch');
+  assert.equal((await harness.behavior.runCli(['overview', '--bogus'])).exitCode, 1);
+});
