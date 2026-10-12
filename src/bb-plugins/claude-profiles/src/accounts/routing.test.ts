@@ -16,10 +16,12 @@ test('a parent on a named account passes that account on, whatever the composer 
   assert.deepEqual(newThreadAccount(work, 'personal'), { kind: 'inherit', profileId: 'work', label: 'Work' });
 });
 
-test('an unbound parent, a parent on Default and no parent all use the composer account', () => {
-  for (const parent of [null, native]) {
-    assert.deepEqual(newThreadAccount(parent, 'personal'), { kind: 'composer', profileId: 'personal' });
-    assert.deepEqual(newThreadAccount(parent, 'default'), { kind: 'default' });
-    assert.deepEqual(newThreadAccount(parent, null), { kind: 'default' });
-  }
+test('a parent on Default passes Default on, whatever the composer shows', () => {
+  assert.deepEqual(newThreadAccount(native, 'personal'), { kind: 'inherit', profileId: 'default', label: 'Default' });
+});
+
+test('an unbound parent and no parent use the composer account', () => {
+  assert.deepEqual(newThreadAccount(null, 'personal'), { kind: 'composer', profileId: 'personal' });
+  assert.deepEqual(newThreadAccount(null, 'default'), { kind: 'default' });
+  assert.deepEqual(newThreadAccount(null, null), { kind: 'default' });
 });

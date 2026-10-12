@@ -144,6 +144,20 @@ test('a fork starts on its source thread\'s account', async () => {
   assert.equal((await binding())?.profile.id, 'work');
 });
 
+test('a child of a thread switched to Default starts on Default, not the composer account', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:parent', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+  assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
+  assert.deepEqual(await binding(), { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+});
+
+test('a fork of a thread switched to Default starts on Default', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:source', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+  assert.deepEqual(await firstSend({ originKind: 'fork', sourceThreadId: 'source' }), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'default');
+});
+
 test('an inherited account missing on this machine refuses the send and binds nothing', async () => {
   const { bb, firstSend, binding } = await newThreadSetup([{ id: 'default', label: 'Default', configDir: null }, personal]);
   await bb.storage.kv.set('thread:parent', { hostId: 'h2', profile: work });

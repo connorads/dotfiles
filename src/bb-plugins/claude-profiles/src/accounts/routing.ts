@@ -14,9 +14,9 @@ export function startingThreadId(thread: { originKind: 'fork' | null; sourceThre
   return parentThreadId ?? (thread.originKind === 'fork' ? thread.sourceThreadId : null);
 }
 
-/** A starting thread on Default counts as unbound, so the composer choice applies. */
+/** Any binding passes on, Default included, so a child of a thread on Default and its own children stay on Default. */
 export function newThreadAccount(startingBinding: Selection | null, composerProfileId: string | null): NewThreadAccount {
-  if (startingBinding?.profile.configDir) {
+  if (startingBinding) {
     return { kind: 'inherit', profileId: startingBinding.profile.id, label: startingBinding.profile.label };
   }
   if (!composerProfileId || composerProfileId === 'default') return { kind: 'default' };
