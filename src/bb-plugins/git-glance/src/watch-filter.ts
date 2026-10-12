@@ -3,13 +3,18 @@
 
 /** Git-dir entries a refresh never depends on; passed to the native watcher. */
 export const gitDirIgnores = [
-  'objects', 'logs', 'hooks', 'info', 'lfs', 'modules', 'fsmonitor--daemon', 'worktrees',
+  'objects', 'hooks', 'info', 'lfs', 'modules', 'fsmonitor--daemon', 'worktrees',
   '**/*.lock', 'COMMIT_EDITMSG', 'MERGE_MSG', 'SQUASH_MSG', 'MERGE_MODE', 'gc.pid', 'gc.log', 'description',
 ];
 
-/** Second check for paths relative to a git dir, in case the watcher passes one through. */
+/**
+ * Second check for paths relative to a git dir. Reflogs change alongside the refs
+ * they log, so they are noise, except the stash reflog: dropping any stash but
+ * the newest rewrites only that file.
+ */
 export function gitDirRelevant(path: string): boolean {
   if (!path || path.endsWith('.lock')) return false;
+  if (path.startsWith('logs/')) return path === 'logs/refs/stash';
   const [top] = path.split('/');
   return !gitDirIgnores.includes(top!) && !gitDirIgnores.includes(path);
 }

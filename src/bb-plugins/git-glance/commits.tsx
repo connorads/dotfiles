@@ -47,8 +47,10 @@ export function LaneRails({ lanes, width }: { lanes: number[]; width: number }) 
   </svg>;
 }
 
-export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width }: {
+export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, stash = false }: {
   sha: string; threadId: string; now: number; copied: string | null; onCopy: (sha: string) => void; lanes: number[]; width: number;
+  /** A stash is a two-parent commit, but calling it a merge would mislead. */
+  stash?: boolean;
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const [detail, setDetail] = useState<CommitDetail | { error: string } | null>(null);
@@ -73,7 +75,7 @@ export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width }
             <span><strong>{detail.author}</strong> <span title={authored!.toLocaleString('en-GB')}>{age(detail.authoredAt, now)} ago</span>
               {detail.committer !== detail.author && <span className="gg-muted"> · committed by {detail.committer}</span>}</span>
             <span className="gg-spacer" />
-            {detail.parents.length > 1 && <span className="gg-tag">merge</span>}
+            {detail.parents.length > 1 && !stash && <span className="gg-tag">merge</span>}
             <button type="button" className="gg-fact gg-sha" data-tone="quiet" onClick={() => onCopy(detail.sha)} title="Copy full sha">
               <CopyIcon done={copied === detail.sha} />{copied === detail.sha ? 'Copied' : detail.sha.slice(0, 10)}
             </button>

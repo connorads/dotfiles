@@ -22,7 +22,8 @@ export const snapshotSchema = z.discriminatedUnion('kind', [
       ahead: z.number(), behind: z.number(),
     }),
     operation: z.enum(['bisect', 'cherry-pick', 'merge', 'rebase', 'revert']).nullable(),
-    stash: z.number(),
+    /** Newest first; `index` is its current `stash@{n}`. */
+    stashes: z.array(z.object({ sha: z.string(), index: z.number(), subject: z.string(), time: z.number() })),
     /** When FETCH_HEAD last changed, in milliseconds; null before the first fetch. */
     fetchedAt: z.number().nullable(),
     remotes: z.array(z.string()),
@@ -38,11 +39,16 @@ export type Change = z.infer<typeof change>;
 export type Commit = z.infer<typeof commit>;
 
 const opKind = z.enum(['fetch', 'pull', 'push']);
+const stashSha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 /** Every mutating action, so each shares one lifecycle: one at a time, progress, a result. */
 const opRequest = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('fetch') }), z.object({ kind: z.literal('pull') }), z.object({ kind: z.literal('push') }),
   /** `track`: create a local branch from the remote branch `branch` names. */
   z.object({ kind: z.literal('switch'), branch: z.string().min(1), track: z.boolean() }),
+  /** Stashes are named by sha, never `stash@{n}`, which shifts as others are dropped. */
+  z.object({ kind: z.literal('stash-apply'), sha: stashSha }),
+  z.object({ kind: z.literal('stash-pop'), sha: stashSha }),
+  z.object({ kind: z.literal('stash-drop'), sha: stashSha }),
 ]);
 export type OpRequest = z.infer<typeof opRequest>;
 export const branchSchema = z.object({

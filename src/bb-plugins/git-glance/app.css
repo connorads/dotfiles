@@ -325,6 +325,45 @@
 }
 @keyframes gg-flash { from { opacity: 1; } }
 
+/* Stashes */
+.gg-stash-list { list-style: none; margin: 0; padding: 0; }
+.gg-stash-row { position: relative; display: flex; align-items: center; }
+.gg-stash-main {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; height: 32px; padding: 0 14px 0 22px; border: 0;
+  background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
+}
+.gg-stash-main:hover, .gg-stash[data-open] .gg-stash-main { background: var(--state-hover); }
+.gg-stash-icon { width: 14px; height: 14px; flex: none; color: var(--gg-lane-3); }
+.gg-stash-ref { flex: none; color: var(--subtle-foreground, var(--muted-foreground)); font: 11.5px var(--font-mono); }
+.gg-stash-main .gg-age { flex: none; font: 11.5px var(--font-mono); color: var(--subtle-foreground, var(--muted-foreground)); }
+/* Actions sit over the row's right edge, shown on hover or keyboard focus. */
+.gg-stash-actions {
+  position: absolute; right: 10px; display: flex; gap: 2px; padding-left: 24px; opacity: 0; pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--popover) 24px); transition: opacity .15s;
+}
+/* The strip's fade never takes clicks; only its buttons do, once shown. */
+.gg-stash-row:hover .gg-stash-actions, .gg-stash-row:focus-within .gg-stash-actions, .gg-stash[data-open] .gg-stash-actions { opacity: 1; }
+.gg-stash-row:hover .gg-stash-actions > *, .gg-stash-row:focus-within .gg-stash-actions > *, .gg-stash[data-open] .gg-stash-actions > * { pointer-events: auto; }
+.gg-stash-row:hover .gg-age, .gg-stash-row:focus-within .gg-age { visibility: hidden; }
+
+/* Hold to confirm: the fill grows for 2s while held and snaps back on release. */
+.gg-hold {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; overflow: hidden;
+  border: 0; border-radius: 6px; background: transparent; color: var(--destructive-text); font: inherit; cursor: pointer;
+  user-select: none; touch-action: none; transition: background-color .15s, transform .16s var(--gg-ease);
+}
+.gg-hold:hover:not(:disabled) { background: color-mix(in oklch, var(--destructive) 12%, transparent); }
+.gg-hold:active:not(:disabled) { transform: scale(0.96); }
+.gg-hold:disabled { opacity: .45; cursor: default; }
+.gg-hold:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.gg-hold > :not(.gg-hold-fill) { position: relative; }
+.gg-hold-fill {
+  position: absolute; inset: 0; background: color-mix(in oklch, var(--destructive) 32%, transparent);
+  clip-path: inset(0 100% 0 0); transition: clip-path .2s ease-out;
+}
+.gg-hold[data-holding] .gg-hold-fill { clip-path: inset(0 0 0 0); transition: clip-path 2s linear; }
+.gg-hold[data-armed] { background: color-mix(in oklch, var(--destructive) 18%, transparent); }
+
 /* Expanded commit */
 .gg-commit .gg-row-chevron { flex: none; }
 .gg-commit:hover .gg-row-chevron, .gg-commit:focus-visible .gg-row-chevron, .gg-commit[aria-expanded="true"] .gg-row-chevron { opacity: 1; }
@@ -377,6 +416,7 @@
 /* Reduced motion keeps opacity cues and drops movement and size changes. */
 @media (prefers-reduced-motion: reduce) {
   .gg-picker { animation: none; }
+  .gg-stash-actions { transition: none; }
   .gg-dialog[data-morph], .gg-dialog[data-morph] .gg-panel { transition: none; }
   .gg-live-dot, .gg-spinner, .gg-diff-loading i, .gg-progress i { animation: none; }
   .gg-diff, .gg-commit-panel, .gg-success { transition-property: opacity; }

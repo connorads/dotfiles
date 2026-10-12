@@ -9,6 +9,9 @@ export function describe(request: OpRequest): { name: string; doing: string } {
     case 'pull': return { name: 'Pull', doing: 'Pulling' };
     case 'push': return { name: 'Push', doing: 'Pushing' };
     case 'switch': return { name: `Switch to ${request.track ? request.branch.slice(request.branch.indexOf('/') + 1) : request.branch}`, doing: 'Switching' };
+    case 'stash-apply': return { name: 'Apply stash', doing: 'Applying' };
+    case 'stash-pop': return { name: 'Pop stash', doing: 'Popping' };
+    case 'stash-drop': return { name: 'Drop stash', doing: 'Dropping' };
   }
 }
 export const hints: Record<FailureReason, string | null> = {

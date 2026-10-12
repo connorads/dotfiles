@@ -5,6 +5,7 @@ import { BranchPicker } from './branch-picker.tsx';
 import { CommitList } from './commits.tsx';
 import type { RepoState } from './repo-store.ts';
 import { ChangeRow } from './rows.tsx';
+import { StashList } from './stash-list.tsx';
 import { age, freshKeys, plural } from './src/format.ts';
 import { describe, hints, SyncBar } from './sync-bar.tsx';
 import { changeKey, CopyIcon, DiffBar, Fact, useNow, Zoomed } from './ui.tsx';
@@ -83,7 +84,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         <SyncBar repo={repo} op={op} fetched={fetched} onSync={kind => onRun({ kind })} onCancel={onCancel} />
         {!branch.upstream && branch.head && repo.remotes.length > 0 && <Fact tone="quiet" icon="CloudOff" title="No upstream branch">Not published</Fact>}
         {branch.ahead > 0 && branch.behind > 0 && <Fact tone="behind" icon="AlertTriangle" title="Local and remote both have new commits">Diverged</Fact>}
-        {repo.stash > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stash, 'stash')}</Fact>}
+        {repo.stashes.length > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stashes.length, 'stash')}</Fact>}
         {branch.oid && <button type="button" className="gg-fact gg-sha" data-tone="quiet" onClick={() => copy(branch.oid!)} title="Copy HEAD sha">
           <CopyIcon done={copied === branch.oid} />{copied === branch.oid ? 'Copied' : branch.oid.slice(0, 7)}
         </button>}
@@ -133,6 +134,15 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         })}
         {repo.hidden > 0 && <p className="gg-note">{plural(repo.hidden, 'more change')} not shown. Open lazygit for the full list.</p>}
       </>}
+
+      {repo.stashes.length > 0 && <section className="gg-section gg-stashes">
+        <button type="button" data-row className="gg-section-head" aria-expanded={!collapsed.has('stashes')} onClick={() => toggle('stashes')}>
+          <Icon name="ChevronRight" className="gg-chevron" />
+          <Icon name="Archive" className="gg-section-icon" />
+          Stashes<span className="gg-count">{repo.stashes.length}</span>
+        </button>
+        {!collapsed.has('stashes') && <StashList stashes={repo.stashes} threadId={threadId} now={now} op={op} copied={copied} onCopy={copy} onRun={onRun} />}
+      </section>}
 
       {repo.commits.length > 0 && <section className="gg-section gg-commits">
         <button type="button" data-row className="gg-section-head" aria-expanded={!collapsed.has('commits')} onClick={() => toggle('commits')}>

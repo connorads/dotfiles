@@ -141,3 +141,12 @@ export function parseLog(output: string): Commit[] {
       refs: parseRefs(decoration ?? ''), subject: subject.join('\x1f') };
   });
 }
+
+export interface Stash { sha: string; index: number; subject: string; time: number }
+/** `git stash list --format=%H%x1f%gs%x1f%ct`, newest first, so line n is `stash@{n}`. */
+export function parseStashes(output: string): Stash[] {
+  return output.split('\n').filter(Boolean).map((line, index) => {
+    const [sha = '', subject = '', time] = line.split('\x1f');
+    return { sha, index, subject, time: Number(time) || 0 };
+  });
+}
