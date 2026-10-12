@@ -12,8 +12,8 @@ records why it absorbs Model Favourites and Agent Usage.
 
 ### Picker
 
-Press **Alt+F**, click the star beside the prompt, or choose **Switch model** in
-the composer's plus menu. The picker opens on the focused composer, in a thread
+Press **Alt+F**, click the chevron beside the prompt star, or choose **Switch
+model** in the composer's plus menu. The picker opens on the focused composer, in a thread
 or a new-thread composer. It changes the next turn and keeps the draft. It never
 sends a prompt.
 
@@ -24,6 +24,10 @@ sends a prompt.
    Claude Code is the selected provider.
 
 ### Favourites and effort
+
+The star beside the prompt shows whether the current model is a favourite. It
+is filled gold when it is. Click it to save the current model with the current
+effort, or to remove it. Its tooltip names the model and effort.
 
 Up to nine favourites fit in numbered slots. Removing one leaves the other slot
 numbers unchanged. Each favourite has a **Saved effort** select.
