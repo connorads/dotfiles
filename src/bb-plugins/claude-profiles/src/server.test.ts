@@ -17,7 +17,8 @@ async function setup(launchEntries: { name: string; source: unknown; value: stri
   await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile });
   const hook = harness.inspection.registrations.hooks['message.dispatch'];
   if (!hook) throw new Error('Missing dispatch hook.');
-  const dispatch = () => hook(makeMessageDispatchHookContext({ thread: { id: 't1', providerId: 'claude-code', status: 'idle' } }));
+  const dispatch = (hostId = 'h1') => hook(makeMessageDispatchHookContext({
+    thread: { id: 't1', providerId: 'claude-code', status: 'idle' }, host: { id: hostId } }));
   return { harness, thread, stops, dispatch };
 }
 
@@ -44,4 +45,14 @@ test('a send stops a bad launch that the event review has not seen yet', async (
   const { stops, dispatch } = await setup([]);
   assert.equal((await dispatch()).action, 'reject');
   assert.equal(stops.length, 1);
+});
+
+test('a send from another machine is refused before Claude starts on its native login', async () => {
+  const { stops, dispatch } = await setup([
+    { name: 'CLAUDE_CONFIG_DIR', source: { plugin: 'claude-profiles' }, value: profile.configDir }]);
+  const refused = await dispatch('h2');
+  assert.equal(refused.action, 'reject');
+  assert.match(refused.action === 'reject' ? refused.message : '', /stretch account belongs to another machine/);
+  assert.equal(stops.length, 0);
+  assert.deepEqual(await dispatch('h1'), { action: 'proceed' });
 });

@@ -79,6 +79,9 @@ directory is stopped, and the next send is refused once with an explanation.
 Sending again relaunches with fresh env. Event activity is debounced to once a
 second, so the first request of a bad launch can still reach the native login.
 
+A send from a machine other than the account's own is refused before Claude
+starts. Choose the thread's account again on that machine.
+
 A new thread has no session to copy. Its first send passes BB's
 `message.dispatch` hook before the provider environment resolves. The hook
 copies the remembered choice to the thread, resolving the profile on the
