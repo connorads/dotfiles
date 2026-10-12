@@ -23,7 +23,7 @@ export default defineHexConfig({
   // },
   commands: {
     "bb-go-to": {
-      phrases: ["go to {target}"],
+      phrases: ["go to {target}", "take me to {target}", "can i go to {target}"],
       when: { application: "bb" },
       group: "BB",
       description: "Find a BB thread by title or description",
@@ -33,7 +33,7 @@ export default defineHexConfig({
       },
     },
     "bb-next": {
-      phrases: ["next thread"],
+      phrases: ["next thread", "next conversation"],
       when: { application: "bb" },
       group: "BB",
       description: "Go to the next BB thread",
@@ -43,7 +43,7 @@ export default defineHexConfig({
       },
     },
     "bb-previous": {
-      phrases: ["previous thread"],
+      phrases: ["previous thread", "previous conversation"],
       when: { application: "bb" },
       group: "BB",
       description: "Go to the previous BB thread",

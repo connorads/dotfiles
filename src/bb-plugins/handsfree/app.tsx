@@ -26,6 +26,7 @@ function VoiceCard() {
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   const [expanded, setExpanded] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState('Say “voice help” to see commands.');
   const [choices, setChoices] = useState<Choices | null>(null);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ target: ArchiveTarget; context: string } | null>(null);
@@ -61,6 +62,10 @@ function VoiceCard() {
   }, [sdk]);
 
   useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
+  useEffect(() => { if (!expanded) setArchiveConfirmation(null); }, [expanded]);
+  useEffect(() => {
+    if (choices || archiveConfirmation) card.current?.focus();
+  }, [choices, archiveConfirmation]);
   useEffect(() => {
     if (observedThread.current === context.threadId) return;
     observedThread.current = context.threadId;
@@ -127,6 +132,7 @@ function VoiceCard() {
         const result = await rpc.call('archive', { target, confirmed: command.action === 'confirm-archive' });
         setChoices(null);
         if (result.outcome === 'confirmation' && result.target) {
+          setExpanded(true);
           setArchiveConfirmation({ target: result.target, context: expectedContext });
         } else {
           setArchiveConfirmation(null);
@@ -189,7 +195,7 @@ function VoiceCard() {
         setExpanded(true);
         return { ok: true, message: 'Say commands with the dictation pedal released.' };
       case 'notice':
-        setExpanded(true);
+        if (command.problem) setExpanded(true);
         return { ok: true, message: command.message };
       case 'next':
       case 'previous': {
@@ -217,7 +223,6 @@ function VoiceCard() {
       if (command.action !== 'list') {
         setMessage(reply.message);
         setHistory(items => [...items, reply.message].slice(-10));
-        setExpanded(true);
       }
       return reply;
     } catch (cause) {
@@ -251,10 +256,10 @@ function VoiceCard() {
         event.preventDefault(); event.stopImmediatePropagation();
         setChoices(null); setExpanded(false); composer.focus();
         setArchiveConfirmation(null);
-      } else if (expanded && choices && event.key === 'Enter') {
+      } else if (expanded && choices && card.current?.contains(document.activeElement) && event.key === 'Enter') {
         event.preventDefault(); event.stopImmediatePropagation();
         if (!busy) void run({ action: 'choose', number: highlight + 1 });
-      } else if (expanded && choices && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      } else if (expanded && choices && card.current?.contains(document.activeElement) && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
         event.preventDefault(); event.stopImmediatePropagation();
         setHighlight(index => (index + (event.key === 'ArrowDown' ? 1 : choices.options.length - 1)) % choices.options.length);
       }
@@ -265,12 +270,13 @@ function VoiceCard() {
 
   return <aside className="handsfree" aria-label="BB voice controls" data-context={contextKey}>
     <button type="button" className="handsfree-toggle" aria-expanded={expanded} onClick={() => {
-      if (expanded) { setChoices(null); composer.focus(); }
+      if (expanded) { setChoices(null); setArchiveConfirmation(null); composer.focus(); }
       setExpanded(value => !value);
     }}>
       Voice{busy ? ' · Working' : ''}
     </button>
-    {expanded && <div className="handsfree-card">
+    {!expanded && <p className="handsfree-status" role="status" title={message}>{message}</p>}
+    {expanded && <div ref={card} className="handsfree-card" tabIndex={-1}>
       <strong>{thread?.displayTitle ?? 'New thread'}</strong>
       <p>{projectId ? projectName(projectId) : 'Choose a project'} · {composer.selection?.model ?? composer.selection?.providerId ?? 'Choose an agent'}</p>
       <p role="status">{message}</p>
@@ -281,7 +287,7 @@ function VoiceCard() {
       {choices ? <ol>{choices.options.map((option, index) => <li key={option.id}>
         <button type="button" disabled={busy} aria-current={index === highlight ? 'true' : undefined}
           onClick={() => void run({ action: 'choose', number: index + 1 })}>{index + 1}. {option.label}</button>
-      </li>)}</ol> : <dl>
+      </li>)}</ol> : !archiveConfirmation && <dl>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
@@ -294,7 +300,7 @@ function VoiceCard() {
         <summary>Recent voice results</summary>
         <ol aria-label="Recent voice results">{history.map((entry, index) => <li key={index}>{entry}</li>)}</ol>
       </details>}
-      <p className="handsfree-pedals">Right Alt: dictate · Enter: {choices ? 'choose highlighted match' : composer.isRunning ? steer === null ? 'BB send setting' : steer ? 'steer running agent' : 'queue message' : 'send'} · Escape: close voice help</p>
+      <p className="handsfree-pedals">Right Alt: dictate · Enter: {choices ? 'choose while this card has focus' : composer.isRunning ? steer === null ? 'BB send setting' : steer ? 'steer running agent' : 'queue message' : 'send'} · Escape: close voice help</p>
     </div>}
   </aside>;
 }

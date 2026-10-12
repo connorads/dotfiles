@@ -27,9 +27,18 @@ thread, project, model, command help and numbered matches.
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
 
-Enter selects the highlighted voice match while choices are open. Escape closes
+Choices take keyboard focus. Enter selects the highlighted match while the card
+has focus. Returning to the composer restores BB's Enter and arrow keys.
+Escape closes
 the card and restores composer focus. Outside the card, BB handles both pedals.
 The card labels Enter as send, queue or steer from BB's current setting.
+Routine results use a compact status. Choices, errors, archive confirmation and
+requested help expand the card.
+
+`take me to …` and `can I go to …` also search threads. `next conversation` and
+`previous conversation` also navigate. Use `next thread` or `go to next thread`
+without `the`. Hex can reject `go to the next thread` as an ambiguous command
+sequence because `go to the` is itself a valid captured command.
 
 Project selection opens a new draft; it does not move an existing conversation.
 The Voice card keeps ten recent results in memory, including heard search targets.

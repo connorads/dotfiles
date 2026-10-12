@@ -94,7 +94,7 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Re
     return result
   }
   const notice = async (message: string, result: 'no-match' | 'error'): Promise<Reply> => {
-    const reply = await request({ action: 'notice', message })
+    const reply = await request({ action: 'notice', message, problem: true })
     return { ...reply, ok: false, outcome: result }
   }
   if (utterance) await request({ action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
