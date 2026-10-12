@@ -558,6 +558,9 @@ importers:
 
   handsfree:
     dependencies:
+      '@bb-plugins/chip':
+        specifier: workspace:*
+        version: link:../chip
       '@kitlangton/hex':
         specifier: 0.3.1
         version: 0.3.1
