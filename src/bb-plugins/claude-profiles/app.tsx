@@ -6,6 +6,9 @@ import type { rpcContract, Profile } from './contracts.ts';
 import './app.css';
 import { command, CommandOwner, Overlay, Trigger } from './ui/picker/picker.tsx';
 import { open as openPicker } from './ui/picker/store.ts';
+import { ThreadUsage } from './ui/usage/badge.tsx';
+import { UsageOverlay } from './ui/usage/overlay.tsx';
+import { openUsage } from './ui/usage/overlay-store.ts';
 
 const popupId = 'accounts';
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Profile request failed.';
@@ -122,4 +125,7 @@ export default definePluginApp(app => {
     run: ({ composer }) => command(composer, controller => controller.cycle(-1)) });
   for (let slot = 1; slot <= 9; slot++) app.composer.experimental_registerCommand({ id: `select-favourite-${slot}`,
     title: `Agent Switcher: select favourite ${slot}`, run: ({ composer }) => command(composer, controller => controller.select(slot)) });
+  app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Usage', component: ThreadUsage });
+  app.slots.experimental_appOverlay({ id: 'usage-overview', component: UsageOverlay });
+  app.commands.register({ id: 'show-usage', title: 'Agent Switcher: show usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });
