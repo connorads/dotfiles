@@ -9,7 +9,7 @@ import type { ArchiveTarget } from './archive.ts';
 import { publishVoiceHeader, VoiceHeader } from './header.tsx';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
 import { HexActivity } from './diagnostics-view.tsx';
-import { captureChoice, type ChoiceCapture } from './choice-target.ts';
+import { captureChoice, watchQuestionFocus, type ChoiceCapture } from './choice-target.ts';
 import './app.css';
 
 interface Choices {
@@ -72,6 +72,9 @@ function VoiceCard() {
   const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}`;
   const latestContext = useRef(contextKey);
   latestContext.current = contextKey;
+  const latestComposer = useRef(composer);
+  latestComposer.current = composer;
+  useEffect(() => watchQuestionFocus(document, () => latestContext.current, () => latestComposer.current.focus()), []);
   const processing = useRef(false);
   const projectName = (id: string) => sidebar.projects.find(row => row.id === id)?.name ?? id;
   const threads = sidebar.threads.filter(row => !row.isArchived && !row.isHidden);
