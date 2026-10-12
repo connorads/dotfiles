@@ -13,8 +13,8 @@ function quota(usage: Usage): string | null {
 }
 
 /**
- * The Claude account as a menu button. A thread's accounts show their quota once the menu opens,
- * read through the server's one-minute quota cache; a new-thread composer has no host to read on.
+ * The Claude account as a menu button. Accounts show their quota once the menu opens, read through
+ * the server's one-minute quota cache; a draft reads on the machine that lists its accounts.
  */
 export function AccountMenu({ threadId, profiles, currentId, disabled, buttonRef, onChoose }: {
   threadId: string | null; profiles: readonly Profile[]; currentId: string; disabled: boolean;
@@ -27,11 +27,12 @@ export function AccountMenu({ threadId, profiles, currentId, disabled, buttonRef
   const requested = useRef(new Set<string>());
   function show() {
     setOpen(value => !value);
-    if (threadId === null) return;
     for (const profile of profiles) {
       if (requested.current.has(profile.id)) continue;
       requested.current.add(profile.id);
-      rpc.call('usage', { threadId, profileId: profile.id, refresh: false }).then(
+      const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id })
+        : rpc.call('usage', { threadId, profileId: profile.id, refresh: false });
+      reading.then(
         usage => setQuotas(previous => ({ ...previous, [profile.id]: quota(usage) })),
         () => setQuotas(previous => ({ ...previous, [profile.id]: null })));
     }

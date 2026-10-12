@@ -24,6 +24,8 @@ export const accountsContract = defineRpcContract({
   }) },
   choose: { input: z.object({ threadId: z.string().nullable(), profileId: z.string() }), output: z.object({ currentId: z.string() }) },
   usage: { input: z.object({ threadId: z.string(), profileId: z.string(), refresh: z.boolean() }), output: usageSchema },
+  // A draft has no thread yet, so its quota is read on the machine that lists its accounts.
+  nextThreadQuota: { input: z.object({ profileId: z.string() }), output: usageSchema },
 });
 export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract });
 export const usageSourceContract = defineRpcContract({

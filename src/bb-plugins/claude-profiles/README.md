@@ -59,10 +59,10 @@ provider. It shows the current account. Clicking it opens the picker with the
 **Claude account** menu focused. The picker is the only place to change the
 account.
 
-In a thread, the menu shows each account's five-hour and seven-day quota, for
-example `5h 12% · 7d 30%`. The quota loads after the menu opens and comes from
-the server's one-minute quota cache. A new-thread composer has no host yet, so
-its menu shows no quota.
+The menu shows each account's five-hour and seven-day quota, for example
+`5h 12% · 7d 30%`. The quota loads after the menu opens and comes from the
+server's one-minute quota cache. A thread reads it on its own machine. A
+new-thread draft reads it on the connected machine that lists its accounts.
 
 New thread:
 
