@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useComposer, useComposers, useRpc, useSdk, useRealtime,
   experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
@@ -58,6 +58,8 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
   const searchInput = useRef<HTMLInputElement>(null);
   const accountButton = useRef<HTMLButtonElement>(null);
   const generation = useRef(0);
+  const chipStrip = useRef<HTMLDivElement>(null);
+  const [chipOverflow, setChipOverflow] = useState({ start: false, end: false });
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   // Queued-message editors cannot change a thread's account; choosing there would rewrite the next-thread account.
   const claude = (composer.scope.kind === 'thread' || composer.scope.kind === 'new-thread')
@@ -193,7 +195,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         onClick={() => { if (!blocked && !unavailable) choose(favourite); }}>
         {saved ? <kbd className="mf-slot" aria-hidden="true">{favourite.slot}</kbd> : <span className="mf-slot" aria-hidden="true" />}
         <span className="mf-model-name">{name}</span>
-        <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>
+        {(reason || saved || search) && <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>}
       </button>
       {saved && model && (levels.length > 0 || favourite.reasoningLevel) && <EffortPill name={name} saved={favourite.reasoningLevel}
         levels={levels} disabled={blocked} onChange={effort => setEffort(favourite, effort)} />}
@@ -210,6 +212,22 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     const settled = await composer.setSelection(selection);
     if (settled[field] !== value) throw new Error('This option is unavailable for the current model.');
   }
+  // Fades mark the edges with hidden chips, so a clipped strip reads as scrollable.
+  const measureChips = useCallback(() => {
+    const strip = chipStrip.current;
+    if (!strip) return;
+    const start = strip.scrollLeft > 1;
+    const end = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1;
+    setChipOverflow(previous => previous.start === start && previous.end === end ? previous : { start, end });
+  }, []);
+  useLayoutEffect(measureChips, [measureChips, providers.length]);
+  useEffect(() => {
+    const strip = chipStrip.current;
+    if (!strip || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measureChips);
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [measureChips]);
   const tiers = currentModel?.supportedServiceTiers ?? [];
   const chips = [{ id: 'all', label: 'All' }, { id: 'favourites', label: 'Favourites', count: list.length },
     ...providers.map(p => ({ id: p.providerId, label: p.providerName }))];
@@ -226,7 +244,8 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
             autoComplete="off" spellCheck={false} onChange={event => setQuery(event.target.value)} />
           <button type="button" className="mf-dismiss" aria-label="Close model switcher" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button>
         </div>
-        <div className="mf-chips" role="group" aria-label="Filter models">
+        <div ref={chipStrip} className="mf-chips" role="group" aria-label="Filter models" onScroll={measureChips}
+          data-more-start={chipOverflow.start || undefined} data-more-end={chipOverflow.end || undefined}>
           {chips.map(chip => <button type="button" key={chip.id} aria-pressed={filter === chip.id} onClick={() => setFilter(chip.id)}>
             {chip.id === 'favourites' && <Icon name="Star" className="mf-chip-star" />}{chip.label}
             {'count' in chip && <span className="mf-count">{chip.count}</span>}
@@ -270,7 +289,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         {accounts?.supported && composer.isRunning ? <small>Available when this turn finishes.</small>
           : !threadId && accounts?.supported && <small>New Claude threads start on this account.</small>}
         {accounts?.supported && profileError && <small role="alert">{profileError}</small>}
-        <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" title="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="RefreshCw" className="mf-refresh-icon" /></button>
+        <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" title="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="ArrowReloadHorizontal" className="mf-refresh-icon" /></button>
       </div>}
       <div className="mf-footer" aria-hidden="true">
         <span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> move</span>
