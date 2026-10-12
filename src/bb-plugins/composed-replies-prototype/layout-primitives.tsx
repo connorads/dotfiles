@@ -30,7 +30,14 @@ const iconPaths = {
   settings:
     "M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0",
 } as const;
+const iconName = z.enum(
+  Object.keys(iconPaths) as [
+    keyof typeof iconPaths,
+    ...(keyof typeof iconPaths)[],
+  ],
+);
 export const layoutProps = {
+  IconLabel: z.object({ icon: iconName, text: z.string().max(4000) }),
   Box: z.object({
     children,
     surface: z.enum(["plain", "muted"]).default("plain"),
@@ -47,12 +54,7 @@ export const layoutProps = {
     justify: z.enum(["start", "center", "between"]).default("start"),
   }),
   Icon: z.object({
-    name: z.enum(
-      Object.keys(iconPaths) as [
-        keyof typeof iconPaths,
-        ...(keyof typeof iconPaths)[],
-      ],
-    ),
+    name: iconName,
     size: z.enum(["small", "medium"]).default("medium"),
     label: z.string().max(160).default(""),
   }),
@@ -218,6 +220,30 @@ export function Chip(input: z.input<typeof layoutProps.Chip>) {
       }}
     >
       {p.text}
+    </span>
+  );
+}
+
+export function IconLabel(input: z.input<typeof layoutProps.IconLabel>) {
+  if (input.text === undefined || input.icon === undefined) return null;
+  const p = layoutProps.IconLabel.parse(input);
+  return (
+    <span
+      style={{
+        display: "flex",
+        flexWrap: "nowrap",
+        alignItems: "flex-start",
+        gap: 8,
+        minWidth: 0,
+        maxWidth: "100%",
+        fontSize: 14,
+        lineHeight: 1.5,
+      }}
+    >
+      <span style={{ flexShrink: 0, paddingTop: 2 }}>
+        <Icon name={p.icon} size="small" />
+      </span>
+      <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{p.text}</span>
     </span>
   );
 }

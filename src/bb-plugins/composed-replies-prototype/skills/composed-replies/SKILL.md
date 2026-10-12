@@ -29,8 +29,8 @@ JSON binds controls with `$bindState`, reads with `$state`, and calculates with
 registered `$computed` functions. Return complete JSON, not JSONL patches.
 
 Compose visual explanations with Box, Row, Grid, Icon, Heading and Caption.
-For a downward flow, alternate stage boxes with centred arrow-down icon rows.
-Use Grid for parallel stages. Use the contract's named icons and style tokens,
+Use Flow with explicit nodes and edges for downward processes, splits and joins.
+Use IconLabel to keep icons beside wrapping text. Use Grid for comparisons. Use the contract's named icons and style tokens,
 not arbitrary SVG, CSS or emoji substitutes. Use Chip for short category labels
 and Divider between sections.
 

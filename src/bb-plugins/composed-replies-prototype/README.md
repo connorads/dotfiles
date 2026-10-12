@@ -1,7 +1,7 @@
 # Composed replies prototype
 
 Native React components in BB assistant messages. OpenUI and json-render compose
-new interfaces from the same twenty-three primitives. The model does not emit executable
+new interfaces from the same twenty-five primitives. The model does not emit executable
 JavaScript or select a finished calculator.
 
 ```mermaid
@@ -90,8 +90,14 @@ label makes it decorative; a label gives it an accessible name. `Heading` and
 categories. Spacing uses a four-pixel scale with values from zero to three.
 Style properties use named options rather than arbitrary CSS.
 
-Compose downward processes from stage boxes and centred arrow-down icon rows.
-Use `Grid` for parallel stages. It stacks them in narrow containers.
+`IconLabel` keeps a decorative icon beside wrapping text. Grid boxes stretch
+to equal heights in each row and stack in narrow containers.
+
+`Flow(nodes, edges)` represents downward processes with explicit relationships.
+It supports splits, joins and edge labels. Node IDs must be unique. Edges must
+reference existing nodes and form an acyclic graph. Graphs allow twelve nodes
+and eighteen edges. Dense parallel layers scroll inside the diagram. Each edge
+also appears in an expandable textual connection list.
 
 ## Prompt cost
 
