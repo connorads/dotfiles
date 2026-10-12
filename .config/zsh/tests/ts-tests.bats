@@ -36,6 +36,9 @@ setup() {
   git init -q --bare "$FAKE_GIT_DIR"
   export GIT_DIR="$FAKE_GIT_DIR"
   export GIT_WORK_TREE="$FAKE_WORK_TREE"
+  # Git exports this to hooks too; an inherited one points a fixture repo's
+  # writes at the real dotfiles index.
+  export GIT_INDEX_FILE="$FAKE_GIT_DIR/index"
 }
 
 # write_runner_stub NAME - records its argv, cwd and inherited git environment,
@@ -57,8 +60,8 @@ if [ "\$1" = --version ]; then
   echo "$name 0.0.0-stub"
   exit 0
 fi
-printf '%s %s cwd=%s GIT_DIR=[%s] GIT_WORK_TREE=[%s]\n' \\
-  "$name" "\$*" "\${PWD#\$HOME/}" "\${GIT_DIR:-}" "\${GIT_WORK_TREE:-}" >>"\$RUNNER_LOG"
+printf '%s %s cwd=%s GIT_DIR=[%s] GIT_WORK_TREE=[%s] GIT_INDEX_FILE=[%s]\n' \\
+  "$name" "\$*" "\${PWD#\$HOME/}" "\${GIT_DIR:-}" "\${GIT_WORK_TREE:-}" "\${GIT_INDEX_FILE:-}" >>"\$RUNNER_LOG"
 exit "\${${upper}_EXIT:-0}"
 EOF
 }
@@ -78,14 +81,14 @@ make_project() {
   fi
 }
 
-@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE" {
+@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE" {
   write_runner_stub bun
   make_project src/skl bun.lock "bun test"
 
   run bash "$SCRIPT" src/skl/src/core/args.ts
 
   [ "$status" -eq 0 ]
-  [[ "$(cat "$RUNNER_LOG")" == *"GIT_DIR=[] GIT_WORK_TREE=[]"* ]]
+  [[ "$(cat "$RUNNER_LOG")" == *"GIT_DIR=[] GIT_WORK_TREE=[] GIT_INDEX_FILE=[]"* ]]
 }
 
 @test "a staged file resolves to its nearest package.json, not an ancestor's" {
