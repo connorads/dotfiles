@@ -359,52 +359,52 @@ importers:
     dependencies:
       '@json-render/core':
         specifier: 0.21.0
-        version: 0.21.0(zod@4.3.6)
+        version: 0.21.0(zod@4.6.5)
       '@json-render/react':
         specifier: 0.21.0
-        version: 0.21.0(react@19.2.4)(zod@4.3.6)
+        version: 0.21.0(react@19.2.4)(zod@4.6.5)
       '@openuidev/react-lang':
         specifier: 0.3.1
-        version: 0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+        version: 0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.5)
       zod:
-        specifier: 4.3.6
-        version: 4.3.6
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@get-bb/plugin-sdk':
-        specifier: 0.6.15
-        version: 0.6.15(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 'catalog:'
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
-        specifier: 16.3.2
+        specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
-        specifier: 7.6.13
+        specifier: 'catalog:'
         version: 7.6.13
       '@types/node':
-        specifier: 22.15.30
+        specifier: 'catalog:'
         version: 22.15.30
       '@types/react':
-        specifier: 19.0.12
+        specifier: 'catalog:'
         version: 19.0.12
       '@types/react-dom':
-        specifier: 19.0.4
+        specifier: 'catalog:'
         version: 19.0.4(@types/react@19.0.12)
       hono:
-        specifier: 4.11.9
+        specifier: 'catalog:'
         version: 4.11.9
       jsdom:
-        specifier: 26.1.0
+        specifier: 'catalog:'
         version: 26.1.0
       react:
-        specifier: 19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
       react-dom:
-        specifier: 19.2.4
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       typescript:
-        specifier: 5.8.3
+        specifier: 'catalog:'
         version: 5.8.3
       vitest:
-        specifier: 4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
 
   composer-keys:
@@ -2273,13 +2273,13 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
-  '@json-render/core@0.21.0(zod@4.3.6)':
+  '@json-render/core@0.21.0(zod@4.6.5)':
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.5
 
-  '@json-render/react@0.21.0(react@19.2.4)(zod@4.3.6)':
+  '@json-render/react@0.21.0(react@19.2.4)(zod@4.6.5)':
     dependencies:
-      '@json-render/core': 0.21.0(zod@4.3.6)
+      '@json-render/core': 0.21.0(zod@4.6.5)
       react: 19.2.4
     transitivePeerDependencies:
       - zod
@@ -2287,29 +2287,29 @@ snapshots:
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
-  '@openuidev/devtools@0.2.2(@openuidev/observability@0.0.4)(@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@openuidev/devtools@0.2.2(@openuidev/observability@0.0.4)(@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.5))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@openuidev/observability': 0.0.4
       lucide-react: 0.575.0(react@19.2.4)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     optionalDependencies:
-      '@openuidev/react-lang': 0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+      '@openuidev/react-lang': 0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.5)
 
-  '@openuidev/lang-core@0.3.2(zod@4.3.6)':
+  '@openuidev/lang-core@0.3.2(zod@4.6.5)':
     dependencies:
       ci-info: 4.4.0
-      zod: 4.3.6
+      zod: 4.6.5
 
   '@openuidev/observability@0.0.4': {}
 
-  '@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)':
+  '@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.5)':
     dependencies:
-      '@openuidev/devtools': 0.2.2(@openuidev/observability@0.0.4)(@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@openuidev/lang-core': 0.3.2(zod@4.3.6)
+      '@openuidev/devtools': 0.2.2(@openuidev/observability@0.0.4)(@openuidev/react-lang@0.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.5))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@openuidev/lang-core': 0.3.2(zod@4.6.5)
       '@openuidev/observability': 0.0.4
       react: 19.2.4
-      zod: 4.3.6
+      zod: 4.6.5
     optionalDependencies:
       react-dom: 19.2.4(react@19.2.4)
 

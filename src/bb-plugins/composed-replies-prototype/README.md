@@ -74,5 +74,6 @@ pnpm build
 
 The tests verify real control-to-metric-to-chart updates in both libraries,
 invalid graph and computation rejection, bounded input and numeric results.
-SDK pin 0.6.15 uses the shared workspace's installed contract. Live BB can have a
-newer SDK; builds report that mismatch.
+Shared dependencies use the workspace catalogue. `bb plugin types --check`
+compares literal manifest values and reports `catalog:` as a version mismatch.
+Check `dist/app.meta.json` after building to confirm the resolved SDK version.
