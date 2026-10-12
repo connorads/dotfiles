@@ -1,0 +1,197 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { CompositionView } from "./app";
+import { parseComposition } from "./validation";
+afterEach(cleanup);
+const source =
+  'root = Stack([Heading("Connector flow", 2), Box([Row([Icon("database", "medium", "Database"), Caption("Source systems")], 2, "center", "center")], "muted", true, "medium", 2, 2, "center"), Icon("arrow-down", "small", "Feeds into"), Row([Chip("Worker", "accent"), Divider()], 1, "center", "start"), NumberInput("Workers", $n, 1, 8, 1, ""), Caption($n)])\n$n = 2';
+const json = JSON.stringify({
+  root: "root",
+  state: { n: 2 },
+  elements: {
+    root: {
+      type: "Stack",
+      props: {},
+      children: ["heading", "box", "arrow", "row", "control", "caption"],
+    },
+    heading: {
+      type: "Heading",
+      props: { text: "Connector flow", level: 2 },
+      children: [],
+    },
+    box: {
+      type: "Box",
+      props: {
+        surface: "muted",
+        border: true,
+        radius: "medium",
+        padding: 2,
+        gap: 2,
+        align: "center",
+      },
+      children: ["source"],
+    },
+    source: {
+      type: "Row",
+      props: { gap: 2, align: "center", justify: "center" },
+      children: ["db", "sourceCaption"],
+    },
+    db: {
+      type: "Icon",
+      props: { name: "database", size: "medium", label: "Database" },
+      children: [],
+    },
+    sourceCaption: {
+      type: "Caption",
+      props: { text: "Source systems" },
+      children: [],
+    },
+    arrow: {
+      type: "Icon",
+      props: { name: "arrow-down", size: "small", label: "Feeds into" },
+      children: [],
+    },
+    row: {
+      type: "Row",
+      props: { gap: 1, align: "center", justify: "start" },
+      children: ["chip", "divider"],
+    },
+    chip: {
+      type: "Chip",
+      props: { text: "Worker", tone: "accent" },
+      children: [],
+    },
+    divider: { type: "Divider", props: {}, children: [] },
+    control: {
+      type: "NumberInput",
+      props: {
+        label: "Workers",
+        value: { $bindState: "/n" },
+        min: 1,
+        max: 8,
+        step: 1,
+        unit: "",
+      },
+      children: [],
+    },
+    caption: {
+      type: "Caption",
+      props: { text: { $state: "/n" } },
+      children: [],
+    },
+  },
+});
+for (const [format, input] of [
+  ["openui", source],
+  ["json-render", json],
+] as const)
+  it(`${format} composes labelled icons, boxes and text hierarchy`, () => {
+    render(
+      <CompositionView
+        composition={parseComposition({ format, source: input, title: "Flow" })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Connector flow", level: 2 }),
+    ).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Database" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Feeds into" })).toBeTruthy();
+    expect(screen.getByRole("separator")).toBeTruthy();
+    expect(screen.getByText("Source systems")).toBeTruthy();
+    expect(screen.getByText("Worker")).toBeTruthy();
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "4" },
+    });
+    expect(screen.getByText("4", { selector: "p" })).toBeTruthy();
+  });
+for (const format of ["openui", "json-render"] as const)
+  it(`${format} applies compact defaults and hides decorative icons`, () => {
+    const input =
+      format === "openui"
+        ? 'root = Box([Row([Icon("check"), Heading("Done"), Chip("Ready"), Caption("<b>Literal</b>")])])'
+        : JSON.stringify({
+            root: "box",
+            elements: {
+              box: { type: "Box", props: {}, children: ["row"] },
+              row: {
+                type: "Row",
+                props: {},
+                children: ["icon", "heading", "chip", "caption"],
+              },
+              icon: { type: "Icon", props: { name: "check" }, children: [] },
+              heading: {
+                type: "Heading",
+                props: { text: "Done" },
+                children: [],
+              },
+              chip: { type: "Chip", props: { text: "Ready" }, children: [] },
+              caption: {
+                type: "Caption",
+                props: { text: "<b>Literal</b>" },
+                children: [],
+              },
+            },
+          });
+    const { container } = render(
+      <CompositionView
+        composition={parseComposition({
+          format,
+          source: input,
+          title: "Defaults",
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Done" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    expect(screen.getByText("<b>Literal</b>")).toBeTruthy();
+    expect(container.querySelector("b")).toBeNull();
+    expect(
+      Array.from(container.querySelectorAll("div")).some(
+        (x) => x.style.flexWrap === "wrap",
+      ),
+    ).toBe(true);
+  });
+for (const format of ["openui", "json-render"] as const)
+  it(`${format} rejects unregistered icon names`, () => {
+    const input =
+      format === "openui"
+        ? 'root = Stack([Icon("arbitrary-svg", "small", "Bad")])'
+        : JSON.stringify({
+            root: "root",
+            elements: {
+              root: {
+                type: "Icon",
+                props: { name: "arbitrary-svg" },
+                children: [],
+              },
+            },
+          });
+    if (format === "openui")
+      expect(() =>
+        parseComposition({ format, source: input, title: "Invalid icon" }),
+      ).toThrow();
+    else {
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        render(
+          <CompositionView
+            composition={parseComposition({
+              format,
+              source: input,
+              title: "Invalid icon",
+            })}
+          />,
+        );
+        expect(screen.queryByRole("img")).toBeNull();
+        expect(errors).toHaveBeenCalled();
+      } finally {
+        errors.mockRestore();
+      }
+    }
+  });
