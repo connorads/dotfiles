@@ -12,26 +12,10 @@
   --gg-ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Header chip */
-.gg-chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 280px; padding: 0 9px;
-  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted-foreground);
-  font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; cursor: pointer;
-  transition: background-color .15s, color .15s, border-color .15s, transform .16s var(--gg-ease);
-}
-.gg-chip:active { transform: scale(0.96); }
-.gg-chip:hover, .gg-chip[aria-expanded="true"] { background: var(--state-hover); color: var(--foreground); }
-.gg-chip[aria-expanded="true"] { border-color: var(--border-hairline); }
-.gg-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.gg-chip-icon { width: 14px; height: 14px; flex: none; }
-.gg-chip-branch { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--foreground); }
+/* Header chip: anatomy from @bb-plugins/chip; only the branch's own marks here. */
+.bbp-chip[data-tone="danger"] .gg-chip-branch { text-transform: capitalize; }
 .gg-chip-ahead { color: var(--gg-lane-0); }
 .gg-chip-behind { color: var(--attention); }
-.gg-chip-dirty { display: inline-flex; align-items: center; gap: 4px; color: var(--warning-text); }
-.gg-chip-dirty i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 22%, transparent); }
-.gg-chip[data-tone="danger"] { color: var(--destructive-text); border-color: color-mix(in oklch, var(--destructive) 45%, var(--border)); }
-.gg-chip[data-tone="danger"] .gg-chip-branch { color: var(--destructive-text); text-transform: capitalize; }
-.gg-chip[data-tone="error"] { opacity: .6; }
 
 /* Pop-up shell */
 .gg-dialog {
@@ -195,7 +179,6 @@
 .gg-sync[data-active]:hover .gg-sync-cancel { opacity: 1; color: var(--destructive-text); }
 .gg-fetched { margin-left: 2px; color: var(--subtle-foreground, var(--muted-foreground)); font-size: 11.5px; }
 .gg-spinner-sm { width: 12px; height: 12px; border-width: 1.5px; flex: none; }
-.gg-chip .gg-spinner-sm { width: 13px; height: 13px; }
 
 .gg-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; background: color-mix(in oklch, var(--gg-lane-0) 18%, transparent); }
 .gg-progress i {
@@ -443,6 +426,6 @@
   .gg-dialog[data-morph], .gg-dialog[data-morph] .gg-panel { transition: none; }
   .gg-live-dot, .gg-spinner, .gg-diff-loading i, .gg-progress i { animation: none; }
   .gg-diff, .gg-commit-panel, .gg-success { transition-property: opacity; }
-  .gg-chip:active, .gg-ghost:active, .gg-sync:active, .gg-sha:active { transform: none; }
+  .gg-ghost:active, .gg-sync:active, .gg-sha:active { transform: none; }
 }
 @media (max-width: 520px) { .gg-keys { display: none; } .gg-blocks { display: none; } }
