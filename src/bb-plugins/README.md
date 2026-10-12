@@ -30,3 +30,11 @@ to rebuild and reload on save.
 
 [Handsfree](handsfree/README.md) connects Hex commands to the focused BB window.
 It provides thread navigation, draft creation, model selection and a command card.
+
+## Composer keys
+
+[Composer Keys](composer-keys/README.md) gives BB's text fields terminal-style
+keys. Alt+Enter adds a newline in the composer and question box, and Enter
+submits a typed question answer. Escape stops the running agent. Escape twice
+on an empty composer opens a picker that rewinds or forks from an earlier
+message.
