@@ -11,3 +11,11 @@ disable_workspace_teleport = true
 [telemetry]
 trace_upload = false
 otel_enabled = false
+
+[marketplace]
+default_skills_installs_purged = true
+official_marketplace_auto_installed = true
+
+[[marketplace.sources]]
+name = "xAI Official"
+git = "https://github.com/xai-org/plugin-marketplace.git"
