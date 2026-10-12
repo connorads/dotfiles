@@ -361,6 +361,19 @@ _vox_scribe() {
 		--offset-ms "$offset_ms" >"$dir/$track.json" 2>>"$dir/vox.log"
 }
 
+# Publish a merged transcript with one rename so readers never see partial output.
+_vox_publish_transcript() {
+	local dir=$1 temporary
+	shift
+	temporary=$(mktemp "$dir/.transcript.XXXXXX") || return 1
+	"$vox_python" "$vox_merge" "$@" >"$temporary" || {
+		rm -f "$temporary"
+		_vox_die "merge failed"
+		return 1
+	}
+	mv -f "$temporary" "$dir/transcript.md"
+}
+
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
 # per-track JSON is kept so a re-merge (new vocabulary, changed gap) never
 # re-transcribes.
@@ -382,10 +395,7 @@ _vox_transcribe() {
 
 	local -a merge_args=(--me "$dir/mic.json" --them "$dir/sys.json")
 	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
-	"$vox_python" "$vox_merge" "${merge_args[@]}" >"$dir/transcript.md" || {
-		_vox_die "merge failed"
-		return 1
-	}
+	_vox_publish_transcript "$dir" "${merge_args[@]}" || return 1
 	_vox_require_transcript "$dir"
 }
 
@@ -413,10 +423,7 @@ _vox_transcribe_file() {
 
 	local -a merge_args=(--me "$dir/mic.json" --me-name Speaker)
 	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
-	"$vox_python" "$vox_merge" "${merge_args[@]}" >"$dir/transcript.md" || {
-		_vox_die "merge failed"
-		return 1
-	}
+	_vox_publish_transcript "$dir" "${merge_args[@]}" || return 1
 	# Same contract as `vox stop`: the path either way, the status says whether
 	# there is anything in it.
 	local rc=0
