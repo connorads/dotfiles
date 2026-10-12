@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { useEffect, useRef, useState } from 'react';
-import { experimental_useChoicePanels } from '@get-bb/plugin-sdk/app';
+import { useState } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
@@ -23,7 +22,10 @@ const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSid
 });
 let slot: RenderedSlot | undefined;
 let headerSlot: RenderedSlot | undefined;
-beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
+beforeEach(() => {
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+  vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
+});
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
 async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean } } = {}) {
@@ -91,30 +93,19 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
 }
 
 function NativeQuestion({ multi = false, disabled = false }: { multi?: boolean; disabled?: boolean }) {
-  const choices = experimental_useChoicePanels();
-  const element = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<number[]>([]);
-  useEffect(() => {
-    if (!element.current) return;
-    return choices.register({
-      element: element.current,
-      isAvailable: () => !disabled,
-      select: number => {
-        if (number > 2) return { outcome: 'unavailable', message: `Answer ${number} is unavailable.` };
-        setSelected(current => multi ? current.includes(number) ? current.filter(item => item !== number) : [...current, number] : [number]);
-        return { outcome: 'selected', message: `Selected answer ${number}.` };
-      },
-    });
-  }, [choices, multi, disabled]);
-  return <div ref={element} role="group" aria-label="Native question">
-    <button aria-pressed={selected.includes(1)}>Answer one</button>
-    <button aria-pressed={selected.includes(2)}>Answer two</button>
-  </div>;
+  const choose = (number: number) => setSelected(current => multi
+    ? current.includes(number) ? current.filter(item => item !== number) : [...current, number] : [number]);
+  return <div tabIndex={-1}><fieldset disabled={disabled}>
+    <legend>Native question</legend>
+    <button aria-pressed={selected.includes(1)} onClick={() => choose(1)}>Answer one</button>
+    <button aria-pressed={selected.includes(2)} onClick={() => choose(2)}>Answer two</button>
+  </fieldset></div>;
 }
 
 test('spoken choose selects a native answer without submitting', async () => {
   const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
-  expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({ ok: true, message: 'Selected answer 1.' });
+  expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({ ok: true, message: 'Selected Answer one.' });
   expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('true');
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });
@@ -138,11 +129,12 @@ test('a focused voice list owns choices without falling through to a native answ
   expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'waiting' }]);
 });
 
-test('returning focus to a native question makes an old voice list inactive', async () => {
+test('visible voice matches keep their numbers when focus returns to the question', async () => {
   const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
   await view.command({ action: 'attention' });
   view.slot.getByRole('button', { name: 'Answer two' }).focus();
-  expect(await view.command({ action: 'choose', number: 2 })).toMatchObject({ ok: true, message: 'Selected answer 2.' });
+  expect((await view.command({ action: 'choose', number: 2 })).ok).toBe(false);
+  expect(view.slot.getByRole('button', { name: 'Answer two' }).getAttribute('aria-pressed')).toBe('false');
   expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
@@ -281,7 +273,7 @@ test('new thread opens a draft in the current project without submitting text', 
 test('choose without an active panel returns an immediate explanation', async () => {
   const view = await render();
   expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({
-    ok: false, message: 'There is no active choice panel.',
+    ok: false, message: 'There is no active question.',
   });
   expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
@@ -409,7 +401,7 @@ test('monitor activity exposes failed attempts without opening a disclosure', as
   await view.command({ action: 'choose', number: 1 });
   fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor\./ }));
   fireEvent.click(view.slot.getByRole('tab', { name: 'Activity' }));
-  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active choice panel/);
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active question/);
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Failed/);
 });
 
@@ -537,4 +529,29 @@ test('failure notices remain in the header without opening diagnostics', async (
   await view.command({ action: 'notice', problem: true, message: 'No matching thread' });
   expect(view.slot.queryByRole('dialog')).toBeNull();
   expect(view.slot.getByRole('button', { name: /Voice monitor.*No matching thread/ })).toBeTruthy();
+});
+
+
+test('recorded native selection survives feedback but rejects a changed question', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  const captured = await view.command({ action: 'capture' });
+  await view.command({ action: 'notice', message: 'Heard choose one' });
+  await view.command({ action: 'list', kind: 'thread' });
+  expect((await view.command({ action: 'choose', number: 1, target: captured.choiceTarget })).ok).toBe(true);
+  expect((await view.command({ action: 'choose', number: 1, target: captured.choiceTarget })).ok).toBe(false);
+  expect(view.slot.getByRole('button', { name: 'Answer one' }).getAttribute('aria-pressed')).toBe('true');
+  const next = await view.command({ action: 'capture' });
+  view.slot.getByText('Native question').textContent = 'Changed question';
+  expect((await view.command({ action: 'choose', number: 2, target: next.choiceTarget })).ok).toBe(false);
+  expect(view.slot.getByRole('button', { name: 'Answer two' }).getAttribute('aria-pressed')).toBe('false');
+});
+
+test('recording feedback and context checks preserve archive confirmation', async () => {
+  const view = await render('running');
+  await view.command({ action: 'archive' });
+  await view.command({ action: 'capture' });
+  await view.command({ action: 'notice', message: 'Heard confirm archive' });
+  await view.command({ action: 'list', kind: 'thread' });
+  expect((await view.command({ action: 'confirm-archive' })).ok).toBe(true);
+  expect(view.archived).toEqual(['t1']);
 });

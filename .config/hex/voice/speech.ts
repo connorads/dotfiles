@@ -32,9 +32,14 @@ export function parseSpeech(transcript: string): Speech {
   }
   return { error: `Unrecognised command: “${transcript}”. Say “voice help” for commands.` }
 }
-export async function runSpeech(ports: BbPorts, transcript: string): Promise<Reply> {
+export async function runSpeech(ports: BbPorts, transcript: string, choiceTarget?: string): Promise<Reply> {
   const speech = parseSpeech(transcript)
   await runBb(ports, { action: 'notice', message: `Heard: “${transcript}”.` })
   if ('error' in speech) return runBb(ports, { action: 'notice', message: speech.error, problem: true })
-  return 'command' in speech ? runBb(ports, speech.command) : matchBb(ports, speech.kind, speech.target, { choose: true })
+  if ('command' in speech) {
+    const command = speech.command.action === 'choose' && choiceTarget !== undefined
+      ? { ...speech.command, target: choiceTarget } : speech.command
+    return runBb(ports, command)
+  }
+  return matchBb(ports, speech.kind, speech.target, { choose: true })
 }

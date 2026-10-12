@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  definePluginApp, experimental_useChoicePanels, experimental_useSidebarThreads,
+  definePluginApp, experimental_useSidebarThreads,
   useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk,
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
@@ -9,6 +9,7 @@ import type { ArchiveTarget } from './archive.ts';
 import { publishVoiceHeader, VoiceHeader } from './header.tsx';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
 import { HexActivity } from './diagnostics-view.tsx';
+import { captureChoice, type ChoiceCapture } from './choice-target.ts';
 import './app.css';
 
 interface Choices {
@@ -36,7 +37,7 @@ function VoiceCard() {
     }
     else navigate.toCompose({ focusPrompt: true });
   };
-  const choicePanels = experimental_useChoicePanels();
+  const capturedChoice = useRef<{ token: string; capture: ChoiceCapture } | null>(null);
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   const [monitorOpen, setMonitorOpen] = useState(false);
@@ -198,24 +199,26 @@ function VoiceCard() {
     return { ok: true, message: `${candidate.label} selected for the next message.` };
   };
 
-  useEffect(() => {
-    const element = card.current;
-    if (!choices || !element || choices.context !== contextKey) return;
-    return choicePanels.register({
-      element,
-      isAvailable: () => element.contains(document.activeElement)
-        && choices.context === latestContext.current,
-      select: async number => {
+  const latestChoices = useRef(choices);
+  latestChoices.current = choices;
+  const captureTarget = () => {
+    const picker = choices && card.current ? {
+      root: card.current,
+      key: choices.context + JSON.stringify(choices.options),
+      currentKey: () => latestChoices.current === choices
+        ? choices.context + JSON.stringify(choices.options) : null,
+      choose: async (number: number): Promise<Reply> => {
         const option = choices.options[number - 1];
-        if (!option) return { outcome: 'unavailable', message: `Voice choice ${number} is unavailable.` };
-        const reply = await select(choices.kind, option.id, choices.context);
-        return { outcome: reply.ok ? 'selected' : 'unavailable', message: reply.message };
+        if (!option) return { ok: false, outcome: 'error', message: `Voice choice ${number} is unavailable.` };
+        return select(choices.kind, option.id, choices.context);
       },
-    });
-  }, [choicePanels, choices, contextKey]);
+    } : undefined;
+    return captureChoice(document, () => latestContext.current, picker,
+      !choices && !archiveConfirmation ? card.current ?? undefined : undefined);
+  };
 
   const handle = async (command: Command): Promise<Reply> => {
-    if (command.action !== 'confirm-archive' && command.action !== 'cancel-archive') setArchiveConfirmation(null);
+    if (!['confirm-archive', 'cancel-archive', 'notice', 'list', 'capture'].includes(command.action)) setArchiveConfirmation(null);
     switch (command.action) {
       case 'archive':
       case 'confirm-archive': {
@@ -252,6 +255,11 @@ function VoiceCard() {
         }
         return { ok: result.outcome === 'restored', outcome: result.outcome, message: result.message };
       }
+      case 'capture': {
+        const token = crypto.randomUUID();
+        capturedChoice.current = { token, capture: captureTarget() };
+        return { ok: true, message: 'Recording target captured.', context: contextKey, choiceTarget: token };
+      }
       case 'list': return { ok: true, message: 'Choices loaded.', candidates: await list(command.kind), context: contextKey };
       case 'select': return select(command.kind, command.id, command.context);
       case 'choices': {
@@ -266,8 +274,14 @@ function VoiceCard() {
         return { ok: true, outcome: 'choices', message: command.message };
       }
       case 'choose': {
-        const result = await choicePanels.select(command.number);
-        return { ok: result.outcome === 'selected', message: result.message };
+        let capture: ChoiceCapture;
+        if (command.target) {
+          const recorded = capturedChoice.current;
+          if (!recorded || recorded.token !== command.target) return { ok: false, outcome: 'error', message: 'The recording target expired. Record the command again.' };
+          capturedChoice.current = null;
+          capture = recorded.capture;
+        } else capture = captureTarget();
+        return capture.ok ? capture.apply(command.number) : { ok: false, outcome: 'error', message: capture.reason };
       }
       case 'show': {
         setChoices(null);

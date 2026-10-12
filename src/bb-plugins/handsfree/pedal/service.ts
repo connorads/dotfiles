@@ -15,18 +15,20 @@ const feedback = (message: string, problem = false) => {
   }).catch(error => console.error(String(error)));
 };
 let recordedContext: string | undefined;
+let recordedChoiceTarget: string | undefined;
 const session = makePedalSession({
   start: async () => {
-    const context = await request({ action: 'list', kind: 'thread' });
-    if (!context.ok || !context.context) throw Error(context.message || 'Focus BB before recording a command.');
+    const context = await request({ action: 'capture' });
+    if (!context.ok || !context.context || !context.choiceTarget) throw Error(context.message || 'Focus BB before recording a command.');
     recordedContext = context.context;
+    recordedChoiceTarget = context.choiceTarget;
     return (await connect()).dictation.start({ source: 'bb-command-pedal' });
   },
   feedback,
   heard: async text => {
     const context = await request({ action: 'list', kind: 'thread' });
     if (!context.ok || context.context !== recordedContext) { feedback('BB context changed. Record the command again.', true); return; }
-    const reply = await runSpeech(ports, text);
+    const reply = await runSpeech(ports, text, recordedChoiceTarget);
     if (reply.ok && reply.press) {
       const modifiers = reply.press.modifiers.map(modifier => `${modifier === 'option' ? 'option' : modifier} down`).join(', ');
       const codes: Record<string, number> = { escape: 53, enter: 36, arrowup: 126, arrowdown: 125, arrowleft: 123, arrowright: 124, home: 115, end: 119, pageup: 116, pagedown: 121, tab: 48 };

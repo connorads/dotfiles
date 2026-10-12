@@ -76,12 +76,14 @@ not required.
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
 
-"Choose" uses BB's active choice panel. A focused voice picker owns its choices.
-Otherwise the focused pane's native question panel receives the option number.
-Returning to the composer makes old voice choices inactive. Selecting an answer
-keeps the question open; submit it separately. Missing options do not select from
-another panel. Hidden, disabled and unfocused question panels reject selection.
+"Choose" selects from visible voice matches or the focused pane's native question.
+Voice matches own their numbers until dismissed. Selecting an answer keeps the
+question open; submit it separately. Hidden, disabled and ambiguous questions
+reject selection. An unrelated popup blocks selection.
 
+The command pedal captures the choice target when recording starts. Changed
+questions, options or voice matches reject the recording. A recording selects
+once. Separate commands can toggle multiple answers.
 Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes
@@ -122,8 +124,8 @@ An observation expires after three seconds; a missing observation does not
 prove that navigation completed.
 
 Idle threads archive immediately. Running or queued work and child threads require
-confirmation. Changing the selected context or issuing another command cancels
-the pending confirmation. Archive targets the selected thread without title matching.
+confirmation. Changing the selected context or issuing another action cancels
+the pending confirmation. Recording feedback and context checks preserve it. Archive targets the selected thread without title matching.
 
 The server retains ten voice archives across plugin reloads. Repeated restore
 commands reverse those archives in order. Each restore includes the threads that
@@ -165,25 +167,6 @@ flowchart LR
   Match --> Card[Numbered choices]
   Card --> Action
 ```
-
-## Development SDK
-
-The active choice-panel API requires the local BB SDK in `~/git/getbb`.
-Build that SDK before installing this workspace:
-
-```sh
-cd ~/git/getbb
-pnpm exec turbo run build build:types --filter=@get-bb/plugin-sdk
-```
-
-The desktop must include `experimental_useChoicePanels` before loading this plugin.
-To build with the checkout's CLI, run from `~/git/getbb`:
-
-```sh
-env -u BB_CLI pnpm bb:dev plugin build ~/src/bb-plugins/handsfree
-```
-
-`BB_CLI` redirects CLI entrypoints to the installed binary. Unset it for source builds.
 
 ## Install and verify
 

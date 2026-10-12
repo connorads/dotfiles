@@ -8,10 +8,11 @@ export const candidateSchema = z.object({
   project: z.string().max(1024).optional(),
 });
 export const commandSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('capture') }).strict(),
   z.object({ action: z.literal('list'), kind: kindSchema }).strict(),
   z.object({ action: z.literal('select'), kind: kindSchema, id: z.string().min(1).max(512), context: z.string() }).strict(),
   z.object({ action: z.literal('choices'), kind: kindSchema, options: z.array(candidateSchema).min(1).max(9), context: z.string(), message: z.string().max(1024) }).strict(),
-  z.object({ action: z.literal('choose'), number: z.number().int().min(1).max(9) }).strict(),
+  z.object({ action: z.literal('choose'), number: z.number().int().min(1).max(9), target: z.string().min(1).max(512).optional() }).strict(),
   z.object({ action: z.literal('next') }).strict(),
   z.object({ action: z.literal('previous') }).strict(),
   z.object({ action: z.literal('attention') }).strict(),
@@ -35,6 +36,7 @@ export const replySchema = z.object({
   requestId: z.string().optional(),
   candidates: z.array(candidateSchema).optional(),
   context: z.string().optional(),
+  choiceTarget: z.string().optional(),
   press: z.object({ key: z.string(), modifiers: z.array(z.enum(['command', 'control', 'option', 'shift'])) }).optional(),
 });
 export const requestSchema = z.object({ requestId: z.string(), command: commandSchema });
