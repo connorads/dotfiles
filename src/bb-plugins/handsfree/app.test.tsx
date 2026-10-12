@@ -402,3 +402,50 @@ test('arriving project draft does not take focus after the window loses focus', 
   await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
   expect(view.slot.inspection.composer.focusCount).toBe(0);
 });
+
+test.each(['thread', 'project', 'model'] as const)('temporary %s choices close after selection without opening diagnostics', async kind => {
+  const view = await render();
+  const list = await view.command({ action: 'list', kind });
+  if (!list.context || !list.candidates) throw new Error('Missing choices');
+  await view.command({ action: 'choices', kind, context: list.context, options: list.candidates.slice(0, 2), message: 'Choose a match' });
+  expect(view.slot.getByRole('list', { name: 'Voice choices' })).toBeTruthy();
+  await view.command({ action: 'choose', number: 1 });
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('explicitly opened monitor stays open after temporary choices complete', async () => {
+  const view = await render();
+  await view.command({ action: 'monitor' });
+  await view.command({ action: 'attention' });
+  await view.command({ action: 'choose', number: 1 });
+  expect(view.slot.getByRole('dialog', { name: 'Voice monitor' })).toBeTruthy();
+  expect(view.slot.queryByRole('list', { name: 'Voice choices' })).toBeNull();
+});
+
+test('invalid numbered choice retains the prompt for retry, then closes after a valid choice', async () => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  expect((await view.command({ action: 'choose', number: 9 })).ok).toBe(false);
+  expect(view.slot.getByRole('list', { name: 'Voice choices' })).toBeTruthy();
+  await view.command({ action: 'choose', number: 1 });
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+});
+
+test('temporary archive confirmation closes after confirmation or cancellation', async () => {
+  const view = await render('running');
+  await view.command({ action: 'archive' });
+  await view.command({ action: 'cancel-archive' });
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  await view.command({ action: 'archive' });
+  await view.command({ action: 'confirm-archive' });
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+});
+
+test('failure notices remain in the header without opening diagnostics', async () => {
+  const view = await render();
+  await view.command({ action: 'notice', problem: true, message: 'No matching thread' });
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*No matching thread/ })).toBeTruthy();
+});

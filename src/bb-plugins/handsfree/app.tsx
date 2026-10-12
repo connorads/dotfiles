@@ -38,12 +38,16 @@ function VoiceCard() {
   };
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
-  const [expanded, setExpanded] = useState(false);
+  const [monitorOpen, setMonitorOpen] = useState(false);
   const [position, setPosition] = useState({ top: 70, left: 18 });
   const card = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState('Say “voice help” to see commands.');
   const [choices, setChoices] = useState<Choices | null>(null);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ target: ArchiveTarget; context: string } | null>(null);
+  const expanded = monitorOpen || choices !== null || archiveConfirmation !== null;
+  const surfaceOpen = useRef(expanded);
+  surfaceOpen.current = expanded;
+  const close = () => { setChoices(null); setArchiveConfirmation(null); setMonitorOpen(false); composer.focus(); };
   const [highlight, setHighlight] = useState(0);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<VoiceResult[]>([]);
@@ -75,7 +79,7 @@ function VoiceCard() {
   });
 
   useEffect(() => {
-    const open = () => { setView('activity'); setExpanded(value => !value); };
+    const open = () => { setView('activity'); setChoices(null); setArchiveConfirmation(null); setMonitorOpen(!surfaceOpen.current); };
     window.addEventListener('handsfree:open', open);
     return () => {
       window.removeEventListener('handsfree:open', open);
@@ -135,7 +139,6 @@ function VoiceCard() {
   }, [composer, composer.scope.kind, projectId]);
 
   useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
-  useEffect(() => { if (!expanded) { setArchiveConfirmation(null); setChoices(null); } }, [expanded]);
   useEffect(() => {
     if (choices || archiveConfirmation) card.current?.focus();
   }, [choices, archiveConfirmation]);
@@ -174,19 +177,22 @@ function VoiceCard() {
     if (expectedContext !== latestContext.current || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
     const candidate = candidates.find(row => row.id === id);
     if (!candidate) throw new Error('That choice is no longer available. Say the command again.');
-    setChoices(null);
     if (kind === 'thread') {
+      setChoices(null);
+      if (card.current?.contains(document.activeElement)) composer.focus();
       trackNavigation(id);
       navigate.toThread(id);
       return { ok: true, outcome: 'requested', message: `Opening ${candidate.label}` };
     }
     if (kind === 'project') {
+      setChoices(null);
       trackNavigation();
       openDraft(id);
       return { ok: true, message: `Draft ready in ${candidate.label}. Dictate, then press Enter.` };
     }
     const selection = await composer.setSelection({ model: id });
     if (selection.model !== id) throw new Error('BB did not select that model. Check the composer picker.');
+    setChoices(null);
     composer.focus();
     return { ok: true, message: `${candidate.label} selected for the next message.` };
   };
@@ -207,7 +213,6 @@ function VoiceCard() {
         const result = await rpc.call('archive', { target, confirmed: command.action === 'confirm-archive' });
         setChoices(null);
         if (result.outcome === 'confirmation' && result.target) {
-          setExpanded(true);
           setArchiveConfirmation({ target: result.target, context: expectedContext });
         } else {
           setArchiveConfirmation(null);
@@ -240,7 +245,6 @@ function VoiceCard() {
         if (!options.length) throw new Error('Those choices are no longer available.');
         setChoices({ kind: command.kind, options, context: command.context });
         setHighlight(0);
-        setExpanded(true);
         return { ok: true, outcome: 'choices', message: command.message };
       }
       case 'choose': {
@@ -250,7 +254,7 @@ function VoiceCard() {
       }
       case 'show': {
         setChoices(null);
-        setExpanded(false);
+        setMonitorOpen(false);
         const control = command.view === 'git'
           ? Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-git-glance]'))
             .find(button => button.dataset.gitGlance === context.threadId)
@@ -262,7 +266,7 @@ function VoiceCard() {
       case 'dismiss':
         if (card.current?.contains(document.activeElement)) composer.focus();
         setChoices(null);
-        setExpanded(false);
+        setMonitorOpen(false);
         return { ok: true, outcome: 'requested', message: 'Escape requested to close the top popup.', press: { key: 'escape', modifiers: [] } };
       case 'unread': {
         if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
@@ -279,13 +283,11 @@ function VoiceCard() {
       case 'attention':
       case 'finished': {
         setChoices(null);
-        setExpanded(true);
         const options = threads.filter(row => command.action === 'attention'
           ? row.hasPendingInteraction : row.indicator === 'unread-success').map(threadCandidate).slice(0, 9);
         if (!options.length) return { ok: true, outcome: 'empty', message: command.action === 'attention' ? 'No agents are waiting for your answer.' : 'No unread finished threads.' };
         setChoices({ kind: 'thread', options, context: contextKey });
         setHighlight(0);
-        setExpanded(true);
         return { ok: true, outcome: 'choices', message: command.action === 'attention' ? 'These agents need you. Say “choose one”, or press Enter.' : 'Finished threads. Say “choose one”, or press Enter.' };
       }
       case 'new':
@@ -294,15 +296,14 @@ function VoiceCard() {
         openDraft(projectId ?? undefined);
         return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
       case 'monitor':
-        setChoices(null); setView('activity'); setExpanded(true);
+        setChoices(null); setView('activity'); setMonitorOpen(true);
         return { ok: true, message: 'Showing voice activity.' };
       case 'help':
         setChoices(null);
         setView('commands');
-        setExpanded(true);
+        setMonitorOpen(true);
         return { ok: true, message: 'Say commands with the dictation pedal released.' };
       case 'notice':
-        if (command.problem) setExpanded(true);
         return { ok: true, message: command.message };
       case 'next':
       case 'previous': {
@@ -365,8 +366,7 @@ function VoiceCard() {
       if (event.isComposing || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
       if (event.key === 'Escape' && expanded) {
         event.preventDefault(); event.stopImmediatePropagation();
-        setChoices(null); setExpanded(false); composer.focus();
-        setArchiveConfirmation(null);
+        close();
       } else if (expanded && choices && card.current?.contains(document.activeElement) && event.key === 'Enter') {
         event.preventDefault(); event.stopImmediatePropagation();
         if (!busy) void run({ action: 'choose', number: highlight + 1 });
@@ -381,9 +381,9 @@ function VoiceCard() {
 
   return expanded ? <aside className="handsfree" aria-label="BB voice controls" data-context={contextKey}
     style={{ top: position.top, left: position.left, maxHeight: `calc(100vh - ${position.top + 18}px)` }}>
-    <div ref={card} className="handsfree-card" role="dialog" aria-label="Voice monitor" tabIndex={-1}>
-      <header className="handsfree-heading"><strong>Voice monitor</strong><button type="button" aria-label="Close voice monitor"
-        onClick={() => { setChoices(null); setExpanded(false); composer.focus(); }}>×</button></header>
+    <div ref={card} className="handsfree-card" role="dialog" aria-label={choices ? 'Voice choices' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'} tabIndex={-1}>
+      <header className="handsfree-heading"><strong>{choices ? 'Choose a match' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'}</strong><button type="button" aria-label="Close voice controls"
+        onClick={close}>×</button></header>
       <p className="handsfree-context">Following {thread?.displayTitle ?? 'New thread'} · {projectId ? projectName(projectId) : 'Choose a project'}</p>
       <p role="status">{message}</p>
       {archiveConfirmation && <div role="group" aria-label="Confirm archive">
