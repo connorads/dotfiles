@@ -4,6 +4,7 @@ import {
   useRpc, type PluginThreadHeaderActionProps,
 } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from './components/ui/dialog.tsx';
+import { Chip, ChipValue } from '@bb-plugins/chip';
 import { Icon } from './components/ui/icon.tsx';
 import { closeUsage, openUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
 import { bindingWindow, clock, duration, expiryClock, percent, readingAge, readingState, SHORT, viewWindow, type ReadingState, type WindowView } from './format.ts';
@@ -287,6 +288,7 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
   const [header, setHeader] = useState<Header | null>(null);
   const [error, setError] = useState<string | null>(null);
   const now = useNow(60_000);
+  const open = useUsageOpen();
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -313,12 +315,12 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
     : binding.view.pace.kind === 'limited' ? `${short} limit · back ${clock(binding.view.pace.resetsAt, now)}`
     : binding.view.pace.kind === 'paced' && binding.view.pace.runsOutAt ? `${short} ${percent(binding.window.usedPercent)} · out ${clock(binding.view.pace.runsOutAt, now)}`
     : `${short} ${percent(binding.window.usedPercent)}`;
-  return <button type="button" className="au-badge" data-au-thread={threadId} data-tone={binding?.view.tone ?? 'normal'} aria-label={`Open all agent usage. ${title}`}
-    title={title} aria-haspopup="dialog" onClick={openUsage}>
-    {binding ? <Ring window={binding.window} view={binding.view} /> : <Icon name="ChartColumn" className="size-3.5" />}
-    {!isCompactViewport && (text ? <span className="au-badge-text">{text}</span>
-      : error || header ? <span className="au-badge-muted">Usage</span> : null)}
-  </button>;
+  const tone = binding?.view.tone;
+  return <Chip data-au-thread={threadId} expanded={open} tone={tone === 'critical' ? 'danger' : tone === 'warning' ? 'warn' : undefined}
+    aria-label={`Open all agent usage. ${title}`} title={title} onClick={openUsage}
+    icon={binding ? <Ring window={binding.window} view={binding.view} /> : <Icon name="ChartColumn" />}>
+    {!isCompactViewport && (text ? <ChipValue>{text}</ChipValue> : error || header ? <span>Usage</span> : null)}
+  </Chip>;
 }
 
 export default definePluginApp(app => {
