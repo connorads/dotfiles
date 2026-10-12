@@ -38,8 +38,9 @@ has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes
 the card and restores composer focus. Outside the card, BB handles both pedals.
 Routine results appear in the header for four seconds. Failures stay visible
-until another command succeeds. Choices, archive confirmation and requested help
-open the monitor. Failures remain available in Activity without opening it automatically.
+until another command succeeds. Choices and archive confirmation open temporary prompts. Completing or cancelling
+a prompt closes it. A monitor opened explicitly stays open when a prompt completes.
+Requested help opens the command list. Failures remain available in Activity without opening it automatically.
 
 `take me to …` and `can I go to …` also search threads. `next conversation` and
 `previous conversation` also navigate. Use `next thread` or `go to next thread`
