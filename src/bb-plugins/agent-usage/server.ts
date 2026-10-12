@@ -1,7 +1,8 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { rpcContract, sourceSnapshotSchema, type Account, type Header, type Snapshot, type SourceSnapshot, type UsageWindow } from './contracts.ts';
+import { hostContract, rpcContract, sourceSnapshotSchema, type Account, type Header, type Inspection, type Snapshot, type SourceSnapshot, type UsageWindow } from './contracts.ts';
 import type { Period } from './pace.ts';
+import type { ResetCredits } from './reset-credits.ts';
 
 const profileThreadSchema = z.object({
   supported: z.boolean(), currentId: z.string(), profiles: z.array(z.object({ id: z.string(), label: z.string() })),
@@ -70,6 +71,7 @@ interface UsagePorts {
   getEnvironment(input: { environmentId: string }): Promise<{ hostId: string }>;
   listProviders(): Promise<{ id: string; displayName: string }[]>;
   listPlugins(): Promise<{ plugins: { id: string; enabled: boolean }[] }>;
+  resetCredits(hostId: string, refresh: boolean): Promise<ResetCredits>;
 }
 
 export function createUsageReader(ports: UsagePorts) {
@@ -78,11 +80,55 @@ export function createUsageReader(ports: UsagePorts) {
     input: { force: refresh, machineIds, providerIds, maxAgeMs: refresh ? 0 : 120_000 },
     signal: AbortSignal.timeout(60_000),
   });
-  async function overview(refresh: boolean) {
+  async function collectOverview(refresh: boolean) {
     const inventory = await read([], null, false);
     const providerIds = [...new Set(inventory.machines.flatMap(machine => machine.providers.map(account => account.providerId)))];
-    const snapshot = describeAccounts(providerIds.length ? await read(providerIds, null, refresh) : inventory);
+    return describeAccounts(providerIds.length ? await read(providerIds, null, refresh) : inventory);
+  }
+  function fold(snapshot: Snapshot): Snapshot {
     return { machines: snapshot.machines.map(machine => ({ ...machine, providers: foldDefaultProfile(machine.providers) })) };
+  }
+  async function overview(refresh: boolean) { return fold(await collectOverview(refresh)); }
+  async function inspection(refresh: boolean): Promise<Inspection> {
+    const raw = await collectOverview(refresh);
+    const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable() });
+    const [observations, resetCredits] = await Promise.all([
+      Promise.all(raw.machines.flatMap(machine => machine.providers.map(async account => {
+        const separator = account.id.indexOf(':');
+        let observedAt: number | null = null;
+        if (machine.status === 'connected' && account.usage?.status === 'ok' && separator > 0) {
+          try {
+            const value = await ports.callRpc({ pluginId: account.id.slice(0, separator),
+              method: 'provider-usage.v1.getResource', input: { resourceId: account.id.slice(separator + 1), refresh: false },
+              outputSchema: observationSchema, signal: AbortSignal.timeout(15_000) });
+            observedAt = value.observedAt;
+          } catch { /* A source without observation metadata leaves its reading age unknown. */ }
+        }
+        return { accountId: account.id, observedAt };
+      }))),
+      Promise.all(raw.machines.filter(machine => machine.providers.some(account => account.providerId === 'codex')).map(async machine => {
+        let reading: ResetCredits;
+        if (machine.status === 'disconnected') reading = { status: 'unavailable', message: 'Machine is offline.' };
+        else {
+          try { reading = await ports.resetCredits(machine.id, refresh); }
+          catch { reading = { status: 'unavailable', message: 'Reset credits could not be read from this machine.' }; }
+        }
+        return { hostId: machine.id, reading };
+      })),
+    ]);
+    const snapshot = fold(raw);
+    const readings = snapshot.machines.flatMap(machine => machine.providers.map(account => {
+      const native = observations.find(value => value.accountId === account.id)?.observedAt ?? null;
+      if (account.providerId !== 'claude-code' || account.accountLabel !== 'Default' || account.id.startsWith('claude-profiles:'))
+        return { accountId: account.id, observedAt: native };
+      const source = raw.machines.find(value => value.id === machine.id)?.providers.find(value => {
+        const locator = profileLocatorSchema.safeParse(resourceLocator(value));
+        return value.id.startsWith('claude-profiles:') && locator.success && locator.data[2] === 'default';
+      });
+      const profile = source ? observations.find(value => value.accountId === source.id)?.observedAt ?? null : native;
+      return { accountId: account.id, observedAt: native === null || profile === null ? null : Math.min(native, profile) };
+    }));
+    return { snapshot, readings, resetCredits };
   }
   async function header(threadId: string): Promise<Header> {
     const thread = await ports.getThread({ threadId });
@@ -120,18 +166,21 @@ export function createUsageReader(ports: UsagePorts) {
       windows: account?.usage?.status === 'ok' ? account.usage.windows.map(describeWindow) : [],
       message: account?.usage?.status === 'ok' ? (account.usage.windows.length ? null : 'No limits reported') : 'Usage unavailable' };
   }
-  return { overview, header };
+  return { overview, header, inspection };
 }
 
 export default function plugin(bb: BbPluginApi) {
+  const host = bb.hosts.experimental_client({ contract: hostContract });
   const reader = createUsageReader({
     callRpc: args => bb.sdk.plugins.callRpc(args),
     getThread: args => bb.sdk.threads.get(args),
     getEnvironment: args => bb.sdk.environments.get(args),
     listProviders: () => bb.sdk.providers.list(),
     listPlugins: () => bb.sdk.plugins.list(),
+    resetCredits: (hostId, refresh) => host.call('resetCredits', { refresh }, { hostId, timeoutMs: 30_000 }),
   });
-  bb.rpc.register(rpcContract, { overview: input => reader.overview(input.refresh), header: input => reader.header(input.threadId) });
+  bb.rpc.register(rpcContract, { overview: input => reader.overview(input.refresh), header: input => reader.header(input.threadId),
+    inspection: input => reader.inspection(input.refresh) });
   bb.cli.register({ name: 'agent-usage', summary: 'Read all provider account usage or a thread quota',
     async run(argv) {
       let value;
