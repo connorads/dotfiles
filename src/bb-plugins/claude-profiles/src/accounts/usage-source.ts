@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Usage } from './usage.ts';
+import type { Usage } from './quota.ts';
 
 const accountFields = {
   plan: z.object({ id: z.string(), multiplier: z.number().int().positive().nullable() }).nullable(),

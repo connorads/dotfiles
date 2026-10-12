@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFakePluginHost, makeMessageDispatchHookContext, makeThreadResponse } from '@get-bb/plugin-sdk/testing';
-import plugin from '../server.ts';
+import plugin from '../../server.ts';
 
 const profile = { id: 'stretch', label: 'stretch', configDir: '/profiles/stretch' };
 

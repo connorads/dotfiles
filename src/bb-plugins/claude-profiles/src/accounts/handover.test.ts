@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, writeFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { transferSession } from './session.ts';
+import { transferSession } from './handover.ts';
 
 const sessionId = '68fe2a7c-6970-42b4-a246-77aa535bd3ba';
 async function fixture() {
