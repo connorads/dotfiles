@@ -1,5 +1,7 @@
 # The left pedal holds command recording
 
+> Trigger superseded by [0023](0023-command-pedal-emits-f18.md). Recording behaviour remains in force.
+
 The left PCsensor pedal emits Right Control while held. The command helper asks
 Hex to record on press and transcribe on release. The user clicks a thread
 suggestion to navigate. The centre pedal emits Right Option for dictation;
