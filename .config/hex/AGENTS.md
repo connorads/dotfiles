@@ -110,6 +110,10 @@ navigation phrases within BB.
 locally. Thread searches strip a leading `the` and trailing `thread` or `threads`.
 `go to next thread` and `go to the next thread` use navigation shortcuts. Jev matches descriptions using the existing Keychain adapter.
 Ambiguous names produce numbered choices in BB. `show projects` lists draft projects.
+Hex rejects phrases with multiple command parses. `go to the next thread` can
+parse as a thread search or as `go to the` followed by `next thread`.
+Use `next thread`, `next conversation` or `go to next thread` without `the`.
+Adding an overlapping literal alias does not resolve this sequence ambiguity.
 `select project kb` opens a draft in the named project. The `dotfiles` alias matches
 the home project named `connorads`.
 

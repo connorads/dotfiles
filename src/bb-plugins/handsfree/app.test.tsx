@@ -22,13 +22,13 @@ let slot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
 afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; vi.restoreAllMocks(); });
 
-async function render(archiveStatus = 'idle') {
+async function render(archiveStatus = 'idle', duringInspect?: () => void) {
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
   let receipts: unknown;
   const archives = makeArchives({
-    get: async id => ({ id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }),
+    get: async id => { duringInspect?.(); return { id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }; },
     children: async () => 0,
     archive: async id => { archived.push(id); return [id]; },
     unarchive: async id => { restored.push(id); },
@@ -107,6 +107,21 @@ test('cancelling an archive leaves the selected thread and draft untouched', asy
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
 
+test('focus loss during archive inspection prevents the mutation', async () => {
+  const view = await render('idle', () => { vi.spyOn(document, 'hasFocus').mockReturnValue(false); });
+  expect((await view.command({ action: 'archive' })).ok).toBe(false);
+  expect(view.archived).toEqual([]);
+  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+});
+
+test('Enter does not confirm an archive or submit the retained draft', async () => {
+  const view = await render('active');
+  await view.command({ action: 'archive' });
+  fireEvent.keyDown(document, { key: 'Enter' });
+  expect(view.archived).toEqual([]);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
 test('new thread opens a draft in the current project without submitting text', async () => {
   const view = await render();
   expect((await view.command({ action: 'new' })).ok).toBe(true);
@@ -144,6 +159,31 @@ test('Escape dismisses choices and restores ordinary Enter behaviour', async () 
   expect(enter.defaultPrevented).toBe(false);
   expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
   expect(view.slot.inspection.composer.focusCount).toBe(1);
+});
+
+test('returning to the composer leaves Enter and arrow keys available to BB', async () => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  const textarea = document.createElement('textarea');
+  document.body.append(textarea);
+  textarea.focus();
+  try {
+    for (const key of ['Enter', 'ArrowDown']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      fireEvent(textarea, event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  } finally { textarea.remove(); }
+});
+
+test('routine success stays compact while help expands the card', async () => {
+  const view = await render();
+  await view.command({ action: 'new' });
+  expect(view.slot.getByRole('button', { name: 'Voice' }).getAttribute('aria-expanded')).toBe('false');
+  expect(view.slot.getByRole('status').textContent).toMatch(/Draft ready/);
+  await view.command({ action: 'help' });
+  expect(view.slot.getByRole('button', { name: 'Voice' }).getAttribute('aria-expanded')).toBe('true');
 });
 
 test('a stale match cannot act on a different thread', async () => {
@@ -197,6 +237,7 @@ test('voice feedback retains the heard target alongside the result', async () =>
   const view = await render();
   await view.command({ action: 'notice', message: 'Heard thread target: access thread' });
   await view.command({ action: 'new' });
+  fireEvent.click(view.slot.getByRole('button', { name: 'Voice' }));
   expect(view.slot.getByText('Heard thread target: access thread')).toBeTruthy();
   expect(view.slot.getAllByText(/Draft ready/).length).toBeGreaterThan(0);
 });

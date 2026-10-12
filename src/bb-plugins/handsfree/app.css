@@ -27,6 +27,16 @@
   overflow: auto;
   overflow-wrap: anywhere;
 }
+.handsfree-status {
+  padding: 6px 10px;
+  margin: 6px 0 0;
+  border-radius: 6px;
+  background: var(--canvas);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .handsfree-card p { margin: 8px 0; }
 .handsfree-card dl { margin: 16px 0; }
 .handsfree-card dt { margin-top: 10px; font-weight: 600; }

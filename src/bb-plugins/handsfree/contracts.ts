@@ -22,7 +22,7 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('confirm-archive') }).strict(),
   z.object({ action: z.literal('cancel-archive') }).strict(),
   z.object({ action: z.literal('restore') }).strict(),
-  z.object({ action: z.literal('notice'), message: z.string().max(1024) }).strict(),
+  z.object({ action: z.literal('notice'), message: z.string().max(1024), problem: z.boolean().optional() }).strict(),
 ]);
 export const replySchema = z.object({
   ok: z.boolean(),
