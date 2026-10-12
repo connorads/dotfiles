@@ -21,6 +21,7 @@ test('a launch without the profile is stopped once, with a notice naming the acc
   assert.equal(first.stop, true);
   assert.equal(first.guard.checkedSeq, 5);
   assert.match(first.guard.notice ?? '', /without the stretch account/);
+  assert.match(first.guard.notice ?? '', /so Agent Switcher stopped the turn/);
   assert.deepEqual(reviewLaunch(first.guard, { seq: 5, applied: false }, 'stretch'), { guard: first.guard, stop: false });
 });
 

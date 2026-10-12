@@ -19,6 +19,6 @@ export function reviewLaunch(guard: Guard, launch: { seq: number; applied: boole
   if (launch.seq <= guard.checkedSeq) return { guard, stop: false };
   if (launch.applied) return { guard: { ...guard, checkedSeq: launch.seq }, stop: false };
   return { stop: true, guard: { checkedSeq: launch.seq, notice: `Claude started without the ${label} account, `
-    + 'so Claude Profiles stopped the turn rather than run it on another login. Send your message again to retry. '
+    + 'so Agent Switcher stopped the turn rather than run it on another login. Send your message again to retry. '
     + 'If this thread moved machine, choose its account again.' } };
 }
