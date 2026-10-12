@@ -27,6 +27,8 @@ export const commandSchema = z.discriminatedUnion('action', [
 export const replySchema = z.object({
   ok: z.boolean(),
   message: z.string(),
+  outcome: z.enum(['completed', 'choices', 'confirmation', 'archived', 'restored', 'cancelled', 'empty', 'partial', 'requested', 'no-match', 'error']).optional(),
+  requestId: z.string().optional(),
   candidates: z.array(candidateSchema).optional(),
   context: z.string().optional(),
   press: z.object({ key: z.string(), modifiers: z.array(z.enum(['command', 'control', 'option', 'shift'])) }).optional(),

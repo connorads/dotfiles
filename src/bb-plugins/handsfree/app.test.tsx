@@ -46,6 +46,7 @@ async function render(archiveStatus = 'idle') {
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' }],
     },
     rpc: {
+      observed: () => ({ recorded: true }),
       archiveTarget: ({ threadId }) => archives.inspect(threadId),
       archive: ({ target, confirmed }) => archives.archive(target, confirmed),
       restore: () => archives.restore(),

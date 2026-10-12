@@ -9,7 +9,7 @@ test('only one focused window can claim a command and complete it', async () => 
   assert.equal(broker.claim(requestId), true);
   assert.equal(broker.claim(requestId), false);
   assert.equal(broker.complete(requestId, { ok: true, message: 'Voice help' }), true);
-  assert.deepEqual(await reply, { ok: true, message: 'Voice help' });
+  assert.deepEqual(await reply, { ok: true, message: 'Voice help', requestId });
   assert.equal(broker.complete(requestId, { ok: true, message: 'Duplicate' }), false);
   broker.dispose();
 });
