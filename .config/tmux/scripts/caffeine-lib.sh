@@ -22,9 +22,12 @@
 # flag on every ordinary exit; caffeine-reconcile.sh is the backstop for SIGKILL,
 # crash, panic and reboot, where no trap runs. See ../docs/caffeine.md.
 #
-# State is recorded in the pidfile as three fields "pid deadline_epoch mode"
+# State is recorded in the pidfile as "pid deadline_epoch mode [owner]"
 # (deadline 0 = indefinite, mode idle|lid). Field 3 is optional and defaults to
 # `idle`, so a pidfile written before lid mode existed keeps working unchanged.
+# Field 4 names an automated owner (BB's "while agents run" mode) and is written
+# only by an owned caffeine_start; every other start drops it, which is how a
+# manual start takes a session back from its owner.
 # caffeinate -i -t <secs> self-exits at the deadline, so ON-timed clears itself
 # once the process dies. No `uname` branch is needed here: on Linux the pidfile
 # never exists → OFF; only the popup's *start* action is macOS-gated
@@ -65,6 +68,12 @@ CAFFEINE_GLYPH=${CAFFEINE_GLYPH:-☼}
 # vox ~≈✓). Env-overridable, mirroring CAFFEINE_GLYPH.
 CAFFEINE_LID_GLYPH=${CAFFEINE_LID_GLYPH:-✷}
 
+# The owner BB's "while agents run" mode writes into field 4, and the token the
+# pill shows for it. Must equal AGENTS_OWNER in the caffeine BB plugin, which
+# stops or renews a session only while this owner is still recorded.
+CAFFEINE_AGENTS_OWNER=bb-agents
+CAFFEINE_AGENTS_TOKEN=A
+
 # Indefinite-deadline token — ∞ (U+221E): ambiguous-width, single-cell in kitty
 # like the ◆ agent-dot already is.
 CAFFEINE_INFINITY=∞
@@ -101,12 +110,35 @@ caffeine_mode() {
 	printf '%s' "${_mode:-idle}"
 }
 
-# caffeine_active — true when the recorded pid is a live process. A stale pidfile
-# (pid dead — caffeinate hit its deadline or was killed) reads as inactive, so
-# the state self-clears without a separate reaper.
+# caffeine_owner — the automated owner from the pidfile's fourth field, empty
+# for a session started by hand (and for every three- or two-field pidfile).
+# Anything outside [a-z0-9-] reads as empty, mirroring the write-side check.
+caffeine_owner() {
+	_own=""
+	if [ -f "$CAFFEINE_PIDFILE" ]; then
+		_own=$(awk 'NR == 1 && $4 ~ /^[a-z0-9-]+$/ { print $4 }' "$CAFFEINE_PIDFILE" 2>/dev/null)
+	fi
+	printf '%s' "$_own"
+}
+
+# caffeine_active — true when the recorded pid is a live process and a timed
+# session's deadline is still ahead. A stale pidfile (pid dead — caffeinate hit
+# its deadline or was killed) reads as inactive, so the state self-clears
+# without a separate reaper.
+#
+# The deadline check is what makes a stale pidfile safe to act on: only
+# caffeine_stop removes the file, so once the pid wraps a long-lived unrelated
+# process can inherit it and pass `kill -0`. Every timed session exits within
+# moments of its deadline, so a live pid well past it is never ours. The 10 s
+# slack keeps a session that is still exiting active, so caffeine_stop still
+# waits out an outgoing lid supervisor's trap.
 caffeine_active() {
 	_pid=$(caffeine_pid)
 	[ -n "$_pid" ] || return 1
+	_dl=$(caffeine_deadline)
+	if [ "${_dl:-0}" -gt 0 ] 2>/dev/null && [ "$(date +%s)" -ge $((_dl + 10)) ]; then
+		return 1
+	fi
 	kill -0 "$_pid" 2>/dev/null
 }
 
@@ -215,8 +247,14 @@ caffeine_state_glyph() {
 
 # caffeine_token — figure-slot content: ∞ while indefinite, else the human
 # remaining time ("42m", "1h") that ticks down to the self-clearing deadline.
-# Lid mode is always timed, so it never renders ∞.
+# Lid mode is always timed, so it never renders ∞. A session BB holds while
+# agents run shows `A` instead: its deadline is a renewable lease, not a time
+# anyone chose, so counting it down would mislead.
 caffeine_token() {
+	if [ "$(caffeine_owner)" = "$CAFFEINE_AGENTS_OWNER" ]; then
+		printf '%s' "$CAFFEINE_AGENTS_TOKEN"
+		return
+	fi
 	_rem=$(caffeine_remaining_secs)
 	if [ "$_rem" -lt 0 ] 2>/dev/null; then
 		printf '%s' "$CAFFEINE_INFINITY"
@@ -247,13 +285,24 @@ _caffeine_wait_dead() {
 	return 1
 }
 
-# caffeine_start [SECS] — start a single managed caffeinate in `idle` mode.
-# SECS > 0 → timed (`caffeinate -i -t SECS`, self-exits at the deadline);
+# caffeine_start [SECS] [OWNER] — start a single managed caffeinate in `idle`
+# mode. SECS > 0 → timed (`caffeinate -i -t SECS`, self-exits at the deadline);
 # 0/absent → indefinite (`caffeinate -i`). nohup so it survives the popup
 # closing; $! is the pid we record. Any prior managed process is stopped first so
 # only one is ever tracked.
+#
+# OWNER, when it matches [a-z0-9-]+, is recorded as field 4 so an automation can
+# later tell its own session from one a person started; anything else is dropped
+# rather than written. The mode stays hard-coded `idle`, so no owner can claim
+# lid mode.
 caffeine_start() {
 	_secs=${1:-0}
+	_owner=${2:-}
+	# Spelled out, not a-z: a bracket range follows the locale's collation in
+	# some shells and would let uppercase through.
+	case "$_owner" in
+	*[!abcdefghijklmnopqrstuvwxyz0123456789-]*) _owner= ;;
+	esac
 	_deadline=0
 	caffeine_stop
 	mkdir -p "$(dirname "$CAFFEINE_PIDFILE")"
@@ -264,7 +313,7 @@ caffeine_start() {
 		nohup caffeinate -i >/dev/null 2>&1 &
 	fi
 	_pid=$!
-	printf '%s %s %s\n' "$_pid" "$_deadline" idle >"$CAFFEINE_PIDFILE"
+	printf '%s %s %s%s\n' "$_pid" "$_deadline" idle "${_owner:+ $_owner}" >"$CAFFEINE_PIDFILE"
 }
 
 # caffeine_start_lid SECS — start a lid-mode keep-awake: a supervisor process
@@ -347,9 +396,12 @@ caffeine_start_lid() {
 # *after* the incoming one has raised the flag, silently disarming a session the
 # pill reports as ON-LID. Bounded, so a wedged supervisor cannot hang the popup —
 # the reconciler is the backstop for that.
+#
+# An inactive session is never signalled, only its pidfile dropped: a stale
+# pid may by now belong to an unrelated process (see caffeine_active).
 caffeine_stop() {
 	_pid=$(caffeine_pid)
-	if [ -n "$_pid" ]; then
+	if [ -n "$_pid" ] && caffeine_active; then
 		kill "$_pid" 2>/dev/null || true
 		_caffeine_wait_dead "$_pid" || true
 	fi

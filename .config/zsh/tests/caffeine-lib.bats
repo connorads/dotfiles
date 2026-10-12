@@ -409,8 +409,109 @@ EOF
   [ ! -f "$CAFFEINE_PIDFILE" ]
 }
 
+@test "OFF for a timed pidfile long past its deadline, even with a live pid" {
+  # Only caffeine_stop removes the pidfile, so a wrapped pid can land on an
+  # unrelated process. A timed session never outlives its deadline by more than
+  # moments, so the live pid must not read as ours.
+  sleep 100 &
+  pid=$!
+  past=$(($(date +%s) - 7200))
+  printf '%s %s idle bb-agents\n' "$pid" "$past" >"$CAFFEINE_PIDFILE"
+  lib caffeine_state
+  kill "$pid" 2>/dev/null || true
+  [ "$output" = "OFF" ]
+}
+
+@test "stop drops an expired pidfile without signalling its live pid" {
+  sleep 100 &
+  pid=$!
+  past=$(($(date +%s) - 7200))
+  pidfile3 "$pid" "$past" idle
+  lib caffeine_stop
+  [ "$status" -eq 0 ]
+  run kill -0 "$pid"
+  kill "$pid" 2>/dev/null || true
+  [ "$status" -eq 0 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
 @test "stop is a no-op with no pidfile" {
   lib caffeine_stop
   [ "$status" -eq 0 ]
   [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
+# --- owner: field 4, written only by an owned start ------------------------
+
+stub_caffeinate() {
+  write_stub caffeinate <<'EOF2'
+#!/usr/bin/env bash
+exec sleep 100
+EOF2
+}
+
+@test "an owned start writes the owner as field 4" {
+  stub_caffeinate
+  lib 'caffeine_start 600 bb-agents'
+  [ "$status" -eq 0 ]
+  read -r _pid _deadline _mode _owner <"$CAFFEINE_PIDFILE"
+  kill "$_pid" 2>/dev/null || true
+  [ "$_mode" = "idle" ]
+  [ "$_owner" = "bb-agents" ]
+}
+
+@test "an owner changes neither the state nor the mode" {
+  sleep 100 &
+  pid=$!
+  printf '%s 0 idle bb-agents\n' "$pid" >"$CAFFEINE_PIDFILE"
+  lib 'caffeine_state; caffeine_mode'
+  kill "$pid" 2>/dev/null || true
+  [ "${lines[0]}" = "ON" ]
+  [ "${lines[1]}" = "idle" ]
+}
+
+@test "owner is empty for three- and two-field pidfiles" {
+  pidfile3 123 0 idle
+  lib caffeine_owner
+  [ -z "$output" ]
+  pidfile 123 0
+  lib caffeine_owner
+  [ -z "$output" ]
+}
+
+@test "an invalid owner is not written" {
+  stub_caffeinate
+  for owner in 'Bad Owner' 'x;y' 'Bad'; do
+    lib "caffeine_start 600 '$owner'"
+    [ "$status" -eq 0 ]
+    read -r _pid _deadline _mode _owner <"$CAFFEINE_PIDFILE"
+    kill "$_pid" 2>/dev/null || true
+    [ "$_mode" = "idle" ]
+    [ -z "$_owner" ]
+  done
+}
+
+@test "a later un-owned start drops the owner" {
+  stub_caffeinate
+  lib 'caffeine_start 600 bb-agents'
+  lib 'caffeine_start 600'
+  [ "$status" -eq 0 ]
+  lib caffeine_owner
+  read -r _pid _rest <"$CAFFEINE_PIDFILE"
+  kill "$_pid" 2>/dev/null || true
+  [ -z "$output" ]
+}
+
+@test "token is A for a session BB holds while agents run" {
+  future=$(($(date +%s) + 3600))
+  printf '123 %s idle bb-agents\n' "$future" >"$CAFFEINE_PIDFILE"
+  lib caffeine_token
+  [ "$output" = "A" ]
+}
+
+@test "token is the remaining time for any other owner" {
+  future=$(($(date +%s) + 3600))
+  printf '123 %s idle someone-else\n' "$future" >"$CAFFEINE_PIDFILE"
+  lib caffeine_token
+  [[ "$output" =~ ^[0-9]+[smhd]$ ]]
 }
