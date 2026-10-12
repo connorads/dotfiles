@@ -1,6 +1,7 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { rpcContract, snapshotSchema, type Header, type Account } from './contracts.ts';
+import { rpcContract, sourceSnapshotSchema, type Account, type Header, type Snapshot, type SourceSnapshot, type UsageWindow } from './contracts.ts';
+import type { Period } from './pace.ts';
 
 const profileThreadSchema = z.object({
   supported: z.boolean(), selection: z.object({ profile: z.object({ id: z.string(), label: z.string() }) }).nullable(),
@@ -12,7 +13,53 @@ const profileUsageSchema = z.object({
 const profileLocatorSchema = z.tuple([z.string(), z.string(), z.string()]);
 const nativeLocatorSchema = z.tuple([z.string(), z.string()]);
 
-function resourceLocator(account: Account): unknown {
+const NAMED: [RegExp, string, Period][] = [
+  [/^(Five-hour limit|Five hours|Current session|5h)$/u, '5-hour', 'five-hour'],
+  [/^(Daily limit|Daily)$/u, 'Daily', 'day'],
+  [/^(Weekly limit|Weekly|Seven days|7d)$/u, 'Weekly', 'week'],
+  [/^(Monthly limit|Monthly)$/u, 'Monthly', 'month'],
+];
+/** Gives every provider's windows one vocabulary and the period that pace needs. */
+function describeWindow(window: Omit<UsageWindow, 'period'>): UsageWindow {
+  for (const [pattern, label, period] of NAMED) if (pattern.test(window.label)) return { ...window, label, period };
+  const scoped = /^Weekly · (.+)$/u.exec(window.label);
+  if (scoped?.[1]) return { ...window, label: `Weekly · ${scoped[1].charAt(0).toUpperCase()}${scoped[1].slice(1)}`, period: 'week' };
+  return { ...window, period: null };
+}
+
+function describeAccounts(snapshot: SourceSnapshot): Snapshot {
+  return { machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
+    usage: account.usage?.status === 'ok' ? { ...account.usage, windows: account.usage.windows.map(describeWindow) } : account.usage,
+  })) })) };
+}
+
+/**
+ * The default Claude profile reads the same login as BB's native Claude source, so one
+ * account appears twice. Keep the native reading (it knows the plan and email) and add
+ * the windows only the profile reports.
+ */
+function foldDefaultProfile(providers: Account[]): Account[] {
+  const profileOf = (account: Account) => {
+    if (!account.id.startsWith('claude-profiles:')) return null;
+    const locator = profileLocatorSchema.safeParse(resourceLocator(account));
+    return locator.success ? locator.data[2] : null;
+  };
+  const named = providers.map(account => {
+    const profile = profileOf(account);
+    return profile === null ? account : { ...account, accountLabel: profile === 'default' ? 'Default' : profile };
+  });
+  const fallback = named.find(account => profileOf(account) === 'default');
+  const native = named.find(account => account.providerId === 'claude-code' && !account.id.startsWith('claude-profiles:'));
+  if (!fallback || !native) return named;
+  if (native.usage?.status !== 'ok') return named.filter(account => account !== native);
+  const known = new Set(native.usage.windows.map(window => window.label));
+  const extra = fallback.usage?.status === 'ok' ? fallback.usage.windows.filter(window => !known.has(window.label)) : [];
+  const merged: Account = { ...native, accountLabel: 'Default', usage: { ...native.usage, windows: [...native.usage.windows, ...extra] } };
+  // The merged account takes the profile's place so Default leads its profiles.
+  return named.flatMap(account => account === native ? [] : account === fallback ? [merged] : [account]);
+}
+
+function resourceLocator(account: Pick<Account, 'id'>): unknown {
   try { return JSON.parse(account.id.slice(account.id.indexOf(':') + 1)); }
   catch { return null; }
 }
@@ -27,22 +74,15 @@ interface UsagePorts {
 
 export function createUsageReader(ports: UsagePorts) {
   const read = (providerIds: string[], machineIds: string[] | null, refresh: boolean) => ports.callRpc({
-    pluginId: 'bb--provider-usage', method: 'getUsage', outputSchema: snapshotSchema,
+    pluginId: 'bb--provider-usage', method: 'getUsage', outputSchema: sourceSnapshotSchema,
     input: { force: refresh, machineIds, providerIds, maxAgeMs: refresh ? 0 : 120_000 },
     signal: AbortSignal.timeout(60_000),
   });
   async function overview(refresh: boolean) {
     const inventory = await read([], null, false);
     const providerIds = [...new Set(inventory.machines.flatMap(machine => machine.providers.map(account => account.providerId)))];
-    const snapshot = providerIds.length ? await read(providerIds, null, refresh) : inventory;
-    for (const machine of snapshot.machines) {
-      for (const account of machine.providers) {
-        if (!account.id.startsWith('claude-profiles:')) continue;
-        const locator = profileLocatorSchema.safeParse(resourceLocator(account));
-        if (locator.success) account.accountLabel = locator.data[2] === 'default' ? 'Claude · Default' : `Claude · ${locator.data[2]}`;
-      }
-    }
-    return snapshot;
+    const snapshot = describeAccounts(providerIds.length ? await read(providerIds, null, refresh) : inventory);
+    return { machines: snapshot.machines.map(machine => ({ ...machine, providers: foldDefaultProfile(machine.providers) })) };
   }
   async function header(threadId: string): Promise<Header> {
     const thread = await ports.getThread({ threadId });
@@ -62,7 +102,7 @@ export function createUsageReader(ports: UsagePorts) {
             outputSchema: profileUsageSchema, signal: AbortSignal.timeout(30_000),
           });
           return { ...base, accountLabel: profile.selection?.profile.label ?? 'Default',
-            windows: usage.windows.filter(window => window.id === 'five_hour' || window.id === 'seven_day').map(window => ({
+            windows: usage.windows.filter(window => window.id === 'five_hour' || window.id === 'seven_day').map(window => describeWindow({
               label: window.id === 'five_hour' ? '5h' : '7d', usedPercent: window.usedPercent, resetsAt: window.resetsAt, cost: null,
             })), message: usage.status !== 'ok' ? usage.message ?? 'Usage unavailable' : null };
         }
@@ -77,7 +117,7 @@ export function createUsageReader(ports: UsagePorts) {
       return locator.success && locator.data[1] === thread.providerId;
     }) ?? (accounts.length === 1 ? accounts[0] : undefined);
     return { ...base, accountLabel: account?.usage?.status === 'ok' ? account.usage.accountEmail : null,
-      windows: account?.usage?.status === 'ok' ? account.usage.windows : [],
+      windows: account?.usage?.status === 'ok' ? account.usage.windows.map(describeWindow) : [],
       message: account?.usage?.status === 'ok' ? (account.usage.windows.length ? null : 'No limits reported') : 'Usage unavailable' };
   }
   return { overview, header };
