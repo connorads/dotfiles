@@ -122,3 +122,8 @@ BB's normal send action. Escape closes the voice card and focuses the composer.
 Commands do not submit drafts or approve agent requests. Run `bun test` and
 `bun run check` after changes. The managed host validates registration; HEX
 also checks native phrase conflicts at runtime.
+
+F18 command-pedal transcripts use `voice/speech.ts` and the same `runBb` and
+`matchBb` handlers. Pedal searches request explicit choices, including unique
+matches. Always-listening searches retain automatic selection for clear matches.
+The persistent recorder lives in [Handsfree](../../src/bb-plugins/handsfree/README.md#command-pedal).
