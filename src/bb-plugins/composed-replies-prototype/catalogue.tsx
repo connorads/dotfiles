@@ -18,11 +18,23 @@ import {
   StackedBarChart,
 } from "./rich-components";
 
+import {
+  layoutProps,
+  Box,
+  Row,
+  Icon,
+  Heading,
+  Caption,
+  Divider,
+  Chip,
+} from "./layout-primitives";
+
 const boundedNumber = z.number().finite().min(-1e9).max(1e9);
 const label = z.string().max(160);
 const scalar = z.union([boundedNumber, z.string().max(1000)]);
 const props = {
   ...richProps,
+  ...layoutProps,
   Stack: z.object({ children: z.array(z.unknown()).max(50) }),
   Text: z.object({ text: z.string().max(4000) }),
   NumberInput: z.object({
@@ -326,6 +338,75 @@ const SelectOpen = defineComponent({
 });
 export const library = createLibrary({
   components: [
+    ...["Box", "Row"].map((name) =>
+      name === "Box"
+        ? defineComponent({
+            name: "Box",
+            description:
+              "Bounded padded group with optional border and muted surface",
+            props: layoutProps.Box,
+            component: ({ props: p }) => {
+              const render = useRenderNode();
+              return (
+                <Box {...p}>
+                  {p.children.map((x, i) => (
+                    <div key={i} style={{ minWidth: 0, maxWidth: "100%" }}>
+                      {render(x)}
+                    </div>
+                  ))}
+                </Box>
+              );
+            },
+          })
+        : defineComponent({
+            name: "Row",
+            description: "Wrapping horizontal children with alignment",
+            props: layoutProps.Row,
+            component: ({ props: p }) => {
+              const render = useRenderNode();
+              return (
+                <Row {...p}>
+                  {p.children.map((x, i) => (
+                    <div key={i} style={{ minWidth: 0, maxWidth: "100%" }}>
+                      {render(x)}
+                    </div>
+                  ))}
+                </Row>
+              );
+            },
+          }),
+    ),
+    defineComponent({
+      name: "Icon",
+      description: "Named icon; empty label is decorative",
+      props: layoutProps.Icon,
+      component: ({ props: p }) => <Icon {...p} />,
+    }),
+    defineComponent({
+      name: "Heading",
+      description: "Section heading",
+      props: layoutProps.Heading,
+      component: ({ props: p }) => <Heading {...p} />,
+    }),
+    defineComponent({
+      name: "Caption",
+      description: "Small supporting text",
+      props: layoutProps.Caption,
+      component: ({ props: p }) => <Caption {...p} />,
+    }),
+    defineComponent({
+      name: "Divider",
+      description: "Section separator",
+      props: layoutProps.Divider,
+      component: () => <Divider />,
+    }),
+    defineComponent({
+      name: "Chip",
+      description: "Compact category label",
+      props: layoutProps.Chip,
+      component: ({ props: p }) => <Chip {...p} />,
+    }),
+
     defineComponent({
       name: "Grid",
       description: "Responsive compact layout with two or three columns",
@@ -392,6 +473,28 @@ export const library = createLibrary({
 });
 export const catalog = defineCatalog(schema, {
   components: {
+    Box: {
+      props: layoutProps.Box.omit({ children: true }),
+      slots: ["default"],
+      description: "Padded group with optional border and muted surface",
+    },
+    Row: {
+      props: layoutProps.Row.omit({ children: true }),
+      slots: ["default"],
+      description: "Wrapping horizontal layout",
+    },
+    Icon: {
+      props: layoutProps.Icon,
+      description: "Named icon; empty label is decorative",
+    },
+    Heading: { props: layoutProps.Heading, description: "Section heading" },
+    Caption: {
+      props: layoutProps.Caption,
+      description: "Small supporting text",
+    },
+    Divider: { props: layoutProps.Divider, description: "Section separator" },
+    Chip: { props: layoutProps.Chip, description: "Compact category label" },
+
     Grid: {
       props: z.object({ columns: richProps.Grid.shape.columns }),
       slots: ["default"],
@@ -454,6 +557,13 @@ const NumericJson = ({
 };
 export const { registry } = defineRegistry(catalog, {
   components: {
+    Box: ({ props: p, children }) => <Box {...p}>{children}</Box>,
+    Row: ({ props: p, children }) => <Row {...p}>{children}</Row>,
+    Icon: ({ props: p }) => <Icon {...p} />,
+    Heading: ({ props: p }) => <Heading {...p} />,
+    Caption: ({ props: p }) => <Caption {...p} />,
+    Divider: () => <Divider />,
+    Chip: ({ props: p }) => <Chip {...p} />,
     Grid: ({ props: p, children }) => (
       <Grid columns={p.columns}>{children}</Grid>
     ),
@@ -512,9 +622,13 @@ export function prompt(format: "openui" | "json-render") {
       z.toJSONSchema(
         name === "Stack"
           ? z.object({})
-          : name === "Grid"
-            ? z.object({ columns: richProps.Grid.shape.columns })
-            : shape,
+          : name === "Box"
+            ? layoutProps.Box.omit({ children: true })
+            : name === "Row"
+              ? layoutProps.Row.omit({ children: true })
+              : name === "Grid"
+                ? z.object({ columns: richProps.Grid.shape.columns })
+                : shape,
       ),
     ]),
   );
