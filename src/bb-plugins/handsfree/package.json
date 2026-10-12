@@ -18,20 +18,27 @@
     "skills": []
   },
   "scripts": {
-    "test": "pnpm test:core && pnpm test:ui",
+    "test": "pnpm test:core && pnpm test:ui && pnpm test:native",
     "test:core": "node --experimental-strip-types --test *.test.ts",
     "test:ui": "vitest run app.test.tsx",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p pedal/tsconfig.json",
     "build": "bb plugin build",
-    "dev": "bb plugin dev"
+    "dev": "bb plugin dev",
+    "pedal:install": "bun pedal/install.ts install",
+    "pedal:status": "bun pedal/install.ts status",
+    "pedal:restart": "bun pedal/install.ts restart",
+    "pedal:stop": "bun pedal/install.ts stop",
+    "test:native": "swiftc -module-cache-path \"$HOME/.cache/hex-command-pedal/swift\" -typecheck pedal/keys.swift"
   },
   "dependencies": {
+    "@kitlangton/hex": "0.3.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@get-bb/plugin-sdk": "file:../../../git/getbb/packages/plugin-sdk",
     "@testing-library/react": "catalog:",
     "@types/better-sqlite3": "catalog:",
+    "@types/bun": "1.4.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
