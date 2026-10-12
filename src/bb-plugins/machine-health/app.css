@@ -1,0 +1,100 @@
+/* Tones follow BB's theme tokens; glyphs and figures carry each state without colour too. */
+:root {
+  --mh-ok: var(--diff-added, oklch(77% .17 163));
+  --mh-warn: var(--attention, oklch(80% .15 80));
+  --mh-critical: var(--destructive-text, oklch(65% .19 22));
+}
+[data-tone="ok"] { --mh-tone: var(--muted-foreground); }
+[data-tone="warn"] { --mh-tone: var(--mh-warn); }
+[data-tone="critical"] { --mh-tone: var(--mh-critical); }
+[data-tone="off"] { --mh-tone: var(--muted-foreground); }
+/* Memory's own state: OK reads green, as the tmux pill did. */
+[data-state="OK"], .mh-pill[data-key="memory"][data-tone="ok"] { --mh-tone: var(--mh-ok); }
+[data-state="BUSY"] { --mh-tone: var(--mh-warn); }
+[data-state="CRITICAL"] { --mh-tone: var(--mh-critical); }
+
+.mh-chip, .mh-machine-row {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; max-width: 100%;
+  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--foreground);
+  font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
+}
+/* BB caps the header slot at 256 px: pills that do not fit wrap onto a hidden second line, whole. */
+.mh-chip { flex-wrap: wrap; align-content: flex-start; gap: 0 5px; padding: 0 8px; overflow: hidden; line-height: 26px; }
+.mh-chip[data-tone="critical"] { font-weight: 700; border-color: color-mix(in oklch, var(--mh-critical) 45%, var(--border)); }
+.mh-chip[data-tone="warn"] { border-color: color-mix(in oklch, var(--mh-warn) 45%, var(--border)); }
+.mh-chip[data-tone="off"] .mh-label { color: var(--muted-foreground); }
+.mh-chip:hover, .mh-chip[aria-expanded="true"], .mh-machine-row:hover { background: var(--state-hover); }
+.mh-chip:focus-visible, .mh-machine-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.mh-label { overflow: hidden; text-overflow: ellipsis; }
+.mh-pill { color: var(--mh-tone); }
+.mh-pill[data-tone="warn"], .mh-pill[data-tone="critical"] { font-weight: 700; }
+
+.mh-dialog {
+  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
+  background: transparent; color: var(--popover-foreground); overflow: visible;
+}
+.mh-dialog::backdrop { background: color-mix(in oklch, var(--canvas, #000) 22%, transparent); }
+.mh-dialog:focus { outline: none; }
+.mh-panel {
+  display: flex; flex-direction: column; gap: 14px; max-height: min(760px, calc(100vh - 80px)); overflow: auto;
+  padding: 14px 16px; border: 1px solid var(--border-hairline); border-radius: 14px; background: var(--popover);
+  box-shadow: 0 24px 64px -12px rgb(0 0 0 / .45); font: var(--text-sm, 13px)/1.4 var(--font-sans);
+}
+.mh-panel h3 { margin: 0 0 6px; font-size: var(--text-sm, 13px); font-weight: 600; }
+.mh-panel small, .mh-empty, .mh-gloss, .mh-why, .mh-count { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.mh-panel button { font: inherit; color: inherit; }
+.mh-panel button:not(.mh-link):not(.mh-app) {
+  padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: transparent; cursor: pointer;
+}
+.mh-panel button:disabled { opacity: .5; cursor: default; }
+
+.mh-rows { display: grid; gap: 4px; margin: 0; }
+.mh-rows > div { display: grid; grid-template-columns: 72px 1fr; gap: 10px; }
+.mh-rows dt { color: var(--muted-foreground); }
+.mh-rows dd { margin: 0; color: var(--mh-tone); font-variant-numeric: tabular-nums; }
+.mh-rows > div[data-tone="ok"] dd { color: var(--foreground); }
+
+.mh-state { display: flex; gap: 14px; align-items: baseline; color: var(--muted-foreground); }
+.mh-state strong { color: var(--mh-tone); }
+.mh-marker { color: var(--mh-warn); }
+.mh-arm {
+  display: grid; grid-template-columns: 90px 1fr 44px 92px 110px; gap: 2px 10px; align-items: center; margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.mh-arm-label, .mh-arm-pct { color: var(--mh-tone); }
+.mh-arm-pct { text-align: right; }
+.mh-arm-size { color: var(--muted-foreground); text-align: right; }
+.mh-gloss { grid-column: 2 / -1; }
+.mh-bar { position: relative; height: 8px; border-radius: 4px; background: var(--muted, rgb(127 127 127 / .2)); }
+.mh-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--mh-tone); }
+.mh-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; }
+.mh-tick-amber { background: var(--mh-warn); }
+.mh-tick-red { background: var(--mh-critical); }
+.mh-row { margin: 8px 0 0; color: var(--muted-foreground); }
+.mh-action { color: var(--foreground); }
+
+.mh-list { margin: 0; padding: 0; list-style: none; }
+.mh-app, .mh-thread { display: grid; align-items: center; gap: 10px; width: 100%; padding: 3px 0; }
+.mh-app { grid-template-columns: 1fr 120px 64px 36px; border: 0; background: none; text-align: left; cursor: pointer; }
+.mh-thread { grid-template-columns: 18px 1fr 64px 200px; }
+.mh-thread[data-safe="false"] .mh-name { color: var(--muted-foreground); }
+.mh-thread .mh-why { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mh-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.mh-mb { text-align: right; font-variant-numeric: tabular-nums; }
+.mh-mini { height: 6px; border-radius: 3px; background: var(--muted, rgb(127 127 127 / .2)); overflow: hidden; }
+.mh-mini span { display: block; height: 100%; background: var(--muted-foreground); }
+.mh-procs { margin: 2px 0 6px 12px; padding: 0; list-style: none; }
+.mh-procs li { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; align-items: center; padding: 2px 0; }
+.mh-procs code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs, 12px); }
+.mh-link { padding: 0; border: 0; background: none; cursor: pointer; text-decoration: underline dotted; }
+.mh-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.mh-confirm { display: inline-flex; gap: 6px; align-items: center; }
+.mh-result { margin: 0; }
+.mh-result p, .mh-result ul { margin: 0; }
+.mh-result ul { padding-left: 18px; color: var(--muted-foreground); }
+.mh-error { margin: 0; color: var(--destructive-text); }
+.mh-footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.mh-machines { display: flex; flex-direction: column; gap: 6px; padding: 8px; font-size: var(--text-xs, 12px); }
+.mh-machine-row { width: 100%; flex-wrap: wrap; height: auto; min-height: 28px; padding: 4px 8px; text-align: left; }
+.mh-machine .mh-rows { padding: 6px 8px; font-size: var(--text-xs, 12px); }
