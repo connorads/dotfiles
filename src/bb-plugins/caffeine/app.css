@@ -1,0 +1,130 @@
+/* Hex on purpose: dark mode uses the tmux pill's Catppuccin Mocha peach and
+   maroon (caffeine-lib.sh CAFFEINE_COLOUR and CAFFEINE_LID_COLOUR), so both
+   surfaces read as one signal. Mocha's pastels are about 2:1 on a light
+   popover, so light mode takes the Latte pair for fills and a darker ink of
+   each for text and glyphs, which clears 4.5:1. Everything else uses BB theme
+   tokens. */
+.cf-root {
+  --cf-on: #fab387;
+  --cf-lid: #eba0ac;
+  --cf-on-ink: var(--cf-on);
+  --cf-lid-ink: var(--cf-lid);
+  --cf-ease: cubic-bezier(.23, 1, .32, 1);
+}
+:root:not(.dark) .cf-root {
+  --cf-on: #fe640b;
+  --cf-lid: #e64553;
+  --cf-on-ink: #c2410c;
+  --cf-lid-ink: #c03a4b;
+}
+/* --cf-tone fills (tints, meter); --cf-ink draws text and glyphs. */
+[data-tone="on"] { --cf-tone: var(--cf-on); --cf-ink: var(--cf-on-ink); }
+[data-tone="lid"] { --cf-tone: var(--cf-lid); --cf-ink: var(--cf-lid-ink); }
+[data-tone="off"] { --cf-tone: var(--muted-foreground); --cf-ink: var(--muted-foreground); }
+
+/* The chip: anatomy from @bb-plugins/chip; only the glyph carries colour. */
+.cf-glyph { font-family: var(--font-mono); line-height: 14px; color: var(--cf-ink); }
+.bbp-chip-icon > .cf-glyph { display: grid; place-items: center; font-size: 14px; }
+
+/* Pop-up shell, after git-glance. */
+.cf-dialog {
+  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0; background: transparent;
+  color: var(--popover-foreground); overflow: visible;
+  animation: cf-in .16s var(--cf-ease);
+}
+.cf-dialog::backdrop { background: color-mix(in oklch, var(--canvas, #000) 22%, transparent); animation: cf-fade .16s ease-out; }
+.cf-dialog:focus { outline: none; }
+/* Opened by shortcut: no entrance, so a key used all day feels instant. */
+.cf-dialog[data-instant], .cf-dialog[data-instant]::backdrop { animation: none; }
+@keyframes cf-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+@keyframes cf-fade { from { opacity: 0; } }
+
+.cf-panel {
+  display: flex; flex-direction: column; max-height: min(640px, calc(100vh - 80px)); overflow: auto;
+  border: 1px solid var(--border-hairline); border-radius: 14px; background: var(--popover);
+  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--ink, #fff) 6%, transparent) inset,
+    0 24px 64px -12px rgb(0 0 0 / .45), 0 8px 20px -8px rgb(0 0 0 / .3);
+  font: var(--text-sm, 13px)/1.4 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.cf-panel[aria-busy] .cf-row { cursor: progress; }
+
+/* Header: a radial tint in the state's colour; OFF stays untinted. */
+.cf-header {
+  display: grid; gap: 6px; padding: 12px 14px;
+  border-bottom: 1px solid var(--border-seam, var(--border));
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--cf-tone) 13%, transparent), transparent 62%);
+}
+.cf-header[data-tone="off"] { background: none; }
+.cf-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cf-title-glyph { width: 18px; font-size: 16px; line-height: 18px; text-align: center; }
+.cf-title h2 { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
+.cf-tag {
+  flex: none; padding: 2px 7px; border-radius: 999px; font: 600 10px/1.2 var(--font-sans); letter-spacing: .06em;
+  color: var(--cf-ink); background: color-mix(in oklch, var(--cf-tone) 14%, transparent);
+}
+.cf-header[data-tone="off"] .cf-tag { color: var(--muted-foreground); background: var(--muted); }
+.cf-line { margin: 0; text-wrap: pretty; }
+.cf-strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.cf-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+
+.cf-meter { position: relative; display: block; height: 4px; overflow: hidden; border-radius: 2px; background: var(--muted, rgb(127 127 127 / .2)); }
+.cf-meter i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--cf-tone); transition: width .4s var(--cf-ease); }
+
+/* Rows: key cap, label, and the answer to "until when" on the right. */
+.cf-section { display: grid; padding: 4px; }
+.cf-section + .cf-section { border-top: 1px solid var(--border-seam, var(--border)); }
+.cf-row {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 4px 8px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .12s, transform .16s var(--cf-ease);
+}
+.cf-row:hover:not(:disabled), .cf-row:focus { background: var(--state-hover); outline: none; }
+.cf-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.cf-row:active:not(:disabled) { transform: scale(.985); }
+.cf-row:disabled { opacity: .55; cursor: default; }
+.cf-row kbd, .cf-keys kbd {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
+  border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
+  font: 500 10.5px/1 var(--font-mono);
+}
+.cf-row-main { display: grid; min-width: 0; }
+.cf-row-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The subtitle explains a row only once it has focus, so the list stays compact. */
+.cf-row-sub { display: none; color: var(--muted-foreground); font-size: var(--text-xs, 12px); white-space: normal; text-wrap: pretty; }
+.cf-row:focus .cf-row-sub, .cf-recovery .cf-row-sub { display: block; }
+.cf-row-aside { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-foreground); font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
+.cf-row[data-tone="lid"] .cf-row-label { color: var(--cf-lid-ink); }
+.cf-chevron { font-family: var(--font-sans); font-size: 14px; }
+.cf-battery { color: var(--warning-text, var(--warning)); }
+/* Armed for a second press: the row says what the next press does. */
+.cf-row[data-armed] { background: color-mix(in oklch, var(--warning) 14%, transparent); }
+.cf-row[data-armed] .cf-row-label { color: var(--warning-text, var(--warning)); }
+
+.cf-recovery .cf-row { align-items: start; }
+.cf-recovery .cf-row-label { color: var(--cf-lid-ink); font-weight: 600; }
+.cf-warn-glyph { font-family: var(--font-mono); }
+
+.cf-banner {
+  margin: 8px 12px 0; padding: 7px 10px; border-radius: 8px; font-size: var(--text-xs, 12px); text-wrap: pretty;
+  color: var(--warning-text, var(--warning)); background: color-mix(in oklch, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--warning) 35%, transparent);
+}
+.cf-banner code { font-family: var(--font-mono); }
+.cf-error { margin: 0; padding: 8px 14px; color: var(--destructive-text); font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
+
+.cf-footer {
+  display: grid; gap: 2px; padding: 8px 14px;
+  border-top: 1px solid var(--border-seam, var(--border)); background: var(--surface-recessed, transparent);
+  color: var(--subtle-foreground, var(--muted-foreground)); font-size: var(--text-xs, 12px);
+}
+/* Keycaps as in git-glance's footer. */
+.cf-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; }
+.cf-keys kbd + kbd { margin-left: -2px; }
+.cf-keys kbd:not(:first-child):not(kbd + kbd) { margin-left: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-dialog, .cf-dialog::backdrop { animation: none; }
+  .cf-row, .cf-meter i { transition: none; }
+  .cf-row:active:not(:disabled) { transform: none; }
+}

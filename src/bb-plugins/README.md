@@ -52,3 +52,9 @@ keys. Alt+Enter adds a newline in the composer and question box, and Enter
 submits a typed question answer. Escape stops the running agent. Escape twice
 on an empty composer opens a picker that rewinds or forks from an earlier
 message.
+
+## Keep awake
+
+[Caffeine](caffeine/README.md) keeps this Mac awake from BB: indefinitely, for a
+set time, with the lid closed, or while agents run. Alt+K opens it. It drives the
+tmux caffeine lib, so the BB chip and the tmux pill always agree.
