@@ -91,7 +91,6 @@
       "anomalyco/tap/hex"
       "native-access"
       "google-chrome"
-      "google-gemini"
       "grok-bot"
       "brave-browser"
       "firefox"
