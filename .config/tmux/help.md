@@ -238,6 +238,7 @@ a laptop awake in a closed shell.
 | `☼ ∞` peach | on, indefinite | awake until you turn it off; lid still sleeps it |
 | `☼ 42m` peach | on, timed | as above, for the remaining time, then self-clears |
 | `✷ 4h` maroon | on, lid closed | cannot sleep at all, lid included; always timed |
+| `☼ A` peach | on, held by BB | BB keeps it on while agents run, then stops it |
 | (hidden) | off | Mac sleeps on its normal schedule |
 
 If the popup shows a maroon `⚠ This Mac still cannot sleep at all`, a lid

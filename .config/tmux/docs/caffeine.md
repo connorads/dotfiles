@@ -110,12 +110,21 @@ Change as a set:
   add` - the pure arithmetic behind extending a running session. Sourced, never
   run.
   **Pidfile contract**: `${CAFFEINE_PIDFILE:-$HOME/.cache/tmux-caffeinate.pid}`
-  holds one line `pid deadline_epoch mode` (`deadline 0` = indefinite, mode
-  `idle`|`lid`). **Field 3 is optional and anything not exactly `lid` reads as
-  `idle`**, so pre-lid two-field pidfiles keep working with no migration and a
-  garbled field can never claim the privileged mode. `caffeinate -t` self-exits at
+  holds one line `pid deadline_epoch mode [owner]` (`deadline 0` = indefinite,
+  mode `idle`|`lid`). **Field 3 is optional and anything not exactly `lid` reads
+  as `idle`**, so pre-lid two-field pidfiles keep working with no migration and a
+  garbled field can never claim the privileged mode. **Field 4 is optional too**:
+  `caffeine_start SECS OWNER` writes an automated owner (`[a-z0-9-]+`, anything
+  else is dropped), `caffeine_owner` reads it back, and readers of fields 1-3
+  ignore it. Every un-owned start rewrites the file without it, so a manual start
+  from tmux or BB takes the session back from its owner by construction. The only
+  owner today is `bb-agents` (`CAFFEINE_AGENTS_OWNER`), for which
+  `caffeine_token` prints `A` rather than the lease's remaining time. Owned starts
+  are always `idle`, so no owner can claim lid mode. `caffeinate -t` self-exits at
   the deadline, so ON-timed clears itself once the pid dies; a stale pidfile reads
-  as OFF. No `uname` branch: on Linux the pidfile never exists → OFF.
+  as OFF. A timed pidfile more than 10 s past its deadline also reads as OFF,
+  live pid or not, and `caffeine_stop` never signals an inactive pid: only stop
+  removes the file, so a wrapped pid can belong to an unrelated process. No `uname` branch: on Linux the pidfile never exists → OFF.
   `caffeine_sleep_disabled` reads the *real* kernel flag and is deliberately kept
   out of `caffeine_state` - the pill renders every tick and must not fork `pmset`.
   The supervisor `wait`s on its `caffeinate` child rather than `exec`ing it (an
@@ -132,7 +141,10 @@ Change as a set:
   does not answer it - `space`/`o` off, `q` close. The `+` row is hidden while
   indefinite. Both running states also render the end time beside the remaining
   figure, which is what makes the extend decision answerable before the picker is
-  even opened. The lid row shows the live power source, and on battery a confirm
+  even opened. A session BB holds while agents run (owner `bb-agents`) reads
+  "Held by BB while agents run" and offers no `+`: its deadline is a renewable
+  lease, not a time anyone chose. Off still works, and BB relinquishes. The lid
+  row shows the live power source, and on battery a confirm
   names the costs in the user's terms (drained flat, hot in a closed shell with no
   airflow) and points at `atp --host dev`. A **recovery row** renders in any
   non-ON-LID state whenever `caffeine_sleep_disabled` is true, with `c` to clear
@@ -158,6 +170,13 @@ Change as a set:
   colour arrives through the existing path; only the self-hide guard has to test
   for OFF specifically rather than for "not ON". Grouped with the other custom-lib
   pills after `resurrect_segment`.
+- [`~/src/bb-plugins/caffeine`](../../../src/bb-plugins/caffeine/README.md) - the
+  BB plugin: a self-hiding header chip and an Alt+K popover that drive this lib
+  through fixed `sh` scripts, so both surfaces read one pidfile. Its "while agents
+  run" mode holds an owned, renewable 1 h lease (`caffeine_start 3600 bb-agents`)
+  while any BB thread on this Mac runs, then stops it 5 minutes after the last
+  one goes idle. It renews or stops only while `caffeine_owner` still reads
+  `bb-agents`, so it never touches a session someone started by hand.
 
 Tests: [`../zsh/tests/caffeine-lib.bats`](../../zsh/tests/caffeine-lib.bats) (pure
 lib: state via real pidfiles including the three-field and legacy two-field
@@ -165,7 +184,8 @@ forms, mode, remaining/token, colour/glyph, human-age matrix, the
 `caffeine_state`-never-forks-pmset guard, `caffeine_sleep_disabled` against a
 `pmset` stub, the always-timed refusals, the extend arithmetic with its three
 refusals (nothing running / bad addition / indefinite), the cross-platform
-wall-clock, and the stop-wait) and
+wall-clock, the stop-wait, and the owner field: written by an owned start,
+dropped when invalid or by a later un-owned start, and the `A` token) and
 [`../zsh/tests/caffeine-reconcile.bats`](../../zsh/tests/caffeine-reconcile.bats)
 (the reconciler's branches, driving `sudo`/`pmset` stubs over a flag *file* so
 the two failure shapes - refused, and returns 0 without taking - can be provoked
