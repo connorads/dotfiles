@@ -74,7 +74,7 @@ export default defineHexConfig({
       run: async () => { await runBb(bbPorts, { action: "show", view: "usage" }) },
     },
     "bb-close-popup": {
-      phrases: ["close popup"],
+      phrases: ["close popup", "close pop up", "close voice monitor"],
       when: { application: "bb" },
       group: "BB",
       description: "Dismiss the top BB popup",
