@@ -4,6 +4,25 @@ import { loadPluginApp, renderSlot } from "@get-bb/plugin-sdk/testing/app";
 import { act, waitFor } from "@testing-library/react";
 import { frameDocument } from "./frame";
 
+it("reports initial height when offscreen animation frames are suspended", () => {
+  const post = vi.spyOn(window, "postMessage").mockImplementation(() => {});
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: new Promise(() => {}) } });
+  const bounds = vi.spyOn(document.body, "getBoundingClientRect").mockReturnValue({ height: 344 } as DOMRect);
+  try {
+    const html = frameDocument("<p>Offscreen visual</p>", {}, "", "offscreen");
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    window.eval(doc.body.lastElementChild!.textContent!);
+    expect(post).toHaveBeenCalledWith({ type: "visual-height", nonce: "offscreen", height: 344 }, "*");
+  } finally {
+    window.dispatchEvent(new Event("pagehide"));
+    bounds.mockRestore(); post.mockRestore(); vi.unstubAllGlobals();
+    Reflect.deleteProperty(document, "fonts");
+  }
+});
+
 it("renders without a card, validates iframe messages and disposes listeners", async () => {
   vi.stubGlobal("matchMedia", () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   const add = vi.spyOn(window, "addEventListener");
