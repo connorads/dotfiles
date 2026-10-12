@@ -2,8 +2,8 @@
 
 Claude Profiles absorbs Model Favourites and Agent Usage. The package stays
 `bb-plugin-claude-profiles`, so the plugin ID stays `claude-profiles`. Its
-display name is **Agent Switcher**. The step plan is
-[CONSOLIDATION.md](../../claude-profiles/CONSOLIDATION.md).
+display name is **Agent Switcher**. Its guide is the plugin
+[README](../../claude-profiles/README.md).
 
 ## Context
 
