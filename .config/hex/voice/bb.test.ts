@@ -161,3 +161,17 @@ test("direct requests log infrastructure failures without claiming completion", 
   expect(w.logs).toHaveLength(1)
   expect(w.logs[0]).toMatchObject({ action: "archive", outcome: "error", message: "BB lost focus" })
 })
+
+test("joined ASR words find a spaced thread title without semantic matching", async () => {
+  const w = setup(["KB sync and inbox ingest"])
+  await matchBb(w.ports, "thread", "kbsync")
+  expect(w.commands.at(-1)).toMatchObject({ action: "select", kind: "thread", id: "0" })
+  expect(w.judged()).toBe(false)
+})
+
+test("joined ASR words offer choices when spaced titles are ambiguous", async () => {
+  const w = setup(["KB sync and inbox ingest", "KB sync fixes"])
+  await matchBb(w.ports, "thread", "kbsync")
+  expect(w.commands.at(-1)).toMatchObject({ action: "choices", options: [{ id: "0" }, { id: "1" }] })
+  expect(w.judged()).toBe(false)
+})

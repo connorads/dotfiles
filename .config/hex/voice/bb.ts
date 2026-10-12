@@ -116,7 +116,8 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Re
     : kind === "project" && spoken === "dotfiles" ? "connorads" : spoken
   const name = (candidate: Candidate) => normalise(candidate.title ?? candidate.label)
   const exact = candidates.filter(candidate => name(candidate) === target || normalise(candidate.id) === target)
-  let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target))
+  let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target)
+    || (kind === "thread" && name(candidate).replaceAll(" ", "").includes(target.replaceAll(" ", ""))))
   const show = (options: Candidate[]) => {
     trace.offered = options.slice(0, 9)
     return request({
