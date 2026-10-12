@@ -20,7 +20,8 @@ function TestPicker() {
 const first: Favourite = { id: 'a', slot: 1, name: 'Deep', providerId: 'codex', model: 'model-a', reasoningLevel: 'high' };
 const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'model-b', reasoningLevel: 'low' };
 const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
-type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean };
+type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
+const accountCalls: string[] = [];
 function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> = {}) {
   const providerId = account ? 'claude-code' : 'codex';
   let currentId = 'default';
@@ -28,7 +29,8 @@ function render(initial = [first, second], error: string | null = null, account?
   return renderSlot<Record<string, never>, typeof rpcContract>({ component: TestPicker }, {}, {
     composer: { text: 'Do not send this draft', isRunning: account?.running,
       selection: { providerId, model: 'model-b', reasoningLevel: 'low', environment: { type: 'host', hostId: 'host-test', workspace: { type: 'personal' } }, ...selection },
-      scope: account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
+      scope: account?.queued ? { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queued-test' }
+        : account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
     rpc: {
       'favourites.list': () => saved,
       'favourites.move': () => saved,
@@ -44,10 +46,12 @@ function render(initial = [first, second], error: string | null = null, account?
         return saved;
       },
       accounts: () => {
+        accountCalls.push('accounts');
         if (account?.missing) throw new Error('Could not list Claude accounts');
         return { supported: true, profiles, currentId };
       },
       choose: input => {
+        accountCalls.push('choose');
         if (account?.failSwitch) throw new Error('Clear queued messages before switching profiles.');
         currentId = input.profileId;
         return { currentId };
@@ -336,5 +340,16 @@ test.each(['q', 'Q'])('%s types in search and closes from a model row', async ke
     expect(slot.inspection.composer.focusCount).toBe(1);
     expect(slot.inspection.composer.text).toBe('Do not send this draft');
     expect(slot.inspection.composer.submits).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a queued-message editor shows no account control and never changes the account', async () => {
+  accountCalls.length = 0;
+  const slot = render([first, second], null, { queued: true });
+  try {
+    await slot.findByLabelText('Search models');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(slot.queryByLabelText('Claude account')).toBeNull();
+    expect(accountCalls).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
