@@ -6,26 +6,28 @@ import { connect } from '@kitlangton/hex';
 import { makePedalSession } from '../pedal-session.ts';
 import { requestBb, type BbPorts } from '../../../../.config/hex/voice/bb.ts';
 import { runSpeech } from '../../../../.config/hex/voice/speech.ts';
+import { serialisePedalRequests } from '../pedal-requests.ts';
 import { systemPorts } from '../../../../.config/hex/voice/system.ts';
 
-const ports: BbPorts = { ...systemPorts, request: requestBb };
+const request = serialisePedalRequests(requestBb);
+const ports: BbPorts = { ...systemPorts, request };
 const feedback = (message: string, problem = false) => {
   console.log(JSON.stringify({ at: new Date().toISOString(), message, problem }));
-  void requestBb({ action: 'notice', message, problem }).then(reply => {
+  void request({ action: 'notice', message, problem }).then(reply => {
     if (!reply.ok) console.error(reply.message);
   }).catch(error => console.error(String(error)));
 };
 let recordedContext: string | undefined;
 const session = makePedalSession({
   start: async () => {
-    const context = await requestBb({ action: 'list', kind: 'thread' });
+    const context = await request({ action: 'list', kind: 'thread' });
     if (!context.ok || !context.context) throw Error(context.message || 'Focus BB before recording a command.');
     recordedContext = context.context;
     return (await connect()).dictation.start({ source: 'bb-command-pedal' });
   },
   feedback,
   heard: async text => {
-    const context = await requestBb({ action: 'list', kind: 'thread' });
+    const context = await request({ action: 'list', kind: 'thread' });
     if (!context.ok || context.context !== recordedContext) { feedback('BB context changed. Record the command again.', true); return; }
     const reply = await runSpeech(ports, text);
     if (reply.ok && reply.press) {
