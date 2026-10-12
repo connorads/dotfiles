@@ -86,7 +86,7 @@ test('next unread opens the oldest unseen stopped reply, including a text questi
     thread('error', { isUnread: true, status: 'error', runtimeStatus: 'error', latestAttentionAt: 5 }),
   ]);
   expect(await view.command({ action: 'unread' })).toMatchObject({ ok: true, outcome: 'requested', message: expect.stringContaining('error') });
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'open', threadId: 'error' }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'error' }]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
 
@@ -101,7 +101,7 @@ test('next unread excludes the current thread, read replies, archived or hidden 
     thread('queued', { isUnread: true, queuedWork: 'waiting' }),
   ]);
   expect(await view.command({ action: 'unread' })).toMatchObject({ ok: true, outcome: 'empty' });
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
 test('show Git uses the selected thread button and repeated requests keep it open', async () => {
@@ -157,7 +157,7 @@ test('idle archive targets the selected thread and spoken restore opens it', asy
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect((await view.command({ action: 'restore' })).ok).toBe(true);
   expect(view.restored).toEqual(['t1']);
-  expect(view.slot.inspection.sidebarActionCalls.at(-1)).toEqual({ method: 'open', threadId: 't1' });
+  expect(view.slot.inspection.navigateCalls.at(-1)).toEqual({ method: 'toThread', threadId: 't1' });
 });
 
 test('running archives need explicit confirmation and another command cancels it', async () => {
@@ -178,7 +178,7 @@ test('cancelling an archive leaves the selected thread and draft untouched', asy
   await view.command({ action: 'archive' });
   await view.command({ action: 'cancel-archive' });
   expect(view.archived).toEqual([]);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
 
@@ -186,7 +186,7 @@ test('focus loss during archive inspection prevents the mutation', async () => {
   const view = await render('idle', () => { vi.spyOn(document, 'hasFocus').mockReturnValue(false); });
   expect((await view.command({ action: 'archive' })).ok).toBe(false);
   expect(view.archived).toEqual([]);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
 test('Enter does not confirm an archive or submit the retained draft', async () => {
@@ -200,7 +200,7 @@ test('Enter does not confirm an archive or submit the retained draft', async () 
 test('new thread opens a draft in the current project without submitting text', async () => {
   const view = await render();
   expect((await view.command({ action: 'new' })).ok).toBe(true);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'openNewThread', options: { projectId: 'p1', focusPrompt: true } }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: 'p1' }]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
@@ -210,7 +210,7 @@ test('choose without an open voice list returns an immediate explanation', async
   expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({
     ok: false, message: 'There is no such numbered voice choice. Say “voice help”.',
   });
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
 test('who needs me excludes hidden threads and Enter selects rather than sends the draft', async () => {
@@ -219,7 +219,7 @@ test('who needs me excludes hidden threads and Enter selects rather than sends t
   expect(view.slot.queryByText(/hidden \(/)).toBe(null);
   const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
   fireEvent(document, enter);
-  await waitFor(() => expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'open', threadId: 'waiting' }]));
+  await waitFor(() => expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'waiting' }]));
   expect(enter.defaultPrevented).toBe(true);
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
@@ -232,7 +232,7 @@ test('Escape dismisses choices and restores ordinary Enter behaviour', async () 
   const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
   fireEvent(document, enter);
   expect(enter.defaultPrevented).toBe(false);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
   expect(view.slot.inspection.composer.focusCount).toBe(1);
 });
 
@@ -248,7 +248,7 @@ test('returning to the composer leaves Enter and arrow keys available to BB', as
       fireEvent(textarea, event);
       expect(event.defaultPrevented).toBe(false);
     }
-    expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+    expect(view.slot.inspection.navigateCalls).toEqual([]);
   } finally { textarea.remove(); }
 });
 
@@ -268,14 +268,14 @@ test('a stale match cannot act on a different thread', async () => {
   const reply = await view.command({ action: 'select', kind: 'thread', id: 'waiting', context: current.context.replace('t1:p1', 'other-thread:p1') });
   expect(reply.ok).toBe(false);
   expect(reply.message).toMatch(/selected thread changed/);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
 test('finished means unread successful results rather than every idle thread', async () => {
   const view = await render();
   await view.command({ action: 'finished' });
   await view.command({ action: 'choose', number: 1 });
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'open', threadId: 'done' }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'done' }]);
 });
 
 test('unfocused windows do not claim or execute voice commands', async () => {
@@ -283,7 +283,7 @@ test('unfocused windows do not claim or execute voice commands', async () => {
   vi.spyOn(document, 'hasFocus').mockReturnValue(false);
   await view.slot.behavior.emitRealtime('command', { requestId: 'background', command: { action: 'new' } });
   expect(view.slot.inspection.rpcCalls.filter(call => call.method !== 'diagnostics')).toEqual([]);
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
 
 test('model selection uses the visible composer and its machine without sending a message', async () => {
@@ -304,7 +304,7 @@ test('project choices open a draft without moving the existing thread', async ()
   if (!list.context || !list.candidates) throw new Error('Missing project list');
   await view.command({ action: 'choices', kind: 'project', context: list.context, options: list.candidates, message: 'Choose a project' });
   await view.command({ action: 'choose', number: 1 });
-  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'openNewThread', options: { projectId: 'p1', focusPrompt: true } }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: 'p1' }]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });
 
@@ -383,4 +383,22 @@ test('capture feedback expires and polling stops when the controller unmounts', 
   const count = read.mock.calls.length;
   await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
   expect(read.mock.calls.length).toBe(count);
+});
+
+
+test('project draft navigation focuses the arriving composer and preserves its text', async () => {
+  const view = await render();
+  await view.command({ action: 'new' });
+  expect(view.slot.inspection.composer.focusCount).toBe(0);
+  await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
+  expect(view.slot.inspection.composer.focusCount).toBe(1);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('arriving project draft does not take focus after the window loses focus', async () => {
+  const view = await render();
+  await view.command({ action: 'new' });
+  vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+  await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
+  expect(view.slot.inspection.composer.focusCount).toBe(0);
 });

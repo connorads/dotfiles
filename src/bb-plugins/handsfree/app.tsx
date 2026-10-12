@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  definePluginApp, experimental_useSidebarThreads, experimental_useSidebarThreadActions,
-  useBbContext, useComposer, useComposers, useRealtime, useRpc, useSdk,
+  definePluginApp, experimental_useSidebarThreads,
+  useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk,
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
@@ -27,7 +27,15 @@ function VoiceCard() {
     ? item.scope.kind === 'thread' && item.scope.threadId === context.threadId
     : item.scope.kind === 'new-thread') ?? routeComposer;
   const sidebar = experimental_useSidebarThreads();
-  const actions = experimental_useSidebarThreadActions();
+  const navigate = useBbNavigate();
+  const draftFocus = useRef<string | null>(null);
+  const openDraft = (projectId?: string) => {
+    if (projectId) {
+      if (composer.scope.kind === 'new-thread' && (composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId) === projectId) composer.focus();
+      else { draftFocus.current = projectId; navigate.toProject(projectId); }
+    }
+    else navigate.toCompose({ focusPrompt: true });
+  };
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   const [expanded, setExpanded] = useState(false);
@@ -119,6 +127,13 @@ function VoiceCard() {
     return () => window.removeEventListener('resize', place);
   }, [expanded]);
 
+  useEffect(() => {
+    if (draftFocus.current && composer.scope.kind === 'new-thread' && projectId === draftFocus.current) {
+      draftFocus.current = null;
+      if (document.hasFocus()) composer.focus();
+    }
+  }, [composer, composer.scope.kind, projectId]);
+
   useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
   useEffect(() => { if (!expanded) { setArchiveConfirmation(null); setChoices(null); } }, [expanded]);
   useEffect(() => {
@@ -162,12 +177,12 @@ function VoiceCard() {
     setChoices(null);
     if (kind === 'thread') {
       trackNavigation(id);
-      actions.open(id);
+      navigate.toThread(id);
       return { ok: true, outcome: 'requested', message: `Opening ${candidate.label}` };
     }
     if (kind === 'project') {
       trackNavigation();
-      actions.openNewThread({ projectId: id, focusPrompt: true });
+      openDraft(id);
       return { ok: true, message: `Draft ready in ${candidate.label}. Dictate, then press Enter.` };
     }
     const selection = await composer.setSelection({ model: id });
@@ -198,7 +213,7 @@ function VoiceCard() {
           setArchiveConfirmation(null);
           if (result.outcome === 'archived' && latestContext.current === expectedContext) {
             trackNavigation();
-            actions.openNewThread({ projectId: target.projectId, focusPrompt: true });
+            openDraft(target.projectId);
           }
         }
         return { ok: true, outcome: result.outcome, message: result.message };
@@ -211,7 +226,7 @@ function VoiceCard() {
         const result = await rpc.call('restore', {});
         if (result.outcome === 'restored' && result.target && latestContext.current === expectedContext && document.hasFocus()) {
           trackNavigation(result.target.threadId);
-          actions.open(result.target.threadId);
+          navigate.toThread(result.target.threadId);
         }
         return { ok: result.outcome === 'restored', outcome: result.outcome, message: result.message };
       }
@@ -258,7 +273,7 @@ function VoiceCard() {
           .sort((a, b) => a.latestAttentionAt - b.latestAttentionAt || a.id.localeCompare(b.id))[0];
         if (!next) return { ok: true, outcome: 'empty', message: 'No unread stopped threads.' };
         trackNavigation(next.id);
-        actions.open(next.id);
+        navigate.toThread(next.id);
         return { ok: true, outcome: 'requested', message: `Opening ${threadCandidate(next).label}` };
       }
       case 'attention':
@@ -276,7 +291,7 @@ function VoiceCard() {
       case 'new':
         trackNavigation();
         setChoices(null);
-        actions.openNewThread({ ...(projectId ? { projectId } : {}), focusPrompt: true });
+        openDraft(projectId ?? undefined);
         return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
       case 'monitor':
         setChoices(null); setView('activity'); setExpanded(true);
