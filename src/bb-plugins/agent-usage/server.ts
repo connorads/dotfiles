@@ -4,7 +4,7 @@ import { rpcContract, sourceSnapshotSchema, type Account, type Header, type Snap
 import type { Period } from './pace.ts';
 
 const profileThreadSchema = z.object({
-  supported: z.boolean(), selection: z.object({ profile: z.object({ id: z.string(), label: z.string() }) }).nullable(),
+  supported: z.boolean(), currentId: z.string(), profiles: z.array(z.object({ id: z.string(), label: z.string() })),
 });
 const profileUsageSchema = z.object({
   status: z.enum(['ok', 'unavailable', 'unauthenticated', 'error']), message: z.string().nullable(),
@@ -93,15 +93,15 @@ export function createUsageReader(ports: UsagePorts) {
       const installed = await ports.listPlugins();
       if (installed.plugins.some(item => item.id === 'claude-profiles' && item.enabled)) {
         const profile = await ports.callRpc({
-          pluginId: 'claude-profiles', method: 'thread', input: { threadId }, outputSchema: profileThreadSchema,
+          pluginId: 'claude-profiles', method: 'accounts', input: { threadId }, outputSchema: profileThreadSchema,
           signal: AbortSignal.timeout(15_000),
         });
         if (profile.supported) {
           const usage = await ports.callRpc({
-            pluginId: 'claude-profiles', method: 'usage', input: { threadId, profileId: profile.selection?.profile.id ?? 'default', refresh: false },
+            pluginId: 'claude-profiles', method: 'usage', input: { threadId, profileId: profile.currentId, refresh: false },
             outputSchema: profileUsageSchema, signal: AbortSignal.timeout(30_000),
           });
-          return { ...base, accountLabel: profile.selection?.profile.label ?? 'Default',
+          return { ...base, accountLabel: profile.profiles.find(value => value.id === profile.currentId)?.label ?? 'Default',
             windows: usage.windows.filter(window => window.id === 'five_hour' || window.id === 'seven_day').map(window => describeWindow({
               label: window.id === 'five_hour' ? '5h' : '7d', usedPercent: window.usedPercent, resetsAt: window.resetsAt, cost: null,
             })), message: usage.status !== 'ok' ? usage.message ?? 'Usage unavailable' : null };
