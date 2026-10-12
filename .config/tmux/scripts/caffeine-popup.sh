@@ -4,7 +4,7 @@
 # the caffeine-lib state. One key, three states:
 #
 #   OFF     [i] indefinitely, [t] for a set time, [l] with the lid closed
-#   ON      [+] add time (timed only), [space]/[o] turn off
+#   ON      [+] add time (timed, not BB-held), [space]/[o] turn off
 #   ON-LID  [+] add time, [space]/[o] turn off
 #
 # Plus a recovery row, rendered in any state whenever the real SleepDisabled
@@ -72,6 +72,18 @@ power_label() {
 	fi
 }
 
+# agents_owned — true when BB holds this session while agents run. Off still
+# works and makes BB relinquish; only extending is withheld.
+agents_owned() {
+	[ "$(caffeine_owner)" = "$CAFFEINE_AGENTS_OWNER" ]
+}
+
+# can_extend — a bounded session a person started: the only kind `+` adds to.
+can_extend() {
+	_ce_rem=$(caffeine_remaining_secs)
+	[ "$_ce_rem" -ge 0 ] 2>/dev/null && ! agents_owned
+}
+
 # recovery_row — the stuck-flag warning, shown whenever the kernel says the Mac
 # cannot sleep but no live lid session is holding it that way. Printed by every
 # render, so it is impossible to have the flag set and not be told.
@@ -101,7 +113,9 @@ render() {
 		;;
 	ON)
 		_rem=$(caffeine_remaining_secs)
-		if [ "$_rem" -lt 0 ] 2>/dev/null; then
+		if agents_owned; then
+			_detail="Held by BB while agents run. BB stops it 5 min after the last one goes idle."
+		elif [ "$_rem" -lt 0 ] 2>/dev/null; then
 			_detail="on indefinitely — until you turn it off"
 		else
 			_detail="$(caffeine_human_age "$_rem") remaining, until $(caffeine_clock_at "$(($(date +%s) + _rem))") — then it self-clears"
@@ -111,8 +125,10 @@ render() {
 		printf '  Closing the lid still sleeps the Mac — use [l] from OFF for that.\n'
 		printf '  %s\n\n' "$_detail"
 		# No add-time row while indefinite: there is no bounded thing to add to,
-		# and offering the key would make it look as though there were.
-		[ "$_rem" -ge 0 ] 2>/dev/null && printf '  [+]             add time\n'
+		# and offering the key would make it look as though there were. Nor for
+		# a BB agents session, whose deadline is a lease BB renews, not a time
+		# anyone chose.
+		can_extend && printf '  [+]             add time\n'
 		printf '  [space] / [o]   turn off\n'
 		printf '  [q]             close\n'
 		;;
@@ -281,7 +297,7 @@ while :; do
 		case "$_key" in
 		# `=` is `+` unshifted, accepted for the same reason vim and tmux's own
 		# resize bindings take both.
-		'+' | '=') choose_extend ;;
+		'+' | '=') can_extend && choose_extend ;;
 		' ' | o | O)
 			caffeine_stop
 			refresh
