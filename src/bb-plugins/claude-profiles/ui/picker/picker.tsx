@@ -147,6 +147,8 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
   const currentModel = modelOf(currentProvider ?? '', composer.selection?.model ?? '');
   const hasResults = favouriteRows.length > 0 || groups.some(p => p.rows.length > 0 || p.error);
   const blocked = busy || loading;
+  // Enter in search clicks the first enabled row; mark it so the choice is visible before pressing.
+  const enterTarget = search && !blocked ? rows.find(candidate => !candidate.reason)?.favourite.id : undefined;
   const rowOf = (target: EventTarget) => {
     const id = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-row]')?.dataset.row : undefined;
     return rows.find(row => row.favourite.id === id);
@@ -198,7 +200,8 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     const levels = model?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
     const unavailable = Boolean(reason);
     const starBlocked = !saved && (list.length >= 9 || unavailable);
-    return <li className="mf-row" key={favourite.id} data-row={favourite.id} data-selected={selected || undefined} data-unavailable={unavailable || undefined}>
+    return <li className="mf-row" key={favourite.id} data-row={favourite.id} data-selected={selected || undefined} data-unavailable={unavailable || undefined}
+      data-enter-target={favourite.id === enterTarget || undefined}>
       <button type="button" data-model className="mf-select" aria-disabled={blocked || unavailable || undefined}
         aria-label={`Select ${name}`} aria-current={selected || undefined} aria-keyshortcuts={saved ? `${favourite.slot}` : undefined}
         onClick={() => { if (!blocked && !unavailable) choose(favourite); }}>
@@ -255,7 +258,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         </div>
         <div ref={chipStrip} className="mf-chips" role="group" aria-label="Filter models" onScroll={measureChips}
           data-more-start={chipOverflow.start || undefined} data-more-end={chipOverflow.end || undefined}>
-          {chips.map(chip => <button type="button" key={chip.id} aria-pressed={filter === chip.id} onClick={() => setFilter(chip.id)}>
+          {chips.map(chip => <button type="button" key={chip.id} aria-pressed={filter === chip.id} onClick={() => { setFilter(chip.id); searchInput.current?.focus(); }}>
             {chip.id === 'favourites' && <Icon name="Star" className="mf-chip-star" />}{chip.label}
             {'count' in chip && <span className="mf-count">{chip.count}</span>}
           </button>)}
