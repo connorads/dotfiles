@@ -32,7 +32,7 @@ test('inspection keeps provider observation times and isolates reset-credit fail
     usage: account.usage?.status === 'ok' ? { ...account.usage, observedAt: 999 } : account.usage })) })) };
   const reader = createUsageReader({ ...ports,
     resetCredits: async () => { throw new Error('Host disconnected'); },
-    callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? source : { observedAt: 123, usage: { status: 'ok' } }),
+    callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? source : { observedAt: 123, usage: snapshot.machines[0]!.providers[0]!.usage }),
   });
   const value = await reader.inspection(false);
   expect(value.snapshot).toEqual(await reader.overview(false));
@@ -47,10 +47,22 @@ test('inspection requests reset credits only on connected Codex machines and pas
     resetCredits: async (hostId, refresh) => { calls.push([hostId, refresh]); return { status: 'unavailable', message: 'No cache' }; },
     callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? { machines: [snapshot.machines[0],
       { ...snapshot.machines[0], id: 'offline', status: 'disconnected' },
-      { ...snapshot.machines[0], id: 'empty', providers: [] }] } : { observedAt: null, usage: { status: 'ok' } }),
+      { ...snapshot.machines[0], id: 'empty', providers: [] }] } : { observedAt: null, usage: snapshot.machines[0]!.providers[0]!.usage }),
   });
   expect((await reader.inspection(true)).resetCredits).toHaveLength(2);
   expect(calls).toEqual([['host-one', true]]);
+});
+
+test('inspection pairs a refreshed source timestamp with that source\'s figures', async () => {
+  const usage = snapshot.machines[0]!.providers[0]!.usage;
+  if (usage?.status !== 'ok') throw new Error('Invalid fixture');
+  const reader = createUsageReader({ ...ports, resetCredits: async () => ({ status: 'unavailable', message: 'No cache' }),
+    callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? snapshot : { observedAt: 123,
+      usage: { ...usage, windows: [{ ...usage.windows[0], usedPercent: 80 }] } }),
+  });
+  const value = await reader.inspection(false);
+  expect(value.snapshot.machines[0]?.providers[0]?.usage).toMatchObject({ windows: [{ usedPercent: 80 }] });
+  expect(value.readings[0]?.observedAt).toBe(123);
 });
 
 test('Claude header follows the selected profile rather than the native default login', async () => {

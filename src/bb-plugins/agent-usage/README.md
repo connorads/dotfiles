@@ -15,7 +15,7 @@ window is being used faster than it refills.
 | --- | --- |
 | Under pace / On pace | Use is more than 5 points below, or within 5 points of, even spending |
 | Ahead of pace | Use is more than 5 points above even spending, under 1.2× |
-| Runs out HH:MM | At 1.2× even spending or faster; the time assumes the rate so far continues |
+| At this pace, out HH:MM | At 1.2× even spending or faster; the time assumes the rate so far continues |
 | Limit reached | The window is full until its reset |
 | Reset since last check | The reading predates its reset, so no percentage is shown |
 
@@ -31,6 +31,18 @@ an account needs attention, it names the same provider's account with the most r
 Accounts are grouped by provider, and by machine when more than one reports.
 **Refresh** requests fresh measurements. A failed refresh keeps previous figures
 and reports the failure. Missing measurements appear as unavailable.
+
+Each account shows its source reading age. A reading becomes stale after 4%
+of its shortest known window, with a 15-minute minimum. Stale bars use stripes
+and omit pace projections. Unknown reading times stay visible and omit projections.
+Only fresh quota readings supply the account comparison summary.
+
+Codex reset credits sit beneath its accounts as a separate CLI reading.
+The section shows held and usable counts, the nearest expiry and expandable
+expiry dates. Expiries within three days appear amber. Zero held credits hide
+the section; unavailable readings stay explicit. Credit readings older than
+15 minutes request a refresh. `Refresh` collects quotas and reset credits;
+opening the panel only reads the existing reset-credit cache.
 
 The default Claude profile reads the same login as BB's native Claude source.
 The overlay shows it once, as **Default**, with the native plan and email and any
