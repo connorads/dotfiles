@@ -1,0 +1,100 @@
+/* Host tokens: BB's theme variables, so light and dark modes follow the app. */
+.dv-panel {
+  --dv-add: var(--diff-added, oklch(70% .17 150));
+  --dv-del: var(--diff-removed, oklch(65% .19 22));
+  --dv-mod: var(--attention, oklch(80% .15 80));
+  --dv-ren: var(--timeline-accent, oklch(72% .09 250));
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  font: var(--text-sm, 13px)/1.45 var(--font-sans); color: var(--foreground);
+  outline: none;
+}
+
+/* Toolbar: fixed above the scroll, so file headers can stick to the scroll's top. */
+.dv-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px 6px; }
+.dv-spacer { flex: 1; }
+.dv-scopes { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--muted); }
+.dv-scopes button {
+  height: 24px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--muted-foreground); font: 500 var(--text-xs, 12px)/1 var(--font-sans); cursor: pointer;
+}
+.dv-scopes button:hover { color: var(--foreground); }
+.dv-scopes button[aria-selected="true"] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.dv-summary { display: inline-flex; gap: 6px; align-items: baseline; color: var(--muted-foreground); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dv-icon-button {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); cursor: pointer;
+}
+.dv-icon-button:hover:not(:disabled) { background: var(--state-hover); color: var(--foreground); }
+.dv-icon-button:disabled { opacity: .4; cursor: default; }
+.dv-icon-button[data-busy] .dv-icon { animation: dv-spin .8s linear infinite; }
+.dv-icon { width: 15px; height: 15px; }
+@keyframes dv-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dv-icon-button[data-busy] .dv-icon { animation: none; opacity: .5; } }
+:is(.dv-scopes button, .dv-icon-button, .dv-index-row, .dv-commit, .dv-file-toggle, .dv-link):focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+
+.dv-context { display: flex; align-items: baseline; gap: 8px; padding: 0 14px 6px; font-size: var(--text-xs, 12px); min-width: 0; }
+.dv-repo { font-weight: 600; white-space: nowrap; }
+.dv-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono, monospace); }
+.dv-muted { color: var(--muted-foreground); }
+.dv-note { margin: 0 12px 6px; padding: 6px 10px; border-radius: 6px; background: var(--muted); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.dv-error { color: var(--destructive-text, var(--destructive)); }
+
+.dv-scroll { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 0 12px 24px; border-top: 1px solid var(--border-hairline, var(--border)); container-type: size; }
+.dv-blank { margin: 48px 0; text-align: center; color: var(--muted-foreground); }
+/* Scroll past the end, so a jump can bring even the last file's header to the top before its diff loads. */
+.dv-end { margin: 16px 0 0; padding-bottom: max(0px, calc(100cqh - 80px)); text-align: center; font-size: var(--text-xs, 12px); }
+
+/* Commit list (Unpushed) */
+/* One grid, so the sha column fits git's abbreviation length, whatever the repository picks. */
+.dv-commits {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px;
+  list-style: none; margin: 10px 0 0; padding: 4px; max-height: 168px; overflow: auto; border: 1px solid var(--border-hairline, var(--border)); border-radius: 8px;
+}
+.dv-commits li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+.dv-commit {
+  display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: 3px 6px; border: 0; border-radius: 5px;
+  background: transparent; color: inherit; font: inherit; font-size: var(--text-xs, 12px); text-align: left; cursor: pointer;
+}
+.dv-commit:hover { background: var(--state-hover); }
+.dv-commit[aria-current="true"] { background: var(--muted); }
+.dv-commit-sha { font-family: var(--font-mono, monospace); color: var(--muted-foreground); }
+.dv-commit[aria-current="true"] .dv-commit-sha { color: var(--dv-ren); }
+.dv-commit-subject { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* File index: one quiet line per file. */
+.dv-index { display: grid; margin: 10px 0 12px; padding: 4px; border: 1px solid var(--border-hairline, var(--border)); border-radius: 8px; }
+.dv-index-row {
+  display: flex; gap: 8px; align-items: baseline; min-width: 0; padding: 2px 6px; border: 0; border-radius: 5px;
+  background: transparent; color: inherit; font: inherit; font-size: var(--text-xs, 12px); text-align: left; cursor: pointer;
+}
+.dv-index-row:hover { background: var(--state-hover); }
+.dv-index-row .dv-path { flex: 1; }
+
+.dv-status { flex: none; width: 1.4ch; font: 600 11px/1 var(--font-mono, monospace); text-align: center; color: var(--muted-foreground); }
+.dv-status[data-status="added"] { color: var(--dv-add); }
+.dv-status[data-status="deleted"] { color: var(--dv-del); }
+.dv-status[data-status="modified"] { color: var(--dv-mod); }
+.dv-status[data-status="renamed"], .dv-status[data-status="copied"] { color: var(--dv-ren); }
+.dv-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; font-family: var(--font-mono, monospace); font-size: 12px; }
+.dv-dir { color: var(--muted-foreground); }
+.dv-arrow { color: var(--muted-foreground); }
+.dv-counts { display: inline-flex; gap: 6px; flex: none; font: 12px/1 var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
+.dv-add { color: var(--dv-add); }
+.dv-del { color: var(--dv-del); }
+.dv-tag { flex: none; padding: 1px 6px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); font-size: 11px; }
+
+/* Files: cards in one scroll, each header sticky while its diff passes. */
+.dv-files { display: grid; gap: 10px; }
+.dv-file { border: 1px solid var(--border); border-radius: 8px; overflow: clip; background: var(--background); }
+.dv-file-header { position: sticky; top: 0; z-index: 2; background: var(--background); border-bottom: 1px solid transparent; }
+.dv-file:not([data-collapsed]) .dv-file-header { border-bottom-color: var(--border-hairline, var(--border)); }
+.dv-file-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 7px 10px; border: 0;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.dv-file-toggle:hover { background: var(--state-hover); }
+.dv-file-toggle .dv-path:last-of-type { flex: 1; color: var(--foreground); }
+.dv-chevron { flex: none; width: 14px; height: 14px; color: var(--muted-foreground); }
+.dv-diff { display: block; }
+.dv-notice { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 10px 12px; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.dv-link { padding: 0; border: 0; background: none; color: var(--foreground); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

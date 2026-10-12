@@ -307,6 +307,34 @@ importers:
         specifier: 4.0.18
         version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
 
+  diff-viewer:
+    dependencies:
+      zod:
+        specifier: 4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@get-bb/plugin-sdk':
+        specifier: 0.6.15
+        version: 0.6.15(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/better-sqlite3':
+        specifier: 7.6.13
+        version: 7.6.13
+      '@types/node':
+        specifier: 22.15.30
+        version: 22.15.30
+      '@types/react':
+        specifier: 19.0.12
+        version: 19.0.12
+      hono:
+        specifier: 4.11.9
+        version: 4.11.9
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   git-glance:
     dependencies:
       zod:

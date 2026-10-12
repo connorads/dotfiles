@@ -1,0 +1,32 @@
+{
+  "name": "bb-plugin-diff-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.45", "bbPluginSdk": ">=0.6.15" },
+  "bb": {
+    "name": "Diff Viewer",
+    "description": "Read every changed file of a thread checkout in one calm, continuous diff panel.",
+    "branding": { "icon": "FileDiff" },
+    "server": "./server.ts",
+    "host": "./host.ts",
+    "app": "./app.tsx",
+    "skills": []
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": { "zod": "4.3.6" },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.15",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.15.30",
+    "@types/react": "19.0.12",
+    "hono": "4.11.9",
+    "react": "19.2.4",
+    "typescript": "5.8.3"
+  }
+}
