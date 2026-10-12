@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { captureChoice, type ChoiceCapture, type ChoicePicker } from './choice-target.ts';
+import { captureChoice, watchQuestionFocus, type ChoiceCapture, type ChoicePicker } from './choice-target.ts';
 
 let context = 'thread:one';
 let calls = 0;
@@ -196,4 +196,38 @@ test('closed picker and lost window focus reject the captured target', async () 
   vi.spyOn(document, 'hasFocus').mockReturnValue(false);
   expect(await apply(native, 1)).toMatchObject({ ok: false });
   expect(calls).toBe(0);
+});
+
+
+test('completed question returns focus to the composer, but intermediate pages do not', async () => {
+  const { group } = question();
+  const focus = vi.fn();
+  const dispose = watchQuestionFocus(document, () => context, focus);
+  group.parentElement!.focus();
+  group.replaceWith(group.cloneNode(true));
+  await Promise.resolve();
+  expect(focus).not.toHaveBeenCalled();
+  document.activeElement!.remove();
+  await Promise.resolve();
+  expect(focus).toHaveBeenCalledTimes(1);
+  dispose();
+});
+
+test.each(['context', 'window', 'other control', 'pointer', 'popup', 'replacement', 'unmount'])('question closure preserves focus after %s changes', async change => {
+  const { group, pane } = question();
+  const focus = vi.fn();
+  const dispose = watchQuestionFocus(document, () => context, focus);
+  const root = group.parentElement!;
+  root.focus();
+  if (change === 'context') context = 'thread:two';
+  if (change === 'window') vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+  if (change === 'other control') pane.querySelector('textarea')!.focus();
+  if (change === 'pointer') pane.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  if (change === 'popup') document.body.insertAdjacentHTML('beforeend', '<div role="dialog">Popup</div>');
+  if (change === 'replacement') { const replacement = root.cloneNode(true); pane.append(replacement); }
+  if (change === 'unmount') dispose();
+  root.remove();
+  await Promise.resolve();
+  expect(focus).not.toHaveBeenCalled();
+  dispose();
 });

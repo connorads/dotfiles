@@ -84,6 +84,8 @@ reject selection. An unrelated popup blocks selection.
 The command pedal captures the choice target when recording starts. Changed
 questions, options or voice matches reject the recording. A recording selects
 once. Separate commands can toggle multiple answers.
+Completing a focused question returns focus to the composer. Intermediate pages
+and failed submissions keep question focus. Moving focus elsewhere cancels the return.
 Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes

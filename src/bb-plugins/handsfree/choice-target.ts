@@ -156,3 +156,41 @@ export function captureChoice(
       }),
   };
 }
+
+
+// A question page replaces its fieldset; finishing removes the owning form.
+export function watchQuestionFocus(document: Document, context: () => string, focusComposer: () => void): () => void {
+  let owner: { root: HTMLElement; pane: Element | null; context: string } | null = null;
+  const remember = () => {
+    const active = document.activeElement;
+    const root = active?.closest<HTMLElement>('div[tabindex="-1"]');
+    const group = root?.querySelector<HTMLFieldSetElement>('fieldset');
+    owner = root && group?.querySelector(':scope > legend') && controls(group).length
+      ? { root, pane: root.closest(paneSelector), context: context() } : null;
+  };
+  const forget = () => { owner = null; };
+  const observer = new MutationObserver(() => {
+    if (!owner || owner.root.isConnected) return;
+    const previous = owner;
+    owner = null;
+    if (!document.hasFocus() || context() !== previous.context || document.activeElement !== document.body) return;
+    if (previous.pane && (!previous.pane.isConnected || !focusedPath(previous.pane))) return;
+    if (blockingSurface(document) || questionGroups(document).length) return;
+    focusComposer();
+  });
+  remember();
+  const pointer = (event: Event) => {
+    if (owner && event.target instanceof Node && !owner.root.contains(event.target)) forget();
+  };
+  document.addEventListener('focusin', remember);
+  document.addEventListener('pointerdown', pointer);
+  document.defaultView?.addEventListener('blur', forget);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => {
+    observer.disconnect();
+    document.removeEventListener('focusin', remember);
+    document.removeEventListener('pointerdown', pointer);
+    document.defaultView?.removeEventListener('blur', forget);
+    owner = null;
+  };
+}

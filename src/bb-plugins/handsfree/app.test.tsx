@@ -94,13 +94,15 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
 
 function NativeQuestion({ multi = false, disabled = false }: { multi?: boolean; disabled?: boolean }) {
   const [selected, setSelected] = useState<number[]>([]);
+  const [open, setOpen] = useState(true);
   const choose = (number: number) => setSelected(current => multi
     ? current.includes(number) ? current.filter(item => item !== number) : [...current, number] : [number]);
+  if (!open) return null;
   return <div tabIndex={-1}><fieldset disabled={disabled}>
     <legend>Native question</legend>
     <button aria-pressed={selected.includes(1)} onClick={() => choose(1)}>Answer one</button>
     <button aria-pressed={selected.includes(2)} onClick={() => choose(2)}>Answer two</button>
-  </fieldset></div>;
+  </fieldset><button onClick={() => setOpen(false)}>Submit answers</button></div>;
 }
 
 test('spoken choose selects a native answer without submitting', async () => {
@@ -554,4 +556,16 @@ test('recording feedback and context checks preserve archive confirmation', asyn
   await view.command({ action: 'list', kind: 'thread' });
   expect((await view.command({ action: 'confirm-archive' })).ok).toBe(true);
   expect(view.archived).toEqual(['t1']);
+});
+
+
+test('finishing a focused question returns to the composer without sending its draft', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  await view.command({ action: 'choose', number: 1 });
+  const root = view.slot.getByRole('button', { name: 'Answer one' }).closest('div[tabindex="-1"]')!;
+  expect(document.activeElement).toBe(root);
+  fireEvent.click(view.slot.getByRole('button', { name: 'Submit answers' }));
+  await waitFor(() => expect(view.slot.inspection.composer.focusCount).toBe(1));
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
 });
