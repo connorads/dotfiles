@@ -1,4 +1,5 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
+import { z } from 'zod';
 import { hostContract, rpcContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
 import { providerEnv } from './src/claude.ts';
 import type { Usage } from './src/usage.ts';
@@ -72,6 +73,17 @@ export default function plugin(bb: BbPluginApi) {
     const { environment, config } = await context(threadId);
     return hostUsage(environment.hostId, config, profileId, refresh);
   }
+  // Anthropic keeps each account's prompt cache separate, so the Cache Hits chip shows cold before the next request.
+  async function invalidateCache(threadId: string) {
+    try {
+      const { plugins } = await bb.sdk.plugins.list();
+      if (!plugins.some(item => item.id === 'cache-hits' && item.enabled)) return;
+      await bb.sdk.plugins.callRpc({ pluginId: 'cache-hits', method: 'invalidate', input: { threadId },
+        outputSchema: z.object({ invalidated: z.boolean() }) });
+    } catch (error) {
+      bb.log.warn(`Could not mark the prompt cache cold for ${threadId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   async function select(threadId: string, profileId: string): Promise<Selection> {
     if (switching.has(threadId)) throw new Error('A profile switch is already running.');
     switching.add(threadId);
@@ -103,6 +115,7 @@ export default function plugin(bb: BbPluginApi) {
       }
       const value: Selection = { hostId: environment.hostId, profile };
       await bb.storage.kv.set(key(threadId), value);
+      await invalidateCache(threadId);
       bb.realtime.publish('profiles-changed', { threadId });
       return value;
     } finally { switching.delete(threadId); }

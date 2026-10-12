@@ -76,6 +76,10 @@ A new thread has no session to copy. Its first send passes BB's
 copies the remembered choice to the thread, resolving the profile on the
 thread's host. A missing profile on that host rejects the send.
 
+A switch starts a new prompt cache on the target account, so the next request
+re-sends the whole conversation uncached. When [Cache Hits](../cache-hits/README.md)
+is enabled, the switch marks its chip cold.
+
 Switching copies only the native session transcript. It leaves credentials,
 settings and unrelated sessions separate. Returning to a profile advances its
 older transcript only when its contents are an exact prefix of the current one.

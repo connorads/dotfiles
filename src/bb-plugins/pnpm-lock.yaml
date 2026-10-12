@@ -267,8 +267,8 @@ importers:
   claude-profiles:
     dependencies:
       zod:
-        specifier: 4.3.6
-        version: 4.3.6
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 0.6.15

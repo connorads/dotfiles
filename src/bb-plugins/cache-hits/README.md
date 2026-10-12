@@ -43,6 +43,11 @@ A request misses when `min(previous prompt, this prompt) - cache reads` is
 over 1024 tokens. This is Pi's rule (`core/cache-stats.js`). Compaction and
 context clears reset the baseline.
 
+Anthropic keeps each account's prompt cache separate. After an account switch,
+[Claude Profiles](../claude-profiles/README.md) calls this plugin's `invalidate`
+RPC. The chip shows `cold` at once, and the next miss reads "after account
+switch" instead of an idle time.
+
 Expiry is the last request time plus its cache lifetime, because Anthropic
 refreshes a cache entry each time a request reads it. The transcript stamps
 the response, not the request start, so the countdown runs a few seconds long.
