@@ -65,6 +65,27 @@ new subdirectories stay covered.
 
 ## Step A. Models module, saved effort and one picker
 
+**Status: done.** Deviations from the plan below:
+
+- Step 0 had not landed. Step A makes only its config changes: the
+  `test:core` glob and the tsconfig `include`. The account files stay in
+  `src/`, so step 0 still has to move them. `test:ui` runs
+  `vitest run app.test.tsx ui/`, so vitest does not collect the node:test files.
+- `contracts.ts` exports `accountsContract` and composes
+  `rpcContract = { ...accountsContract, ...modelsContract }` for the UI.
+  `server.ts` registers `accountsContract`, and `registerModels` registers
+  `modelsContract`. `app.test.tsx` types its handlers against `accountsContract`.
+- `migrate-favourites` checks `plugins.list` for an enabled Model Favourites
+  before it calls `list`. A failed `list` call also exits 1 with "Nothing changed."
+- `favourites.add` for a model that is already a favourite returns the list
+  unchanged, as before. The list schema refuses a stored duplicate.
+- The star saves a favourite with no effort. The row effort select sets it.
+- The account select is disabled while running or submitting. The composer
+  API has no queued state, so `choose` gives the queued refusal.
+- The account section stays beside the old account chip until step C.
+- The picker test reads the composer commands from the untyped
+  `commandPaletteActions` field of `loadPluginApp`.
+
 ### Files
 
 | Create | Source |

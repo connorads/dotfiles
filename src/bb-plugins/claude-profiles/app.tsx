@@ -4,6 +4,8 @@ import { definePluginApp, useComposer, useRealtime, useRpc } from '@get-bb/plugi
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import type { rpcContract, Profile } from './contracts.ts';
 import './app.css';
+import { command, CommandOwner, Overlay, Trigger } from './ui/picker/picker.tsx';
+import { open as openPicker } from './ui/picker/store.ts';
 
 const popupId = 'accounts';
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Profile request failed.';
@@ -106,4 +108,18 @@ export default definePluginApp(app => {
   });
   app.composer.experimental_registerCommand({ id: 'open-switcher', title: 'Claude: switch account',
     run: ({ composer }) => { if (isClaude(composer)) composer.experimental_openPopup(popupId); } });
+  app.slots.experimental_appOverlay({ id: 'picker', component: Overlay });
+  app.composer.customize({ id: 'agent-switcher', scopes: ['thread', 'new-thread'],
+    banners: [{ id: 'command-owner', chrome: 'bare', component: CommandOwner }],
+    actions: [{ id: 'picker', component: Trigger }],
+    plusMenu: [{ id: 'picker', label: 'Switch model', icon: 'Star', run: ({ composer }) => openPicker(composer) }],
+  });
+  app.composer.experimental_registerCommand({ id: 'open-picker', title: 'Agent Switcher: open picker',
+    defaultShortcut: { key: 'f', alt: true }, run: ({ composer }) => openPicker(composer) });
+  app.composer.experimental_registerCommand({ id: 'next-favourite', title: 'Agent Switcher: next favourite',
+    defaultShortcut: { key: 'f', alt: true, shift: true }, run: ({ composer }) => command(composer, controller => controller.cycle(1)) });
+  app.composer.experimental_registerCommand({ id: 'previous-favourite', title: 'Agent Switcher: previous favourite',
+    run: ({ composer }) => command(composer, controller => controller.cycle(-1)) });
+  for (let slot = 1; slot <= 9; slot++) app.composer.experimental_registerCommand({ id: `select-favourite-${slot}`,
+    title: `Agent Switcher: select favourite ${slot}`, run: ({ composer }) => command(composer, controller => controller.select(slot)) });
 });

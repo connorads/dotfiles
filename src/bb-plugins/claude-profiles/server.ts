@@ -1,10 +1,11 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { hostContract, rpcContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
+import { accountsContract, hostContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
 import { providerEnv } from './src/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/guard.ts';
 import type { Usage } from './src/usage.ts';
 import { decodeResourceId, measurement } from './src/usage-source.ts';
+import { registerModels } from './src/models/server.ts';
 export { rpcContract } from './contracts.ts';
 
 export default function plugin(bb: BbPluginApi) {
@@ -12,6 +13,7 @@ export default function plugin(bb: BbPluginApi) {
     profileRoot: { type: 'string', label: 'Claude profile root on each host', default: '~/.claude-profiles/code' },
     executable: { type: 'string', label: 'Native Claude executable', default: 'claude' },
   });
+  const models = registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const switching = new Set<string>();
   const cache = new Map<string, Usage>();
@@ -173,7 +175,7 @@ export default function plugin(bb: BbPluginApi) {
     if (!hostId) return null;
     return host.call('profiles', { root: (await settings.get()).profileRoot }, { hostId });
   }
-  bb.rpc.register(rpcContract, {
+  bb.rpc.register(accountsContract, {
     accounts: async ({ threadId }) => {
       const unsupported = { supported: false, profiles: [], currentId: 'default' };
       if (threadId === null) {
@@ -224,11 +226,15 @@ export default function plugin(bb: BbPluginApi) {
       catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
     },
   }, { experimental_discoverable: true, experimental_description: 'Claude profile quota through native CLI authentication.' });
-  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread or read quota',
+  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota or migrate model favourites',
     async run(argv) {
       try {
+        if (argv[0] === 'migrate-favourites') {
+          if (argv.length > 1) throw new Error('migrate-favourites takes no arguments.');
+          return await models.migrateFavourites();
+        }
         const [command, threadId, profileId, ...extra] = argv;
-        if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error('Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE');
+        if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error('Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | migrate-favourites');
         let value: unknown;
         if (command === 'list') {
           if (profileId) throw new Error('list takes only a thread ID.');

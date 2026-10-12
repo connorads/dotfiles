@@ -12,5 +12,5 @@
     "noUncheckedSideEffectImports": false,
     "skipLibCheck": false
   },
-  "include": ["*.ts", "*.tsx", "src/*.ts"]
+  "include": ["*.ts", "*.tsx", "src/**/*.ts", "ui/**/*.ts", "ui/**/*.tsx"]
 }
