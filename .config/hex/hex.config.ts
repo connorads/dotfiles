@@ -147,11 +147,18 @@ export default defineHexConfig({
       description: "Choose a numbered BB voice match",
       run: async ({ captures }) => { await runBb(bbPorts, { action: "choose", number: captures.n }) },
     },
+    "bb-monitor": {
+      phrases: ["voice monitor", "voice history"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show Hex recognition and BB command results",
+      run: async () => { await runBb(bbPorts, { action: "monitor" }) },
+    },
     "bb-help": {
       phrases: ["voice help"],
       when: { application: "bb" },
       group: "BB",
-      description: "Show BB voice commands and pedal actions",
+      description: "Show BB voice commands",
       run: async () => { await runBb(bbPorts, { action: "help" }) },
     },
     "bb-archive": {

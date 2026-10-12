@@ -1,3 +1,6 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { makeDiagnostics } from './diagnostics.ts';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { commandSchema } from './contracts.ts';
 import { rpcContract } from './rpc.ts';
@@ -5,6 +8,7 @@ import { makeBroker } from './broker.ts';
 import { makeArchives } from './archive.ts';
 
 export default function plugin(bb: BbPluginApi) {
+  const diagnostics = makeDiagnostics(join(homedir(), 'Library/Application Support/voice-control/logs/live.ndjson'));
   const archives = makeArchives({
     get: id => bb.sdk.threads.get({ threadId: id }),
     children: async id => (await bb.sdk.threads.childSummary({ threadId: id })).unarchivedDescendantCount,
@@ -16,6 +20,7 @@ export default function plugin(bb: BbPluginApi) {
   const broker = makeBroker(request => bb.realtime.publish('command', request));
   bb.onDispose(() => broker.dispose());
   bb.rpc.register(rpcContract, {
+    diagnostics: () => diagnostics(),
     observed: input => {
       bb.log.info(JSON.stringify({ event: 'voice-destination', ...input }));
       return { recorded: true };
