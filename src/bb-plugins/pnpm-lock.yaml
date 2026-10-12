@@ -504,6 +504,9 @@ importers:
 
   handsfree:
     dependencies:
+      '@kitlangton/hex':
+        specifier: 0.3.1
+        version: 0.3.1
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -517,6 +520,9 @@ importers:
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
+      '@types/bun':
+        specifier: 1.4.2
+        version: 1.4.2
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -1083,6 +1089,15 @@ packages:
     peerDependencies:
       react: ^19.2.3
 
+  '@kitlangton/hex@0.3.1':
+    resolution: {integrity: sha512-jsj72A9Ipefn3MZZK1TuYpzUNB1kd7W9jBDKpk3qrTKmY1mR8kRvFfCll7MXFuExrLJ9rkNXzlrkrK4D+qAMxw==}
+    engines: {node: '>=20.3.0'}
+    peerDependencies:
+      effect: '>=4.0.0-rc.112 <5.0.0'
+    peerDependenciesMeta:
+      effect:
+        optional: true
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
@@ -1454,6 +1469,9 @@ packages:
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
+  '@types/bun@1.4.2':
+    resolution: {integrity: sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -1541,6 +1559,9 @@ packages:
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
+
+  bun-types@1.4.2:
+    resolution: {integrity: sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w==}
 
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
@@ -2287,6 +2308,8 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
+  '@kitlangton/hex@0.3.1': {}
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -2555,6 +2578,10 @@ snapshots:
     dependencies:
       '@types/node': 22.15.30
 
+  '@types/bun@1.4.2':
+    dependencies:
+      bun-types: 1.4.2
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -2652,6 +2679,10 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
+
+  bun-types@1.4.2:
+    dependencies:
+      '@types/node': 22.15.30
 
   chai@6.3.0: {}
 

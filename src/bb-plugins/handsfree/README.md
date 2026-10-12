@@ -4,6 +4,35 @@ Hex voice commands control the focused BB window. A Voice header control shows b
 results and retains failures. Clicking opens activity, command help and numbered matches.
 New drafts provide the same control beside the composer actions.
 
+## Command pedal
+
+The left pedal sends F18. Focus BB, hold the pedal, speak a command, then release.
+The Voice header shows recording feedback and the recognised text. Thread, project
+and model searches offer choices in BB. Select with a click, Enter or "choose two".
+Other commands use the same BB actions as always-listening Hex commands.
+The centre pedal remains Right Option for dictation; the right pedal remains Enter.
+
+The recorder uses Hex's selected microphone and local dictation model. Hex must
+be running. Hex suppresses its command recogniser during programmatic recording;
+always-listening commands resume afterwards. Changing apps cancels recording.
+Changing the BB thread or project rejects the recorded command. Recordings cancel
+after sixty seconds. Escape cancels a held recording.
+
+Install or rebuild from this directory with `pnpm pedal:install`. The installer
+builds `~/Applications/Hex Command Keys.app` and installs the login service
+`local.bb.command-pedal`. Enable that app in macOS Input Monitoring. Keyboard
+navigation and popup dismissal also require System Events Accessibility permission.
+
+- `pnpm pedal:status` shows launchd state.
+- `pnpm pedal:restart` restarts the recorder after permission or source changes.
+- `pnpm pedal:stop` stops it for this login session. Run `pnpm pedal:install` to enable it again.
+
+The login service runs independently of agent sessions and restarts after failure.
+Reinstall after changing the Bun runtime path. Its logs are
+`~/.local/state/hex/pedal.log` and `pedal-error.log`. Shared command outcomes use
+`voice.jsonl`. Logs contain recognised speech. The temporary browser helper is
+not required.
+
 ## Use
 
 1. Enable Commands in Hex. Release the Right Alt dictation pedal before speaking a command.

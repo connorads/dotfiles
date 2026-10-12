@@ -12,4 +12,7 @@ if [ -f package.json ] && grep -q '"devDependencies"' package.json && [ ! -d nod
 	echo "ts-typecheck: skipping $root (node_modules absent; run 'mise run ts-checks')" >&2
 	exit 0
 fi
-exec tsc -p tsconfig.json
+tsc -p tsconfig.json
+if [ -f pedal/tsconfig.json ]; then
+	tsc -p pedal/tsconfig.json
+fi
