@@ -35,8 +35,9 @@ const session = makePedalSession({
       const codes: Record<string, number> = { escape: 53, enter: 36, arrowup: 126, arrowdown: 125, arrowleft: 123, arrowright: 124, home: 115, end: 119, pageup: 116, pagedown: 121, tab: 48 };
       const code = codes[reply.press.key];
       const stroke = code === undefined ? 'keystroke (item 1 of argv)' : `key code ${code}`;
-      const child = Bun.spawn(['/usr/bin/osascript', '-e', 'on run argv', '-e', 'tell application "System Events"', '-e', 'if bundle identifier of first application process whose frontmost is true is not "dev.bb.desktop" then error "BB lost focus"', '-e', `${stroke} using {${modifiers}}`, '-e', 'end tell', '-e', 'end run', reply.press.key], { stdout: 'ignore', stderr: 'pipe', timeout: 5000 });
-      if (await child.exited !== 0) feedback('Keyboard action failed. Check System Events Accessibility permission.', true);
+      const child = Bun.spawn(['/usr/bin/osascript', '-e', 'on run argv', '-e', 'tell application "System Events"', '-e', 'if (bundle identifier of (first application process whose frontmost is true)) is not "dev.bb.desktop" then error "BB lost focus"', '-e', `${stroke} using {${modifiers}}`, '-e', 'end tell', '-e', 'end run', reply.press.key], { stdout: 'ignore', stderr: 'pipe', timeout: 5000 });
+      const error = await new Response(child.stderr).text();
+      if (await child.exited !== 0) feedback(`Keyboard action failed: ${error.trim()}`, true);
     }
   },
 });
