@@ -1891,6 +1891,16 @@ packages:
         optional: true
 
 
+  ci-info@4.4.0:
+    resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
+    engines: {node: '>=8'}
+
+  lucide-react@0.575.0:
+    resolution: {integrity: sha512-VuXgKZrk0uiDlWjGGXmKV6MSk9Yy4l10qgVvzGn2AWBx1Ylt0iBexKOAoA6I7JO3m+M9oeovJd3yYENfkUbOeg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+
 snapshots:
 
   '@asamuzakjp/css-color@3.2.0':
@@ -2791,3 +2801,9 @@ snapshots:
       zod: 4.3.6
     optionalDependencies:
       react-dom: 19.2.4(react@19.2.4)
+
+  ci-info@4.4.0: {}
+
+  lucide-react@0.575.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
