@@ -4,9 +4,9 @@ import {
   useRpc,
   type PluginMessageDirectiveProps,
 } from "@get-bb/plugin-sdk/app";
-import { Renderer as OpenRenderer } from "@openuidev/react-lang";
+import { HydratedOpenUI } from "./openui-hydration";
 import { Renderer as JsonRenderer, JSONUIProvider } from "@json-render/react";
-import { library, registry, functions } from "./catalogue";
+import { registry, functions } from "./catalogue";
 import { rpcContract, idSchema, type Composition } from "./contracts";
 import { parseComposition, parseSpec } from "./validation";
 class CompositionBoundary extends Component<
@@ -27,13 +27,7 @@ class CompositionBoundary extends Component<
 }
 export function CompositionView({ composition }: { composition: Composition }) {
   if (composition.format === "openui")
-    return (
-      <OpenRenderer
-        response={composition.source}
-        library={library}
-        publishObservability={false}
-      />
-    );
+    return <HydratedOpenUI source={composition.source} />;
   const spec = parseSpec(composition.source);
   return (
     <JSONUIProvider
