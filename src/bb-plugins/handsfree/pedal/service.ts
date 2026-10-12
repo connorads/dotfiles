@@ -1,7 +1,4 @@
-import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { connect } from '@kitlangton/hex';
 import { makePedalSession } from '../pedal-session.ts';
 import { requestBb, type BbPorts } from '../../../../.config/hex/voice/bb.ts';
@@ -41,28 +38,20 @@ const session = makePedalSession({
     }
   },
 });
-const keys = spawn(join(homedir(), 'Applications/Hex Command Keys.app/Contents/MacOS/right-control'), [], { stdio: ['pipe', 'pipe', 'inherit'] });
 let shuttingDown = false;
 const shutdown = async () => {
   if (shuttingDown) return;
   shuttingDown = true;
-  keys.kill();
   await session.cancel();
   process.exit(0);
 };
 process.on('SIGINT', () => { void shutdown(); });
 process.on('SIGTERM', () => { void shutdown(); });
-const lines = createInterface({ input: keys.stdout });
+const lines = createInterface({ input: process.stdin });
 lines.on('line', event => {
   if (event === 'start') session.start();
   else if (event === 'finish') void session.finish();
   else if (event === 'cancel') void session.cancel();
   else if (event === 'ready') console.log('F18 command pedal ready. Focus BB, hold the left pedal, speak, release.');
 });
-keys.on('error', error => { console.error(error.message); void shutdown(); });
-keys.on('close', code => {
-  if (!shuttingDown) {
-    console.error(`Keyboard listener stopped (${code}).`);
-    void session.cancel().finally(() => process.exit(code || 1));
-  }
-});
+lines.on('close', () => { void shutdown(); });
