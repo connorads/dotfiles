@@ -9,6 +9,14 @@ import { resolveRepo } from './repo.ts';
 
 const git = fixtureGit;
 const settle = () => new Promise(resolve => setTimeout(resolve, 250));
+/** Waits for a refresh to land instead of guessing how long one takes under load. */
+async function until(predicate: () => boolean, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error('timed out waiting for a refresh');
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+}
 
 async function setup() {
   const dir = tempDir();
@@ -25,8 +33,8 @@ async function setup() {
   const published: Snapshot[] = [];
   const monitor = await createMonitor((await resolveRepo(dir))!, { watch, publish: s => published.push(s), log: () => {} });
   const fire = async (root: string, ...paths: string[]) => {
+    // The listener awaits its own filtering, so a change it ignores has been ignored by now.
     await watches.find(w => w.rootPath === root)!.listener({ kind: 'changed', changes: paths.map(path => ({ path: join(root, path) })) });
-    await settle();
   };
   return { dir, gitDir: join(dir, '.git'), watches, published, monitor, fire };
 }
@@ -45,9 +53,10 @@ test('a visible work-tree change publishes once; ignored paths and no-op changes
   assert.equal(published.length, 0);
   writeFileSync(join(dir, 'src', 'a.ts'), '2\n');
   await fire(dir, 'src/a.ts', 'src/a.ts', 'build/out.js');
-  assert.equal(published.length, 1);
+  await until(() => published.length === 1);
   assert.equal(published[0]!.kind === 'repo' && published[0]!.changes[0]!.path, 'src/a.ts');
   await fire(dir, 'src/a.ts');
+  await settle();
   assert.equal(published.length, 1, 'same snapshot is not republished');
 });
 
@@ -57,7 +66,7 @@ test('lock files in the git dir are ignored; the renamed result is not', async (
   assert.equal(published.length, 0);
   git(dir, 'switch', '-qc', 'feature');
   await fire(gitDir, 'HEAD');
-  assert.equal(published.length, 1);
+  await until(() => published.length === 1);
   assert.equal(published[0]!.kind === 'repo' && published[0]!.branch.head, 'feature');
 });
 
@@ -66,9 +75,10 @@ test('changes during a hold publish once on release', async () => {
   monitor.hold();
   git(dir, 'switch', '-qc', 'one'); await fire(gitDir, 'HEAD');
   git(dir, 'switch', '-qc', 'two'); await fire(gitDir, 'HEAD');
+  await settle();
   assert.equal(published.length, 0);
-  monitor.release(); await settle();
-  assert.equal(published.length, 1);
+  monitor.release();
+  await until(() => published.length === 1);
   const now = monitor.current();
   assert.ok(now.kind === 'repo');
   assert.equal(now.branch.head, 'two');
