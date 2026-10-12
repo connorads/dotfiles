@@ -7,6 +7,8 @@ import { requestSchema, type Candidate, type Command, type Kind, type Reply } fr
 import type { rpcContract } from './rpc.ts';
 import type { ArchiveTarget } from './archive.ts';
 import { publishVoiceHeader, VoiceHeader } from './header.tsx';
+import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
+import { HexActivity } from './diagnostics-view.tsx';
 import './app.css';
 
 interface Choices {
@@ -40,6 +42,9 @@ function VoiceCard() {
   const [view, setView] = useState<'activity' | 'commands'>('activity');
   const [problem, setProblem] = useState(false);
   const [feedback, setFeedback] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics>(unavailableDiagnostics);
+  const [now, setNow] = useState(Date.now);
+  const diagnosticStart = useRef(Date.now());
   const observedThread = useRef(context.threadId);
   const activeRequest = useRef<string | null>(null);
   const navigationRequest = useRef<{ requestId: string; expires: number; threadId?: string } | null>(null);
@@ -71,8 +76,28 @@ function VoiceCard() {
   }, []);
 
   useEffect(() => {
-    publishVoiceHeader({ label: busy ? 'Working…' : feedback || problem ? message : 'Voice', problem, expanded });
-  }, [busy, feedback, problem, message, expanded]);
+    let active = true;
+    let timer: number | undefined;
+    const poll = async () => {
+      const snapshot = await rpc.call('diagnostics', {}).catch(() => unavailableDiagnostics);
+      if (!active) return;
+      setDiagnostics(snapshot);
+      setNow(Date.now());
+      timer = window.setTimeout(() => { void poll(); }, 750);
+    };
+    void poll();
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [rpc]);
+
+  useEffect(() => {
+    const last = diagnostics.attempts.filter(entry => !entry.unmatched).at(-1);
+    const newer = last && last.at >= diagnosticStart.current && last.at > (history.at(-1)?.at ?? 0);
+    const state = diagnostics.state;
+    const capture = state && now - state.at < 30_000 && (state.state === 'dictating' || state.state === 'transcribing');
+    const label = busy ? 'Working…' : capture ? state.state === 'dictating' ? 'Voice · Recording' : 'Voice · Transcribing'
+      : newer && (last.problem || now - last.at < 4000) ? `Voice · ${last.result}` : feedback || problem ? message : 'Voice';
+    publishVoiceHeader({ label, problem: !busy && !capture && (newer ? last.problem : problem), expanded });
+  }, [busy, feedback, problem, message, expanded, diagnostics, now, history]);
 
   useEffect(() => {
     if (!feedback || problem || busy) return;
@@ -253,6 +278,9 @@ function VoiceCard() {
         setChoices(null);
         actions.openNewThread({ ...(projectId ? { projectId } : {}), focusPrompt: true });
         return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
+      case 'monitor':
+        setChoices(null); setView('activity'); setExpanded(true);
+        return { ok: true, message: 'Showing voice activity.' };
       case 'help':
         setChoices(null);
         setView('commands');
@@ -357,6 +385,7 @@ function VoiceCard() {
           {tab === 'activity' ? 'Activity' : 'Commands'}</button>)}
       </div>
       <section role="tabpanel" id="voice-commands-panel" aria-labelledby="voice-commands" hidden={view !== 'commands'}><dl>
+        <dt>“Voice monitor” / “Voice history”</dt><dd>Show recognition, dictation and command results</dd>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
@@ -369,12 +398,15 @@ function VoiceCard() {
         <dt>“Use Sonnet” / “Choose two”</dt><dd>Select a model or numbered match</dd>
       </dl></section>
       <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
+        <HexActivity snapshot={diagnostics} now={now}>
+        <h3 className="handsfree-results-heading">BB results</h3>
         {history.length ? <ol aria-label="Recent voice results" className="handsfree-history">
           {history.slice().reverse().map((entry, index) => <li key={index} data-problem={entry.problem}>
             <div><time>{new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time>
               {entry.problem && <span>Failed</span>}</div><p>{entry.message}</p>
           </li>)}
         </ol> : <p>No voice results in this window yet.</p>}
+        </HexActivity>
       </section></>}
     </div>
   </aside> : null;

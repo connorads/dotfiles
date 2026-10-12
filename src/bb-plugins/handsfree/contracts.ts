@@ -21,6 +21,7 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('dismiss') }).strict(),
   z.object({ action: z.literal('new') }).strict(),
   z.object({ action: z.literal('help') }).strict(),
+  z.object({ action: z.literal('monitor') }).strict(),
   z.object({ action: z.literal('archive') }).strict(),
   z.object({ action: z.literal('confirm-archive') }).strict(),
   z.object({ action: z.literal('cancel-archive') }).strict(),

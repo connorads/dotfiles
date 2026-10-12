@@ -28,6 +28,7 @@ New drafts provide the same control beside the composer actions.
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match |
 | `voice help` | Open the monitor command list |
+| `voice monitor` / `voice history` | Open recognition, dictation and BB activity |
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
@@ -48,6 +49,18 @@ sequence because `go to the` is itself a valid captured command.
 Project selection opens a new draft; it does not move an existing conversation.
 The monitor keeps fifty recent BB results in memory, including heard search targets.
 Reloading clears this history. Hex's diagnostic logs have separate retention.
+
+Activity reads the latest 256 KiB of Hex's `live.ndjson` on the BB server every
+750 ms. It shows the last capture state, transcript, and fifty native attempts.
+Recording and transcription feedback expires after thirty seconds without a
+state update. This file records events; its presence does not prove Hex is running.
+Unmatched speech appears only when requested and does not count as a failed command.
+Each attempt exposes the heard text, matched command, context and result.
+`Handler returned` records Hex's handler outcome. BB action results appear separately.
+Missing or unreadable logs show `Hex diagnostics unavailable on this BB server`.
+
+The monitor opens beside the header or draft control. It is an in-app surface.
+A detached desktop window requires support from BB's desktop window API.
 Navigation requests report the observed destination when the selected thread changes.
 
 Each spoken BB request writes one outcome to `~/.local/state/hex/voice.jsonl`.

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { fireEvent, waitFor } from '@testing-library/react';
+import { act, fireEvent, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginSidebarThread } from '@get-bb/plugin-sdk';
 import type { Command, Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
 import { makeArchives } from './archive.ts';
+import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
 
 const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSidebarThread => ({
   id, projectId: 'p1', title: id, titleFallback: null, displayTitle: id,
@@ -21,9 +22,9 @@ const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSid
 let slot: RenderedSlot | undefined;
 let headerSlot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
-afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); });
+afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[]) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[], diagnostics: () => Diagnostics | Promise<Diagnostics> = () => unavailableDiagnostics) {
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
@@ -47,6 +48,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' }],
     },
     rpc: {
+      diagnostics,
       observed: () => ({ recorded: true }),
       archiveTarget: ({ threadId }) => archives.inspect(threadId),
       archive: ({ target, confirmed }) => archives.archive(target, confirmed),
@@ -280,7 +282,7 @@ test('unfocused windows do not claim or execute voice commands', async () => {
   const view = await render();
   vi.spyOn(document, 'hasFocus').mockReturnValue(false);
   await view.slot.behavior.emitRealtime('command', { requestId: 'background', command: { action: 'new' } });
-  expect(view.slot.inspection.rpcCalls).toEqual([]);
+  expect(view.slot.inspection.rpcCalls.filter(call => call.method !== 'diagnostics')).toEqual([]);
   expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
 });
 
@@ -336,4 +338,49 @@ test('monitor activity exposes failed attempts without opening a disclosure', as
   fireEvent.click(view.slot.getByRole('tab', { name: 'Activity' }));
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no such numbered voice choice/);
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Failed/);
+});
+
+
+test('monitor shows actual Hex transcription and details without marking background speech as failure', async () => {
+  const now = Date.now();
+  const view = await render('idle', undefined, undefined, () => ({ available: true,
+    state: { at: now, state: 'transcribing' },
+    transcript: { at: now, phase: 'updated', latency: 120, text: 'go to access thread' },
+    attempts: [{ at: now, kind: 'command', heard: 'background conversation', command: null,
+      result: 'Unmatched speech', problem: false, unmatched: true, context: 'bb' }] }));
+  await waitFor(() => expect(view.slot.getByRole('button', { name: /Voice monitor.*Transcribing/ })).toBeTruthy());
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor/ }));
+  expect(view.slot.getByText('go to access thread')).toBeTruthy();
+  expect(view.slot.queryByText('background conversation')).toBeNull();
+  fireEvent.click(view.slot.getByRole('checkbox', { name: 'Include unmatched speech' }));
+  expect(view.slot.getByText('background conversation')).toBeTruthy();
+  expect(view.slot.queryByText('Failed')).toBeNull();
+});
+
+test('voice monitor command opens Activity and exposes native failure details', async () => {
+  const view = await render('idle', undefined, undefined, () => ({ available: true, state: null, transcript: null,
+    attempts: [{ at: Date.now(), kind: 'command', heard: 'next thread', command: 'next_thread',
+      result: 'No focused window', problem: true, unmatched: false, context: 'bb' }] }));
+  await view.command({ action: 'monitor' });
+  await waitFor(() => expect(view.slot.getByText('No focused window')).toBeTruthy());
+  expect(view.slot.getByRole('tab', { name: 'Activity' }).getAttribute('aria-selected')).toBe('true');
+  expect(view.slot.getByText('next_thread')).toBeTruthy();
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+
+test('capture feedback expires and polling stops when the controller unmounts', async () => {
+  vi.useFakeTimers();
+  const now = Date.now();
+  const read = vi.fn(() => ({ available: true, state: { at: now, state: 'dictating' as const }, transcript: null, attempts: [] }));
+  const view = await render('idle', undefined, undefined, read);
+  await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*Recording/ })).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
+  view.slot.lifecycle.unmount(); slot = undefined;
+  const count = read.mock.calls.length;
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+  expect(read.mock.calls.length).toBe(count);
 });

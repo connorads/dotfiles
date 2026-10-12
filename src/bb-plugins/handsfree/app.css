@@ -56,3 +56,10 @@
   border-color: color-mix(in oklab, var(--ink) 40%, transparent);
   background: color-mix(in oklab, var(--ink) 8%, var(--canvas));
 }
+
+.handsfree-transcript { padding: 10px; border-left: 2px solid var(--primary, var(--ink)); background: color-mix(in oklab, var(--ink) 5%, var(--canvas)); }
+.handsfree-transcript small { opacity: .7; }
+.handsfree-filter { display: flex; align-items: center; gap: 6px; margin: 14px 0; font-size: 12px; }
+.handsfree-history details { margin-top: 8px; }
+.handsfree-history summary { cursor: pointer; }
+.handsfree-results-heading { font-size: 13px; margin: 16px 0 8px; }
