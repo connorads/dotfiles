@@ -1,5 +1,5 @@
 /* BB's muted-foreground sits a few points from foreground, so secondary text gets its own mix. */
-.au-overlay, .au-badge {
+.au-overlay {
   --au-subtle: color-mix(in oklch, var(--muted-foreground) 64%, transparent);
   --au-track: color-mix(in oklch, var(--foreground) 12%, transparent);
   --au-fill: color-mix(in oklch, var(--foreground) 58%, transparent);
@@ -92,14 +92,9 @@
 .au-legend-mark { width: 2px; height: 11px; border-radius: 1px; background: var(--foreground); }
 .au-foot kbd { font: inherit; font-size: 11px; line-height: 16px; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--accent); color: var(--muted-foreground); }
 
-.au-badge { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border-radius: 6px; font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted-foreground); cursor: pointer; transition: background-color 120ms; }
-.au-badge:hover { background: var(--muted); }
-.au-badge[data-tone="warning"] { color: var(--warning); }
-.au-badge[data-tone="critical"] { color: var(--au-critical-text); }
-.au-badge-muted { color: var(--au-subtle); }
 
 .au-overlay:focus, .au-body:focus { outline: none; }
-.au-icon-button:focus-visible, .au-badge:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.au-icon-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .au-spin[data-spinning] > svg, .au-skeleton > span { animation: none; }
