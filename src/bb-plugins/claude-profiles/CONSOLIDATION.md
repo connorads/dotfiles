@@ -486,46 +486,54 @@ Commit: inherit the parent's account for threads started by threads.
 
 ## Step E. Documentation and cut-over
 
+**Status: done.** Core tests stay at 93, UI tests at 42. Deviations from the
+plan below:
+
+- This file stays until the cut-over. It holds the cut-over and rollback
+  steps, which the user still has to run. Delete it after step 6 of the
+  cut-over passes.
+- `package.json` also changes `bb.description`. The guard's stop notice says
+  "Agent Switcher" instead of "Claude Profiles", so it names the plugin that BB
+  shows.
+- The README keeps the engine pin `bb >=0.45` from `package.json`. Model
+  Favourites declared `>=0.46`. See open question 6.
+- Cut-over step 1 links the workspace `node_modules` beside the copy. A plain
+  `cp -R` breaks pnpm's relative links. The check ran: 93 core and 42 UI tests
+  pass, `tsc` passes and `bb plugin build` writes `dist/` with plugin ID
+  `claude-profiles`.
+
 ### Documentation
 
-- `claude-profiles/README.md` becomes the Agent Switcher guide:
-  - Use: picker, accounts, favourites with effort, usage badge and overlay.
-  - Shortcuts.
-  - New-thread rule.
-  - Design (keep the sequence diagram and guard text).
-  - CLI.
-  - Scope.
-  - Development.
-- Delete the Agent Usage cross-reference. Replace "every new Claude thread
-  starts on it, including threads that agents create" with the new rule.
-- Workspace `README.md`: add an Agent Switcher section that links to the plugin
-  README and this ADR. Add `docs/adr/` to the layout notes.
+- `claude-profiles/README.md` is the Agent Switcher guide: use, shortcuts,
+  new-thread rule, design, CLI, scope and development.
+- The workspace `README.md` has an Agent Switcher section and links
+  `docs/adr/`.
 - `cache-hits` documents a call from `claude-profiles`. The ID does not change,
-  so no edit is needed.
-- Delete this file once step E lands. The ADR and the README then describe the
-  standing state.
+  so it needs no edit.
 
 ### Cut-over (for the user to run)
 
 Migration reads Model Favourites over RPC, so Model Favourites must still be
-enabled when it runs. Alt+F and ⌘⇧A are registered twice for the short time
-between step 3 and step 5.
+enabled when it runs. Alt+F and ⌘⇧A are registered twice between step 3 and
+step 5.
 
 1. Check the build in a copy:
 
    ```sh
-   cp -R ~/src/bb-plugins/claude-profiles "$TMPDIR/agent-switcher-check"
+   d=$(mktemp -d "$TMPDIR/agent-switcher-check.XXXX")
+   rsync -a --exclude dist ~/src/bb-plugins/claude-profiles/ "$d/claude-profiles/"
+   ln -s ~/src/bb-plugins/node_modules "$d/node_modules"
+   cd "$d/claude-profiles" && pnpm test && pnpm typecheck && bb plugin build .
    ```
 
-   Run `pnpm test` and `pnpm typecheck` in that copy. Run `bb plugin build`
-   there, if needed, to confirm that the build works.
 2. `cd ~/src/bb-plugins/claude-profiles && pnpm build`
 3. `bb plugin reload claude-profiles`
-4. `bb claude-profiles migrate-favourites`. Check that `imported` plus
-   `skipped` equals the legacy count. Run it again and check that `imported`
-   is 0.
+4. `bb claude-profiles migrate-favourites`. Check that `imported` plus the
+   `skipped` count equals the legacy count. Run it again and check that
+   `imported` is 0.
 5. `bb plugin disable model-favourites` and `bb plugin disable agent-usage`.
 6. Smoke check:
+   - BB lists the plugin as **Agent Switcher**.
    - Alt+F opens one picker. It has favourites with efforts and the account
      section.
    - ⌘⇧A opens the usage overlay.
@@ -538,20 +546,26 @@ Bindings never moved, so rollback restores only code and UI.
 
 1. `bb plugin enable model-favourites` and `bb plugin enable agent-usage`.
    Their storage is untouched.
-2. Restore the previous Claude Profiles source:
+2. Restore the pre-consolidation source. `46da5dfb` is the last commit before
+   step A. `restore` also removes files that the commit does not have:
 
    ```sh
-   dotfiles checkout <pre-consolidation commit> -- src/bb-plugins/claude-profiles
+   cd ~ && dotfiles restore --source=46da5dfb --worktree -- src/bb-plugins/claude-profiles
+   cd ~/src/bb-plugins/claude-profiles && pnpm build && bb plugin reload claude-profiles
    ```
 
-   Then run `pnpm build` and `bb plugin reload claude-profiles`.
 3. The `favourites` key in Claude Profiles storage stays. The old code ignores it.
+4. The restore leaves uncommitted changes. To keep it, also restore the
+   `claude-profile-leak-guard` hook and its Bats cases, which name
+   `src/accounts/claude.ts` since step 0.
 
 ## Open questions
 
 1. Apply a migrated `serviceTier` when a favourite is selected, or only keep it?
+   Answered: only keep it.
 2. After the cut-over, remove the `usage` RPC and the `bb claude-profiles usage`
    subcommand that only Agent Usage used? This changes an exposed surface.
+   Answered: keep both until the user decides on the cut-over.
 3. Should `lifecycleOwnerThreadId` without `parentThreadId` count as "started
    by another thread"? Answered in step D: no.
 4. A Codex parent that starts a Claude child: use the composer account (as
@@ -562,3 +576,6 @@ Bindings never moved, so rollback restores only code and UI.
    so the fork then resumes under the named account and cannot find it. Bind
    forks of an unbound source to Default, or copy the forked session with the
    `transfer` host call?
+6. Should `engines.bb` be `>=0.46`? The picker code comes from Model
+   Favourites, which declared `>=0.46`. `bb --version` reports 0.45.0 for the
+   CLI that builds the plugin.
