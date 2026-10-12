@@ -1,7 +1,8 @@
 # Handsfree
 
-Hex voice commands control the focused BB window. A Voice card shows the selected
-thread, project, model, command help and numbered matches.
+Hex voice commands control the focused BB window. A Voice header control shows brief
+results and retains failures. Clicking opens activity, command help and numbered matches.
+New drafts provide the same control beside the composer actions.
 
 ## Use
 
@@ -26,7 +27,7 @@ thread, project, model, command help and numbered matches.
 | `new thread in dotfiles` | Match a project and open its draft |
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match |
-| `voice help` | Show the command card |
+| `voice help` | Open the monitor command list |
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
@@ -35,9 +36,9 @@ Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes
 the card and restores composer focus. Outside the card, BB handles both pedals.
-The card labels Enter as send, queue or steer from BB's current setting.
-Routine results use a compact status. Choices, errors, archive confirmation and
-requested help expand the card.
+Routine results appear in the header for four seconds. Failures stay visible
+until another command succeeds. Choices, archive confirmation and requested help
+open the monitor. Failures remain available in Activity without opening it automatically.
 
 `take me to …` and `can I go to …` also search threads. `next conversation` and
 `previous conversation` also navigate. Use `next thread` or `go to next thread`
@@ -45,8 +46,8 @@ without `the`. Hex can reject `go to the next thread` as an ambiguous command
 sequence because `go to the` is itself a valid captured command.
 
 Project selection opens a new draft; it does not move an existing conversation.
-The Voice card keeps ten recent results in memory, including heard search targets.
-Reloading clears this card history. Hex's diagnostic logs have separate retention.
+The monitor keeps fifty recent BB results in memory, including heard search targets.
+Reloading clears this history. Hex's diagnostic logs have separate retention.
 Navigation requests report the observed destination when the selected thread changes.
 
 Each spoken BB request writes one outcome to `~/.local/state/hex/voice.jsonl`.

@@ -1,42 +1,44 @@
 .handsfree {
   position: fixed;
-  right: 18px;
   top: 70px;
   z-index: 40;
-  max-width: min(360px, calc(100vw - 36px));
+  width: min(440px, calc(100vw - 36px));
   color: var(--ink);
   font-size: 13px;
 }
 .handsfree-toggle {
-  display: block;
-  margin-left: auto;
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  height: 28px;
+  padding: 3px 9px;
   border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
-  border-radius: 16px;
+  border-radius: 6px;
   background: var(--canvas);
   cursor: pointer;
 }
+.handsfree-toggle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.handsfree-toggle[data-problem="true"] { color: var(--destructive, var(--ink)); }
 .handsfree-card {
-  margin-top: 8px;
   padding: 16px;
   border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
   border-radius: 12px;
   background: var(--canvas);
   box-shadow: 0 8px 28px color-mix(in oklab, var(--ink) 15%, transparent);
-  max-height: calc(100vh - 140px);
+  max-height: inherit;
+  box-sizing: border-box;
   overflow: auto;
   overflow-wrap: anywhere;
 }
-.handsfree-status {
-  padding: 6px 10px;
-  margin: 6px 0 0;
-  border-radius: 6px;
-  background: var(--canvas);
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.handsfree-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.handsfree-heading button { padding: 3px 8px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.handsfree-context { font-size: 12px; opacity: .75; }
+.handsfree-tabs { display: flex; gap: 8px; margin: 16px 0 8px; }
+.handsfree-tabs button { padding: 5px 10px; color: var(--ink); border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent); border-radius: 6px; background: transparent; cursor: pointer; }
+.handsfree-tabs button[aria-selected="true"] { background: color-mix(in oklab, var(--ink) 10%, var(--canvas)); }
+.handsfree-history li { padding: 10px 0; border-bottom: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); }
+.handsfree-history li > div { display: flex; justify-content: space-between; font-size: 12px; }
+.handsfree-history li[data-problem="true"] > div { color: var(--destructive, var(--ink)); }
 .handsfree-card p { margin: 8px 0; }
 .handsfree-card dl { margin: 16px 0; }
 .handsfree-card dt { margin-top: 10px; font-weight: 600; }
@@ -54,4 +56,3 @@
   border-color: color-mix(in oklab, var(--ink) 40%, transparent);
   background: color-mix(in oklab, var(--ink) 8%, var(--canvas));
 }
-.handsfree-pedals { border-top: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); padding-top: 10px; }
