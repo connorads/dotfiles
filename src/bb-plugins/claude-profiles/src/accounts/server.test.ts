@@ -107,3 +107,75 @@ test('the header CLI prints a thread\'s usage', async () => {
   assert.equal(JSON.parse(result.stdout).accountLabel, 'stretch');
   assert.equal((await harness.behavior.runCli(['overview', '--bogus'])).exitCode, 1);
 });
+
+const work = { id: 'work', label: 'Work', configDir: '/profiles/work' };
+const personal = { id: 'personal', label: 'Personal', configDir: '/profiles/personal' };
+type ThreadFields = { parentThreadId?: string | null; originKind?: 'fork' | null; sourceThreadId?: string | null; lifecycleOwnerThreadId?: string | null };
+
+async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default', configDir: null }, work, personal]) {
+  const { bb, harness } = createFakePluginHost({
+    experimental_callHostRpc: call => {
+      if (call.method === 'profiles') return hostProfiles;
+      throw new Error(`Unexpected host call ${call.method}`);
+    },
+  });
+  plugin(bb);
+  await bb.storage.kv.set('next-thread-profile', 'personal');
+  const hook = harness.inspection.registrations.hooks['message.dispatch'];
+  if (!hook) throw new Error('Missing dispatch hook.');
+  const firstSend = ({ parentThreadId = null, ...thread }: ThreadFields = {}) => hook(makeMessageDispatchHookContext({
+    thread: { id: 'child', providerId: 'claude-code', status: 'pending', parentThreadId, ...thread },
+    host: { id: 'h1' }, parentThreadId }));
+  const binding = () => bb.storage.kv.get<{ hostId: string; profile: { id: string } }>('thread:child');
+  return { bb, firstSend, binding };
+}
+
+test('a child of a thread on a named account starts on that account, not the composer account', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:parent', { hostId: 'h2', profile: work });
+  assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
+  assert.deepEqual(await binding(), { hostId: 'h1', profile: work });
+});
+
+test('a fork starts on its source thread\'s account', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:source', { hostId: 'h1', profile: work });
+  assert.deepEqual(await firstSend({ originKind: 'fork', sourceThreadId: 'source' }), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'work');
+});
+
+test('an inherited account missing on this machine refuses the send and binds nothing', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup([{ id: 'default', label: 'Default', configDir: null }, personal]);
+  await bb.storage.kv.set('thread:parent', { hostId: 'h2', profile: work });
+  const refused = await firstSend({ parentThreadId: 'parent' });
+  assert.equal(refused.action, 'reject');
+  assert.match(refused.action === 'reject' ? refused.message : '', /inherits the Work account.*does not exist on this machine/);
+  assert.equal(await binding(), undefined);
+});
+
+test('a child of an unbound thread uses the composer account', async () => {
+  const { firstSend, binding } = await newThreadSetup();
+  assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'personal');
+});
+
+test('a thread with no parent uses the composer account', async () => {
+  const { firstSend, binding } = await newThreadSetup();
+  assert.deepEqual(await firstSend(), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'personal');
+});
+
+test('a lifecycle owner alone is not a parent', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:owner', { hostId: 'h1', profile: work });
+  await firstSend({ lifecycleOwnerThreadId: 'owner' });
+  assert.equal((await binding())?.profile.id, 'personal');
+});
+
+test('a child that already has an account keeps it', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:parent', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('thread:child', { hostId: 'h1', profile: personal });
+  assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'personal');
+});

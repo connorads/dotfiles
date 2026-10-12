@@ -5,6 +5,7 @@ import { providerEnv } from './src/accounts/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { createQuotaCache } from './src/accounts/quota-cache.ts';
+import { newThreadAccount, startingThreadId } from './src/accounts/routing.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { registerModels } from './src/models/server.ts';
@@ -37,14 +38,23 @@ export default function plugin(bb: BbPluginApi) {
     return (await bb.sdk.hosts.list()).find(machine => machine.status === 'connected')?.id ?? null;
   }
   // The first send reaches this hook before the provider env is resolved, so the claimed selection applies to the first launch.
-  async function claimNext(threadId: string, hostId: string | null) {
-    const next = await bb.storage.kv.get<string>(nextKey);
-    if (!next || next === 'default' || await bb.storage.kv.get<Selection>(key(threadId))) return;
+  async function claimBinding(thread: { id: string; originKind: 'fork' | null; sourceThreadId: string | null },
+    parentThreadId: string | null, hostId: string | null) {
+    if (await bb.storage.kv.get<Selection>(key(thread.id))) return;
+    const startingId = startingThreadId(thread, parentThreadId);
+    const account = newThreadAccount(startingId ? await bb.storage.kv.get<Selection>(key(startingId)) ?? null : null,
+      await bb.storage.kv.get<string>(nextKey) ?? null);
+    if (account.kind === 'default') return;
     if (!hostId) throw new Error('Choose a machine before starting a thread on another Claude account.');
     const config = await settings.get();
-    const profile = (await host.call('profiles', { root: config.profileRoot }, { hostId })).find(value => value.id === next);
-    if (!profile) throw new Error(`Claude account ${next} does not exist on this machine. Choose another account.`);
-    await bb.storage.kv.set(key(threadId), { hostId, profile } satisfies Selection);
+    const profile = (await host.call('profiles', { root: config.profileRoot }, { hostId })).find(value => value.id === account.profileId);
+    if (!profile) {
+      throw new Error(account.kind === 'inherit'
+        ? `This thread inherits the ${account.label} account from the thread that started it. That account does not exist on this machine, `
+          + 'so the message was not sent. Add the account on this machine, or start the thread from a thread on this machine.'
+        : `Claude account ${account.profileId} does not exist on this machine. Choose another account.`);
+    }
+    await bb.storage.kv.set(key(thread.id), { hostId, profile } satisfies Selection);
   }
   async function latestLaunch(threadId: string) {
     const [event] = await bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' });
@@ -80,7 +90,7 @@ export default function plugin(bb: BbPluginApi) {
   bb.experimental_hooks.on('message.dispatch', async input => {
     if (switching.has(input.thread.id)) return { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
-      try { await claimNext(input.thread.id, input.host?.id ?? null); }
+      try { await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null); }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
     } else if (input.thread.providerId === 'claude-code') {
       // The env contributor gives nothing on another machine, so Claude would start on that machine's native login.
