@@ -1,0 +1,25 @@
+{
+  "name": "bb-plugin-terminal-tweaks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.15" },
+  "bb": {
+    "name": "Terminal Tweaks",
+    "description": "Kitty-like terminal: Option as Meta, steady cursor, kitty keyboard protocol, OSC 52 and copy on select.",
+    "branding": { "icon": "SquareTerminal" },
+    "server": "./server.ts",
+    "app": "./app.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test *.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.15",
+    "@types/node": "22.15.30",
+    "typescript": "5.8.3"
+  }
+}
