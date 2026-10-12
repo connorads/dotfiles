@@ -385,7 +385,19 @@ test('voice feedback retains the heard target alongside the result', async () =>
 });
 
 
-
+test.each(['q', 'Q'])('%s closes focused voice help but leaves composer typing alone', async key => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  fireEvent.keyDown(document, { key });
+  expect(view.slot.inspection.composer.focusCount).toBe(0);
+  const choice = view.slot.getByRole('button', { name: /waiting/ });
+  fireEvent.keyDown(choice, { key, metaKey: true });
+  expect(view.slot.inspection.composer.focusCount).toBe(0);
+  fireEvent.keyDown(choice, { key });
+  expect(view.slot.inspection.composer.focusCount).toBe(1);
+  expect(view.slot.queryByRole('button', { name: /waiting/ })).toBeNull();
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
 
 test('voice feedback belongs in a header control, with no persistent floating card', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));

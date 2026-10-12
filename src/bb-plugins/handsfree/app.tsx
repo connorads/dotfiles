@@ -415,7 +415,13 @@ function VoiceCard() {
 
   return expanded ? <aside className="handsfree" aria-label="BB voice controls" data-context={contextKey}
     style={{ top: position.top, left: position.left, maxHeight: `calc(100vh - ${position.top + 18}px)` }}>
-    <div ref={card} className="handsfree-card" role="dialog" aria-label={choices ? 'Voice choices' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'} tabIndex={-1}>
+    <div ref={card} className="handsfree-card" role="dialog" aria-label={choices ? 'Voice choices' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'} tabIndex={-1} onKeyDown={event => {
+      if (event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))) return;
+      if (event.key === 'q' || event.key === 'Q') {
+        event.preventDefault(); event.stopPropagation();
+        close();
+      }
+    }}>
       <header className="handsfree-heading"><strong>{choices ? 'Choose a match' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'}</strong><button type="button" aria-label="Close voice controls"
         onClick={close}>×</button></header>
       <p className="handsfree-context">Following {thread?.displayTitle ?? 'New thread'} · {projectId ? projectName(projectId) : 'Choose a project'}</p>
