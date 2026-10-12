@@ -4,6 +4,8 @@ import { accountsContract, hostContract, usageSourceContract, type Profile, type
 import { providerEnv } from './src/accounts/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
 import type { Usage } from './src/accounts/quota.ts';
+import { createQuotaCache } from './src/accounts/quota-cache.ts';
+import { registerUsage } from './src/accounts/usage/server.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { registerModels } from './src/models/server.ts';
 export { rpcContract } from './contracts.ts';
@@ -16,8 +18,6 @@ export default function plugin(bb: BbPluginApi) {
   const models = registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const switching = new Set<string>();
-  const cache = new Map<string, Usage>();
-  const probes = new Map<string, Promise<Usage>>();
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
   const guardKey = (id: string) => `guard:${id}`;
@@ -103,20 +103,8 @@ export default function plugin(bb: BbPluginApi) {
     if (!selected || selected.hostId !== input.hostId) return [];
     return providerEnv(selected.profile.configDir);
   });
-  async function hostUsage(hostId: string, config: Awaited<ReturnType<typeof settings.get>>, profileId: string, refresh: boolean): Promise<Usage> {
-    const cacheKey = JSON.stringify([hostId, config.profileRoot, config.executable, profileId]);
-    const cached = cache.get(cacheKey);
-    if (!refresh && cached?.status === 'ok' && cached.observedAt && Date.now() - cached.observedAt < 60000) return cached;
-    const running = probes.get(cacheKey);
-    if (running) return running;
-    const request = host.call('usage', { root: config.profileRoot, executable: config.executable, profileId },
-      { hostId, timeoutMs: 30000 }).then(result => {
-      const value = { ...result, observedAt: result.observedAt ?? cached?.observedAt ?? null };
-      cache.set(cacheKey, value); return value;
-    }).finally(() => probes.delete(cacheKey));
-    probes.set(cacheKey, request);
-    return request;
-  }
+  const hostUsage = createQuotaCache((hostId, config, profileId) => host.call('usage',
+    { root: config.profileRoot, executable: config.executable, profileId }, { hostId, timeoutMs: 30000 }));
   async function usage(threadId: string, profileId: string, refresh: boolean): Promise<Usage> {
     const { environment, config } = await context(threadId);
     return hostUsage(environment.hostId, config, profileId, refresh);
@@ -175,6 +163,32 @@ export default function plugin(bb: BbPluginApi) {
     if (!hostId) return null;
     return host.call('profiles', { root: (await settings.get()).profileRoot }, { hostId });
   }
+  // A thread without an environment has no host to list profiles on yet.
+  async function threadAccount(threadId: string) {
+    const thread = await bb.sdk.threads.get({ threadId });
+    if (thread.providerId !== 'claude-code' || !thread.environmentId) return null;
+    const { environment, config } = await context(threadId);
+    return { hostId: environment.hostId, config,
+      profiles: await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId }),
+      currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default' };
+  }
+  async function readResource(resourceId: string, refresh: boolean) {
+    const [hostId, root, profileId] = decodeResourceId(resourceId);
+    const config = await settings.get();
+    if (root !== config.profileRoot) throw new Error('Profile root changed. Refresh the resource list.');
+    try { return measurement(await hostUsage(hostId, config, profileId, refresh)); }
+    catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
+  }
+  const usageReader = registerUsage(bb, {
+    resetCredits: (hostId, refresh) => host.call('resetCredits', { refresh }, { hostId, timeoutMs: 30_000 }),
+    claudeAccount: async threadId => {
+      const account = await threadAccount(threadId);
+      if (!account) return null;
+      return { label: account.profiles.find(value => value.id === account.currentId)?.label ?? 'Default',
+        usage: await hostUsage(account.hostId, account.config, account.currentId, false) };
+    },
+    claudeResource: readResource,
+  });
   bb.rpc.register(accountsContract, {
     accounts: async ({ threadId }) => {
       const unsupported = { supported: false, profiles: [], currentId: 'default' };
@@ -182,11 +196,8 @@ export default function plugin(bb: BbPluginApi) {
         const profiles = await localProfiles();
         return profiles ? { supported: true, profiles, currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default' } : unsupported;
       }
-      const thread = await bb.sdk.threads.get({ threadId });
-      if (thread.providerId !== 'claude-code' || !thread.environmentId) return unsupported;
-      const { environment, config } = await context(threadId);
-      return { supported: true, profiles: await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId }),
-        currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default' };
+      const account = await threadAccount(threadId);
+      return account ? { supported: true, profiles: account.profiles, currentId: account.currentId } : unsupported;
     },
     choose: async ({ threadId, profileId }) => {
       if (threadId !== null) return { currentId: (await select(threadId, profileId)).profile.id };
@@ -218,23 +229,24 @@ export default function plugin(bb: BbPluginApi) {
       }));
       return { resources: groups.flat() };
     },
-    'provider-usage.v1.getResource': async input => {
-      const [hostId, root, profileId] = decodeResourceId(input.resourceId);
-      const config = await settings.get();
-      if (root !== config.profileRoot) throw new Error('Profile root changed. Refresh the resource list.');
-      try { return measurement(await hostUsage(hostId, config, profileId, input.refresh)); }
-      catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
-    },
+    'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile quota through native CLI authentication.' });
-  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota or migrate model favourites',
+  const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD | migrate-favourites';
+  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage or migrate model favourites',
     async run(argv) {
       try {
         if (argv[0] === 'migrate-favourites') {
           if (argv.length > 1) throw new Error('migrate-favourites takes no arguments.');
           return await models.migrateFavourites();
         }
+        if (argv[0] === 'overview' || argv[0] === 'header') {
+          const valid = argv[0] === 'overview' ? argv.length === 1 || (argv.length === 2 && argv[1] === '--refresh') : argv.length === 2;
+          if (!valid) throw new Error(usageText);
+          const value = argv[0] === 'overview' ? await usageReader.overview(argv.length === 2) : await usageReader.header(argv[1]!);
+          return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };
+        }
         const [command, threadId, profileId, ...extra] = argv;
-        if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error('Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | migrate-favourites');
+        if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error(usageText);
         let value: unknown;
         if (command === 'list') {
           if (profileId) throw new Error('list takes only a thread ID.');

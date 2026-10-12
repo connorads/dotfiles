@@ -57,6 +57,9 @@ function render(initial = [first, second], error: string | null = null, account?
         return { currentId };
       },
       usage: () => { throw new Error('The picker must not request quota.'); },
+      'usage.overview': () => { throw new Error('The picker must not request usage.'); },
+      'usage.header': () => { throw new Error('The picker must not request usage.'); },
+      'usage.inspection': () => { throw new Error('The picker must not request usage.'); },
     },
     sdk: {
       threads: { get: async () => ({
