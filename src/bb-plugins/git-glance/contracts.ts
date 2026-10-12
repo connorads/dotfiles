@@ -38,16 +38,28 @@ export type Change = z.infer<typeof change>;
 export type Commit = z.infer<typeof commit>;
 
 const opKind = z.enum(['fetch', 'pull', 'push']);
+/** Every mutating action, so each shares one lifecycle: one at a time, progress, a result. */
+const opRequest = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('fetch') }), z.object({ kind: z.literal('pull') }), z.object({ kind: z.literal('push') }),
+  /** `track`: create a local branch from the remote branch `branch` names. */
+  z.object({ kind: z.literal('switch'), branch: z.string().min(1), track: z.boolean() }),
+]);
+export type OpRequest = z.infer<typeof opRequest>;
+export const branchSchema = z.object({
+  name: z.string(), kind: z.enum(['local', 'remote']), current: z.boolean(), upstream: z.string().nullable(),
+  ahead: z.number(), behind: z.number(), gone: z.boolean(), time: z.number(), subject: z.string(),
+});
+export type Branch = z.infer<typeof branchSchema>;
 const failure = z.object({
   reason: z.enum(['auth', 'cancelled', 'conflict', 'diverged', 'dirty', 'locked', 'network', 'no-remote', 'rejected', 'timeout', 'unknown']),
   message: z.string(),
 });
 const progress = z.object({ phase: z.string(), percent: z.number().nullable() });
-const syncResult = z.discriminatedUnion('ok', [
+const opResult = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true), summary: z.string() }),
   z.object({ ok: z.literal(false), failure }),
 ]);
-const opBase = { id: z.string(), kind: opKind, origin: z.enum(['user', 'auto']), startedAt: z.number() };
+const opBase = { id: z.string(), request: opRequest, origin: z.enum(['user', 'auto']), startedAt: z.number() };
 export const opStateSchema = z.discriminatedUnion('status', [
   z.object({ ...opBase, status: z.literal('running'), progress: progress.nullable() }),
   z.object({ ...opBase, status: z.literal('succeeded'), summary: z.string(), finishedAt: z.number() }),
@@ -88,7 +100,8 @@ export const hostContract = defineRpcContract({
   unwatch: { input: z.object({ root }), output: z.object({}) },
   diff: { input: z.object({ root, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ root, sha }), output: commitDetailSchema },
-  sync: { input: z.object({ root, op: opKind, opId: z.string() }), output: syncResult },
+  run: { input: z.object({ root, request: opRequest, opId: z.string() }), output: opResult },
+  branches: { input: z.object({ root }), output: z.array(branchSchema) },
 });
 export const hostSignals = {
   snapshot: { payload: z.object({ root, snapshot: snapshotSchema }) },
@@ -103,7 +116,8 @@ export const rpcContract = defineRpcContract({
   unwatch: { input: z.object(holder), output: z.object({}) },
   diff: { input: z.object({ ...thread, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ ...thread, sha }), output: commitDetailSchema },
-  sync: { input: z.object({ ...thread, op: opKind, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
+  run: { input: z.object({ ...thread, request: opRequest, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
+  branches: { input: z.object(thread), output: z.array(branchSchema) },
   cancel: { input: z.object(thread), output: z.object({}) },
 });
 

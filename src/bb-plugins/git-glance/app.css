@@ -101,6 +101,39 @@
   margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font: 600 17px/1.2 var(--font-mono); letter-spacing: -.01em; color: var(--foreground);
 }
+/* Branch title doubles as the branch picker's trigger. */
+.gg-title { position: relative; }
+.gg-branch {
+  display: inline-flex; align-items: center; gap: 4px; min-width: 0; margin: -2px -6px; padding: 2px 6px; border: 0; border-radius: 6px;
+  background: transparent; color: inherit; cursor: pointer; transition: background-color .15s, transform .16s var(--gg-ease);
+}
+.gg-branch:hover, .gg-branch[aria-expanded="true"] { background: var(--state-hover); }
+.gg-branch:active { transform: scale(0.98); }
+.gg-branch:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.gg-branch-chevron { width: 14px; height: 14px; flex: none; color: var(--muted-foreground); transition: transform .18s var(--gg-ease); }
+.gg-branch[aria-expanded="true"] .gg-branch-chevron { transform: rotate(180deg); }
+.gg-picker {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; width: min(480px, 100%);
+  display: grid; overflow: hidden; border: 1px solid var(--border-hairline); border-radius: 10px; background: var(--popover);
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / .4), 0 4px 12px -6px rgb(0 0 0 / .25);
+  transform-origin: top left; animation: gg-in .15s var(--gg-ease);
+}
+.gg-picker[data-instant] { animation: none; }
+.gg-picker-search { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); }
+.gg-picker-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--foreground); font: 13px var(--font-sans); }
+.gg-picker-search kbd { margin-left: 0; }
+.gg-picker-list { list-style: none; margin: 0; padding: 4px; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+.gg-picker-group { padding: 8px 8px 4px; color: var(--subtle-foreground, var(--muted-foreground)); font: 600 10.5px/1 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.gg-picker-list button {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--muted-foreground); font: 12.5px var(--font-sans); text-align: left; cursor: pointer;
+}
+.gg-picker-list button[data-active] { background: var(--state-hover); color: var(--foreground); }
+.gg-picker-list button:disabled { cursor: default; color: var(--foreground); }
+.gg-picker-list button:disabled svg { color: var(--success); }
+.gg-picker-name { flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--foreground); font: 500 12.5px var(--font-mono); }
+.gg-picker-subject { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gg-picker-list .gg-age { flex: none; font: 11.5px var(--font-mono); color: var(--subtle-foreground, var(--muted-foreground)); }
 .gg-upstream { display: inline-flex; align-items: center; gap: 4px; flex: none; color: var(--subtle-foreground, var(--muted-foreground)); font: 12px var(--font-mono); }
 .gg-facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .gg-fact {
@@ -343,6 +376,7 @@
 @keyframes gg-pulse { from { box-shadow: 0 0 0 0 color-mix(in oklch, var(--success) 70%, transparent); } to { box-shadow: 0 0 0 7px transparent; } }
 /* Reduced motion keeps opacity cues and drops movement and size changes. */
 @media (prefers-reduced-motion: reduce) {
+  .gg-picker { animation: none; }
   .gg-dialog[data-morph], .gg-dialog[data-morph] .gg-panel { transition: none; }
   .gg-live-dot, .gg-spinner, .gg-diff-loading i, .gg-progress i { animation: none; }
   .gg-diff, .gg-commit-panel, .gg-success { transition-property: opacity; }

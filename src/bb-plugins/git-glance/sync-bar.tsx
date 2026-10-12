@@ -1,13 +1,21 @@
 import { experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
-import type { FailureReason, OpKind, OpState, Repo } from './contracts.ts';
+import type { FailureReason, OpKind, OpRequest, OpState, Repo } from './contracts.ts';
 import { plural } from './src/format.ts';
 
-export const opNames: Record<OpKind, string> = { fetch: 'Fetch', pull: 'Pull', push: 'Push' };
+/** Labels for an operation: what it is, and what it is doing while it runs. */
+export function describe(request: OpRequest): { name: string; doing: string } {
+  switch (request.kind) {
+    case 'fetch': return { name: 'Fetch', doing: 'Fetching' };
+    case 'pull': return { name: 'Pull', doing: 'Pulling' };
+    case 'push': return { name: 'Push', doing: 'Pushing' };
+    case 'switch': return { name: `Switch to ${request.track ? request.branch.slice(request.branch.indexOf('/') + 1) : request.branch}`, doing: 'Switching' };
+  }
+}
 export const hints: Record<FailureReason, string | null> = {
   rejected: 'The remote has commits you do not have. Pull first, then push.',
   diverged: 'Local and remote both have new commits. Rebase or merge in lazygit.',
   dirty: 'Local changes would be overwritten. Commit or stash them first.',
-  conflict: 'The pull stopped on conflicts. Resolve them in lazygit.',
+  conflict: 'Stopped on conflicts. Resolve them in lazygit.',
   auth: 'Git could not sign in without a prompt. Run the command once in a terminal to authenticate.',
   network: 'Could not reach the remote. Check the connection and try again.',
   locked: 'Another git process is busy here. Try again in a moment.',
@@ -18,7 +26,7 @@ export type Availability = Record<OpKind, { enabled: boolean; title: string }>;
 /** Which remote operations make sense now, and why not when they do not. */
 export function available(repo: Repo, op: OpState | null): Availability {
   const { branch, remotes } = repo;
-  const busy = op?.status === 'running' ? `${opNames[op.kind]} is running.` : null;
+  const busy = op?.status === 'running' ? `${describe(op.request).name} is running.` : null;
   const none = remotes.length === 0 ? 'This repository has no remotes.' : null;
   const detached = branch.head ? null : 'HEAD is detached. Check out a branch first.';
   const diverged = branch.ahead > 0 && branch.behind > 0;
@@ -44,12 +52,12 @@ export function SyncBar({ repo, op, fetched, onSync, onCancel }: {
   const running = op?.status === 'running' ? op : null;
   const { branch } = repo;
   const button = ({ kind, icon, label, count, tone }: { kind: OpKind; icon: string; label: string; count: number | null; tone: string }) => {
-    const active = running?.kind === kind;
+    const active = running?.request.kind === kind;
     return <button type="button" className="gg-sync" data-tone={tone} data-active={active || undefined}
-      disabled={!can[kind].enabled && !active} title={active ? running?.progress?.phase ?? `${opNames[kind]}ing…` : can[kind].title}
+      disabled={!can[kind].enabled && !active} title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
       onClick={() => active ? onCancel() : onSync(kind)} aria-label={active ? `Cancel ${kind}` : can[kind].title}>
       {active ? <span className="gg-spinner gg-spinner-sm" /> : <Icon name={icon} className="size-3.5" />}
-      <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : `${opNames[kind]}ing` : label}</span>
+      <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : describe({ kind }).doing : label}</span>
       {!active && count !== null && count > 0 && <span className="gg-sync-count">{count}</span>}
       {active && <Icon name="X" className="gg-sync-cancel" />}
     </button>;

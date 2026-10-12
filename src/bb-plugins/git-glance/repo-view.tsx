@@ -1,11 +1,12 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
-import type { OpKind, Repo } from './contracts.ts';
+import type { OpRequest, Repo } from './contracts.ts';
+import { BranchPicker } from './branch-picker.tsx';
 import { CommitList } from './commits.tsx';
 import type { RepoState } from './repo-store.ts';
 import { ChangeRow } from './rows.tsx';
 import { age, freshKeys, plural } from './src/format.ts';
-import { hints, opNames, SyncBar } from './sync-bar.tsx';
+import { describe, hints, SyncBar } from './sync-bar.tsx';
 import { changeKey, CopyIcon, DiffBar, Fact, useNow, Zoomed } from './ui.tsx';
 
 const sections = [
@@ -18,9 +19,10 @@ const operationNames: Record<NonNullable<Repo['operation']>, string> = {
   bisect: 'Bisect', 'cherry-pick': 'Cherry-pick', merge: 'Merge', rebase: 'Rebase', revert: 'Revert',
 };
 
-export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onSync, onCancel, onZoom, onClose }: {
+export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose }: {
   repo: Repo; threadId: string; state: RepoState; actionError: string | null;
-  dismissed: string | null; onDismiss: (id: string) => void; onSync: (op: OpKind) => void; onCancel: () => void;
+  dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => void; onCancel: () => void;
+  picker: 'closed' | 'pointer' | 'keyboard'; onPicker: (state: 'closed' | 'pointer' | 'keyboard') => void;
   onZoom: () => void; onClose: () => void;
 }) {
   const zoomed = useContext(Zoomed);
@@ -70,11 +72,15 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       </div>
       <div className="gg-title">
         <Icon name={branch.head ? 'GitBranch' : 'Circle'} className="gg-title-icon" />
-        <h2>{branch.head ?? 'Detached HEAD'}</h2>
+        <button type="button" className="gg-branch" aria-haspopup="dialog" aria-expanded={picker !== 'closed'}
+          onClick={event => onPicker(picker !== 'closed' ? 'closed' : event.detail === 0 ? 'keyboard' : 'pointer')} title="Switch branch (b)">
+          <h2>{branch.head ?? 'Detached HEAD'}</h2><Icon name="ChevronDown" className="gg-branch-chevron" />
+        </button>
         {branch.upstream && <span className="gg-upstream"><Icon name="ArrowRight" className="size-3" />{branch.upstream}</span>}
+        {picker !== 'closed' && <BranchPicker threadId={threadId} instant={picker === 'keyboard'} onSwitch={onRun} onClose={() => onPicker('closed')} />}
       </div>
       <div className="gg-facts">
-        <SyncBar repo={repo} op={op} fetched={fetched} onSync={onSync} onCancel={onCancel} />
+        <SyncBar repo={repo} op={op} fetched={fetched} onSync={kind => onRun({ kind })} onCancel={onCancel} />
         {!branch.upstream && branch.head && repo.remotes.length > 0 && <Fact tone="quiet" icon="CloudOff" title="No upstream branch">Not published</Fact>}
         {branch.ahead > 0 && branch.behind > 0 && <Fact tone="behind" icon="AlertTriangle" title="Local and remote both have new commits">Diverged</Fact>}
         {repo.stash > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stash, 'stash')}</Fact>}
@@ -88,13 +94,13 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       {failure && <div className="gg-banner gg-failure" role="alert">
         <Icon name="CircleX" className="size-4" />
         <div className="gg-failure-body">
-          <strong>{opNames[failure.kind]} failed.</strong> {hints[failure.failure.reason] ?? ''}
+          <strong>{describe(failure.request).name} failed.</strong> {hints[failure.failure.reason] ?? ''}
           <pre>{failure.failure.message}</pre>
         </div>
         <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={() => onDismiss(failure.id)}><Icon name="X" className="size-3.5" /></button>
       </div>}
       {success && <div className="gg-success" role="status" data-leaving={now - success.finishedAt >= 5000 || undefined}><Icon name="CircleCheck" className="size-4" />{success.summary}</div>}
-      {running && <div className="gg-progress" role="progressbar" aria-label={`${opNames[running.kind]} progress`}
+      {running && <div className="gg-progress" role="progressbar" aria-label={`${describe(running.request).name} progress`}
         aria-valuenow={running.progress?.percent ?? undefined} data-indeterminate={running.progress?.percent == null || undefined}>
         <i style={running.progress?.percent != null ? { '--gg-progress': running.progress.percent / 100 } as React.CSSProperties : undefined} />
       </div>}
@@ -139,12 +145,12 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     </div>
 
     <footer className="gg-footer">
-      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>q</kbd> close</span>
+      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>q</kbd> close</span>
       <span className="gg-live" data-state={state.error || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
         title={state.error ?? autoFailed?.failure.message ?? 'Updates when files or refs change'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />
         {state.error ? 'Out of date' : connection !== 'connected' ? 'Reconnecting…'
-          : autoFailed ? 'Fetch failed' : running ? `${opNames[running.kind]}ing…` : 'Live'}
+          : autoFailed ? 'Fetch failed' : running ? `${describe(running.request).doing}…` : 'Live'}
       </span>
     </footer>
   </>;

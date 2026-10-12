@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
-import type { OpKind, rpcContract } from './contracts.ts';
+import type { OpRequest, rpcContract } from './contracts.ts';
 import { renew, useRepo } from './repo-store.ts';
 import { RepoView } from './repo-view.tsx';
 import { available } from './sync-bar.tsx';
@@ -36,6 +36,8 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     setZoomed(current => { localStorage.setItem(zoomKey, current ? '0' : '1'); return !current; });
   }, []);
   const [position, setPosition] = useState(() => place(anchor, zoomed));
+  /** Open branch picker, and how it was opened: a shortcut opens it without motion. */
+  const [picker, setPicker] = useState<'closed' | 'pointer' | 'keyboard'>('closed');
   const [actionError, setActionError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
@@ -61,13 +63,13 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     opened.current = true;
     dialog.current?.querySelector<HTMLElement>('[data-row]')?.focus({ preventScroll: true });
     if (state.snapshot.kind !== 'none' && state.snapshot.remotes.length > 0) {
-      rpc.call('sync', { threadId, op: 'fetch', origin: 'auto' }).catch(() => {});
+      rpc.call('run', { threadId, request: { kind: 'fetch' }, origin: 'auto' }).catch(() => {});
     }
   }, [state.snapshot, rpc, threadId]);
   const [dismissed, setDismissed] = useState<string | null>(null);
-  const runOp = useCallback((op: OpKind) => {
+  const runOp = useCallback((request: OpRequest) => {
     setActionError(null);
-    rpc.call('sync', { threadId, op, origin: 'user' }).catch(cause => setActionError(message(cause)));
+    rpc.call('run', { threadId, request, origin: 'user' }).catch(cause => setActionError(message(cause)));
   }, [rpc, threadId]);
   const cancelOp = useCallback(() => { rpc.call('cancel', { threadId }).catch(cause => setActionError(message(cause))); }, [rpc, threadId]);
 
@@ -87,11 +89,12 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (event.key === 'ArrowUp' || event.key === 'k') move(-1);
     else if (event.key === 'r' || event.key === 'R') { event.preventDefault(); void renew(threadId); }
     else if (event.key === 'z') { event.preventDefault(); zoom('keyboard'); }
+    else if (event.key === 'b' && repo) { event.preventDefault(); setPicker('keyboard'); }
     else if (event.key === 'q') { event.preventDefault(); onClose(); }
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();
-      if (available(repo, state.op)[op].enabled) runOp(op);
+      if (available(repo, state.op)[op].enabled) runOp({ kind: op });
     }
   }
 
@@ -107,8 +110,8 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     }}>
     <div className="gg-panel">
       {repo ? <Zoomed.Provider value={zoomed}><RepoView repo={repo} threadId={threadId} state={state} actionError={actionError}
-        dismissed={dismissed} onDismiss={setDismissed} onSync={runOp} onCancel={cancelOp}
-        onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
+        dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
+        picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
         : <div className="gg-blank">
           {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span></>
             : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span></>
