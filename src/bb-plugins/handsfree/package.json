@@ -5,7 +5,7 @@
   "type": "module",
   "engines": {
     "bb": ">=0.46",
-    "bbPluginSdk": ">=0.6.40"
+    "bbPluginSdk": ">=0.6.37"
   },
   "bb": {
     "name": "Handsfree",
@@ -20,7 +20,7 @@
   "scripts": {
     "test": "pnpm test:core && pnpm test:ui && pnpm test:native",
     "test:core": "node --experimental-strip-types --test *.test.ts",
-    "test:ui": "vitest run app.test.tsx",
+    "test:ui": "vitest run app.test.tsx choice-target.test.tsx",
     "typecheck": "tsc --noEmit && tsc --noEmit -p pedal/tsconfig.json",
     "build": "bb plugin build",
     "dev": "bb plugin dev",
@@ -35,7 +35,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "file:../../../git/getbb/packages/plugin-sdk",
+    "@get-bb/plugin-sdk": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/better-sqlite3": "catalog:",
     "@types/bun": "1.4.2",

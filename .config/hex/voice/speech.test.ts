@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
 import { parseSpeech, runSpeech } from './speech.ts'
-import { matchBb, type BbPorts } from './bb.ts'
+import { matchBb, parseReply, type BbPorts } from './bb.ts'
 import { ok } from './pane.ts'
-import type { Command } from '../../../src/bb-plugins/handsfree/contracts.ts'
+import { commandSchema, type Command } from '../../../src/bb-plugins/handsfree/contracts.ts'
 
 test('dictated punctuation and supported command aliases use existing BB actions', () => {
   expect(parseSpeech('Next thread.')).toEqual({ command: { action: 'next' } })
@@ -34,4 +34,30 @@ test('every registered BB command phrase is accepted by the pedal parser', async
       expect(parseSpeech(spoken), `${id}: ${spoken}`).not.toHaveProperty('error')
     }
   }
+})
+
+test('recorded choices keep their captured target through recognition feedback', async () => {
+  const commands: Command[] = []
+  const ports: BbPorts = {
+    request: async command => { commands.push(command); return { ok: true, message: '' } },
+    judge: async () => ok({ choice: 'none', confidence: 1, probabilities: { none: 1 } }), notify: async () => {}, log: async () => {},
+  }
+  await runSpeech(ports, 'Choose two.', 'recording-target')
+  expect(commands).toEqual([
+    { action: 'notice', message: 'Heard: “Choose two.”.' },
+    { action: 'choose', number: 2, target: 'recording-target' },
+  ])
+  commands.length = 0
+  await runSpeech(ports, 'Choose 1')
+  expect(commands.at(-1)).toEqual({ action: 'choose', number: 1 })
+  commands.length = 0
+  await runSpeech(ports, 'Next thread.', 'recording-target')
+  expect(commands.at(-1)).toEqual({ action: 'next' })
+})
+
+test('capture replies retain the target through the command bridge', () => {
+  const reply = parseReply({ ok: true, message: 'Command target captured.', context: 'thread-context', choiceTarget: 'recording-target' })
+  expect(reply.choiceTarget).toBe('recording-target')
+  expect(commandSchema.parse({ action: 'capture' })).toEqual({ action: 'capture' })
+  expect(commandSchema.parse({ action: 'choose', number: 2, target: reply.choiceTarget })).toEqual({ action: 'choose', number: 2, target: 'recording-target' })
 })
