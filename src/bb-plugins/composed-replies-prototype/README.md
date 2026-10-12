@@ -1,7 +1,7 @@
 # Composed replies prototype
 
 Native React components in BB assistant messages. OpenUI and json-render compose
-new interfaces from the same nineteen primitives. The model does not emit executable
+new interfaces from the same twenty-three primitives. The model does not emit executable
 JavaScript or select a finished calculator.
 
 ```mermaid
@@ -63,6 +63,10 @@ bounds source size, component count, nesting, arrays and numeric results. It
 rejects queries, mutations, unregistered computations and component cycles.
 Controls, chart values and table cells validate resolved values. A local error
 boundary contains invalid runtime values.
+
+`Checkbox` binds boolean state. `TextInput` binds short text or multiline notes.
+`Details` reveals supporting content. `ResetButton` restores all declared defaults
+and closes disclosures by remounting the composition.
 
 Interactions stay local. Control values reset on navigation or remount.
 No generated network calls, actions or arbitrary JavaScript run in the host.

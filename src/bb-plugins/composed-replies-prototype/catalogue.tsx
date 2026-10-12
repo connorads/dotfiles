@@ -29,10 +29,19 @@ import {
   Chip,
 } from "./layout-primitives";
 
+import {
+  interactiveProps,
+  Checkbox,
+  TextInput,
+  ResetButton,
+  Details,
+} from "./interactive-primitives";
+
 const boundedNumber = z.number().finite().min(-1e9).max(1e9);
 const label = z.string().max(160);
 const scalar = z.union([boundedNumber, z.string().max(1000)]);
 const props = {
+  ...interactiveProps,
   ...richProps,
   ...layoutProps,
   Stack: z.object({ children: z.array(z.unknown()).max(50) }),
@@ -338,6 +347,54 @@ const SelectOpen = defineComponent({
 });
 export const library = createLibrary({
   components: [
+    defineComponent({
+      name: "Checkbox",
+      description: "Boolean option bound to a state variable",
+      props: interactiveProps.Checkbox.extend({
+        value: reactive(interactiveProps.Checkbox.shape.value.clone()),
+      }),
+      component: ({ props: p }) => {
+        const field = useStateField(p.label, p.value);
+        return (
+          <Checkbox {...p} value={field.value} setValue={field.setValue} />
+        );
+      },
+    }),
+    defineComponent({
+      name: "TextInput",
+      description: "Bounded single or multiline text bound to a state variable",
+      props: interactiveProps.TextInput.extend({
+        value: reactive(interactiveProps.TextInput.shape.value.clone()),
+      }),
+      component: ({ props: p }) => {
+        const field = useStateField(p.label, p.value);
+        return (
+          <TextInput {...p} value={field.value} setValue={field.setValue} />
+        );
+      },
+    }),
+    defineComponent({
+      name: "ResetButton",
+      description: "Restore this composition's declared input defaults locally",
+      props: interactiveProps.ResetButton,
+      component: ({ props: p }) => <ResetButton {...p} />,
+    }),
+    defineComponent({
+      name: "Details",
+      description: "Native expandable disclosure containing child components",
+      props: interactiveProps.Details,
+      component: ({ props: p }) => {
+        const render = useRenderNode();
+        return (
+          <Details summary={p.summary}>
+            {p.children.map((x, i) => (
+              <div key={i}>{render(x)}</div>
+            ))}
+          </Details>
+        );
+      },
+    }),
+
     ...["Box", "Row"].map((name) =>
       name === "Box"
         ? defineComponent({
@@ -473,6 +530,24 @@ export const library = createLibrary({
 });
 export const catalog = defineCatalog(schema, {
   components: {
+    Checkbox: {
+      props: interactiveProps.Checkbox,
+      description: "Boolean option. Bind value with $bindState",
+    },
+    TextInput: {
+      props: interactiveProps.TextInput,
+      description: "Bounded text input. Bind value with $bindState",
+    },
+    ResetButton: {
+      props: interactiveProps.ResetButton,
+      description: "Restore declared defaults locally",
+    },
+    Details: {
+      props: interactiveProps.Details.omit({ children: true }),
+      slots: ["default"],
+      description: "Native expandable disclosure",
+    },
+
     Box: {
       props: layoutProps.Box.omit({ children: true }),
       slots: ["default"],
@@ -557,6 +632,19 @@ const NumericJson = ({
 };
 export const { registry } = defineRegistry(catalog, {
   components: {
+    Checkbox: ({ props: p, bindings }) => {
+      const [value, set] = useBoundProp(p.value, bindings?.value);
+      return <Checkbox {...p} value={value ?? p.value} setValue={set} />;
+    },
+    TextInput: ({ props: p, bindings }) => {
+      const [value, set] = useBoundProp(p.value, bindings?.value);
+      return <TextInput {...p} value={value ?? p.value} setValue={set} />;
+    },
+    ResetButton: ({ props: p }) => <ResetButton {...p} />,
+    Details: ({ props: p, children }) => (
+      <Details summary={p.summary}>{children}</Details>
+    ),
+
     Box: ({ props: p, children }) => <Box {...p}>{children}</Box>,
     Row: ({ props: p, children }) => <Row {...p}>{children}</Row>,
     Icon: ({ props: p }) => <Icon {...p} />,
@@ -620,15 +708,17 @@ export function prompt(format: "openui" | "json-render") {
     Object.entries(props).map(([name, shape]) => [
       name,
       z.toJSONSchema(
-        name === "Stack"
-          ? z.object({})
-          : name === "Box"
-            ? layoutProps.Box.omit({ children: true })
-            : name === "Row"
-              ? layoutProps.Row.omit({ children: true })
-              : name === "Grid"
-                ? z.object({ columns: richProps.Grid.shape.columns })
-                : shape,
+        name === "Details"
+          ? interactiveProps.Details.omit({ children: true })
+          : name === "Stack"
+            ? z.object({})
+            : name === "Box"
+              ? layoutProps.Box.omit({ children: true })
+              : name === "Row"
+                ? layoutProps.Row.omit({ children: true })
+                : name === "Grid"
+                  ? z.object({ columns: richProps.Grid.shape.columns })
+                  : shape,
       ),
     ]),
   );

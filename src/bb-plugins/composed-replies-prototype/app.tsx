@@ -4,6 +4,7 @@ import {
   useRpc,
   type PluginMessageDirectiveProps,
 } from "@get-bb/plugin-sdk/app";
+import { CompositionResetContext } from "./interactive-primitives";
 import { HydratedOpenUI } from "./openui-hydration";
 import { Renderer as JsonRenderer, JSONUIProvider } from "@json-render/react";
 import { registry, functions } from "./catalogue";
@@ -26,6 +27,19 @@ class CompositionBoundary extends Component<
   }
 }
 export function CompositionView({ composition }: { composition: Composition }) {
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <CompositionResetContext.Provider value={() => setEpoch((n) => n + 1)}>
+      <div
+        key={`${composition.format}:${composition.source}:${epoch}`}
+        style={{ minWidth: 0 }}
+      >
+        <CompositionRuntime composition={composition} />
+      </div>
+    </CompositionResetContext.Provider>
+  );
+}
+function CompositionRuntime({ composition }: { composition: Composition }) {
   if (composition.format === "openui")
     return <HydratedOpenUI source={composition.source} />;
   const spec = parseSpec(composition.source);
