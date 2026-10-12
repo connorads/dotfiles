@@ -1,5 +1,7 @@
 # The foot pedal's meaning lives in its firmware
 
+> Left-pedal mapping superseded by [0022](0022-left-pedal-holds-command-recording.md). Firmware ownership remains in force.
+
 A PCsensor 3-pedal USB foot switch (`3553:b001`) drives hands-occupied prompting
 of Claude Code in kitty + tmux. The pedal's firmware emits the keys itself: left
 is Escape, centre is right Option held for as long as the pedal is down, right is

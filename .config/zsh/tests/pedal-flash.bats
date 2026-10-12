@@ -17,20 +17,20 @@ if [ "$1" = "-r" ]; then
 fi
 exit 0
 STUB
-  printf '[switch 1]: esc\n[switch 2]: r_alt\n[switch 3]: enter\n' >"$HOME/readback"
+  printf '[switch 1]: r_ctrl\n[switch 2]: r_alt\n[switch 3]: enter\n' >"$HOME/readback"
 }
 
-@test "default flashes esc / r_alt / enter then reads back and exits 0" {
+@test "default flashes r_ctrl / r_alt / enter then reads back and exits 0" {
   run_zsh_function "$FN"
   [ "$status" -eq 0 ]
-  [ "$(sed -n 1p "$HOME/calls")" = "-1 -k esc -2 -m r_alt -3 -k enter" ]
+  [ "$(sed -n 1p "$HOME/calls")" = "-1 -m r_ctrl -2 -m r_alt -3 -k enter" ]
   [ "$(sed -n 2p "$HOME/calls")" = "-r" ]
   [ "$(wc -l <"$HOME/calls" | tr -d ' ')" = "2" ]
   [[ "$output" == *"[switch 2]: r_alt"* ]]
 }
 
 @test "readback mismatch exits 1 naming the pedal" {
-  printf '[switch 1]: esc\n[switch 2]: b\n[switch 3]: enter\n' >"$HOME/readback"
+  printf '[switch 1]: r_ctrl\n[switch 2]: b\n[switch 3]: enter\n' >"$HOME/readback"
   run_zsh_function "$FN"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pedal 2 reads back 'b', expected 'r_alt'"* ]]
@@ -40,13 +40,13 @@ STUB
   run_zsh_function "$FN" --read
   [ "$status" -eq 0 ]
   [ "$(cat "$HOME/calls")" = "-r" ]
-  [[ "$output" == *"[switch 1]: esc"* ]]
+  [[ "$output" == *"[switch 1]: r_ctrl"* ]]
 }
 
 @test "--dry-run prints the command and calls nothing" {
   run_zsh_function "$FN" --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"footswitch -1 -k esc -2 -m r_alt -3 -k enter"* ]]
+  [[ "$output" == *"footswitch -1 -m r_ctrl -2 -m r_alt -3 -k enter"* ]]
   [ ! -e "$HOME/calls" ]
 }
 
