@@ -1,0 +1,33 @@
+{
+  "name": "bb-plugin-caffeine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.15" },
+  "bb": {
+    "name": "Caffeine",
+    "description": "Keep this Mac awake from BB: indefinitely, for a set time, with the lid closed, or while agents run. Shares state with the tmux caffeine pill.",
+    "branding": { "icon": "Coffee" },
+    "server": "./server.ts",
+    "host": "./host.ts",
+    "app": "./app.tsx",
+    "skills": []
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": { "@bb-plugins/chip": "workspace:*", "zod": "catalog:" },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "better-sqlite3": "catalog:",
+    "cron-parser": "catalog:",
+    "hono": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:"
+  }
+}
