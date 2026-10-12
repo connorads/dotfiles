@@ -23,13 +23,13 @@
     "install:bb": "node --experimental-strip-types install.ts"
   },
   "dependencies": {
-    "zod": "4.3.6"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "0.6.15",
-    "@types/better-sqlite3": "7.6.13",
-    "@types/node": "22.15.30",
-    "hono": "4.11.9",
-    "typescript": "5.8.3"
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "hono": "catalog:",
+    "typescript": "catalog:"
   }
 }
