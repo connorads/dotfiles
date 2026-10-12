@@ -7,20 +7,23 @@ import { age, plural } from './src/format.ts';
 import { layoutGraph } from './src/graph.ts';
 import { CopyIcon, DiffBar, message } from './ui.tsx';
 
-export function CommitList({ commits, threadId, now, copied, onCopy, fresh, stamp }: {
+export function CommitList({ commits, threadId, now, copied, onCopy, fresh, stamp, selected, onSelect }: {
   commits: Commit[]; threadId: string; now: number; copied: string | null; onCopy: (sha: string) => void;
   fresh: Set<string>; stamp: string;
+  /** With `onSelect`, a commit opens in the detail pane rather than under its row. */
+  selected?: string | null; onSelect?: (sha: string) => void;
 }) {
   const rows = useMemo(() => layoutGraph(commits), [commits]);
   const width = graphWidth(Math.max(...rows.map(row => row.width)));
   const [open, setOpen] = useState<string | null>(null);
   return <ol className="gg-commit-list">{commits.map((commit, index) => {
     const row = rows[index]!;
-    const expanded = open === commit.sha;
+    const expanded = onSelect ? selected === commit.sha : open === commit.sha;
     return <li key={commit.sha} data-open={expanded || undefined}>
       {fresh.has(commit.sha) && <span className="gg-flash" key={stamp} aria-hidden />}
       <button type="button" data-row data-sha={commit.sha} className="gg-commit" data-unpushed={commit.unpushed || undefined}
-        aria-expanded={expanded} onClick={() => setOpen(expanded ? null : commit.sha)}
+        aria-expanded={expanded} onClick={() => onSelect ? onSelect(commit.sha) : setOpen(expanded ? null : commit.sha)}
+        onFocus={onSelect ? () => onSelect(commit.sha) : undefined}
         title={`${commit.subject}\n${commit.author}${commit.unpushed ? ' · not pushed' : ''}`}>
         <GraphCell row={row} width={width} head={index === 0} unpushed={commit.unpushed} merge={commit.parents.length > 1} />
         <span className="gg-subject">{commit.subject}</span>
@@ -34,7 +37,7 @@ export function CommitList({ commits, threadId, now, copied, onCopy, fresh, stam
         </span>
         <Icon name="ChevronDown" className="gg-row-chevron" />
       </button>
-      {expanded && <CommitPanel sha={commit.sha} threadId={threadId} now={now} copied={copied} onCopy={onCopy}
+      {expanded && !onSelect && <CommitPanel sha={commit.sha} threadId={threadId} now={now} copied={copied} onCopy={onCopy}
         lanes={[...new Set([...row.through, ...row.outgoing.map(segment => segment.to)])]} width={width} />}
     </li>;
   })}</ol>;

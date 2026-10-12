@@ -19,8 +19,10 @@ Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `esc` closes. On a file row `x` arms discard and a second `x` confirms; on a
 stash row `a` applies and `g` pops.
 
-`z` expands to a large view with side-by-side diffs, and the size is
-remembered. Rebind `Alt+G` in Settings → Keyboard. For anything else, open lazygit with its own plugin.
+`z` expands to a large two-pane view, and the size is remembered. The lists sit
+on the left; the selected file's side-by-side diff, or a stash or commit with
+its files, fills the right, and the selection follows the arrow keys. Rebind `Alt+G`
+in Settings → Keyboard. For anything else, open lazygit with its own plugin.
 
 ## Live updates
 
