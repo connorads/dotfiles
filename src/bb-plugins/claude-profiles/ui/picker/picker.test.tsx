@@ -246,6 +246,22 @@ test('catalogue failures explain disabled rows instead of hiding saved favourite
   } finally { slot.lifecycle.unmount(); }
 });
 
+test('a failed provider catalogue shows one compact muted row and drops out of searches that miss its name', async () => {
+  const slot = render([], 'spawn cursor-agent ENOENT');
+  try {
+    const section = await slot.findByRole('region', { name: 'Codex' });
+    const note = within(section).getByText('Not available on this machine');
+    expect(note.getAttribute('title')).toBe('spawn cursor-agent ENOENT');
+    expect(note.className).toBe('mf-unavailable');
+    fireEvent.change(slot.getByLabelText('Search models'), { target: { value: 'opus' } });
+    expect(slot.queryByRole('region', { name: 'Codex' })).toBeNull();
+    expect(slot.getByText('No models found.')).toBeTruthy();
+    fireEvent.change(slot.getByLabelText('Search models'), { target: { value: 'cod' } });
+    expect(slot.getByRole('region', { name: 'Codex' })).toBeTruthy();
+    expect(slot.queryByText('No models found.')).toBeNull();
+  } finally { slot.lifecycle.unmount(); }
+});
+
 test('stars a model directly without selecting it or sending the draft', async () => {
   const slot = render([]);
   try {

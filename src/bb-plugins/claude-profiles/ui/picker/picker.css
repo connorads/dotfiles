@@ -118,6 +118,7 @@ kbd.mf-slot { border: 1px solid var(--border); background: var(--background); }
 .mf-footer span { display: inline-flex; align-items: center; gap: 3px; }
 .mf-empty { margin: 0; padding: 32px 12px; text-align: center; color: var(--muted-foreground); line-height: 1.7; }
 .mf-empty span { font-size: 12px; }
+.mf-unavailable { margin: 0; padding: 8px 10px; color: var(--muted-foreground); font-size: 12px; }
 .mf-error { margin: 8px 12px 0; color: var(--destructive); font-size: 12px; }
 .mf-error button { text-decoration: underline; background: transparent; border: 0; color: inherit; }
 
