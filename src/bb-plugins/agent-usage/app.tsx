@@ -84,7 +84,10 @@ export function UsageOverlay() {
   useEffect(() => { if (open) void refresh(false); }, [open, refresh]);
   const machines = snapshot?.machines.filter(machine => machine.providers.some(account => account.usage?.status !== 'not_installed') || machine.error !== null) ?? [];
   return <Dialog open={open} onOpenChange={value => { if (!value) closeUsage(); }}>
-    <DialogContent className="au-overlay" onCloseAutoFocus={event => { event.preventDefault(); restoreUsageFocus(); }}>
+    <DialogContent className="au-overlay" onKeyDown={event => {
+      if (event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) || !event.currentTarget.contains(event.target as Node)) return;
+      if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); closeUsage(); }
+    }} onCloseAutoFocus={event => { event.preventDefault(); restoreUsageFocus(); }}>
       <div className="au-overview-heading">
         <div><DialogTitle>Agent usage</DialogTitle><DialogDescription>All providers and accounts. Percentages show allowance used.</DialogDescription></div>
         <button className="au-refresh" type="button" disabled={loading} onClick={() => void refresh(true)}><Icon name="RefreshCw" className="size-4" />{loading ? 'Refreshing…' : 'Refresh'}</button>
@@ -99,7 +102,7 @@ export function UsageOverlay() {
           <div className="au-account-grid">{machine.providers.filter(account => account.usage?.status !== 'not_installed').map(account => <AccountUsage key={account.id} account={account} />)}</div>
         </section>)}
       </div>
-      <footer className="au-overview-footer"><span>⌘⇧U opens usage</span><span>Esc closes</span></footer>
+      <footer className="au-overview-footer"><span>⌘⇧U opens usage</span><span>Q / Esc closes</span></footer>
     </DialogContent>
   </Dialog>;
 }

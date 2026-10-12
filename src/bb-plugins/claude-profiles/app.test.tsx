@@ -99,3 +99,16 @@ test('the open-switcher command opens the menu for the thread in view', async ()
     expect(await slot.findByRole('menu')).toBeTruthy();
   } finally { slot.lifecycle.unmount(); }
 });
+
+
+test.each(['q', 'Q'])('%s closes accounts and restores trigger focus without switching', async key => {
+  const { slot } = await render();
+  try {
+    const trigger = await slot.findByRole('button', { name: /Claude account/ });
+    fireEvent.click(trigger);
+    fireEvent.keyDown(await slot.findByRole('menu'), { key });
+    expect(slot.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(slot.inspection.rpcCalls.filter(call => call.method === 'switch')).toHaveLength(0);
+  } finally { slot.lifecycle.unmount(); }
+});
