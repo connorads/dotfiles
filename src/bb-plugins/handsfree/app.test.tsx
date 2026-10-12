@@ -19,8 +19,9 @@ const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSid
   lastReadAt: null, latestAttentionAt: 1, ...extra,
 });
 let slot: RenderedSlot | undefined;
+let headerSlot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
-afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; vi.restoreAllMocks(); });
+afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); });
 
 async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[]) {
   const replies: Reply[] = [];
@@ -62,6 +63,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
     },
   });
   const rendered = slot;
+  headerSlot = renderSlot(app.threadHeaderActions[0], { threadId: 't1', projectId: 'p1', isCompactViewport: false });
   let sequence = 0;
   return {
     archived, restored,
@@ -248,13 +250,13 @@ test('returning to the composer leaves Enter and arrow keys available to BB', as
   } finally { textarea.remove(); }
 });
 
-test('routine success stays compact while help expands the card', async () => {
+test('routine success stays in the header while help opens the monitor', async () => {
   const view = await render();
   await view.command({ action: 'new' });
-  expect(view.slot.getByRole('button', { name: 'Voice' }).getAttribute('aria-expanded')).toBe('false');
-  expect(view.slot.getByRole('status').textContent).toMatch(/Draft ready/);
+  expect(view.slot.getByRole('button', { name: /Voice monitor\. Draft ready/ }).getAttribute('aria-expanded')).toBe('false');
+  expect(view.slot.queryByRole('dialog')).toBeNull();
   await view.command({ action: 'help' });
-  expect(view.slot.getByRole('button', { name: 'Voice' }).getAttribute('aria-expanded')).toBe('true');
+  expect(view.slot.getByRole('button', { name: /Voice monitor\./ }).getAttribute('aria-expanded')).toBe('true');
 });
 
 test('a stale match cannot act on a different thread', async () => {
@@ -308,7 +310,30 @@ test('voice feedback retains the heard target alongside the result', async () =>
   const view = await render();
   await view.command({ action: 'notice', message: 'Heard thread target: access thread' });
   await view.command({ action: 'new' });
-  fireEvent.click(view.slot.getByRole('button', { name: 'Voice' }));
+  fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor\./ }));
   expect(view.slot.getByText('Heard thread target: access thread')).toBeTruthy();
   expect(view.slot.getAllByText(/Draft ready/).length).toBeGreaterThan(0);
+});
+
+
+
+
+test('voice feedback belongs in a header control, with no persistent floating card', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  expect(app.threadHeaderActions).toHaveLength(1);
+  const view = await render();
+  expect(view.slot.queryByRole('button', { name: 'Voice' })).toBeNull();
+  expect(view.slot.queryByText(/Right Alt:/)).toBeNull();
+  await view.command({ action: 'help' });
+  expect(view.slot.getByRole('dialog', { name: 'Voice monitor' })).toBeTruthy();
+  expect(view.slot.queryByText(/Right Alt:/)).toBeNull();
+});
+
+test('monitor activity exposes failed attempts without opening a disclosure', async () => {
+  const view = await render();
+  await view.command({ action: 'choose', number: 1 });
+  fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor\./ }));
+  fireEvent.click(view.slot.getByRole('tab', { name: 'Activity' }));
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no such numbered voice choice/);
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Failed/);
 });

@@ -6,6 +6,7 @@ import {
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
 import type { ArchiveTarget } from './archive.ts';
+import { publishVoiceHeader, VoiceHeader } from './header.tsx';
 import './app.css';
 
 interface Choices {
@@ -13,6 +14,8 @@ interface Choices {
   options: Candidate[];
   context: string;
 }
+
+interface VoiceResult { at: number; message: string; problem: boolean }
 
 function VoiceCard() {
   const context = useBbContext();
@@ -26,13 +29,17 @@ function VoiceCard() {
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   const [expanded, setExpanded] = useState(false);
+  const [position, setPosition] = useState({ top: 70, left: 18 });
   const card = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState('Say “voice help” to see commands.');
   const [choices, setChoices] = useState<Choices | null>(null);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ target: ArchiveTarget; context: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<VoiceResult[]>([]);
+  const [view, setView] = useState<'activity' | 'commands'>('activity');
+  const [problem, setProblem] = useState(false);
+  const [feedback, setFeedback] = useState(false);
   const observedThread = useRef(context.threadId);
   const activeRequest = useRef<string | null>(null);
   const navigationRequest = useRef<{ requestId: string; expires: number; threadId?: string } | null>(null);
@@ -40,7 +47,6 @@ function VoiceCard() {
     if (activeRequest.current) navigationRequest.current = { requestId: activeRequest.current, expires: Date.now() + 3000, ...(threadId ? { threadId } : {}) };
   };
   const [windowId] = useState(() => crypto.randomUUID());
-  const [steer, setSteer] = useState<boolean | null>(null);
   const thread = sidebar.threads.find(row => row.id === context.threadId);
   const projectId = composer.scope.kind === 'new-thread'
     ? composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId : context.projectId;
@@ -56,13 +62,40 @@ function VoiceCard() {
   });
 
   useEffect(() => {
-    let active = true;
-    void sdk.system.config().then(config => { if (active) setSteer(config.generalSettings.steerActiveThreadOnEnter); }).catch(() => {});
-    return () => { active = false; };
-  }, [sdk]);
+    const open = () => { setView('activity'); setExpanded(value => !value); };
+    window.addEventListener('handsfree:open', open);
+    return () => {
+      window.removeEventListener('handsfree:open', open);
+      publishVoiceHeader({ label: 'Voice', problem: false, expanded: false });
+    };
+  }, []);
+
+  useEffect(() => {
+    publishVoiceHeader({ label: busy ? 'Working…' : feedback || problem ? message : 'Voice', problem, expanded });
+  }, [busy, feedback, problem, message, expanded]);
+
+  useEffect(() => {
+    if (!feedback || problem || busy) return;
+    const timer = window.setTimeout(() => setFeedback(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [feedback, problem, busy, message]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const place = () => {
+      const control = Array.from(document.querySelectorAll<HTMLElement>('[data-handsfree-header]')).find(element => element.getClientRects().length);
+      const anchor = control?.getBoundingClientRect();
+      const width = Math.min(440, window.innerWidth - 36);
+      setPosition({ top: Math.max(18, Math.min(anchor ? anchor.bottom + 8 : 70, window.innerHeight - 320)),
+        left: Math.max(18, Math.min(anchor ? anchor.right - width : window.innerWidth - width - 18, window.innerWidth - width - 18)) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [expanded]);
 
   useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
-  useEffect(() => { if (!expanded) setArchiveConfirmation(null); }, [expanded]);
+  useEffect(() => { if (!expanded) { setArchiveConfirmation(null); setChoices(null); } }, [expanded]);
   useEffect(() => {
     if (choices || archiveConfirmation) card.current?.focus();
   }, [choices, archiveConfirmation]);
@@ -76,7 +109,9 @@ function VoiceCard() {
       void rpc.call('observed', { requestId: requested.requestId, threadId: context.threadId ?? null, title: thread?.displayTitle ?? 'New thread draft' }).catch(() => {});
     }
     setMessage(destination);
-    setHistory(items => [...items, destination].slice(-10));
+    setFeedback(true);
+    setProblem(false);
+    setHistory(items => [...items, { at: Date.now(), message: destination, problem: false }].slice(-50));
   }, [context.threadId, thread, sidebar.projects]);
 
   const list = async (kind: Kind): Promise<Candidate[]> => {
@@ -220,6 +255,7 @@ function VoiceCard() {
         return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
       case 'help':
         setChoices(null);
+        setView('commands');
         setExpanded(true);
         return { ok: true, message: 'Say commands with the dictation pedal released.' };
       case 'notice':
@@ -250,14 +286,18 @@ function VoiceCard() {
       const reply = await handle(command);
       if (command.action !== 'list') {
         setMessage(reply.message);
-        setHistory(items => [...items, reply.message].slice(-10));
+        setFeedback(true);
+        setProblem(!reply.ok || reply.outcome === 'no-match' || command.action === 'notice' && !!command.problem);
+        setHistory(items => [...items, { at: Date.now(), message: reply.message,
+          problem: !reply.ok || reply.outcome === 'no-match' || command.action === 'notice' && !!command.problem }].slice(-50));
       }
       return reply;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setMessage(message);
-      setHistory(items => [...items, message].slice(-10));
-      setExpanded(true);
+      setProblem(true);
+      setFeedback(true);
+      setHistory(items => [...items, { at: Date.now(), message, problem: true }].slice(-50));
       return { ok: false, outcome: 'error', message };
     } finally { setBusy(false); }
   };
@@ -296,46 +336,52 @@ function VoiceCard() {
     return () => document.removeEventListener('keydown', keydown, true);
   }, [choices, expanded, busy, highlight, composer, contextKey]);
 
-  return <aside className="handsfree" aria-label="BB voice controls" data-context={contextKey}>
-    <button type="button" className="handsfree-toggle" aria-expanded={expanded} onClick={() => {
-      if (expanded) { setChoices(null); setArchiveConfirmation(null); composer.focus(); }
-      setExpanded(value => !value);
-    }}>
-      Voice{busy ? ' · Working' : ''}
-    </button>
-    {!expanded && <p className="handsfree-status" role="status" title={message}>{message}</p>}
-    {expanded && <div ref={card} className="handsfree-card" tabIndex={-1}>
-      <strong>{thread?.displayTitle ?? 'New thread'}</strong>
-      <p>{projectId ? projectName(projectId) : 'Choose a project'} · {composer.selection?.model ?? composer.selection?.providerId ?? 'Choose an agent'}</p>
+  return expanded ? <aside className="handsfree" aria-label="BB voice controls" data-context={contextKey}
+    style={{ top: position.top, left: position.left, maxHeight: `calc(100vh - ${position.top + 18}px)` }}>
+    <div ref={card} className="handsfree-card" role="dialog" aria-label="Voice monitor" tabIndex={-1}>
+      <header className="handsfree-heading"><strong>Voice monitor</strong><button type="button" aria-label="Close voice monitor"
+        onClick={() => { setChoices(null); setExpanded(false); composer.focus(); }}>×</button></header>
+      <p className="handsfree-context">Following {thread?.displayTitle ?? 'New thread'} · {projectId ? projectName(projectId) : 'Choose a project'}</p>
       <p role="status">{message}</p>
       {archiveConfirmation && <div role="group" aria-label="Confirm archive">
         <button type="button" disabled={busy} onClick={() => void run({ action: 'confirm-archive' })}>Confirm archive</button>
         <button type="button" disabled={busy} onClick={() => void run({ action: 'cancel-archive' })}>Cancel archive</button>
       </div>}
-      {choices ? <ol>{choices.options.map((option, index) => <li key={option.id}>
+      {choices ? <ol aria-label="Voice choices">{choices.options.map((option, index) => <li key={option.id}>
         <button type="button" disabled={busy} aria-current={index === highlight ? 'true' : undefined}
           onClick={() => void run({ action: 'choose', number: index + 1 })}>{index + 1}. {option.label}</button>
-      </li>)}</ol> : !archiveConfirmation && <dl>
+      </li>)}</ol> : !archiveConfirmation && <>
+      <div role="tablist" aria-label="Voice monitor views" className="handsfree-tabs">
+        {(['activity', 'commands'] as const).map(tab => <button type="button" role="tab" id={`voice-${tab}`} key={tab}
+          aria-selected={view === tab} aria-controls={`voice-${tab}-panel`} onClick={() => setView(tab)}>
+          {tab === 'activity' ? 'Activity' : 'Commands'}</button>)}
+      </div>
+      <section role="tabpanel" id="voice-commands-panel" aria-labelledby="voice-commands" hidden={view !== 'commands'}><dl>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
         <dt>“Show Git” / “Show usage”</dt><dd>Open Git status or all agent accounts</dd>
         <dt>“Close popup”</dt><dd>Dismiss the top popup with Escape</dd>
-        <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
+        <dt>“Who needs me?” / “Next finished”</dt><dd>Show pending questions or unread successful results</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Use Sonnet” / “Choose two”</dt><dd>Select a model or numbered match</dd>
-      </dl>}
-      {history.length > 0 && <details>
-        <summary>Recent voice results</summary>
-        <ol aria-label="Recent voice results">{history.map((entry, index) => <li key={index}>{entry}</li>)}</ol>
-      </details>}
-      <p className="handsfree-pedals">Right Alt: dictate · Enter: {choices ? 'choose while this card has focus' : composer.isRunning ? steer === null ? 'BB send setting' : steer ? 'steer running agent' : 'queue message' : 'send'} · Escape: close voice help</p>
-    </div>}
-  </aside>;
+      </dl></section>
+      <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
+        {history.length ? <ol aria-label="Recent voice results" className="handsfree-history">
+          {history.slice().reverse().map((entry, index) => <li key={index} data-problem={entry.problem}>
+            <div><time>{new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time>
+              {entry.problem && <span>Failed</span>}</div><p>{entry.message}</p>
+          </li>)}
+        </ol> : <p>No voice results in this window yet.</p>}
+      </section></>}
+    </div>
+  </aside> : null;
 }
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'voice', component: VoiceCard });
+  app.slots.experimental_threadHeaderAction({ id: 'voice', title: 'Voice monitor', component: VoiceHeader });
+  app.composer.customize({ id: 'voice', scopes: ['new-thread'], actions: [{ id: 'voice', component: VoiceHeader }] });
 });
