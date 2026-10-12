@@ -134,7 +134,7 @@ test('an unsupported saved effort disables the row with its reason and keeps the
     const pill = slot.getByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
     expect(pill.hasAttribute('disabled')).toBe(false);
     const menu = effortMenu(slot, 'model-a');
-    expect(optionNames(menu)).toEqual(['DefaultModel default', 'high', 'low', 'ultra (unavailable)']);
+    expect(optionNames(menu)).toEqual(['Defaulthigh', 'high', 'low', 'ultra (unavailable)']);
     expect(within(menu).getByRole('option', { selected: true }).textContent).toBe('ultra (unavailable)');
     fireEvent.click(within(menu).getByRole('option', { name: 'low' }));
     await waitFor(() => expect(disabled(slot.getByRole('button', { name: 'Select model-a' }))).toBe(false));
@@ -222,6 +222,19 @@ test('favourite rows show their slot and the selected row is marked current', as
       .toEqual(['All', 'Favourites2', 'Codex']);
     expect(slot.queryByLabelText('Claude account')).toBeNull();
   } finally { slot.lifecycle.unmount(); }
+});
+
+test('opening scrolls the selected model into view and leaves focus in search', async () => {
+  const scrolled: Element[] = [];
+  // jsdom has no scrollIntoView, so the test installs one and removes it afterwards.
+  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value(this: Element) { scrolled.push(this); } });
+  const slot = render([first]);
+  try {
+    const row = await enabledRow(slot, 'Select model-b');
+    await waitFor(() => expect(scrolled.some(element => element.contains(row))).toBe(true));
+    expect(scrolled).toHaveLength(1);
+    expect(document.activeElement).toBe(slot.getByRole('textbox'));
+  } finally { slot.lifecycle.unmount(); Reflect.deleteProperty(Element.prototype, 'scrollIntoView'); }
 });
 
 test('catalogue failures explain disabled rows instead of hiding saved favourites', async () => {

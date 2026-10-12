@@ -15,8 +15,8 @@ export function EffortGlyph({ effort }: { effort: Effort | undefined }) {
 }
 
 /** A favourite's saved effort as a pill that opens a listbox of the model's efforts plus Default. */
-export function EffortPill({ name, saved, levels, disabled, onChange }: {
-  name: string; saved: Effort | undefined; levels: readonly Effort[]; disabled: boolean; onChange: (effort: Effort | null) => void;
+export function EffortPill({ name, saved, fallback, levels, disabled, onChange }: {
+  name: string; saved: Effort | undefined; fallback: Effort; levels: readonly Effort[]; disabled: boolean; onChange: (effort: Effort | null) => void;
 }) {
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -29,7 +29,7 @@ export function EffortPill({ name, saved, levels, disabled, onChange }: {
       <EffortGlyph effort={saved} />{label}
     </button>
     {open && <ListPopover anchor={button} label={`Saved effort for ${name}`} align="end" value={saved ?? ''}
-      choices={[{ value: '', label: <><EffortGlyph effort={undefined} />Default</>, detail: 'Model default' },
+      choices={[{ value: '', label: <><EffortGlyph effort={undefined} />Default</>, detail: fallback },
         ...levels.map(level => ({ value: level, label: <><EffortGlyph effort={level} />{level}</> })),
         ...(unavailable ? [{ value: saved, label: <><EffortGlyph effort={saved} />{saved} (unavailable)</>, tone: 'warning' as const }] : [])]}
       onSelect={value => { if (value !== (saved ?? '')) onChange(value === '' ? null : value as Effort); }}
