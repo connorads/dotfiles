@@ -12,7 +12,7 @@
 /* One warm gold for every favourite star; mixing towards the foreground keeps it legible on light and dark surfaces. */
 .mf-trigger, .mf-dialog { --mf-gold: color-mix(in oklch, #f5b301 84%, var(--foreground)); --mf-ease: cubic-bezier(0.23, 1, 0.32, 1); --mf-mark: color-mix(in oklch, var(--foreground) 55%, transparent); }
 
-.mf-dialog { width: 560px; max-width: calc(100vw - 32px); max-height: min(640px, 80vh); margin: auto; padding: 0; overflow: hidden; color: var(--foreground); background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; }
+.mf-dialog { width: 560px; max-width: calc(100vw - 32px); max-height: min(640px, 80vh); margin: min(12vh, 96px) auto auto; padding: 0; overflow: hidden; color: var(--foreground); background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; }
 .mf-dialog[open] { display: flex; animation: mf-enter 120ms var(--mf-ease); }
 .mf-dialog::backdrop { background: #00000052; animation: mf-fade 120ms var(--mf-ease); }
 @keyframes mf-enter { from { opacity: 0; transform: scale(0.98); } }
@@ -125,7 +125,7 @@ kbd.mf-slot { border: 1px solid var(--border); background: var(--background); }
   .mf-dialog[open], .mf-dialog::backdrop, .mf-popover { animation: none; }
 }
 @media (max-width: 550px) {
-  .mf-dialog { max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .mf-dialog { max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); margin-top: 8px; }
   .mf-footer { display: none; }
   .mf-detail { display: none; }
   .mf-row[data-unavailable] .mf-detail { display: block; }
