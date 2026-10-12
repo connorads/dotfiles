@@ -1,6 +1,6 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { hostContract, rpcContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
-import { authOverrides } from './src/claude.ts';
+import { providerEnv } from './src/claude.ts';
 import type { Usage } from './src/usage.ts';
 import { decodeResourceId, measurement } from './src/usage-source.ts';
 export { rpcContract } from './contracts.ts';
@@ -33,8 +33,7 @@ export default function plugin(bb: BbPluginApi) {
   bb.providers.experimental_contributeEnv('claude-code', async input => {
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
     if (!selected || selected.hostId !== input.hostId) return [];
-    return [{ name: 'CLAUDE_CONFIG_DIR', value: selected.profile.configDir ?? '', reason: 'Thread Claude profile' },
-      ...authOverrides.map(name => ({ name, value: '', reason: 'Use selected profile native login' }))];
+    return providerEnv(selected.profile.configDir);
   });
   async function hostUsage(hostId: string, config: Awaited<ReturnType<typeof settings.get>>, profileId: string, refresh: boolean): Promise<Usage> {
     const cacheKey = JSON.stringify([hostId, config.profileRoot, config.executable, profileId]);

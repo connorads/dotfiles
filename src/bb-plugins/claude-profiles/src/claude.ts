@@ -6,6 +6,12 @@ import { parseUsage, type Usage } from './usage.ts';
 
 export const authOverrides = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN',
   'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_USE_FOUNDRY'] as const;
+// BB passes an empty value through, and Claude resolves an empty CLAUDE_CONFIG_DIR against the working directory.
+export function providerEnv(configDir: string | null) {
+  if (configDir === null) return [];
+  return [{ name: 'CLAUDE_CONFIG_DIR', value: configDir, reason: 'Thread Claude profile' },
+    ...authOverrides.map(name => ({ name, value: '', reason: 'Use selected profile native login' }))];
+}
 export function profileEnvironment(configDir: string | null): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of [...authOverrides, 'CLAUDECODE', 'CLAUDE_CONFIG_DIR']) delete env[key];

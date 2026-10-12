@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, chmod, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { collectUsage, profileEnvironment } from './claude.ts';
+import { collectUsage, profileEnvironment, providerEnv } from './claude.ts';
 
 test('default profile removes inherited account overrides and keeps HOME', () => {
   const env = profileEnvironment(null);
@@ -11,6 +11,12 @@ test('default profile removes inherited account overrides and keeps HOME', () =>
   assert.equal(env.ANTHROPIC_API_KEY, undefined);
   assert.equal(env.HOME, process.env.HOME);
   assert.equal(profileEnvironment('/named').CLAUDE_CONFIG_DIR, '/named');
+});
+test('default profile contributes no provider env so Claude keeps its native config directory', () => {
+  assert.deepEqual(providerEnv(null), []);
+  const named = providerEnv('/named');
+  assert.equal(named.find(entry => entry.name === 'CLAUDE_CONFIG_DIR')?.value, '/named');
+  assert.equal(named.find(entry => entry.name === 'ANTHROPIC_API_KEY')?.value, '');
 });
 test('quota subprocess sends only initialise and get_usage with skip_behaviors', async () => {
   const root = await mkdtemp(join(tmpdir(), 'claude-protocol-test-'));
