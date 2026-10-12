@@ -231,6 +231,26 @@ Commit: models module, effort rules, picker and migration CLI together.
 
 ## Step B. Usage module
 
+**Status: done.** Core tests go from 46 to 80, UI tests from 32 to 45.
+Deviations from the plan below:
+
+- The reader's ports name what it needs, not the accounts functions.
+  `claudeAccount(threadId)` returns the bound profile's label and its
+  `hostUsage` reading, or null when the thread has no environment.
+  `claudeResource(resourceId, refresh)` is the `getResource` handler body.
+  The `listPlugins` port is gone.
+- Two more files: `src/accounts/usage/contract.ts` holds the Agent Usage
+  schemas, `usageContract` and `usageHostContract`. `src/accounts/usage/server.ts`
+  has `registerUsage(bb, ports)`, which registers the `usage.*` RPCs and
+  returns the reader for the CLI. `ui/usage/use-now.ts` holds the shared
+  `useNow` hook.
+- The UI copies Agent Usage as committed. Its work tree has an uncommitted
+  move of the badge to `@bb-plugins/chip`. That change is not in
+  `ui/usage/badge.tsx`.
+- The picker test checks for one `picker` overlay, not for an overlay list
+  of only `picker`.
+- The `bb plugin build` check in a copy did not run.
+
 ### Files
 
 | Create | Source |
@@ -432,8 +452,8 @@ Commit: inherit the parent's account for threads started by threads.
 ### Cut-over (for the user to run)
 
 Migration reads Model Favourites over RPC, so Model Favourites must still be
-enabled when it runs. Alt+F is registered twice for the short time between
-step 3 and step 5.
+enabled when it runs. Alt+F and ⌘⇧A are registered twice for the short time
+between step 3 and step 5.
 
 1. Check the build in a copy:
 
