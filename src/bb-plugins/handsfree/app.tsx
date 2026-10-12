@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  definePluginApp, experimental_useSidebarThreads,
+  definePluginApp, experimental_useChoicePanels, experimental_useSidebarThreads,
   useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk,
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
@@ -36,6 +36,7 @@ function VoiceCard() {
     }
     else navigate.toCompose({ focusPrompt: true });
   };
+  const choicePanels = experimental_useChoicePanels();
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   const [monitorOpen, setMonitorOpen] = useState(false);
@@ -197,6 +198,22 @@ function VoiceCard() {
     return { ok: true, message: `${candidate.label} selected for the next message.` };
   };
 
+  useEffect(() => {
+    const element = card.current;
+    if (!choices || !element || choices.context !== contextKey) return;
+    return choicePanels.register({
+      element,
+      isAvailable: () => element.contains(document.activeElement)
+        && choices.context === latestContext.current,
+      select: async number => {
+        const option = choices.options[number - 1];
+        if (!option) return { outcome: 'unavailable', message: `Voice choice ${number} is unavailable.` };
+        const reply = await select(choices.kind, option.id, choices.context);
+        return { outcome: reply.ok ? 'selected' : 'unavailable', message: reply.message };
+      },
+    });
+  }, [choicePanels, choices, contextKey]);
+
   const handle = async (command: Command): Promise<Reply> => {
     if (command.action !== 'confirm-archive' && command.action !== 'cancel-archive') setArchiveConfirmation(null);
     switch (command.action) {
@@ -248,9 +265,8 @@ function VoiceCard() {
         return { ok: true, outcome: 'choices', message: command.message };
       }
       case 'choose': {
-        const option = choices?.options[command.number - 1];
-        if (!choices || !option) throw new Error('There is no such numbered voice choice. Say “voice help”.');
-        return select(choices.kind, option.id, choices.context);
+        const result = await choicePanels.select(command.number);
+        return { ok: result.outcome === 'selected', message: result.message };
       }
       case 'show': {
         setChoices(null);
@@ -410,7 +426,8 @@ function VoiceCard() {
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
-        <dt>“Use Sonnet” / “Choose two”</dt><dd>Select a model or numbered match</dd>
+        <dt>“Use Sonnet”</dt><dd>Select a model</dd>
+        <dt>“Choose one” / “Choose two”</dt><dd>Select a numbered voice match or native question answer. Submit answers separately.</dd>
       </dl></section>
       <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
         <HexActivity snapshot={diagnostics} now={now}>
