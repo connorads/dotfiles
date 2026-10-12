@@ -232,6 +232,15 @@
     };
   };
 
+  launchd.user.agents.linearmouse.serviceConfig = {
+    ProgramArguments = [
+      "/usr/bin/open"
+      "-g"
+      "/Applications/LinearMouse.app"
+    ];
+    RunAtLoad = true;
+  };
+
   # -- GPU wired-memory cap --
   # GPU allocations are wired memory: jetsam cannot reclaim them and memwatch's
   # compressor gauge never sees them. The sysctl resets to 0 (default) at boot.
@@ -259,6 +268,35 @@
 
       home.file."Library/Application Support/Code/User/settings.json".source =
         config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/vscode/settings.json";
+
+      home.activation.linearmouseConfig =
+        let
+          settings = pkgs.writeText "linearmouse.json" (
+            builtins.toJSON {
+              schemes = [
+                {
+                  "if".device = {
+                    vendorID = "0x1a7c";
+                    productID = "0x0192";
+                  };
+                  buttons = {
+                    universalBackForward = "forwardOnly";
+                    mappings = [
+                      {
+                        trigger.input.button = 5;
+                        outcomes.shortPress = "mouse.button.forward";
+                      }
+                    ];
+                  };
+                }
+              ];
+            }
+          );
+        in
+        lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          run /usr/bin/install -d -m 700 "$HOME/.config/linearmouse"
+          run /usr/bin/install -m 600 ${settings} "$HOME/.config/linearmouse/linearmouse.json"
+        '';
 
       home.activation.braveTelemetry = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         run ${pkgs.python3}/bin/python3 ${./brave-telemetry.py}
