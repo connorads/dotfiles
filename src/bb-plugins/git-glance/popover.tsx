@@ -91,6 +91,8 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (event.key === 'z') { event.preventDefault(); zoom('keyboard'); }
     else if (event.key === 'b' && repo) { event.preventDefault(); setPicker('keyboard'); }
     else if (event.key === 'q') { event.preventDefault(); onClose(); }
+    // The lazygit plugin listens; without it the key does nothing.
+    else if (event.key === 'l') { event.preventDefault(); onClose(); window.dispatchEvent(new CustomEvent('lazygit:open', { detail: { threadId } })); }
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();
