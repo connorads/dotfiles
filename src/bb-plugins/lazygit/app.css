@@ -1,21 +1,6 @@
-.lazygit-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-}
-.lazygit-button:hover {
-  background: var(--surface-raised);
-  color: var(--foreground);
-}
-.lazygit-button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+.lazygit-error {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50; max-width: 360px; margin: 0; padding: 8px 12px;
+  border: 1px solid color-mix(in oklch, var(--destructive) 45%, var(--border)); border-radius: 8px;
+  background: var(--popover); color: var(--destructive-text); font: var(--text-xs, 12px)/1.4 var(--font-sans);
+  box-shadow: 0 8px 20px -8px rgb(0 0 0 / .3);
 }

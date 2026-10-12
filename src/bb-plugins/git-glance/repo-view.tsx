@@ -195,7 +195,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     </div>
 
     <footer className="gg-footer">
-      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>q</kbd> close</span>
+      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
       <span className="gg-live" data-state={state.error || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
         title={state.error ?? autoFailed?.failure.message ?? 'Updates when files or refs change'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />

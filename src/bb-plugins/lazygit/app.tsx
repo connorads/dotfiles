@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { definePluginApp, experimental_Icon as Icon, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
-import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
+import { definePluginApp, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import type { rpcContract } from './contracts.ts';
 import './app.css';
 
+/** Git Glance's `l` key dispatches this with the thread to open. */
+const openEvent = 'lazygit:open';
+
 export default definePluginApp(app => {
-  const openers = new Map<string, () => Promise<void>>();
-  function LazygitButton({ threadId }: PluginThreadHeaderActionProps) {
+  let opener: ((threadId: string) => Promise<void>) | null = null;
+  /** Holds the hooks the shortcut and event need; renders only an error notice. */
+  function Opener() {
     const rpc = useRpc<typeof rpcContract>();
     const navigate = useBbNavigate();
     const [error, setError] = useState<string | null>(null);
-    const open = useCallback(async () => {
+    const open = useCallback(async (threadId: string) => {
       setError(null);
       try {
         if (!('experimental_openTerminal' in navigate) || typeof navigate.experimental_openTerminal !== 'function') {
@@ -23,21 +26,27 @@ export default definePluginApp(app => {
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       }
-    }, [rpc, navigate, threadId]);
+    }, [rpc, navigate]);
     useEffect(() => {
-      openers.set(threadId, open);
-      return () => { if (openers.get(threadId) === open) openers.delete(threadId); };
-    }, [threadId, open]);
-    return <span>
-      <button type="button" className="lazygit-button" onClick={open}
-        aria-label="Open lazygit" title="Open lazygit (Cmd+Shift+G)"><Icon name="GitBranch" className="size-4" /></button>
-      {error && <span role="alert" className="text-sm text-destructive">{error}</span>}
-    </span>;
+      opener = open;
+      const onOpen = (event: Event) => {
+        const threadId = (event as CustomEvent<{ threadId?: unknown }>).detail?.threadId;
+        if (typeof threadId === 'string') void open(threadId);
+      };
+      window.addEventListener(openEvent, onOpen);
+      return () => { window.removeEventListener(openEvent, onOpen); if (opener === open) opener = null; };
+    }, [open]);
+    useEffect(() => {
+      if (!error) return;
+      const timer = setTimeout(() => setError(null), 6000);
+      return () => clearTimeout(timer);
+    }, [error]);
+    return error ? <p role="alert" className="lazygit-error">{error}</p> : null;
   }
-  app.slots.experimental_threadHeaderAction({ id: 'open', title: 'Open lazygit', component: LazygitButton });
+  app.slots.experimental_appOverlay({ id: 'opener', component: Opener });
   app.commands.register({
     id: 'open', title: 'Open lazygit', defaultShortcut: { key: 'g', mod: true, shift: true },
-    isAvailable: ({ threadId }) => threadId !== null && openers.has(threadId),
-    run: async ({ threadId }) => { if (threadId) await openers.get(threadId)?.(); },
+    isAvailable: ({ threadId }) => threadId !== null && opener !== null,
+    run: async ({ threadId }) => { if (threadId) await opener?.(threadId); },
   });
 });
