@@ -120,7 +120,7 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Re
   const show = (options: Candidate[]) => {
     trace.offered = options.slice(0, 9)
     return request({
-    action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : "Choose a project for a new draft.",
+    action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : kind === "thread" ? "Choose a thread." : "Choose a project for a new draft.",
     })
   }
   trace.method = 'literal'

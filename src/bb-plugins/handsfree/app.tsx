@@ -173,6 +173,22 @@ function VoiceCard() {
         if (!choices || !option) throw new Error('There is no such numbered voice choice. Say “voice help”.');
         return select(choices.kind, option.id, choices.context);
       }
+      case 'show': {
+        setChoices(null);
+        setExpanded(false);
+        const control = command.view === 'git'
+          ? Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-git-glance]'))
+            .find(button => button.dataset.gitGlance === context.threadId)
+          : document.querySelector<HTMLButtonElement>('button[aria-label^="Open all agent usage."]');
+        if (!control || control.disabled) throw new Error(`${command.view === 'git' ? 'Git' : 'Agent usage'} is unavailable in this view.`);
+        if (command.view !== 'git' || control.getAttribute('aria-expanded') !== 'true') control.click();
+        return { ok: true, message: command.view === 'git' ? 'Showing Git status.' : 'Showing agent usage.' };
+      }
+      case 'dismiss':
+        if (card.current?.contains(document.activeElement)) composer.focus();
+        setChoices(null);
+        setExpanded(false);
+        return { ok: true, outcome: 'requested', message: 'Escape requested to close the top popup.', press: { key: 'escape', modifiers: [] } };
       case 'unread': {
         if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
         setChoices(null);
@@ -303,6 +319,8 @@ function VoiceCard() {
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
+        <dt>“Show Git” / “Show usage”</dt><dd>Open Git status or all agent accounts</dd>
+        <dt>“Close popup”</dt><dd>Dismiss the top popup with Escape</dd>
         <dt>“Who needs me?”</dt><dd>Show agents waiting for your answer</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>

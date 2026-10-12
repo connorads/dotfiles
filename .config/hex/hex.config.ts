@@ -59,6 +59,37 @@ export default defineHexConfig({
       description: "Open the oldest unread stopped BB thread",
       run: async () => { await runBb(bbPorts, { action: "unread" }) },
     },
+    "bb-show-git": {
+      phrases: ["show git"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open Git status for the selected BB thread",
+      run: async () => { await runBb(bbPorts, { action: "show", view: "git" }) },
+    },
+    "bb-show-usage": {
+      phrases: ["show usage"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open agent usage for all providers and accounts",
+      run: async () => { await runBb(bbPorts, { action: "show", view: "usage" }) },
+    },
+    "bb-close-popup": {
+      phrases: ["close popup"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Dismiss the top BB popup",
+      run: async ({ hex }) => {
+        const reply = await runBb(bbPorts, { action: "dismiss" })
+        if (reply.ok && reply.press) await hex.press(reply.press)
+      },
+    },
+    "bb-show-threads": {
+      phrases: ["show threads"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show numbered BB thread choices",
+      run: async () => { await matchBb(bbPorts, "thread", "") },
+    },
     "bb-waiting": {
       phrases: ["who needs me", "next waiting"],
       when: { application: "bb" },
