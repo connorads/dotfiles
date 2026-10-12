@@ -24,6 +24,8 @@
     "@get-bb/plugin-sdk": "0.6.15",
     "@types/node": "22.15.30",
     "@types/react": "19.0.12",
+    "better-sqlite3": "12.10.0",
+    "cron-parser": "5.5.0",
     "hono": "4.11.9",
     "react": "19.2.4",
     "typescript": "5.8.3"
