@@ -14,6 +14,7 @@ thread, project, model, command help and numbered matches.
 | --- | --- |
 | `go to the login thread` | Match a thread by title and project |
 | `next thread` / `previous thread` | Use BB's configured navigation shortcuts |
+| `next unread` | Open the oldest unread stopped thread, including text questions and errors |
 | `who needs me` / `next waiting` | Show threads with pending questions or approvals |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
@@ -69,6 +70,10 @@ Model selection changes the next message. It does not switch agent providers or
 interrupt a running turn. A draft retains its text until the user submits it.
 The thread matcher offers the 200 most recently updated visible, unarchived
 threads. Attention lists show up to nine threads.
+
+`next unread` skips the selected thread, archived and hidden threads, and ongoing
+work. It uses BB's unread state and orders replies by attention time, oldest first.
+Opening a thread follows BB's read behaviour; it does not archive the conversation.
 
 Thread searches compare titles separately from project and provider labels.
 Clear literal matches navigate immediately. Reordered words, singular/plural

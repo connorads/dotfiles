@@ -22,7 +22,7 @@ let slot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
 afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; vi.restoreAllMocks(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[]) {
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
@@ -42,7 +42,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void) {
     context: { threadId: 't1', projectId: 'p1' },
     composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' } },
     sidebarThreads: {
-      threads: [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
+      threads: threads ?? [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' }],
     },
     rpc: {
@@ -74,6 +74,31 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void) {
     },
   };
 }
+
+test('next unread opens the oldest unseen stopped reply, including a text question or error', async () => {
+  const view = await render('idle', undefined, [
+    thread('newer', { isUnread: true, latestAttentionAt: 20 }),
+    thread('question', { isUnread: true, latestAttentionAt: 10 }),
+    thread('error', { isUnread: true, status: 'error', runtimeStatus: 'error', latestAttentionAt: 5 }),
+  ]);
+  expect(await view.command({ action: 'unread' })).toMatchObject({ ok: true, outcome: 'requested', message: expect.stringContaining('error') });
+  expect(view.slot.inspection.sidebarActionCalls).toEqual([{ method: 'open', threadId: 'error' }]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('next unread excludes the current thread, read replies, archived or hidden threads and ongoing work', async () => {
+  const view = await render('idle', undefined, [
+    thread('t1', { isUnread: true }),
+    thread('read'),
+    thread('archived', { isUnread: true, isArchived: true }),
+    thread('hidden', { isUnread: true, isHidden: true }),
+    thread('running', { isUnread: true, status: 'active', runtimeStatus: 'active' }),
+    thread('background', { isUnread: true, activity: { workflows: 0, backgroundAgents: 1, backgroundCommands: 0, planMode: 0, goals: 0 } }),
+    thread('queued', { isUnread: true, queuedWork: 'waiting' }),
+  ]);
+  expect(await view.command({ action: 'unread' })).toMatchObject({ ok: true, outcome: 'empty' });
+  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+});
 
 test('idle archive targets the selected thread and spoken restore opens it', async () => {
   const view = await render();
