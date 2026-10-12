@@ -373,6 +373,42 @@ Commit: replace the account menu with a status that opens the picker.
 
 ## Step D. New-thread account rule
 
+**Status: done.** Core tests go from 80 to 90. UI tests stay at 42.
+Deviations from the plan below:
+
+- A Claude parent that is unbound, or bound to Default, gives the composer
+  account, not `default`. This follows the decided rule. The `parentIsClaude`
+  input is gone: only Claude threads have a binding, so a non-Claude parent is
+  unbound.
+- `routing.ts` has two functions. `startingThreadId(thread, parentThreadId)`
+  picks the dispatch `parentThreadId`, else `sourceThreadId` for a fork.
+  `newThreadAccount(startingBinding, composerProfileId)` gives the result.
+- The refusal names the thread that started the child, not only the parent,
+  and does not suggest the composer, because the composer choice does not
+  apply to an inheriting thread.
+- `README.md` states the new rule and the fork limit below. Step E still
+  rewrites the README.
+
+### Investigation answers
+
+Read from `~/git/getbb` at the 0.46 pin `9c4f3e6` and at `4d49814b2`. Both
+give the same answers.
+
+- **A Claude fork copies the source's native session.** The Claude bridge's
+  `handleThreadFork` calls the Agent SDK `forkSession(sourceProviderThreadId)`
+  and resumes the copy. So the fork branch stays. But `forkSession` runs in
+  the shared bridge process and finds sessions under that process's
+  `CLAUDE_CONFIG_DIR`. Plugin env reaches only the session options
+  (`config.envVars`), and the bridge process key does not include env. So on
+  stock BB a fork works only when the source and the fork both run on
+  Default. A fork of a thread on a named account cannot find its source
+  session, whatever this plugin binds. See open question 5.
+- **Agent-delegated children carry `parentThreadId` only when the agent asks.**
+  `bb thread spawn` sets it with `--parent-self` or `--parent-thread`. BB's
+  thread guide says "Parenting is opt-in". A bare spawn has no parent, no
+  source and no `startedOnBehalfOf`, so it uses the composer account. On this
+  machine 71 of 164 threads have a `parentThreadId`.
+
 ### Thread fields (BB 0.46.0)
 
 These facts come from source pin `9c4f3e6`, the base of the patch spike:
@@ -516,6 +552,11 @@ Bindings never moved, so rollback restores only code and UI.
 2. After the cut-over, remove the `usage` RPC and the `bb claude-profiles usage`
    subcommand that only Agent Usage used? This changes an exposed surface.
 3. Should `lifecycleOwnerThreadId` without `parentThreadId` count as "started
-   by another thread"?
+   by another thread"? Answered in step D: no.
 4. A Codex parent that starts a Claude child: use the composer account (as
-   planned) or refuse?
+   planned) or refuse? Answered in step D: the composer account.
+5. A fork of an unbound source while the composer shows a named account binds
+   that account. BB writes the forked session in the bridge's config directory,
+   so the fork then resumes under the named account and cannot find it. Bind
+   forks of an unbound source to Default, or copy the forked session with the
+   `transfer` host call?
