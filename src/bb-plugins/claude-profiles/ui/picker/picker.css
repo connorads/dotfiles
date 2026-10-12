@@ -45,16 +45,19 @@
 
 .mf-list { flex: 1; min-height: 160px; padding: 0 6px 6px; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 32px 0 6px; }
 .mf-list ul { margin: 0; padding: 0; list-style: none; }
-.mf-section { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 10px 4px; background: var(--popover, var(--card)); color: var(--muted-foreground); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.mf-section { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 10px 4px; background: var(--popover, var(--card)); box-shadow: 0 1px 0 color-mix(in oklch, var(--border) 70%, transparent); color: var(--muted-foreground); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .mf-section span { margin-left: auto; font-weight: 500; letter-spacing: 0; }
 .mf-row { position: relative; display: flex; align-items: center; gap: 2px; min-height: 38px; padding-right: 4px; border-radius: 8px; }
 .mf-row:hover { background: color-mix(in oklch, var(--muted) 60%, transparent); }
-.mf-row[data-selected] { background: color-mix(in oklch, var(--accent) 88%, var(--foreground) 7%); box-shadow: inset 2px 0 0 var(--mf-mark); }
+.mf-row[data-enter-target] { background: color-mix(in oklch, var(--muted) 85%, transparent); }
+.mf-row[data-selected] { background: color-mix(in oklch, var(--accent) 88%, var(--foreground) 7%); }
+/* A pseudo-element keeps the mark straight; an inset shadow follows the row's rounded corners. */
+.mf-row[data-selected]::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--mf-mark); }
 .mf-select { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; align-self: stretch; padding: 0 8px; text-align: left; background: transparent; border: 0; border-radius: 8px; color: inherit; }
 .mf-select > * { align-self: center; }
 .mf-picker .mf-select:focus-visible { outline: none; }
 .mf-row:has(.mf-select:focus-visible) { box-shadow: inset 0 0 0 2px var(--ring); }
-.mf-row[data-selected]:has(.mf-select:focus-visible) { box-shadow: inset 0 0 0 2px var(--ring), inset 4px 0 0 var(--mf-mark); }
+.mf-row[data-selected]:has(.mf-select:focus-visible) { box-shadow: inset 0 0 0 2px var(--ring); }
 .mf-slot { display: inline-grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; color: var(--muted-foreground); font-size: 10.5px; font-weight: 500; line-height: 1; }
 kbd.mf-slot { border: 1px solid var(--border); background: var(--background); }
 .mf-model-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }

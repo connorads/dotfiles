@@ -554,3 +554,25 @@ test('the provider chip strip fades whichever edge hides chips', async () => {
     expect([strip.hasAttribute('data-more-start'), strip.hasAttribute('data-more-end')]).toEqual([true, false]);
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('while searching, the row Enter will choose is marked', async () => {
+  const slot = render([]);
+  try {
+    await enabledRow(slot, 'Select model-a');
+    expect(slot.container.querySelector('[data-enter-target]')).toBeNull();
+    fireEvent.change(slot.getByLabelText('Search models'), { target: { value: 'model-b' } });
+    await waitFor(() => expect(slot.container.querySelector('[data-enter-target] [aria-label="Select model-b"]')).not.toBeNull());
+    expect(slot.container.querySelectorAll('[data-enter-target]')).toHaveLength(1);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a provider chip returns focus to search so typing keeps filtering', async () => {
+  const slot = render();
+  try {
+    await enabledRow(slot, 'Select model-a');
+    const chip = slot.getByRole('button', { name: /^All/ });
+    chip.focus();
+    fireEvent.click(chip);
+    expect(document.activeElement).toBe(slot.getByLabelText('Search models'));
+  } finally { slot.lifecycle.unmount(); }
+});
