@@ -6,8 +6,9 @@ description: Compose interactive native BB visual replies with OpenUI or json-re
 # Native composed replies
 
 Prefer native composition for visual explanations inside BB chat, including
-finances, budgets, comparisons, trends and adjustable scenarios. Use the
-registered primitives to combine controls, values, charts and tables. A request
+workflows, diagrams, comparisons, trends and adjustable scenarios. Use the
+registered primitives to combine layouts, icons, controls, values, charts and
+tables. A request
 to generate or visualise something does not imply a standalone HTML page.
 Use the separate HTML tool when the catalogue cannot express the interaction
 or the user explicitly requests an HTML application or file.
@@ -27,6 +28,13 @@ does not recalculate when controls change.
 JSON binds controls with `$bindState`, reads with `$state`, and calculates with
 registered `$computed` functions. Return complete JSON, not JSONL patches.
 
+Compose visual explanations with Box, Row, Grid, Icon, Heading and Caption.
+For a downward flow, alternate stage boxes with centred arrow-down icon rows.
+Use Grid for parallel stages. Use the contract's named icons and style tokens,
+not arbitrary SVG, CSS or emoji substitutes. Use Chip for short category labels
+and Divider between sections.
+
 Keep prose short. Use units on metrics and charts. Include accessible control
-labels. Charts require nonnegative values and matching labels and values.
+labels. Bar charts require nonnegative values; line charts accept signed values.
+Chart labels and each series must have matching lengths.
 The current delivery path publishes complete documents, not partial model output.
