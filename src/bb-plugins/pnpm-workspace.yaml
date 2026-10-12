@@ -1,4 +1,24 @@
 packages:
   - '*'
 minimumReleaseAge: 5760
+# bb 0.46.0 bundles plugin SDK 0.6.37, so plugin types must match it. It
+# clears the 4-day quarantine at 2026-10-13T22:36Z; delete this entry then.
+minimumReleaseAgeExclude:
+  - '@get-bb/plugin-sdk@0.6.37'
 allowBuilds: {}
+catalog:
+  '@get-bb/plugin-sdk': 0.6.37
+  '@testing-library/react': 16.3.2
+  '@types/better-sqlite3': 7.6.13
+  '@types/node': 22.15.30
+  '@types/react': 19.0.12
+  '@types/react-dom': 19.0.4
+  better-sqlite3: 12.10.0
+  cron-parser: 5.5.0
+  hono: 4.11.9
+  jsdom: 26.1.0
+  react: 19.2.4
+  react-dom: 19.2.4
+  typescript: 5.8.3
+  vitest: 4.0.18
+  zod: 4.6.5
