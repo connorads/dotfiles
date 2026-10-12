@@ -34,6 +34,11 @@ Use IconLabel to keep icons beside wrapping text. Use Grid for comparisons. Use 
 not arbitrary SVG, CSS or emoji substitutes. Use Chip for short category labels
 and Divider between sections.
 
+Use RichText for short formatted explanations and HTTPS links. Use Details for
+optional supporting content, Steps for ordered status and Progress for completion.
+Use TextInput and Checkbox for local edits. ResetButton restores declared defaults.
+Image requires an HTTPS URL and descriptive alternative text.
+
 Keep prose short. Use units on metrics and charts. Include accessible control
 labels. Bar charts require nonnegative values; line charts accept signed values.
 Chart labels and each series must have matching lengths.

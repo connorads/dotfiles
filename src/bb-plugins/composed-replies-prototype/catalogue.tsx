@@ -39,11 +39,19 @@ import {
 } from "./interactive-primitives";
 
 import { Flow, flowProps } from "./flow";
+import {
+  contentProps,
+  RichText,
+  Image,
+  Steps,
+  Progress,
+} from "./content-primitives";
 
 const boundedNumber = z.number().finite().min(-1e9).max(1e9);
 const label = z.string().max(160);
 const scalar = z.union([boundedNumber, z.string().max(1000)]);
 const props = {
+  ...contentProps,
   ...interactiveProps,
   Flow: flowProps,
   ...richProps,
@@ -352,6 +360,32 @@ const SelectOpen = defineComponent({
 export const library = createLibrary({
   components: [
     defineComponent({
+      name: "RichText",
+      description:
+        "Text with paragraphs, lists, bold, emphasis, inline code and HTTPS links; no HTML",
+      props: contentProps.RichText,
+      component: ({ props: p }) => <RichText {...p} />,
+    }),
+    defineComponent({
+      name: "Image",
+      description:
+        "HTTPS image with required alternative text and optional caption",
+      props: contentProps.Image,
+      component: ({ props: p }) => <Image {...p} />,
+    }),
+    defineComponent({
+      name: "Steps",
+      description: "Ordered steps with pending, current or done status",
+      props: contentProps.Steps,
+      component: ({ props: p }) => <Steps {...p} />,
+    }),
+    defineComponent({
+      name: "Progress",
+      description: "Bounded progress value with label and maximum",
+      props: contentProps.Progress,
+      component: ({ props: p }) => <Progress {...p} />,
+    }),
+    defineComponent({
       name: "Flow",
       description:
         "Downward acyclic graph with explicit nodes and split/join edges",
@@ -547,6 +581,22 @@ export const library = createLibrary({
 });
 export const catalog = defineCatalog(schema, {
   components: {
+    RichText: {
+      props: contentProps.RichText,
+      description: "Safe paragraphs, lists, inline formatting and HTTPS links",
+    },
+    Image: {
+      props: contentProps.Image,
+      description: "HTTPS image with required alternative text",
+    },
+    Steps: {
+      props: contentProps.Steps,
+      description: "Ordered steps and status",
+    },
+    Progress: {
+      props: contentProps.Progress,
+      description: "Bounded labelled progress",
+    },
     Flow: {
       props: flowProps,
       description: "Downward graph with explicit nodes and split/join edges",
@@ -657,6 +707,10 @@ const NumericJson = ({
 };
 export const { registry } = defineRegistry(catalog, {
   components: {
+    RichText: ({ props: p }) => <RichText {...p} />,
+    Image: ({ props: p }) => <Image {...p} />,
+    Steps: ({ props: p }) => <Steps {...p} />,
+    Progress: ({ props: p }) => <Progress {...p} />,
     Flow: ({ props: p }) => <Flow {...p} />,
     IconLabel: ({ props: p }) => <IconLabel {...p} />,
     Checkbox: ({ props: p, bindings }) => {
@@ -723,7 +777,7 @@ export const functions: Record<string, ComputedFunction> = {
 };
 export function prompt(format: "openui" | "json-render") {
   const rules =
-    "Only registered components. No tools, actions, remote resources, visibility, repeats or arbitrary code. Maximum 50 components. Controls must use bound state. Derived values must recompute when controls change.";
+    "Only registered components. No tools, actions, remote code, visibility, repeats or arbitrary code. Image and RichText links accept HTTPS URLs without credentials. ResetButton only restores declared defaults. Maximum 50 components. Controls must use bound state. Derived values must recompute when controls change.";
   if (format === "openui")
     return library.prompt({
       additionalRules: [
