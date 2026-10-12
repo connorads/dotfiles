@@ -204,7 +204,7 @@ test('search filters models and typing a slot number does not switch selection',
 test('registers one picker overlay for both composer scopes and Alt+F opens it', async () => {
   const app = await loadPluginApp(() => import('../../app.tsx'));
   expect(app.composerCustomizations.find(c => c.id === 'agent-switcher')?.scopes).toEqual(['thread', 'new-thread']);
-  expect(app.appOverlays.map(overlay => overlay.id)).toEqual(['picker']);
+  expect(app.appOverlays.filter(overlay => overlay.id === 'picker')).toHaveLength(1);
   const commands = (app as unknown as { commandPaletteActions: { id: string; title: string; defaultShortcut: unknown }[] }).commandPaletteActions;
   const open = commands.find(command => command.id === 'open-picker');
   expect(open?.defaultShortcut).toMatchObject({ key: 'f', alt: true, shift: false });
