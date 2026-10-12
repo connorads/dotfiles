@@ -71,6 +71,14 @@ profile. Default and unselected threads receive no environment contribution:
 Claude resolves an empty `CLAUDE_CONFIG_DIR` against the working directory.
 `HOME` stays unchanged.
 
+BB starts Claude anyway when an env contributor throws, times out or is not
+loaded, so a thread on a named profile could run on the native login. Each
+launch records a `provider.env-resolved` event. The plugin reviews it on thread
+activity and before every send. A launch without the selected profile's
+directory is stopped, and the next send is refused once with an explanation.
+Sending again relaunches with fresh env. Event activity is debounced to once a
+second, so the first request of a bad launch can still reach the native login.
+
 A new thread has no session to copy. Its first send passes BB's
 `message.dispatch` hook before the provider environment resolves. The hook
 copies the remembered choice to the thread, resolving the profile on the
