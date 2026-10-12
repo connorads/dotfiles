@@ -490,240 +490,246 @@ function TasksPage() {
       })
     : null;
   return (
-    <div className="rt-app">
-      <nav className="rt-sidebar" aria-label="Task navigation">
-        <label className="rt-project-label" htmlFor="rt-project">
-          Project
-        </label>
-        <select
-          id="rt-project"
-          aria-label="Project"
-          value={projectId}
-          onChange={(event) => chooseProject(event.target.value)}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        {project && project.sources.length > 1 && (
+    <div className="rt-shell">
+      <div className="rt-app">
+        <nav className="rt-sidebar" aria-label="Task navigation">
+          <label className="rt-project-label" htmlFor="rt-project">
+            Project
+          </label>
           <select
-            aria-label="Checkout"
-            value={sourceId ?? snapshot?.source?.id ?? ''}
-            onChange={(event) => {
-              setSourceId(event.target.value);
-              setSelected(null);
-            }}
+            id="rt-project"
+            aria-label="Project"
+            value={projectId}
+            onChange={(event) => chooseProject(event.target.value)}
           >
-            {project.sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.path}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
               </option>
             ))}
           </select>
-        )}
-        <div className="rt-nav-items">
-          {(['all', 'attention', 'waiting', 'triage'] as const).map((id) => (
-            <button
-              key={id}
-              data-active={filter === id}
-              onClick={() => {
-                setFilter(id);
+          {project && project.sources.length > 1 && (
+            <select
+              aria-label="Checkout"
+              value={sourceId ?? snapshot?.source?.id ?? ''}
+              onChange={(event) => {
+                setSourceId(event.target.value);
                 setSelected(null);
               }}
             >
-              <Glyph
-                name={
-                  id === 'waiting'
-                    ? 'clock'
-                    : id === 'triage'
-                      ? 'inbox'
-                      : 'agenda'
-                }
-              />
-              <span>{labels[id]}</span>
-              <small>
-                {tasks.filter((t) => taskMatches(t, id, today)).length}
-              </small>
-            </button>
-          ))}
-        </div>
-        <div className="rt-sidebar-footer">
-          <span className="rt-live-dot" />
-          <span>Read-only</span>
-          <button
-            aria-label="Configure task source"
-            onClick={() => setSourceOpen(!sourceOpen)}
-          >
-            <Glyph name="source" />
-          </button>
-        </div>
-      </nav>
-      <div className="rt-workspace" data-detail={Boolean(opened)}>
-        <main className="rt-main">
-          <header className="rt-toolbar">
-            <div>
-              <h1>{labels[filter]}</h1>
-              <p>
-                {tasks.length} open tasks<span> · </span>
-                {project?.name ?? 'Choose a project'}
-              </p>
-            </div>
-          </header>
-          <div className="rt-filters">
-            <div className="rt-toolbar-actions">
-              <div
-                className="rt-view-switch"
-                role="group"
-                aria-label="Task view"
-              >
-                <button
-                  aria-pressed={view === 'agenda'}
-                  onClick={() => setView('agenda')}
-                >
-                  <Glyph name="agenda" />
-                  Agenda
-                </button>
-                <button
-                  aria-pressed={view === 'board'}
-                  onClick={() => setView('board')}
-                >
-                  <Glyph name="board" />
-                  Board
-                </button>
-              </div>
-              <button
-                className="rt-icon-button"
-                aria-label="Refresh tasks"
-                disabled={loading}
-                onClick={() => {
-                  void refresh();
-                }}
-              >
-                <span className={loading ? 'rt-spin' : ''}>
-                  <Glyph name="refresh" />
-                </span>
-              </button>
-            </div>
-            <label className="rt-search">
-              <Glyph name="search" />
-              <input
-                aria-label="Search tasks"
-                placeholder="Find a task…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
-            <select
-              aria-label="Client or area"
-              value={area}
-              onChange={(event) => setArea(event.target.value)}
-            >
-              <option value="">All clients</option>
-              {[...new Set(tasks.map((t) => t.area))].sort().map((a) => (
-                <option key={a}>{a}</option>
+              {project.sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.path}
+                </option>
               ))}
             </select>
+          )}
+          <div className="rt-nav-items">
+            {(['all', 'attention', 'waiting', 'triage'] as const).map((id) => (
+              <button
+                key={id}
+                data-active={filter === id}
+                onClick={() => {
+                  setFilter(id);
+                  setSelected(null);
+                }}
+              >
+                <Glyph
+                  name={
+                    id === 'waiting'
+                      ? 'clock'
+                      : id === 'triage'
+                        ? 'inbox'
+                        : 'agenda'
+                  }
+                />
+                <span>{labels[id]}</span>
+                <small>
+                  {tasks.filter((t) => taskMatches(t, id, today)).length}
+                </small>
+              </button>
+            ))}
           </div>
-          {sourceOpen && (
-            <SourceForm
-              key={projectId}
-              projectId={projectId}
-              taskFile={snapshot?.taskFile ?? 'TODO.md'}
-              onSaved={() => {
-                setSelected(null);
-                void refresh();
-              }}
-              onClose={() => setSourceOpen(false)}
+          <div className="rt-sidebar-footer">
+            <span className="rt-live-dot" />
+            <span>Read-only</span>
+            <button
+              aria-label="Configure task source"
+              onClick={() => setSourceOpen(!sourceOpen)}
+            >
+              <Glyph name="source" />
+            </button>
+          </div>
+        </nav>
+        <div className="rt-workspace" data-detail={Boolean(opened)}>
+          <main className="rt-main">
+            <header className="rt-toolbar">
+              <div>
+                <h1>{labels[filter]}</h1>
+                <p>
+                  {tasks.length} open tasks<span> · </span>
+                  {project?.name ?? 'Choose a project'}
+                </p>
+              </div>
+            </header>
+            <div className="rt-filters">
+              <div className="rt-toolbar-actions">
+                <div
+                  className="rt-view-switch"
+                  role="group"
+                  aria-label="Task view"
+                >
+                  <button
+                    aria-pressed={view === 'agenda'}
+                    onClick={() => setView('agenda')}
+                  >
+                    <Glyph name="agenda" />
+                    Agenda
+                  </button>
+                  <button
+                    aria-pressed={view === 'board'}
+                    onClick={() => setView('board')}
+                  >
+                    <Glyph name="board" />
+                    Board
+                  </button>
+                </div>
+                <button
+                  className="rt-icon-button"
+                  aria-label="Refresh tasks"
+                  disabled={loading}
+                  onClick={() => {
+                    void refresh();
+                  }}
+                >
+                  <span className={loading ? 'rt-spin' : ''}>
+                    <Glyph name="refresh" />
+                  </span>
+                </button>
+              </div>
+              <label className="rt-search">
+                <Glyph name="search" />
+                <input
+                  aria-label="Search tasks"
+                  placeholder="Find a task…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <select
+                aria-label="Client or area"
+                value={area}
+                onChange={(event) => setArea(event.target.value)}
+              >
+                <option value="">All areas</option>
+                {[...new Set(tasks.map((t) => t.area))].sort().map((a) => (
+                  <option key={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            {sourceOpen && (
+              <SourceForm
+                key={projectId}
+                projectId={projectId}
+                taskFile={snapshot?.taskFile ?? 'TODO.md'}
+                onSaved={() => {
+                  setSelected(null);
+                  void refresh();
+                }}
+                onClose={() => setSourceOpen(false)}
+              />
+            )}
+            {(error || projectsError) && (
+              <div className="rt-notice" role="alert">
+                {snapshot && !snapshot.error
+                  ? 'Showing the last successful read. '
+                  : ''}
+                {error ?? projectsError}
+                <button onClick={() => setSourceOpen(true)}>
+                  Choose source
+                </button>
+              </div>
+            )}
+            {snapshot?.reviewed && (
+              <div className="rt-review">
+                <Glyph name="clock" />
+                <span>
+                  List reviewed {snapshot.reviewed}. Past dates need checking.
+                </span>
+              </div>
+            )}
+            <div className="rt-scroll">
+              <div className={`rt-groups rt-groups-${view}`}>
+                {filteredGroups.map((group) => (
+                  <section
+                    className="rt-group"
+                    key={group.label}
+                    aria-label={group.label}
+                  >
+                    <h2>
+                      <span
+                        className={`rt-group-dot rt-tone-${group.label === 'Past dates' ? 'past' : group.label === 'Waiting' ? 'waiting' : 'normal'}`}
+                      />
+                      {group.label}
+                      <span className="rt-group-count">
+                        {group.tasks.length}
+                      </span>
+                    </h2>
+                    <div className="rt-group-body">
+                      {group.tasks.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          selected={selected === task.id}
+                          today={today}
+                          view={view}
+                          onOpen={() => setSelected(task.id)}
+                        />
+                      ))}
+                      {!group.tasks.length && (
+                        <p className="rt-empty-column">Nothing here</p>
+                      )}
+                    </div>
+                  </section>
+                ))}
+                {!filtered.length && (
+                  <div className="rt-empty">
+                    <Glyph name="inbox" />
+                    <h2>
+                      {loading
+                        ? 'Reading your task file…'
+                        : error
+                          ? 'Choose a readable task file'
+                          : 'No matching tasks'}
+                    </h2>
+                    <p>
+                      {error
+                        ? 'Use Source to select the project’s Markdown task list.'
+                        : 'Try another client or clear your search.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <footer className="rt-footer">
+              <button onClick={() => setSourceOpen(!sourceOpen)}>
+                <Glyph name="source" />
+                {snapshot?.taskFile ?? 'TODO.md'}
+              </button>
+              <span>
+                {filtered.length} shown{fresh && ` · Read ${fresh}`}
+              </span>
+            </footer>
+          </main>
+          {opened && snapshot && (
+            <Detail
+              key={opened.id}
+              task={opened}
+              snapshot={snapshot}
+              onClose={closeDetail}
             />
           )}
-          {(error || projectsError) && (
-            <div className="rt-notice" role="alert">
-              {snapshot && !snapshot.error
-                ? 'Showing the last successful read. '
-                : ''}
-              {error ?? projectsError}
-              <button onClick={() => setSourceOpen(true)}>Choose source</button>
-            </div>
-          )}
-          {snapshot?.reviewed && (
-            <div className="rt-review">
-              <Glyph name="clock" />
-              <span>
-                List reviewed {snapshot.reviewed}. Past dates need checking.
-              </span>
-            </div>
-          )}
-          <div className="rt-scroll">
-            <div className={`rt-groups rt-groups-${view}`}>
-              {filteredGroups.map((group) => (
-                <section
-                  className="rt-group"
-                  key={group.label}
-                  aria-label={group.label}
-                >
-                  <h2>
-                    <span
-                      className={`rt-group-dot rt-tone-${group.label === 'Past dates' ? 'past' : group.label === 'Waiting' ? 'waiting' : 'normal'}`}
-                    />
-                    {group.label}
-                    <span className="rt-group-count">{group.tasks.length}</span>
-                  </h2>
-                  <div className="rt-group-body">
-                    {group.tasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        selected={selected === task.id}
-                        today={today}
-                        view={view}
-                        onOpen={() => setSelected(task.id)}
-                      />
-                    ))}
-                    {!group.tasks.length && (
-                      <p className="rt-empty-column">Nothing here</p>
-                    )}
-                  </div>
-                </section>
-              ))}
-              {!filtered.length && (
-                <div className="rt-empty">
-                  <Glyph name="inbox" />
-                  <h2>
-                    {loading
-                      ? 'Reading your task file…'
-                      : error
-                        ? 'Choose a readable task file'
-                        : 'No matching tasks'}
-                  </h2>
-                  <p>
-                    {error
-                      ? 'Use Source to select the project’s Markdown task list.'
-                      : 'Try another client or clear your search.'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-          <footer className="rt-footer">
-            <button onClick={() => setSourceOpen(!sourceOpen)}>
-              <Glyph name="source" />
-              {snapshot?.taskFile ?? 'TODO.md'}
-            </button>
-            <span>
-              {filtered.length} shown{fresh && ` · Read ${fresh}`}
-            </span>
-          </footer>
-        </main>
-        {opened && snapshot && (
-          <Detail
-            key={opened.id}
-            task={opened}
-            snapshot={snapshot}
-            onClose={closeDetail}
-          />
-        )}
+        </div>
       </div>
     </div>
   );
