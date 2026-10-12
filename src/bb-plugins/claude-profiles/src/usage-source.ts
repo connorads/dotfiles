@@ -28,7 +28,7 @@ export function measurement(value: Usage): Measurement {
   return { accountKey: null, observedAt: value.observedAt, usage: { status: 'ok', ...fields,
     windows: value.windows.map(window => ({ ...window,
       kind: window.id === 'five_hour' ? 'five-hour' : window.id.startsWith('seven_day') ? 'weekly' : 'custom',
-      model: window.id.startsWith('seven_day_') ? window.id.slice('seven_day_'.length) : null, cost: null,
+      model: window.id.startsWith('seven_day_') ? window.id.slice('seven_day_'.length) : null,
     })),
   } };
 }
