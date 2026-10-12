@@ -53,7 +53,8 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
     composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' } },
     sidebarThreads: {
       threads: threads ?? [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
-      projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' }],
+      projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' },
+        { id: 'p2', name: 'kb', isPersonal: false, href: '/', settingsHref: '/' }],
     },
     rpc: {
       diagnostics,
@@ -68,7 +69,9 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void, thread
       providers: { models: async () => ({
         modelLoadError: null, permissionCeiling: 'full', providers: [], selectedOnlyModels: [],
         models: [{ id: 'new-model', model: 'new-model', displayName: 'New model', description: '',
-          defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }],
+          defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false },
+          { id: 'other-model', model: 'other-model', displayName: 'Other model', description: '',
+            defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }],
       }) },
     },
   });
@@ -471,6 +474,22 @@ test('arriving project draft does not take focus after the window loses focus', 
   vi.spyOn(document, 'hasFocus').mockReturnValue(false);
   await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
   expect(view.slot.inspection.composer.focusCount).toBe(0);
+});
+
+test.each(['thread', 'project', 'model'] as const)('a single %s match selects directly without a picker', async kind => {
+  const view = await render();
+  const list = await view.command({ action: 'list', kind });
+  if (!list.context || !list.candidates?.length) throw new Error('Missing choices');
+  const option = list.candidates[0];
+  const reply = await view.command({ action: 'choices', kind, context: list.context, options: [option], message: 'Choose a match' });
+  expect(reply.ok).toBe(true);
+  expect(reply.outcome).not.toBe('choices');
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  if (kind === 'thread') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: option.id }]);
+  if (kind === 'project') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: option.id }]);
+  if (kind === 'model') expect(view.slot.inspection.composer.selections).toEqual([{ model: option.id }]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
 });
 
 test.each(['thread', 'project', 'model'] as const)('temporary %s choices close after selection without opening diagnostics', async kind => {

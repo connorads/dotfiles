@@ -260,6 +260,7 @@ function VoiceCard() {
         if (command.context !== latestContext.current) throw new Error('The selected thread changed. Say the command again.');
         const options = command.options.filter(option => candidates.some(row => row.id === option.id));
         if (!options.length) throw new Error('Those choices are no longer available.');
+        if (options.length === 1) return select(command.kind, options[0].id, command.context);
         setChoices({ kind: command.kind, options, context: command.context });
         setHighlight(0);
         return { ok: true, outcome: 'choices', message: command.message };

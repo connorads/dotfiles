@@ -8,7 +8,8 @@ New drafts provide the same control beside the composer actions.
 
 The left pedal sends F18. Focus BB, hold the pedal, speak a command, then release.
 The Voice header shows recording feedback and the recognised text. Thread, project
-and model searches offer choices in BB. Select with a click, Enter or "choose two".
+and model searches select a single match directly. Multiple matches offer choices
+in BB. Select with a click, Enter or "choose two".
 Other commands use the same BB actions as always-listening Hex commands.
 The centre pedal remains Right Option for dictation; the right pedal remains Enter.
 
@@ -150,9 +151,10 @@ at a time.
 Thread searches compare titles separately from project and provider labels.
 Literal thread searches also compare joined words, so `kbsync` matches `KB sync`.
 Clear literal matches navigate immediately. Reordered words, singular/plural
-forms and one small spelling error offer up to three numbered matches.
-Approximate matches require at least two words and one exact word. They do not
-navigate automatically. Descriptions without close word matches use Jev.
+forms and one small spelling error offer up to three matches.
+Approximate matches require at least two words and one exact word. They
+navigate automatically when only one match remains. Multiple matches require
+selection. Descriptions without close word matches use Jev.
 
 ```mermaid
 flowchart LR
