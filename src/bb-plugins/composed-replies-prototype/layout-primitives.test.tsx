@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { CompositionView } from "./app";
 import { parseComposition } from "./validation";
+import { IconLabel, layoutProps } from "./layout-primitives";
 afterEach(cleanup);
 const source =
   'root = Stack([Heading("Connector flow", 2), Box([Row([Icon("database", "medium", "Database"), Caption("Source systems")], 2, "center", "center")], "muted", true, "medium", 2, 2, "center"), Icon("arrow-down", "small", "Feeds into"), Row([Chip("Worker", "accent"), Divider()], 1, "center", "start"), NumberInput("Workers", $n, 1, 8, 1, ""), Caption($n)])\n$n = 2';
@@ -195,3 +196,24 @@ for (const format of ["openui", "json-render"] as const)
       }
     }
   });
+
+it("keeps a decorative icon grouped beside wrapping label text", () => {
+  const { container } = render(
+    <IconLabel
+      icon="database"
+      text="A source name which wraps onto several lines"
+    />,
+  );
+  const group = container.firstElementChild as HTMLElement;
+  expect(group.style.display).toBe("flex");
+  expect(group.style.flexWrap).toBe("nowrap");
+  expect(group.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  expect(
+    screen.getByText("A source name which wraps onto several lines").style
+      .overflowWrap,
+  ).toBe("anywhere");
+  expect(
+    layoutProps.IconLabel.safeParse({ icon: "made-up", text: "Source" })
+      .success,
+  ).toBe(false);
+});

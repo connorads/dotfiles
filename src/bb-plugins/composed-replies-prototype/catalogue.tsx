@@ -27,6 +27,7 @@ import {
   Caption,
   Divider,
   Chip,
+  IconLabel,
 } from "./layout-primitives";
 
 import {
@@ -37,11 +38,14 @@ import {
   Details,
 } from "./interactive-primitives";
 
+import { Flow, flowProps } from "./flow";
+
 const boundedNumber = z.number().finite().min(-1e9).max(1e9);
 const label = z.string().max(160);
 const scalar = z.union([boundedNumber, z.string().max(1000)]);
 const props = {
   ...interactiveProps,
+  Flow: flowProps,
   ...richProps,
   ...layoutProps,
   Stack: z.object({ children: z.array(z.unknown()).max(50) }),
@@ -348,6 +352,19 @@ const SelectOpen = defineComponent({
 export const library = createLibrary({
   components: [
     defineComponent({
+      name: "Flow",
+      description:
+        "Downward acyclic graph with explicit nodes and split/join edges",
+      props: flowProps,
+      component: ({ props: p }) => <Flow {...p} />,
+    }),
+    defineComponent({
+      name: "IconLabel",
+      description: "Icon beside wrapping text",
+      props: layoutProps.IconLabel,
+      component: ({ props: p }) => <IconLabel {...p} />,
+    }),
+    defineComponent({
       name: "Checkbox",
       description: "Boolean option bound to a state variable",
       props: interactiveProps.Checkbox.extend({
@@ -473,7 +490,7 @@ export const library = createLibrary({
         return (
           <Grid columns={p.columns}>
             {p.children.map((x, i) => (
-              <div key={i} style={{ minWidth: 0 }}>
+              <div key={i} style={{ minWidth: 0, display: "grid" }}>
                 {render(x)}
               </div>
             ))}
@@ -530,6 +547,14 @@ export const library = createLibrary({
 });
 export const catalog = defineCatalog(schema, {
   components: {
+    Flow: {
+      props: flowProps,
+      description: "Downward graph with explicit nodes and split/join edges",
+    },
+    IconLabel: {
+      props: layoutProps.IconLabel,
+      description: "Icon beside wrapping text",
+    },
     Checkbox: {
       props: interactiveProps.Checkbox,
       description: "Boolean option. Bind value with $bindState",
@@ -632,6 +657,8 @@ const NumericJson = ({
 };
 export const { registry } = defineRegistry(catalog, {
   components: {
+    Flow: ({ props: p }) => <Flow {...p} />,
+    IconLabel: ({ props: p }) => <IconLabel {...p} />,
     Checkbox: ({ props: p, bindings }) => {
       const [value, set] = useBoundProp(p.value, bindings?.value);
       return <Checkbox {...p} value={value ?? p.value} setValue={set} />;
