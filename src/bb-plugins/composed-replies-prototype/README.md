@@ -1,7 +1,7 @@
 # Composed replies prototype
 
 Native React components in BB assistant messages. OpenUI and json-render compose
-new interfaces from the same twenty-five primitives. The model does not emit executable
+new interfaces from the same twenty-nine primitives. The model does not emit executable
 JavaScript or select a finished calculator.
 
 ```mermaid
@@ -69,7 +69,9 @@ boundary contains invalid runtime values.
 and closes disclosures by remounting the composition.
 
 Interactions stay local. Control values reset on navigation or remount.
-No generated network calls, actions or arbitrary JavaScript run in the host.
+`Image` loads its declared HTTPS URL. `RichText` links open declared HTTPS URLs.
+URLs reject embedded credentials. No generated actions or arbitrary JavaScript
+run in the host.
 
 ## Delivery and HTML
 
@@ -99,20 +101,30 @@ reference existing nodes and form an acyclic graph. Graphs allow twelve nodes
 and eighteen edges. Dense parallel layers scroll inside the diagram. Each edge
 also appears in an expandable textual connection list.
 
+## Content primitives
+
+`RichText` supports paragraphs, ordered and unordered lists, bold, emphasis,
+inline code and HTTPS links. It treats raw HTML as text and does not implement
+full Markdown. `Image` requires alternative text and provides a loading-failure
+state. `Steps` exposes ordered pending, current and completed stages. `Progress`
+shows a labelled value and maximum, with values bounded from zero to that maximum.
+
 ## Prompt cost
 
 Routing instructions and the tool definition contribute about 313 tokens.
 The usage skill and full catalogue are read on demand. Estimated text sizes
 use `o200k_base`; provider wrappers and skill catalogue metadata are additional.
-These counts are prompt estimates, not billing measurements.
+These counts are prompt estimates, not billing measurements. Ten additions
+contribute 404 OpenUI contract tokens or 940 JSON contract tokens. The full
+contract is read on demand; after reading it, the conversation retains its tokens.
 
 | Text | Estimated tokens |
 | --- | ---: |
 | Routing instructions | 180 |
 | Tool name, description and parameter schema | 133 |
-| Usage skill file | 392 |
-| Full OpenUI contract | 1,293 |
-| Full json-render contract | 2,239 |
+| Usage skill file | 454 |
+| Full OpenUI contract | 1,697 |
+| Full json-render contract | 3,179 |
 
 ## Verification
 
