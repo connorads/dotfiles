@@ -6,12 +6,15 @@ the native Claude CLI.
 
 ## Use
 
-The account picker shows in the composer while Claude Code is the selected provider.
+The account status shows in the composer while Claude Code is the selected
+provider. It shows the current account. Clicking it opens the Alt+F picker with
+the **Claude account** select focused. The picker is the only place to change
+the account.
 
 New thread:
 
-1. Click the account picker, or run **Claude: switch account** with the caret in the composer.
-2. Click an account, or press its number. Arrow keys and `Enter` also work.
+1. Click the account status, or run **Agent Switcher: switch account** with the caret in the composer.
+2. Choose an account in the **Claude account** select.
 3. Send the first message. The thread starts on that account.
 
 The new-thread choice is remembered, like the model picker. Every new Claude
@@ -20,12 +23,12 @@ thread starts on it until you choose another, including threads that agents or
 
 Existing thread:
 
-1. Finish or stop the turn. Clear queued messages. The picker is disabled during a turn.
-2. Choose an account in the thread's composer.
+1. Finish or stop the turn. Clear queued messages. The account select is disabled during a turn.
+2. Click the account status and choose an account.
 3. Send the next message. Claude resumes the same native conversation.
 
-The menu lists accounts with a selection tick and number shortcuts. Press `Q` or
-`Esc` to close. **Claude: switch account** has no default shortcut. Assign one in
+In the picker, keys 1-9 select favourites, not accounts. Press `Esc` to close.
+**Agent Switcher: switch account** has no default shortcut. Assign one in
 BB's keyboard settings if needed.
 
 [Agent usage](../agent-usage/README.md) shows quota in a separate header badge and
