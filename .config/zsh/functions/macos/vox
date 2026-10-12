@@ -70,6 +70,12 @@ local vox_segments="${VOX_SEGMENTS:-$HOME/.config/vox/segments.py}"
 local vox_snapshot="${VOX_SNAPSHOT:-$HOME/.config/vox/snapshot.py}"
 local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
 local vox_python="${VOX_PYTHON:-python3}"
+local vox_fluid=fluidaudiocli
+# BB and other non-login callers do not load .zprofile's mise PATH.
+if ! command -v "$vox_fluid" >/dev/null 2>&1 &&
+	[[ -x "$HOME/.local/share/mise/shims/fluidaudiocli" ]]; then
+	vox_fluid="$HOME/.local/share/mise/shims/fluidaudiocli"
+fi
 
 _vox_die() {
 	print -u2 -- "vox: $*"
@@ -342,12 +348,12 @@ _vox_scribe() {
 	local asr="$dir/$track.asr.json" diar="$dir/$track.diar.json"
 	rm -f "$asr" "$diar"
 	: >"$dir/$track.json"
-	fluidaudiocli transcribe "$audio" --word-timestamps --output-json "$asr" \
+	"$vox_fluid" transcribe "$audio" --word-timestamps --output-json "$asr" \
 		>/dev/null 2>>"$dir/vox.log"
 	[[ -s "$asr" ]] || return 1
 	local -a diar_args=()
 	if (( diarise )); then
-		fluidaudiocli process "$audio" --mode offline --output "$diar" \
+		"$vox_fluid" process "$audio" --mode offline --output "$diar" \
 			>/dev/null 2>>"$dir/vox.log" && [[ -s "$diar" ]] || return 1
 		diar_args=(--diar "$diar")
 	fi
@@ -360,7 +366,7 @@ _vox_scribe() {
 # re-transcribes.
 _vox_transcribe() {
 	local dir=$1
-	_vox_need fluidaudiocli "$vox_python" || return 1
+	_vox_need "$vox_fluid" "$vox_python" || return 1
 
 	local track audio diarise
 	for track in mic sys; do
@@ -389,7 +395,7 @@ _vox_transcribe() {
 # an imported file may well hold several people.
 _vox_transcribe_file() {
 	local file=$1
-	_vox_need fluidaudiocli "$vox_python" || return 1
+	_vox_need "$vox_fluid" "$vox_python" || return 1
 	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)-$(_vox_slug "${${file:t}:r}")"
 	mkdir -p "$dir" || return 1
 	# A symlink back to the source keeps the directory self-contained for `vox
@@ -488,7 +494,7 @@ _vox_grab() {
 			return 1
 		}
 	fi
-	_vox_need fluidaudiocli "$vox_python" || return 1
+	_vox_need "$vox_fluid" "$vox_python" || return 1
 	local dir
 	dir=$(vox_dir)
 	local out

@@ -12,6 +12,10 @@ FluidAudio rather than MacWhisper's `mw`:
 monologues, dictation - with no consumer baked in: integration is
 `cat "$(vox last)/transcript.md" | claude -p …`.
 
+`vox` resolves `fluidaudiocli` from PATH, then from its mise shim in
+`~/.local/share/mise/shims`. BB and other non-login callers do not need shell
+activation to transcribe.
+
 **System audio needs no setup at all** - no loopback driver, no Multi-Output
 Device, no default-output switch, headphones optional. `vox` *refuses to start*
 when the tap or the mic is unavailable rather than half-capturing a meeting;
