@@ -495,8 +495,8 @@ plan below:
 - `package.json` also changes `bb.description`. The guard's stop notice says
   "Agent Switcher" instead of "Claude Profiles", so it names the plugin that BB
   shows.
-- The README keeps the engine pin `bb >=0.45` from `package.json`. Model
-  Favourites declared `>=0.46`. See open question 6.
+- The engine pin is `bb >=0.46`, as Model Favourites declared. See open
+  question 6.
 - Cut-over step 1 links the workspace `node_modules` beside the copy. A plain
   `cp -R` breaks pnpm's relative links. The check ran: 93 core and 42 UI tests
   pass, `tsc` passes and `bb plugin build` writes `dist/` with plugin ID
@@ -580,3 +580,4 @@ Bindings never moved, so rollback restores only code and UI.
 6. Should `engines.bb` be `>=0.46`? The picker code comes from Model
    Favourites, which declared `>=0.46`. `bb --version` reports 0.45.0 for the
    CLI that builds the plugin.
+   Answered: yes. The picker needs 0.46, and the live server runs 0.46.
