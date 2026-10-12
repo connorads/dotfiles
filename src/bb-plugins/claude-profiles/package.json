@@ -20,8 +20,8 @@
   },
   "scripts": {
     "test": "pnpm test:core && pnpm test:ui",
-    "test:core": "node --experimental-strip-types --test src/*.test.ts",
-    "test:ui": "vitest run app.test.tsx",
+    "test:core": "node --experimental-strip-types --test 'src/**/*.test.ts'",
+    "test:ui": "vitest run app.test.tsx ui/",
     "typecheck": "tsc --noEmit",
     "build": "bb plugin build",
     "dev": "bb plugin dev"
@@ -42,6 +42,7 @@
     "jsdom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "sonner": "1.7.4",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

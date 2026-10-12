@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 import { fireEvent, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers, RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
-import type { rpcContract } from './contracts.ts';
+import type { accountsContract as rpcContract } from './contracts.ts';
 
 const profiles = [
   { id: 'default', label: 'Default', configDir: null },
