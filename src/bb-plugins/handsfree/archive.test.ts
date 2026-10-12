@@ -78,3 +78,40 @@ test('repeated restore walks archives in reverse order and never repeats a compl
   assert.equal((await archive.restore()).outcome, 'empty');
   assert.deepEqual(w.restored, ['second', 'first']);
 });
+
+test('unavailable recovery storage prevents archive before BB state changes', async () => {
+  const w = setup();
+  const archive = makeArchives({ ...w.ports, save: async () => { throw new Error('Storage unavailable'); } });
+  await assert.rejects(archive.archive(await archive.inspect('t1'), false), /Storage unavailable/);
+  assert.deepEqual(w.archived, []);
+});
+
+test('a failed receipt write reports the completed archive and retains session recovery', async () => {
+  const w = setup();
+  let writes = 0;
+  const archive = makeArchives({ ...w.ports, save: async value => {
+    if (++writes === 2) throw new Error('Storage unavailable');
+    await w.ports.save(value);
+  } });
+  const result = await archive.archive(await archive.inspect('t1'), false);
+  assert.equal(result.outcome, 'archived');
+  assert.match(result.message, /Keep BB open/);
+  assert.equal((await archive.restore()).outcome, 'restored');
+  assert.deepEqual(w.restored, ['t1']);
+});
+
+for (const failedWrite of [3, 4]) {
+  test(`restore retries a failed history write ${failedWrite} without repeating the BB action`, async () => {
+    const w = setup();
+    let writes = 0;
+    const archive = makeArchives({ ...w.ports, save: async value => {
+      if (++writes === failedWrite) throw new Error('Storage unavailable');
+      await w.ports.save(value);
+    } });
+    await archive.archive(await archive.inspect('t1'), false);
+    assert.match((await archive.restore()).message, /Keep BB open/);
+    assert.equal((await archive.restore()).outcome, 'restored');
+    assert.deepEqual(w.restored, ['t1']);
+    assert.equal((await makeArchives(w.ports).restore()).outcome, 'empty');
+  });
+}

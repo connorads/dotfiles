@@ -23,6 +23,7 @@ export interface ArchivePorts {
 }
 
 export function makeArchives(ports: ArchivePorts) {
+  let recovery: z.infer<typeof receiptsSchema> | undefined;
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(run: () => Promise<T>): Promise<T> => {
     const result = queue.then(run);
@@ -30,8 +31,14 @@ export function makeArchives(ports: ArchivePorts) {
     return result;
   };
   const load = async () => {
+    if (recovery) return receiptsSchema.parse(recovery);
     const value = await ports.load();
     return value === undefined ? [] : receiptsSchema.parse(value);
+  };
+  const save = async (receipts: z.infer<typeof receiptsSchema>) => {
+    recovery = receiptsSchema.parse(receipts);
+    await ports.save(receipts);
+    recovery = undefined;
   };
   const inspect = async (threadId: string): Promise<ArchiveTarget> => {
     const [thread, children] = await Promise.all([ports.get(threadId), ports.children(threadId)]);
@@ -49,11 +56,15 @@ export function makeArchives(ports: ArchivePorts) {
       }
       const receipts = await load();
       // Check storage before changing BB state.
-      await ports.save(receipts);
+      await save(receipts);
       const ids = await ports.archive(target.threadId);
       if (!ids.length) throw new Error('No threads were archived. Say the command again.');
       receipts.push({ target, ids: [...ids].reverse() });
-      await ports.save(receipts.slice(-10));
+      try { await save(receipts.slice(-10)); }
+      catch {
+        return { outcome: 'archived', target,
+          message: `Archived “${target.title}”, but could not save recovery. Keep BB open and say “unarchive last thread” to restore before closing BB. Restoring does not restart stopped work.` };
+      }
       return { outcome: 'archived', target,
         message: `Archived “${target.title}”${ids.length > 1 ? ` and ${ids.length - 1} child threads` : ''}. Say “unarchive last thread” to restore. Restoring does not restart stopped work.` };
     }),
@@ -70,10 +81,19 @@ export function makeArchives(ports: ArchivePorts) {
             message: `Could not finish restoring “${receipt.target.title}”. ${cause instanceof Error ? cause.message : String(cause)} Say “unarchive last thread” to retry the remaining threads.` };
         }
         receipt.ids.shift();
-        await ports.save(receipts);
+        try { await save(receipts); }
+        catch {
+          return { outcome: 'partial', target: receipt.target,
+            message: `Restored part of “${receipt.target.title}”, but could not save recovery progress. Keep BB open and say “unarchive last thread” to finish.` };
+        }
       }
       receipts.pop();
-      await ports.save(receipts);
+      try { await save(receipts); }
+      catch {
+        recovery = receiptsSchema.parse([...receipts, receipt]);
+        return { outcome: 'restored', target: receipt.target,
+          message: `Restored “${receipt.target.title}”, but could not save recovery history. Keep BB open and retry “unarchive last thread” before closing BB.` };
+      }
       return { outcome: 'restored', target: receipt.target, message: `Restored “${receipt.target.title}”. Stopped work is not restarted.` };
     }),
   };

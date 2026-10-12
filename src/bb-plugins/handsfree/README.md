@@ -60,6 +60,8 @@ the pending confirmation. Archive targets the selected thread without title matc
 The server retains ten voice archives across plugin reloads. Repeated restore
 commands reverse those archives in order. Each restore includes the threads that
 BB archived with the parent. Partial restores retain the remaining threads for retry.
+If saving recovery fails after an archive, the server keeps it in memory and
+asks you to restore before closing BB. Unavailable storage blocks new archives.
 Restoration opens the conversation; it does not restart stopped work or restore
 retired workspaces. BB keeps running turns and terminals for a 30-second archive grace period.
 
