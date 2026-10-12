@@ -89,7 +89,7 @@ and failed submissions keep question focus. Moving focus elsewhere cancels the r
 Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes
-the card and restores composer focus. Outside the card, BB handles both pedals.
+the card and restores composer focus. Q also closes when the card has focus. Outside the card, BB handles both pedals.
 Routine results appear in the header for four seconds. Failures stay visible
 until another command succeeds. Choices and archive confirmation open temporary prompts. Completing or cancelling
 a prompt closes it. A monitor opened explicitly stays open when a prompt completes.
