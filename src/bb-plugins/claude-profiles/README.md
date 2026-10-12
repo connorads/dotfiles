@@ -17,9 +17,19 @@ New thread:
 2. Choose an account in the **Claude account** select.
 3. Send the first message. The thread starts on that account.
 
-The new-thread choice is remembered, like the model picker. Every new Claude
-thread starts on it until you choose another, including threads that agents or
-`bb thread spawn` create.
+The new-thread choice is remembered, like the model picker. A new Claude
+thread starts on it until you choose another.
+
+A thread that another thread starts takes that thread's named account instead:
+
+- A child created with `--parent-self`, `--parent-thread` or an SDK
+  `parentThreadId` takes its parent's account.
+- A fork takes its source thread's account.
+- A parent on Default, a non-Claude parent and a `bb thread spawn` without a
+  parent use the remembered choice.
+
+If the inherited account does not exist on the new thread's machine, the first
+send is refused. The plugin never falls back to another account.
 
 Existing thread:
 
@@ -117,7 +127,10 @@ its other sources.
 
 The new-thread picker lists profiles from the first connected host. The first
 send resolves the choice on the thread's own host. Sessions with subagent
-sidecars cannot switch profiles in this version. BB forks do not inherit plugin selections.
+sidecars cannot switch profiles in this version. BB's Claude bridge copies a
+fork's session in its own config directory, not in the thread's account. A
+Claude fork therefore works only when the source and the fork both run on
+Default.
 Switching a thread to another host requires selecting a profile on that host.
 
 The plugin supports manual Claude switching and quota collection. It does not
