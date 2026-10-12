@@ -10,7 +10,7 @@ const setup = (labels: string[], probabilities: Record<string, number> = {}) => 
     request: async command => {
       commands.push(command)
       return command.action === "list"
-        ? { ok: true, message: "", context: "window|thread:project:provider", candidates: labels.map((label, i) => ({ id: String(i), label })) }
+        ? { ok: true, message: "", context: "window|thread:project:provider", candidates: labels.map((label, i) => ({ id: String(i), label, title: label.replace(/ \([^)]*\)$/, "") })) }
         : { ok: true, message: "Selected" }
     },
     judge: async () => { judged = true; return ok({ choice: Object.keys(probabilities)[0] ?? "none", confidence: 0.9, probabilities }) },
@@ -92,4 +92,31 @@ test("search feedback preserves the heard target", async () => {
   const w = setup(["Access"])
   await matchBb(w.ports, "thread", "access thread")
   expect(w.commands[0]).toEqual({ action: "notice", message: "Heard thread target: “access thread”." })
+})
+
+test("misheard get client offers the Git clients thread without navigating or calling Jev", async () => {
+  const w = setup(["Explore Git clients and design a native Git", "Explore my knowledge base", "Client billing"])
+  await matchBb(w.ports, "thread", "get client thread")
+  expect(w.commands.at(-1)).toMatchObject({ action: "choices", options: [{ id: "0" }] })
+  expect(w.commands.some(command => command.action === "select")).toBe(false)
+  expect(w.judged()).toBe(false)
+})
+
+test("reordered title words offer all plausible threads instead of choosing silently", async () => {
+  const w = setup(["Fix login redirect", "Investigate login redirect", "Billing invoices"])
+  await matchBb(w.ports, "thread", "redirect login")
+  expect(w.commands.at(-1)).toMatchObject({ action: "choices", options: [{ id: "0" }, { id: "1" }] })
+})
+
+test("unrelated targets do not acquire fuzzy suggestions from one shared word", async () => {
+  const w = setup(["Git client", "Client billing"], { none: 0.99, "0": 0.01 })
+  await matchBb(w.ports, "thread", "get dinosaur")
+  expect(w.commands.at(-1)).toMatchObject({ action: "notice" })
+  expect(w.commands.some(command => command.action === "choices")).toBe(false)
+})
+
+test("a full title wins over another thread containing that title", async () => {
+  const w = setup(["Git clients (home, codex)", "Explore Git clients (home, codex)"])
+  await matchBb(w.ports, "thread", "git clients")
+  expect(w.commands.at(-1)).toMatchObject({ action: "select", id: "0" })
 })

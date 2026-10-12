@@ -4,6 +4,8 @@ export const kindSchema = z.enum(['thread', 'project', 'model']);
 export const candidateSchema = z.object({
   id: z.string().min(1).max(512),
   label: z.string().min(1).max(1024),
+  title: z.string().min(1).max(1024).optional(),
+  project: z.string().max(1024).optional(),
 });
 export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list'), kind: kindSchema }).strict(),

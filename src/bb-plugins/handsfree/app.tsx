@@ -45,7 +45,8 @@ function VoiceCard() {
   const projectName = (id: string) => sidebar.projects.find(row => row.id === id)?.name ?? id;
   const threads = sidebar.threads.filter(row => !row.isArchived && !row.isHidden);
   const threadCandidate = (row: typeof threads[number]): Candidate => ({
-    id: row.id, label: `${row.displayTitle} (${projectName(row.projectId)}, ${row.providerId})`,
+    id: row.id, title: row.displayTitle, project: projectName(row.projectId),
+    label: `${row.displayTitle} (${projectName(row.projectId)}, ${row.providerId})`,
   });
 
   useEffect(() => {
