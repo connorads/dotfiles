@@ -16,24 +16,24 @@ async function render(thread: PluginRpcTestHandlers<typeof rpcContract>['thread'
   return renderSlot<PluginThreadHeaderActionProps, typeof rpcContract>(registration, props, { rpc: { thread, invalidate: () => { throw new Error('The chip must not invalidate.'); } } });
 }
 
-test('Codex: shows the last request hit rate, miss count and detail, without a countdown', async () => {
+test('Codex: shows the last request hit rate and miss count, without a countdown', async () => {
   const state: CacheState = { ...initialState(), last: { at: 2, prompt: 100000, read: 92000, write: 0, ttlMs: null },
     prompt: 200000, read: 190000, misses: 2, missedTokens: 140000, lastMiss: { at: 2, tokens: 90000, idleMs: 420000, cause: 'idle' } };
   const slot = await render(() => state);
   try {
     const chip = await slot.findByRole('status');
-    expect(chip.textContent).toBe('hit92%2 miss');
+    expect(chip.textContent).toBe('92%2');
     expect(chip.getAttribute('title')).toBe('Last request: 92% cached (read 92k, wrote 0 of 100k)\nThread: 95% cached\n2 misses, 140k re-sent; last 90k after 7m');
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('Claude: counts down the cache lifetime from the last request', async () => {
+test('Claude: counts down the cache lifetime in whole minutes', async () => {
   const at = Date.now() - 60_000;
   const slot = await render(() => ({ ...initialState(), ttlMs: hour, prompt: 182593, read: 180933,
     last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour } }));
   try {
     const chip = await slot.findByRole('status');
-    expect(chip.textContent).toMatch(/^5[89]:\d\dhit99%$/);
+    expect(chip.textContent).toMatch(/^5[89]m$/);
     expect(chip.getAttribute('title')).toMatch(/^Cache expires in 5[89]:\d\d \(1h lifetime\)\n/);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -44,7 +44,7 @@ test('Claude: shows cold and the rebuild size once the lifetime has passed', asy
     last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour } }));
   try {
     const chip = await slot.findByRole('status');
-    expect(chip.textContent).toBe('coldhit99%');
+    expect(chip.textContent).toBe('cold');
     expect(chip.getAttribute('title')).toMatch(/^Cache expired 60m ago; the next request rebuilds 183k\n/);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -56,7 +56,7 @@ test('Claude: an account switch shows cold at once and names the switch as the m
     lastMiss: { at: at - hour, tokens: 200000, idleMs: 5000, cause: 'account' } }));
   try {
     const chip = await slot.findByRole('status');
-    expect(chip.textContent).toBe('coldhit99%1 miss');
+    expect(chip.textContent).toBe('cold1');
     expect(chip.getAttribute('title')).toMatch(/^Claude account switched; the next request rebuilds 183k\n/);
     expect(chip.getAttribute('title')).toMatch(/last 200k after account switch$/);
   } finally { slot.lifecycle.unmount(); }

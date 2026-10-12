@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { definePluginApp, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_Icon as Icon, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
+import { ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
 import { expiresAt, hitRatio, type CacheState } from './src/cache.ts';
@@ -15,6 +16,8 @@ function clock(ms: number) {
   const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60];
   return `${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${String(s).padStart(2, '0')}`;
 }
+/** Whole minutes while there is time; seconds only in the last two minutes. */
+const countdown = (ms: number) => ms >= 120_000 ? `${Math.floor(ms / 60_000)}m` : clock(ms);
 const lifetime = (ms: number) => ms >= 3_600_000 ? `${ms / 3_600_000}h` : `${ms / 60_000}m`;
 
 function describe(state: CacheState, now: number) {
@@ -55,14 +58,14 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   // The dot shows cache warmth when the provider reports a lifetime, otherwise the last hit rate.
   const left = expiry === null || state.ttlMs === null ? null : (expiry - now) / state.ttlMs;
   const [fraction, ok, warn] = left === null ? [ratio, 0.8, 0.5] : [left, 0.5, 0.2];
-  const level = fraction > ok ? 'ok' : fraction > warn ? 'warn' : 'high';
+  const level = fraction > ok ? 'ok' : fraction > warn ? 'warn' : 'danger';
   const summary = describe(state, now);
-  return <span className="cache-hits" role="status" aria-label={`Prompt cache. ${summary}`} title={summary}>
-    <span className="ch-dot" data-level={level} data-cold={left !== null && left <= 0} />
-    {left !== null && <span>{left > 0 ? clock(expiry! - now) : 'cold'}</span>}
-    {!isCompactViewport && <span className="ch-muted">hit</span>}
-    <span>{percent(ratio)}</span>
-    {state.misses > 0 && <span className="ch-miss">{state.misses} miss</span>}
+  // Codex reports no lifetime, so its value is the hit rate; Claude's is the time left.
+  const value = left === null ? percent(ratio) : left <= 0 ? 'cold' : countdown(expiry! - now);
+  return <span className="bbp-chip cache-hits" role="status" aria-label={`Prompt cache. ${summary}`} title={summary}>
+    <span className="bbp-chip-icon" aria-hidden="true"><Icon name="Zap" /></span>
+    {!isCompactViewport && <ChipValue>{value}</ChipValue>}
+    <ChipDot tone={level} className={left !== null && left <= 0 ? 'ch-cold' : undefined}>{state.misses > 0 ? state.misses : null}</ChipDot>
   </span>;
 }
 
