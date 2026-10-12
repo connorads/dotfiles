@@ -1,0 +1,31 @@
+/* Thread-header chip: the one anatomy every bb-plugins header action shares. */
+.bbp-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 280px; padding: 0 9px;
+  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted-foreground);
+  font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
+  transition: background-color .15s, color .15s, border-color .15s, transform .16s cubic-bezier(.23, 1, .32, 1);
+}
+.bbp-chip:active { transform: scale(.96); }
+.bbp-chip:hover, .bbp-chip[aria-expanded="true"] { background: var(--state-hover); color: var(--foreground); }
+.bbp-chip[aria-expanded="true"] { border-color: var(--border-hairline); }
+.bbp-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.bbp-chip[data-tone="warn"] { border-color: color-mix(in oklch, var(--warning) 45%, var(--border)); }
+.bbp-chip[data-tone="danger"] { color: var(--destructive-text); border-color: color-mix(in oklch, var(--destructive) 45%, var(--border)); }
+
+.bbp-chip-icon { display: inline-flex; flex: none; width: 14px; height: 14px; }
+.bbp-chip-icon > * { width: 14px; height: 14px; }
+.bbp-chip-value { overflow: hidden; text-overflow: ellipsis; color: var(--foreground); }
+.bbp-chip[data-tone="danger"] .bbp-chip-value { color: inherit; }
+
+.bbp-chip-dot { display: inline-flex; align-items: center; gap: 4px; color: var(--success); }
+.bbp-chip-dot[data-tone="warn"] { color: var(--warning-text); }
+.bbp-chip-dot[data-tone="danger"] { color: var(--destructive-text); }
+.bbp-chip-dot > i {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bbp-chip { transition: none; }
+  .bbp-chip:active { transform: none; }
+}
