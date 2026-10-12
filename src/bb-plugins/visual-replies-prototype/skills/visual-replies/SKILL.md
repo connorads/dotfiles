@@ -5,6 +5,10 @@ description: Present compact interactive HTML in BB replies with the visual-repl
 
 # Visual replies
 
+Prefer `composition_reply` for in-chat charts, tables, metrics and adjustable
+scenarios that its native catalogue can express. Use this HTML tool for custom
+applications, unsupported interactions or an explicit HTML deliverable.
+
 Use `visual_reply_html` with `{html, title}`. Supply self-contained HTML, inline CSS and inline JavaScript.
 The title labels the iframe for accessibility. It does not add a visible heading.
 

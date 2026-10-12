@@ -15,7 +15,7 @@
     "server": "./server.ts",
     "app": "./app.tsx",
     "skills": [
-      "./skills/composed-replies"
+      "./skills"
     ]
   },
   "dependencies": {

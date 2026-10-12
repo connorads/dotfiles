@@ -23,6 +23,10 @@ async function save(sdk: Storage, threadId: string, value: unknown) {
   return { id, directive: `::composed-reply{id="${id}"}` };
 }
 export default function plugin(bb: BbPluginApi) {
+  bb.agents.contributeInstructions(() => `For visual explanations inside BB chat, prefer composition_reply with native components when the catalogue can express the request. This includes finance and budget visualisations, comparisons, metrics, tables, trends and adjustable scenarios. Ordinary requests such as "generate a thing" or "help me visualise my finances" do not imply a standalone HTML page.
+Read the composed-replies skill and run bb composed-replies-prototype contract openui for the exact catalogue and syntax. Prefer OpenUI for compact native replies. Publish with composition_reply and include its returned directive in your reply.
+Use visual_reply_html or inline-vis HTML for custom applications or interactions that the native catalogue cannot express. Honour explicit requests for a website, HTML file, exported report or a different format.
+Use supplied financial data. Ask for missing data rather than inventing the user's finances. Label demonstration data as fictional. Keep visuals focused on the user's question.`);
   bb.rpc.register(rpcContract, {
     read: async ({ threadId, id }) => {
       const loc = await bb.sdk.threads.storageLocation({ threadId });
@@ -39,7 +43,7 @@ export default function plugin(bb: BbPluginApi) {
   bb.agents.registerTool({
     name: "composition_reply",
     description:
-      "Store a native composed interactive response. Returns a directive to include in your reply. Get exact component contract from bb composed-replies-prototype contract openui or json-render.",
+      "Preferred tool for interactive visual explanations inside BB chat: finance, budgets, comparisons, charts, tables and adjustable scenarios. Compose native components rather than a standalone HTML page when the catalogue fits. Read bb composed-replies-prototype contract openui or json-render. Returns a directive to include in your reply.",
     parameters: {
       type: "object",
       properties: {

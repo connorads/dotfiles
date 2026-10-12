@@ -1,7 +1,7 @@
 # Composed replies prototype
 
 Native React components in BB assistant messages. OpenUI and json-render compose
-new interfaces from the same eight primitives. The model does not emit executable
+new interfaces from the same twelve primitives. The model does not emit executable
 JavaScript or select a finished calculator.
 
 ```mermaid
@@ -12,6 +12,15 @@ flowchart LR
   Native --> State[Local bound state and calculations]
   State --> Native
 ```
+
+## Agent routing
+
+The plugin contributes native-first routing instructions at provider session
+construction. The tool description advertises charts, budgets and comparisons.
+BB discovers the usage skill under the manifest's `./skills` root.
+New sessions receive these instructions; existing sessions retain their
+constructed instructions until a provider restart. Disabling the plugin removes
+its instruction contribution. Global BB preferences are unchanged.
 
 ## Use
 
@@ -35,9 +44,12 @@ bb composed-replies-prototype publish /absolute/thread-storage/input.json
 ## Components and calculations
 
 `Stack`, `Text`, `NumberInput`, `Slider`, `Select`, `Metric`, `Table` and
-`BarChart` render directly inside BB. Fonts and colours inherit BB theme tokens.
-Charts use CSS bars, fixed screen-size labels and explicit units. Charts accept
-nonnegative values and equal-length labels and values.
+`BarChart`, `Grid`, `Stat`, `LineChart` and `StackedBarChart` render directly inside
+BB. Fonts and colours inherit BB theme tokens.
+Charts use CSS bars, fixed screen-size labels and explicit units. Bar and stacked charts accept
+nonnegative values. Line charts accept signed values. Charts require equal-length
+labels and values in each series. Grids adapt to container width. Statistics show
+signed changes without labelling increases as good or bad.
 
 OpenUI uses its real parser, renderer and reactive state. `$variables` contain
 literal defaults. Derived values use inline arithmetic or ordinary named
