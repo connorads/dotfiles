@@ -25,7 +25,7 @@ test('unrenewed leases expire; renewed ones survive', () => {
   assert.deepEqual(leases.checkouts('h'), []);
 });
 
-const base = (id: string, at = 0, origin: 'user' | 'auto' = 'user') => ({ id, kind: 'push' as const, origin, startedAt: at });
+const base = (id: string, at = 0, origin: 'user' | 'auto' = 'user') => ({ id, request: { kind: origin === 'auto' ? 'fetch' as const : 'push' as const }, origin, startedAt: at });
 
 test('one operation runs at a time, and stale results are ignored', () => {
   const running = start(null, base('a'), null)!;
@@ -36,7 +36,7 @@ test('one operation runs at a time, and stale results are ignored', () => {
   assert.equal(progress(moved, 'a', { phase: 'Writing objects', percent: 10 }), null);
   assert.equal(finish(moved, 'b', { ok: true, summary: 'x' }, 5), null);
   const done = finish(moved, 'a', { ok: true, summary: 'Pushed 1 commit to origin/main' }, 5) as Extract<OpState, { status: 'succeeded' }>;
-  assert.deepEqual(done, { id: 'a', kind: 'push', origin: 'user', startedAt: 0, status: 'succeeded', summary: 'Pushed 1 commit to origin/main', finishedAt: 5 });
+  assert.deepEqual(done, { id: 'a', request: { kind: 'push' }, origin: 'user', startedAt: 0, status: 'succeeded', summary: 'Pushed 1 commit to origin/main', finishedAt: 5 });
   assert.equal(start(done, base('c', 6), null)?.status, 'running');
 });
 
@@ -46,4 +46,8 @@ test('automatic fetches wait for a quiet period after any fetch or operation', (
   const failed = finish(start(null, base('x', 0), null), 'x', { ok: false, failure: { reason: 'auth', message: 'no' } }, 100);
   assert.equal(start(failed, base('a', 100 + autoFetchQuietMs - 1, 'auto'), null), null);
   assert.equal(start(failed, base('a', 100 + autoFetchQuietMs - 1, 'user'), null)?.status, 'running');
+});
+
+test('only a fetch may start automatically', () => {
+  assert.equal(start(null, { id: 'a', request: { kind: 'pull' }, origin: 'auto', startedAt: autoFetchQuietMs }, 0), null);
 });

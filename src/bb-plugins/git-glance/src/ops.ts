@@ -1,10 +1,10 @@
-// One remote operation per checkout at a time. Transitions are pure: callers pass
+// One operation per checkout at a time. Transitions are pure: callers pass
 // the current state and get the next one, or null when the event does not apply.
 import type { OpState } from '../contracts.ts';
 import type { Failure, Progress } from './remote.ts';
 
 export type { OpState };
-type Base = Pick<OpState, 'id' | 'kind' | 'origin' | 'startedAt'>;
+type Base = Pick<OpState, 'id' | 'request' | 'origin' | 'startedAt'>;
 
 /** Automatic fetches back off this long after any operation on the checkout. */
 export const autoFetchQuietMs = 2 * 60_000;
@@ -12,6 +12,8 @@ export const autoFetchQuietMs = 2 * 60_000;
 export function start(current: OpState | null, next: Base, lastFetchAt: number | null): OpState | null {
   if (current?.status === 'running') return null;
   if (next.origin === 'auto') {
+    // Only fetch runs on its own; anything else needs a person to ask for it.
+    if (next.request.kind !== 'fetch') return null;
     const recent = Math.max(lastFetchAt ?? 0, current ? ('finishedAt' in current ? current.finishedAt : 0) : 0);
     if (next.startedAt - recent < autoFetchQuietMs) return null;
   }

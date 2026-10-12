@@ -6,7 +6,8 @@ import { finish, progress, start, type OpState } from './src/ops.ts';
 
 /** Windows renew every 30 seconds; two missed renewals end the lease. */
 const leaseTtlMs = 75_000;
-const syncTimeoutMs = 3 * 60_000 + 10_000;
+/** A little longer than the host's own git timeout, so the host reports it first. */
+const runTimeoutMs = 3 * 60_000 + 10_000;
 
 export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
@@ -86,18 +87,22 @@ export default function plugin(bb: BbPluginApi) {
       const target = await required(threadId);
       return host.call('commit', { root: target.root, sha }, { hostId: target.hostId, timeoutMs: 15_000 });
     },
-    sync: async ({ threadId, op, origin }) => {
+    branches: async ({ threadId }) => {
+      const target = await required(threadId);
+      return host.call('branches', { root: target.root }, { hostId: target.hostId, timeoutMs: 15_000 });
+    },
+    run: async ({ threadId, request, origin }) => {
       const target = await required(threadId);
       const key = checkoutKey(target);
       const snapshot = snapshots.get(key);
       const current = ops.get(key)?.state ?? null;
       const id = randomUUID();
-      const state = start(current, { id, kind: op, origin, startedAt: Date.now() }, snapshot?.kind === 'none' ? null : snapshot?.fetchedAt ?? null);
+      const state = start(current, { id, request, origin, startedAt: Date.now() }, snapshot?.kind === 'none' ? null : snapshot?.fetchedAt ?? null);
       if (!state) return { op: current };
       const abort = new AbortController();
       setOp(target, state, abort);
       // Runs past this RPC: the app follows progress and the result over realtime.
-      void host.call('sync', { root: target.root, op, opId: id }, { hostId: target.hostId, timeoutMs: syncTimeoutMs, signal: abort.signal })
+      void host.call('run', { root: target.root, request, opId: id }, { hostId: target.hostId, timeoutMs: runTimeoutMs, signal: abort.signal })
         .catch(cause => ({ ok: false as const, failure: { reason: abort.signal.aborted ? 'cancelled' as const : 'unknown' as const,
           message: cause instanceof Error ? cause.message : String(cause) } }))
         .then(result => {

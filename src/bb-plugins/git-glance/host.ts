@@ -1,7 +1,9 @@
 import { experimental_defineHostEntry } from '@get-bb/plugin-sdk';
-import { hostContract, hostSignals } from './contracts.ts';
+import { hostContract, hostSignals, type OpRequest } from './contracts.ts';
 import { createMonitor, type Monitor } from './src/monitor.ts';
 import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
+import { listBranches, switchBranch } from './src/branches.ts';
+import type { OpOptions, OpResult } from './src/spawn.ts';
 import { sync } from './src/sync.ts';
 
 const monitors = new Map<string, Promise<Monitor | null>>();
@@ -11,8 +13,16 @@ async function required(root: string): Promise<Repo> {
   if (!repo) throw new Error(`${root} is not a git repository.`);
   return repo;
 }
-const syncTimeoutMs = 3 * 60_000;
+const remoteTimeoutMs = 3 * 60_000;
+const localTimeoutMs = 60_000;
 const progressEveryMs = 150;
+
+function perform(repo: Repo, request: OpRequest, options: OpOptions): Promise<OpResult> {
+  switch (request.kind) {
+    case 'fetch': case 'pull': case 'push': return sync(repo, request.kind, options);
+    case 'switch': return switchBranch(repo, request.branch, request.track, options);
+  }
+}
 
 export default experimental_defineHostEntry({
   contract: hostContract,
@@ -41,17 +51,19 @@ export default experimental_defineHostEntry({
     },
     diff: async ({ root, ...input }) => diff(await required(root), input),
     commit: async ({ root, sha }) => commitDetail(await required(root), sha),
-    sync: async ({ root, op, opId }, context) => {
+    branches: async ({ root }) => listBranches(await required(root)),
+    run: async ({ root, request, opId }, context) => {
       const repo = await resolveRepo(root);
       if (!repo) return { ok: false as const, failure: { reason: 'unknown' as const, message: `${root} is not a git repository.` } };
-      if (syncing.has(root)) return { ok: false as const, failure: { reason: 'locked' as const, message: 'Another push, pull or fetch is running here.' } };
+      if (syncing.has(root)) return { ok: false as const, failure: { reason: 'locked' as const, message: 'Another operation is running here.' } };
       syncing.add(root);
-      // Hold watcher refreshes: a pull rewrites many files, and one refresh at the end is enough.
+      // Hold watcher refreshes: a pull or switch rewrites many files; one refresh at the end is enough.
       const monitor = await monitors.get(root)?.catch(() => null);
       monitor?.hold();
       let sent = 0;
       try {
-        return await sync(repo, op, { signal: context.signal, timeoutMs: syncTimeoutMs, onProgress: progress => {
+        const remote = request.kind === 'fetch' || request.kind === 'pull' || request.kind === 'push';
+        return await perform(repo, request, { signal: context.signal, timeoutMs: remote ? remoteTimeoutMs : localTimeoutMs, onProgress: progress => {
           if (Date.now() - sent < progressEveryMs && progress.percent !== 100) return;
           sent = Date.now();
           void context.experimental_emitSignal('progress', { root, opId, progress });
