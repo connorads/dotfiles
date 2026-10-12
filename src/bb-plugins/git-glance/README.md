@@ -4,6 +4,8 @@ A header chip shows the thread checkout's branch, ahead/behind counts and the
 number of changed files. Click it or press `Alt+G` to open a pop-up with:
 
 - pull, push and fetch, with git's own progress and a hint when one fails
+- a branch switcher on the branch name: filter, then switch, or track a remote branch
+- stashes, each openable for its files, with apply, pop and hold-to-drop
 - branch, upstream, stash count and any merge or rebase in progress
 - conflicted, staged, unstaged and untracked files with line counts
 - an inline diff for each file, in BB's diff viewer
@@ -12,9 +14,11 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - diffs use BB's own viewer, which is built on Pierre diffs
 
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
-`⇧P` pushes, `f` fetches, `z` expands to a large view with side-by-side
-diffs, `R` resynchronises, and `q` or `esc` closes. The size is remembered. Rebind `Alt+G`
-in Settings → Keyboard. For anything else, open lazygit with its own plugin.
+`⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, and `q` or
+`esc` closes. On a stash row `a` applies and `g` pops.
+
+`z` expands to a large view with side-by-side diffs, and the size is
+remembered. Rebind `Alt+G` in Settings → Keyboard. For anything else, open lazygit with its own plugin.
 
 ## Live updates
 
@@ -51,6 +55,14 @@ flowchart LR
 - One operation runs per checkout. Click the running button to cancel it.
 - Git never prompts. Credential helpers and a running ssh-agent work; anything
   that needs a prompt fails with a hint to authenticate in a terminal.
+
+## Destructive actions
+
+Every mutating action is one typed operation: one runs per checkout at a time,
+with progress, a result line and cancel.
+
+- Stash actions name the stash by sha and look up `stash@{n}` when they run, so
+  a stash pushed or dropped meanwhile can never redirect a drop.
 
 ## Repository discovery
 
