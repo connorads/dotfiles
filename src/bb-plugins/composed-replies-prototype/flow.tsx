@@ -176,6 +176,9 @@ export function Flow(input: Graph) {
           {connections.map(({ edge, x1, y1, x2, y2, skip }, index) => {
             const lane = 8 + index * 0.6;
             const middle = (y1 + y2) / 2;
+            const joins =
+              graph.edges.filter((connection) => connection.to === edge.to)
+                .length > 1;
             const label =
               edge.label &&
               (edge.label.length > 18
@@ -197,7 +200,7 @@ export function Flow(input: Graph) {
                 />
                 {label && (
                   <text
-                    x={skip ? (x2 + lane) / 2 : (x1 + x2) / 2}
+                    x={skip ? (x2 + lane) / 2 : joins ? x1 : x2}
                     y={skip ? y2 - 22 : middle - 4}
                     textAnchor="middle"
                     fontSize="11"

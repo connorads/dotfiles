@@ -107,6 +107,12 @@ it("connects measured node boundaries and routes skipped levels outside node col
       .querySelector('[data-flow-edge="source→join"]')
       ?.getAttribute("d"),
   ).toBe("M150,40 V58 H10.4 V174 H150 V192");
+  expect(
+    container
+      .querySelector('[data-flow-edge="source→a"]')
+      ?.parentElement?.querySelector("text")
+      ?.getAttribute("x"),
+  ).toBe("90");
   measure.mockRestore();
 });
 it("keeps dense layers readable inside a local scrolling surface", () => {
