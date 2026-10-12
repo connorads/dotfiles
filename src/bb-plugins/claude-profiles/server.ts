@@ -81,6 +81,11 @@ export default function plugin(bb: BbPluginApi) {
       try { await claimNext(input.thread.id, input.host?.id ?? null); }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
     } else if (input.thread.providerId === 'claude-code') {
+      // The env contributor gives nothing on another machine, so Claude would start on that machine's native login.
+      const selected = await bb.storage.kv.get<Selection>(key(input.thread.id));
+      if (selected?.profile.configDir && input.host && input.host.id !== selected.hostId) {
+        return { action: 'reject', message: `The ${selected.profile.label} account belongs to another machine. Choose this thread's account again.` };
+      }
       await review(input.thread.id);
       const notice = await takeNotice(input.thread.id);
       if (notice) return { action: 'reject', message: notice };
