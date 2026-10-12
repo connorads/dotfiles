@@ -43,6 +43,21 @@ desktop controls after relaunch; a shell export alone does not prove GUI coverag
 It refreshes cached feature flags. Claude's native settings do not duplicate
 these opt-outs, so the explicit exception remains effective.
 
+## Grok CLI
+
+Mise owns Grok Build and pins its release in
+[config.toml](../.config/mise/config.toml). Its self-updater stays disabled.
+[Grok's native configuration](../.grok/config.toml) disables product telemetry,
+feedback, session-trace uploads, external OpenTelemetry exports, and workspace snapshots.
+The shell's `DISABLE_ERROR_REPORTING=1` disables error uploads.
+
+Run `grok login` to sign in with the SuperGrok account, then run `grok`.
+Authentication files, logs and session state stay untracked.
+
+The opt-outs do not stop prompts and tool results reaching the inference service.
+The [official configuration reference](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/26-config-reference.md)
+defines the native controls.
+
 ## Desktop settings
 
 | Application | Persistent control | Verification |
