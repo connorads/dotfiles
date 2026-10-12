@@ -87,6 +87,15 @@ test('a window whose reset has passed shows no stale percentage', async () => {
   expect(row.getAttribute('aria-label')).not.toContain('78%');
 });
 
+test('opening usage focuses its scroll area for native keyboard scrolling', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
+  act(() => openUsage());
+  const body = await slot.findByRole('region', { name: 'Usage details' });
+  await waitFor(() => expect(document.activeElement).toBe(body));
+  expect(body.tabIndex).toBe(-1);
+});
+
 test.each(['Escape', 'q', 'Q'])('%s dismisses the overlay and restores focus to the previous control', async key => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
