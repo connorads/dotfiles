@@ -1,5 +1,6 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
+import { resetCreditsSchema } from './reset-credits.ts';
 
 const cost = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() }).nullable();
 export const sourceWindowSchema = z.object({ label: z.string(), usedPercent: z.number(), resetsAt: z.string().nullable(), cost });
@@ -31,12 +32,22 @@ export const headerSchema = z.object({
   providerId: z.string(), label: z.string(), accountLabel: z.string().nullable(),
   windows: z.array(windowSchema), message: z.string().nullable(),
 });
+export const inspectionSchema = z.object({
+  snapshot: snapshotSchema,
+  readings: z.array(z.object({ accountId: z.string(), observedAt: z.number().nonnegative().nullable() })),
+  resetCredits: z.array(z.object({ hostId: z.string(), reading: resetCreditsSchema })),
+});
+export const hostContract = defineRpcContract({
+  resetCredits: { input: z.object({ refresh: z.boolean() }), output: resetCreditsSchema },
+});
 export const rpcContract = defineRpcContract({
   overview: { input: z.object({ refresh: z.boolean() }), output: snapshotSchema },
   header: { input: z.object({ threadId: z.string() }), output: headerSchema },
+  inspection: { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },
 });
 export type SourceSnapshot = z.infer<typeof sourceSnapshotSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export type Account = Snapshot['machines'][number]['providers'][number];
 export type UsageWindow = z.infer<typeof windowSchema>;
 export type Header = z.infer<typeof headerSchema>;
+export type Inspection = z.infer<typeof inspectionSchema>;

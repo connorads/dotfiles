@@ -73,6 +73,18 @@ The plugin publishes the `overview` and `header` RPC methods through
 (`5-hour`, `Weekly`, `Weekly · Fable`, `Credits`) and its `period`
 (`five-hour`, `day`, `week`, `month` or `null`).
 
+`inspection` takes `{ refresh: boolean }` and returns the overview as `snapshot`,
+source observation times as `readings`, and host-local Codex `resetCredits`.
+The `overview` and `header` response shapes remain independent of inspection metadata.
+Missing observation times stay unknown. The merged default Claude account uses
+the oldest source time because its windows can come from both sources.
+
+The host entry reads the tmux collector's `~/.cache/codex-usage.json`.
+An explicit refresh runs `~/.config/zsh/functions/codex-usage` with its cache,
+lock and backoff rules. The plugin does not read credentials or redeem credits.
+Reset credits identify the CLI login separately from BB's quota account.
+The cache timestamp describes the credit reading; loading it does not make it fresh.
+
 ## Development
 
 ```sh

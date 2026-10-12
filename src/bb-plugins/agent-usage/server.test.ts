@@ -10,6 +10,7 @@ const snapshot: SourceSnapshot = { machines: [{ id: 'host-one', displayName: 'La
 const unused = async () => { throw new Error('Unexpected port call'); };
 const ports = {
   getThread: unused, getEnvironment: unused, listProviders: unused, listPlugins: unused,
+  resetCredits: unused,
 };
 
 test('overview requests every discovered provider through the existing collector and forwards forced refresh', async () => {
@@ -24,6 +25,32 @@ test('overview requests every discovered provider through the existing collector
     { pluginId: 'bb--provider-usage', input: { providerIds: [], force: false, machineIds: null } },
     { pluginId: 'bb--provider-usage', input: { providerIds: ['codex'], force: true, machineIds: null } },
   ]);
+});
+
+test('inspection keeps provider observation times and isolates reset-credit failures by machine', async () => {
+  const source = { ...snapshot, machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
+    usage: account.usage?.status === 'ok' ? { ...account.usage, observedAt: 999 } : account.usage })) })) };
+  const reader = createUsageReader({ ...ports,
+    resetCredits: async () => { throw new Error('Host disconnected'); },
+    callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? source : { observedAt: 123, usage: { status: 'ok' } }),
+  });
+  const value = await reader.inspection(false);
+  expect(value.snapshot).toEqual(await reader.overview(false));
+  expect(value.readings).toEqual([{ accountId: snapshot.machines[0]!.providers[0]!.id, observedAt: 123 }]);
+  expect(value.resetCredits).toEqual([{ hostId: 'host-one', reading: { status: 'unavailable', message: 'Reset credits could not be read from this machine.' } }]);
+  expect(value.snapshot.machines[0]?.providers[0]?.usage).not.toHaveProperty('observedAt');
+});
+
+test('inspection requests reset credits only on connected Codex machines and passes refresh through', async () => {
+  const calls: unknown[] = [];
+  const reader = createUsageReader({ ...ports,
+    resetCredits: async (hostId, refresh) => { calls.push([hostId, refresh]); return { status: 'unavailable', message: 'No cache' }; },
+    callRpc: async input => input.outputSchema.parse(input.method === 'getUsage' ? { machines: [snapshot.machines[0],
+      { ...snapshot.machines[0], id: 'offline', status: 'disconnected' },
+      { ...snapshot.machines[0], id: 'empty', providers: [] }] } : { observedAt: null, usage: { status: 'ok' } }),
+  });
+  expect((await reader.inspection(true)).resetCredits).toHaveLength(2);
+  expect(calls).toEqual([['host-one', true]]);
 });
 
 test('Claude header follows the selected profile rather than the native default login', async () => {
