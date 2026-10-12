@@ -114,7 +114,7 @@ test('the rebindable usage command opens the overlay', async () => {
 });
 
 
-test('reset credits distinguish held from usable and disclose expiry dates by keyboard', async () => {
+test('reset credits distinguish held from usable and disclose expiry dates', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
   act(() => openUsage());
@@ -127,6 +127,23 @@ test('reset credits distinguish held from usable and disclose expiry dates by ke
   fireEvent.click(disclosure);
   expect(region.querySelector('details')?.open).toBe(true);
   expect(region.textContent).toContain('1 reset · expiry unavailable');
+});
+
+test('closing after a responsive header remount returns focus to the same thread\'s replacement badge', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const props = { threadId: 'thread-one', projectId: 'project-one', isCompactViewport: false };
+  const originSlot = renderSlot(app.threadHeaderActions[0], props, { rpc: { header: async () => header } });
+  const origin = await originSlot.findByRole('button', { name: /^Open all agent usage/ });
+  const overlay = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
+  origin.focus();
+  act(() => openUsage());
+  const dialog = await overlay.findByRole('dialog');
+  originSlot.unmount();
+  const replacementSlot = renderSlot(app.threadHeaderActions[0], { ...props, isCompactViewport: true },
+    { rpc: { header: async () => header } });
+  const replacement = await replacementSlot.findByRole('button', { name: /^Open all agent usage/ });
+  fireEvent.keyDown(dialog, { key: 'q' });
+  await waitFor(() => expect(document.activeElement).toBe(replacement));
 });
 
 test('old readings suppress projections and do not become fresh when the panel loads', async () => {
