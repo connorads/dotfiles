@@ -1063,9 +1063,48 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/ts-typecheck.sh src/opencode-plugins"
     }
     // One step for the whole workspace, so a new plugin is gated the day it exists.
+    // Typechecks only plugins with staged files: hk's stash keeps untracked files,
+    // so another plugin's half-committed work would otherwise fail every commit.
+    // Plugins do not import each other, so an unstaged plugin cannot break.
     ["ts-typecheck-bb-plugins"] {
         glob = List("src/bb-plugins/**/*.ts", "src/bb-plugins/**/*.tsx", "src/bb-plugins/*/tsconfig.json")
-        check = "for t in src/bb-plugins/*/tsconfig.json; do bash .hk-hooks/ts-typecheck.sh ${t%/tsconfig.json} || exit 1; done"
+        check = "for d in $(for f in {{files}}; do r=${f#*src/bb-plugins/}; echo \"src/bb-plugins/${r%%/*}\"; done | sort -u); do [ -f \"$d/tsconfig.json\" ] || continue; bash .hk-hooks/ts-typecheck.sh \"$d\" || exit 1; done"
+
+        tests {
+            ["typechecks only plugins with staged files"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
+                    ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "[ \"$1\" = src/bb-plugins/a ]\n"
+                    ["{{tmp}}/src/bb-plugins/a/app.ts"] = ""
+                    ["{{tmp}}/src/bb-plugins/a/x.tsx"] = ""
+                }
+                files = List("{{tmp}}/src/bb-plugins/a/app.ts", "{{tmp}}/src/bb-plugins/a/x.tsx")
+                expect { code = 0 }
+            }
+            ["a failing staged plugin fails the step"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
+                    ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "[ \"$1\" = src/bb-plugins/a ]\n"
+                    ["{{tmp}}/src/bb-plugins/a/app.ts"] = ""
+                    ["{{tmp}}/src/bb-plugins/b/app.ts"] = ""
+                }
+                files = List("{{tmp}}/src/bb-plugins/a/app.ts", "{{tmp}}/src/bb-plugins/b/app.ts")
+                expect { code = 1 }
+            }
+            ["files outside a plugin with a tsconfig are skipped"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "exit 1\n"
+                    ["{{tmp}}/src/bb-plugins/spikes/x/app.ts"] = ""
+                }
+                files = List("{{tmp}}/src/bb-plugins/spikes/x/app.ts")
+                expect { code = 0 }
+            }
+        }
     }
     ["ts-typecheck-goal"] {
         glob = List(".pi/agent/extensions/goal/*.ts", ".pi/agent/extensions/goal/tsconfig.json")
