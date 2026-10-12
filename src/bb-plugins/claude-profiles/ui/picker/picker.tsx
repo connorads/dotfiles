@@ -60,7 +60,9 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const searchInput = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
-  const claude = composer.selection?.providerId === 'claude-code';
+  // Queued-message editors cannot change a thread's account; choosing there would rewrite the next-thread account.
+  const claude = (composer.scope.kind === 'thread' || composer.scope.kind === 'new-thread')
+    && composer.selection?.providerId === 'claude-code';
   const currentProvider = composer.selection?.providerId;
   const environmentKey = JSON.stringify(composer.selection?.environment);
   const refresh = useCallback(async () => {
