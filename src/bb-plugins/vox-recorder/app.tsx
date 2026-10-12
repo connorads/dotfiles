@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useBbNavigate, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
+import { Chip as VoxChip, ChipValue } from '@bb-plugins/chip';
 import type { Finished, rpcContract } from './contracts.ts';
 import { grabInto, toggleRecording } from './actions.ts';
 import { Library, useNow } from './library.tsx';
@@ -90,11 +91,11 @@ function Chip({ isCompactViewport }: PluginThreadHeaderActionProps) {
   const now = useNow(1000, ticking);
   const shown = status && pill(status, now / 1000);
   if (!shown) return null;
-  return <button type="button" className="vx-chip" data-vox-chip data-tone={shown.tone} aria-haspopup="dialog"
-    aria-expanded={dialog?.kind === 'library'} aria-label={`Vox: ${shown.label}`} title={`Vox: ${shown.label} (⌥⇧V)`} onClick={toggleLibrary}>
-    <span className="vx-glyph" aria-hidden>{shown.glyph}</span>
-    {!isCompactViewport || shown.tone !== 'muted' ? <span>{shown.text}</span> : null}
-  </button>;
+  return <VoxChip data-vox-chip tone={shown.tone === 'empty' ? 'danger' : undefined} expanded={dialog?.kind === 'library'}
+    aria-label={`Vox: ${shown.label}`} title={`Vox: ${shown.label} (⌥⇧V)`} onClick={toggleLibrary}
+    icon={<span className="vx-glyph" data-tone={shown.tone}>{shown.glyph}</span>}>
+    {!isCompactViewport || shown.tone !== 'muted' ? <ChipValue>{shown.text}</ChipValue> : null}
+  </VoxChip>;
 }
 
 export default definePluginApp(app => {

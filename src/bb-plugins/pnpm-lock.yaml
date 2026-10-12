@@ -848,6 +848,9 @@ importers:
 
   vox-recorder:
     dependencies:
+      '@bb-plugins/chip':
+        specifier: workspace:*
+        version: link:../chip
       zod:
         specifier: 'catalog:'
         version: 4.6.5
