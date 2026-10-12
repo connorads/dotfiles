@@ -346,6 +346,16 @@
 .gg-stash-row:hover .gg-stash-actions > *, .gg-stash-row:focus-within .gg-stash-actions > *, .gg-stash[data-open] .gg-stash-actions > * { pointer-events: auto; }
 .gg-stash-row:hover .gg-age, .gg-stash-row:focus-within .gg-age { visibility: hidden; }
 
+/* A change row's action, over its right edge on hover or keyboard focus. */
+.gg-change { position: relative; }
+.gg-row-actions {
+  position: absolute; top: 4px; right: 34px; display: flex; padding-left: 24px; opacity: 0; pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--popover) 24px); transition: opacity .15s;
+}
+.gg-change:hover > .gg-row-actions, .gg-change:focus-within > .gg-row-actions { opacity: 1; }
+.gg-change:hover > .gg-row-actions > *, .gg-change:focus-within > .gg-row-actions > * { pointer-events: auto; }
+.gg-change-row[aria-disabled] { cursor: default; }
+
 /* Hold to confirm: the fill grows for 2s while held and snaps back on release. */
 .gg-hold {
   position: relative; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; overflow: hidden;
@@ -416,7 +426,7 @@
 /* Reduced motion keeps opacity cues and drops movement and size changes. */
 @media (prefers-reduced-motion: reduce) {
   .gg-picker { animation: none; }
-  .gg-stash-actions { transition: none; }
+  .gg-stash-actions, .gg-row-actions { transition: none; }
   .gg-dialog[data-morph], .gg-dialog[data-morph] .gg-panel { transition: none; }
   .gg-live-dot, .gg-spinner, .gg-diff-loading i, .gg-progress i { animation: none; }
   .gg-diff, .gg-commit-panel, .gg-success { transition-property: opacity; }

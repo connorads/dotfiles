@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { experimental_Diff as Diff, experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { Change, DiffSource, rpcContract } from './contracts.ts';
 import { splitPath } from './src/format.ts';
@@ -7,10 +7,12 @@ import { codeNames, DiffBar, message, Zoomed } from './ui.tsx';
 /** A changed file, from the working tree or from one commit. */
 export type FileRow = Pick<Change, 'path' | 'origPath' | 'code' | 'added' | 'removed'>;
 
-export function ChangeRow({ file, source, threadId, open, onToggle, flash = null }: {
+export function ChangeRow({ file, source, threadId, open, onToggle, flash = null, action = null }: {
   file: FileRow; source: DiffSource; threadId: string; open: boolean; onToggle: () => void;
   /** Set when the row is new or changed in this update; a new value replays the highlight. */
   flash?: string | null;
+  /** A hold-to-confirm action shown over the row's right edge; `x` on the row presses it. */
+  action?: ReactNode;
 }) {
   const { dir, name } = splitPath(file.path);
   const directory = file.path.endsWith('/');
@@ -18,8 +20,15 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
   const note = directory ? 'folder' : file.code === '?' ? 'new' : file.code === 'U' ? '' : 'binary';
   return <li className="gg-change" data-open={open || undefined}>
     {flash && <span className="gg-flash" key={flash} aria-hidden />}
+    {/* A folder has no single diff, but stays focusable so its action is reachable by key. */}
     <button type="button" data-row className="gg-change-row" aria-expanded={directory ? undefined : open}
-      disabled={directory} onClick={onToggle} title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}>
+      aria-disabled={directory || undefined} onClick={directory ? undefined : onToggle}
+      title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
+      onKeyDown={event => {
+        if (event.key !== 'x' || !action || event.metaKey || event.ctrlKey || event.altKey) return;
+        event.preventDefault(); event.stopPropagation();
+        event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.gg-row-actions .gg-hold')?.click();
+      }}>
       <span className="gg-code" data-code={file.code} title={codeNames[file.code]}>{file.code === '?' ? 'U' : file.code === 'U' ? '!' : file.code}</span>
       <span className="gg-path">
         <span className="gg-name">{name}</span>
@@ -31,6 +40,7 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
       {counted ? <DiffBar added={file.added} removed={file.removed} /> : <span />}
       {!directory && <Icon name="ChevronDown" className="gg-row-chevron" />}
     </button>
+    {action && <span className="gg-row-actions">{action}</span>}
     {open && <DiffPane file={file} source={source} threadId={threadId} />}
   </li>;
 }

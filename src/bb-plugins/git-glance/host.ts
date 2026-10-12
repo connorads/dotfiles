@@ -3,6 +3,7 @@ import { hostContract, hostSignals, type OpRequest } from './contracts.ts';
 import { createMonitor, type Monitor } from './src/monitor.ts';
 import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
 import { listBranches, switchBranch } from './src/branches.ts';
+import { discard } from './src/discard.ts';
 import { stashAction } from './src/stashes.ts';
 import type { OpOptions, OpResult } from './src/spawn.ts';
 import { sync } from './src/sync.ts';
@@ -25,6 +26,7 @@ function perform(repo: Repo, request: OpRequest, options: OpOptions): Promise<Op
     case 'stash-apply': return stashAction(repo, 'apply', request.sha, options);
     case 'stash-pop': return stashAction(repo, 'pop', request.sha, options);
     case 'stash-drop': return stashAction(repo, 'drop', request.sha, options);
+    case 'discard': return discard(repo, request.path, request.area, options);
   }
 }
 
