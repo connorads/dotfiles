@@ -166,6 +166,10 @@
         };
       };
 
+      "com.lujjjh.LinearMouse" = {
+        menuBarVisibilityMode = builtins.toJSON "never";
+      };
+
       # KeyCastr: kill Sparkle auto-update. The binary is pinned+read-only via nix
       # (see environment.systemPackages), so Sparkle can't replace it anyway - this
       # also stops the update-check network call. Re-asserted every rebuild.

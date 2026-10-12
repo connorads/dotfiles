@@ -65,7 +65,8 @@ Claude Code is mise-owned. Do not install it natively or re-enable its self-upda
 ## Mouse buttons
 
 The desktop declares LinearMouse as a Homebrew cask and starts it at login through
-launchd. Home Manager writes its mutable JSON configuration on activation.
+launchd. Its menu bar icon stays hidden. Home Manager writes its mutable JSON
+configuration on activation.
 UI edits last until the next rebuild. macOS requires Accessibility approval.
 The Evoluent VerticalMouse 4 Left maps Button 5 to Forward. Other devices use
 their existing button behaviour.
