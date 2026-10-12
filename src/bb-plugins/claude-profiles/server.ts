@@ -15,6 +15,7 @@ export default function plugin(bb: BbPluginApi) {
   const cache = new Map<string, Usage>();
   const probes = new Map<string, Promise<Usage>>();
   const key = (id: string) => `thread:${id}`;
+  const nextKey = 'next-thread-profile';
   async function context(threadId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
     if (thread.providerId !== 'claude-code') throw new Error('This thread does not use Claude Code.');
@@ -27,9 +28,27 @@ export default function plugin(bb: BbPluginApi) {
       throw new Error('Finish or stop the turn and clear queued messages before switching profiles.');
     }
   }
-  bb.experimental_hooks.on('message.dispatch', input => switching.has(input.thread.id)
-    ? { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' }
-    : { action: 'proceed' });
+  async function localHostId() {
+    return (await bb.sdk.hosts.list()).find(machine => machine.status === 'connected')?.id ?? null;
+  }
+  // The first send reaches this hook before the provider env is resolved, so the claimed selection applies to the first launch.
+  async function claimNext(threadId: string, hostId: string | null) {
+    const next = await bb.storage.kv.get<string>(nextKey);
+    if (!next || next === 'default' || await bb.storage.kv.get<Selection>(key(threadId))) return;
+    if (!hostId) throw new Error('Choose a machine before starting a thread on another Claude account.');
+    const config = await settings.get();
+    const profile = (await host.call('profiles', { root: config.profileRoot }, { hostId })).find(value => value.id === next);
+    if (!profile) throw new Error(`Claude account ${next} does not exist on this machine. Choose another account.`);
+    await bb.storage.kv.set(key(threadId), { hostId, profile } satisfies Selection);
+  }
+  bb.experimental_hooks.on('message.dispatch', async input => {
+    if (switching.has(input.thread.id)) return { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' };
+    if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
+      try { await claimNext(input.thread.id, input.host?.id ?? null); }
+      catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
+    }
+    return { action: 'proceed' };
+  });
   bb.providers.experimental_contributeEnv('claude-code', async input => {
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
     if (!selected || selected.hostId !== input.hostId) return [];
@@ -88,15 +107,31 @@ export default function plugin(bb: BbPluginApi) {
       return value;
     } finally { switching.delete(threadId); }
   }
+  async function localProfiles() {
+    const hostId = await localHostId();
+    if (!hostId) return null;
+    return host.call('profiles', { root: (await settings.get()).profileRoot }, { hostId });
+  }
   bb.rpc.register(rpcContract, {
-    thread: async input => {
-      const thread = await bb.sdk.threads.get({ threadId: input.threadId });
-      if (thread.providerId !== 'claude-code' || !thread.environmentId) return { supported: false, profiles: [], selection: null };
-      const { environment, config } = await context(input.threadId);
+    accounts: async ({ threadId }) => {
+      const unsupported = { supported: false, profiles: [], currentId: 'default' };
+      if (threadId === null) {
+        const profiles = await localProfiles();
+        return profiles ? { supported: true, profiles, currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default' } : unsupported;
+      }
+      const thread = await bb.sdk.threads.get({ threadId });
+      if (thread.providerId !== 'claude-code' || !thread.environmentId) return unsupported;
+      const { environment, config } = await context(threadId);
       return { supported: true, profiles: await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId }),
-        selection: await bb.storage.kv.get<Selection>(key(input.threadId)) ?? null };
+        currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default' };
     },
-    switch: input => select(input.threadId, input.profileId),
+    choose: async ({ threadId, profileId }) => {
+      if (threadId !== null) return { currentId: (await select(threadId, profileId)).profile.id };
+      if (!(await localProfiles())?.some(profile => profile.id === profileId)) throw new Error('Profile does not exist.');
+      await bb.storage.kv.set(nextKey, profileId);
+      bb.realtime.publish('profiles-changed', { threadId: null });
+      return { currentId: profileId };
+    },
     usage: input => usage(input.threadId, input.profileId, input.refresh),
   });
   bb.rpc.register(usageSourceContract, {

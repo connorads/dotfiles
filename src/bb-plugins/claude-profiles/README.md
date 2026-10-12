@@ -1,19 +1,32 @@
 # Claude Profiles for BB
 
-Choose an existing Claude Code login per thread. Keep its native conversation
-when switching profiles. Read each account's quota through the native Claude CLI.
+Choose an existing Claude Code login from the composer, beside the model picker.
+Keep the native conversation when switching. Read each account's quota through
+the native Claude CLI.
 
 ## Use
 
-1. Open a Claude Code thread and send its first message.
-2. Finish or stop its turn. Clear queued messages.
-3. Click the account button, or run **Claude: switch account** from the command palette.
-4. Click an account, or press its number. Arrow keys and `Enter` also work.
-5. Send the next message. Claude resumes the same native conversation.
+The account picker shows in the composer while Claude Code is the selected provider.
 
-The header button shows the selected account. The menu lists accounts with a
-selection tick and number shortcuts. Press `Q` or `Esc` to close. **Claude: switch account**
-has no default shortcut. Assign one in BB's keyboard settings if needed.
+New thread:
+
+1. Click the account picker, or run **Claude: switch account** with the caret in the composer.
+2. Click an account, or press its number. Arrow keys and `Enter` also work.
+3. Send the first message. The thread starts on that account.
+
+The new-thread choice is remembered, like the model picker. Every new Claude
+thread starts on it until you choose another, including threads that agents or
+`bb thread spawn` create.
+
+Existing thread:
+
+1. Finish or stop the turn. Clear queued messages. The picker is disabled during a turn.
+2. Choose an account in the thread's composer.
+3. Send the next message. Claude resumes the same native conversation.
+
+The menu lists accounts with a selection tick and number shortcuts. Press `Q` or
+`Esc` to close. **Claude: switch account** has no default shortcut. Assign one in
+BB's keyboard settings if needed.
 
 [Agent usage](../agent-usage/README.md) shows quota in a separate header badge and
 all-account overlay. Its shortcut is `⌘⇧A`. Claude Profiles supplies quota through
@@ -37,7 +50,7 @@ sequenceDiagram
     participant Plugin as BB plugin server
     participant Host as Plugin host worker
     participant Claude as Native Claude Code
-    User->>Plugin: Select profile on idle thread
+    User->>Plugin: Select profile in an idle thread's composer
     Plugin->>Host: Check target native login
     Host->>Claude: auth status --json
     Plugin->>Plugin: Stop and release thread runtime
@@ -53,8 +66,15 @@ directory discovery, transcript copying and native CLI calls. The app uses typed
 RPC and displays account selection.
 
 The plugin reuses BB's Claude Code provider. It contributes `CLAUDE_CONFIG_DIR`
-and clears API-key and alternate-provider overrides for selected threads.
-Unselected threads receive no environment contribution. `HOME` stays unchanged.
+and clears API-key and alternate-provider overrides for threads on a named
+profile. Default and unselected threads receive no environment contribution:
+Claude resolves an empty `CLAUDE_CONFIG_DIR` against the working directory.
+`HOME` stays unchanged.
+
+A new thread has no session to copy. Its first send passes BB's
+`message.dispatch` hook before the provider environment resolves. The hook
+copies the remembered choice to the thread, resolving the profile on the
+thread's host. A missing profile on that host rejects the send.
 
 Switching copies only the native session transcript. It leaves credentials,
 settings and unrelated sessions separate. Returning to a profile advances its
@@ -77,9 +97,9 @@ its other sources.
 
 ## Scope
 
-The account selector appears after BB provisions a Claude thread's environment.
-Choose the account after the first turn. Sessions with subagent sidecars cannot
-switch profiles in this version. BB forks do not inherit plugin selections.
+The new-thread picker lists profiles from the first connected host. The first
+send resolves the choice on the thread's own host. Sessions with subagent
+sidecars cannot switch profiles in this version. BB forks do not inherit plugin selections.
 Switching a thread to another host requires selecting a profile on that host.
 
 The plugin supports manual Claude switching and quota collection. It does not
