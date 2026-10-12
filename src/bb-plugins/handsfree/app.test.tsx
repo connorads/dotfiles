@@ -5,6 +5,7 @@ import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk
 import type { PluginSidebarThread } from '@get-bb/plugin-sdk';
 import type { Command, Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
+import { makeArchives } from './archive.ts';
 
 const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSidebarThread => ({
   id, projectId: 'p1', title: id, titleFallback: null, displayTitle: id,
@@ -21,8 +22,19 @@ let slot: RenderedSlot | undefined;
 beforeEach(() => { vi.spyOn(document, 'hasFocus').mockReturnValue(true); });
 afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; vi.restoreAllMocks(); });
 
-async function render() {
+async function render(archiveStatus = 'idle') {
   const replies: Reply[] = [];
+  const archived: string[] = [];
+  const restored: string[] = [];
+  let receipts: unknown;
+  const archives = makeArchives({
+    get: async id => ({ id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }),
+    children: async () => 0,
+    archive: async id => { archived.push(id); return [id]; },
+    unarchive: async id => { restored.push(id); },
+    load: async () => receipts,
+    save: async value => { receipts = structuredClone(value); },
+  });
   const app = await loadPluginApp(() => import('./app.tsx'));
   const registration = app.appOverlays[0];
   if (!registration) throw new Error('Voice overlay missing');
@@ -33,7 +45,12 @@ async function render() {
       threads: [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' }],
     },
-    rpc: { claim: () => ({ claimed: true }), complete: ({ reply }) => { replies.push(reply); return { accepted: true }; } },
+    rpc: {
+      archiveTarget: ({ threadId }) => archives.inspect(threadId),
+      archive: ({ target, confirmed }) => archives.archive(target, confirmed),
+      restore: () => archives.restore(),
+      claim: () => ({ claimed: true }), complete: ({ reply }) => { replies.push(reply); return { accepted: true }; },
+    },
     sdk: {
       system: { config: async () => { throw new Error('No keyboard configuration in this fixture.'); } },
       providers: { models: async () => ({
@@ -46,6 +63,7 @@ async function render() {
   const rendered = slot;
   let sequence = 0;
   return {
+    archived, restored,
     slot: rendered,
     async command(command: Command) {
       const count = replies.length;
@@ -55,6 +73,38 @@ async function render() {
     },
   };
 }
+
+test('idle archive targets the selected thread and spoken restore opens it', async () => {
+  const view = await render();
+  expect((await view.command({ action: 'archive' })).ok).toBe(true);
+  expect(view.archived).toEqual(['t1']);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+  expect((await view.command({ action: 'restore' })).ok).toBe(true);
+  expect(view.restored).toEqual(['t1']);
+  expect(view.slot.inspection.sidebarActionCalls.at(-1)).toEqual({ method: 'open', threadId: 't1' });
+});
+
+test('running archives need explicit confirmation and another command cancels it', async () => {
+  const view = await render('active');
+  await view.command({ action: 'archive' });
+  expect(view.archived).toEqual([]);
+  expect(view.slot.getByRole('group', { name: 'Confirm archive' })).toBeTruthy();
+  await view.command({ action: 'help' });
+  expect((await view.command({ action: 'confirm-archive' })).ok).toBe(false);
+  expect(view.archived).toEqual([]);
+  await view.command({ action: 'archive' });
+  await view.command({ action: 'confirm-archive' });
+  expect(view.archived).toEqual(['t1']);
+});
+
+test('cancelling an archive leaves the selected thread and draft untouched', async () => {
+  const view = await render('active');
+  await view.command({ action: 'archive' });
+  await view.command({ action: 'cancel-archive' });
+  expect(view.archived).toEqual([]);
+  expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
 
 test('new thread opens a draft in the current project without submitting text', async () => {
   const view = await render();

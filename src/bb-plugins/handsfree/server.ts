@@ -2,11 +2,23 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { commandSchema } from './contracts.ts';
 import { rpcContract } from './rpc.ts';
 import { makeBroker } from './broker.ts';
+import { makeArchives } from './archive.ts';
 
 export default function plugin(bb: BbPluginApi) {
+  const archives = makeArchives({
+    get: id => bb.sdk.threads.get({ threadId: id }),
+    children: async id => (await bb.sdk.threads.childSummary({ threadId: id })).unarchivedDescendantCount,
+    archive: async id => (await bb.sdk.threads.archiveAll({ threadId: id })).archivedThreadIds,
+    unarchive: async id => { await bb.sdk.threads.unarchive({ threadId: id }); },
+    load: () => bb.storage.kv.get('voice-archives'),
+    save: value => bb.storage.kv.set('voice-archives', value),
+  });
   const broker = makeBroker(request => bb.realtime.publish('command', request));
   bb.onDispose(() => broker.dispose());
   bb.rpc.register(rpcContract, {
+    archiveTarget: ({ threadId }) => archives.inspect(threadId),
+    archive: ({ target, confirmed }) => archives.archive(target, confirmed),
+    restore: () => archives.restore(),
     claim: ({ requestId }) => ({ claimed: broker.claim(requestId) }),
     complete: ({ requestId, reply }) => ({ accepted: broker.complete(requestId, reply) }),
   });
