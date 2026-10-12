@@ -137,7 +137,9 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         ? availability(f, { available: true, error: providerCatalog.error, models: providerCatalog.models }) : 'Provider unavailable on this machine' };
     });
   const providers = catalog.filter(p => p.models.length > 0 || p.error);
-  const groups = filter === 'favourites' ? [] : providers.filter(p => filter === 'all' || filter === p.providerId).map(p => ({ ...p,
+  // A failed catalogue only matches searches for its provider's name, so it never clutters model searches.
+  const groups = filter === 'favourites' ? [] : providers.filter(p => (filter === 'all' || filter === p.providerId)
+    && (!p.error || p.providerName.toLowerCase().includes(search))).map(p => ({ ...p,
     rows: p.models.filter(m => !list.some(f => f.providerId === p.providerId && f.model === m.model) && visible(p.providerId, `${m.displayName} ${m.model} ${p.providerName}`))
       .map((m): Row => ({ favourite: { id: `${p.providerId}:${m.model}`, slot: 1, name: '', providerId: p.providerId, model: m.model }, saved: false, reason: null })),
   }));
@@ -267,7 +269,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
           <ul>{favouriteRows.map(row)}</ul></section>}
         {groups.map(p => (p.rows.length > 0 || p.error) && <section key={p.providerId} aria-label={p.providerName}>
           <h3 className="mf-section">{p.providerName}</h3>
-          {p.error ? <p className="mf-empty">{p.error}</p> : <ul>{p.rows.map(row)}</ul>}
+          {p.error ? <p className="mf-unavailable" title={p.error}>Not available on this machine</p> : <ul>{p.rows.map(row)}</ul>}
         </section>)}
       </div>
       <div className="mf-now" role="group" aria-label="Current selection">
