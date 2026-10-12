@@ -67,6 +67,7 @@ async function usageSetup() {
     sdk: {
       threads: { get: async () => thread },
       environments: { get: async () => ({ id: 'e1', hostId: 'h1' }) },
+      hosts: { list: async () => [{ id: 'h1', status: 'connected' }] },
       providers: { list: async () => [{ id: 'claude-code', displayName: 'Claude Code' }] },
       plugins: { callRpc: async (args: { pluginId: string }) => { throw new Error(`Unexpected RPC to ${args.pluginId}`); } },
     } as never,
@@ -204,4 +205,12 @@ test('a child of a thread on Default needs no machine to start', async () => {
   const { bb, firstSend } = await newThreadSetup();
   await bb.storage.kv.set('thread:parent', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
   assert.deepEqual(await firstSend({ parentThreadId: 'parent' }, null), { action: 'proceed' });
+});
+
+test('a new-thread draft reads an account\'s quota on this machine through the shared cache', async () => {
+  const { harness, hostCalls } = await usageSetup();
+  const quota = await harness.behavior.callRpc('nextThreadQuota', { profileId: 'stretch' });
+  assert.equal((quota as { status: string }).status, 'ok');
+  await harness.behavior.callRpc('usage', { threadId: 't1', profileId: 'stretch', refresh: false });
+  assert.deepEqual(hostCalls.filter(call => call.method === 'usage').map(call => call.hostId), ['h1']);
 });

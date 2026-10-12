@@ -56,6 +56,9 @@ function render(initial = [first, second], error: string | null = null, account?
         currentId = input.profileId;
         return { currentId };
       },
+      nextThreadQuota: input => input.profileId === 'work'
+        ? { status: 'ok', message: null, observedAt: 0, windows: [{ id: 'five_hour', label: 'Five hours', usedPercent: 40, resetsAt: null, cost: null }] }
+        : { status: 'error', message: 'unavailable', observedAt: null, windows: [] },
       usage: input => input.profileId === 'work'
         ? { status: 'ok', message: null, observedAt: 0, windows: [
           { id: 'five_hour', label: 'Five hours', usedPercent: 12.4, resetsAt: null, cost: null },
@@ -574,5 +577,16 @@ test('a provider chip returns focus to search so typing keeps filtering', async 
     chip.focus();
     fireEvent.click(chip);
     expect(document.activeElement).toBe(slot.getByLabelText('Search models'));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a new-thread draft\'s account menu shows quota for this machine', async () => {
+  const slot = render([], null, { newThread: true });
+  try {
+    await slot.findByLabelText('Claude account');
+    const menu = accountMenu(slot);
+    await waitFor(() => expect(within(menu).getByRole('option', { name: /^Work/ }).textContent).toBe('Work5h 40%'));
+    expect(calls(slot, 'usage')).toEqual([]);
+    expect(calls(slot, 'nextThreadQuota').map(call => call.input)).toEqual([{ profileId: 'default' }, { profileId: 'work' }]);
   } finally { slot.lifecycle.unmount(); }
 });

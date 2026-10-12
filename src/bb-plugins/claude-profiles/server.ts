@@ -209,6 +209,11 @@ export default function plugin(bb: BbPluginApi) {
       const account = await threadAccount(threadId);
       return account ? { supported: true, profiles: account.profiles, currentId: account.currentId } : unsupported;
     },
+    nextThreadQuota: async ({ profileId }) => {
+      const hostId = await localHostId();
+      if (!hostId) throw new Error('No connected machine to read quota on.');
+      return hostUsage(hostId, await settings.get(), profileId, false);
+    },
     choose: async ({ threadId, profileId }) => {
       if (threadId !== null) return { currentId: (await select(threadId, profileId)).profile.id };
       if (!(await localProfiles())?.some(profile => profile.id === profileId)) throw new Error('Profile does not exist.');
