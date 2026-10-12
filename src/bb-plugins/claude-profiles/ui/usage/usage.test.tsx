@@ -49,7 +49,7 @@ test('header shows the binding window without inventing a five-hour window', asy
     { rpc: { 'usage.header': async () => header } });
   const button = await slot.findByRole('button', { name: /Codex.*Weekly: 6% used/s });
   expect(button.textContent).toBe('7d 6%');
-  expect(button.dataset.tone).toBe('normal');
+  expect(button.dataset.tone).toBeUndefined();
   expect(button.title).toContain('personal@example.com');
 });
 
@@ -62,7 +62,7 @@ test('header warns with the projected run-out time when use outpaces the window'
     { rpc: { 'usage.header': async () => fast } });
   const button = await slot.findByRole('button', { name: /Open all agent usage/ });
   await waitFor(() => expect(button.textContent).toMatch(/^5h 90% · out \d{1,2}:20( [AP]M)?$/));
-  expect(button.dataset.tone).toBe('critical');
+  expect(button.dataset.tone).toBe('danger');
 });
 
 test('overlay groups accounts by provider, explains pace and keeps figures when a refresh fails', async () => {
