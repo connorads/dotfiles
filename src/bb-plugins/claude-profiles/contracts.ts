@@ -1,7 +1,7 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { usageSchema } from './src/usage.ts';
-import { measurementSchema, resourceSchema } from './src/usage-source.ts';
+import { usageSchema } from './src/accounts/quota.ts';
+import { measurementSchema, resourceSchema } from './src/accounts/usage-source.ts';
 import { modelsContract } from './src/models/contract.ts';
 
 export const profileSchema = z.object({ id: z.string(), label: z.string(), configDir: z.string().nullable() });

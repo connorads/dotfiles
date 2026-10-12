@@ -1,10 +1,10 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { accountsContract, hostContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
-import { providerEnv } from './src/claude.ts';
-import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/guard.ts';
-import type { Usage } from './src/usage.ts';
-import { decodeResourceId, measurement } from './src/usage-source.ts';
+import { providerEnv } from './src/accounts/claude.ts';
+import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
+import type { Usage } from './src/accounts/quota.ts';
+import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { registerModels } from './src/models/server.ts';
 export { rpcContract } from './contracts.ts';
 

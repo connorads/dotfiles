@@ -44,6 +44,12 @@ claude-profiles/
 
 ## Step 0. Move account code into `src/accounts/`
 
+**Status: done**, after step A. Step A had already made the `test:core` and
+tsconfig `include` changes, so this step only moves files and updates
+imports. The test count is the same before and after: 46 core, 32 UI.
+The `claude-profile-leak-guard` hook allowlists `claude.ts` by path, so the
+hook and its Bats cases name `src/accounts/claude.ts`.
+
 This commit only moves files. Behaviour does not change.
 
 | From | To |

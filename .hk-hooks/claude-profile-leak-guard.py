@@ -39,8 +39,8 @@ ALLOW_PATTERN_PATHS = {
 # The claude-profiles BB plugin strips these auth env names from the Claude CLI
 # it spawns, so it must name them. Generic checks only, as for vendored skills.
 GENERIC_PATTERN_PATHS = {
-    "src/bb-plugins/claude-profiles/src/claude.ts",
-    "src/bb-plugins/claude-profiles/src/claude.test.ts",
+    "src/bb-plugins/claude-profiles/src/accounts/claude.ts",
+    "src/bb-plugins/claude-profiles/src/accounts/claude.test.ts",
 }
 
 TOKEN_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]+")

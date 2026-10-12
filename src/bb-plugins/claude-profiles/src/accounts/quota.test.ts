@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUsage } from './usage.ts';
+import { parseUsage } from './quota.ts';
 test('preserves quota windows including model-specific limits', () => {
   const result = parseUsage({ rate_limits_available: true, rate_limits: {
     five_hour: { utilization: 12, resets_at: '2026-10-11T01:00:00Z' },

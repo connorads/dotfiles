@@ -3,9 +3,9 @@ import { homedir, tmpdir } from 'node:os';
 import { readdir, lstat } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { hostContract, type Profile } from './contracts.ts';
-import { checkLogin, collectUsage } from './src/claude.ts';
-import { transferSession } from './src/session.ts';
-import type { Usage } from './src/usage.ts';
+import { checkLogin, collectUsage } from './src/accounts/claude.ts';
+import { transferSession } from './src/accounts/handover.ts';
+import type { Usage } from './src/accounts/quota.ts';
 
 function rootPath(root: string) {
   const path = root.startsWith('~/') ? join(homedir(), root.slice(2)) : root;
