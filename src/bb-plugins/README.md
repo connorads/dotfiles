@@ -21,6 +21,12 @@ to rebuild and reload on save.
 - The `ts-tests-scoped` and `ts-typecheck-bb-plugins` hooks gate commits.
 - Each `tsconfig.json` must also pass the global `tsc` 7 that the hook runs.
 
+## Header chips
+
+Every thread-header action uses the shared [chip](chip/README.md) package. After a
+change to `chip/`, rebuild and reload each plugin that depends on it.
+[ADR 0002](docs/adr/0002-shared-header-chip-package.md) records why.
+
 ## File-managed preferences
 
 [Preferences](preferences/README.md) applies tracked keyboard settings from
