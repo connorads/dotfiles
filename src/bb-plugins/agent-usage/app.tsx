@@ -6,8 +6,9 @@ import {
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from './components/ui/dialog.tsx';
 import { Icon } from './components/ui/icon.tsx';
 import { closeUsage, openUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
-import { bindingWindow, clock, duration, percent, SHORT, viewWindow, type WindowView } from './format.ts';
-import type { rpcContract, Account, Header, Snapshot, UsageWindow } from './contracts.ts';
+import { bindingWindow, clock, duration, expiryClock, percent, readingAge, readingState, SHORT, viewWindow, type ReadingState, type WindowView } from './format.ts';
+import type { rpcContract, Account, Header, Inspection, UsageWindow } from './contracts.ts';
+import type { ResetCredits } from './reset-credits.ts';
 import './app.css';
 
 /** Re-renders on an interval so countdowns and "updated" times stay true while visible. */
@@ -22,11 +23,11 @@ function useNow(intervalMs: number, active = true): Date {
   return now;
 }
 
-function Meter({ window, view }: { window: UsageWindow; view: WindowView }) {
+function Meter({ window, view, stale = false }: { window: UsageWindow; view: WindowView; stale?: boolean }) {
   const elapsed = view.pace.kind === 'elapsed';
   const fill = elapsed ? 0 : Math.min(100, Math.max(0, window.usedPercent));
   const marker = view.pace.kind === 'paced' || view.pace.kind === 'early' ? view.pace.expectedPercent : null;
-  return <span className="au-meter" data-tone={view.tone} data-elapsed={elapsed || undefined} aria-hidden="true">
+  return <span className="au-meter" data-tone={view.tone} data-elapsed={elapsed || undefined} data-stale={stale || undefined} aria-hidden="true">
     <span className="au-meter-fill" style={{ width: `${fill}%` }} />
     {marker !== null && <span className="au-meter-pace" style={{ left: `${marker}%` }} />}
   </span>;
@@ -42,15 +43,18 @@ function Ring({ window, view }: { window: UsageWindow; view: WindowView }) {
   </svg>;
 }
 
-function WindowRow({ window, now }: { window: UsageWindow; now: Date }) {
-  const view = viewWindow(window, now);
+function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; reading: ReadingState }) {
+  const view = viewWindow(window, now, reading);
   const expected = view.pace.kind === 'paced' || view.pace.kind === 'early' ? ` Even pace would be ${percent(view.pace.expectedPercent)}.` : '';
-  return <div className="au-row" role="row" aria-label={`${window.label}: ${percent(window.usedPercent)} used. ${view.status}.${expected}`}>
+  const description = view.pace.kind === 'elapsed' ? view.status : `${percent(window.usedPercent)} used. ${view.status}`;
+  return <div className="au-row" role="row" aria-label={`${window.label}: ${description}.${expected}`}>
     <span className="au-row-label" role="rowheader">{window.label}</span>
-    <span className="au-row-meter" role="cell"><Meter window={window} view={view} /></span>
+    <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
     <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
-    <span className="au-row-status" role="cell" data-tone={view.tone} data-quiet={view.tone === 'normal' && !view.credit || undefined}>{view.status}</span>
-    <span className="au-row-reset" role="cell">{view.reset ?? ''}</span>
+    <span className="au-row-meta" role="cell">
+      <span className="au-row-status" data-tone={view.tone} data-quiet={view.tone === 'normal' && !view.credit || undefined}>{view.status}</span>
+      <span className="au-row-reset">{view.reset ?? ''}</span>
+    </span>
   </div>;
 }
 
@@ -58,15 +62,16 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now }: { account: Account; now: Date }) {
+function AccountBlock({ account, now, observedAt }: { account: Account; now: Date; observedAt: number | null }) {
   const usage = account.usage;
   const name = accountName(account);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
+  const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
   const message = usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
     : usage.status === 'error' ? usage.message
-    : usage.status === 'ok' && usage.windows.length === 0 ? 'No limits on this plan' : null;
+    : usage.status === 'ok' && usage.windows.length === 0 ? 'No limits reported' : null;
   return <section className="au-account" aria-label={`${account.displayName} · ${name}`}>
     <header className="au-account-heading">
       <span className="au-account-name">{name}</span>
@@ -75,12 +80,53 @@ function AccountBlock({ account, now }: { account: Account; now: Date }) {
     </header>
     {message ? <p className="au-account-message">{message}</p>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
-        {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} />)}
+        {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
       </div>}
+    {usage?.status === 'ok' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
+      {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
+    </p>}
   </section>;
 }
 
-function ProviderGroup({ accounts, now }: { accounts: Account[]; now: Date }) {
+function CreditResets({ reading, now }: { reading: ResetCredits; now: Date }) {
+  if (reading.status === 'ok' && reading.held === 0 && !reading.message) return null;
+  if (reading.status === 'unavailable') return <section className="au-resets" aria-label="Codex reset credits">
+    <p className="au-reading">Reset credits unavailable · {reading.message}</p>
+  </section>;
+  const first = reading.expiries[0];
+  const deadline = first ? new Date(first.expiresAt) : null;
+  const expired = deadline !== null && deadline <= now;
+  const soon = deadline !== null && deadline.getTime() - now.getTime() <= 3 * 86_400_000;
+  const stale = now.getTime() - reading.observedAt >= 15 * 60_000;
+  return <section className="au-resets" aria-label="Codex reset credits">
+    <div className="au-resets-heading">
+      <div><h4>Reset credits <span className="au-resets-count">{reading.held} held</span></h4>
+        <p className="au-reading">{reading.usable} usable at last check</p></div>
+      {deadline && <p className="au-resets-next" data-tone={soon ? 'warning' : 'normal'}>
+        {expired ? 'Expiry passed · refresh needed' : `Next expires in ${duration(deadline.getTime() - now.getTime())}`}
+        <span>{expiryClock(deadline)}</span>
+      </p>}
+    </div>
+    <p className="au-reading au-resets-source">CLI login{reading.accountLabel ? ` · ${reading.accountLabel}` : ' · account not reported'}</p>
+    <details className="au-expiries">
+      <summary>Expiry dates</summary>
+      <ul>{reading.expiries.map(expiry => {
+        const date = new Date(expiry.expiresAt);
+        return <li key={expiry.expiresAt}><span>{expiry.count} {expiry.count === 1 ? 'reset' : 'resets'}</span>
+          <span>{expiryClock(date)}<small>{date <= now ? 'Expired · refresh needed' : `In ${duration(date.getTime() - now.getTime())}`}</small></span></li>;
+      })}
+        {reading.unknownExpiryCount > 0 && <li>{reading.unknownExpiryCount} {reading.unknownExpiryCount === 1 ? 'reset' : 'resets'} · expiry unavailable</li>}
+      </ul>
+    </details>
+    <p className="au-reading" data-stale={stale || undefined} title={new Date(reading.observedAt).toLocaleString()}>
+      {readingAge(reading.observedAt, now)}{stale && ' · refresh needed'}
+    </p>
+    {reading.message && <p className="au-reading" role="status">{reading.message}</p>}
+  </section>;
+}
+
+function ProviderGroup({ accounts, now, readings, resetCredits }: { accounts: Account[]; now: Date;
+  readings: Inspection['readings']; resetCredits: ResetCredits | null }) {
   const [first] = accounts;
   if (!first) return null;
   return <section className="au-provider" aria-label={first.displayName}>
@@ -88,7 +134,10 @@ function ProviderGroup({ accounts, now }: { accounts: Account[]; now: Date }) {
       <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />
       {first.displayName}
     </h3>
-    <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now} />)}</div>
+    <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now}
+      observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null} />)}
+      {first.providerId === 'codex' && resetCredits && <CreditResets reading={resetCredits} now={now} />}
+    </div>
   </section>;
 }
 
@@ -101,21 +150,25 @@ function byProvider(accounts: Account[]): Account[][] {
 const RANK = { normal: 0, warning: 1, critical: 2 } as const;
 
 /** One sentence that answers "can I keep going, and where should I go if not". */
-function Summary({ accounts, now }: { accounts: Account[]; now: Date }) {
+function Summary({ accounts, now, readings }: { accounts: Account[]; now: Date; readings: Inspection['readings'] }) {
   const bound = accounts.flatMap(account => {
+    if (account.usage?.status !== 'ok' || readingState(readings.find(reading => reading.accountId === account.id)?.observedAt ?? null,
+      account.usage.windows, now) !== 'fresh') return [];
     const binding = account.usage?.status === 'ok' ? bindingWindow(account.usage.windows, now) : null;
     return binding ? [{ account, ...binding }] : [];
   });
-  if (bound.length === 0) return null;
+  const incomplete = bound.length !== accounts.length;
+  if (bound.length === 0) return <p className="au-summary">Refresh to compare limits. Reading times are missing or the figures need a new reading.</p>;
   const worst = [...bound].sort((a, b) => RANK[b.view.tone] - RANK[a.view.tone] || b.window.usedPercent - a.window.usedPercent)[0]!;
   if (worst.view.tone === 'normal') {
-    return <p className="au-summary" data-tone="normal"><Icon name="CircleCheck" className="size-4" />Every account is within its limits.</p>;
+    return <p className="au-summary" data-tone="normal"><Icon name="CircleCheck" className="size-4" />
+      {incomplete ? 'Fresh readings are within their limits. Some accounts need a new reading.' : 'Every account is within its limits.'}</p>;
   }
   const subject = `${accountName(worst.account)} · ${worst.window.label}`;
   const { pace } = worst.view;
   const detail = pace.kind === 'limited' ? `limit reached. Back ${clock(pace.resetsAt, now)}.`
     : pace.kind === 'paced' && pace.runsOutAt && worst.window.resetsAt
-      ? `runs out ${clock(pace.runsOutAt, now)}, ${duration(new Date(worst.window.resetsAt).getTime() - pace.runsOutAt.getTime())} before it resets.`
+      ? `at this pace, runs out ${clock(pace.runsOutAt, now)}, ${duration(new Date(worst.window.resetsAt).getTime() - pace.runsOutAt.getTime())} before it resets.`
       : `${percent(worst.window.usedPercent)} used.`;
   const roomiest = bound.filter(entry => entry.account.providerId === worst.account.providerId && entry.account !== worst.account
     && entry.view.tone === 'normal').sort((a, b) => a.window.usedPercent - b.window.usedPercent)[0];
@@ -133,8 +186,8 @@ export function UsageOverlay() {
   const open = useUsageOpen();
   const rpc = useRpc<typeof rpcContract>();
   const now = useNow(30_000, open);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [inspection, setInspection] = useState<Inspection | null>(null);
+  const snapshot = inspection?.snapshot ?? null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
@@ -146,8 +199,8 @@ export function UsageOverlay() {
     setLoading(true);
     setError(null);
     try {
-      const next = await rpc.call('overview', { refresh: force });
-      if (mounted.current) { setSnapshot(next); setUpdatedAt(new Date()); }
+      const next = await rpc.call('inspection', { refresh: force });
+      if (mounted.current) setInspection(next);
     } catch (cause) {
       if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
     } finally {
@@ -160,7 +213,6 @@ export function UsageOverlay() {
     providers: machine.providers.filter(account => account.usage?.status !== 'not_installed') }))
     .filter(machine => machine.providers.length > 0 || machine.error !== null);
   const showMachines = machines.length > 1 || machines.some(machine => machine.status === 'disconnected');
-  const age = updatedAt ? Math.max(0, now.getTime() - updatedAt.getTime()) : null;
   return <Dialog open={open} onOpenChange={value => { if (!value) closeUsage(); }}>
     <DialogContent className="au-overlay" hideCloseButton tabIndex={-1} onOpenAutoFocus={event => {
       // Focus the panel rather than its first button, so opening does not paint a focus ring on Refresh.
@@ -175,7 +227,7 @@ export function UsageOverlay() {
           <DialogTitle>Agent usage</DialogTitle>
           <DialogDescription>
             {loading && !snapshot ? 'Checking providers…' : loading ? 'Refreshing…'
-              : age === null ? 'Not yet checked' : age < 60_000 ? 'Updated just now' : `Updated ${duration(age)} ago`}
+              : inspection === null ? 'Not yet checked' : 'Quota resets and credit expiries · local time'}
           </DialogDescription>
         </div>
         <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => void refresh(true)}>
@@ -187,14 +239,15 @@ export function UsageOverlay() {
         {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
         {!snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
         {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
-        {snapshot && <Summary accounts={machines.flatMap(machine => machine.providers)} now={now} />}
+        {snapshot && <Summary accounts={machines.flatMap(machine => machine.providers)} now={now} readings={inspection?.readings ?? []} />}
         {machines.map(machine => <section className="au-machine" key={machine.id} aria-label={machine.displayName}>
           {showMachines && <h2 className="au-machine-heading">
             <Icon name="Laptop" className="size-3.5" />{machine.displayName}
             {machine.status === 'disconnected' && <span className="au-pill">Offline</span>}
           </h2>}
           {machine.error && <p className="au-notice" data-tone="warning" role="status"><Icon name="AlertTriangle" className="size-3.5" />{machine.error} Some figures may be out of date.</p>}
-          {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now} />)}
+          {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now}
+            readings={inspection?.readings ?? []} resetCredits={inspection?.resetCredits.find(value => value.hostId === machine.id)?.reading ?? null} />)}
         </section>)}
       </div>
       <footer className="au-foot">
@@ -211,7 +264,7 @@ function headerTitle(header: Header | null, error: string | null, now: Date): st
   const lines = header.windows.map(window => {
     const view = viewWindow(window, now);
     return [`${window.label}: ${view.pace.kind === 'elapsed' ? 'reset since last check' : `${percent(window.usedPercent)} used`}`,
-      view.pace.kind === 'elapsed' ? '' : view.status, view.reset ? `resets ${view.reset}` : ''].filter(Boolean).join(' · ');
+      view.pace.kind === 'elapsed' ? '' : view.status, view.reset ?? ''].filter(Boolean).join(' · ');
   });
   return [[header.label, header.accountLabel].filter(Boolean).join(' · '), header.message, ...lines, 'Click to see all accounts.']
     .filter(Boolean).join('\n');

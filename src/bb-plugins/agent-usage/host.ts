@@ -26,9 +26,9 @@ export async function readResetCredits(home: string, refresh: boolean, collect: 
 
 function collect(home: string, signal: AbortSignal): Promise<boolean> {
   const path = [join(home, '.local/bin'), join(home, '.nix-profile/bin'),
-    `/etc/profiles/per-user/${basename(home)}/bin`, process.env.PATH ?? '/usr/bin:/bin'].join(':');
+    `/etc/profiles/per-user/${basename(home)}/bin`, '/run/current-system/sw/bin', process.env.PATH ?? '/usr/bin:/bin'].join(':');
   return new Promise(resolve => {
-    execFile('/bin/zsh', [join(home, '.config/zsh/functions/codex-usage')],
+    execFile('zsh', [join(home, '.config/zsh/functions/codex-usage')],
       { signal, timeout: 25_000, maxBuffer: 64 * 1024, env: { ...process.env, PATH: path } },
       error => resolve(error === null));
   });

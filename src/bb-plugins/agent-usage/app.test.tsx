@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginCommandRegistration } from '@get-bb/plugin-sdk/app';
 import { closeUsage, openUsage } from './overlay-store.ts';
-import type { Header, Snapshot } from './contracts.ts';
+import type { Header, Inspection, Snapshot } from './contracts.ts';
 
 const NOW = new Date('2026-10-12T12:00:00Z');
 const hoursFromNow = (hours: number) => new Date(NOW.getTime() + hours * 3_600_000).toISOString();
@@ -19,6 +19,13 @@ const snapshot: Snapshot = { machines: [{ id: 'host-one', displayName: 'Laptop',
   account('Claude', 'Spare', [{ label: 'Weekly', period: 'week', usedPercent: 12, resetsAt: hoursFromNow(30), cost: null },
     { label: 'Credits', period: null, usedPercent: 0.5, resetsAt: hoursFromNow(400), cost: { usedUsdCents: 125, limitUsdCents: 25000 } }]),
 ] }] };
+
+const inspect = (value: Snapshot = snapshot): Inspection => ({ snapshot: value,
+  readings: value.machines.flatMap(machine => machine.providers.map(account => ({ accountId: account.id, observedAt: NOW.getTime() }))),
+  resetCredits: [{ hostId: 'host-one', reading: { status: 'ok', accountLabel: 'cli@example.com',
+    observedAt: NOW.getTime() - 90_000, held: 3, usable: 0, unknownExpiryCount: 1,
+    expiries: [{ count: 1, expiresAt: hoursFromNow(48) }, { count: 1, expiresAt: hoursFromNow(96) }] } }],
+});
 
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW); });
 afterEach(() => { closeUsage(); cleanup(); vi.useRealTimers(); });
@@ -48,10 +55,10 @@ test('header warns with the projected run-out time when use outpaces the window'
 test('overlay groups accounts by provider, explains pace and keeps figures when a refresh fails', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const requests: unknown[] = [];
-  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async input => {
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async input => {
     requests.push(input);
     if (requests.length > 1) throw new Error('Machine disconnected');
-    return snapshot;
+    return inspect();
   } } });
   act(() => openUsage());
   const dialog = await slot.findByRole('dialog', { name: 'Agent usage' });
@@ -73,15 +80,16 @@ test('a window whose reset has passed shows no stale percentage', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const stale: Snapshot = { machines: [{ ...snapshot.machines[0]!, providers: [account('Codex', 'Personal',
     [{ label: 'Weekly', period: 'week', usedPercent: 78, resetsAt: hoursFromNow(-1), cost: null }])] }] };
-  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async () => stale } });
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect(stale) } });
   act(() => openUsage());
   const row = await slot.findByRole('row', { name: /Reset since last check/ });
   expect(row.textContent).not.toContain('78%');
+  expect(row.getAttribute('aria-label')).not.toContain('78%');
 });
 
 test.each(['Escape', 'q', 'Q'])('%s dismisses the overlay and restores focus to the previous control', async key => {
   const app = await loadPluginApp(() => import('./app.tsx'));
-  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async () => snapshot } });
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
   const origin = document.createElement('button');
   document.body.append(origin);
   try {
@@ -100,7 +108,50 @@ test('the rebindable usage command opens the overlay', async () => {
   const command = actions.find(action => action.id === 'open');
   if (!command) throw new Error('Missing usage command');
   expect(command.defaultShortcut).toMatchObject({ key: 'a', mod: true, shift: true });
-  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { overview: async () => snapshot } });
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
   await act(async () => { await command.run({ threadId: null, projectId: null, openPanel: () => false }); });
   expect(await slot.findByRole('dialog', { name: 'Agent usage' })).toBeTruthy();
+});
+
+
+test('reset credits distinguish held from usable and disclose expiry dates by keyboard', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => inspect() } });
+  act(() => openUsage());
+  const region = await slot.findByRole('region', { name: 'Codex reset credits' });
+  expect(region.textContent).toContain('3 held');
+  expect(region.textContent).toContain('0 usable at last check');
+  expect(region.textContent).toContain('CLI login · cli@example.com');
+  const disclosure = region.querySelector('summary')!;
+  expect(disclosure.textContent).toContain('Expiry dates');
+  fireEvent.click(disclosure);
+  expect(region.querySelector('details')?.open).toBe(true);
+  expect(region.textContent).toContain('1 reset · expiry unavailable');
+});
+
+test('old readings suppress projections and do not become fresh when the panel loads', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const value = inspect({ machines: [{ ...snapshot.machines[0]!, providers: [account('Codex', 'Personal',
+    [{ label: '5-hour', period: 'five-hour', usedPercent: 90, resetsAt: hoursFromNow(2), cost: null }])] }] });
+  value.readings[0]!.observedAt = NOW.getTime() - 3_600_000;
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => value } });
+  act(() => openUsage());
+  const region = await slot.findByRole('region', { name: 'Codex · Personal' });
+  expect(region.textContent).toContain('Read 1h 0m ago');
+  expect(region.textContent).toContain('Cached reading');
+  expect(region.textContent).not.toContain('runs out');
+  expect(slot.queryByText('Updated just now')).toBeNull();
+  expect(slot.queryByText('Every account is within its limits.')).toBeNull();
+});
+
+test('unknown reading ages and unavailable reset credits are explicit', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const value = inspect();
+  value.readings = [];
+  value.resetCredits[0]!.reading = { status: 'unavailable', message: 'Machine is offline.' };
+  const slot = renderSlot(app.appOverlays[0], {}, { rpc: { inspection: async () => value } });
+  act(() => openUsage());
+  const region = await slot.findByRole('region', { name: 'Codex · Personal' });
+  expect(region.textContent).toContain('Reading time unavailable');
+  expect((await slot.findByRole('region', { name: 'Codex reset credits' })).textContent).toContain('Machine is offline.');
 });

@@ -90,21 +90,26 @@ export function createUsageReader(ports: UsagePorts) {
   }
   async function overview(refresh: boolean) { return fold(await collectOverview(refresh)); }
   async function inspection(refresh: boolean): Promise<Inspection> {
-    const raw = await collectOverview(refresh);
-    const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable() });
+    let raw = await collectOverview(refresh);
+    const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable(),
+      usage: sourceSnapshotSchema.shape.machines.element.shape.providers.element.shape.usage });
     const [observations, resetCredits] = await Promise.all([
       Promise.all(raw.machines.flatMap(machine => machine.providers.map(async account => {
         const separator = account.id.indexOf(':');
         let observedAt: number | null = null;
+        let usage: Account['usage'] = null;
         if (machine.status === 'connected' && account.usage?.status === 'ok' && separator > 0) {
           try {
             const value = await ports.callRpc({ pluginId: account.id.slice(0, separator),
               method: 'provider-usage.v1.getResource', input: { resourceId: account.id.slice(separator + 1), refresh: false },
               outputSchema: observationSchema, signal: AbortSignal.timeout(15_000) });
-            observedAt = value.observedAt;
+            if (value.usage?.status === 'ok') {
+              observedAt = value.observedAt;
+              usage = { ...value.usage, windows: value.usage.windows.map(describeWindow) };
+            }
           } catch { /* A source without observation metadata leaves its reading age unknown. */ }
         }
-        return { accountId: account.id, observedAt };
+        return { accountId: account.id, observedAt, usage };
       }))),
       Promise.all(raw.machines.filter(machine => machine.providers.some(account => account.providerId === 'codex')).map(async machine => {
         let reading: ResetCredits;
@@ -116,6 +121,10 @@ export function createUsageReader(ports: UsagePorts) {
         return { hostId: machine.id, reading };
       })),
     ]);
+    // A source may refresh while the collector snapshot stays cached. Pair its timestamp with its own figures.
+    raw = { machines: raw.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
+      usage: observations.find(value => value.accountId === account.id)?.usage ?? account.usage,
+    })) })) };
     const snapshot = fold(raw);
     const readings = snapshot.machines.flatMap(machine => machine.providers.map(account => {
       const native = observations.find(value => value.accountId === account.id)?.observedAt ?? null;
