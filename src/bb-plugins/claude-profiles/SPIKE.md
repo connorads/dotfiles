@@ -61,3 +61,15 @@ Verified 2026-10-12 against BB 0.46.0 and SDK 0.6.15:
 `ComposerSubmitOptions.experimental_data` reaches dispatch hooks only through
 plugin-initiated `composer.submit`, not a plain Enter. So the new-thread choice
 is remembered rather than bound to one draft.
+
+## Fallback guard verification
+
+Verified 2026-10-12 against BB 0.46.0 and SDK 0.6.37:
+
+- Passed: with the plugin disabled, a send to a `stretch` thread launched Claude
+  without `CLAUDE_CONFIG_DIR` and printed `dir=unset`. This reproduces the
+  silent fallback BB allows when a contributor is missing.
+- Passed: after re-enabling, the next send was refused with the guard notice.
+  Sending again relaunched with the stretch directory and recalled the earlier word.
+- Passed: a later send to the healthy thread proceeded without a refusal.
+- Passed: 28 core tests, including fake-host wiring tests, and 9 app tests.

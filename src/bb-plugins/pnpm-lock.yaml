@@ -336,6 +336,12 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.0.4(@types/react@19.0.12)
+      better-sqlite3:
+        specifier: 'catalog:'
+        version: 12.10.0
+      cron-parser:
+        specifier: 'catalog:'
+        version: 5.5.0
       hono:
         specifier: 'catalog:'
         version: 4.11.9

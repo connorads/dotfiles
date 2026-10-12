@@ -2,6 +2,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { hostContract, rpcContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
 import { providerEnv } from './src/claude.ts';
+import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/guard.ts';
 import type { Usage } from './src/usage.ts';
 import { decodeResourceId, measurement } from './src/usage-source.ts';
 export { rpcContract } from './contracts.ts';
@@ -17,6 +18,7 @@ export default function plugin(bb: BbPluginApi) {
   const probes = new Map<string, Promise<Usage>>();
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
+  const guardKey = (id: string) => `guard:${id}`;
   async function context(threadId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
     if (thread.providerId !== 'claude-code') throw new Error('This thread does not use Claude Code.');
@@ -42,13 +44,52 @@ export default function plugin(bb: BbPluginApi) {
     if (!profile) throw new Error(`Claude account ${next} does not exist on this machine. Choose another account.`);
     await bb.storage.kv.set(key(threadId), { hostId, profile } satisfies Selection);
   }
+  async function latestLaunch(threadId: string) {
+    const [event] = await bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' });
+    return event?.type === 'provider.env-resolved' ? event : undefined;
+  }
+  // One queue per thread, so the event review and a send never both stop the same launch.
+  const reviews = new Map<string, Promise<void>>();
+  function review(threadId: string) {
+    const next = (reviews.get(threadId) ?? Promise.resolve()).catch(() => {}).then(async () => {
+      const selected = await bb.storage.kv.get<Selection>(key(threadId));
+      if (!selected?.profile.configDir) return;
+      const launch = await latestLaunch(threadId);
+      if (!launch) return;
+      const guard = await bb.storage.kv.get<Guard>(guardKey(threadId)) ?? initialGuard;
+      const result = reviewLaunch(guard, { seq: launch.seq, applied: profileApplied(launch.data.entries, selected.profile.configDir) },
+        selected.profile.label);
+      if (result.guard === guard) return;
+      await bb.storage.kv.set(guardKey(threadId), result.guard);
+      if (!result.stop) return;
+      bb.log.warn(`Claude started thread ${threadId} without profile ${selected.profile.id}; stopping it.`);
+      await bb.sdk.threads.stop({ threadId });
+    });
+    reviews.set(threadId, next);
+    void next.finally(() => { if (reviews.get(threadId) === next) reviews.delete(threadId); }).catch(() => {});
+    return next;
+  }
+  async function takeNotice(threadId: string) {
+    const guard = await bb.storage.kv.get<Guard>(guardKey(threadId));
+    if (!guard?.notice) return null;
+    await bb.storage.kv.set(guardKey(threadId), { ...guard, notice: null });
+    return guard.notice;
+  }
   bb.experimental_hooks.on('message.dispatch', async input => {
     if (switching.has(input.thread.id)) return { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
       try { await claimNext(input.thread.id, input.host?.id ?? null); }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
+    } else if (input.thread.providerId === 'claude-code') {
+      await review(input.thread.id);
+      const notice = await takeNotice(input.thread.id);
+      if (notice) return { action: 'reject', message: notice };
     }
     return { action: 'proceed' };
+  });
+  bb.events.on('experimental_thread.events', async ({ thread }) => {
+    if (thread.providerId !== 'claude-code') return;
+    await review(thread.id).catch(error => bb.log.warn(`Claude profile review failed for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
   });
   bb.providers.experimental_contributeEnv('claude-code', async input => {
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
@@ -115,6 +156,8 @@ export default function plugin(bb: BbPluginApi) {
       }
       const value: Selection = { hostId: environment.hostId, profile };
       await bb.storage.kv.set(key(threadId), value);
+      // Launches before the switch ran under the old profile, so only later launches are reviewed.
+      await bb.storage.kv.set(guardKey(threadId), { checkedSeq: resolved?.seq ?? 0, notice: null } satisfies Guard);
       await invalidateCache(threadId);
       bb.realtime.publish('profiles-changed', { threadId });
       return value;

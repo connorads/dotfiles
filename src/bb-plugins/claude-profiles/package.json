@@ -36,6 +36,8 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "better-sqlite3": "catalog:",
+    "cron-parser": "catalog:",
     "hono": "catalog:",
     "jsdom": "catalog:",
     "react": "catalog:",
