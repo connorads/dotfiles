@@ -3,64 +3,138 @@ import {
   definePluginApp, experimental_ProviderIcon as ProviderIcon, experimental_useSidebarThreads,
   useRpc, type PluginThreadHeaderActionProps,
 } from '@get-bb/plugin-sdk/app';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './components/ui/dialog.tsx';
+import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from './components/ui/dialog.tsx';
 import { Icon } from './components/ui/icon.tsx';
 import { closeUsage, openUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
+import { bindingWindow, clock, duration, percent, SHORT, viewWindow, type WindowView } from './format.ts';
 import type { rpcContract, Account, Header, Snapshot, UsageWindow } from './contracts.ts';
 import './app.css';
 
-function resetLabel(value: string | null): string {
-  if (value === null) return 'Reset time unavailable';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return 'Reset time unavailable';
-  const minutes = Math.ceil((date.getTime() - Date.now()) / 60_000);
-  if (minutes <= 0) return 'Reset due · refresh usage';
-  const duration = minutes < 60 ? `${minutes}m` : minutes < 1440
-    ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-    : `${Math.floor(minutes / 1440)}d ${Math.floor(minutes % 1440 / 60)}h`;
-  return `Resets in ${duration} · ${date.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
+/** Re-renders on an interval so countdowns and "updated" times stay true while visible. */
+function useNow(intervalMs: number, active = true): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!active) return;
+    setNow(new Date());
+    const timer = window.setInterval(() => setNow(new Date()), intervalMs);
+    return () => window.clearInterval(timer);
+  }, [intervalMs, active]);
+  return now;
 }
 
-function shortWindow(label: string): string {
-  return label.replace(/^Weekly limit$|^Seven days$|^Weekly$/u, '7d')
-    .replace(/^Five-hour limit$|^Five hours$|^Current session$/u, '5h');
+function Meter({ window, view }: { window: UsageWindow; view: WindowView }) {
+  const elapsed = view.pace.kind === 'elapsed';
+  const fill = elapsed ? 0 : Math.min(100, Math.max(0, window.usedPercent));
+  const marker = view.pace.kind === 'paced' || view.pace.kind === 'early' ? view.pace.expectedPercent : null;
+  return <span className="au-meter" data-tone={view.tone} data-elapsed={elapsed || undefined} aria-hidden="true">
+    <span className="au-meter-fill" style={{ width: `${fill}%` }} />
+    {marker !== null && <span className="au-meter-pace" style={{ left: `${marker}%` }} />}
+  </span>;
 }
 
-function WindowUsage({ window }: { window: UsageWindow }) {
-  const tone = window.usedPercent >= 95 ? 'critical' : window.usedPercent >= 80 ? 'warning' : 'normal';
-  return <div className="au-window">
-    <div className="au-window-heading"><span>{window.label}</span><strong data-tone={tone}>{Math.round(window.usedPercent)}% used</strong></div>
-    <div className="au-bar" role="meter" aria-label={window.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, window.usedPercent))}>
-      <span data-tone={tone} style={{ width: `${Math.min(100, Math.max(0, window.usedPercent))}%` }} />
-    </div>
-    <div className="au-reset">{resetLabel(window.resetsAt)}</div>
-    {window.cost && <div className="au-reset">${(window.cost.usedUsdCents / 100).toFixed(2)} of ${(window.cost.limitUsdCents / 100).toFixed(2)}</div>}
+function Ring({ window, view }: { window: UsageWindow; view: WindowView }) {
+  const radius = 5.25;
+  const circumference = 2 * Math.PI * radius;
+  const fill = view.pace.kind === 'elapsed' ? 0 : Math.min(100, Math.max(0, window.usedPercent));
+  return <svg className="au-ring" data-tone={view.tone} viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
+    <circle className="au-ring-track" cx="7" cy="7" r={radius} />
+    <circle className="au-ring-fill" cx="7" cy="7" r={radius} strokeDasharray={`${circumference * fill / 100} ${circumference}`} />
+  </svg>;
+}
+
+function WindowRow({ window, now }: { window: UsageWindow; now: Date }) {
+  const view = viewWindow(window, now);
+  const expected = view.pace.kind === 'paced' || view.pace.kind === 'early' ? ` Even pace would be ${percent(view.pace.expectedPercent)}.` : '';
+  return <div className="au-row" role="row" aria-label={`${window.label}: ${percent(window.usedPercent)} used. ${view.status}.${expected}`}>
+    <span className="au-row-label" role="rowheader">{window.label}</span>
+    <span className="au-row-meter" role="cell"><Meter window={window} view={view} /></span>
+    <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
+    <span className="au-row-status" role="cell" data-tone={view.tone} data-quiet={view.tone === 'normal' && !view.credit || undefined}>{view.status}</span>
+    <span className="au-row-reset" role="cell">{view.reset ?? ''}</span>
   </div>;
 }
 
-function AccountUsage({ account }: { account: Account }) {
+function accountName(account: Account): string {
+  return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
+}
+
+function AccountBlock({ account, now }: { account: Account; now: Date }) {
   const usage = account.usage;
-  const label = account.accountLabel ?? (usage?.status === 'ok' ? usage.accountEmail : null) ?? account.displayName;
-  const message = usage === null ? 'Usage unavailable'
+  const name = accountName(account);
+  const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
+  const message = usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
     : usage.status === 'error' ? usage.message
-    : usage.status === 'not_installed' ? 'Not installed'
-    : usage.windows.length === 0 ? 'No limits reported for this plan' : null;
-  return <section className="au-account" aria-label={`${account.displayName} · ${label}`}>
+    : usage.status === 'ok' && usage.windows.length === 0 ? 'No limits on this plan' : null;
+  return <section className="au-account" aria-label={`${account.displayName} · ${name}`}>
     <header className="au-account-heading">
-      <ProviderIcon providerKind="agent" provider={{ ...account, id: account.providerId }} fallback="Bot" className="size-5" />
-      <div className="au-account-name"><h3>{account.displayName}</h3><span>{label}</span></div>
+      <span className="au-account-name">{name}</span>
       {usage?.status === 'ok' && usage.planLabel && <span className="au-plan">{usage.planLabel}</span>}
+      {email && <span className="au-email">{email}</span>}
     </header>
-    {message ? <p className="au-muted">{message}</p> : usage?.status === 'ok' && usage.windows.map(window => <WindowUsage key={window.label} window={window} />)}
+    {message ? <p className="au-account-message">{message}</p>
+      : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
+        {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} />)}
+      </div>}
   </section>;
+}
+
+function ProviderGroup({ accounts, now }: { accounts: Account[]; now: Date }) {
+  const [first] = accounts;
+  if (!first) return null;
+  return <section className="au-provider" aria-label={first.displayName}>
+    <h3 className="au-provider-heading">
+      <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />
+      {first.displayName}
+    </h3>
+    <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now} />)}</div>
+  </section>;
+}
+
+function byProvider(accounts: Account[]): Account[][] {
+  const groups = new Map<string, Account[]>();
+  for (const account of accounts) groups.set(account.providerId, [...groups.get(account.providerId) ?? [], account]);
+  return [...groups.values()];
+}
+
+const RANK = { normal: 0, warning: 1, critical: 2 } as const;
+
+/** One sentence that answers "can I keep going, and where should I go if not". */
+function Summary({ accounts, now }: { accounts: Account[]; now: Date }) {
+  const bound = accounts.flatMap(account => {
+    const binding = account.usage?.status === 'ok' ? bindingWindow(account.usage.windows, now) : null;
+    return binding ? [{ account, ...binding }] : [];
+  });
+  if (bound.length === 0) return null;
+  const worst = [...bound].sort((a, b) => RANK[b.view.tone] - RANK[a.view.tone] || b.window.usedPercent - a.window.usedPercent)[0]!;
+  if (worst.view.tone === 'normal') {
+    return <p className="au-summary" data-tone="normal"><Icon name="CircleCheck" className="size-4" />Every account is within its limits.</p>;
+  }
+  const subject = `${accountName(worst.account)} · ${worst.window.label}`;
+  const { pace } = worst.view;
+  const detail = pace.kind === 'limited' ? `limit reached. Back ${clock(pace.resetsAt, now)}.`
+    : pace.kind === 'paced' && pace.runsOutAt && worst.window.resetsAt
+      ? `runs out ${clock(pace.runsOutAt, now)}, ${duration(new Date(worst.window.resetsAt).getTime() - pace.runsOutAt.getTime())} before it resets.`
+      : `${percent(worst.window.usedPercent)} used.`;
+  const roomiest = bound.filter(entry => entry.account.providerId === worst.account.providerId && entry.account !== worst.account
+    && entry.view.tone === 'normal').sort((a, b) => a.window.usedPercent - b.window.usedPercent)[0];
+  const others = bound.filter(entry => entry !== worst && entry.view.tone !== 'normal').length;
+  return <p className="au-summary" data-tone={worst.view.tone} role="status">
+    <Icon name={worst.view.tone === 'critical' ? 'AlertCircle' : 'AlertTriangle'} className="size-4" />
+    <span><strong>{subject}</strong> {detail}
+      {others > 0 && <span className="au-summary-hint"> {others === 1 ? '1 other account needs' : `${others} other accounts need`} attention.</span>}
+      {roomiest && <span className="au-summary-hint"> {accountName(roomiest.account)} has the most room ({percent(roomiest.window.usedPercent)} of {roomiest.window.label.toLowerCase()}).</span>}
+    </span>
+  </p>;
 }
 
 export function UsageOverlay() {
   const open = useUsageOpen();
   const rpc = useRpc<typeof rpcContract>();
+  const now = useNow(30_000, open);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
@@ -73,7 +147,7 @@ export function UsageOverlay() {
     setError(null);
     try {
       const next = await rpc.call('overview', { refresh: force });
-      if (mounted.current) setSnapshot(next);
+      if (mounted.current) { setSnapshot(next); setUpdatedAt(new Date()); }
     } catch (cause) {
       if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
     } finally {
@@ -82,29 +156,65 @@ export function UsageOverlay() {
     }
   }, [rpc]);
   useEffect(() => { if (open) void refresh(false); }, [open, refresh]);
-  const machines = snapshot?.machines.filter(machine => machine.providers.some(account => account.usage?.status !== 'not_installed') || machine.error !== null) ?? [];
+  const machines = (snapshot?.machines ?? []).map(machine => ({ ...machine,
+    providers: machine.providers.filter(account => account.usage?.status !== 'not_installed') }))
+    .filter(machine => machine.providers.length > 0 || machine.error !== null);
+  const showMachines = machines.length > 1 || machines.some(machine => machine.status === 'disconnected');
+  const age = updatedAt ? Math.max(0, now.getTime() - updatedAt.getTime()) : null;
   return <Dialog open={open} onOpenChange={value => { if (!value) closeUsage(); }}>
-    <DialogContent className="au-overlay" onKeyDown={event => {
+    <DialogContent className="au-overlay" hideCloseButton tabIndex={-1} onOpenAutoFocus={event => {
+      // Focus the panel rather than its first button, so opening does not paint a focus ring on Refresh.
+      event.preventDefault();
+      (event.currentTarget as HTMLElement | null)?.focus();
+    }} onKeyDown={event => {
       if (event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) || !event.currentTarget.contains(event.target as Node)) return;
       if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); closeUsage(); }
     }} onCloseAutoFocus={event => { event.preventDefault(); restoreUsageFocus(); }}>
-      <div className="au-overview-heading">
-        <div><DialogTitle>Agent usage</DialogTitle><DialogDescription>All providers and accounts. Percentages show allowance used.</DialogDescription></div>
-        <button className="au-refresh" type="button" disabled={loading} onClick={() => void refresh(true)}><Icon name="RefreshCw" className="size-4" />{loading ? 'Refreshing…' : 'Refresh'}</button>
-      </div>
-      <div className="au-overview-body" aria-busy={loading}>
-        {error && <p role="alert" className="au-error">{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
-        {!snapshot && !error && <p role="status">Loading usage…</p>}
-        {snapshot && machines.length === 0 && <p role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
-        {machines.map(machine => <section className="au-location" key={machine.id} aria-label={machine.displayName}>
-          <h2>{machine.displayName}{machine.status === 'disconnected' && <span className="au-muted"> · Offline</span>}</h2>
-          {machine.error && <p className="au-error" role="status">{machine.error}</p>}
-          <div className="au-account-grid">{machine.providers.filter(account => account.usage?.status !== 'not_installed').map(account => <AccountUsage key={account.id} account={account} />)}</div>
+      <header className="au-head">
+        <div className="au-head-title">
+          <DialogTitle>Agent usage</DialogTitle>
+          <DialogDescription>
+            {loading && !snapshot ? 'Checking providers…' : loading ? 'Refreshing…'
+              : age === null ? 'Not yet checked' : age < 60_000 ? 'Updated just now' : `Updated ${duration(age)} ago`}
+          </DialogDescription>
+        </div>
+        <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => void refresh(true)}>
+          <span className="au-spin" data-spinning={loading || undefined}><Icon name="ArrowReloadHorizontal" className="size-4" /></span>
+        </button>
+        <DialogClose className="au-icon-button" aria-label="Close" title="Close"><Icon name="X" className="size-4" /></DialogClose>
+      </header>
+      <div className="au-body" aria-busy={loading}>
+        {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
+        {!snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
+        {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
+        {snapshot && <Summary accounts={machines.flatMap(machine => machine.providers)} now={now} />}
+        {machines.map(machine => <section className="au-machine" key={machine.id} aria-label={machine.displayName}>
+          {showMachines && <h2 className="au-machine-heading">
+            <Icon name="Laptop" className="size-3.5" />{machine.displayName}
+            {machine.status === 'disconnected' && <span className="au-pill">Offline</span>}
+          </h2>}
+          {machine.error && <p className="au-notice" data-tone="warning" role="status"><Icon name="AlertTriangle" className="size-3.5" />{machine.error} Some figures may be out of date.</p>}
+          {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now} />)}
         </section>)}
       </div>
-      <footer className="au-overview-footer"><span>⌘⇧U opens usage</span><span>Q / Esc closes</span></footer>
+      <footer className="au-foot">
+        <span className="au-legend"><span className="au-legend-mark" aria-hidden="true" />Even pace: where steady use would be by now</span>
+        <span><kbd>Q</kbd> or <kbd>Esc</kbd> to close</span>
+      </footer>
     </DialogContent>
   </Dialog>;
+}
+
+function headerTitle(header: Header | null, error: string | null, now: Date): string {
+  if (error) return `${error}\nClick to see all accounts.`;
+  if (!header) return 'Loading usage…';
+  const lines = header.windows.map(window => {
+    const view = viewWindow(window, now);
+    return [`${window.label}: ${view.pace.kind === 'elapsed' ? 'reset since last check' : `${percent(window.usedPercent)} used`}`,
+      view.pace.kind === 'elapsed' ? '' : view.status, view.reset ? `resets ${view.reset}` : ''].filter(Boolean).join(' · ');
+  });
+  return [[header.label, header.accountLabel].filter(Boolean).join(' · '), header.message, ...lines, 'Click to see all accounts.']
+    .filter(Boolean).join('\n');
 }
 
 export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
@@ -113,6 +223,7 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
   const thread = threads.threads.find(value => value.id === threadId);
   const [header, setHeader] = useState<Header | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const now = useNow(60_000);
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -132,14 +243,18 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
     window.addEventListener('focus', refresh);
     return () => { alive = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, [rpc, threadId, thread?.providerId, thread?.status]);
-  const label = header?.label ?? thread?.providerId ?? 'Provider';
-  const description = header?.windows.map(window => `${window.label}: ${Math.round(window.usedPercent)}% used. ${resetLabel(window.resetsAt)}`).join('\n');
-  const title = [label, header?.accountLabel, error ?? header?.message, description].filter(Boolean).join('\n');
-  return <button type="button" className="au-thread-usage" aria-label={`Open all agent usage. ${title}`} title={title} aria-haspopup="dialog" onClick={openUsage}>
-    <Icon name="ChartColumn" className="size-3.5" />
-    {!isCompactViewport && <><span>{label}</span>{error ? <span className="au-muted">Unavailable</span> : header?.windows.length
-      ? header.windows.slice(0, 2).map(window => <span key={window.label} data-tone={window.usedPercent >= 95 ? 'critical' : window.usedPercent >= 80 ? 'warning' : 'normal'}>{shortWindow(window.label)} {Math.round(window.usedPercent)}%</span>)
-      : <span className="au-muted">{header?.message ?? 'Loading…'}</span>}</>}
+  const binding = header ? bindingWindow(header.windows, now) : null;
+  const title = headerTitle(header, error, now);
+  const short = binding?.window.period ? SHORT[binding.window.period] : binding?.window.label;
+  const text = !binding ? null
+    : binding.view.pace.kind === 'limited' ? `${short} limit · back ${clock(binding.view.pace.resetsAt, now)}`
+    : binding.view.pace.kind === 'paced' && binding.view.pace.runsOutAt ? `${short} ${percent(binding.window.usedPercent)} · out ${clock(binding.view.pace.runsOutAt, now)}`
+    : `${short} ${percent(binding.window.usedPercent)}`;
+  return <button type="button" className="au-badge" data-tone={binding?.view.tone ?? 'normal'} aria-label={`Open all agent usage. ${title}`}
+    title={title} aria-haspopup="dialog" onClick={openUsage}>
+    {binding ? <Ring window={binding.window} view={binding.view} /> : <Icon name="ChartColumn" className="size-3.5" />}
+    {!isCompactViewport && (text ? <span className="au-badge-text">{text}</span>
+      : error || header ? <span className="au-badge-muted">Usage</span> : null)}
   </button>;
 }
 
