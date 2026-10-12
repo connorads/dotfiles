@@ -31,6 +31,9 @@ setup() {
   git init -q --bare "$FAKE_GIT_DIR"
   export GIT_DIR="$FAKE_GIT_DIR"
   export GIT_WORK_TREE="$FAKE_WORK_TREE"
+  # Git exports this to hooks too; an inherited one points a fixture repo's
+  # writes at the real dotfiles index.
+  export GIT_INDEX_FILE="$FAKE_GIT_DIR/index"
 }
 
 # write_uv_stub - records argv, cwd and inherited git environment, then exits
@@ -45,8 +48,8 @@ if [ "$1" = --version ]; then
   echo "uv 0.0.0-stub"
   exit 0
 fi
-printf 'uv %s cwd=%s GIT_DIR=[%s] GIT_WORK_TREE=[%s]\n' \
-  "$*" "${PWD#$HOME/}" "${GIT_DIR:-}" "${GIT_WORK_TREE:-}" >>"$RUNNER_LOG"
+printf 'uv %s cwd=%s GIT_DIR=[%s] GIT_WORK_TREE=[%s] GIT_INDEX_FILE=[%s]\n' \
+  "$*" "${PWD#$HOME/}" "${GIT_DIR:-}" "${GIT_WORK_TREE:-}" "${GIT_INDEX_FILE:-}" >>"$RUNNER_LOG"
 if [ -n "${UV_FAIL_ON:-}" ] && [[ "$*" == *"$UV_FAIL_ON"* ]]; then
   exit 1
 fi
@@ -77,14 +80,14 @@ make_project() {
   [[ "$(cat "$RUNNER_LOG")" == *"uv run --group dev pytest -c pyproject.toml cwd=src/handoff"* ]]
 }
 
-@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE" {
+@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE" {
   write_uv_stub
   make_project src/handoff
 
   run bash "$SCRIPT" src/handoff/src/pkg/ir.py
 
   [ "$status" -eq 0 ]
-  [[ "$(cat "$RUNNER_LOG")" == *"GIT_DIR=[] GIT_WORK_TREE=[]"* ]]
+  [[ "$(cat "$RUNNER_LOG")" == *"GIT_DIR=[] GIT_WORK_TREE=[] GIT_INDEX_FILE=[]"* ]]
 }
 
 @test "a staged file resolves to its nearest pyproject.toml, not an ancestor's" {

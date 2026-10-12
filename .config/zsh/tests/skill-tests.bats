@@ -39,6 +39,9 @@ setup() {
   git --git-dir="$FAKE_GIT_DIR" symbolic-ref HEAD refs/heads/master
   export GIT_DIR="$FAKE_GIT_DIR"
   export GIT_WORK_TREE="$FAKE_WORK_TREE"
+  # Git exports this to hooks too; an inherited one points a fixture repo's
+  # writes at the real dotfiles index.
+  export GIT_INDEX_FILE="$FAKE_GIT_DIR/index"
 
   # A single planted skill, so `skill-tests.sh --all` finds exactly one suite.
   PROBE_DIR="$HOME/skills/probe/tests"
@@ -49,13 +52,14 @@ setup() {
   export PROBE_MARKER="$BATS_TEST_TMPDIR/probe-ran"
 }
 
-@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE" {
+@test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE" {
   cat >"$PROBE_DIR/probe.bats" <<'EOF'
 #!/usr/bin/env bats
 @test "probe: git environment is stripped" {
   printf 'ran\n' >"$PROBE_MARKER"
   [ -z "${GIT_DIR:-}" ]
   [ -z "${GIT_WORK_TREE:-}" ]
+  [ -z "${GIT_INDEX_FILE:-}" ]
 }
 EOF
 

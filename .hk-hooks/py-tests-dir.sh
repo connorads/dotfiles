@@ -9,8 +9,9 @@
 set -euo pipefail
 
 # Suites must not inherit the bare-repo GIT_DIR/GIT_WORK_TREE the hook wrappers
-# export: a bare `git` in a test would target the dotfiles repo.
-unset GIT_DIR GIT_WORK_TREE
+# export, or the GIT_INDEX_FILE git exports to hooks: a bare `git` in a test
+# would target the dotfiles repo, and a fixture's `git add` its index.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 # Whether a tool can actually RUN, not merely resolve. `command -v` is not
 # enough: mise plants a shim on PATH for every tool in its registry, so the name

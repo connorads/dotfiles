@@ -19,9 +19,10 @@ set -euo pipefail
 
 cd "$HOME"
 
-# Test suites must not inherit the bare-repo GIT_DIR/GIT_WORK_TREE the hook
-# wrappers export: a bare `git` in a suite would target the dotfiles repo.
-unset GIT_DIR GIT_WORK_TREE
+# Suites must not inherit the bare-repo GIT_DIR/GIT_WORK_TREE the hook wrappers
+# export, or the GIT_INDEX_FILE git exports to hooks: a bare `git` in a test
+# would target the dotfiles repo, and a fixture's `git add` its index.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 # Invariant: these roots are duplicated in hk.pkl's `py-tests-scoped` glob;
 # gate-coverage.py asserts the two agree.

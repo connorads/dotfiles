@@ -9,11 +9,12 @@ set -euo pipefail
 cd "$HOME"
 
 # The dhk and pre-commit wrappers export GIT_DIR/GIT_WORK_TREE for the bare-repo
-# layout and hk passes them to every step. Test suites must not inherit them: a
-# bare `git` in a suite would target the real dotfiles repo instead of its own
-# fixture, and GIT_DIR beats cwd discovery, so a suite's `cd` into a temp repo is
-# no defence.
-unset GIT_DIR GIT_WORK_TREE
+# layout, git exports GIT_INDEX_FILE to hooks, and hk passes all three to every
+# step. Test suites must not inherit them: a bare `git` in a suite would target
+# the real dotfiles repo instead of its own fixture, and GIT_DIR beats cwd
+# discovery, so a suite's `cd` into a temp repo is no defence. GIT_INDEX_FILE
+# alone is enough to make a fixture's `git add` overwrite the dotfiles index.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 TESTS_DIR=.config/zsh/tests
 
