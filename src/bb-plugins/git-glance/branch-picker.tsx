@@ -35,7 +35,9 @@ export function BranchPicker({ threadId, instant, onSwitch, onClose }: {
   function keyboard(event: React.KeyboardEvent) {
     // The pop-up's own keys (q, p, f…) must not fire while typing a branch name.
     event.stopPropagation();
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+    if (event.nativeEvent.isComposing || event.defaultPrevented) return;
+    if ((event.key === 'q' || event.key === 'Q') && !(event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')))) { event.preventDefault(); onClose(); }
+    else if (event.key === 'Escape') { event.preventDefault(); onClose(); }
     else if (event.key === 'ArrowDown') { event.preventDefault(); setActive(index => Math.min(shown.length - 1, index + 1)); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(index => Math.max(0, index - 1)); }
     else if (event.key === 'Enter') { event.preventDefault(); choose(shown[active]); }
