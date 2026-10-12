@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { definePluginApp, useRpc, useSidebarSplitLayout } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, useRpc } from '@get-bb/plugin-sdk/app';
 import type { ExperimentalSidebarFooterDisclosureProps, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
 import { MachineDialog, Rows, type Anchor } from './dialog.tsx';
-import { chip, tierFor, type Chip as ChipView, type LabelMode } from './src/present.ts';
+import { chip, type Chip as ChipView, type LabelMode, type Tone } from './src/present.ts';
+import { MetricIcon } from './icons.tsx';
+import type { ChipTone } from '@bb-plugins/chip';
+import '@bb-plugins/chip';
 import './app.css';
 
 /** The server shares one sample per machine across every chip, window and split pane. */
 const pollMs = 10_000;
+const chipTone: Record<Tone, ChipTone | undefined> = { ok: undefined, off: undefined, warn: 'warn', critical: 'danger' };
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 // Window-local store: the label mode (prefix + H in tmux) and the open dialog.
@@ -71,36 +75,23 @@ function useThreadMachine(threadId: string) {
   return usePolled(read);
 }
 
-/** Split rects are fractions of the split area; the window width stands in for that area. */
-function usePaneWidth(threadId: string) {
-  const layout = useSidebarSplitLayout();
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  useEffect(() => {
-    const onResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  const pane = layout?.panes.find(p => p.threadId === threadId);
-  return pane ? pane.rect.width * windowWidth : windowWidth;
-}
-
 /** The machine label only when it adds something: a remote machine, or the footer's list. */
 function Pills({ view, withLabel }: { view: ChipView; withLabel: boolean }) {
   return <>
     {withLabel && <span className="mh-label">{view.remote && <span aria-label="remote" title="Remote machine">⇄ </span>}{view.label}</span>}
-    {view.segments.map(segment => <span key={segment.key} className="mh-pill" data-key={segment.key} data-tone={segment.tone}
-      title={segment.title}>{segment.text}</span>)}
+    {view.segments.map(segment => <span key={segment.key} className="mh-metric" data-tone={segment.tone} title={segment.title}>
+      <MetricIcon metric={segment.key} />{segment.value}
+    </span>)}
   </>;
 }
 
 function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const { value: machine } = useThreadMachine(threadId);
   const mode = useLabelMode();
-  const width = usePaneWidth(threadId);
   const isOpen = useSyncExternalStore(subscribe, () => opened?.threadId === threadId);
   if (!machine) return null;
-  const view = chip(machine, tierFor(width, isCompactViewport), mode);
-  return <button type="button" className="mh-chip" data-machine-health={threadId} data-tone={view.tone}
+  const view = chip(machine, isCompactViewport, mode);
+  return <button type="button" className="bbp-chip mh-chip" data-machine-health={threadId} data-tone={chipTone[view.tone]}
     aria-expanded={isOpen} aria-haspopup="dialog" aria-label={view.summary} title={`${view.summary} (⌥H)`}
     onClick={() => toggle(threadId)}>
     <Pills view={view} withLabel={view.remote} />
@@ -134,7 +125,7 @@ function Machines(_props: ExperimentalSidebarFooterDisclosureProps) {
     {!machines && !error && <p className="mh-empty">Sampling machines…</p>}
     {error && <p role="alert" className="mh-error">{error}</p>}
     {machines?.map(machine => {
-      const view = chip(machine, 'full', mode);
+      const view = chip(machine, false, mode);
       return <div key={machine.hostId} className="mh-machine">
         <button type="button" className="mh-machine-row" data-tone={view.tone} aria-label={view.summary}
           aria-expanded={expanded === machine.hostId} onClick={() => setExpanded(expanded === machine.hostId ? null : machine.hostId)}>
