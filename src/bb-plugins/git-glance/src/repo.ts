@@ -94,7 +94,7 @@ export async function snapshot(repo: Repo): Promise<Snapshot> {
   };
 }
 
-function relative(path: string) {
+export function relative(path: string) {
   if (!path || isAbsolute(path) || path.split('/').includes('..')) throw new Error(`Refusing path outside the repository: ${path}`);
   return path;
 }

@@ -49,6 +49,8 @@ const opRequest = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('stash-apply'), sha: stashSha }),
   z.object({ kind: z.literal('stash-pop'), sha: stashSha }),
   z.object({ kind: z.literal('stash-drop'), sha: stashSha }),
+  /** Throw away one file's unstaged edits, or move an untracked path to the Trash. */
+  z.object({ kind: z.literal('discard'), path: z.string().min(1), area: z.enum(['unstaged', 'untracked']) }),
 ]);
 export type OpRequest = z.infer<typeof opRequest>;
 export const branchSchema = z.object({

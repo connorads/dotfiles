@@ -8,7 +8,7 @@ import { ChangeRow } from './rows.tsx';
 import { StashList } from './stash-list.tsx';
 import { age, freshKeys, plural } from './src/format.ts';
 import { describe, hints, SyncBar } from './sync-bar.tsx';
-import { changeKey, CopyIcon, DiffBar, Fact, useNow, Zoomed } from './ui.tsx';
+import { changeKey, CopyIcon, DiffBar, Fact, HoldButton, useNow, Zoomed } from './ui.tsx';
 
 const sections = [
   { area: 'conflicted', label: 'Conflicts', icon: 'DiffConflict' },
@@ -46,6 +46,13 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const conflicts = repo.changes.some(c => c.area === 'conflicted');
   const tone = repo.operation || conflicts ? 'danger' : files > 0 ? 'dirty' : 'clean';
   const { op } = state;
+  /** Unstaged edits and untracked paths can be discarded; staged and conflicted cannot. */
+  const discardAction = (change: Repo['changes'][number]) => {
+    const { area, path } = change;
+    if (area !== 'unstaged' && area !== 'untracked') return null;
+    return <HoldButton icon="Trash2" label="Discard" confirmLabel="Press again to discard" disabled={op?.status === 'running'}
+      onConfirm={() => onRun({ kind: 'discard', path, area })} />;
+  };
   const running = op?.status === 'running' ? op : null;
   const fetched = repo.fetchedAt ? age(repo.fetchedAt / 1000, now) : null;
   // A user's failure stays until dismissed; a success fades after a few seconds.
@@ -129,6 +136,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
             </button>
             {!closed && <ul>{items.map(change => <ChangeRow key={changeKey(change)} file={change} source={{ kind: 'work-tree', area: change.area }} threadId={threadId}
               flash={fresh.changes.has(changeKey(change)) ? fresh.stamp : null}
+              action={discardAction(change)}
               open={expanded === changeKey(change)} onToggle={() => setExpanded(e => e === changeKey(change) ? null : changeKey(change))} />)}</ul>}
           </section>;
         })}

@@ -6,6 +6,7 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - pull, push and fetch, with git's own progress and a hint when one fails
 - a branch switcher on the branch name: filter, then switch, or track a remote branch
 - stashes, each openable for its files, with apply, pop and hold-to-drop
+- discard for unstaged edits and untracked paths, held or pressed twice
 - branch, upstream, stash count and any merge or rebase in progress
 - conflicted, staged, unstaged and untracked files with line counts
 - an inline diff for each file, in BB's diff viewer
@@ -15,7 +16,8 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, and `q` or
-`esc` closes. On a stash row `a` applies and `g` pops.
+`esc` closes. On a file row `x` arms discard and a second `x` confirms; on a
+stash row `a` applies and `g` pops.
 
 `z` expands to a large view with side-by-side diffs, and the size is
 remembered. Rebind `Alt+G` in Settings → Keyboard. For anything else, open lazygit with its own plugin.
@@ -61,6 +63,9 @@ flowchart LR
 Every mutating action is one typed operation: one runs per checkout at a time,
 with progress, a result line and cancel.
 
+- Discard saves unstaged edits as a git blob first, named in the result, so
+  `git cat-file -p <blob>` recovers them. Untracked paths move to the Trash.
+- Discard checks the file's live status first; a stale row discards nothing.
 - Stash actions name the stash by sha and look up `stash@{n}` when they run, so
   a stash pushed or dropped meanwhile can never redirect a drop.
 

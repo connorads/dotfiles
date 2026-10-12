@@ -12,6 +12,7 @@ export function describe(request: OpRequest): { name: string; doing: string } {
     case 'stash-apply': return { name: 'Apply stash', doing: 'Applying' };
     case 'stash-pop': return { name: 'Pop stash', doing: 'Popping' };
     case 'stash-drop': return { name: 'Drop stash', doing: 'Dropping' };
+    case 'discard': return { name: `Discard ${request.path.replace(/\/$/, '').split('/').pop()}`, doing: 'Discarding' };
   }
 }
 export const hints: Record<FailureReason, string | null> = {
