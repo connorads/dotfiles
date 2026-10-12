@@ -31,6 +31,7 @@
     "test:native": "swiftc -module-cache-path \"$HOME/.cache/hex-command-pedal/swift\" -typecheck pedal/keys.swift"
   },
   "dependencies": {
+    "@bb-plugins/chip": "workspace:*",
     "@kitlangton/hex": "0.3.1",
     "zod": "catalog:"
   },
