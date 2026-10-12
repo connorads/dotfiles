@@ -13,7 +13,7 @@ import './picker.css';
 const controllers = new Map<string, Controller>();
 const message = (error: unknown) => error instanceof Error ? error.message : 'Could not update the model picker.';
 
-function useController(composer: PluginComposerApi) {
+export function useController(composer: PluginComposerApi) {
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
   return useMemo(() => createController(composer, sdk, rpc), [composer, sdk, rpc]);
@@ -26,12 +26,6 @@ export function CommandOwner() {
     return () => { if (controllers.get(composer.key) === controller) controllers.delete(composer.key); };
   }, [composer, controller]);
   return null;
-}
-export function Trigger() {
-  const composer = useComposer();
-  return <button type="button" className="mf-trigger" aria-label="Switch model" title="Switch model" onClick={() => open(composer)}>
-    <Icon name="Star" className="size-4" /><Icon name="ChevronDown" className="size-3" />
-  </button>;
 }
 export function Overlay() {
   const opened = useSyncExternalStore(subscribe, openedState);

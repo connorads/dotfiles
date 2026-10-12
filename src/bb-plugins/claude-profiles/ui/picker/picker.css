@@ -1,12 +1,21 @@
-.mf-trigger { display: inline-flex; align-items: center; gap: 3px; padding: 5px 7px; border: 0; border-radius: 6px; color: var(--muted-foreground); background: transparent; }
-.mf-trigger:hover { color: var(--foreground); background: var(--muted); }
+.mf-trigger { --mf-gold: #f5b301; display: inline-flex; align-items: stretch; height: 26px; border: 1px solid color-mix(in oklch, var(--border) 80%, transparent); border-radius: 999px; overflow: hidden; }
+.mf-trigger button { display: grid; place-items: center; border: 0; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.mf-trigger button:hover:not(:disabled):not([aria-disabled=true]) { color: var(--foreground); background: var(--muted); }
+.mf-trigger button:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.mf-trigger button:disabled, .mf-trigger button[aria-disabled=true] { cursor: default; opacity: .5; }
+.mf-trigger-star { padding: 0 6px 0 8px; }
+.mf-trigger-star[data-saved] { color: var(--mf-gold); }
+.mf-trigger-star[data-saved] svg { fill: currentColor; }
+.mf-trigger-open { padding: 0 7px 0 5px; border-left: 1px solid color-mix(in oklch, var(--border) 80%, transparent) !important; }
+.mf-trigger-icon { width: 14px; height: 14px; }
+.mf-trigger-chevron { width: 12px; height: 12px; }
 .mf-dialog { width: 700px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: auto; color: var(--foreground); background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 80px #0006; }
 .mf-dialog::backdrop { background: #0007; backdrop-filter: blur(3px); }
 .mf-picker { font-size: 13px; }
 .mf-picker button, .mf-picker input, .mf-picker select { font: inherit; }
 .mf-picker button { cursor: pointer; }
 .mf-picker button:disabled { cursor: default; opacity: .45; }
-.mf-picker button:focus-visible, .mf-picker select:focus-visible, .mf-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.mf-picker button:focus-visible, .mf-picker select:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 .mf-search { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
 .mf-search-icon { width: 18px; height: 18px; color: var(--muted-foreground); flex-shrink: 0; }
 .mf-search input { min-width: 0; flex: 1; border: 0; outline: none; background: transparent; color: inherit; font-size: 15px; }

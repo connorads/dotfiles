@@ -65,6 +65,9 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
   }
   return {
     statuses,
+    async models(providerId: string) {
+      return (await sdk.system.executionOptions({ ...await scope(), providerId })).models;
+    },
     async catalog() {
       const target = await scope();
       const initial = await sdk.system.executionOptions({ ...target, providerId: composer.selection?.providerId });
