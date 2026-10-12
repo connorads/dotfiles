@@ -15,6 +15,9 @@ thread, project, model, command help and numbered matches.
 | `go to the login thread` | Match a thread by title and project |
 | `next thread` / `previous thread` | Use BB's configured navigation shortcuts |
 | `next unread` | Open the oldest unread stopped thread, including text questions and errors |
+| `show threads` | Show up to nine recently updated threads as numbered choices |
+| `show git` / `show usage` | Open Git status for the selected thread or usage for all agent accounts |
+| `close popup` | Send Escape to dismiss the top popup |
 | `who needs me` / `next waiting` | Show threads with pending questions or approvals |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
@@ -74,6 +77,12 @@ threads. Attention lists show up to nine threads.
 `next unread` skips the selected thread, archived and hidden threads, and ongoing
 work. It uses BB's unread state and orders replies by attention time, oldest first.
 Opening a thread follows BB's read behaviour; it does not archive the conversation.
+
+`show git` and `show usage` use the existing header buttons. Repeated commands
+keep the view open. Missing controls report that the view is unavailable.
+`close popup` dismisses voice choices and sends Escape through Hex. BB and the
+focused popup own dismissal and focus restoration. Nested popups close one layer
+at a time.
 
 Thread searches compare titles separately from project and provider labels.
 Clear literal matches navigate immediately. Reordered words, singular/plural

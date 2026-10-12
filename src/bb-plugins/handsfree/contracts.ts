@@ -17,6 +17,8 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('attention') }).strict(),
   z.object({ action: z.literal('finished') }).strict(),
   z.object({ action: z.literal('unread') }).strict(),
+  z.object({ action: z.literal('show'), view: z.enum(['git', 'usage']) }).strict(),
+  z.object({ action: z.literal('dismiss') }).strict(),
   z.object({ action: z.literal('new') }).strict(),
   z.object({ action: z.literal('help') }).strict(),
   z.object({ action: z.literal('archive') }).strict(),

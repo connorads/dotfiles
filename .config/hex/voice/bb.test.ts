@@ -21,6 +21,13 @@ const setup = (labels: string[], probabilities: Record<string, number> = {}) => 
   return { ports, commands, logs, judged: () => judged }
 }
 
+test("show threads offers numbered thread choices with a thread-specific prompt", async () => {
+  const w = setup(["Login", "Billing"])
+  await matchBb(w.ports, "thread", "")
+  expect(w.commands.at(-1)).toMatchObject({ action: "choices", kind: "thread", message: "Choose a thread.", options: [{ id: "0" }, { id: "1" }] })
+  expect(w.judged()).toBe(false)
+})
+
 test("exact names use the list's window context without calling Jev", async () => {
   const w = setup(["Login", "Billing"])
   await matchBb(w.ports, "thread", "login")

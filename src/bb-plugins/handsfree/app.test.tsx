@@ -100,6 +100,52 @@ test('next unread excludes the current thread, read replies, archived or hidden 
   expect(view.slot.inspection.sidebarActionCalls).toEqual([]);
 });
 
+test('show Git uses the selected thread button and repeated requests keep it open', async () => {
+  const view = await render();
+  const chip = document.createElement('button');
+  chip.dataset.gitGlance = 't1';
+  chip.setAttribute('aria-expanded', 'false');
+  let clicks = 0;
+  chip.onclick = () => { clicks++; chip.setAttribute('aria-expanded', 'true'); };
+  document.body.append(chip);
+  try {
+    await view.command({ action: 'show', view: 'git' });
+    await view.command({ action: 'show', view: 'git' });
+    expect(clicks).toBe(1);
+    expect(chip.getAttribute('aria-expanded')).toBe('true');
+    expect(view.slot.inspection.composer.submits).toEqual([]);
+  } finally { chip.remove(); }
+});
+
+test('show usage activates the existing all-accounts button', async () => {
+  const view = await render();
+  const chip = document.createElement('button');
+  chip.setAttribute('aria-label', 'Open all agent usage. Codex');
+  let opened = false;
+  chip.onclick = () => { opened = true; };
+  document.body.append(chip);
+  try {
+    expect((await view.command({ action: 'show', view: 'usage' })).ok).toBe(true);
+    expect(opened).toBe(true);
+  } finally { chip.remove(); }
+});
+
+test('missing popup controls report unavailable rather than claiming to open', async () => {
+  const view = await render();
+  expect(await view.command({ action: 'show', view: 'git' })).toMatchObject({ ok: false, outcome: 'error' });
+  expect(await view.command({ action: 'show', view: 'usage' })).toMatchObject({ ok: false, outcome: 'error' });
+});
+
+test('close popup clears voice choices and requests Escape without sending text', async () => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  expect(await view.command({ action: 'dismiss' })).toMatchObject({ ok: true, outcome: 'requested', press: { key: 'escape', modifiers: [] } });
+  expect(view.slot.queryByRole('button', { name: /waiting/ })).toBeNull();
+  expect(view.slot.inspection.composer.focusCount).toBe(1);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
 test('idle archive targets the selected thread and spoken restore opens it', async () => {
   const view = await render();
   expect((await view.command({ action: 'archive' })).ok).toBe(true);
