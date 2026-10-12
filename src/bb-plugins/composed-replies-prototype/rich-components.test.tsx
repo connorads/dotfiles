@@ -181,3 +181,48 @@ it("rejects negative stacked values and excessive series/points", () => {
     }),
   ).toThrow();
 });
+
+it("waits for OpenUI state hydration before evaluating nonnegative stacked expressions", () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    render(
+      <CompositionView
+        composition={parseComposition({
+          format: "openui",
+          title: "Hydration",
+          source:
+            'root = Stack([StackedBarChart(["Oct"], [{name:"Living",values:[$spending - 1600]}], "GBP")])\n$spending = 2600',
+        })}
+      />,
+    );
+    expect(screen.getByRole("img").getAttribute("aria-label")).toContain(
+      "Oct 1000",
+    );
+    expect(errors).not.toHaveBeenCalled();
+  } finally {
+    errors.mockRestore();
+  }
+});
+
+it("rejects genuinely negative stacked values after OpenUI state hydration", () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    render(
+      <CompositionView
+        composition={parseComposition({
+          format: "openui",
+          title: "Invalid stacked data",
+          source:
+            'root = Stack([StackedBarChart(["Oct"], [{name:"Living",values:[$spending - 1600]}], "GBP")])\n$spending = 1000',
+        })}
+      />,
+    );
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(errors).toHaveBeenCalled();
+  } finally {
+    errors.mockRestore();
+    warnings.mockRestore();
+  }
+});
