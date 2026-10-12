@@ -877,6 +877,22 @@ blanked_recording() {
   [ "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
 }
 
+@test "transcribe finds FluidAudio through mise when its shims are absent from PATH" {
+  stub_fluid
+  mkdir -p "$HOME/.local/share/mise/shims"
+  mv "$TEST_BIN/fluidaudiocli" "$HOME/.local/share/mise/shims/fluidaudiocli"
+  dir=$(blanked_recording)
+
+  vox transcribe "$dir"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$dir" ]
+  grep -q "^fluidaudiocli transcribe $dir/mic.wav " "$TEST_LOG"
+  grep -q "^fluidaudiocli process $dir/sys.wav " "$TEST_LOG"
+  grep -q 'Me: hello there' "$dir/transcript.md"
+  grep -q 'Speaker 1: yes hello' "$dir/transcript.md"
+}
+
 @test "transcribe holds the recording's marker while transcription runs and drops it after" {
   dir=$(blanked_recording)
   # The stub records whether the marker existed at the moment it was called:
