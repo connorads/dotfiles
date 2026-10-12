@@ -60,6 +60,7 @@
     casks = [
       # Apps
       "rectangle"
+      "linearmouse"
       "kitty"
       "sublime-text"
       "sublime-merge"
