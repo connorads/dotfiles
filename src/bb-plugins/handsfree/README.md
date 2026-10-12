@@ -23,6 +23,19 @@ builds `~/Applications/Hex Command Keys.app` and installs the login service
 `local.bb.command-pedal`. Enable that app in macOS Input Monitoring. Keyboard
 navigation and popup dismissal also require System Events Accessibility permission.
 
+The login service launches the signed keyboard app, which starts the Bun recorder.
+The app sends F18 and Escape events through a pipe to the recorder. Input Monitoring
+belongs to Hex Command Keys. Keep Bun disabled in Input Monitoring. Rebuilding the
+ad-hoc signed app changes its identity; remove and add the app again if macOS
+rejects its saved permission.
+
+```mermaid
+flowchart LR
+  Launchd[Login service] --> Keys[Hex Command Keys app]
+  Keys -->|F18 and Escape events| Recorder[Bun recorder]
+  Recorder --> Hex[Hex dictation]
+```
+
 - `pnpm pedal:status` shows launchd state.
 - `pnpm pedal:restart` restarts the recorder after permission or source changes.
 - `pnpm pedal:stop` stops it for this login session. Run `pnpm pedal:install` to enable it again.
