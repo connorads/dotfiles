@@ -1,4 +1,4 @@
-import type { Candidate, Command, Kind, Reply } from "../../../src/bb-plugins/handsfree/contracts.ts"
+import { replySchema, type Candidate, type Command, type Kind, type Reply } from "../../../src/bb-plugins/handsfree/contracts.ts"
 import { JEV_MODEL } from "./goto.ts"
 import type { Ports } from "./ports.ts"
 
@@ -6,19 +6,10 @@ export interface BbPorts extends Pick<Ports, "judge" | "notify" | "log"> {
   readonly request: (command: Command) => Promise<Reply>
 }
 
-const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
-const modifiers = ["command", "control", "option", "shift"]
-
 export const parseReply = (value: unknown): Reply => {
-  if (!record(value) || typeof value.ok !== "boolean" || typeof value.message !== "string"
-    || (value.context !== undefined && typeof value.context !== "string")
-    || (value.candidates !== undefined && (!Array.isArray(value.candidates) || !value.candidates.every(candidate =>
-      record(candidate) && typeof candidate.id === "string" && typeof candidate.label === "string")))
-    || (value.press !== undefined && (!record(value.press) || typeof value.press.key !== "string"
-      || !Array.isArray(value.press.modifiers) || !value.press.modifiers.every(modifier => modifiers.includes(modifier))))) {
-    throw new Error("BB returned an invalid voice response.")
-  }
-  return value as Reply
+  const parsed = replySchema.safeParse(value)
+  if (!parsed.success) throw new Error("BB returned an invalid voice response.")
+  return parsed.data
 }
 
 export const requestBb = async (command: Command): Promise<Reply> => {
@@ -49,6 +40,39 @@ export const runBb = async (ports: BbPorts, command: Command): Promise<Reply> =>
 
 const normalise = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
 
+const words = (text: string) => normalise(text).split(" ").filter(Boolean)
+  .map(word => word.length > 3 ? word.replace(/s$/, "") : word)
+
+const nearWord = (left: string, right: string): boolean => {
+  if (left === right) return true
+  if (Math.min(left.length, right.length) < 3 || Math.abs(left.length - right.length) > 1) return false
+  let i = 0, j = 0, edits = 0
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) { i++; j++; continue }
+    if (++edits > 1) return false
+    if (left.length >= right.length) i++
+    if (right.length >= left.length) j++
+  }
+  return edits + (left.length - i) + (right.length - j) <= 1
+}
+
+const approximate = (candidates: Candidate[], target: string): Candidate[] => {
+  const query = words(target)
+  if (query.length < 2) return []
+  return candidates.flatMap(candidate => {
+    const available = words(`${candidate.title ?? candidate.label} ${candidate.project ?? ""}`)
+    let exact = 0, edits = 0
+    for (const word of query) {
+      let index = available.indexOf(word)
+      if (index >= 0) exact++
+      else { index = available.findIndex(option => nearWord(word, option)); edits++ }
+      if (index < 0 || edits > 1) return []
+      available.splice(index, 1)
+    }
+    return exact ? [{ candidate, edits }] : []
+  }).sort((a, b) => a.edits - b.edits).slice(0, 3).map(row => row.candidate)
+}
+
 export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
   if (utterance) await runBb(ports, { action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
   const spoken = normalise(utterance)
@@ -65,8 +89,9 @@ export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Pr
   const target = kind === "thread"
     ? spoken.replace(/^the /, "").replace(/ threads?$/, "") || spoken
     : kind === "project" && spoken === "dotfiles" ? "connorads" : spoken
-  const exact = candidates.filter(candidate => normalise(candidate.label) === target || normalise(candidate.id) === target)
-  let matches = exact.length ? exact : candidates.filter(candidate => normalise(candidate.label).includes(target))
+  const name = (candidate: Candidate) => normalise(candidate.title ?? candidate.label)
+  const exact = candidates.filter(candidate => name(candidate) === target || normalise(candidate.id) === target)
+  let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target))
   const show = (options: Candidate[]) => runBb(ports, {
     action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : "Choose a project for a new draft.",
   })
@@ -74,6 +99,10 @@ export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Pr
   const [single] = matches
   if (matches.length === 1 && single) return runBb(ports, { action: "select", kind, context, id: single.id })
   if (matches.length > 1) return show(matches)
+  if (kind === "thread") {
+    matches = approximate(candidates, target)
+    if (matches.length) return show(matches)
+  }
   const answer = await ports.judge({
     model: JEV_MODEL,
     state: { utterance },

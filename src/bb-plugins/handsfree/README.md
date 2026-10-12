@@ -51,6 +51,12 @@ interrupt a running turn. A draft retains its text until the user submits it.
 The thread matcher offers the 200 most recently updated visible, unarchived
 threads. Attention lists show up to nine threads.
 
+Thread searches compare titles separately from project and provider labels.
+Clear literal matches navigate immediately. Reordered words, singular/plural
+forms and one small spelling error offer up to three numbered matches.
+Approximate matches require at least two words and one exact word. They do not
+navigate automatically. Descriptions without close word matches use Jev.
+
 ```mermaid
 flowchart LR
   Hex[Hex command] --> Bridge[Focused BB window]
