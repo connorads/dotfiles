@@ -28,7 +28,7 @@ New drafts provide the same control beside the composer actions.
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match |
 | `voice help` | Open the monitor command list |
-| `voice monitor` / `voice history` | Open recognition, dictation and BB activity |
+| `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |

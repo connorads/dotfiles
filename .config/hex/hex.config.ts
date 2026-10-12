@@ -148,7 +148,7 @@ export default defineHexConfig({
       run: async ({ captures }) => { await runBb(bbPorts, { action: "choose", number: captures.n }) },
     },
     "bb-monitor": {
-      phrases: ["voice monitor", "voice history"],
+      phrases: ["voice monitor", "voice history", "show voice"],
       when: { application: "bb" },
       group: "BB",
       description: "Show Hex recognition and BB command results",
