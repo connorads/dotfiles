@@ -70,12 +70,24 @@ export default function plugin(bb: BbPluginApi) {
     await bb.storage.kv.set(key(threadId), next);
     bb.realtime.publish('cache-changed', { threadId });
   }
-  const queues = new Map<string, Promise<void>>();
-  function schedule(threadId: string) {
-    const next = (queues.get(threadId) ?? Promise.resolve()).then(() => sync(threadId))
-      .catch(error => bb.log.warn(`Cache sync failed for ${threadId}: ${error instanceof Error ? error.message : error}`));
+  async function invalidate(threadId: string) {
+    const stored = savedSchema.safeParse(await bb.storage.kv.get(key(threadId)));
+    if (!stored.success) return false;
+    await bb.storage.kv.set(key(threadId), { ...stored.data, state: observe(stored.data.state, { kind: 'invalidate', at: Date.now() }) });
+    bb.realtime.publish('cache-changed', { threadId });
+    return true;
+  }
+  // One queue per thread, so a sync and an invalidation never overwrite each other's state.
+  const queues = new Map<string, Promise<unknown>>();
+  function enqueue<T>(threadId: string, task: () => Promise<T>): Promise<T> {
+    const next = (queues.get(threadId) ?? Promise.resolve()).catch(() => {}).then(task);
     queues.set(threadId, next);
-    void next.finally(() => { if (queues.get(threadId) === next) queues.delete(threadId); });
+    void next.finally(() => { if (queues.get(threadId) === next) queues.delete(threadId); }).catch(() => {});
+    return next;
+  }
+  function schedule(threadId: string) {
+    enqueue(threadId, () => sync(threadId))
+      .catch(error => bb.log.warn(`Cache sync failed for ${threadId}: ${error instanceof Error ? error.message : error}`));
   }
   bb.events.on('experimental_thread.events', ({ thread }) => schedule(thread.id));
   // Claude Code can flush the last request to its transcript after BB's final event notification.
@@ -83,5 +95,6 @@ export default function plugin(bb: BbPluginApi) {
   bb.events.on('thread.deleted', ({ thread }) => bb.storage.kv.delete(key(thread.id)));
   bb.rpc.register(rpcContract, {
     thread: async input => savedSchema.safeParse(await bb.storage.kv.get(key(input.threadId))).data?.state ?? null,
+    invalidate: async input => ({ invalidated: await enqueue(input.threadId, () => invalidate(input.threadId)) }),
   });
 }

@@ -11,4 +11,6 @@ export const hostContract = defineRpcContract({
 });
 export const rpcContract = defineRpcContract({
   thread: { input: z.object({ threadId: z.string() }), output: cacheStateSchema.nullable() },
+  // Called by claude-profiles after it switches a thread's account.
+  invalidate: { input: z.object({ threadId: z.string() }), output: z.object({ invalidated: z.boolean() }) },
 });

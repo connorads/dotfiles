@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bbSample, expiresAt, hitRatio, initialState, observe, type CacheState, type Observation } from './cache.ts';
+import { bbSample, cacheStateSchema, expiresAt, hitRatio, initialState, observe, type CacheState, type Observation } from './cache.ts';
 
 const run = (observations: Observation[]) => observations.reduce<CacheState>(observe, initialState());
 const request = (at: number, prompt: number, read: number, ttlMs: number | null = null): Observation =>
@@ -20,7 +20,7 @@ test('Pi input excludes cache reads and writes', () => {
 test('a request that re-sends the previous prompt uncached counts as a miss with its idle gap', () => {
   const state = run([request(0, 100000, 99000), request(420000, 101000, 0)]);
   assert.equal(state.misses, 1);
-  assert.deepEqual(state.lastMiss, { at: 420000, tokens: 100000, idleMs: 420000 });
+  assert.deepEqual(state.lastMiss, { at: 420000, tokens: 100000, idleMs: 420000, cause: 'idle' });
 });
 
 test('the uncached tail of a warm request is noise, not a miss', () => {
@@ -41,4 +41,25 @@ test('every read refreshes the cache lifetime from the last write', () => {
 
 test('expiry is unknown until a request reports its cache lifetime', () => {
   assert.equal(expiresAt(run([request(0, 50000, 49000)])), null);
+});
+
+test('an account switch makes a warm cache cold at once', () => {
+  const hour = 3_600_000;
+  const state = run([request(0, 100000, 99000, hour), { kind: 'invalidate', at: 60000 }]);
+  assert.equal(expiresAt(state), 60000);
+});
+
+test('the request after an account switch is a miss caused by the switch and warms the cache again', () => {
+  const hour = 3_600_000;
+  const state = run([request(0, 100000, 99000, hour), { kind: 'invalidate', at: 60000 }, request(120000, 101000, 12000, hour)]);
+  assert.equal(state.misses, 1);
+  assert.equal(state.lastMiss?.cause, 'account');
+  assert.equal(expiresAt(state), 120000 + hour);
+});
+
+test('state stored before account switches were tracked still parses', () => {
+  const stored = { last: null, ttlMs: null, prompt: 1, read: 1, misses: 1, missedTokens: 2000, lastMiss: { at: 1, tokens: 2000, idleMs: 5 } };
+  const state = cacheStateSchema.parse(stored);
+  assert.equal(state.invalidatedAt, null);
+  assert.equal(state.lastMiss?.cause, 'idle');
 });

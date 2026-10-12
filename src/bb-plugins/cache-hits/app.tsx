@@ -20,15 +20,17 @@ const lifetime = (ms: number) => ms >= 3_600_000 ? `${ms / 3_600_000}h` : `${ms 
 function describe(state: CacheState, now: number) {
   const lines: string[] = [];
   const expiry = expiresAt(state);
+  const rebuild = tokens(state.last?.prompt ?? 0);
   if (expiry !== null && state.ttlMs !== null) lines.push(expiry > now
     ? `Cache expires in ${clock(expiry - now)} (${lifetime(state.ttlMs)} lifetime)`
-    : `Cache expired ${Math.round((now - expiry) / 60_000)}m ago; the next request rebuilds ${tokens(state.last?.prompt ?? 0)}`);
+    : expiry === state.invalidatedAt ? `Claude account switched; the next request rebuilds ${rebuild}`
+    : `Cache expired ${Math.round((now - expiry) / 60_000)}m ago; the next request rebuilds ${rebuild}`);
   if (state.last) lines.push(`Last request: ${percent(hitRatio(state.last.read, state.last.prompt) ?? 0)} cached `
     + `(read ${tokens(state.last.read)}, wrote ${tokens(state.last.write)} of ${tokens(state.last.prompt)})`);
   const thread = hitRatio(state.read, state.prompt);
   if (thread !== null) lines.push(`Thread: ${percent(thread)} cached`);
   if (state.lastMiss) lines.push(`${state.misses} miss${state.misses === 1 ? '' : 'es'}, ${tokens(state.missedTokens)} re-sent; `
-    + `last ${tokens(state.lastMiss.tokens)} after ${Math.round(state.lastMiss.idleMs / 60_000)}m`);
+    + `last ${tokens(state.lastMiss.tokens)} after ${state.lastMiss.cause === 'account' ? 'account switch' : `${Math.round(state.lastMiss.idleMs / 60_000)}m`}`);
   return lines.join('\n');
 }
 
