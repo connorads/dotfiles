@@ -7,7 +7,7 @@ import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Effort, Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
 import { AccountMenu } from './account-menu.tsx';
-import { EffortPill, Segmented } from './controls.tsx';
+import { EFFORT_LABEL, EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
 import { close, open, openedState, subscribe, type Focus } from './store.ts';
@@ -280,7 +280,7 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
         <div className="mf-now-options">
           {currentModel && currentModel.supportedReasoningEfforts.length > 0 && <div className="mf-field"><span aria-hidden="true">Effort</span><Segmented label="Reasoning effort" disabled={blocked}
             value={composer.selection?.reasoningLevel ?? currentModel.defaultReasoningEffort}
-            options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: e.reasoningEffort }))}
+            options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: EFFORT_LABEL[e.reasoningEffort] }))}
             onChange={value => { void run(() => changeOption('reasoningLevel', value)); }} /></div>}
           {tiers.length > 0 && <div className="mf-field"><span aria-hidden="true">Tier</span><Segmented label="Service tier" disabled={blocked} value={composer.selection?.serviceTier ?? 'default'}
             options={[{ value: 'default', label: 'Default' }, ...tiers.filter(t => t.id !== 'default').map(t => ({ value: t.id, label: t.label ?? t.id }))]}
