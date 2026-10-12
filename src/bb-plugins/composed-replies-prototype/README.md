@@ -1,7 +1,7 @@
 # Composed replies prototype
 
 Native React components in BB assistant messages. OpenUI and json-render compose
-new interfaces from the same twelve primitives. The model does not emit executable
+new interfaces from the same nineteen primitives. The model does not emit executable
 JavaScript or select a finished calculator.
 
 ```mermaid
@@ -16,7 +16,7 @@ flowchart LR
 ## Agent routing
 
 The plugin contributes native-first routing instructions at provider session
-construction. The tool description advertises charts, budgets and comparisons.
+construction. The tool description advertises layouts, icons, workflows, diagrams and comparisons.
 BB discovers the usage skill under the manifest's `./skills` root.
 New sessions receive these instructions; existing sessions retain their
 constructed instructions until a provider restart. Disabling the plugin removes
@@ -45,7 +45,8 @@ bb composed-replies-prototype publish /absolute/thread-storage/input.json
 
 `Stack`, `Text`, `NumberInput`, `Slider`, `Select`, `Metric`, `Table` and
 `BarChart`, `Grid`, `Stat`, `LineChart` and `StackedBarChart` render directly inside
-BB. Fonts and colours inherit BB theme tokens.
+BB. `Box`, `Row`, `Icon`, `Heading`, `Caption`, `Divider` and `Chip` compose
+visual explanations and compact diagrams. Fonts and colours inherit BB theme tokens.
 Charts use CSS bars, fixed screen-size labels and explicit units. Bar and stacked charts accept
 nonnegative values. Line charts accept signed values. Charts require equal-length
 labels and values in each series. Grids adapt to container width. Statistics show
@@ -75,6 +76,33 @@ is distinct from live BB transport support.
 
 Keep `visual-replies-prototype` installed for custom HTML applications. Its
 sandboxed HTML path is independent of this plugin.
+
+## Layout primitives
+
+`Box` groups children with optional borders and muted surfaces. `Row` wraps
+horizontal children. `Icon` selects from fifteen fixed symbols. An empty icon
+label makes it decorative; a label gives it an accessible name. `Heading` and
+`Caption` provide text hierarchy. `Divider` separates sections; `Chip` labels
+categories. Spacing uses a four-pixel scale with values from zero to three.
+Style properties use named options rather than arbitrary CSS.
+
+Compose downward processes from stage boxes and centred arrow-down icon rows.
+Use `Grid` for parallel stages. It stacks them in narrow containers.
+
+## Prompt cost
+
+Routing instructions and the tool definition contribute about 313 tokens.
+The usage skill and full catalogue are read on demand. Estimated text sizes
+use `o200k_base`; provider wrappers and skill catalogue metadata are additional.
+These counts are prompt estimates, not billing measurements.
+
+| Text | Estimated tokens |
+| --- | ---: |
+| Routing instructions | 180 |
+| Tool name, description and parameter schema | 133 |
+| Usage skill file | 392 |
+| Full OpenUI contract | 1,293 |
+| Full json-render contract | 2,239 |
 
 ## Verification
 
