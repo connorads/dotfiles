@@ -53,7 +53,8 @@ export function frameDocument(html: string, theme: Theme, fonts: string, nonce: 
   script.textContent = `(() => {
     const nonce = ${JSON.stringify(nonce)};
     let scheduled = 0;
-    const report = () => { cancelAnimationFrame(scheduled); scheduled = requestAnimationFrame(() => parent.postMessage({type:'visual-height',nonce,height:document.body.getBoundingClientRect().height}, '*')); };
+    const sendHeight = () => parent.postMessage({type:'visual-height',nonce,height:document.body.getBoundingClientRect().height}, '*');
+    const report = () => { cancelAnimationFrame(scheduled); scheduled = requestAnimationFrame(sendHeight); };
     const observer = new ResizeObserver(report); observer.observe(document.body);
     const theme = event => {
       if(event.source !== parent || event.data?.type !== 'visual-theme' || event.data?.nonce !== nonce) return;
@@ -61,7 +62,8 @@ export function frameDocument(html: string, theme: Theme, fonts: string, nonce: 
       report();
     };
     addEventListener('message',theme); addEventListener('resize',report);
-    document.fonts.ready.then(report); report();
+    // Offscreen frames suspend animation callbacks; initial sizing must run directly.
+    document.fonts.ready.then(report); sendHeight();
     addEventListener('pagehide', () => { observer.disconnect(); cancelAnimationFrame(scheduled); removeEventListener('message',theme); removeEventListener('resize',report); }, {once:true});
   })();`;
   doc.body.append(script);
