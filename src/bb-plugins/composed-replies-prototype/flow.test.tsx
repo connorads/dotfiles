@@ -101,18 +101,20 @@ it("connects measured node boundaries and routes skipped levels outside node col
   );
   expect(
     container.querySelector('[data-flow-edge="source→a"]')?.getAttribute("d"),
-  ).toBe("M150,40 C150,68 90,68 90,96");
+  ).toBe("M150,40 V54 H90 V96");
   expect(
     container
       .querySelector('[data-flow-edge="source→join"]')
       ?.getAttribute("d"),
-  ).toBe("M150,40 V58 H10.4 V174 H150 V192");
+  ).toBe("M150,40 V54 H10.4 V178 H150 V192");
   expect(
     container
-      .querySelector('[data-flow-edge="source→a"]')
-      ?.parentElement?.querySelector("text")
-      ?.getAttribute("x"),
-  ).toBe("90");
+      .querySelector('[data-flow-caption="source→a"]')
+      ?.getAttribute("style"),
+  ).toContain("left: 90px");
+  expect(
+    container.querySelectorAll("[data-flow-edge][marker-end]"),
+  ).toHaveLength(3);
   measure.mockRestore();
 });
 it("keeps dense layers readable inside a local scrolling surface", () => {
@@ -138,4 +140,74 @@ it("keeps dense layers readable inside a local scrolling surface", () => {
     "1524px",
   );
   expect(container.querySelectorAll("[data-flow-node]")).toHaveLength(12);
+});
+
+it("shows full captions and one arrowhead at each destination", () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const label = "Approve and publish the finished article";
+  const { container } = render(
+    <Flow {...graph} edges={graph.edges.map((edge) => ({ ...edge, label }))} />,
+  );
+  expect(
+    container.querySelectorAll("[data-flow-edge][marker-end]"),
+  ).toHaveLength(3);
+  expect(container.querySelectorAll("[data-flow-caption]")).toHaveLength(4);
+  for (const caption of Array.from(
+    container.querySelectorAll("[data-flow-caption]"),
+  ))
+    expect(caption.textContent).toBe(label);
+  expect(
+    container.querySelector("[data-flow-edge]")?.getAttribute("d"),
+  ).not.toContain("C");
+});
+it("reserves space for wrapped captions without shrinking text", () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      const height = this.dataset.flowCaption ? 80 : 40;
+      return {
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 320,
+        bottom: height,
+        width: 320,
+        height,
+        toJSON() {},
+      };
+    },
+  );
+  const { container } = render(
+    <Flow
+      {...graph}
+      edges={[
+        {
+          from: "source",
+          to: "a",
+          label: "A long caption that wraps instead of being cut short",
+        },
+      ]}
+    />,
+  );
+  const diagram =
+    container.querySelector("[data-flow-node]")?.parentElement?.parentElement;
+  expect(diagram?.style.gap).toBe("120px");
+  const caption = container.querySelector(
+    "[data-flow-caption] span",
+  ) as HTMLElement;
+  expect(caption.style.fontSize).toBe("11px");
+  expect(caption.style.overflowWrap).toBe("anywhere");
 });
