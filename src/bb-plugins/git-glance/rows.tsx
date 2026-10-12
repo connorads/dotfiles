@@ -7,8 +7,10 @@ import { codeNames, DiffBar, message, Zoomed } from './ui.tsx';
 /** A changed file, from the working tree or from one commit. */
 export type FileRow = Pick<Change, 'path' | 'origPath' | 'code' | 'added' | 'removed'>;
 
-export function ChangeRow({ file, source, threadId, open, onToggle, flash = null, action = null }: {
+export function ChangeRow({ file, source, threadId, open, onToggle, flash = null, action = null, inline = true }: {
   file: FileRow; source: DiffSource; threadId: string; open: boolean; onToggle: () => void;
+  /** Show the diff under the row; the zoomed view shows it in the detail pane instead. */
+  inline?: boolean;
   /** Set when the row is new or changed in this update; a new value replays the highlight. */
   flash?: string | null;
   /** A hold-to-confirm action shown over the row's right edge; `x` on the row presses it. */
@@ -23,6 +25,7 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
     {/* A folder has no single diff, but stays focusable so its action is reachable by key. */}
     <button type="button" data-row className="gg-change-row" aria-expanded={directory ? undefined : open}
       aria-disabled={directory || undefined} onClick={directory ? undefined : onToggle}
+      onFocus={inline || directory ? undefined : onToggle}
       title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
       onKeyDown={event => {
         if (event.key !== 'x' || !action || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -41,11 +44,12 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
       {!directory && <Icon name="ChevronDown" className="gg-row-chevron" />}
     </button>
     {action && <span className="gg-row-actions">{action}</span>}
-    {open && <DiffPane file={file} source={source} threadId={threadId} />}
+    {open && inline && <DiffPane file={file} source={source} threadId={threadId} />}
   </li>;
 }
 
-export function DiffPane({ file, source, threadId }: { file: FileRow; source: DiffSource; threadId: string }) {
+/** `fill`: grow to the pane it sits in, for the zoomed view's detail pane. */
+export function DiffPane({ file, source, threadId, fill = false }: { file: FileRow; source: DiffSource; threadId: string; fill?: boolean }) {
   const rpc = useRpc<typeof rpcContract>();
   const zoomed = useContext(Zoomed);
   const [result, setResult] = useState<{ patch: string; truncated: boolean } | { error: string } | null>(null);
@@ -59,7 +63,7 @@ export function DiffPane({ file, source, threadId }: { file: FileRow; source: Di
   if (!result) return <div className="gg-diff gg-diff-loading" aria-busy><i /><i /><i /></div>;
   if ('error' in result) return <div className="gg-diff gg-note gg-danger">{result.error}</div>;
   if (!result.patch.trim()) return <div className="gg-diff gg-note">No textual changes.</div>;
-  return <div className="gg-diff">
+  return <div className="gg-diff" data-fill={fill || undefined}>
     <Diff patch={result.patch} path={file.path} view={zoomed ? 'split' : 'unified'} overflow="scroll" className="gg-diff-view" />
     {result.truncated && <p className="gg-note">Diff truncated. Open lazygit for the rest.</p>}
   </div>;

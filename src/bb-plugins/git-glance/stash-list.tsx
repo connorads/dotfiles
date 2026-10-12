@@ -9,19 +9,22 @@ type Stash = Repo['stashes'][number];
 /** "On main: wip" and "WIP on main: abc123 subject" read better as the message alone. */
 const label = (subject: string) => subject.replace(/^(?:On [^:]+|WIP on [^:]+): (?:[0-9a-f]{7,} )?/, '') || subject;
 
-export function StashList({ stashes, threadId, now, op, copied, onCopy, onRun }: {
+export function StashList({ stashes, threadId, now, op, copied, onCopy, onRun, selected, onSelect }: {
   stashes: Stash[]; threadId: string; now: number; op: OpState | null; copied: string | null;
   onCopy: (sha: string) => void; onRun: (request: OpRequest) => void;
+  /** With `onSelect`, a stash opens in the detail pane rather than under its row. */
+  selected?: string | null; onSelect?: (sha: string) => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const busy = op?.status === 'running';
   return <ul className="gg-stash-list">{stashes.map(stash => {
-    const expanded = open === stash.sha;
+    const expanded = onSelect ? selected === stash.sha : open === stash.sha;
     const run = (kind: 'stash-apply' | 'stash-pop' | 'stash-drop') => onRun({ kind, sha: stash.sha });
     return <li key={stash.sha} className="gg-stash" data-open={expanded || undefined}>
       <div className="gg-stash-row">
         <button type="button" data-row className="gg-stash-main" aria-expanded={expanded}
-          onClick={() => setOpen(expanded ? null : stash.sha)} title={stash.subject}
+          onClick={() => onSelect ? onSelect(stash.sha) : setOpen(expanded ? null : stash.sha)} title={stash.subject}
+          onFocus={onSelect ? () => onSelect(stash.sha) : undefined}
           onKeyDown={event => {
             // a applies and g pops (lazygit's pop key); Space stays "open", as on every other row.
             if (busy || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -43,7 +46,7 @@ export function StashList({ stashes, threadId, now, op, copied, onCopy, onRun }:
           <HoldButton icon="Trash2" label="Drop" confirmLabel="Press again to drop" disabled={busy} onConfirm={() => run('stash-drop')} />
         </span>
       </div>
-      {expanded && <CommitPanel sha={stash.sha} threadId={threadId} now={now} copied={copied} onCopy={onCopy} lanes={[]} width={0} stash />}
+      {expanded && !onSelect && <CommitPanel sha={stash.sha} threadId={threadId} now={now} copied={copied} onCopy={onCopy} lanes={[]} width={0} stash />}
     </li>;
   })}</ul>;
 }

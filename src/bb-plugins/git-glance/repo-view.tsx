@@ -2,9 +2,9 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, Repo } from './contracts.ts';
 import { BranchPicker } from './branch-picker.tsx';
-import { CommitList } from './commits.tsx';
+import { CommitList, CommitPanel } from './commits.tsx';
 import type { RepoState } from './repo-store.ts';
-import { ChangeRow } from './rows.tsx';
+import { ChangeRow, DiffPane } from './rows.tsx';
 import { StashList } from './stash-list.tsx';
 import { age, freshKeys, plural } from './src/format.ts';
 import { describe, hints, SyncBar } from './sync-bar.tsx';
@@ -20,6 +20,8 @@ const operationNames: Record<NonNullable<Repo['operation']>, string> = {
   bisect: 'Bisect', 'cherry-pick': 'Cherry-pick', merge: 'Merge', rebase: 'Rebase', revert: 'Revert',
 };
 
+type Selection = { kind: 'file'; key: string } | { kind: 'commit'; sha: string } | { kind: 'stash'; sha: string };
+
 export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose }: {
   repo: Repo; threadId: string; state: RepoState; actionError: string | null;
   dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => void; onCancel: () => void;
@@ -31,6 +33,16 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const connection = useRealtimeConnectionState();
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
+  // The zoomed view's detail pane: one file, commit or stash at a time.
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const selectedFile = selection?.kind === 'file' ? repo.changes.find(change => changeKey(change) === selection.key) ?? null : null;
+  useEffect(() => {
+    if (!zoomed) return;
+    // Keep the pane useful: a file that stops being changed hands over to the next one.
+    if (selection && (selection.kind !== 'file' || selectedFile)) return;
+    const first = repo.changes[0];
+    setSelection(first ? { kind: 'file', key: changeKey(first) } : repo.commits[0] ? { kind: 'commit', sha: repo.commits[0].sha } : null);
+  }, [zoomed, selection, selectedFile, repo.changes, repo.commits]);
   const [copied, setCopied] = useState<string | null>(null);
   const toggle = (key: string) => setCollapsed(previous => {
     const next = new Set(previous);
@@ -114,7 +126,8 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       </div>}
     </header>
 
-    <div className="gg-body">
+    <div className="gg-body" data-split={zoomed || undefined}>
+      <div className="gg-list">
       {files === 0 ? <div className="gg-clean">
         <span className="gg-clean-mark"><Icon name="Check" className="size-4" /></span>
         <div><strong>Working tree clean</strong><span>Nothing to commit{branch.head ? ` on ${branch.head}` : ''}.</span></div>
@@ -137,7 +150,10 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
             {!closed && <ul>{items.map(change => <ChangeRow key={changeKey(change)} file={change} source={{ kind: 'work-tree', area: change.area }} threadId={threadId}
               flash={fresh.changes.has(changeKey(change)) ? fresh.stamp : null}
               action={discardAction(change)}
-              open={expanded === changeKey(change)} onToggle={() => setExpanded(e => e === changeKey(change) ? null : changeKey(change))} />)}</ul>}
+              inline={!zoomed}
+              open={zoomed ? selection?.kind === 'file' && selection.key === changeKey(change) : expanded === changeKey(change)}
+              onToggle={zoomed ? () => setSelection({ kind: 'file', key: changeKey(change) })
+                : () => setExpanded(e => e === changeKey(change) ? null : changeKey(change))} />)}</ul>}
           </section>;
         })}
         {repo.hidden > 0 && <p className="gg-note">{plural(repo.hidden, 'more change')} not shown. Open lazygit for the full list.</p>}
@@ -149,7 +165,8 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
           <Icon name="Archive" className="gg-section-icon" />
           Stashes<span className="gg-count">{repo.stashes.length}</span>
         </button>
-        {!collapsed.has('stashes') && <StashList stashes={repo.stashes} threadId={threadId} now={now} op={op} copied={copied} onCopy={copy} onRun={onRun} />}
+        {!collapsed.has('stashes') && <StashList stashes={repo.stashes} threadId={threadId} now={now} op={op} copied={copied} onCopy={copy} onRun={onRun}
+          {...zoomed ? { selected: selection?.kind === 'stash' ? selection.sha : null, onSelect: (sha: string) => setSelection({ kind: 'stash', sha }) } : {}} />}
       </section>}
 
       {repo.commits.length > 0 && <section className="gg-section gg-commits">
@@ -158,8 +175,23 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
           <Icon name="Clock" className="gg-section-icon" />
           Commits<span className="gg-count">{repo.commits.length}</span>
         </button>
-        {!collapsed.has('commits') && <CommitList commits={repo.commits} threadId={threadId} now={now} copied={copied} onCopy={copy} fresh={fresh.commits} stamp={fresh.stamp} />}
+        {!collapsed.has('commits') && <CommitList commits={repo.commits} threadId={threadId} now={now} copied={copied} onCopy={copy} fresh={fresh.commits} stamp={fresh.stamp}
+          {...zoomed ? { selected: selection?.kind === 'commit' ? selection.sha : null, onSelect: (sha: string) => setSelection({ kind: 'commit', sha }) } : {}} />}
       </section>}
+      </div>
+      {zoomed && <aside className="gg-detail" aria-label="Details">
+        {selection?.kind === 'file' && selectedFile ? <>
+          <div className="gg-detail-head">
+            <span className="gg-code" data-code={selectedFile.code}>{selectedFile.code === '?' ? 'U' : selectedFile.code === 'U' ? '!' : selectedFile.code}</span>
+            <span className="gg-detail-path">{selectedFile.origPath ? `${selectedFile.origPath} → ` : ''}{selectedFile.path}</span>
+          </div>
+          {selectedFile.path.endsWith('/')
+            ? <p className="gg-note">An untracked folder. Its files appear once one of them is added.</p>
+            : <DiffPane file={selectedFile} source={{ kind: 'work-tree', area: selectedFile.area }} threadId={threadId} fill />}
+        </> : selection && selection.kind !== 'file'
+          ? <CommitPanel key={selection.sha} sha={selection.sha} threadId={threadId} now={now} copied={copied} onCopy={copy} lanes={[]} width={0} stash={selection.kind === 'stash'} />
+          : <p className="gg-note gg-detail-empty">Select a file, stash or commit.</p>}
+      </aside>}
     </div>
 
     <footer className="gg-footer">

@@ -50,6 +50,19 @@
 .gg-dialog[data-zoomed]::backdrop { background: color-mix(in oklch, var(--canvas, #000) 45%, transparent); backdrop-filter: blur(2px); }
 .gg-dialog[data-zoomed] .gg-diff { max-height: 62vh; }
 .gg-dialog[data-zoomed] .gg-message { max-height: 320px; }
+/* Zoomed: lists on the left, the selected file, stash or commit on the right. */
+.gg-body[data-split] { display: grid; grid-template-columns: minmax(320px, 36%) minmax(0, 1fr); padding: 0; overflow: hidden; }
+.gg-body[data-split] > .gg-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 0 8px; border-right: 1px solid var(--border-seam, var(--border)); scrollbar-width: thin; }
+.gg-body[data-split] .gg-section-head { top: -6px; }
+.gg-body[data-split] [aria-expanded="true"].gg-change-row,
+.gg-body[data-split] [aria-expanded="true"].gg-commit,
+.gg-body[data-split] [aria-expanded="true"].gg-stash-main { background: var(--state-active); box-shadow: inset 2px 0 0 var(--gg-lane-0); }
+.gg-detail { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow: auto; padding: 12px 16px; animation: gg-fade .16s ease-out; }
+.gg-detail-head { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--foreground); font: 500 12.5px var(--font-mono); }
+.gg-detail-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.gg-detail .gg-diff[data-fill] { flex: 1; max-height: none; min-height: 120px; margin: 0; }
+.gg-detail .gg-commit-panel { padding: 0; }
+.gg-detail-empty { margin: auto; }
 /* Opened by shortcut: no entrance, as Raycast does. */
 .gg-dialog[data-instant], .gg-dialog[data-instant]::backdrop { animation: none; }
 .gg-dialog:focus { outline: none; }
