@@ -47,6 +47,9 @@ What is the task?
   the system from outside. A test that mirrors the code line by line (a
   change-detector test) fails on every refactor and catches no defect.
 - Test observable behaviour through public APIs, not implementation details.
+- A test earns its place twice: a credible regression fails it, and a refactor
+  that keeps behaviour passes it. Hold existing tests to the same rule (see
+  Deleting Tests).
 - Keep tests deterministic and order-independent.
 - Make each test's why clear from its name, setup, and assertions.
 - A failing test should point at the cause quickly; vague failures are test
@@ -120,6 +123,11 @@ failures localised**; the level you land on is a consequence, not a goal.
   code is where you feel the friction that drives a better design. That coupling
   is temporary and the point; once the design settles, lift the bulk to the stable
   interface and delete the scaffolding a higher test now subsumes.
+
+Rendered markup is rarely a stable contract. In an app, move logic out of
+components into hooks, modules or services and test it there; prove user flows
+in a real browser. Test a component directly only when the component is the
+product: a design system, or an a11y contract such as focus and keyboard.
 
 "Stable" is an end-state: while the contract churns, low gear is correct, not a
 fallback. Exercise the stable interface heavily for representative behaviours and
@@ -218,6 +226,8 @@ collaboration.
   and keep at least one smoke/integration check where practical.
 - If a test needs many mocks, reconsider the boundary rather than adding more
   mocking.
+- Module mocking (`vi.mock`, `jest.mock`) means the code has no seam. Add one -
+  a parameter, a port, an Effect `Layer` - and pass the fake through it.
 
 **The mirror-test trap:** a test that mocks the very collaborator whose
 behaviour it claims to verify proves *wiring*, not behaviour - and stays green
@@ -338,6 +348,15 @@ need a commit, but it should be real enough to prove the fix.
 
 After the fix, run the narrowest relevant check first, then the broader checks
 needed for confidence.
+
+## Deleting Tests
+
+A test that fails the earn-its-place rule costs CI time and teaches agents a
+pattern to copy. Rewrite it at the public seam if it guards a real rule;
+otherwise delete it. Judge on evidence, not taste: a test that kills no mutant
+another test misses adds no fault detection. Coverage alone is too weak a guard
+for deletion. Per-test kill data needs Stryker's `disableBail: true`; mechanics
+in the test-coverage skill.
 
 ## Flaky Tests
 
