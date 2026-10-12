@@ -25,3 +25,16 @@ test('does not present paid extra usage as a subscription quota window', () => {
     extra_usage: { utilization: 100, is_enabled: false },
   } }).status, 'unavailable');
 });
+test('presents a dollar allowance as credits, not a codename rate limit', () => {
+  const result = parseUsage({ rate_limits_available: true, rate_limits: {
+    iguana_necktie: { utilization: 0.0253, resets_at: '2026-11-05T07:59:00Z', limit_dollars: 250, used_dollars: 0.063206 },
+  } });
+  assert.deepEqual(result.windows, [{ id: 'iguana_necktie', label: 'Credits', usedPercent: 0.0253,
+    resetsAt: '2026-11-05T07:59:00Z', cost: { usedUsdCents: 6.3206, limitUsdCents: 25000 } }]);
+});
+test('labels unrecognised limits generically instead of exposing internal names', () => {
+  const result = parseUsage({ rate_limits_available: true, rate_limits: {
+    five_hour: { utilization: 5 }, tangelo: { utilization: 3 },
+  } });
+  assert.deepEqual(result.windows.map(w => [w.label, w.cost]), [['Five hours', null], ['Other limit', null]]);
+});
