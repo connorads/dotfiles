@@ -827,6 +827,54 @@ stub_fluid_silent() {
 
 # --- transcribing a file that already exists --------------------------------
 
+@test "an import publishes only after its merge finishes" {
+  stub_fluid
+  printf RIFF >"$HOME/import.wav"
+  export MERGE_GATE="$HOME/merge-go" MERGE_READY="$HOME/merge-ready"
+  cat >"$HOME/merge.py" <<'PY'
+import os
+import time
+from pathlib import Path
+print('partial', flush=True)
+Path(os.environ['MERGE_READY']).touch()
+while not Path(os.environ['MERGE_GATE']).exists():
+    time.sleep(0.01)
+print('complete')
+PY
+  export VOX_MERGE="$HOME/merge.py"
+  zsh --no-rcs "$VOX" "$HOME/import.wav" >"$HOME/result" 2>"$HOME/errors" &
+  job=$!
+  wait_until -t 5 '[ -e "$MERGE_READY" ]'
+  published=$(find "$VOX_STORE" -name transcript.md | wc -l)
+  touch "$MERGE_GATE"
+  wait "$job"
+  [ "$published" -eq 0 ]
+  dir=$(cat "$HOME/result")
+  [ "$(cat "$dir/transcript.md")" = $'partial\ncomplete' ]
+}
+
+@test "a failed retranscription keeps the published transcript" {
+  stub_fluid
+  stub_ffmpeg
+  dir=$(blanked_recording)
+  cp "$dir/transcript.md" "$HOME/original"
+  printf 'print("partial")\nraise SystemExit(1)\n' >"$HOME/merge.py"
+  export VOX_MERGE="$HOME/merge.py"
+  vox transcribe "$dir"
+  [ "$status" -ne 0 ]
+  cmp "$HOME/original" "$dir/transcript.md"
+}
+
+@test "a failed import publishes no partial transcript" {
+  stub_fluid
+  printf RIFF >"$HOME/import.wav"
+  printf 'print("partial")\nraise SystemExit(1)\n' >"$HOME/merge.py"
+  export VOX_MERGE="$HOME/merge.py"
+  vox "$HOME/import.wav"
+  [ "$status" -ne 0 ]
+  [ "$(find "$VOX_STORE" -name transcript.md | wc -l)" -eq 0 ]
+}
+
 @test "an existing audio file is transcribed into its own store directory" {
   stub_fluid
   printf 'RIFF' >"$HOME/Team Sync.wav"
