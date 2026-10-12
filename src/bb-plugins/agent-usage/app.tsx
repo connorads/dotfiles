@@ -184,6 +184,7 @@ function Summary({ accounts, now, readings }: { accounts: Account[]; now: Date; 
 
 export function UsageOverlay() {
   const open = useUsageOpen();
+  const panel = useRef<HTMLDivElement>(null);
   const rpc = useRpc<typeof rpcContract>();
   const now = useNow(30_000, open);
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -192,6 +193,18 @@ export function UsageOverlay() {
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
   const mounted = useRef(true);
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (event.defaultPrevented || event.isComposing || event.metaKey || event.ctrlKey || event.altKey
+        || !(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+        || !panel.current?.closest('[role="dialog"]')?.contains(target)) return;
+      if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); closeUsage(); }
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, [open]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const refresh = useCallback(async (force: boolean) => {
     if (pending.current) return;
@@ -214,14 +227,11 @@ export function UsageOverlay() {
     .filter(machine => machine.providers.length > 0 || machine.error !== null);
   const showMachines = machines.length > 1 || machines.some(machine => machine.status === 'disconnected');
   return <Dialog open={open} onOpenChange={value => { if (!value) closeUsage(); }}>
-    <DialogContent className="au-overlay" hideCloseButton tabIndex={-1} onOpenAutoFocus={event => {
+    <DialogContent ref={panel} className="au-overlay" hideCloseButton tabIndex={-1} onOpenAutoFocus={event => {
       // Focus the panel rather than its first button, so opening does not paint a focus ring on Refresh.
       event.preventDefault();
-      (event.currentTarget as HTMLElement | null)?.focus();
-    }} onKeyDown={event => {
-      if (event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) || !event.currentTarget.contains(event.target as Node)) return;
-      if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); closeUsage(); }
-    }} onCloseAutoFocus={event => { event.preventDefault(); restoreUsageFocus(); }}>
+      panel.current?.focus();
+    }} onCloseAutoFocus={event => { event.preventDefault(); }} onAfterCloseAutoFocus={restoreUsageFocus}>
       <header className="au-head">
         <div className="au-head-title">
           <DialogTitle>Agent usage</DialogTitle>
@@ -303,7 +313,7 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
     : binding.view.pace.kind === 'limited' ? `${short} limit · back ${clock(binding.view.pace.resetsAt, now)}`
     : binding.view.pace.kind === 'paced' && binding.view.pace.runsOutAt ? `${short} ${percent(binding.window.usedPercent)} · out ${clock(binding.view.pace.runsOutAt, now)}`
     : `${short} ${percent(binding.window.usedPercent)}`;
-  return <button type="button" className="au-badge" data-tone={binding?.view.tone ?? 'normal'} aria-label={`Open all agent usage. ${title}`}
+  return <button type="button" className="au-badge" data-au-thread={threadId} data-tone={binding?.view.tone ?? 'normal'} aria-label={`Open all agent usage. ${title}`}
     title={title} aria-haspopup="dialog" onClick={openUsage}>
     {binding ? <Ring window={binding.window} view={binding.view} /> : <Icon name="ChartColumn" className="size-3.5" />}
     {!isCompactViewport && (text ? <span className="au-badge-text">{text}</span>
