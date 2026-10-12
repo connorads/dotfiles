@@ -83,7 +83,7 @@ const approximate = (candidates: Candidate[], target: string): Candidate[] => {
   }).sort((a, b) => a.edits - b.edits).slice(0, 3).map(row => row.candidate)
 }
 
-const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Record<string, unknown>): Promise<Reply> => {
+const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, { trace, choose }: { trace: Record<string, unknown>; choose: boolean }): Promise<Reply> => {
   const steps: Record<string, unknown>[] = []
   trace.steps = steps
   const request = async (command: Command): Promise<Reply> => {
@@ -131,7 +131,7 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Re
     trace.selected = candidate
     return request({ action: "select", kind, context, id: candidate.id })
   }
-  if (matches.length === 1 && single) return select(single)
+  if (matches.length === 1 && single) return choose ? show([single]) : select(single)
   if (matches.length > 1) return show(matches)
   if (kind === "thread") {
     matches = approximate(candidates, target)
@@ -163,17 +163,17 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Re
     return notice(`No ${kind} matches “${utterance}”. Try a title or name.`, 'no-match')
   }
   if (top[1] >= 0.7 && top[1] - (ranked[1]?.[1] ?? 0) >= 0.2) {
-    return select(selected)
+    return choose ? show([selected]) : select(selected)
   }
   matches = ranked.flatMap(([id]) => candidates.filter(candidate => candidate.id === id)).slice(0, 3)
   return show(matches)
 }
 
-export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
+export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string, options: { choose: boolean } = { choose: false }): Promise<Reply> => {
   const started = performance.now()
   const trace: Record<string, unknown> = { command: 'bb', action: 'match', kind, utterance }
   let reply: Reply
-  try { reply = await searchBb(ports, kind, utterance, trace) }
+  try { reply = await searchBb(ports, kind, utterance, { trace, choose: options.choose }) }
   catch (cause) {
     reply = { ok: false, outcome: 'error', message: cause instanceof Error ? cause.message : String(cause) }
     await exchange(ports, { action: 'notice', message: reply.message })
