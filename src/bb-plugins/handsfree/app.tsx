@@ -33,6 +33,11 @@ function VoiceCard() {
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const observedThread = useRef(context.threadId);
+  const activeRequest = useRef<string | null>(null);
+  const navigationRequest = useRef<{ requestId: string; expires: number; threadId?: string } | null>(null);
+  const trackNavigation = (threadId?: string) => {
+    if (activeRequest.current) navigationRequest.current = { requestId: activeRequest.current, expires: Date.now() + 3000, ...(threadId ? { threadId } : {}) };
+  };
   const [windowId] = useState(() => crypto.randomUUID());
   const [steer, setSteer] = useState<boolean | null>(null);
   const thread = sidebar.threads.find(row => row.id === context.threadId);
@@ -60,6 +65,11 @@ function VoiceCard() {
     if (observedThread.current === context.threadId) return;
     observedThread.current = context.threadId;
     const destination = thread ? `Viewing ${thread.displayTitle} (${projectName(thread.projectId)}).` : 'Viewing a new thread draft.';
+    const requested = navigationRequest.current;
+    navigationRequest.current = null;
+    if (requested && requested.expires >= Date.now() && (!requested.threadId || requested.threadId === context.threadId)) {
+      void rpc.call('observed', { requestId: requested.requestId, threadId: context.threadId ?? null, title: thread?.displayTitle ?? 'New thread draft' }).catch(() => {});
+    }
     setMessage(destination);
     setHistory(items => [...items, destination].slice(-10));
   }, [context.threadId, thread, sidebar.projects]);
@@ -86,10 +96,12 @@ function VoiceCard() {
     if (!candidate) throw new Error('That choice is no longer available. Say the command again.');
     setChoices(null);
     if (kind === 'thread') {
+      trackNavigation(id);
       actions.open(id);
-      return { ok: true, message: `Opening ${candidate.label}` };
+      return { ok: true, outcome: 'requested', message: `Opening ${candidate.label}` };
     }
     if (kind === 'project') {
+      trackNavigation();
       actions.openNewThread({ projectId: id, focusPrompt: true });
       return { ok: true, message: `Draft ready in ${candidate.label}. Dictate, then press Enter.` };
     }
@@ -118,18 +130,24 @@ function VoiceCard() {
           setArchiveConfirmation({ target: result.target, context: expectedContext });
         } else {
           setArchiveConfirmation(null);
-          if (result.outcome === 'archived' && latestContext.current === expectedContext) actions.openNewThread({ projectId: target.projectId, focusPrompt: true });
+          if (result.outcome === 'archived' && latestContext.current === expectedContext) {
+            trackNavigation();
+            actions.openNewThread({ projectId: target.projectId, focusPrompt: true });
+          }
         }
-        return { ok: true, message: result.message };
+        return { ok: true, outcome: result.outcome, message: result.message };
       }
       case 'cancel-archive':
         setArchiveConfirmation(null);
-        return { ok: true, message: 'Archive cancelled.' };
+        return { ok: true, outcome: 'cancelled', message: 'Archive cancelled.' };
       case 'restore': {
         const expectedContext = contextKey;
         const result = await rpc.call('restore', {});
-        if (result.outcome === 'restored' && result.target && latestContext.current === expectedContext && document.hasFocus()) actions.open(result.target.threadId);
-        return { ok: result.outcome === 'restored', message: result.message };
+        if (result.outcome === 'restored' && result.target && latestContext.current === expectedContext && document.hasFocus()) {
+          trackNavigation(result.target.threadId);
+          actions.open(result.target.threadId);
+        }
+        return { ok: result.outcome === 'restored', outcome: result.outcome, message: result.message };
       }
       case 'list': return { ok: true, message: 'Choices loaded.', candidates: await list(command.kind), context: contextKey };
       case 'select': return select(command.kind, command.id, command.context);
@@ -142,7 +160,7 @@ function VoiceCard() {
         setChoices({ kind: command.kind, options, context: command.context });
         setHighlight(0);
         setExpanded(true);
-        return { ok: true, message: command.message };
+        return { ok: true, outcome: 'choices', message: command.message };
       }
       case 'choose': {
         const option = choices?.options[command.number - 1];
@@ -155,13 +173,14 @@ function VoiceCard() {
         setExpanded(true);
         const options = threads.filter(row => command.action === 'attention'
           ? row.hasPendingInteraction : row.indicator === 'unread-success').map(threadCandidate).slice(0, 9);
-        if (!options.length) return { ok: true, message: command.action === 'attention' ? 'No agents are waiting for your answer.' : 'No unread finished threads.' };
+        if (!options.length) return { ok: true, outcome: 'empty', message: command.action === 'attention' ? 'No agents are waiting for your answer.' : 'No unread finished threads.' };
         setChoices({ kind: 'thread', options, context: contextKey });
         setHighlight(0);
         setExpanded(true);
-        return { ok: true, message: command.action === 'attention' ? 'These agents need you. Say “choose one”, or press Enter.' : 'Finished threads. Say “choose one”, or press Enter.' };
+        return { ok: true, outcome: 'choices', message: command.action === 'attention' ? 'These agents need you. Say “choose one”, or press Enter.' : 'Finished threads. Say “choose one”, or press Enter.' };
       }
       case 'new':
+        trackNavigation();
         setChoices(null);
         actions.openNewThread({ ...(projectId ? { projectId } : {}), focusPrompt: true });
         return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
@@ -185,7 +204,8 @@ function VoiceCard() {
         if (key.control) modifiers.push('control');
         if (key.alt) modifiers.push('option');
         if (key.shift) modifiers.push('shift');
-        return { ok: true, message: `${command.action === 'next' ? 'Next' : 'Previous'} thread requested. Check the destination above.`, press: { key: key.key.toLowerCase(), modifiers } };
+        trackNavigation();
+        return { ok: true, outcome: 'requested', message: `${command.action === 'next' ? 'Next' : 'Previous'} thread requested. Check the destination above.`, press: { key: key.key.toLowerCase(), modifiers } };
       }
     }
   };
@@ -205,7 +225,7 @@ function VoiceCard() {
       setMessage(message);
       setHistory(items => [...items, message].slice(-10));
       setExpanded(true);
-      return { ok: false, message };
+      return { ok: false, outcome: 'error', message };
     } finally { setBusy(false); }
   };
 
@@ -218,9 +238,10 @@ function VoiceCard() {
       const { requestId, command } = parsed.data;
       const { claimed } = await rpc.call('claim', { requestId });
       if (!claimed) return;
+      activeRequest.current = requestId;
       const reply = document.hasFocus() ? await run(command) : { ok: false, message: 'BB lost focus. Try again.' };
       await rpc.call('complete', { requestId, reply });
-    } finally { processing.current = false; }
+    } finally { processing.current = false; activeRequest.current = null; }
   });
 
   useEffect(() => {

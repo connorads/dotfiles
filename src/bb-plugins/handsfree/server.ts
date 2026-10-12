@@ -16,6 +16,10 @@ export default function plugin(bb: BbPluginApi) {
   const broker = makeBroker(request => bb.realtime.publish('command', request));
   bb.onDispose(() => broker.dispose());
   bb.rpc.register(rpcContract, {
+    observed: input => {
+      bb.log.info(JSON.stringify({ event: 'voice-destination', ...input }));
+      return { recorded: true };
+    },
     archiveTarget: ({ threadId }) => archives.inspect(threadId),
     archive: ({ target, confirmed }) => archives.archive(target, confirmed),
     restore: () => archives.restore(),

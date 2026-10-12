@@ -24,18 +24,28 @@ export const requestBb = async (command: Command): Promise<Reply> => {
   return parseReply(JSON.parse(stdout))
 }
 
-export const runBb = async (ports: BbPorts, command: Command): Promise<Reply> => {
+const exchange = async (ports: BbPorts, command: Command): Promise<Reply> => {
   try {
     const reply = await ports.request(command)
     if (!reply.ok) await ports.notify("BB voice", reply.message)
-    await ports.log({ command: "bb", action: command.action, ok: reply.ok, message: reply.message })
     return reply
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause)
     await ports.notify("BB voice", message)
-    await ports.log({ command: "bb", action: command.action, ok: false, message })
-    return { ok: false, message }
+    return { ok: false, outcome: "error", message }
   }
+}
+
+const outcome = (reply: Reply, command: Command): NonNullable<Reply["outcome"]> => reply.outcome ?? (!reply.ok ? "error"
+  : command.action === "choices" ? "choices"
+    : command.action === "next" || command.action === "previous" || (command.action === "select" && command.kind === "thread") ? "requested" : "completed")
+
+export const runBb = async (ports: BbPorts, command: Command): Promise<Reply> => {
+  const started = performance.now()
+  const reply = await exchange(ports, command)
+  await ports.log({ command: "bb", action: command.action, ok: reply.ok, outcome: outcome(reply, command),
+    requestId: reply.requestId, message: reply.message, ms: performance.now() - started })
+  return reply
 }
 
 const normalise = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
@@ -73,36 +83,61 @@ const approximate = (candidates: Candidate[], target: string): Candidate[] => {
   }).sort((a, b) => a.edits - b.edits).slice(0, 3).map(row => row.candidate)
 }
 
-export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
-  if (utterance) await runBb(ports, { action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
+const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, trace: Record<string, unknown>): Promise<Reply> => {
+  const steps: Record<string, unknown>[] = []
+  trace.steps = steps
+  const request = async (command: Command): Promise<Reply> => {
+    const started = performance.now()
+    const reply = await exchange(ports, command)
+    const result = { ...reply, outcome: outcome(reply, command) }
+    steps.push({ action: command.action, requestId: result.requestId, ok: result.ok, ms: performance.now() - started })
+    return result
+  }
+  const notice = async (message: string, result: 'no-match' | 'error'): Promise<Reply> => {
+    const reply = await request({ action: 'notice', message })
+    return { ...reply, ok: false, outcome: result }
+  }
+  if (utterance) await request({ action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
   const spoken = normalise(utterance)
   if (kind === "thread") {
     const navigation = spoken.replace(/^the /, "")
     if (navigation === "next thread" || navigation === "previous thread") {
-      return runBb(ports, { action: navigation === "next thread" ? "next" : "previous" })
+      trace.method = 'navigation'
+      return request({ action: navigation === "next thread" ? "next" : "previous" })
     }
   }
-  const list = await runBb(ports, { action: "list", kind })
+  const list = await request({ action: "list", kind })
   if (!list.ok) return list
   const { candidates = [], context } = list
-  if (!context || candidates.length === 0) return runBb(ports, { action: "notice", message: `No ${kind} choices are available here.` })
+  trace.candidateCount = candidates.length
+  if (!context || candidates.length === 0) return notice(`No ${kind} choices are available here.`, 'no-match')
   const target = kind === "thread"
     ? spoken.replace(/^the /, "").replace(/ threads?$/, "") || spoken
     : kind === "project" && spoken === "dotfiles" ? "connorads" : spoken
   const name = (candidate: Candidate) => normalise(candidate.title ?? candidate.label)
   const exact = candidates.filter(candidate => name(candidate) === target || normalise(candidate.id) === target)
   let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target))
-  const show = (options: Candidate[]) => runBb(ports, {
+  const show = (options: Candidate[]) => {
+    trace.offered = options.slice(0, 9)
+    return request({
     action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : "Choose a project for a new draft.",
-  })
+    })
+  }
+  trace.method = 'literal'
   if (!spoken) return show(candidates)
   const [single] = matches
-  if (matches.length === 1 && single) return runBb(ports, { action: "select", kind, context, id: single.id })
+  const select = (candidate: Candidate) => {
+    trace.selected = candidate
+    return request({ action: "select", kind, context, id: candidate.id })
+  }
+  if (matches.length === 1 && single) return select(single)
   if (matches.length > 1) return show(matches)
   if (kind === "thread") {
     matches = approximate(candidates, target)
-    if (matches.length) return show(matches)
+    if (matches.length) { trace.method = 'approximate'; return show(matches) }
   }
+  trace.method = 'semantic'
+  const judgedAt = performance.now()
   const answer = await ports.judge({
     model: JEV_MODEL,
     state: { utterance },
@@ -112,18 +147,37 @@ export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Pr
       criteria: { ...Object.fromEntries(candidates.map(candidate => [candidate.id, candidate.label])), none: "None of these choices" },
     } },
   }, "target")
-  if (!answer.ok) return runBb(ports, { action: "notice", message: `${answer.error}. Try an exact name.` })
+  trace.judgeMs = performance.now() - judgedAt
+  if (!answer.ok) { trace.error = answer.error; return notice(`${answer.error}. Try an exact name.`, 'error') }
+  trace.choice = answer.value.choice
+  trace.probabilities = answer.value.probabilities
+  trace.confidence = answer.value.confidence
+  trace.candidates = candidates
   const ranked = Object.entries(answer.value.probabilities)
     .filter(([, probability]) => Number.isFinite(probability) && probability >= 0 && probability <= 1)
     .sort((a, b) => b[1] - a[1])
   const top = ranked[0]
   const selected = candidates.find(candidate => candidate.id === top?.[0])
   if (!top || !selected || answer.value.choice !== top[0]) {
-    return runBb(ports, { action: "notice", message: `No ${kind} matches “${utterance}”. Try a title or name.` })
+    return notice(`No ${kind} matches “${utterance}”. Try a title or name.`, 'no-match')
   }
   if (top[1] >= 0.7 && top[1] - (ranked[1]?.[1] ?? 0) >= 0.2) {
-    return runBb(ports, { action: "select", kind, context, id: selected.id })
+    return select(selected)
   }
   matches = ranked.flatMap(([id]) => candidates.filter(candidate => candidate.id === id)).slice(0, 3)
   return show(matches)
+}
+
+export const matchBb = async (ports: BbPorts, kind: Kind, utterance: string): Promise<Reply> => {
+  const started = performance.now()
+  const trace: Record<string, unknown> = { command: 'bb', action: 'match', kind, utterance }
+  let reply: Reply
+  try { reply = await searchBb(ports, kind, utterance, trace) }
+  catch (cause) {
+    reply = { ok: false, outcome: 'error', message: cause instanceof Error ? cause.message : String(cause) }
+    await exchange(ports, { action: 'notice', message: reply.message })
+  }
+  await ports.log({ ...trace, ok: reply.ok, outcome: reply.outcome, requestId: reply.requestId,
+    message: reply.message, ms: performance.now() - started })
+  return reply
 }

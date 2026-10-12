@@ -4,6 +4,7 @@ import { replySchema } from './contracts.ts';
 import { archiveResultSchema, archiveTargetSchema } from './archive.ts';
 
 export const rpcContract = defineRpcContract({
+  observed: { input: z.object({ requestId: z.string(), threadId: z.string().nullable(), title: z.string() }), output: z.object({ recorded: z.boolean() }) },
   archiveTarget: { input: z.object({ threadId: z.string() }), output: archiveTargetSchema },
   archive: { input: z.object({ target: archiveTargetSchema, confirmed: z.boolean() }), output: archiveResultSchema },
   restore: { input: z.object({}), output: archiveResultSchema },

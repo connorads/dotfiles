@@ -36,6 +36,14 @@ The Voice card keeps ten recent results in memory, including heard search target
 Reloading clears this card history. Hex's diagnostic logs have separate retention.
 Navigation requests report the observed destination when the selected thread changes.
 
+Each spoken BB request writes one outcome to `~/.local/state/hex/voice.jsonl`.
+Search records include heard words, matching method, candidate choices, Jev
+answers and scores, and timing. Failed searches record `no-match`; timeouts
+record `error`. Navigation records `requested` until the window changes.
+BB diagnostics record observed destinations with the command request ID.
+An observation expires after three seconds; a missing observation does not
+prove that navigation completed.
+
 Idle threads archive immediately. Running or queued work and child threads require
 confirmation. Changing the selected context or issuing another command cancels
 the pending confirmation. Archive targets the selected thread without title matching.

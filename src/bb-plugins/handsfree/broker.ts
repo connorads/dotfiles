@@ -13,7 +13,7 @@ export function makeBroker(publish: (request: { requestId: string; command: Comm
     if (!request) return false;
     clearTimeout(request.timer);
     pending.delete(id);
-    request.finish(reply);
+    request.finish({ ...reply, requestId: id });
     return true;
   };
   return {

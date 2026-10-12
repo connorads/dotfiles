@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test"
 import type { Command, Reply } from "../../../src/bb-plugins/handsfree/contracts.ts"
-import { matchBb, parseReply, type BbPorts } from "./bb.ts"
-import { ok } from "./pane.ts"
+import { matchBb, parseReply, runBb, type BbPorts } from "./bb.ts"
+import { err, ok } from "./pane.ts"
 
 const setup = (labels: string[], probabilities: Record<string, number> = {}) => {
   const commands: Command[] = []
   let judged = false
+  const logs: Record<string, unknown>[] = []
   const ports: BbPorts = {
     request: async command => {
       commands.push(command)
@@ -13,11 +14,11 @@ const setup = (labels: string[], probabilities: Record<string, number> = {}) => 
         ? { ok: true, message: "", context: "window|thread:project:provider", candidates: labels.map((label, i) => ({ id: String(i), label, title: label.replace(/ \([^)]*\)$/, "") })) }
         : { ok: true, message: "Selected" }
     },
-    judge: async () => { judged = true; return ok({ choice: Object.keys(probabilities)[0] ?? "none", confidence: 0.9, probabilities }) },
+    judge: async () => { judged = true; return ok({ choice: Object.entries(probabilities).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "none", confidence: 0.9, probabilities }) },
     notify: async () => {},
-    log: async () => {},
+    log: async entry => { logs.push(entry) },
   }
-  return { ports, commands, judged: () => judged }
+  return { ports, commands, logs, judged: () => judged }
 }
 
 test("exact names use the list's window context without calling Jev", async () => {
@@ -119,4 +120,37 @@ test("a full title wins over another thread containing that title", async () => 
   const w = setup(["Git clients (home, codex)", "Explore Git clients (home, codex)"])
   await matchBb(w.ports, "thread", "git clients")
   expect(w.commands.at(-1)).toMatchObject({ action: "select", id: "0" })
+})
+
+test("a failed semantic search records one failed outcome with the answer and scores", async () => {
+  const w = setup(["Login"], { none: 0.99, "0": 0.01 })
+  const reply = await matchBb(w.ports, "thread", "dinosaur")
+  expect(reply.ok).toBe(false)
+  expect(w.logs).toHaveLength(1)
+  expect(w.logs[0]).toMatchObject({ utterance: "dinosaur", outcome: "no-match", method: "semantic", choice: "none", probabilities: { none: 0.99, "0": 0.01 } })
+})
+
+test("literal and approximate requests each record one outcome with the matching method", async () => {
+  for (const [target, method, outcome] of [["git client", "literal", "requested"], ["get client", "approximate", "choices"]]) {
+    const w = setup(["Explore Git clients"])
+    await matchBb(w.ports, "thread", target ?? "")
+    expect(w.logs).toHaveLength(1)
+    expect(w.logs[0]).toMatchObject({ method, outcome, candidateCount: 1 })
+  }
+})
+
+test("a Jev timeout records one error and does not offer invented matches", async () => {
+  const w = setup(["Login"])
+  const reply = await matchBb({ ...w.ports, judge: async () => err("Jev timed out") }, "thread", "authentication")
+  expect(reply).toMatchObject({ ok: false, outcome: "error" })
+  expect(w.logs).toHaveLength(1)
+  expect(w.logs[0]).toMatchObject({ outcome: "error", error: "Jev timed out" })
+})
+
+test("direct requests log infrastructure failures without claiming completion", async () => {
+  const w = setup([])
+  const reply = await runBb({ ...w.ports, request: async () => { throw new Error("BB lost focus") } }, { action: "archive" })
+  expect(reply).toMatchObject({ ok: false, outcome: "error" })
+  expect(w.logs).toHaveLength(1)
+  expect(w.logs[0]).toMatchObject({ action: "archive", outcome: "error", message: "BB lost focus" })
 })
