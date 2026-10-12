@@ -1,0 +1,33 @@
+{
+  "name": "bb-plugin-composer-keys",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.15" },
+  "bb": {
+    "name": "Composer Keys",
+    "description": "Alt+Enter adds a newline, Enter sends a typed question answer, Escape stops the run.",
+    "branding": { "icon": "CornerDownLeft" },
+    "server": "./server.ts",
+    "app": "./app.tsx",
+    "skills": []
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.15",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "22.15.30",
+    "@types/react": "19.0.12",
+    "@types/react-dom": "19.0.4",
+    "jsdom": "26.1.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "typescript": "5.8.3",
+    "vitest": "4.0.18"
+  }
+}
