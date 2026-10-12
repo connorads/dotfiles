@@ -27,6 +27,7 @@
     "dev": "bb plugin dev"
   },
   "dependencies": {
+    "@bb-plugins/chip": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
