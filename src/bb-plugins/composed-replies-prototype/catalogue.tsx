@@ -10,10 +10,19 @@ import { defineCatalog, type ComputedFunction } from "@json-render/core";
 import { schema, defineRegistry, useBoundProp } from "@json-render/react";
 import { type ReactNode, useId } from "react";
 
+import {
+  richProps,
+  Grid,
+  Stat,
+  LineChart,
+  StackedBarChart,
+} from "./rich-components";
+
 const boundedNumber = z.number().finite().min(-1e9).max(1e9);
 const label = z.string().max(160);
 const scalar = z.union([boundedNumber, z.string().max(1000)]);
 const props = {
+  ...richProps,
   Stack: z.object({ children: z.array(z.unknown()).max(50) }),
   Text: z.object({ text: z.string().max(4000) }),
   NumberInput: z.object({
@@ -317,6 +326,43 @@ const SelectOpen = defineComponent({
 });
 export const library = createLibrary({
   components: [
+    defineComponent({
+      name: "Grid",
+      description: "Responsive compact layout with two or three columns",
+      props: richProps.Grid,
+      component: ({ props: p }) => {
+        const render = useRenderNode();
+        return (
+          <Grid columns={p.columns}>
+            {p.children.map((x, i) => (
+              <div key={i} style={{ minWidth: 0 }}>
+                {render(x)}
+              </div>
+            ))}
+          </Grid>
+        );
+      },
+    }),
+    defineComponent({
+      name: "Stat",
+      description: "Numeric summary with signed change and explicit units",
+      props: richProps.Stat,
+      component: ({ props: p }) => <Stat {...p} />,
+    }),
+    defineComponent({
+      name: "LineChart",
+      description:
+        "Signed multi-series line chart with category labels and axis units",
+      props: richProps.LineChart,
+      component: ({ props: p }) => <LineChart {...p} />,
+    }),
+    defineComponent({
+      name: "StackedBarChart",
+      description:
+        "Nonnegative multi-series stacked category bars with legend and units",
+      props: richProps.StackedBarChart,
+      component: ({ props: p }) => <StackedBarChart {...p} />,
+    }),
     StackOpen,
     TextOpen,
     NumberOpen,
@@ -346,6 +392,23 @@ export const library = createLibrary({
 });
 export const catalog = defineCatalog(schema, {
   components: {
+    Grid: {
+      props: z.object({ columns: richProps.Grid.shape.columns }),
+      slots: ["default"],
+      description: "Responsive two or three column compact layout",
+    },
+    Stat: {
+      props: richProps.Stat,
+      description: "Numeric summary with signed change and explicit units",
+    },
+    LineChart: {
+      props: richProps.LineChart,
+      description: "Signed multi-series line chart with axis units",
+    },
+    StackedBarChart: {
+      props: richProps.StackedBarChart,
+      description: "Nonnegative multi-series stacked category bars",
+    },
     Stack: {
       props: z.object({}),
       slots: ["default"],
@@ -391,6 +454,12 @@ const NumericJson = ({
 };
 export const { registry } = defineRegistry(catalog, {
   components: {
+    Grid: ({ props: p, children }) => (
+      <Grid columns={p.columns}>{children}</Grid>
+    ),
+    Stat: ({ props: p }) => <Stat {...p} />,
+    LineChart: ({ props: p }) => <LineChart {...p} />,
+    StackedBarChart: ({ props: p }) => <StackedBarChart {...p} />,
     Stack: ({ children }) => stack(children),
     Text: ({ props: p }) => (
       <p style={{ margin: 0, fontSize: 13, overflowWrap: "anywhere" }}>
@@ -440,7 +509,13 @@ export function prompt(format: "openui" | "json-render") {
   const schemas = Object.fromEntries(
     Object.entries(props).map(([name, shape]) => [
       name,
-      z.toJSONSchema(name === "Stack" ? z.object({}) : shape),
+      z.toJSONSchema(
+        name === "Stack"
+          ? z.object({})
+          : name === "Grid"
+            ? z.object({ columns: richProps.Grid.shape.columns })
+            : shape,
+      ),
     ]),
   );
   return `Return exactly one complete JSON object, no Markdown. Shape {"root":"root","elements":{"root":{"type":"Stack","props":{},"children":["child"]}},"state":{"n":3}}. Every element needs children, use [] for leaves. ${rules}
