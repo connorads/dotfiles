@@ -131,12 +131,12 @@ test('an unsupported saved effort disables the row with its reason and keeps the
     expect(disabled(row)).toBe(true);
     fireEvent.click(row);
     expect(slot.inspection.composer.selections).toEqual([]);
-    const pill = slot.getByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    const pill = slot.getByRole('button', { name: 'Saved effort for model-a: Ultra (unavailable)' });
     expect(pill.hasAttribute('disabled')).toBe(false);
     const menu = effortMenu(slot, 'model-a');
-    expect(optionNames(menu)).toEqual(['Defaulthigh', 'high', 'low', 'ultra (unavailable)']);
-    expect(within(menu).getByRole('option', { selected: true }).textContent).toBe('ultra (unavailable)');
-    fireEvent.click(within(menu).getByRole('option', { name: 'low' }));
+    expect(optionNames(menu)).toEqual(['DefaultHigh', 'High', 'Low', 'Ultra (unavailable)']);
+    expect(within(menu).getByRole('option', { selected: true }).textContent).toBe('Ultra (unavailable)');
+    fireEvent.click(within(menu).getByRole('option', { name: 'Low' }));
     await waitFor(() => expect(disabled(slot.getByRole('button', { name: 'Select model-a' }))).toBe(false));
     expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'low' }]);
   } finally { slot.lifecycle.unmount(); }
@@ -146,7 +146,7 @@ test('the saved effort pill saves the effort without changing the composer', asy
   const slot = render();
   try {
     await enabledRow(slot, 'Select model-a');
-    expect(slot.getByRole('button', { name: 'Saved effort for model-b: low' })).toBeTruthy();
+    expect(slot.getByRole('button', { name: 'Saved effort for model-b: Low' })).toBeTruthy();
     fireEvent.click(within(effortMenu(slot, 'model-b')).getByRole('option', { name: /^Default/ }));
     await waitFor(() => expect(calls(slot, 'favourites.setEffort')).toHaveLength(1));
     expect(calls(slot, 'favourites.setEffort')[0]?.input).toEqual({ id: 'b', reasoningLevel: null });
@@ -160,9 +160,9 @@ test('the effort listbox works by keyboard and Escape closes it before the picke
   try {
     await enabledRow(slot, 'Select model-a');
     const menu = effortMenu(slot, 'model-a');
-    await waitFor(() => expect(document.activeElement?.textContent).toBe('high'));
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('High'));
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    await waitFor(() => expect(document.activeElement?.textContent).toBe('low'));
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Low'));
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     expect(slot.queryByRole('listbox')).toBeNull();
     expect(document.activeElement).toBe(slot.getByRole('button', { name: /^Saved effort for model-a:/ }));
@@ -183,7 +183,7 @@ test('left and right arrows on a favourite row step its saved effort through Def
     const row = await enabledRow(slot, 'Select model-b');
     fireEvent.keyDown(row, { key: 'ArrowLeft' });
     await waitFor(() => expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'b', reasoningLevel: 'high' }]));
-    await slot.findByRole('button', { name: 'Saved effort for model-b: high' });
+    await slot.findByRole('button', { name: 'Saved effort for model-b: High' });
     await enabledRow(slot, 'Select model-b');
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
     await slot.findByRole('button', { name: 'Saved effort for model-b: Default' });
@@ -191,7 +191,7 @@ test('left and right arrows on a favourite row step its saved effort through Def
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
     expect(calls(slot, 'favourites.setEffort')).toHaveLength(2);
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowRight' });
-    await slot.findByRole('button', { name: 'Saved effort for model-b: high' });
+    await slot.findByRole('button', { name: 'Saved effort for model-b: High' });
     expect(slot.inspection.composer.selections).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -453,10 +453,10 @@ test('the current effort and tier controls update the composer without changing 
   const slot = render();
   try {
     const effort = await slot.findByRole('radiogroup', { name: 'Reasoning effort' });
-    expect(within(effort).getByRole('radio', { checked: true }).textContent).toBe('low');
-    fireEvent.click(within(effort).getByRole('radio', { name: 'high' }));
+    expect(within(effort).getByRole('radio', { checked: true }).textContent).toBe('Low');
+    fireEvent.click(within(effort).getByRole('radio', { name: 'High' }));
     await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high'));
-    fireEvent.keyDown(within(effort).getByRole('radio', { name: 'high' }), { key: 'ArrowRight' });
+    fireEvent.keyDown(within(effort).getByRole('radio', { name: 'High' }), { key: 'ArrowRight' });
     await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('low'));
     const tier = slot.getByRole('radiogroup', { name: 'Service tier' });
     fireEvent.click(within(tier).getByRole('radio', { name: 'Fast' }));
@@ -517,14 +517,14 @@ test('rows name their provider only where the section heading does not', async (
 test('effort glyphs keep Default aligned and tell levels above high apart', async () => {
   const slot = render([{ ...first, reasoningLevel: 'ultra' }, { ...second, reasoningLevel: 'xhigh' }]);
   try {
-    await slot.findByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    await slot.findByRole('button', { name: 'Saved effort for model-a: Ultra (unavailable)' });
     const bars = (element: Element | null | undefined) => element?.querySelectorAll('.mf-glyph rect[data-on]').length;
     const menu = effortMenu(slot, 'model-a');
     const option = (name: RegExp) => within(menu).getByRole('option', { name });
     expect(option(/^Default/).querySelector('.mf-glyph')).not.toBeNull();
-    expect([bars(option(/^Default/)), bars(option(/^low/)), bars(option(/^high/))]).toEqual([0, 1, 3]);
-    const xhigh = slot.getByRole('button', { name: 'Saved effort for model-b: xhigh (unavailable)' });
-    const ultra = slot.getByRole('button', { name: 'Saved effort for model-a: ultra (unavailable)' });
+    expect([bars(option(/^Default/)), bars(option(/^Low/)), bars(option(/^High/))]).toEqual([0, 1, 3]);
+    const xhigh = slot.getByRole('button', { name: 'Saved effort for model-b: Extra High (unavailable)' });
+    const ultra = slot.getByRole('button', { name: 'Saved effort for model-a: Ultra (unavailable)' });
     expect(bars(xhigh)).toBe(4);
     expect(bars(ultra)).toBe(4);
     expect(xhigh.querySelector('.mf-glyph')?.getAttribute('data-peak')).toBeNull();

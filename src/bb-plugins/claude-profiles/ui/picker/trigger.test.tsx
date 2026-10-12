@@ -47,7 +47,7 @@ const star = (slot: ReturnType<typeof renderSlot>) => slot.getByRole('button', {
 test('the star adds the current model with its current effort, then reads as a favourite', async () => {
   const { slot } = render([]);
   try {
-    await waitFor(() => expect(star(slot).title).toBe('Add Opus 5.5 · medium to favourites'));
+    await waitFor(() => expect(star(slot).title).toBe('Add Opus 5.5 · Medium to favourites'));
     expect(star(slot).getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(star(slot));
     await waitFor(() => expect(star(slot).getAttribute('aria-pressed')).toBe('true'));
@@ -73,7 +73,7 @@ test('the star follows composer selection changes and favourites changed elsewhe
   try {
     await waitFor(() => expect(star(slot).getAttribute('aria-pressed')).toBe('true'));
     fireEvent.click(slot.getByTestId('pick-sonnet'));
-    await waitFor(() => expect(star(slot).title).toBe('Add Sonnet 5 · medium to favourites'));
+    await waitFor(() => expect(star(slot).title).toBe('Add Sonnet 5 · Medium to favourites'));
     expect(star(slot).getAttribute('aria-pressed')).toBe('false');
     setSaved([opus, { ...opus, id: 'sonnet', slot: 2, model: 'sonnet' }]);
     await slot.behavior.emitRealtime('favourites-changed', {});

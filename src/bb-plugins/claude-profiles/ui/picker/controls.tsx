@@ -2,6 +2,9 @@ import { useRef, useState } from 'react';
 import type { Effort } from '../../src/models/contract.ts';
 import { ListPopover } from './popover.tsx';
 
+export const EFFORT_LABEL: Record<Effort, string> = {
+  none: 'None', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max', ultra: 'Ultra', ultracode: 'Ultracode',
+};
 const LEVEL: Record<Effort, number> = { none: 0, low: 1, medium: 2, high: 3, xhigh: 4, max: 4, ultra: 4, ultracode: 4 };
 
 /** Four bars, filled to the effort's level and tinted beyond xhigh; none for Default. */
@@ -21,7 +24,7 @@ export function EffortPill({ name, saved, fallback, levels, disabled, onChange }
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const unavailable = saved !== undefined && !levels.includes(saved);
-  const label = saved === undefined ? 'Default' : unavailable ? `${saved} (unavailable)` : saved;
+  const label = saved === undefined ? 'Default' : unavailable ? `${EFFORT_LABEL[saved]} (unavailable)` : EFFORT_LABEL[saved];
   return <>
     <button ref={button} type="button" className="mf-pill" data-tone={unavailable ? 'warning' : undefined} disabled={disabled}
       aria-label={`Saved effort for ${name}: ${label}`} aria-haspopup="listbox" aria-expanded={open}
@@ -29,9 +32,9 @@ export function EffortPill({ name, saved, fallback, levels, disabled, onChange }
       <EffortGlyph effort={saved} />{label}
     </button>
     {open && <ListPopover anchor={button} label={`Saved effort for ${name}`} align="end" value={saved ?? ''}
-      choices={[{ value: '', label: <><EffortGlyph effort={undefined} />Default</>, detail: fallback },
-        ...levels.map(level => ({ value: level, label: <><EffortGlyph effort={level} />{level}</> })),
-        ...(unavailable ? [{ value: saved, label: <><EffortGlyph effort={saved} />{saved} (unavailable)</>, tone: 'warning' as const }] : [])]}
+      choices={[{ value: '', label: <><EffortGlyph effort={undefined} />Default</>, detail: EFFORT_LABEL[fallback] },
+        ...levels.map(level => ({ value: level, label: <><EffortGlyph effort={level} />{EFFORT_LABEL[level]}</> })),
+        ...(unavailable ? [{ value: saved, label: <><EffortGlyph effort={saved} />{EFFORT_LABEL[saved]} (unavailable)</>, tone: 'warning' as const }] : [])]}
       onSelect={value => { if (value !== (saved ?? '')) onChange(value === '' ? null : value as Effort); }}
       onClose={() => setOpen(false)} />}
   </>;

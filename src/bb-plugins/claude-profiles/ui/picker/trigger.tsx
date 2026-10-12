@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { rpcContract } from '../../contracts.ts';
 import { effortSchema, type Favourite } from '../../src/models/contract.ts';
 import { matches } from '../../src/models/favourites.ts';
+import { EFFORT_LABEL } from './controls.tsx';
 import { useController } from './picker.tsx';
 import { open } from './store.ts';
 
@@ -38,7 +39,7 @@ export function Trigger() {
   const title = !name ? 'Choose a model to favourite it'
     : saved ? `Remove ${name} from favourites`
     : full ? `Nine favourites saved. Remove one to add ${name}.`
-    : `Add ${name}${effort.success ? ` · ${effort.data}` : ''} to favourites`;
+    : `Add ${name}${effort.success ? ` · ${EFFORT_LABEL[effort.data]}` : ''} to favourites`;
   async function toggle() {
     if (working.current || !providerId || !model || full || !list) return;
     working.current = true;
