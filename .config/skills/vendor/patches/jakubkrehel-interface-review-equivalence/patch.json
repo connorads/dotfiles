@@ -1,0 +1,6 @@
+{
+  "reason": "Verify accessible rendered replacements before discarding removal signals",
+  "files": [
+    "jakubkrehel/.agents/skills/interface-review/removed-signals.md"
+  ]
+}
