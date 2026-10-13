@@ -25,6 +25,8 @@ Where no such tool is exposed, fall back to prose: ask the whole frontier in one
 ➡️ <your recommended answer>
 ```
 
+Word each question so "yes" accepts your recommended answer.
+
 <!-- LOCAL PATCH (connorads dotfiles): find facts without assuming the runtime has sub-agents; open each round with what it unblocks and close with a recap -->
 
 Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one. Open each round with one line naming what just got settled and what it unblocks; skip that line when the questions already say it.
