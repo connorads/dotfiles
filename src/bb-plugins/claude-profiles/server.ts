@@ -8,6 +8,7 @@ import { createQuotaCache } from './src/accounts/quota-cache.ts';
 import { newThreadAccount, startingThreadId } from './src/accounts/routing.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
+import { createAmpSource } from './src/accounts/usage/amp-source.ts';
 import { createGrokSource } from './src/accounts/usage/grok-source.ts';
 import { registerModels } from './src/models/server.ts';
 export { rpcContract } from './contracts.ts';
@@ -20,6 +21,7 @@ export default function plugin(bb: BbPluginApi) {
   const models = registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
+  const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
   const switching = new Set<string>();
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
@@ -193,6 +195,7 @@ export default function plugin(bb: BbPluginApi) {
     catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
   }
   const usageReader = registerUsage(bb, {
+    amp: refresh => amp.read(refresh),
     resetCredits: (hostId, refresh) => host.call('resetCredits', { refresh }, { hostId, timeoutMs: 30_000 }),
     claudeAccount: async threadId => {
       const account = await threadAccount(threadId);

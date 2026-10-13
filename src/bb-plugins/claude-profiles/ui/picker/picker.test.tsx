@@ -66,6 +66,7 @@ function render(initial = [first, second], error: string | null = null, account?
         : { status: 'unavailable', message: 'No quota', observedAt: null, windows: [] },
       'usage.overview': () => { throw new Error('The picker must not request usage.'); },
       'usage.header': () => { throw new Error('The picker must not request usage.'); },
+      'usage.amp': () => { throw new Error('Unused Amp usage'); },
       'usage.inspection': () => { throw new Error('The picker must not request usage.'); },
     },
     sdk: {

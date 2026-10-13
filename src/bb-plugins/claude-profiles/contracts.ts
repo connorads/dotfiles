@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { usageSchema } from './src/accounts/quota.ts';
 import { measurementSchema, resourceSchema } from './src/accounts/usage-source.ts';
 import { usageContract, usageHostContract } from './src/accounts/usage/contract.ts';
+import { ampReadingSchema } from './src/accounts/usage/amp-reading.ts';
 import { modelsContract } from './src/models/contract.ts';
 
 export const profileSchema = z.object({ id: z.string(), label: z.string(), configDir: z.string().nullable() });
@@ -15,6 +16,7 @@ export const hostContract = defineRpcContract({
   validate: { input: z.object({ ...rootInput, profileId: z.string(), executable: z.string() }), output: z.object({ authenticated: z.literal(true) }) },
   usage: { input: z.object({ ...rootInput, profileId: z.string(), executable: z.string() }), output: usageSchema },
   transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ copied: z.boolean() }) },
+  ampUsage: { input: z.object({}), output: ampReadingSchema },
   grokUsage: { input: z.object({}), output: measurementSchema },
   ...usageHostContract,
 });
