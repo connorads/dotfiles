@@ -49,7 +49,7 @@ When the skill detects a blocker, output something like:
 > See https://github.com/heygen-com/hyperframes/pull/214 for the full
 > implementation. Quick summary:
 >
-> 1. Bundle `entry.tsx` with esbuild: `npx esbuild entry.tsx --bundle --outfile=dist/bundle.js --format=iife --jsx=automatic`
+> 1. Bundle `entry.tsx` with esbuild: `pnpm exec esbuild entry.tsx --bundle --outfile=dist/bundle.js --format=iife --jsx=automatic`
 > 2. Mount the Player and register on `window.__hfRemotion`:
 >
 >    ```tsx

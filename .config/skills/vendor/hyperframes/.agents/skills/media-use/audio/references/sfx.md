@@ -5,7 +5,7 @@ Named sound effects, produced by the shared audio engine (`scripts/audio.mjs` �
 - **HeyGen credential present → retrieve every cue** from HeyGen's audio library (`/v3/audio/sounds`, `type=sound_effects`, `min_score=0.4`). Search-and-download, **not** generation. The bundled library is NOT consulted.
 - **No credential → the bundled 21-file library** (`assets/sfx/` + `manifest.json`): match each cue name, copy the matched file into the project. Offline, deterministic, free.
 
-There is no `npx hyperframes sfx` command. SFX is never generated — it is retrieved (online) or taken from the bundled library (offline).
+There is no `hyperframes sfx` command. SFX is never generated — it is retrieved (online) or taken from the bundled library (offline).
 
 ## Cues — request → meta
 
@@ -23,7 +23,7 @@ Each line names the effects it wants: `lines[].sfx: ["whoosh", "ui click"]`. The
 }
 ```
 
-A cue that matches nothing is **skipped** (recorded as an anomaly); SFX never blocks a render.
+A cue that matches nothing is **skipped** (recorded as an anomaly); SFX never blocks a render. Neither route replaces a file of yours already at the output name: the cue gets the next free name (`whoosh-2.mp3`), reported as an anomaly, and `file` carries the real path.
 
 ## HeyGen retrieval (credentialed)
 

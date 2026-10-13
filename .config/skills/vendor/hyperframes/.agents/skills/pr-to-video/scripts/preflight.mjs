@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isMainModule } from "./lib/main-module.mjs";
 
 export function hasCliCommand(helpText, command) {
   const escaped = command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -10,9 +9,9 @@ export function hasCliCommand(helpText, command) {
 }
 
 export function runCliPreflight({ command = "check", spawn = spawnSync } = {}) {
-  const result = spawn("npx", ["hyperframes", "--help"], {
+  const result = spawn("hyperframes", ["--help"], {
     encoding: "utf8",
-    shell: process.platform === "win32",
+    shell: false,
   });
   const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
   if (result.status !== 0) {
@@ -36,16 +35,4 @@ function main() {
   }
 }
 
-// realpath both sides: on macOS /tmp → /private/tmp, and node resolves the main
-// module's symlinks in import.meta.url while argv[1] keeps the invoked spelling —
-// a raw compare silently skips main() when invoked through any symlinked path.
-function isMainModule() {
-  if (!process.argv[1]) return false;
-  try {
-    return pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url;
-  } catch {
-    return false;
-  }
-}
-
-if (isMainModule()) main();
+if (isMainModule(import.meta.url)) main();

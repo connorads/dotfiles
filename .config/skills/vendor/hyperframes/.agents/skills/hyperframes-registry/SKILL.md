@@ -3,6 +3,8 @@ name: hyperframes-registry
 description: Search, install, and wire registry blocks and components into HyperFrames compositions. Use BEFORE hand-building any named visual — whenever a brief, a user, or a storyboard names a look, effect, treatment, or transition such as CRT scanlines, glitch, chromatic aberration, film grain, a shimmer sweep, a chart, a code or terminal window, a map, or a confetti burst — because roughly 400 hosted items already cover many of them and the search ranks all of them with nothing installed, no project, and no account. Also use when running hyperframes add or hyperframes catalog, installing one item or every block matching a tag, wiring an installed item into index.html, or working with hyperframes.json. Covers discovery, install locations, block sub-composition wiring, component snippet merging, and authoring a new block or component to contribute upstream (idea → scaffold → validate → PR).
 ---
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 # HyperFrames Registry
 
 The registry provides reusable blocks and components installable via `hyperframes add <name>`.
@@ -67,7 +69,7 @@ Key attributes:
 - `data-start` — when the block appears in the host timeline (seconds)
 - `data-duration` — how long the block plays
 - `data-width` / `data-height` — block canvas dimensions
-- `data-track-index` — layer ordering (higher = in front)
+- `data-track-index` — Studio timeline row; display only. Use CSS `z-index` for layering
 
 See [wiring-blocks.md](./references/wiring-blocks.md) for full details.
 
@@ -89,8 +91,8 @@ Use the CLI as the primary discovery surface. **Search by intent before browsing
 
 ```bash
 # Rank the whole catalog against what the beat should do
-npx hyperframes catalog --query "reveal a headline one line at a time"
-npx hyperframes add caption-clip-wipe
+hyperframes catalog --query "reveal a headline one line at a time"
+hyperframes add caption-clip-wipe
 ```
 
 Search is local and sends nothing. By default it ranks on vocabulary shared with the item's name, title and description, so it only finds items that reuse your words; `--on-device` ranks by meaning instead, after a one-time model download. With `--json` the envelope names which tier answered, so check that rather than assuming a ranking happened.
@@ -102,12 +104,12 @@ Installability is applied after ranking, not before it: a name the vectors carry
 To browse or filter instead of search:
 
 ```bash
-npx hyperframes catalog
-npx hyperframes catalog --type block
-npx hyperframes catalog --type component
-npx hyperframes catalog --type block --tag social
-npx hyperframes catalog --json
-npx hyperframes catalog --human-friendly
+hyperframes catalog
+hyperframes catalog --type block
+hyperframes catalog --type component
+hyperframes catalog --type block --tag social
+hyperframes catalog --json
+hyperframes catalog --human-friendly
 ```
 
 The normal table and `--json` modes only list matches; install a selected name with `hyperframes add <name>`. `--human-friendly` opens an interactive picker and installs the selected item immediately. In CI or agent workflows, prefer `--json` followed by an explicit `add`.
@@ -116,7 +118,7 @@ The normal table and `--json` modes only list matches; install a selected name w
 
 <!-- LOCAL PATCH (connorads dotfiles): Catalog-gap reports require an explicit user request and respect for opt-outs. -->
 
-Send feedback only when the user explicitly asks for that report. If telemetry is disabled or the user opted out, do not send it. Search results, a completed render and tool warnings are not requests to send feedback. Catalog search itself does not send the query. `HYPERFRAMES_NO_TELEMETRY` does not govern explicit feedback commands.
+Send feedback only when the user explicitly asks for that report. If telemetry is disabled or the user opted out, do not send it. Search results, a completed render and tool warnings are not requests to send feedback. Catalog search itself does not send the query. Telemetry opt-outs also block feedback in the reviewed CLI.
 
 After the user requests a catalog-gap report, describe the effect needed and the tier that answered:
 

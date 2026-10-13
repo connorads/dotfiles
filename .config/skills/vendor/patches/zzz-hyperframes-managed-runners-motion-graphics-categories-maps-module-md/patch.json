@@ -1,0 +1,6 @@
+{
+  "reason": "HyperFrames examples use installed tools and pnpm with local dependency protections.",
+  "files": [
+    "hyperframes/.agents/skills/motion-graphics/categories/maps/module.md"
+  ]
+}

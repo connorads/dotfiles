@@ -3,13 +3,15 @@ name: music-to-video
 description: "Turn a music track (an audio file, a video to pull audio from, or a track generated from a mood brief) into a beat-synced video — lyric video, slideshow, or kinetic promo. The music drives all pacing; any user-supplied images/videos are cut onto the same beat grid, and a complete video needs zero assets. Narrated pieces → the input-matched workflow (see /hyperframes). Unclear → /hyperframes."
 ---
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 <!-- LOCAL PATCH (connorads dotfiles): upstream's "keep this skill fresh - run silently, don't ask" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs. -->
 
 # music-to-video — one music-grounded, beat-synced video workflow
 
 Use this skill to turn a **music track** into a beat-synced HyperFrames video. You analyze the track once, lay out the frames, fill in a per-frame plan, and build each frame as a composition. The input is a music track plus optional user images or videos — there is **no narration and no website capture**. Typography and templates are the floor (a complete video needs zero assets); any media the user supplies is cut in on the same beat grid.
 
-You are the **orchestrator**. Work in `videos/<project>/`. Run the steps in order and pass each **Gate** before moving on. Two steps need the user: **Step 3** (plan approval) and **Step 6** (render approval) — both are checkpoint gates per `../hyperframes/references/brief-contract.md` (read it before Step 0): in autonomous mode, post the summary as a heads-up and proceed instead of waiting. Do every step yourself except **Step 4**, where you dispatch **one sub-agent per frame**. Keep design and motion rules out of this file — they live in `references/` and the `frame-worker` sub-agent.
+You are the **orchestrator**. Work in `videos/<project>/`. Run the steps in order and pass each **Gate** before moving on. Two steps need the user: **Step 3** (plan approval) and **Step 6** (render approval) — both are checkpoint gates per `../hyperframes/references/brief-contract.md` (read it before Step 0): in autonomous mode, post the Step 3 summary as a heads-up and proceed; Step 6 render approval is still asked, as the one kept question. Do every step yourself except **Step 4**, where you dispatch **one sub-agent per frame**. Keep design and motion rules out of this file — they live in `references/` and the `frame-worker` sub-agent.
 
 `SKILL_DIR` = this skill directory. `PROJECT_DIR` = `videos/<project-name>/`.
 
@@ -28,7 +30,7 @@ Goal: Establish the music source, create the HyperFrames project, and note any u
 
 **The brief starts at the intent layer.** Opening rule, in order: **(1)** `BRIEF.md` exists → read it and ask nothing it answers — its `flow`/`storyboard` derive the mode (brief contract § 1). **(2)** No `BRIEF.md` but the project exists → resume from what's on disk; never re-interrogate. **(3)** A fresh creation request that arrived here directly → read `/hyperframes` and run its intent layer (`references/intent-interview.md`): it confirms this route's must-haves (the music source, destination → aspect — `../hyperframes/references/routes/music-to-video.md`) and announces what stays deferred — brand and genre are chosen at Step 3 by design. Write `BRIEF.md` immediately after init (never before — `init` refuses a non-empty directory) and record the preference-backed answers (`brief-format.md`). Edit requests skip all of this.
 
-The **music is the spine** — establish one track before anything else. This skill is tuned for **fast, high-energy BGM**: a strong beat grid drives the cuts (calm tracks work, but pace by phrase rather than beat). If the user supplied audio — a music file, or a video to pull audio from — use it. Otherwise choose the mood from the request and generate a track through `/media-use` (`references/bgm.md`). Before the first authenticated provider action, run `npx hyperframes auth status` and relay its output verbatim. If signed out, apply one branch:
+The **music is the spine** — establish one track before anything else. This skill is tuned for **fast, high-energy BGM**: a strong beat grid drives the cuts (calm tracks work, but pace by phrase rather than beat). If the user supplied audio — a music file, or a video to pull audio from — use it. Otherwise choose the mood from the request and generate a track through `/media-use` (`audio/references/bgm.md`); when the host app provides its own music tool, use that. Before the first authenticated provider action, run `hyperframes auth status` and relay its output verbatim. If signed out, apply one branch:
 
 - **Collaborative:** wait for sign-in or an explicit choice to continue offline with the local provider.
 - **Autonomous:** state the status and continue through the available local provider.
@@ -40,7 +42,7 @@ If no offline provider can satisfy the required music capability, surface the bl
 Initialize only if `hyperframes.json` is missing. Name `<project>` from the brief in kebab-case, such as `midnight-drive-loop` — never a timestamp. `init` checks the installed skills against the latest on GitHub and updates the global set if any are out of date.
 
 ```bash
-npx hyperframes init "videos/<project>" --non-interactive --example=blank --skill=music-to-video
+hyperframes init "videos/<project>" --non-interactive --example=blank --skill=music-to-video
 mkdir -p "$PROJECT_DIR/assets" "$PROJECT_DIR/renders"
 cp "<user-music>" "$PROJECT_DIR/assets/bgm.mp3"   # extract from a video first if needed
 # only if the user gave you images/videos:
@@ -91,7 +93,7 @@ Goal: Turn the skeleton into an approved, complete `STORYBOARD.md`.
 Read [`references/planning.md`](references/planning.md), [`storyboard-format.md`](references/storyboard-format.md), [`template-catalog.md`](references/template-catalog.md), [`motion-primitive-catalog.md`](references/motion-primitive-catalog.md), and [`montage.md`](references/montage.md) (only if the user supplied assets). Editing the same file in place, do two things:
 
 1. **Pick the brand.** Choose one preset from `../hyperframes-creative/frame-presets/` using the table in `../hyperframes-creative/references/design-spec.md` (match the track's mood; **only its fonts and colors matter** — templates own composition). Copy it into `frame.md` **unmodified** and fill the frontmatter `style` (font + a ≤4–6 swatch palette) from it.
-2. **Fill every frame.** Decide its groups and give each a treatment: a matched template from the catalog (with bound params and real audiomap anchors), a free-compose from the primitive catalog, or an asset treatment that **obeys `pacing`**. **Before you free-compose a named look, search the live catalog for it**: for every look, effect, treatment or transition the user asked for — "CRT scanlines", "glitch", "film grain", "shimmer sweep" — run `npx hyperframes catalog --query "<the look, in plain English>" --json` and read the top results. `template-catalog.md` and `motion-primitive-catalog.md` list only this skill's own local materials; the search ranks the whole hosted registry (~400 blocks and components) and needs **nothing installed** — no project, no prior `add`, no account. Free-compose a look only after a search for it came back with nothing that fits. Write the copy. You own WHAT (template / primitives + content + anchors); the frame-worker owns HOW — **never write millisecond tweens into the storyboard**.
+2. **Fill every frame.** Decide its groups and give each a treatment: a matched template from the catalog (with bound params and real audiomap anchors), a free-compose from the primitive catalog, or an asset treatment that **obeys `pacing`**. **Before you free-compose a named look, search the live catalog for it**: for every look, effect, treatment or transition the user asked for — "CRT scanlines", "glitch", "film grain", "shimmer sweep" — run `hyperframes catalog --query "<the look, in plain English>" --json` and read the top results. `template-catalog.md` and `motion-primitive-catalog.md` list only this skill's own local materials; the search ranks the whole hosted registry (~400 blocks and components) and needs **nothing installed** — no project, no prior `add`, no account. Free-compose a look only after a search for it came back with nothing that fits. Write the copy. You own WHAT (template / primitives + content + anchors); the frame-worker owns HOW — **never write millisecond tweens into the storyboard**.
 
 ```bash
 node <SKILL_DIR>/scripts/validate-plan.mjs --storyboard "$PROJECT_DIR/STORYBOARD.md" \
@@ -153,13 +155,13 @@ Goal: Verify the assembled video, get user approval, and render the final MP4.
 Run the CLI on the **assembled project** — that's the correct unit (the per-frame workers couldn't run it). `check` runs structural lint and the headless-browser runtime, layout, motion, and contrast gate in one pass; `--snapshots` also emits the review frames.
 
 ```bash
-( cd "$PROJECT_DIR" && npx hyperframes check . --snapshots )
+( cd "$PROJECT_DIR" && hyperframes check . --snapshots )
 ```
 
-Inspect at `t=0`, each frame start, the strongest DROP / SURGE, every `hard_stops[].t`, and the final frame. On failure, make the **cheapest safe fix** yourself: edit the offending `compositions/frames/NN-*.html`. Never change duration or audio timing to hide a sync issue. Once the gates pass, pause for user review, then render only on approval (autonomous mode: ask the one kept question — "preview first, or render?" — then deliver the MP4 with the contact sheet):
+Inspect at `t=0`, each frame start, the strongest DROP / SURGE, every `hard_stops[].t`, and the final frame. On failure, make the **cheapest safe fix** yourself: edit the offending `compositions/frames/NN-*.html`. Never change duration or audio timing to hide a sync issue. Once the gates pass, open the final Studio preview (`( cd "$PROJECT_DIR" && hyperframes preview --background )`) and pause for user review — render now, or what changes? Render only on approval (autonomous mode: the same, as the one kept question), then deliver the MP4 with the contact sheet:
 
 ```bash
-( cd "$PROJECT_DIR" && npx hyperframes render . --skill=music-to-video -q draft -o renders/video.mp4 --fps 30 )
+( cd "$PROJECT_DIR" && hyperframes render . --skill=music-to-video -q draft -o renders/video.mp4 --fps 30 )
 ```
 
 **Gate:** `check` passed and the snapshots were inspected; the user approved (autonomous: checks passed and the delivery includes the contact sheet); `renders/video.mp4` exists with audio, duration == `audiomap.audio.duration_sec`. The final reply states the MP4 path and duration.

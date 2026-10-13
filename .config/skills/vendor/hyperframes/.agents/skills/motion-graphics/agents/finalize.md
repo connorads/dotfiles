@@ -8,9 +8,9 @@ Perform snapshot QA and one in-place repair pass. Dispatch only when Step 5 `lin
 
 ## Flow
 
-1. **Snapshots** — run `npx hyperframes snapshot --at <proof-times>` and inspect overflow, off-canvas content, text collisions, empty frames, wrong content, and unreadable motion.
+1. **Snapshots** — run `hyperframes snapshot --at <proof-times>` and inspect overflow, off-canvas content, text collisions, empty frames, wrong content, and unreadable motion.
 2. **One in-place repair pass** — edit `compositions/index.html` for the visible issues. Never change a fixed `data-duration`; timing is set upstream.
-3. **Recheck** — rerun `npx hyperframes lint`, `npx hyperframes check`, and the affected snapshots. Return the result to the orchestrator without rendering.
+3. **Recheck** — rerun `hyperframes lint`, `hyperframes check`, and the affected snapshots. Return the result to the orchestrator without rendering.
 
 ## STOP / escalate
 

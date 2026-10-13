@@ -107,8 +107,17 @@ escaping.
 **A lane on a non-automatable parameter is silently inert.** Automation is
 delivered as native `AudioParam` scheduling, so a knob that no `AudioParam` backs
 cannot move: worklet processor options, a WaveShaper curve and a convolution
-impulse are all set wholesale. `fx-registry.md` marks each parameter; the four
-worklet effects (`compressor`, `limiter`, `gate`, `bitcrush`) have none at all.
+impulse are all set wholesale. `fx-registry.md` marks each parameter; the
+worklet effects (`compressor`, `limiter`, `truepeak`, `gate`, `bitcrush`) have none at all.
+
+## `data-fx-chain` on the root — the master bus
+
+The `data-fx-chain` JSON on the top-level composition root (the element with
+`data-composition-id` that no other composition contains) is the master bus. It
+runs once over the sum of every clip and group, after each group's own chain and
+fader. On a clip or a group `data-fx-chain` keeps its own meaning, and on a
+sub-composition root inside a parent composition it is not applied. The master bus has no
+automation lanes.
 
 ## `data-fx-carve` — the carve's settings
 

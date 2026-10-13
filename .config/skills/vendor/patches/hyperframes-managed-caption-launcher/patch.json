@@ -1,0 +1,6 @@
+{
+  "reason": "Standalone caption helpers use the managed CLI rather than plugin manifests or Downloads checkouts.",
+  "files": [
+    "hyperframes/.agents/skills/embedded-captions/scripts/hf-cli.cjs"
+  ]
+}

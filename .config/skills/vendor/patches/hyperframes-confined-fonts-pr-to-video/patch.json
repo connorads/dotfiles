@@ -1,0 +1,6 @@
+{
+  "reason": "Captured fonts reject symlink source and destination paths below the project boundary.",
+  "files": [
+    "hyperframes/.agents/skills/pr-to-video/scripts/lib/captured-fonts.mjs"
+  ]
+}

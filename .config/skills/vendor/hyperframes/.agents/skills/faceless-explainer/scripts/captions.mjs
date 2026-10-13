@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stageCapturedFonts } from "./lib/captured-fonts.mjs";
 // captions.mjs — build the captions sub-composition from STORYBOARD + audio_meta.
 //
 // One mode: `build`. Reads STORYBOARD.md (frame order + durations → cumulative
@@ -34,10 +35,10 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseStoryboard } from "./lib/storyboard.mjs";
 import { captionBand, parseFormat } from "./lib/dimensions.mjs";
 import { parseColors, parseFonts, semanticColors } from "./lib/tokens.mjs";
+import { isMainModule } from "./lib/main-module.mjs";
 
 const flag = (argv, name, def) => {
   const i = argv.indexOf(`--${name}`);
@@ -344,7 +345,8 @@ function brandFontFaces(framePath, hyperframesDir) {
   // underscore/hyphen-named brand font (e.g. TT Norms Pro), which is exactly the
   // font_family_without_font_face bug.
   const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const faces = [];
+  const captured = stageCapturedFonts(hyperframesDir, families);
+  const faces = [...captured.faces];
   const seen = new Set();
   const claimed = new Set(); // each file is claimed by the MOST SPECIFIC family only
   // Match the longest family key first so "TT Norms Pro" can't swallow the files that
@@ -363,12 +365,13 @@ function brandFontFaces(framePath, hyperframesDir) {
         if (!/\.(woff2|woff|ttf|otf)$/i.test(f)) continue;
         if (claimed.has(f)) continue; // a more specific family already took this file
         if (!norm(f.replace(/\.(woff2|woff|ttf|otf)$/i, "")).startsWith(key)) continue;
+        claimed.add(f);
+        if (captured.families.has(fam.toLowerCase())) continue;
         const w = weightOf(f);
         const style = styleOf(f);
         const dedup = `${fam}-${w}-${style}`;
         if (seen.has(dedup)) continue; // one src per face; assets/fonts wins over capture
         seen.add(dedup);
-        claimed.add(f);
         faces.push(
           `      @font-face { font-family: '${fam}'; src: url('${d.rel}/${f}') format('${fmtOf(f)}'); font-weight: ${w}; font-style: ${style}; font-display: block; }`,
         );
@@ -509,7 +512,7 @@ function buildCaptionsHtml(groups, total, W, H) {
 `;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMainModule(import.meta.url)) {
   const sub = process.argv[2];
   if (sub === "build" || sub === undefined) runBuild(process.argv.slice(sub === "build" ? 3 : 2));
   else {

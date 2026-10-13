@@ -1,10 +1,11 @@
 # Transition Registry — machine source of truth
 
 Single source of truth for **PLV scene-to-scene transitions**. The deterministic
-injector (`product-launch-video/scripts/inject-transitions.mjs`) reads the JSON
-block below and stamps the matching `gsap_template` onto the master timeline.
-The planner (`product-launch-video/agents/visual-design.md`) names a transition
-by its `name`; everything else is harness.
+injector (`product-launch-video/scripts/transitions.mjs inject`) reads its vendored
+copy of the JSON block below (`product-launch-video/scripts/lib/transitions.json`)
+and stamps the matching `gsap_template` onto the master timeline.
+The planner (`product-launch-video/references/story-design.md`) names a transition
+by its `name` in each frame's `transition_in`; everything else is harness.
 
 This file is **not** the catalog of all transitions — that is `catalog.md` +
 `css-*.md` (≈40 CSS + shader). This registry is the curated subset that is
@@ -97,11 +98,11 @@ whitelist is a _scene-worker_ prompt rule only — it does not bind index.html).
       "note": "Directional. The injector picks __DX__/__DY__ from the direction and emits the horizontal OR vertical pair (not both).",
       "gsap_template_horizontal": [
         "tl.to(__OLD__, { x: __DX__, duration: __DUR__, ease: \"power3.inOut\" }, __T__);",
-        "tl.fromTo(__NEW__, { x: __DXIN__, opacity: 1 }, { x: 0, duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
+        "tl.fromTo(__NEW__, { x: __DXIN__, opacity: 1 }, { x: 0, opacity: 1, duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
       ],
       "gsap_template_vertical": [
         "tl.to(__OLD__, { y: __DY__, duration: __DUR__, ease: \"power3.inOut\" }, __T__);",
-        "tl.fromTo(__NEW__, { y: __DYIN__, opacity: 1 }, { y: 0, duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
+        "tl.fromTo(__NEW__, { y: __DYIN__, opacity: 1 }, { y: 0, opacity: 1, duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
       ]
     },
     {
@@ -128,7 +129,7 @@ whitelist is a _scene-worker_ prompt rule only — it does not bind index.html).
       "note": "Old compresses to a vertical line on the left edge; new expands from the right edge. Incoming starts off (scaleX 0) so its higher-track stacking is harmless.",
       "gsap_template": [
         "tl.to(__OLD__, { scaleX: 0, transformOrigin: \"left center\", duration: __DUR__, ease: \"power3.inOut\" }, __T__);",
-        "tl.fromTo(__NEW__, { scaleX: 0, transformOrigin: \"right center\", opacity: 1 }, { scaleX: 1, transformOrigin: \"right center\", duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
+        "tl.fromTo(__NEW__, { scaleX: 0, transformOrigin: \"right center\", opacity: 1 }, { scaleX: 1, transformOrigin: \"right center\", opacity: 1, duration: __DUR__, ease: \"power3.inOut\" }, __T__);"
       ]
     }
   ],

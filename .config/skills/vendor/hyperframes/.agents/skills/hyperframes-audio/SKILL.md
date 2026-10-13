@@ -13,6 +13,8 @@ description: >
   `/hyperframes-core`.
 ---
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 # HyperFrames Audio
 
 A mix is a set of relationships, not a stack of processors. Two tracks that each
@@ -50,7 +52,7 @@ the first two, on an `<hf-audio-group>` bus (see "One bus for many tracks"):
 | `data-fx-carve`   | the carve's own settings, so it can be re-derived         |
 
 The shipped effect families are gain, EQ (highpass, lowpass, peaking, shelves),
-compressor, limiter, gate, saturate, delay, reverb, chorus, phaser, and bitcrush.
+compressor, limiter, truepeak (lookahead true-peak limiter), gate, saturate, delay, reverb, chorus, phaser, and bitcrush.
 
 Exact JSON for each, and the rules a lane must satisfy: `references/attributes.md`.
 Every effect with its parameters, ranges and units: `references/fx-registry.md`.
@@ -72,7 +74,7 @@ flowchart TB
 
   subgraph AUTHOR["Authoring — the only things that write attributes"]
     panel["Studio<br/>Voiceover carve control"]
-    script["scripts/carve.mjs<br/>detects the pair, dynamic by default"]
+    script["scripts/carve.mjs<br/>detects the pair"]
     analysis["core/audioCarve.ts<br/>carveProfile · analyseCarveBands<br/>analyseCarveDuck · analyseCarveDynamics"]
     panel --> analysis
     script --> analysis
@@ -82,7 +84,7 @@ flowchart TB
   bed --> analysis
 
   subgraph ATTRS["Written onto the bed element"]
-    carveAttr["data-fx-carve<br/>source · strength · dynamic"]
+    carveAttr["data-fx-carve<br/>sources · strength"]
     chainAttr["data-fx-chain<br/>peaking xN + gain, tagged fromCarve"]
     autoAttr["data-automation<br/>a lane per carved parameter"]
   end
@@ -132,8 +134,6 @@ flowchart LR
   l1["lane fx.n1.gain"] -.->|"envelope of the voice's<br/>level in that band"| p1
   l4["lane fx.n4.gain"] -.->|"how far the bed<br/>ducks overall"| g
 ```
-
-A static carve is the same graph with fixed values and no lanes at all.
 
 ## First, work out what is wrong
 
@@ -195,10 +195,14 @@ want 1–3 kHz, and taking that from the bed costs the bed far less than turning
 the whole thing down costs the mix. A high-pass on a voice is the standard fix
 for rumble; a low-pass darkens or muffles deliberately.
 
-**Dynamics** (`gain`, `compressor`, `limiter`, `gate`) decide how a track's level
+**Dynamics** (`gain`, `compressor`, `limiter`, `truepeak`, `gate`) decide how a track's level
 behaves over time. Compression narrows the distance between loud and quiet so the
-quiet parts can come up. A limiter is a ceiling — it does not shape anything, it
-guarantees nothing gets past. A gate removes what is below a threshold, which is
+quiet parts can come up. A limiter pulls peaks down toward a ceiling and does not
+shape anything else. `limiter` follows the level and has no lookahead, so a fast
+or inter-sample peak can pass its ceiling; for a delivery ceiling use `truepeak`, which looks ahead and measures the inter-sample peak. It
+holds a 4x estimate at the ceiling, not the waveform itself, so full-band noise can
+end up to 1.7 dB over: under a hard delivery limit set the ceiling at least 2 dB
+below it. A gate removes what is below a threshold, which is
 how you silence room tone between phrases. `gain` is a plain level stage, and it
 is what an automation lane rides when a track has to move out of the way.
 
@@ -340,6 +344,13 @@ of, so only the filters survive — and a bus and its members are one signal pat
 so the bed then runs through the bus's filters AND its own. The
 `audio_group_carve_attr` lint rule catches it.
 
+**One effect across the whole mix: the master bus.** A clip names exactly one
+group, so a limiter or EQ over everything cannot be a group. Put it in
+`data-fx-chain` on the top-level composition root: it runs once over the sum of all clips and groups, after each
+group's chain and fader. A delivery ceiling is the usual use — `truepeak` last in
+the master chain. Only the top-level root is read as the master bus; a
+sub-composition root's `data-fx-chain` is not applied inside a parent composition. No master automation.
+
 **One clip is not a bus.** A group exists to give several tracks one chain, one
 fader and one clock. Wrapping a single clip in a bus buys nothing the clip's own
 `data-fx-chain` does not already do, and it doubles the places a later edit has
@@ -367,7 +378,7 @@ under any voice track (narration, avatar speech, interview, voiceover) gets a
 carve as part of finishing the mix, not as a polish step to get to if there is
 time. Place both tracks, run the command below (default strength `0.8`; add
 `--bed` / `--voice` when detection picks wrong), confirm the written
-`data-fx-carve`, `data-fx-chain` and `data-automation` with `npx hyperframes check`,
+`data-fx-carve`, `data-fx-chain` and `data-automation` with `hyperframes check`,
 and only then render. A volume duck on its own is not a finished mix: it leaves
 the voice and the bed fighting in the 1–3 kHz band and costs the bed all of its
 presence for the whole voiceover. Skip the carve only when there is no voice for
@@ -381,15 +392,14 @@ which is why the lanes show up in the timeline and can be edited afterwards.
 
 **Level matching is part of it.** Spectral carving cannot fix a bed that is
 simply louder than the voice. So the carve also measures how far over the voice
-the bed sits and writes a `gain` stage: held at one value for a static carve,
-driven by an envelope for a dynamic one. That envelope releases slowly on
+the bed sits and writes a `gain` stage driven by an envelope. That envelope releases slowly on
 purpose — music that snaps back to full the instant a word ends sounds like a
 machine doing it.
 
 **Running it.** In Studio the carve is one module at the top of a track's effect
-rack — voice, strength, dynamic, and the analysis it produced, in one card. It is
+rack — voice, strength, and the analysis it produced, in one card. It is
 there whenever another track could be the voice, and a bed with exactly **one**
-candidate above it is carved by default, dynamically, at the default strength:
+candidate above it is carved by default, at the default strength:
 that is what a bed under narration wants, and the module is where you change or
 switch it off. Several candidates leaves the picker waiting rather than guessing.
 Headless —
@@ -400,12 +410,12 @@ node <SKILL_DIR>/scripts/carve.mjs --comp index.html
 ```
 
 That is the whole command. It finds the voice and the bed itself, carves
-dynamically at the default strength, and prints what it decided:
+at the default strength, and prints what it decided:
 
 ```
 bed    music-bed (name looks like music)
 voice  narration (only track left)
-carve  strength 0.8 dynamic
+carve  strength 0.8, 1 voice
 bands  250Hz -7.4dB q2.06, 400Hz -7.4dB q2.06, 630Hz -7.4dB q2.06, 1000Hz -7.4dB q2.06, 1600Hz -14.8dB q2.06, 2500Hz -7.4dB q2.06
 level  273-point envelope, floor -19.2 dB
 ```
@@ -439,8 +449,8 @@ and the parameter's own units. Targets are `volume` for the track's level, or
 `fx.<nodeId>.<param>` for an effect's knob.
 
 **Only some parameters can be automated, and a lane on the others is silently
-inert.** A knob is automatable when a Web Audio `AudioParam` backs it. The four
-worklet-based effects — `compressor`, `limiter`, `gate`, `bitcrush` — expose
+inert.** A knob is automatable when a Web Audio `AudioParam` backs it. The
+worklet-based effects — `compressor`, `limiter`, `truepeak`, `gate`, `bitcrush` — expose
 none at all, so no lane on any of their parameters will ever move: to make a
 compressor's behaviour change over time, automate a `gain` stage before it
 instead. `references/fx-registry.md` marks every parameter.
@@ -468,7 +478,7 @@ its source, and the mix is told how much by the chain. So a bed with reverb no
 longer ends exactly at its `data-duration`; that is expected, not a bug.
 
 Beyond that, a mix is verified by rendering and listening. For a carve: the voice
-should be legible without the bed sounding hollowed, and with `dynamic` the bed
+should be legible without the bed sounding hollowed, and the bed
 should come back up between phrases rather than staying flat. If the bed sounds
 notched rather than simply quieter under the voice, the strength is too high —
 that is the one failure mode with an obvious sound.

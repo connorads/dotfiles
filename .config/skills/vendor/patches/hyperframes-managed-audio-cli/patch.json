@@ -1,0 +1,6 @@
+{
+  "reason": "Local TTS and transcription use the managed installed CLI without remote bootstrap.",
+  "files": [
+    "hyperframes/.agents/skills/media-use/audio/scripts/lib/tts.mjs"
+  ]
+}

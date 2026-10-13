@@ -36,7 +36,7 @@ After every transcription, **read the transcript and check for quality issues be
 
 1. **Retry with `medium.en`** if the original used `small.en` or smaller:
    ```bash
-   npx hyperframes transcribe audio.mp3 --model medium.en
+   hyperframes transcribe audio.mp3 --model medium.en
    ```
 2. **If `medium.en` also fails** (still >20% music tokens or garbled), tell the user the audio is too noisy for local transcription and suggest:
    - Providing lyrics manually as an SRT/VTT file
@@ -74,7 +74,7 @@ curl https://api.openai.com/v1/audio/transcriptions \
   -F "timestamp_granularities[]=word" \
   -o transcript-openai.json
 
-npx hyperframes transcribe transcript-openai.json
+hyperframes transcribe transcript-openai.json
 ```
 
 **Groq Whisper API** (fast, free tier available):
@@ -87,7 +87,7 @@ curl https://api.groq.com/openai/v1/audio/transcriptions \
   -F "timestamp_granularities[]=word" \
   -o transcript-groq.json
 
-npx hyperframes transcribe transcript-groq.json
+hyperframes transcribe transcript-groq.json
 ```
 
 ## If No Transcript Exists

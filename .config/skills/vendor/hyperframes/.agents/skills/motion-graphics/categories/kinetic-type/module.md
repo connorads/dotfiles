@@ -14,6 +14,6 @@ Motion primitives + registry blocks: **`references/motion-vocabulary.md`** (slid
 
 ## Build (reuse-first)
 
-- Prefer a **`caption-*` block** when one fits (`caption-kinetic-slam` / `caption-editorial-emphasis` / …): `npx hyperframes add` + set words / `emphasis_words` / palette / font.
+- Prefer a **`caption-*` block** when one fits (`caption-kinetic-slam` / `caption-editorial-emphasis` / …): `hyperframes add` + set words / `emphasis_words` / palette / font.
 - Else hand-author: one full-duration `.clip`; a `.group` per scene (flex-centered); words as spans; explicit `gsap.fromTo()` entrances per scene `motion`; emphasis words → `glow` / `scale_pulse` on the beat; seek-safe `autoAlpha` only on inner non-clip elements. Honor `references/builder-contract.md`.
 - Reference impl: prototype `v0-text-motion-demo` + `pipeline-demo`.

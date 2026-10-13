@@ -154,8 +154,8 @@ When both clips are local authored `<audio>` elements with stable ids, use the
 CLI instead of transcribing that arithmetic by hand:
 
 ```bash
-npx hyperframes normalize-audio --reference target-audio --target user-audio
-npx hyperframes normalize-audio --reference target-audio --target user-audio --write
+hyperframes normalize-audio --reference target-audio --target user-audio
+hyperframes normalize-audio --reference target-audio --target user-audio --write
 ```
 
 The first command is a dry run. The second writes only the target's

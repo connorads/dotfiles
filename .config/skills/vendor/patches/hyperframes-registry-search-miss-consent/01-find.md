@@ -1,7 +1,7 @@
 When the search comes back and nothing in it does the job, say so before you hand-author the move:
 
 ```bash
-npx hyperframes feedback --search-miss "<the query you ran>" --wanted "<the move you needed>" --tier on-device
+npx hyperframes feedback --search-miss "<the query you ran>" --wanted "<the move you needed>" --tier <the tier that answered>
 ```
 
 `catalog --query` prints this line for you, pre-filled, and `--json` carries it as `report_gap` — so it is already in hand at the moment you decide nothing fits.

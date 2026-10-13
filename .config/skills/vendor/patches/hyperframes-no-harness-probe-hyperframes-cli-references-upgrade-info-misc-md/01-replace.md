@@ -1,0 +1,1 @@
+Do not run the harness usage command. It reads unrelated Claude, Codex or Grok credentials. Use user-provided allowance information; otherwise report usage as unknown. Keep scope and workflow choices with the user.

@@ -89,6 +89,12 @@ Apply the correct template based on type. See [templates.md](templates.md) for c
 
 #### All types
 
+- **Load files the block ships through `__hyperframes.assetUrl("assets/...")`** whenever a script
+  builds the path (textures, fonts, JSON, models). Attributes like `src` and `href` are rebased
+  when the block is mounted; strings in a script are not, so a bare `"assets/..."` 404s once the
+  block lives under `compositions/<name>/`. A separate `.js` file gets the URLs from the block's
+  inline script. A block whose assets install to the project's own `assets/` (target
+  `compositions/<name>.html`) keeps plain project-root paths; `assetUrl` would look beside the file.
 - **Placeholder content is monochrome** — read
   [placeholder-material.md](placeholder-material.md) before choosing a single colour. Stand-in
   screens, images, cards, avatars, logos and chart series use four alpha steps of the
@@ -115,7 +121,7 @@ hyperframes render -o preview.mp4
 hyperframes snapshot --at "1.0,3.0,5.0,7.0"
 
 # Publish to hyperframes.dev for review
-npx hyperframes publish
+hyperframes publish
 ```
 
 **Catalog preview image** — For the default PNG preview, save your snapshot at `docs/images/catalog/{kind}/{name}.png` in the repository checkout (`{kind}` is `blocks` or `components`). After upload, the catalog serves it from `https://static.heygen.ai/hyperframes-oss/docs/images/catalog/{kind}/{name}.png`. If `registry-item.json` declares `preview`, the card uses its `poster` URL; a `preview` without `poster` has no image fallback.
@@ -134,20 +140,20 @@ npx hyperframes publish
 git checkout -b feat/registry-{name}
 
 # 2. Format HTML
-npx oxfmt registry/{kind}/{name}/*.html
+pnpm exec oxfmt registry/{kind}/{name}/*.html
 
 # 3. Regenerate registry/registry.json from the item directories.
 #    Do not hand-edit it: an entry added by hand survives until the next
 #    regeneration and then vanishes, and one left behind for a directory that
 #    no longer exists is worse, because `hyperframes add <name>` resolves the
 #    name and then fails on missing files.
-npx tsx scripts/generate-registry-items.ts
+pnpm exec tsx scripts/generate-registry-items.ts
 
 # 4. Generate catalog docs page
-npx tsx scripts/generate-catalog-pages.ts
+pnpm exec tsx scripts/generate-catalog-pages.ts
 
 # 5. Publish to hyperframes.dev so reviewers can preview
-npx hyperframes publish
+hyperframes publish
 
 # 6. Stage everything
 git add registry/{kind}/{name}/ registry/registry.json docs/catalog/
@@ -166,9 +172,9 @@ gh pr create --title "feat(registry): {name}" --body "preview: {hyperframes.dev-
 
 - [ ] `hyperframes lint` → 0 errors
 - [ ] `hyperframes check` → 0 console errors
-- [ ] `npx oxfmt --check` passes
+- [ ] `pnpm exec oxfmt --check` passes
 - [ ] `registry/registry.json` updated with new entry
 - [ ] `scripts/generate-catalog-pages.ts` run (docs page generated)
-- [ ] `npx hyperframes publish` run (claim your project URL)
+- [ ] `hyperframes publish` run (claim your project URL)
 - [ ] Preview MP4 attached to PR (external) or catalog PNG uploaded (internal)
 - [ ] All IDs unique and prefixed
