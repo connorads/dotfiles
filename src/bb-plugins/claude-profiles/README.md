@@ -122,8 +122,10 @@ across Grok products. The overlay shows the reported period, use and reset.
 Collection uses native CLI authentication and sends no model prompt.
 
 Amp presents the native `amp usage` account and credit balances as labelled
-amounts, with a link to credit settings. Unrecognised provider text stays visible. Its section loads independently of quotas. Refresh requests a
-new reading; a failed refresh retains the previous text with the failure.
+amounts, with a link to credit settings. Unrecognised provider text stays visible.
+The overlay requests Amp and quotas in parallel. Quotas appear as soon as they
+are ready; Amp stays below them. The refresh indicator tracks both requests.
+Refresh requests a new reading; a failed refresh retains the previous text with the failure.
 Balances have no invented percentage or pace projection.
 
 ## Shortcuts

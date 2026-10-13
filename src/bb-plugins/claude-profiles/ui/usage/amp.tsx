@@ -1,31 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { useRpc } from '@get-bb/plugin-sdk/app';
-import type { rpcContract } from '../../contracts.ts';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { Icon } from '../components/ui/icon.tsx';
 import { presentAmpUsage } from '../../src/accounts/usage/amp-presentation.ts';
 import { readingAge } from '../../src/accounts/usage/format.ts';
 
-export function AmpUsage({ open, refreshToken, now }: { open: boolean; refreshToken: number; now: Date }) {
-  const rpc = useRpc<typeof rpcContract>();
-  const lastRefresh = useRef(refreshToken);
-  const [value, setValue] = useState<AmpOverview | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    let active = true;
-    setLoading(true);
-    setMessage(null);
-    const refresh = refreshToken !== lastRefresh.current;
-    lastRefresh.current = refreshToken;
-    void rpc.call('usage.amp', { refresh }).then(next => {
-      if (active) setValue(next);
-    }).catch(() => {
-      if (active) setMessage('Amp usage could not be loaded.');
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [open, refreshToken, rpc]);
+export function AmpUsage({ value, message, loading, now }: {
+  value: AmpOverview | null; message: string | null; loading: boolean; now: Date;
+}) {
   return <section className="au-provider" role="region" aria-label="Amp usage" aria-busy={loading}>
     <h3 className="au-provider-heading"><Icon name="Zap" className="size-3.5" />Amp</h3>
     {loading && <p className="au-reading">Checking Amp…</p>}
