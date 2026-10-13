@@ -1,0 +1,6 @@
+{
+  "reason": "Use installed project CLIs and pnpm without mutable executable downloads",
+  "files": [
+    ".agents/skills/shadcn/SKILL.md"
+  ]
+}
