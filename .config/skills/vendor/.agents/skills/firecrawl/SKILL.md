@@ -1,7 +1,7 @@
 ---
 name: firecrawl
 description: |
-  Any live-web task via the Firecrawl CLI — including ordinary web research: searching the web, reading or extracting pages, gathering sources, discovering site URLs, bulk extraction, downloading a site, change alerts, or pages needing clicks/login — web only; local files route to firecrawl-parse. For papers use firecrawl-research-index; for library, API, error, or bug questions use firecrawl-developer-index.
+  Any live-web task via the Firecrawl CLI — including ordinary web research: searching the web, reading or extracting pages, gathering sources, discovering site URLs, bulk extraction, downloading a site, change alerts, or pages needing clicks/login — web only; local files route to firecrawl-parse. For US legal or regulatory questions use gov; for papers use firecrawl-research-index; for library, API, error, or bug questions use firecrawl-developer-index.
 allowed-tools:
   - Bash(firecrawl *)
 ---
@@ -20,10 +20,12 @@ Check with `firecrawl --status` (shows auth state, concurrency limit, and remain
 
 <!-- LOCAL PATCH (connorads dotfiles): upstream widened this skill to claim any web task and deleted its own "do NOT trigger for local file operations, git commands, deployments, or code editing" guard; native web tools stay the default for plain search and page reads. --> Reach for Firecrawl when the task needs what it uniquely does: scraping a specific URL, crawling or mapping a site, bulk or structured extraction, downloading a site, interacting with a page (clicks, forms, pagination, login), or monitoring pages for changes. For ordinary web search and reading a page, prefer the runtime's own web tools. Do NOT trigger for local file operations, git commands, deployments, or code editing tasks.
 
+For structured datasets, first check for a suitable workflow or data provider using the `search skill`. Read a known page directly; reuse a selected contract instead of repeating discovery.
+
 Follow this escalation pattern:
 
-1. **Search** - No specific URL yet. Find pages, answer questions, discover sources.
-2. **Scrape** - Have a URL. Extract its content directly.
+1. **Search** - Start with the actual question. Find web sources and relevant structured-data tools through semantic and domain matching.
+2. **Inspect + Scrape** - For a tool match, use `list <provider> <capability> --pretty` if its contract is missing, then execute with `scrape <provider/capability> --options '<JSON>'`. For a URL, scrape its content directly.
 3. **Map + Scrape** - Large site or need a specific subpage. Use `map --search` to find the right URL, then scrape it.
 4. **Crawl** - Need bulk content from an entire site section (e.g., all /docs/).
 5. **Monitor** - Need recurring checks or ongoing alerts. Prefer setting a monitor with `--page` plus `--goal` instead of doing repeated one-off scrapes.
@@ -34,6 +36,7 @@ Follow this escalation pattern:
 | Find pages on a topic       | `search`              | No specific URL yet                                             |
 | Find research papers        | `research`            | Biomedical/clinical/scientific literature — use the paper index |
 | Answer a coding question    | `developer`           | Issues, merged PRs, READMEs, and docs — not a general web page  |
+| Find US law or regulation   | `gov`                 | US statutes, regulations, codes, and court opinions             |
 | Get a page's content        | `scrape`              | Have a URL, page is static or JS-rendered                       |
 | Find URLs within a site     | `map`                 | Need to locate a specific subpage                               |
 | Bulk extract a site section | `crawl`               | Need many pages (e.g., all /docs/)                              |
@@ -45,6 +48,8 @@ Follow this escalation pattern:
 
 For detailed command reference, run `firecrawl <command> --help`.
 
+For US legal or regulatory source discovery, start with `firecrawl gov "<question, jurisdiction, and date>" --limit 10`. If the user supplies a source URL, read it directly with `scrape`. Results are excerpts, not a guarantee of official-only sources or current governing law: verify the issuer, jurisdiction, enacted/effective status, and version before citing a controlling section and supporting passage. Ask for a missing jurisdiction before identifying the governing rule. Use general search for non-US questions or missing coverage; no hits does not establish that no applicable law exists.
+
 **Done when:** the narrowest suitable command has completed the request, its output was inspected, and the answer cites the saved source files.
 
 **Scrape vs interact:**
@@ -53,26 +58,36 @@ For detailed command reference, run `firecrawl <command> --help`.
 - Use `scrape` + `interact` when you need to interact with a page, such as clicking buttons, filling out forms, navigating through a complex site, infinite scroll, or when scrape fails to grab all the content you need.
 - For web searches, use `search` — interact is for acting on a specific page.
 
-**Monitor:** Bias toward `monitor` when the user's goal is ongoing change detection, alerting, or repeated checks over time — not another one-off scrape. Goal writing, schedules, target modes, and JSON-mode change tracking are documented in [firecrawl-monitor](../firecrawl-monitor/SKILL.md).
+**Monitor:** Bias toward `monitor` when the user's goal is ongoing change detection, alerting, or repeated checks over time — not another one-off scrape. Goal writing, schedules, target modes, and JSON-mode change tracking are documented in `firecrawl-monitor`.
 
 **Reuse fetched content:**
 
 - `search --scrape` already fetches full page content. Reuse it instead of re-scraping those URLs.
 - Check `.firecrawl/` for existing data before fetching again.
 
-## When to Load References
+## Large results and Alexandria
 
-- **Searching the web or finding sources first** -> [firecrawl-search](../firecrawl-search/SKILL.md)
-- **Finding research papers (biomedical, clinical, or scientific literature; PubMed, bioRxiv, medRxiv, arXiv)** -> [firecrawl-research-index](../firecrawl-research-index/SKILL.md). Use the paper index instead of scraping PubMed or Google Scholar by hand; `search --categories research` is a website filter, not the paper index.
-- **Answering a library, API, error, or known-bug question from issues, merged PRs, READMEs, or docs** -> [firecrawl-developer-index](../firecrawl-developer-index/SKILL.md)
-- **Scraping a known URL** -> [firecrawl-scrape](../firecrawl-scrape/SKILL.md)
-- **Finding URLs on a known site** -> [firecrawl-map](../firecrawl-map/SKILL.md)
-- **Bulk extraction from a docs section or site** -> [firecrawl-crawl](../firecrawl-crawl/SKILL.md)
-- **AI-powered structured extraction from complex sites** -> [firecrawl-agent](../firecrawl-agent/SKILL.md)
-- **Clicks, forms, login, pagination, or post-scrape browser actions** -> [firecrawl-interact](../firecrawl-interact/SKILL.md)
-- **Downloading a site to local files** -> [firecrawl-download](../firecrawl-download/SKILL.md)
-- **Parsing a local file (PDF, DOCX, XLSX, HTML, etc.)** -> [firecrawl-parse](../firecrawl-parse/SKILL.md)
-- **Detecting content changes on a website and getting notified by webhook or email (pricing, jobs, posts, docs, status pages, anything ongoing)** -> [firecrawl-monitor](../firecrawl-monitor/SKILL.md)
+`search` discovers web results and tools, `list` reveals a selected tool's contract, and `scrape <provider/capability> --options '<JSON>'` executes it. Inspect only the contracts needed for the task.
+
+A client context/output error does not prove the provider failed. Keep the request/scrape ID and inspect saved output or use `scrape firecrawl/bash` against the retained result before repeating the request. Use the installed CLI help and retained-result contract; load `firecrawl-scrape` recovery guidance only if that companion is installed. Do not assume the client can signal an overflow back to the tool, or that Bash supports search IDs or every provider's retained data.
+
+## Optional companion guidance
+
+Load a named companion only if it is already installed. Otherwise use the installed CLI's `--help` and provider contract, and report any remaining guidance gap. Do not acquire unreviewed skills automatically.
+
+### Companion tasks
+
+- **Searching the web or finding sources first** -> `firecrawl-search`
+- **Finding research papers (biomedical, clinical, or scientific literature; PubMed, bioRxiv, medRxiv, arXiv)** -> `firecrawl-research-index`. Use the paper index instead of scraping PubMed or Google Scholar by hand; `search --categories research` is a website filter, not the paper index.
+- **Answering a library, API, error, or known-bug question from issues, merged PRs, READMEs, or docs** -> `firecrawl-developer-index`
+- **Scraping a known URL** -> `firecrawl-scrape`
+- **Finding URLs on a known site** -> `firecrawl-map`
+- **Bulk extraction from a docs section or site** -> `firecrawl-crawl`
+- **AI-powered structured extraction from complex sites** -> `firecrawl-agent`
+- **Clicks, forms, login, pagination, or post-scrape browser actions** -> `firecrawl-interact`
+- **Downloading a site to local files** -> `firecrawl-download`
+- **Parsing a local file (PDF, DOCX, XLSX, HTML, etc.)** -> `firecrawl-parse`
+- **Detecting content changes on a website and getting notified by webhook or email (pricing, jobs, posts, docs, status pages, anything ongoing)** -> `firecrawl-monitor`
 - **Install, auth, or setup problems** -> [rules/install.md](rules/install.md)
 - **Output handling and safe file-reading patterns** -> [rules/security.md](rules/security.md)
 - **Integrating Firecrawl into an app, adding `FIRECRAWL_API_KEY` to `.env`, or choosing endpoint usage in product code** -> the [firecrawl-build skills](https://github.com/firecrawl/skills/tree/main/skills/build) (`firecrawl-build-onboarding`, `-scrape`, `-search`, `-interact`). They live in a separate repo and are **not** vendored here; do not run `firecrawl setup build`, which installs skills globally into every detected editor. <!-- LOCAL PATCH (connorads dotfiles): upstream moved a `firecrawl setup build` install directive into SKILL.md, outside the rules/install.md the firecrawl-mise patch covers; skills are vendored through the review flow, not installed at task time. -->
@@ -106,24 +121,9 @@ Single format outputs raw content. Multiple formats (e.g., `--format markdown,li
 
 ## Feedback
 
-After using search results, send `firecrawl search-feedback` (the first feedback per search refunds 1 credit). The full pattern, guard, and rules live in [firecrawl-search](../firecrawl-search/SKILL.md).
+Send feedback only when the user explicitly requests it and approves the content and destination. A search, provider gap or failed scrape does not authorise a report. Use the installed CLI's `feedback --help` or `search-feedback --help` to check support before preparing a report. Do not acquire missing feedback tools or companions.
 
-For non-search endpoint jobs, use `firecrawl feedback <endpoint> <jobId>` to send concise job-level feedback through `/v2/feedback`. Supported endpoints are `search`, `scrape`, `parse`, and `map`.
-
-```bash
-firecrawl feedback scrape "$SCRAPE_ID" \
-  --rating partial \
-  --issues missing_markdown \
-  --tags docs \
-  --note "The pricing table was missing from the markdown output." \
-  --url "https://example.com/pricing" \
-  --page-numbers 1 \
-  --silent &
-```
-
-Keep generic feedback small: issue codes, tags, short notes, URLs, page numbers, and small metadata objects — never raw scrape/parse outputs or full page contents.
-
-**Opt out:** `export FIRECRAWL_NO_ENDPOINT_FEEDBACK=1` makes the CLI skip every endpoint feedback call silently. Respect that flag — do not try to work around it.
+Keep approved reports small. Exclude raw outputs, full pages, credentials and unrelated task content. Honour `FIRECRAWL_NO_ENDPOINT_FEEDBACK=1`; do not bypass it.
 
 ## Parallelization
 

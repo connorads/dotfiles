@@ -49,7 +49,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "6f0a70840cad114f020e5950874f255b22e669f07036cf4f81d8f733ae0233a0"
+      "computedHash": "51522c6fbd95a2eaa9631a7651ba3ef434fcc92d9573c64eb28ef723290b6099"
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
@@ -122,7 +122,7 @@
       "source": "firecrawl/cli",
       "sourceType": "github",
       "skillPath": "skills/firecrawl/SKILL.md",
-      "computedHash": "d4aeeccee5e30d0b41db63cbae1bf99627ada6ed2939701453c80dd8a15d6e75"
+      "computedHash": "ab346831c4b1e43033b3d028172f96a0b0492dc5695607faa2bb8067b68a8322"
     },
     "gdp-ts": {
       "source": "rauchg/gdp-ts",
