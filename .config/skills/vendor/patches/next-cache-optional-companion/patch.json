@@ -1,0 +1,6 @@
+{
+  "reason": "Report an unavailable URL-specific optimiser without fetching unreviewed skills",
+  "files": [
+    "nextjs/.agents/skills/next-cache-components-optimizer/SKILL.md"
+  ]
+}
