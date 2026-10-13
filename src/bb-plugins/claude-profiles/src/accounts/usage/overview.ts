@@ -26,6 +26,7 @@ function describeWindow(window: Omit<UsageWindow, 'period'>): UsageWindow {
 
 function describeAccounts(snapshot: SourceSnapshot): Snapshot {
   return { machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
+    displayName: account.providerId === 'acp-grok' ? 'Grok Build' : account.displayName,
     usage: account.usage?.status === 'ok' ? { ...account.usage, windows: account.usage.windows.map(describeWindow) } : account.usage,
   })) })) };
 }
