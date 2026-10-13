@@ -8,6 +8,7 @@ import { createQuotaCache } from './src/accounts/quota-cache.ts';
 import { newThreadAccount, startingThreadId } from './src/accounts/routing.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
+import { createGrokSource } from './src/accounts/usage/grok-source.ts';
 import { registerModels } from './src/models/server.ts';
 export { rpcContract } from './contracts.ts';
 
@@ -18,6 +19,7 @@ export default function plugin(bb: BbPluginApi) {
   });
   const models = registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
+  const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
   const switching = new Set<string>();
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
@@ -183,6 +185,7 @@ export default function plugin(bb: BbPluginApi) {
       currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default' };
   }
   async function readResource(resourceId: string, refresh: boolean) {
+    if (grok.owns(resourceId)) return grok.read(resourceId, refresh);
     const [hostId, root, profileId] = decodeResourceId(resourceId);
     const config = await settings.get();
     if (root !== config.profileRoot) throw new Error('Profile root changed. Refresh the resource list.');
@@ -242,10 +245,10 @@ export default function plugin(bb: BbPluginApi) {
           scope: { kind: 'host' as const, hostId: machine.id, hostName: machine.name },
         }));
       }));
-      return { resources: groups.flat() };
+      return { resources: [...groups.flat(), ...grok.resources(hosts)] };
     },
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
-  }, { experimental_discoverable: true, experimental_description: 'Claude profile quota through native CLI authentication.' });
+  }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD | migrate-favourites';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage or migrate model favourites',
     async run(argv) {

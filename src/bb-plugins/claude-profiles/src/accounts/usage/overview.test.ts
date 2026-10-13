@@ -169,3 +169,13 @@ test('an unreadable native login yields to the default profile reading', async (
   assert.equal(accounts.length, 1);
   assert.partialDeepStrictEqual(accounts[0], { accountLabel: 'Default', usage: { status: 'ok', windows: [{ label: 'Weekly' }] } });
 });
+
+test('Grok quota uses its readable provider name and weekly pace', async () => {
+  const grok = { ...snapshot, machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({
+    ...account, providerId: 'acp-grok', displayName: 'acp-grok',
+  })) })) };
+  const reader = createUsageReader({ ...ports, callRpc: answer(() => grok) });
+  const account = (await reader.overview(false)).machines[0]?.providers[0];
+  assert.equal(account?.displayName, 'Grok Build');
+  assert.partialDeepStrictEqual(account?.usage, { windows: [{ label: 'Weekly', period: 'week', usedPercent: 6 }] });
+});

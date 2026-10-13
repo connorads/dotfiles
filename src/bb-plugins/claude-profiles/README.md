@@ -117,6 +117,10 @@ window. A reading becomes stale after 4% of its shortest window, with a
 The overlay reads BB's built-in **Provider usage** plugin. Enable it for
 providers other than Claude.
 
+Grok quota comes from the native CLI billing extension. Its allowance is shared
+across Grok products. The overlay shows the reported period, use and reset.
+Collection uses native CLI authentication and sends no model prompt.
+
 ## Shortcuts
 
 | Action | Shortcut |
