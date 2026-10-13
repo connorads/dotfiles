@@ -1,31 +1,9 @@
-// Shared frame-packet builder — the script half of the frame-worker core/delta split.
-//
-// Each narrative workflow ships a thin `scripts/frame-packets.mjs` wrapper that pins
-// its own paths (animation skill, role delta, design-truth resolution, extra packet
-// sections) and delegates everything else here, exactly as the markdown half already
-// does with `references/frame-worker-core.md` + each workflow's delta. One owner for
-// the packet-building logic; the wrappers own only what genuinely differs per workflow.
-//
-// Packet (<frame_id>.md) = project inputs + the frame's exact `## Frame N` block
-// + the blueprint body + every cited rule recipe, inlined — so a worker never opens
-// the shared STORYBOARD.md or any skill document. Cited motions are found
-// mechanically: the explicit `- rules:` field when present, plus every valid rule id
-// (a filename under the animation skill's rules/) mentioned in the block.
-//
-// _role.md = frame-worker-core.md + the workflow's sub-agents/frame-worker.md,
-// concatenated verbatim — the complete worker role, assembled from the two source
-// documents so nothing is hand-maintained twice.
+// Frame packets inline the storyboard frame, blueprint and cited recipes.
+// Workflow wrappers supply resource paths and workflow-specific sections.
+// The role combines the shared worker contract with the workflow delta.
 
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
 export function field(block, name) {
   const match = block.match(new RegExp(`^-\\s+${name}:\\s*(.+)$`, "im"));
@@ -100,12 +78,8 @@ export function resourceSections(block, { animationDir, ruleIds, frameId }) {
   if (blueprint) {
     const blueprintsDir = join(animationDir, "blueprints");
     const path = join(blueprintsDir, `${blueprint}.md`);
-    // A blueprint that resolved to nothing used to inline an empty string, so the
-    // packet shipped without the one document the frame was designed against and
-    // the run still reported success. Name it instead — but only when the library
-    // is actually there to be named against. The animation skill installs on
-    // demand, so an absent blueprints/ is a missing install, not a bad id, and it
-    // degrades with a warning exactly like an absent rules/ (see knownRuleIds).
+    // An installed library must contain the named blueprint.
+    // An absent on-demand library warns, like missing motion rules.
     if (!existsSync(blueprintsDir)) {
       console.warn(
         `frame-packets: no blueprints dir at ${blueprintsDir} — packets will inline no blueprint`,
@@ -178,17 +152,7 @@ export function flag(argv, name, fallback) {
   return index >= 0 && argv[index + 1] ? argv[index + 1] : fallback;
 }
 
-// realpath both sides: on macOS /tmp → /private/tmp, and node resolves the main
-// module's symlinks in import.meta.url while argv[1] keeps the invoked spelling —
-// a raw compare silently skips main() when invoked through any symlinked path.
-export function isMainModule(importMetaUrl) {
-  if (!process.argv[1]) return false;
-  try {
-    return pathToFileURL(realpathSync(process.argv[1])).href === importMetaUrl;
-  } catch {
-    return false;
-  }
-}
+export { isMainModule } from "./main-module.mjs";
 
 export function runCli({ buildFramePackets: build, buildRolePayload: buildRole }) {
   const argv = process.argv.slice(2);

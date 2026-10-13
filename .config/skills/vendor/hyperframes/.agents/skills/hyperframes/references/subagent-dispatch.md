@@ -10,7 +10,7 @@ The video workflows (`product-launch-video` / `faceless-explainer` / `pr-to-vide
 
 ## Concurrency cap → batching rule (cap never changes scope)
 
-A harness concurrency limit **reduces parallelism, not work**: every scene still gets built, one scene per dispatch, with the available slots chewing through the full list.
+A harness concurrency limit **reduces parallelism, not work**: every scene still gets built, with the available slots chewing through the full list. The workflow sets how many scenes each worker gets (`general-video` assigns 2–3).
 
 - When the harness queues excess children internally, submit **all N at once** and let the queue drain.
 - Harness hard-caps active children (e.g. OpenClaw `maxChildrenPerAgent`) → dispatch in **waves of the cap size**: start `cap` workers, wait for their artifacts, start the next wave, until all N scenes exist. Example: 9 scenes on a cap-3 harness = 3 waves of 3 — never drop scenes, never merge scenes into one worker to fit the cap.

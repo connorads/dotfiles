@@ -3,8 +3,8 @@
 `hyperframes cloud render` renders a composition on HeyGen's managed cloud. The CLI zips the project, uploads it, runs the render on HeyGen's infrastructure (Chromium + FFmpeg), and downloads the finished video. Nothing to deploy, and no Chrome/FFmpeg/AWS to manage; you pay per credit.
 
 ```bash
-npx hyperframes auth login            # one-time sign-in
-npx hyperframes cloud render          # zip, upload, render, download
+hyperframes auth login            # one-time sign-in
+hyperframes cloud render          # zip, upload, render, download
 ```
 
 ## When to use managed cloud, Lambda, Cloud Run, or local
@@ -19,18 +19,18 @@ npx hyperframes cloud render          # zip, upload, render, download
 Cloud rendering needs a HeyGen credential, stored at `~/.heygen/credentials` (`0600`) and shared with the [`heygen` CLI](https://github.com/heygen-com/heygen-cli): sign in with one and the other picks up the session.
 
 ```bash
-npx hyperframes auth login              # OAuth 2.0 + PKCE, opens the browser
-npx hyperframes auth login --api-key    # CI/headless: hidden prompt, or pipe: echo "$HEYGEN_API_KEY" | ... --api-key
-npx hyperframes auth status             # active credential source, identity, billing snapshot
+hyperframes auth login              # OAuth 2.0 + PKCE, opens the browser
+hyperframes auth login --api-key    # CI/headless: hidden prompt, or pipe: echo "$HEYGEN_API_KEY" | ... --api-key
+hyperframes auth status             # active credential source, identity, billing snapshot
                                         #   exit 0 = signed in and verified; exit 1 = not signed in,
                                         #   or the credential was rejected — signed-out exit 1 is the
                                         #   normal offline state (scripts: `auth status || echo offline`),
                                         #   not a command failure
-npx hyperframes auth refresh            # force-refresh an OAuth token before a long job
-npx hyperframes auth logout             # clear the stored credential
+hyperframes auth refresh            # force-refresh an OAuth token before a long job
+hyperframes auth logout             # clear the stored credential
 ```
 
-Credential resolution order (first match wins): `HEYGEN_API_KEY`, then `HYPERFRAMES_API_KEY`, then `~/.heygen/credentials`. Point at a different backend with `HEYGEN_API_URL` (default `https://api.heygen.com`).
+Credential resolution order (first match wins): `HEYGEN_API_KEY`, then `HYPERFRAMES_API_KEY`, then `HEYGEN_ACCESS_TOKEN` (an OAuth token a host app injects; never refreshed or saved), then `~/.heygen/credentials`. Point at a different backend with `HEYGEN_API_URL` (default `https://api.heygen.com`).
 
 ## The render pipeline
 
@@ -51,7 +51,7 @@ The direct-upload limit is 200 MB. HyperFrames automatically excludes root-level
 Inspect the exact archive without authenticating, uploading, spending credits, or starting a render:
 
 ```bash
-npx hyperframes cloud render <project> --dry-run --json
+hyperframes cloud render <project> --dry-run --json
 ```
 
 The result reports compressed `size_bytes`, `file_count`, the 200 MB limit, and the ten largest included files.
@@ -63,7 +63,7 @@ When a cloud upload reports a size-limit error, agents must use this workflow:
 3. Before excluding anything else, search `src`, `href`, `url()`, `data-composition-src`, JavaScript strings, manifests, and variable-driven paths across every HTML, CSS, and JavaScript entry.
 4. Preserve existing `.hyperframesignore` comments and rules. Add the narrowest verified-unneeded root-relative paths; prefer an exact directory or file over a broad wildcard.
 5. Never ignore `index.html`, the selected composition, mounted sub-compositions, fonts, images, audio, video, scripts, or manifests merely because they are large. Never ignore all of `assets/`.
-6. Rerun dry-run until the archive is below the limit, then run `npx hyperframes check`. Remember that `check` sees the source directory, so it cannot prove a dynamically computed asset path remains in the filtered archive; the reference audit is still required.
+6. Rerun dry-run until the archive is below the limit, then run `hyperframes check`. Remember that `check` sees the source directory, so it cannot prove a dynamically computed asset path remains in the filtered archive; the reference audit is still required.
 
 Example:
 
@@ -92,11 +92,11 @@ Rules support comments, globs, and negation. A later rule can override a default
 | `--dry-run`            | off                         | Build and inspect a local project zip without authenticating, uploading, or rendering.                                         |
 
 ```bash
-npx hyperframes cloud render . \
+hyperframes cloud render . \
   --composition compositions/intro.html \
   --output ./renders/intro.mp4
 
-npx hyperframes cloud render --quality high --fps 60
+hyperframes cloud render --quality high --fps 60
 ```
 
 `--resolution 4k` cannot combine with `--format webm`/`mov`: the 4k supersampling path has no alpha channel. Render 4k as mp4, or render alpha at native resolution.
@@ -106,9 +106,9 @@ npx hyperframes cloud render --quality high --fps 60
 Cloud rendering supports [composition variables](../../hyperframes-core/references/variables-and-media.md#variables): declare `data-composition-variables` on the composition, then fill them at render time.
 
 ```bash
-npx hyperframes cloud render --variables '{"title":"Q4 Recap","theme":"dark"}'
-npx hyperframes cloud render --variables-file ./vars.json
-npx hyperframes cloud render --variables '{"title":"Q4 Recap"}' --strict-variables
+hyperframes cloud render --variables '{"title":"Q4 Recap","theme":"dark"}'
+hyperframes cloud render --variables-file ./vars.json
+hyperframes cloud render --variables '{"title":"Q4 Recap"}' --strict-variables
 ```
 
 For a **local project** the CLI validates `--variables` against the declared schema _before_ uploading. For `--asset-id`/`--url` the schema lives server-side, so mismatches surface as a `hyperframes_project_invalid` API error.
@@ -116,9 +116,9 @@ For a **local project** the CLI validates `--variables` against the declared sch
 **Upload once, re-render many** is the idiomatic template loop: render a local project to get its `asset_id`, then re-submit against that asset with new values (no re-zip, no re-upload).
 
 ```bash
-npx hyperframes cloud render ./card-template                              # note the asset_id printed on upload
-npx hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Ada"}'
-npx hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Linus"}'
+hyperframes cloud render ./card-template                              # note the asset_id printed on upload
+hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Ada"}'
+hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Linus"}'
 ```
 
 For high-volume personalized batches, both self-managed paths provide JSONL fan-out: AWS Lambda (`lambda.md`) and Google Cloud Run (`cloudrun.md`). The full variables schema (types, declarative bindings, sub-composition overrides, precedence) lives in the `hyperframes-core` skill.
@@ -128,7 +128,7 @@ For high-volume personalized batches, both self-managed paths provide JSONL fan-
 By default the CLI blocks, polls, and downloads. Combine `--no-wait` (submit and exit with just the `render_id`) with `--callback-url` (HTTPS webhook on terminal status) for true fire-and-forget:
 
 ```bash
-npx hyperframes cloud render --callback-url https://example.com/hf-hook --no-wait
+hyperframes cloud render --callback-url https://example.com/hf-hook --no-wait
 #    Poll later with: hyperframes cloud get hfr_def456
 ```
 
@@ -143,9 +143,9 @@ npx hyperframes cloud render --callback-url https://example.com/hf-hook --no-wai
 ## Managing renders
 
 ```bash
-npx hyperframes cloud list                 # recent renders (--limit, --token, --all)
-npx hyperframes cloud get hfr_def456       # full detail + short-lived signed video_url
-npx hyperframes cloud delete hfr_def456    # soft-delete (--no-confirm to skip the prompt)
+hyperframes cloud list                 # recent renders (--limit, --token, --all)
+hyperframes cloud get hfr_def456       # full detail + short-lived signed video_url
+hyperframes cloud delete hfr_def456    # soft-delete (--no-confirm to skip the prompt)
 ```
 
 `video_url` and `thumbnail_url` are short-lived presigned URLs, so re-fetch with `cloud get` rather than caching them.
@@ -155,7 +155,7 @@ npx hyperframes cloud delete hfr_def456    # soft-delete (--no-confirm to skip t
 The CLI transparently retries a `401` by force-refreshing the OAuth token and replaying. That's harmless for reads, but the zip upload (`POST /v3/assets`) is **not** idempotent: a blind retry creates a duplicate asset and bills twice. Pass `--idempotency-key` so retries are safe:
 
 ```bash
-npx hyperframes cloud render . --idempotency-key "$(uuidgen)"
+hyperframes cloud render . --idempotency-key "$(uuidgen)"
 ```
 
 The key is forwarded to both upload and submit (the server scopes idempotency per-endpoint, so reusing one value is safe). Use any opaque string in `[A-Za-z0-9_:.-]`, 1–255 chars.

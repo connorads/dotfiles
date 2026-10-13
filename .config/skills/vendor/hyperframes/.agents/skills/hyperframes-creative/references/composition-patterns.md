@@ -23,7 +23,7 @@ Animate a wrapper div for position/size. The video fills the wrapper. The wrappe
     data-duration="60"
     data-track-index="0"
     src="talking-head.mp4"
-    muted
+    data-has-audio="true"
     playsinline
   ></video>
 </div>
@@ -40,7 +40,7 @@ tl.to("#pip-frame", { left: 40, duration: 0.6 }, 30);
 
 ## Text Behind Subject (transparent webm overlay)
 
-Put a headline _behind_ a presenter so their silhouette occludes the text. Requires a transparent cutout produced by `npx hyperframes remove-background presenter.mp4 -o presenter.webm`.
+Put a headline _behind_ a presenter so their silhouette occludes the text. Requires a transparent cutout produced by `hyperframes remove-background presenter.mp4 -o presenter.webm`.
 
 Three layers, plus one critical rule:
 
@@ -53,7 +53,7 @@ Three layers, plus one critical rule:
   data-media-start="0"
   data-track-index="0"
   src="presenter.mp4"
-  muted
+  data-has-audio="true"
   playsinline
 ></video>
 

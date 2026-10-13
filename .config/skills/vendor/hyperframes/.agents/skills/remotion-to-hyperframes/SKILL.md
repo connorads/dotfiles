@@ -3,6 +3,8 @@ name: remotion-to-hyperframes
 description: 'Port an existing Remotion (React) composition''s source to HyperFrames HTML. Use ONLY on an explicit ask to port/convert/migrate/translate a Remotion source — one-way, Remotion-only. A passing Remotion mention, reference-only code, or "make something like my Remotion video" is a fresh build (/general-video). Unclear → /hyperframes.'
 ---
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 <!-- LOCAL PATCH (connorads dotfiles): upstream's "keep this skill fresh - run silently, don't ask" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs. -->
 
 # Remotion to HyperFrames
@@ -37,7 +39,7 @@ The skill ships with a **tiered test corpus** (T1–T4, 4 fixtures total) that g
 - **The reverse direction.** Exporting a HyperFrames composition back out _to_ Remotion (or to any other framework) is not a workflow — the translation is Remotion → HyperFrames only. Say so plainly.
 - **Non-Remotion sources.** An After Effects project (`.aep`), a Framer Motion / plain-React / CSS animation, or any other tool's source is not a Remotion composition — there is no Remotion source to translate. Re-create it natively via `/general-video`, or decline if HyperFrames can't represent it.
 
-When in doubt, default to authoring a native HyperFrames composition with `/general-video` (the general HyperFrames authoring flow) instead.
+When in doubt, return to `/hyperframes`; its intent layer picks the route.
 
 ## Workflow
 
@@ -67,7 +69,7 @@ Read [`references/api-map.md`](references/api-map.md) — the index of every Rem
 
 Don't load all of them — load only what the specific source needs.
 
-**Search the live catalog for any visual effect the table does not map.** When the source paints a look with no HF API equivalent — a scanline/CRT overlay, a glitch or chromatic-aberration pass, a shader wipe, a film-grain treatment — run `npx hyperframes catalog --query "<the effect, in plain English>" --json` before hand-writing it in GSAP. The search needs **nothing installed**: no project, no prior `add`, no account. It ranks the whole hosted registry (~400 blocks and components) from any directory, and `transitions.md` already takes this route for `clockWipe()` / `iris()` via `npx hyperframes add sdf-iris`. A real component is closer to the source than a hand-approximation, so it usually raises the SSIM rather than lowering it — but the render diff in Step 4 is still the arbiter. Hand-write the effect when a search returns nothing that fits, and record the substitution in `TRANSLATION_NOTES.md` either way.
+**Search the live catalog for any visual effect the table does not map.** When the source paints a look with no HF API equivalent — a scanline/CRT overlay, a glitch or chromatic-aberration pass, a shader wipe, a film-grain treatment — run `hyperframes catalog --query "<the effect, in plain English>" --json` before hand-writing it in GSAP. The search needs **nothing installed**: no project, no prior `add`, no account. It ranks the whole hosted registry (~400 blocks and components) from any directory, and `transitions.md` already takes this route for `clockWipe()` / `iris()` via `hyperframes add sdf-iris`. A real component is closer to the source than a hand-approximation, so it usually raises the SSIM rather than lowering it — but the render diff in Step 4 is still the arbiter. Hand-write the effect when a search returns nothing that fits, and record the substitution in `TRANSLATION_NOTES.md` either way.
 
 ### Step 3: Generate the HF composition
 
@@ -85,11 +87,11 @@ Custom React subcomponents inline as repeated HTML using the prop interface as t
 Run the eval harness — [`references/eval.md`](references/eval.md) for the full guide. Quick path:
 
 ```bash
-# Render Remotion baseline (after npm install in the fixture)
-cd remotion-src && npx remotion render <CompositionId> out/baseline.mp4
+# Render Remotion baseline (after pnpm add in the fixture)
+cd remotion-src && pnpm exec remotion render <CompositionId> out/baseline.mp4
 
 # Render HF translation
-cd ../hf-src && npx hyperframes render --skill=remotion-to-hyperframes --output ../hf.mp4
+cd ../hf-src && hyperframes render --skill=remotion-to-hyperframes --output ../hf.mp4
 
 # SSIM diff
 ../../scripts/render_diff.sh ./remotion-src/out/baseline.mp4 ./hf.mp4 ./diff

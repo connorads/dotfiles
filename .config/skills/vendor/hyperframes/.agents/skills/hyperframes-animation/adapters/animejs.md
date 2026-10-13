@@ -119,8 +119,8 @@ Use GSAP for complex scene sequencing unless the user specifically asks for Anim
 After editing a composition that uses Anime.js:
 
 ```bash
-npx hyperframes lint
-npx hyperframes validate
+hyperframes lint
+hyperframes check
 ```
 
 ## Credits And References

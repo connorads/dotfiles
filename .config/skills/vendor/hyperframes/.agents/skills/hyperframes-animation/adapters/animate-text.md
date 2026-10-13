@@ -10,7 +10,7 @@ When a beat needs a deterministic text animation, load the upstream skill alongs
 
 ```bash
 # In your project root, install the upstream skill into .agents/skills/
-npx skills add pixel-point/animate-text
+pnpm exec skills add pixel-point/animate-text
 ```
 
 Or in a skill-aware agent runtime, the skill is invoked by name:
@@ -46,6 +46,8 @@ For convenience while writing storyboards: the upstream skill provides 24 effect
 - **Whole element (7):** micro-scale-fade, shimmer-sweep, fade-through, shared-axis-z, scale-down-fade, focus-blur-resolve, shared-axis-x
 
 For descriptions, durations, easing curves, and the per-library recipes: load `/animate-text` and read its own catalog page.
+
+For `mask-reveal-up` and other line-mask effects, leave room for the font's painted glyphs at rest. Tight line-height plus `overflow: hidden` can cut descenders and accents after the reveal finishes. Follow the [text mask guidance](../techniques.md#12-clip-path-reveal-masks): start with block padding of `0.2em` at the text's font size and a compensating negative margin, or release the clip on the timeline once the entrance settles. Inspect a settled snapshot using the actual font and text; `data-layout-allow-overflow` also waives checks in the resting state.
 
 ## In the storyboard
 

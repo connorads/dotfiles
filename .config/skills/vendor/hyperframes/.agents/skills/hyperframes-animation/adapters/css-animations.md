@@ -112,7 +112,7 @@ Use CSS custom properties to avoid duplicating keyframes:
 
 The render engine needs to know the composition's total length. GSAP timelines report this automatically; CSS-only compositions have no timeline object, so the runtime infers duration from the longest running animation's computed end time (`animation-delay` + `animation-duration` × finite `animation-iteration-count`, per element with `data-start` added as an offset). `data-duration` on the root element is optional whenever every CSS animation on the page is finite — you don't need to add it just because the composition is CSS-driven.
 
-`animation-iteration-count: infinite` (or any unresolved/unbounded animation) has no finite end time, so it cannot be auto-inferred. If the composition's only animation is infinite, you **must** add `data-duration="<seconds>"` to the root `[data-composition-id]` element with your intended total length — `npx hyperframes lint` errors on this case (`root_composition_missing_duration_source`) precisely because there is nothing for the runtime to infer.
+`animation-iteration-count: infinite` (or any unresolved/unbounded animation) has no finite end time, so it cannot be auto-inferred. If the composition's only animation is infinite, you **must** add `data-duration="<seconds>"` to the root `[data-composition-id]` element with your intended total length — `hyperframes lint` errors on this case (`root_composition_missing_duration_source`) precisely because there is nothing for the runtime to infer.
 
 ```html
 <div
@@ -131,8 +131,8 @@ The render engine needs to know the composition's total length. GSAP timelines r
 After editing CSS animation compositions:
 
 ```bash
-npx hyperframes lint
-npx hyperframes check
+hyperframes lint
+hyperframes check
 ```
 
 ## Credits And References

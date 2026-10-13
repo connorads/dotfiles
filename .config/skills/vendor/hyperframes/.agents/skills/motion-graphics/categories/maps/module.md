@@ -31,7 +31,7 @@ Set `content.lane` first:
 
 ## Build (reuse-first)
 
-Vector: `npx hyperframes add <block>` → edit regions/data/palette in place. Basemap: baked `map.mp4` as track-0 `<video>`, bind overlays to anchors.
+Vector: `hyperframes add <block>` → edit regions/data/palette in place. Basemap: baked `map.mp4` as track-0 `<video>`, bind overlays to anchors.
 
 **Restraint (no cheese — this is the #1 way auto-built maps go wrong):** every animated element must serve the message — region, connector, label, pin, camera. **NO decorative ambient glows, background light blobs, floating particles, lens flares, or gratuitous bloom.** Motion = a continuous camera move (viewBox push/zoom) + purposeful, overlapping element reveals — not a light show. Palette: color must **carry meaning** — a data scale (choropleth), categorical fills that distinguish regions (political map), or 1–2 accents for the subjects (highlighted countries / route) over neutral everything-else. Don't add color as **decoration** (a country amber just for contrast, a glow for "energy"). The frame should read like a clean broadcast map, not a screensaver.
 

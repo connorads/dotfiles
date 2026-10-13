@@ -79,7 +79,7 @@ node <SKILL_DIR>/scripts/dither.mjs \
   --palette '#0f380f,#306230,#8bac0f,#9bbc0f' \
   --point-size 3
 
-node <SKILL_DIR>/scripts/resolve.mjs \
+hyperframes media-use resolve \
   --from source.atkinson.mp4 --type video --project .
 ```
 
@@ -112,14 +112,16 @@ engine directly.
 # install once: uv venv ~/.venvs/parakeet && VIRTUAL_ENV=~/.venvs/parakeet uv pip install parakeet-mlx
 node <SKILL_DIR>/scripts/transcribe.mjs --input talk.mp4 --out talk.transcribe.json
 
-# equivalently, the hyperframes CLI has Parakeet built in (auto-detects it, whisper fallback):
-npx hyperframes transcribe talk.mp4 --engine parakeet   # or --engine auto (default)
+# the hyperframes CLI runs Parakeet on macOS, Linux and Windows once it is installed:
+hyperframes models install parakeet                 # once, ~640 MB, ask the user first
+hyperframes transcribe talk.mp4 --engine parakeet   # or --engine auto (default)
 ```
 
-VERIFIED on 24GB: accurate, ~3s (cached) for 8s audio. Parakeet covers English +
-25 European languages. For other languages, or when parakeet-mlx is not
-installed, transcribe.mjs auto-falls-back to whisper.cpp (99 languages) via
-`hyperframes transcribe`. `--engine parakeet|whisper` forces one. (Cohere
+VERIFIED on 24GB: accurate, ~3s (cached) for 8s audio. Parakeet covers 25
+European languages, English included. For other languages, or when parakeet-mlx is not
+installed, transcribe.mjs falls back to `hyperframes transcribe`, which uses the
+CLI's Parakeet when `models install parakeet` has run and whisper.cpp (99
+languages) otherwise. `--engine parakeet|whisper` forces one. (Cohere
 Transcribe tops the leaderboard on paper but its mlx-audio quants produced
 garbage and ran 40-70x slower on a Mac in testing, so it is not wired in.)
 
@@ -208,9 +210,9 @@ ffmpeg -i mix.wav \
 GENERATES. Two paths, best-for-the-machine picked automatically:
 
 1. **Local (default, free, private): mflux** (FLUX-on-MLX). `resolve` spec-checks
-   AVAILABLE RAM and runs the best FLUX-class model that fits, via
-   `scripts/lib/local-models.mjs` (`imagegen` ladder) + `mflux-provider.mjs`.
-   The RAM ladder (agent sees it via `describeModelLadder("imagegen", specs)`):
+   AVAILABLE RAM and runs the best FLUX-class model that fits, using the
+   CLI-bundled `imagegen` ladder (its modules are not shipped in the standalone
+   skill). The RAM ladder:
 
    | Tier   | Model                | Needs (available RAM) | Notes                               |
    | ------ | -------------------- | --------------------- | ----------------------------------- |
@@ -243,7 +245,7 @@ clip), so treat the fallback as "HeyGen wasn't reachable," not "upgrade the
 quality":
 
 - **HeyGen avatar video (default, free for new API users):**
-  `heygenVideoGenerate` (`scripts/lib/heygen-video-provider.mjs`) shells the
+  The CLI-bundled provider shells the
   `heygen` CLI — never the raw API — auto-picking a public avatar and a
   starfish voice (override with `--avatar-id`/`--voice-id`, threaded through
   as `ctx.avatarId`/`ctx.voiceId`). If the CLI reports `not_authenticated`,
@@ -251,13 +253,13 @@ quality":
   new API users — sign in) to stderr and falls through to LTX instead of
   hard-failing.
 - **Local fallback: LTX 2.3 on MLX** via `dgrauet/ltx-2-mlx`, the `videogen`
-  ladder in `local-models.mjs` (`ltx-video-provider.mjs`). Generative clips
+  ladder bundled in the HyperFrames CLI. Generative clips
   (t2v), spec-gated to RAM. Verified on 24GB: 512x320 x 33f with audio.
 
 Every generating `heygen` call from media-use — TTS, avatar video, and
 catalog search — sends the allowlisted `X-HeyGen-Client-Source: media-use`
 header (persistent flag, works on every subcommand) via the shared
-`HEYGEN_CLIENT_SOURCE_ARGV` constant (`scripts/lib/heygen-cli.mjs`), so usage
+CLI-internal `HEYGEN_CLIENT_SOURCE_ARGV` constant, so usage
 tags correctly in billing/resource meta and shows up in the API dashboards.
 Read-only discovery (`avatar list`, `voice list`) doesn't need it.
 

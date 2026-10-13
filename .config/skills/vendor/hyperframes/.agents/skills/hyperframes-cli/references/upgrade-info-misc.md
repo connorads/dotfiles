@@ -5,9 +5,9 @@ Catch-all reference for commands that don't fit the main dev loop.
 ## info
 
 ```bash
-npx hyperframes info                   # project metadata
-npx hyperframes info ./my-video        # specific project
-npx hyperframes info --json
+hyperframes info                   # project metadata
+hyperframes info ./my-video        # specific project
+hyperframes info --json
 ```
 
 Prints **project** metadata: name, resolution, duration, element counts by type, track count, and total project size. Project-level — not environment. For environment health use `doctor`.
@@ -15,21 +15,18 @@ Prints **project** metadata: name, resolution, duration, element counts by type,
 ## upgrade
 
 ```bash
-npx hyperframes upgrade                # check + interactive prompt
-npx hyperframes upgrade --check        # check and exit, no prompt (agent-friendly)
-npx hyperframes upgrade --check --json # machine-readable: current / latest / updateAvailable
-npx hyperframes upgrade --yes          # print upgrade commands without prompting
+hyperframes upgrade --check         # read-only version report
+hyperframes upgrade --check --json  # machine-readable report
+hyperframes upgrade --project . --check --json # report project-script pin drift
 ```
 
-Compares the installed CLI version against npm latest.
-
-`--project [dir]` bumps a **project's** pinned scripts instead of the global install: it rewrites every `npx …hyperframes@<version>…` in `<dir>/package.json` (default cwd) to npm-latest. Always invoke it unpinned (`npx hyperframes@latest upgrade --project`) — a project scaffolded on an old CLI stays frozen otherwise. `--project . --check` reports the delta without writing; add `--json` for `{ changed, from, to, path }`. Pass the dir explicitly whenever another flag follows `--project` — on older releases a bare `--project` consumes the next flag as its directory value.
+These probes compare versions with the registry. Report the result without changing project scripts or installing a CLI. Tool updates and dependency pin changes require the authorised local update workflow. The upstream project updater recognises its generated script format; a managed executable does not inherit those script pins. Verify the installed CLI version before rendering.
 
 ## timeline
 
 ```bash
-npx hyperframes timeline [project-dir]          # tracks and clips as a table with bars
-npx hyperframes timeline [project-dir] --json
+hyperframes timeline [project-dir]          # tracks and clips as a table with bars
+hyperframes timeline [project-dir] --json
 ```
 
 Reach for `timeline` instead of opening `index.html` and each `data-composition-src` file when you need to know what is on the timeline: which clips exist, when they start and end, what they play, and how loud. It reads the project's files statically (no browser).
@@ -55,7 +52,7 @@ audio (1)
 ### Query one-liners (jq, node fallback if jq is absent)
 
 ```bash
-TL=$(npx hyperframes timeline --json)
+TL=$(hyperframes timeline --json)
 # 1. what plays at absolute time T=12.5
 jq --argjson t 12.5 '[.timeline.tracks[].rows[] | select(.absStart<=$t and .absEnd>$t)]' <<<"$TL"
 node -e 'const t=12.5,j=JSON.parse(require("fs").readFileSync(0,"utf8"));j.timeline.tracks.forEach(tr=>tr.rows.forEach(x=>{if(x.absStart<=t&&x.absEnd>t)console.log(x.id,x.file)}))' <<<"$TL"
@@ -76,10 +73,10 @@ node -e 'const k="video",n=2,j=JSON.parse(require("fs").readFileSync(0,"utf8"));
 ## compositions, docs
 
 ```bash
-npx hyperframes compositions           # list compositions in project
-npx hyperframes compositions --json
-npx hyperframes docs                   # list available topics
-npx hyperframes docs rendering         # print one topic inline in the terminal
+hyperframes compositions           # list compositions in project
+hyperframes compositions --json
+hyperframes docs                   # list available topics
+hyperframes docs rendering         # print one topic inline in the terminal
 ```
 
 `compositions` lists every `data-composition-id` in the project (including sub-comps) with duration, resolution, and element count.
@@ -89,10 +86,10 @@ npx hyperframes docs rendering         # print one topic inline in the terminal
 ## benchmark
 
 ```bash
-npx hyperframes benchmark              # run the preset matrix in current project
-npx hyperframes benchmark ./my-video   # specific project
-npx hyperframes benchmark --runs 5     # repeat each config N times (default 3)
-npx hyperframes benchmark --json
+hyperframes benchmark              # run the preset matrix in current project
+hyperframes benchmark ./my-video   # specific project
+hyperframes benchmark --runs 5     # repeat each config N times (default 3)
+hyperframes benchmark --json
 ```
 
 Renders the project with 5 preset configurations — `30fps draft 2w`, `30fps standard 2w`, `30fps high 2w`, `30fps standard 4w`, `60fps standard 4w` — and prints a comparison of render speed and output file size. Use it to find the fastest acceptable preset for your machine. Not a single-render-with-stage-breakdown.
@@ -100,9 +97,9 @@ Renders the project with 5 preset configurations — `30fps draft 2w`, `30fps st
 ## telemetry
 
 ```bash
-npx hyperframes telemetry status      # show telemetry state
-npx hyperframes telemetry disable     # disable anonymous usage telemetry
-npx hyperframes telemetry enable      # re-enable telemetry
+hyperframes telemetry status      # show telemetry state
+hyperframes telemetry disable     # disable anonymous usage telemetry
+hyperframes telemetry enable      # re-enable telemetry
 ```
 
 Telemetry is anonymous usage counters only. Disable globally with `HYPERFRAMES_NO_TELEMETRY=1` if env-var control is preferred over the subcommand.
@@ -111,15 +108,24 @@ Events include two fingerprint properties used to distinguish managed-sandbox ru
 
 - **`sandbox_runtime`**: `gvisor` / `firecracker` / `docker` / `kvm` / `wsl` / `null`. gVisor via kernel string + `/proc/version`. Firecracker via `/dev/vsock` + DMI sys_vendor. Docker via `/.dockerenv` + cgroup.
 - **`agent_runtime`**: `claude_code` / `codex` / `cursor` / `copilot_agent` / `jules` / `replit` / `devin` / `aider` / `gemini_cli` / `hermes` / `openclaw` / `null`. Detected by the existence of well-known vendor env vars; the values themselves are never read.
+- **`client`**: set only when an app launched the CLI with a `HYPERFRAMES_CLIENT` tag (`<app>/<version>/<channel>`), sent as-is when it is a short slug.
 
 ## Asset Preprocessing
 
 ```bash
-npx hyperframes tts
-npx hyperframes transcribe
-npx hyperframes remove-background
+hyperframes tts
+hyperframes transcribe
+hyperframes remove-background
 ```
 
 These produce assets (narration audio, word-level transcripts, transparent video) that get dropped into a composition. Each may download its own model on first run.
 
 For voice selection, Whisper model rules, output format choice, and the TTS → transcript → captions chain, invoke the `media-use` skill. This skill stays focused on the dev loop.
+
+## Remaining harness usage
+
+Do not run the harness usage command. It reads unrelated Claude, Codex or Grok credentials. Use user-provided allowance information; otherwise report usage as unknown. Keep scope and workflow choices with the user.
+
+Known results contain `status: "known"`, `harness`, `planTier`, `session`, and `weekly`. Each available window contains `usedPercent`, `remainingPercent`, and `resetsAt`; an unavailable window is `null`. `planTier` is the readable subscription tier when available, otherwise `null`. Claude Code reports its shared five-hour and weekly windows. Codex reports its shared session and weekly windows when available. Grok reports its included weekly allowance with `session: null`.
+
+Unknown results contain `status: "unknown"` and a token-free `reason`. Missing, expired, unsupported, ambiguous, or unreadable logins and unavailable provider responses return unknown. Report the unknown state without guessing allowance. The command reads existing credentials without refreshing or rewriting them and emits no tokens or telemetry. Usage is a snapshot; it does not reserve allowance or estimate the next video's cost. Keep scope and workflow choices with the user.

@@ -1,6 +1,6 @@
 # Frame worker — general-video delta
 
-> The shared law is the core contract above (the packet builder prepends `../../hyperframes/references/frame-worker-core.md` to this file as `_role.md`) — read the two as one role. This file carries only what's specific to a general-video scene; you run N-up, **one scene each** — your dispatch carries exactly one packet. Tempted to add a generic GSAP / timeline rule here? Wrong home — it belongs in the core contract or `hyperframes-core`.
+> The shared law is the core contract above (the packet builder prepends `../../hyperframes/references/frame-worker-core.md` to this file as `_role.md`) — read the two as one role. This file carries only what's specific to a general-video scene; each worker receives the **2–3 scene packets** the orchestrator assigns; build every assigned packet, one at a time. Tempted to add a generic GSAP / timeline rule here? Wrong home — it belongs in the core contract or `hyperframes-core`.
 
 ## Your scene is invented, not captured
 
@@ -12,10 +12,10 @@ Project inputs names the design file (resolution order `frame.md` → `design.md
 
 ## Output contract — composition + motion sidecar
 
-Write exactly two files, then stop:
+For each assigned packet, write exactly two files. Stop only after every assigned packet has both:
 
-1. `compositions/<frame_id>.html` — the sub-composition, a bare fragment per the core contract.
-2. `compositions/<frame_id>.motion.json` — one JSON object the orchestrator merges into the project's motion ledger:
+1. The packet's exact `src` (e.g. `compositions/frames/<frame_id>.html`) — the sub-composition, a bare fragment per the core contract.
+2. The sidecar `<frame_id>.motion.json` in the same directory (e.g. `compositions/frames/<frame_id>.motion.json`) — one JSON object the orchestrator merges into the project's motion ledger:
 
 ```json
 {

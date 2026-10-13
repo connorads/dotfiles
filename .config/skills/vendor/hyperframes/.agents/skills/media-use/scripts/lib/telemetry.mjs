@@ -1,20 +1,13 @@
-// Opt-out usage tracking for media-use, sharing the hyperframes CLI/studio
-// identity (packages/cli/src/telemetry): the same install id from
-// ~/.hyperframes/config.json, plus a $identify to the HeyGen account on sign-in,
-// so a person is one PostHog profile across surfaces — not a fresh id per tool.
-// Not fully anonymous by design (it must dedupe): pseudonymous before sign-in,
-// account-linked after. Event PROPERTIES stay coarse — media TYPE, resolution
-// SOURCE, winning PROVIDER — never the intent text, file names, or paths.
-//
-// Same public PostHog project key as the CLI (a write-only ingestion key, safe
-// to ship), same opt-outs (DO_NOT_TRACK / HYPERFRAMES_NO_TELEMETRY / CI / dev),
-// and $ip:null so no IP is recorded. Fire-and-forget: telemetry never blocks a
-// resolve and never throws into it.
+// Usage tracking shares the CLI and Studio identity. Properties stay coarse and
+// never carry intent text, file names, or paths.
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import * as fs from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { withFileLock } from "./config-lock.mjs";
+import { globalMediaDir } from "./media-home.mjs";
 
 const POSTHOG_API_KEY = "phc_zjjbX0PnWxERXrMHhkEJWj9A9BhGVLRReICgsfTMmpx";
 const POSTHOG_HOST = "https://us.i.posthog.com";
@@ -22,10 +15,6 @@ const TIMEOUT_MS = 1500;
 let identifiedAccount = false;
 let warnedNonDefaultHost = false;
 
-// Same CI/test signals the test suite itself sets (resolve.test.mjs's U7 test
-// sets NODE_ENV=test and clears CI to prove the interception seam works) —
-// reused here, not a new heuristic, so that deliberate test usage never
-// triggers the warning below.
 function isTestOrCiContext() {
   return (
     process.env.CI === "true" ||
@@ -35,16 +24,6 @@ function isTestOrCiContext() {
   );
 }
 
-// Test-only interception seam: a real HTTP destination a test can point at,
-// so a spawned-child test (resolve.test.mjs) can prove track() never reaches
-// production rather than trusting DO_NOT_TRACK alone (a future call site or
-// test could forget to set that env var). Falls back to the real production
-// host whenever unset — production behavior is unchanged.
-//
-// Safety net: if this ever leaks into a real user's shell, track() would
-// silently redirect to a likely-dead host and postBatch()'s catch{} would
-// swallow the failure with zero signal. Surface one stderr warning outside
-// test/CI contexts so a real user gets some indication instead of silence.
 function posthogHost() {
   const override = process.env.MEDIA_USE_TELEMETRY_HOST;
   if (override && !warnedNonDefaultHost && !isTestOrCiContext()) {
@@ -56,9 +35,12 @@ function posthogHost() {
   return override || POSTHOG_HOST;
 }
 
-/** True when telemetry must NOT be sent (opt-out envs, CI, dev). */
+/** True when telemetry must NOT be sent (opt-out envs, CI, dev, shared config). */
 export function optedOut() {
   return (
+    // `hyperframes telemetry disable` writes telemetryEnabled: false to the
+    // shared config; one opt-out must cover the CLI and the media-use scripts.
+    readSharedConfig().telemetryEnabled === false ||
     process.env.HYPERFRAMES_NO_TELEMETRY === "1" ||
     process.env.DO_NOT_TRACK === "1" ||
     process.env.CI === "true" ||
@@ -67,12 +49,7 @@ export function optedOut() {
   );
 }
 
-// CLI + studio share one install identity in ~/.hyperframes/config.json
-// (packages/cli/src/telemetry/config.ts — same path, same `anonymousId` /
-// `telemetryNoticeShown` fields). Read and write that same file so media-use is
-// the same PostHog person and shows the notice once per person, not per tool.
-// Computed per call (not a module const) so it honors HOME at runtime — tests
-// sandbox HOME, and os.homedir() re-reads it each call.
+// Read and write the shared config so media-use keeps one identity per install.
 function sharedConfigPath() {
   return join(homedir(), ".hyperframes", "config.json");
 }
@@ -90,10 +67,24 @@ function readSharedConfig() {
   return {};
 }
 
-function writeSharedConfig(config) {
-  const dir = join(homedir(), ".hyperframes");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "config.json"), JSON.stringify(config, null, 2) + "\n");
+// Best effort: skipped when the lock cannot be taken or the file cannot be read, never written unlocked.
+function updateSharedConfig(patch) {
+  const file = sharedConfigPath();
+  mkdirSync(dirname(file), { recursive: true });
+  try {
+    withFileLock(`${file}.lock`, fs, () => {
+      let config = {};
+      try {
+        config = JSON.parse(readFileSync(file, "utf8"));
+      } catch (error) {
+        if (error.code !== "ENOENT") return;
+      }
+      if (!config || typeof config !== "object" || Array.isArray(config)) return;
+      const tmp = `${file}.${process.pid}.tmp`;
+      writeFileSync(tmp, JSON.stringify({ ...config, ...patch }, null, 2) + "\n", { mode: 0o600 });
+      renameSync(tmp, file);
+    });
+  } catch {}
 }
 
 // Adopt a pre-existing media-use-only id (~/.media/anon-id from before this
@@ -101,7 +92,7 @@ function writeSharedConfig(config) {
 // one — otherwise cross-surface continuity would start over on upgrade.
 function legacyMediaAnonId() {
   try {
-    const file = join(homedir(), ".media", "anon-id");
+    const file = join(globalMediaDir(), "anon-id");
     if (existsSync(file)) {
       const id = readFileSync(file, "utf8").trim();
       if (id) return id;
@@ -121,7 +112,7 @@ function anonymousId() {
       return config.anonymousId.trim();
     }
     const id = legacyMediaAnonId() || randomUUID();
-    writeSharedConfig({ ...config, anonymousId: id });
+    updateSharedConfig({ anonymousId: id });
     return id;
   } catch {
     return "anon"; // best-effort; a shared bucket is fine if the fs is read-only
@@ -161,7 +152,7 @@ function showTelemetryNotice() {
         "If you sign in to HeyGen, usage links to your account email or username. Opt out with HYPERFRAMES_NO_TELEMETRY=1 or DO_NOT_TRACK=1.",
       ].join("\n"),
     );
-    writeSharedConfig({ ...config, telemetryNoticeShown: true });
+    updateSharedConfig({ telemetryNoticeShown: true });
   } catch {
     // notice is best-effort; never surface into the command
   }

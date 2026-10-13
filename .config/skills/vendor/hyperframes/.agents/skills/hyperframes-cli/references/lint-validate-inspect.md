@@ -15,10 +15,10 @@ When the composition is animation-driven, run the checks before you reach for `p
 ## lint
 
 ```bash
-npx hyperframes lint                  # current directory
-npx hyperframes lint ./my-project     # specific project
-npx hyperframes lint --verbose        # info-level findings
-npx hyperframes lint --json           # machine-readable
+hyperframes lint                  # current directory
+hyperframes lint ./my-project     # specific project
+hyperframes lint --verbose        # info-level findings
+hyperframes lint --json           # machine-readable
 ```
 
 Lints `index.html` and all files in `compositions/`. Reports errors (must fix), warnings (should fix), and info (with `--verbose`). Catches missing `data-composition-id`, overlapping tracks on the same `data-track-index`, unregistered timelines, and GSAP/CSS transform conflicts.
@@ -28,20 +28,20 @@ Lints `index.html` and all files in `compositions/`. Reports errors (must fix), 
 ## check
 
 ```bash
-npx hyperframes check                    # current directory: the full browser gate
-npx hyperframes check ./my-project       # specific project
-npx hyperframes check --json             # agent-readable envelope {ok, lint, runtime, layout, motion, contrast, hdr, snapshots}
-npx hyperframes check --snapshots        # also write overview frames (annotated) + per-finding crops
-npx hyperframes check --samples 15       # denser timeline sweep (default 9)
-npx hyperframes check --at 1.5,4,7.25    # explicit hero-frame timestamps
-npx hyperframes check --at-transitions   # also sample every tween start/end boundary
-npx hyperframes check --tolerance 4      # allowed overflow px before reporting (default 2)
-npx hyperframes check --timeout 30000    # initial render-ready + navigation minimum in ms (defaults: 3000 / 10000)
-npx hyperframes check --no-contrast      # skip the WCAG audit while iterating
-npx hyperframes check --strict           # exit non-zero on warnings too (default: only errors)
+hyperframes check                    # current directory: the full browser gate
+hyperframes check ./my-project       # specific project
+hyperframes check --json             # agent-readable envelope {ok, browserSkipped, lint, runtime, layout, motion, contrast, hdr, snapshots}
+hyperframes check --snapshots        # also write overview frames (annotated) + per-finding crops
+hyperframes check --samples 15       # denser timeline sweep (default 9)
+hyperframes check --at 1.5,4,7.25    # explicit hero-frame timestamps
+hyperframes check --at-transitions   # also sample every tween start/end boundary
+hyperframes check --tolerance 4      # allowed overflow px before reporting (default 2)
+hyperframes check --timeout 30000    # initial render-ready + navigation minimum in ms (defaults: 3000 / 10000)
+hyperframes check --no-contrast      # skip the WCAG audit while iterating
+hyperframes check --strict           # exit non-zero on warnings too (default: only errors)
 ```
 
-One command, one Chrome boot. `check` runs the linter first and skips the browser entirely when lint reports errors. Then it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
+One command, one Chrome boot. `check` runs the linter first and skips the browser entirely when lint reports errors. When the browser never ran (lint errors, a linter crash, or a browser launch failure), `browserSkipped` is `true` and the `layout`, `motion` and `contrast` sections are empty, not clean. Otherwise it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
 
 - **Runtime**: JavaScript console errors, unhandled exceptions, failed network requests (media-file `ERR_ABORTED` filtered out), HTTP 4xx/5xx.
 - **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), children escaping clipping containers.
@@ -50,7 +50,7 @@ One command, one Chrome boot. `check` runs the linter first and skips the browse
 
 Every finding carries a selector, the element's `data-*` identity, the composition source file, a bbox, and the sample time: jump straight from the JSON to the HTML you must edit and re-run.
 
-**Severity is persistence-aware.** A dynamic issue observed at a single grid sample (an entrance/exit transient) demotes to info and never gates. Issues held across samples gate the exit code, a held `content_overlap` is an error, and a held, partially-visible `canvas_overflow` breaching ≥5% of the canvas promotes to warning. Coordinate-frame findings (`escaped_container`, `panel_out_of_canvas`, `connector_detached`) flag geometry computed in one frame but rendered in another — an element far outside its offset parent, a painted panel stuck across the canvas edge, a connector line detached from every node. If a 3s+ composition shows zero geometry change across every sample, `check` fails with `sweep_static`: a frozen timeline makes every green verdict unreliable, so it refuses to pass. The fingerprint includes per-element opacity, so opacity-only reveals (code typing, staggered fades) count as motion — but only while they're still in flight at the sampled times. The classic trap is a reveal that completes early and then holds a static frame for the rest of the duration: every sample lands on the settled state and the run fails. Spread the reveal across the timeline or keep one continuously animated element alive (a blinking caret is idiomatic for code typing) — don't bolt on a slow position drift just to appease the check.
+**Severity is persistence-aware.** A dynamic issue observed at a single grid sample (an entrance/exit transient) demotes to info and never gates. Issues held across samples gate the exit code, a held `content_overlap` is an error, and a held, partially-visible `canvas_overflow` breaching ≥5% of the canvas promotes to warning. Coordinate-frame findings (`escaped_container`, `panel_out_of_canvas`, `connector_detached`) flag geometry computed in one frame but rendered in another — an element far outside its offset parent, a painted panel stuck across the canvas edge, a connector line detached from every node. Text drawn into a `<canvas>` has no DOM box, so `canvas_overflow` cannot see it; `canvas_content_at_edge` warns when a canvas's pixels show sharp content (drawn text, hard shapes) along the frame edge — mark intentional full-bleed art (particles, photos) with `data-layout-allow-overflow`. If a 3s+ composition shows no visible change across every sample, `check` fails with `sweep_static`: a frame that never changes while a GSAP timeline or tween, or a CSS or Web animation, holds the same time without ever finishing means the seek is not driving the page, so it refuses to pass. Any other frame that never changes (a still title card, an audio-only advance) is a warning that `--strict` fails; a composition meant to be still can take `data-no-timeline` on its root to skip it. The fingerprint includes per-element opacity, so opacity-only reveals (code typing, staggered fades) count as motion — but only while they're still in flight at the sampled times. The classic trap is a reveal that completes early and then holds a static frame for the rest of the duration: every sample lands on the settled state and check warns that nothing on screen moved (`--strict` fails it). Spread the reveal across the timeline or keep one continuously animated element alive (a blinking caret is idiomatic for code typing) — don't bolt on a slow position drift just to appease the check.
 
 **Escape hatches** (mark intent in the HTML, then re-run):
 
@@ -63,8 +63,8 @@ Every finding carries a selector, the element's `data-*` identity, the compositi
 **Opt-in pipeline gates** (used by orchestrators; off by default):
 
 ```bash
-npx hyperframes check --caption-zone "x0=0;y0=.82;x1=1;y1=1;severity=error;seek=.25,1"
-npx hyperframes check --frame-check     # media (img/svg/video/canvas) out-of-frame detection
+hyperframes check --caption-zone "x0=0;y0=.82;x1=1;y1=1;severity=error;seek=.25,1"
+hyperframes check --frame-check     # media (img/svg/video/canvas) out-of-frame detection
 ```
 
 `--caption-zone` takes fractional band geometry (`x0/y0/x1/y1` required, 0-1 fractions of the composition's own canvas, portrait included) with optional `severity` and comma-separated `seek` fractions; it flags a text element's DOM box (`getBoundingClientRect`) that overlaps the band. Waive intentional lower-third copy with `data-layout-allow-caption-zone` on the element or its nearest wrapper (see Escape hatches). `--frame-check` reports media elements breaching the canvas beyond `max(120px, 6% of the min canvas dimension)`.
@@ -101,23 +101,27 @@ Drop a `*.motion.json` sidecar next to the composition (matching the html basena
 ## snapshot
 
 ```bash
-npx hyperframes snapshot                       # 5 key frames as PNG
-npx hyperframes snapshot ./my-project          # specific project
-npx hyperframes snapshot --frames 10           # evenly-spaced N frames
+hyperframes snapshot                       # 5 key frames as PNG
+hyperframes snapshot ./my-project          # specific project
+hyperframes snapshot --frames 10           # evenly-spaced N frames
+hyperframes snapshot --range 3:5 --frames 8 # 8 frames within root-timeline seconds 3–5
+hyperframes snapshot --composition intro --frames 8 # 8 frames within this data-composition-id
 ```
 
-Captures still PNGs from the composition for visual diffing, thumbnails, or attaching to a PR. Faster than rendering a video when you only need a few hero frames. Output lands in the project's snapshots directory. Not deprecated: it remains the standalone capture utility, while `check --snapshots` covers the gate's needs (overview frames annotated with labeled finding boxes, plus `finding-NN-<code>.png` crops for every error finding with a bbox).
+Still PNGs. Each run writes `.hyperframes/artifacts/snapshots/<id>/` unless `--output` is set. `snapshot` is the standalone capture; `check --snapshots` is the gate.
+
+One of `--at`, `--range START:END` (seconds), or `--composition <data-composition-id>` (not a CSS selector). `--frames` defaults to 5. Range and composition sample just before the end and add no extra end frame; `--at` adds one unless `--no-end`.
 
 ### Zooming into a reported finding
 
 `hyperframes check --snapshots` already writes a `finding-NN-<code>.png` crop for every error finding that carries a bbox, but the same zoom is available standalone once you know what to look at:
 
 ```bash
-npx hyperframes check --snapshots               # reports a finding, e.g. content_overlap on "#cta"
-npx hyperframes snapshot --zoom "#cta"           # crop the element to verify the defect, at 3x density
-npx hyperframes snapshot --zoom "100,50,400,300" --zoom-scale 2   # or an exact pixel region
+hyperframes check --snapshots               # reports a finding, e.g. content_overlap on "#cta"
+hyperframes snapshot --zoom "#cta"           # crop the element to verify the defect, at 3x density
+hyperframes snapshot --zoom "100,50,400,300" --zoom-scale 2   # or an exact pixel region
 # fix the composition HTML, then re-check:
-npx hyperframes check
+hyperframes check
 ```
 
 `--zoom` takes a CSS selector or an exact `x,y,w,h` pixel region and always produces a real high-density crop (a raised `deviceScaleFactor`, never CSS zoom or a viewport resize), so the composition's layout — and its render determinism — is untouched. A selector matching nothing is a loud error, not a silent full-frame fallback, and a frame where the target has no visible box (collapsed or animated off-canvas) is skipped with a note instead of written as a sliver.
@@ -129,4 +133,4 @@ All three keep working, print a deprecation notice on stderr, and mark `_meta.de
 - `validate` (runtime errors + contrast) → `check` (contrast failures are now gating errors with fix payloads, not warnings).
 - `inspect` / `layout` (layout sweep + motion sidecar) → `check` (same flags: `--samples`, `--at`, `--at-transitions`, `--tolerance`, `--strict`).
 
-Migrate scripts by replacing the sequence with the single `check` invocation; scaffolded projects' `npm run check` already points there.
+Migrate scripts by replacing the sequence with the single `check` invocation; scaffolded projects' `pnpm check` already points there.

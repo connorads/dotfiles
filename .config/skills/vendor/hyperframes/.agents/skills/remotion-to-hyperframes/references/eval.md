@@ -23,7 +23,7 @@ python3 ../../scripts/lint_source.py ./remotion-src/src/
 [ -f setup.sh ] && ./setup.sh
 
 # 3. Render Remotion baseline
-cd remotion-src && npm install && npm run render
+cd remotion-src && pnpm add && pnpm render
 # -> remotion-src/out/baseline.mp4
 
 # 4. Render HF translation

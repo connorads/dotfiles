@@ -6,8 +6,8 @@ Turn `shot-plan.json` into one renderable HyperFrames composition (`compositions
 
 Default = **compose existing catalog capabilities, not hand-author**:
 
-- **Search first, for every named effect** — `npx hyperframes catalog --query "<the move, in plain English>" --json`, including an effect the user names after the plan is written. It needs nothing installed and no project. Author by hand only after a search came back with nothing that does the job. Send feedback only when the user explicitly asks for that report. If telemetry is disabled or the user opted out, do not send it. Search results, a completed render and tool warnings are not requests to send feedback. Only after that request, send a gap report using `/hyperframes-registry` Discovery.<!-- LOCAL PATCH (connorads dotfiles): Motion builders report catalog misses only when the user explicitly requests it and has not opted out. -->
-- `npx hyperframes add <block>` (registry) → customize in place. Most blocks bake content/data into their own script (only a few expose CSS-var params), so reuse = **add + edit**.
+- **Search first, for every named effect** — `hyperframes catalog --query "<the move, in plain English>" --json`, including an effect the user names after the plan is written. It needs nothing installed and no project. Author by hand only after a search came back with nothing that does the job. Send feedback only when the user explicitly asks for that report. If telemetry is disabled or the user opted out, do not send it. Search results, a completed render and tool warnings are not requests to send feedback. Only after that request, send a gap report using `/hyperframes-registry` Discovery.<!-- LOCAL PATCH (connorads dotfiles): Motion builders report catalog misses only when the user explicitly requests it and has not opted out. -->
+- `hyperframes add <block>` (registry) → customize in place. Most blocks bake content/data into their own script (only a few expose CSS-var params), so reuse = **add + edit**.
 - `hyperframes-animation` rules / blueprints / transitions for motion; runtime adapters (GSAP default).
 
 Hand-author only (a) gaps no block/rule covers, (b) the `asset-fusion` affordance binding. The Director named the block(s) + customizations in `shot-plan.json` (`content.block` + `content.customize`); see `catalog-map.md`.
@@ -35,6 +35,10 @@ Build the **hero-frame end-state** in CSS first (flex + padding; never absolute 
 ## Critical correctness (GSAP / seek)
 
 Opacity-gate delayed elements (set hidden until their entrance). Clamp at tween bounds (no overshoot past a held value). Allowed eases: `power1–4`, `back`, `bounce`, `circ`, `elastic`, `expo`, `sine` (`.in/.out/.inOut`). One motif per scene. Run `hyperframes check` for overflow / collisions.
+
+## Motion quality
+
+Before writing the timeline, read and follow the shared [motion principles](../../hyperframes-creative/references/motion-principles.md). For `charts` and `stat`, also read [data in motion](../../hyperframes-creative/references/data-in-motion.md) before laying out or animating the data.
 
 ## Hand off for verification
 

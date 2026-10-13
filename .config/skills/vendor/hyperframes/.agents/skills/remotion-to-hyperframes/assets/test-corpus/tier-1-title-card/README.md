@@ -27,11 +27,11 @@ The Remotion→HF time conversion is `time = frame / fps`. So
 
 ```bash
 # Render Remotion baseline
-cd remotion-src && npm install && npm run render
+cd remotion-src && pnpm add && pnpm render
 # Renders to remotion-src/out/baseline.mp4
 
 # Render HyperFrames translation
-cd ../hf-src && npx hyperframes render --output ../hf.mp4
+cd ../hf-src && hyperframes render --output ../hf.mp4
 
 # Compare with the eval harness (from skill scripts/)
 ../../../scripts/render_diff.sh ./remotion-src/out/baseline.mp4 ./hf.mp4 ./diff

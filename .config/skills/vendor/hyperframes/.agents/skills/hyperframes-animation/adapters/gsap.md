@@ -9,7 +9,7 @@ GSAP usage scoped to HyperFrames' seek-driven render model. This skill is the GS
 
 ## HyperFrames Contract
 
-HyperFrames controls GSAP through its `gsap` runtime adapter. Create a paused timeline synchronously, register it on `window.__timelines` with the exact `data-composition-id`, and let HyperFrames seek it.
+HyperFrames controls GSAP through its `gsap` runtime adapter. Create a paused timeline, register it on `window.__timelines` with the exact `data-composition-id` after adding its tweens, and let HyperFrames seek it. Setup may run inside an async callback; register the completed timeline at the end of that callback.
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
@@ -96,7 +96,7 @@ HyperFrames is stricter than vanilla GSAP. Animate only:
 - Use both `svgOrigin` and `transformOrigin` on the same SVG element.
 - Chain animations with `delay` when a timeline can sequence them.
 - Create tweens before the DOM exists.
-- Use infinite `repeat: -1` in HyperFrames compositions — use finite repeat counts computed from the visible duration.
+- Use infinite `repeat: -1` without a finite root `data-duration` (with one, export clips to that window); when a loop must end before the composition does, use a finite repeat count computed from the visible duration.
 
 ## Credits And References
 

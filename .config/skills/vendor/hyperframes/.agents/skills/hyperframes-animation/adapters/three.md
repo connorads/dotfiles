@@ -14,7 +14,7 @@ HyperFrames supports Three.js through its `three` runtime adapter. The adapter d
 - Listen for the `hf-seek` event and render exactly that time.
 - Load models, textures, and HDRIs before render-critical seeking. Do not fetch them at seek time.
 - Avoid `requestAnimationFrame` or `renderer.setAnimationLoop` as the source of truth for render-critical motion.
-- **Always set `data-duration="<seconds>"` on the root `[data-composition-id]` element.** Unlike CSS/WAAPI/Lottie, the `three` adapter has no duration auto-inference — it only forwards time via `hf-seek`/`__hfThreeTime`, it doesn't inspect your scene for an `AnimationClip`/`AnimationMixer` length. Without `data-duration` (and no GSAP timeline), the render engine has no way to know how long to capture and fails with "Composition has zero duration". `npx hyperframes lint` errors on this (`root_composition_missing_duration_source`).
+- **Always set `data-duration="<seconds>"` on the root `[data-composition-id]` element.** Unlike CSS/WAAPI/Lottie, the `three` adapter has no duration auto-inference — it only forwards time via `hf-seek`/`__hfThreeTime`, it doesn't inspect your scene for an `AnimationClip`/`AnimationMixer` length. Without `data-duration` (and no GSAP timeline), the render engine has no way to know how long to capture and fails with "Composition has zero duration". `hyperframes lint` errors on this (`root_composition_missing_duration_source`).
 
 The adapter sets `window.__hfThreeTime` and dispatches `new CustomEvent("hf-seek", { detail: { time } })` on each seek.
 
@@ -114,6 +114,37 @@ function renderAt(time) {
 
 If several mixers exist, seek all of them from the same `time`.
 
+## Camera Cuts Inside One Canvas
+
+When one scene switches camera shots by time, declare each cut once and read that constant everywhere: in the camera's shot selector and in every object's visibility window. A window written as its own literal near the cut (`t > 22.9` against a cut at `t < 23`) shows the next shot's objects in the last frames of the previous shot. At 30 fps that is a two-frame pop-in, which one still per shot will not show.
+
+```js
+const CUT_B = 23;
+const CUT_C = 35;
+
+function shotFor(t) {
+  if (t < CUT_B) return shotA(t);
+  if (t < CUT_C) return shotB(t);
+  return shotC(t);
+}
+
+function renderAt(t) {
+  const shot = shotFor(t);
+  camera.position.copy(shot.position);
+  camera.lookAt(shot.target);
+  shotBProps.forEach((mesh) => {
+    mesh.visible = t >= CUT_B && t < CUT_C;
+  });
+  renderer.render(scene, camera);
+}
+```
+
+Verify each cut on the last frame before it and the first frame after it, not only somewhere inside each shot. The last frame before a cut is `(Math.ceil(cut * fps) - 1) / fps`: for a cut at 23 s in a 30 fps render, `hyperframes snapshot --at 22.9667,23 --no-end`.
+
+## Lighting Lit Meshes
+
+A `MeshStandardMaterial` lit by one `PointLight` or `DirectionalLight`, with no ambient light, environment map or emissive color, gets no light on its unlit side. When the camera faces that light, the mesh shows only that side and renders as a flat black cutout. Add a fill that stands in for the environment's bounce light, such as a `HemisphereLight` in the colors of the surrounding glow. If the key light's brightness changes over time, drive both lights from the same source at a fixed ratio, tuned by eye. Their intensity units differ, so do not copy the key light's number onto the fill.
+
 ## Good Uses
 
 - Deterministic 3D objects, product spins, particles with seeded data, and shader plates.
@@ -133,8 +164,8 @@ If several mixers exist, seek all of them from the same `time`.
 After editing a Three.js composition:
 
 ```bash
-npx hyperframes lint
-npx hyperframes check
+hyperframes lint
+hyperframes check
 ```
 
 ## Credits And References

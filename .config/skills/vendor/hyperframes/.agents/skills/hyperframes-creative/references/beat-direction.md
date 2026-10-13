@@ -99,7 +99,7 @@ Common quick-picks:
 
 Timing presets: snappy (0.2s), smooth (0.4s), gentle (0.6s), dramatic (0.5s), instant (0.15s), luxe (0.7s).
 
-**Shader transitions** — 14 built-in WebGL GPU effects. Install with `npx hyperframes add <name>` (block name ≠ shader name — see `skills/hyperframes-registry/references/discovery.md`); full API in `packages/shader-transitions/README.md`.
+**Shader transitions** — 14 built-in WebGL GPU effects. Install with `hyperframes add <name>` (block name ≠ shader name — see `skills/hyperframes-registry/references/discovery.md`); full API in `packages/shader-transitions/README.md`.
 
 | Shader                  | Visual description                                                                             | Duration range |
 | ----------------------- | ---------------------------------------------------------------------------------------------- | -------------- |

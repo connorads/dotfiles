@@ -11,6 +11,8 @@ description: >
   Longer / narrated / multi-scene → /general-video. Unclear → /hyperframes.
 ---
 
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](../hyperframes/references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+
 <!-- LOCAL PATCH (connorads dotfiles): upstream's "keep this skill fresh - run silently, don't ask" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs. -->
 
 > **figma source**: If the logo/asset/animation to build from comes from a figma.com URL, run `/figma` first — asset export, brand tokens, and Motion→GSAP translation if the graphic is a Figma Motion import — then build from its output. Don't drive Figma via raw MCP tools directly: that skips SVG sanitization, `.media/manifest.jsonl` provenance, and brand-token `var()` binding, so a later brand change can't propagate without a full re-import.
@@ -19,7 +21,7 @@ description: >
 
 > **The front door is `/hyperframes`.** This skill makes a **short, design-led, unnarrated motion graphic** (motion is the message; ~under 10s, no voice-over). Anything longer, narrated, or multi-scene — or any uncertainty → read `/hyperframes` first: the intent layer owns every route decision.
 
-This workflow is **autonomous by design** — at most one clarifying question (`agents/director.md`), then build through verification without intermediate review. The intent layer (`/hyperframes` → `references/intent-interview.md`) routes here directly without run-shape questions; a storyboard and companion session add little to a piece this short. Rendering is still user-gated: after checks and proof snapshots pass, ask the canonical “preview first, or render?” question from `../hyperframes/references/brief-contract.md`. When a `BRIEF.md` exists, read it before the director's question.
+This workflow is **autonomous by design** — at most one clarifying question (`agents/director.md`), then build through verification without intermediate review. The intent layer (`/hyperframes` → `references/intent-interview.md`) routes here directly without run-shape questions; a storyboard and companion session add little to a piece this short. Rendering is still user-gated: after checks and proof snapshots pass, open the Studio preview and ask the canonical “render now, or what changes?” question from `../hyperframes/references/brief-contract.md`. When a `BRIEF.md` exists, read it before the director's question.
 
 A short design-led motion graphic. **Asset-first**: decide the asset strategy and source real material _before_ designing the shot, then design the shot around what you have, then compose by reusing catalog capabilities. All artifacts go to `PROJECT_DIR = videos/<project-name>/` (created in Step 0); all paths below are relative to it.
 
@@ -30,8 +32,8 @@ A short design-led motion graphic. **Asset-first**: decide the asset strategy an
 | source ◇ | Bash — media-use resolve (**skip if `asset_needs` is empty**)         | `assets/` + `assets/index.md`                                    | `phases/source/guide.md`      |
 | design   | subagent — shot design around resolved assets                         | `shot-plan.json` (final: block(s) + layout + motion + positions) | `agents/director.md` (Part 2) |
 | build    | subagent — reuse-first composition                                    | `compositions/index.html`                                        | `agents/builder.md`           |
-| verify   | Bash — `lint`, `check`, proof snapshots; repair on failure            | `snapshots/contact-sheet.jpg`                                    | Step 5                        |
-| approve  | Ask preview or render; wait for the answer                            | explicit render approval                                         | Step 6                        |
+| verify   | Bash — `lint`, `check`, proof snapshots; repair on failure            | `.hyperframes/artifacts/snapshots/<id>/contact-sheet.jpg`        | Step 5                        |
+| approve  | Open the preview; ask render or changes; wait for the answer          | explicit render approval                                         | Step 6                        |
 | render   | Bash — `hyperframes render` (MP4, or `--format webm/mov` for overlay) | `renders/video.mp4` or transparent overlay                       | Step 6                        |
 
 `◇ source` runs only when the chosen category declares assets. Pure code/text categories (e.g. `kinetic-type`, most `charts`/`stat`) have `asset_needs: []` and skip straight from plan to design.
@@ -64,7 +66,7 @@ Build order: one at a time, coverage-first (rough is fine). `kinetic-type` porte
 
 ## Prerequisites
 
-macOS Apple Silicon or Linux x64. System tools: `brew install node ffmpeg`. `npx hyperframes doctor` once. macOS GPU render: `export PRODUCER_BROWSER_GPU_MODE=hardware`.
+macOS Apple Silicon or Linux x64. System tools: `brew install node ffmpeg`. `hyperframes doctor` once. macOS GPU render: `export PRODUCER_BROWSER_GPU_MODE=hardware`.
 
 Optional keys (local fallbacks if unset) — only needed by categories that source/generate assets via media-use:
 
@@ -84,7 +86,7 @@ Only when `$PROJECT_DIR/hyperframes.json` is absent:
 ```bash
 PROJECT_DIR="${MOTION_GRAPHICS_DIR:-videos/<project-name>}"
 mkdir -p "$(dirname "$PROJECT_DIR")"
-npx hyperframes init "$PROJECT_DIR" --non-interactive --example=blank --skill=motion-graphics
+hyperframes init "$PROJECT_DIR" --non-interactive --example=blank --skill=motion-graphics
 ```
 
 `init` checks the installed skills against the latest on GitHub and updates the global set if any are out of date.
@@ -96,7 +98,7 @@ npx hyperframes init "$PROJECT_DIR" --non-interactive --example=blank --skill=mo
 Dispatch one subagent. prompt = full `agents/director.md` + `## Dispatch context` (`SKILL_DIR` / `PROJECT_DIR` / the user's request / `Schema: <SKILL_DIR>/references/shot-plan-ir.md`). It must:
 
 1. **Decide: does this need a search?** (the first fork)
-   - **No** → pick a **form category** (kinetic-type / stat / charts / logo-reveal / lower-thirds); content is user-supplied; `asset_needs: []`.
+   - **No** → pick a **form category** (kinetic-type / stat / charts / logo-reveal / lower-thirds / maps); content is user-supplied; `asset_needs: []`.
    - **Yes** → emit a **search plan** into `asset_needs[]` (news / web / tweet / image; two-pole queries). The specific **search-driven category** (webpage / news / tweet / asset-fusion) is confirmed by the content type returned in Step 2, and finalized in Step 3.
 2. Write a draft `shot-plan.json` (envelope + chosen form category _or_ search intent + `asset_needs` + a one-paragraph shot brief). Schema: `references/shot-plan-ir.md`.
 
@@ -106,11 +108,6 @@ Validation: `[ -s "$PROJECT_DIR/shot-plan.json" ] && echo ok || echo missing`.
 
 If `shot-plan.json.asset_needs` is non-empty, resolve assets (search / generate / fetch → frozen project-local paths + ledger). See `phases/source/guide.md` (wraps `media-use resolve`; the search-driven categories use the news/web/tweet/image search). If `asset_needs` is empty, **skip to Step 3**.
 
-```bash
-# illustrative — see phases/source/guide.md
-(cd "$PROJECT_DIR" && node <SKILL_DIR>/phases/source/resolve.mjs --plan ./shot-plan.json --out ./assets)
-```
-
 Degrade gracefully: if a search/provider is unavailable, the category falls back to asset-free (note it in `context.log`).
 
 ### Step 3 — Design (subagent: Director Part 2)
@@ -119,30 +116,31 @@ Dispatch a subagent (prompt = `agents/director.md` Part 2 + dispatch context inc
 
 ### Step 4 — Build (subagent: Builder, reuse-first)
 
-Dispatch a subagent. prompt = full `agents/builder.md` + dispatch context (`shot-plan.json`, `catalog-map.md`, the category's `module.md`, `references/motion-vocabulary.md`, `references/builder-contract.md`). **Reuse-first**: `npx hyperframes add <block>` + customize in place; hand-author only gaps + the asset-fusion affordance. Output `compositions/index.html` honoring the HF contract (paused GSAP timeline on `window.__timelines`, `class="clip"` + stable ids, `tl.seek(0)`, deterministic).
+Include the shared [motion principles](../hyperframes-creative/references/motion-principles.md) in the Builder's dispatch context. For `charts` and `stat`, also include [data in motion](../hyperframes-creative/references/data-in-motion.md). The Builder reads these guides before writing the timeline.
+
+Dispatch a subagent. prompt = full `agents/builder.md` + dispatch context (`shot-plan.json`, `catalog-map.md`, the category's `module.md`, `references/motion-vocabulary.md`, `references/builder-contract.md`). **Reuse-first**: `hyperframes add <block>` + customize in place; hand-author only gaps + the asset-fusion affordance. Output `compositions/index.html` honoring the HF contract (paused GSAP timeline on `window.__timelines`, `class="clip"` + stable ids, `tl.seek(0)`, deterministic).
 
 ### Step 5 — Verify (Bash → repair subagent on failure)
 
 ```bash
-(cd "$PROJECT_DIR" && npx hyperframes lint .)
-(cd "$PROJECT_DIR" && npx hyperframes check .)
-(cd "$PROJECT_DIR" && npx hyperframes snapshot --at <proof-times>)
+(cd "$PROJECT_DIR" && hyperframes check .)
+(cd "$PROJECT_DIR" && hyperframes snapshot --at <proof-times>)
 ```
 
 Choose proof times that show the opening state, signature move, and final hold. Inspect the generated contact or snapshot sheet before continuing. On `lint`, `check`, or snapshot failure, dispatch the repair subagent (`agents/finalize.md`) for one in-place fix pass, then rerun the failed gate. Never change a fixed duration merely to hide a defect.
 
 ### Step 6 — Approve and render (Bash)
 
-Ask one question: “preview first, or render?” If the user chooses preview, open Studio and return to the same approval gate after revisions:
+Open Studio, then ask one question: “render now, or what changes?” After revisions, return to the same gate:
 
 ```bash
-(cd "$PROJECT_DIR" && npx hyperframes preview --background)
+(cd "$PROJECT_DIR" && hyperframes preview --background)
 ```
 
 Render only after an explicit render answer:
 
 ```bash
-(cd "$PROJECT_DIR" && npx hyperframes render . --skill=motion-graphics -q high -o ./renders/video.mp4)
+(cd "$PROJECT_DIR" && hyperframes render . --skill=motion-graphics -q high -o ./renders/video.mp4)
 # transparent overlay variant: --format webm  (or mov)
 ```
 

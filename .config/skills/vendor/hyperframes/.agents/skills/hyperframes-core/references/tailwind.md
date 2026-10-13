@@ -97,8 +97,8 @@ v4 + render-mode footguns. Every bullet is a hard rule:
 ## Validation
 
 ```bash
-npx hyperframes check
+hyperframes check
 
 # Render proof — frame 0 must NOT flash unstyled content. Preview alone can hide this.
-npx hyperframes render . --workers 1 --quality draft --output tailwind-proof.mp4
+hyperframes render . --workers 1 --quality draft --output tailwind-proof.mp4
 ```
