@@ -1,0 +1,6 @@
+{
+  "reason": "Examples use the selected project voice explicitly; no inherited voice ID supplies casting.",
+  "files": [
+    "elevenlabs/.agents/skills/agents/references/agent-configuration.md"
+  ]
+}

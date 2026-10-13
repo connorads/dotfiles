@@ -11,7 +11,7 @@ agent = client.conversational_ai.agents.create(
                 "max_tokens": 100
             }
         },
-        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"},  # Flash: lowest latency (~75ms)
         "turn": {"turn_eagerness": "eager", "turn_timeout": 3}
     }
 )

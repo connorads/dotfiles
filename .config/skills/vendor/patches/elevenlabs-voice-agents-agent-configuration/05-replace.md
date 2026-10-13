@@ -17,7 +17,7 @@ agent = client.conversational_ai.agents.create(
                 }
             }
         },
-        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_v4_turbo"},
         "turn": {"turn_eagerness": "normal", "turn_timeout": 7},
         "conversation": {"max_duration_seconds": 900}
     }

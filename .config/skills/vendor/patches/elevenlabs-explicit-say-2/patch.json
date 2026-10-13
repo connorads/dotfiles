@@ -1,0 +1,6 @@
+{
+  "reason": "Immediate speech uses the selected project voice, not the CLI default.",
+  "files": [
+    "elevenlabs/.agents/skills/text-to-speech/SKILL.md"
+  ]
+}

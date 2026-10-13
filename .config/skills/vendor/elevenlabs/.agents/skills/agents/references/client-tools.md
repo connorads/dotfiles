@@ -369,6 +369,7 @@ When users want to go somewhere, use navigate_to.""",
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `expects_response` | bool | `false` | Whether the tool returns data to the agent |
+| `response_timeout_secs` | int | `20` | Seconds to wait for the client to respond (1-120), or `-1` to wait indefinitely. `-1` requires `expects_response` |
 
 ### Client Tool Return Values
 
@@ -617,7 +618,7 @@ Always verify order ID before lookup. Offer transfer for complex issues.""",
                 }
             }
         },
-        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"}
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_v4_turbo"}
     }
 )
 ```
