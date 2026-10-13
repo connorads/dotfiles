@@ -1,4 +1,5 @@
 import { AmpUsage } from './amp.tsx';
+import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { experimental_ProviderIcon as ProviderIcon, useRpc } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog.tsx';
@@ -168,7 +169,10 @@ export function UsageOverlay() {
   const now = useNow(30_000, open);
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const snapshot = inspection?.snapshot ?? null;
-  const [ampRefresh, setAmpRefresh] = useState(0);
+  const [amp, setAmp] = useState<AmpOverview | null>(null);
+  const [ampMessage, setAmpMessage] = useState<string | null>(null);
+  const [ampLoading, setAmpLoading] = useState(false);
+  const [quotaLoading, setQuotaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
@@ -191,15 +195,23 @@ export function UsageOverlay() {
     pending.current = true;
     setLoading(true);
     setError(null);
-    try {
-      const next = await rpc.call('usage.inspection', { refresh: force });
-      if (mounted.current) setInspection(next);
-    } catch (cause) {
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
-    } finally {
-      pending.current = false;
-      if (mounted.current) setLoading(false);
-    }
+    setQuotaLoading(true);
+    setAmpLoading(true);
+    setAmpMessage(null);
+    await Promise.allSettled([
+      rpc.call('usage.inspection', { refresh: force }).then(next => {
+        if (mounted.current) setInspection(next);
+      }).catch(cause => {
+        if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
+      }).finally(() => { if (mounted.current) setQuotaLoading(false); }),
+      rpc.call('usage.amp', { refresh: force }).then(next => {
+        if (mounted.current) setAmp(next);
+      }).catch(() => {
+        if (mounted.current) setAmpMessage('Amp usage could not be loaded.');
+      }).finally(() => { if (mounted.current) setAmpLoading(false); }),
+    ]);
+    pending.current = false;
+    if (mounted.current) setLoading(false);
   }, [rpc]);
   useEffect(() => { if (open) void refresh(false); }, [open, refresh]);
   const machines = (snapshot?.machines ?? []).map(machine => ({ ...machine,
@@ -219,14 +231,14 @@ export function UsageOverlay() {
               : inspection === null ? 'Not yet checked' : 'Quota resets and credit expiries · local time'}
           </DialogDescription>
         </div>
-        <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => { setAmpRefresh(value => value + 1); void refresh(true); }}>
+        <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => { void refresh(true); }}>
           <span className="au-spin" data-spinning={loading || undefined}><Icon name="ArrowReloadHorizontal" className="size-4" /></span>
         </button>
         <DialogClose className="au-icon-button" aria-label="Close" title="Close"><Icon name="X" className="size-4" /></DialogClose>
       </header>
       <div ref={scrollArea} className="au-body" role="region" aria-label="Usage details" tabIndex={-1} aria-busy={loading}>
         {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
-        {!snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
+        {quotaLoading && !snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
         {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
         {snapshot && <Summary accounts={machines.flatMap(machine => machine.providers)} now={now} readings={inspection?.readings ?? []} />}
         {machines.map(machine => <section className="au-machine" key={machine.id} aria-label={machine.displayName}>
@@ -238,7 +250,7 @@ export function UsageOverlay() {
           {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now}
             readings={inspection?.readings ?? []} resetCredits={inspection?.resetCredits.find(value => value.hostId === machine.id)?.reading ?? null} />)}
         </section>)}
-        <AmpUsage open={open} refreshToken={ampRefresh} now={now} />
+        {(snapshot || error) && <AmpUsage value={amp} message={ampMessage} loading={ampLoading} now={now} />}
       </div>
       <footer className="au-foot">
         <span className="au-legend"><span className="au-legend-mark" aria-hidden="true" />Even pace: where steady use would be by now</span>

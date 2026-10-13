@@ -247,3 +247,22 @@ test('Amp presents a clear account, remaining balance and credit settings link',
   expect(amp.querySelector('.au-meter')).toBeNull();
   expect(slot.getByRole('link', { name: 'Manage credits' }).getAttribute('href')).toBe('https://ampcode.com/settings');
 });
+
+for (const first of ['amp', 'quotas'] as const) {
+  test(`loading stays coordinated when ${first} finishes first`, async () => {
+    const app = await load();
+    let finishQuotas!: (value: Inspection) => void;
+    let finishAmp!: (value: { machines: [] }) => void;
+    const slot = renderSlot(overview(app), {}, { rpc: {
+      'usage.inspection': () => new Promise<Inspection>(resolve => { finishQuotas = resolve; }),
+      'usage.amp': () => new Promise<{ machines: [] }>(resolve => { finishAmp = resolve; }),
+    } });
+    await act(async () => openUsage());
+    await act(async () => { if (first === 'amp') finishAmp({ machines: [] }); else finishQuotas(inspect()); });
+    expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(true);
+    if (first === 'amp') expect(slot.queryByRole('region', { name: 'Amp usage' })).toBeNull();
+    else expect(slot.getByRole('region', { name: 'Codex · Personal' })).toBeTruthy();
+    await act(async () => { if (first === 'amp') finishQuotas(inspect()); else finishAmp({ machines: [] }); });
+    expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(false);
+  });
+}
