@@ -1,0 +1,6 @@
+{
+  "reason": "Keep risk-appropriate tests alongside video and shader inspection",
+  "files": [
+    ".agents/skills/fframes-video/SKILL.md"
+  ]
+}

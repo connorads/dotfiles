@@ -1,1 +1,1 @@
-import {AbsoluteFill, staticFile, useDelayRender, useVideoConfig} from 'remotion';
+import {staticFile, useDelayRender, useVideoConfig} from 'remotion';

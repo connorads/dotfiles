@@ -95,7 +95,7 @@ Use `staticFile('maplibre/maplibre-gl-worker.mjs')` before constructing each map
 
 ```tsx
 import {useEffect, useRef, useState} from 'react';
-import {AbsoluteFill, staticFile, useDelayRender, useVideoConfig} from 'remotion';
+import {staticFile, useDelayRender, useVideoConfig} from 'remotion';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -136,9 +136,9 @@ export const MyComposition = () => {
 	}, [continueRender, loadingHandle]);
 
 	return (
-		<AbsoluteFill>
+		<>
 			<div ref={containerRef} style={{width, height, position: 'absolute'}} />
-		</AbsoluteFill>
+		</>
 	);
 };
 ```

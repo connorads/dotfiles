@@ -1,0 +1,6 @@
+{
+  "reason": "Keep emulator servers on loopback and use authorised service exposure",
+  "files": [
+    ".agents/skills/emulate/SKILL.md"
+  ]
+}
