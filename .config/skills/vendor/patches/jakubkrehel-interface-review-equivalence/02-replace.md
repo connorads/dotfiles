@@ -1,0 +1,1 @@
+- A colour literal replaced by a token only when the same rendered foreground/background pair retains contrast across the supported themes.

@@ -1,7 +1,1 @@
-The Chrome DevTools MCP is the easiest browser to get:
-
-```bash
-claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest
-```
-
-It gives you `evaluate_script` for the recipes here, `resize_page` and `take_screenshot` for another width, `list_network_requests` for what is served and `performance_start_trace` for a stutter. Prefer it over the fetch method when:
+The `chrome-devtools-mcp` server is the easiest browser to add. Its `evaluate_script` takes a function, so every recipe in this skill is written as `() => { ... }`. Pass the same function to Playwright's `page.evaluate`, or call it in the console. The server also has `resize_page` and `take_screenshot` for another width, `list_network_requests` for what is served and `performance_start_trace` for a stutter.

@@ -1,0 +1,1 @@
+- A color literal replaced by a token with the same value.

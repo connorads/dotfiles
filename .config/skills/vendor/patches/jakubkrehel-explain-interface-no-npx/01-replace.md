@@ -1,4 +1,2 @@
 {{marker}}
-Use browser tooling that is already available in the session first. If the user explicitly asks to install Chrome DevTools MCP, use the repo's approved package-manager path rather than `npx`.
-
-Chrome DevTools MCP gives you `evaluate_script` for the recipes here, `resize_page` and `take_screenshot` for another width, `list_network_requests` for what is served and `performance_start_trace` for a stutter. Prefer it over the fetch method when:
+Use browser tooling already available in the session. Do not install or update browser tools automatically. If the user requests installation, follow local runtime and package protections. Chrome DevTools MCP is one compatible option. Its `evaluate_script` takes a function, so every recipe in this skill is written as `() => { ... }`. Pass the same function to Playwright's `page.evaluate`, or call it in the console. The server also has `resize_page` and `take_screenshot` for another width, `list_network_requests` for what is served and `performance_start_trace` for a stutter.

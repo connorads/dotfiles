@@ -1,0 +1,1 @@
+- `outline` replaced by a `box-shadow` ring on the same `:focus-visible` selector.
