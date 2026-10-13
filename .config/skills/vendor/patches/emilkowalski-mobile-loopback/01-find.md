@@ -1,0 +1,1 @@
+- Connect the phone over USB, run the dev server on `0.0.0.0`, open it by the machine's LAN IP.

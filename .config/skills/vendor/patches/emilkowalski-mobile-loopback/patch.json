@@ -1,0 +1,6 @@
+{
+  "reason": "Keep development servers on loopback and expose them through ts wrappers.",
+  "files": [
+    "emilkowalski/.agents/skills/mobile-native/SKILL.md"
+  ]
+}
