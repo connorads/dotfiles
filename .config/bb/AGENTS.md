@@ -17,6 +17,17 @@ Check whether a local plugin manages a setting before changing it through the UI
 File-managed settings are authoritative. Change their tracked file, then verify the live setting.
 Do not disable reconciliation to make a settings edit persist.
 
+## Agent usage
+
+The custom **Agent Switcher** plugin (`claude-profiles`) owns the usage badge and
+`⌘⇧A` overlay. Read its [guide](../../src/bb-plugins/claude-profiles/README.md#usage).
+The retired `agent-usage` package stays disabled. The built-in
+`bb--provider-usage` plugin collects quota sources for Agent Switcher.
+
+Before choosing files, check `bb plugin list --json` and
+`bb settings keyboard list --json`. The usage command is
+`plugin:claude-profiles/show-usage`.
+
 ## Thread shortcuts
 
 The Preferences plugin manages thread shortcuts from [preferences.json](./preferences.json).

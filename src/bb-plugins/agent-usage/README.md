@@ -1,4 +1,10 @@
-# Agent usage for BB
+# Retired Agent Usage plugin
+
+Agent Switcher (`claude-profiles`) owns the usage badge and `⌘⇧A` overlay.
+Read its [current usage guide](../claude-profiles/README.md#usage).
+This package stays disabled and is retained for rollback.
+
+The following documentation describes this retained package.
 
 Show the limit most likely to stop the current thread in its header. Open an
 account usage overlay with `⌘⇧A`. Press `Q` or `Esc`, click outside, or click
