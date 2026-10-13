@@ -1,0 +1,6 @@
+{
+  "reason": "Exclude symlinks and special files from showcase source traversal",
+  "files": [
+    ".agents/skills/shadcn/scripts/showcase-coverage.mjs"
+  ]
+}
