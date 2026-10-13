@@ -16,13 +16,13 @@ captions in a terminal voice, and optional spoken narration. When narrated,
 every visual beat waits for a phrase in the transcript, so re-voicing re-times
 the film automatically.
 
-The working examples are in `scenes/pr-walkthrough`: `src/flagship.rs` (#50825 as a
-Stage film that zooms into its code), `src/stop_stage.rs` (#50042 combining Stage,
-Callouts, Rolling Number, and a Zoom into an annotated code diff), and `src/lib.rs`
+The working examples are in [`scenes/pr-walkthrough`](https://github.com/kitlangton/psychopomp/tree/main/scenes/pr-walkthrough): [`src/flagship.rs`](https://github.com/kitlangton/psychopomp/blob/main/scenes/pr-walkthrough/src/flagship.rs) (#50825 as a
+Stage film that zooms into its code), [`src/stop_stage.rs`](https://github.com/kitlangton/psychopomp/blob/main/scenes/pr-walkthrough/src/stop_stage.rs) (#50042 combining Stage,
+Callouts, Rolling Number, and a Zoom into an annotated code diff), and [`src/lib.rs`](https://github.com/kitlangton/psychopomp/blob/main/scenes/pr-walkthrough/src/lib.rs)
 (the five-PR reel with sequence diagrams). Copy their shape; do not start from a
-blank crate. Component payloads, channels, and commands live in `SCENE_PLANS.md`
-("Make A Narrated Explainer Reel") and terms in `CONTEXT.md`; read both before
-authoring. Engineering rules are in `AGENTS.md`.
+blank crate. Component payloads, channels, and commands live in [`SCENE_PLANS.md`](https://github.com/kitlangton/psychopomp/blob/main/SCENE_PLANS.md#make-a-narrated-explainer-reel)
+("Make A Narrated Explainer Reel") and terms in [`CONTEXT.md`](https://github.com/kitlangton/psychopomp/blob/main/CONTEXT.md); read both before
+authoring. Engineering rules are in [`AGENTS.md`](https://github.com/kitlangton/psychopomp/blob/main/AGENTS.md).
 
 ## Steps
 
@@ -61,12 +61,12 @@ authoring. Engineering rules are in `AGENTS.md`.
    # Fish Audio (requires FISH_AUDIO_API_KEY)
    FISH_AUDIO_API_KEY=... bun scripts/narrate.ts scenes/<name>/narration/script.json
    ```
-   `scripts/narrate.ts` normalizes loudness, transcribes word timings with Whisper,
+   [`scripts/narrate.ts`](https://github.com/kitlangton/psychopomp/blob/main/scripts/narrate.ts) normalizes loudness, transcribes word timings with Whisper,
    and writes `<id>.mp3`, `<id>.words.json`, and `narration.json`. When switching
    voices or engines, rebuild the Scene Plan against the new word timings.
 
    **Or declare the narration in the Scene Program** with `psychopomp-media`
-   (SCENE_PLANS.md, "Declare Narration And Sound"): `media.say(id, &voice, text)`,
+   ([`SCENE_PLANS.md`](https://github.com/kitlangton/psychopomp/blob/main/SCENE_PLANS.md#declare-narration-and-sound), "Declare Narration And Sound"): `media.say(id, &voice, text)`,
    `media.dialogue`, `media.sfx`, and `audio.derive(Effect::pitch(..))`, then
    `media.finish()?`. Each line is generated once and recorded in
    `media.lock.json`; later runs call nothing unless a declaration changed, and
@@ -78,8 +78,8 @@ authoring. Engineering rules are in `AGENTS.md`.
    regeneration). Done when a plain run reports every resource `=`.
 
 4. **Author the Scene Program** in `scenes/<name>` (the workspace picks it up; add
-   it to `verify.json` with a few key times).
-   Use `psychopomp::score` (`SCENE_PLANS.md`, "Author With The Score DSL") so
+   it to [`verify.json`](https://github.com/kitlangton/psychopomp/blob/main/verify.json) with a few key times).
+   Use `psychopomp::score` ([`SCENE_PLANS.md`](https://github.com/kitlangton/psychopomp/blob/main/SCENE_PLANS.md#author-with-the-score-dsl), "Author With The Score DSL") so
    `PlanBuilder` is the only `mut` binding and every actor (`Stage`, `Camera`,
    `Caption`, `Callout`, `RollingNumber`, `Checklist`, `Meter`, `Bars`,
    `Subtitles`, `Confetti`, `Terminal`, `Chat`, `ChangedFiles`, `LowerThird`,
@@ -111,7 +111,7 @@ authoring. Engineering rules are in `AGENTS.md`.
    bun scripts/sheet.ts <reel> t1,t2,... --theme neutral --shutter --out output/sheet.jpg
    ```
    When tuning the look, set `PSYCHOPOMP_SHADER_DIR=crates/psychopomp-render/src/render`
-   and edit `stage.wgsl`/`stage_post.wgsl`: every frame and sheet picks up shader edits
+   and edit [`stage.wgsl`](https://github.com/kitlangton/psychopomp/blob/main/crates/psychopomp-render/src/render/stage.wgsl)/[`stage_post.wgsl`](https://github.com/kitlangton/psychopomp/blob/main/crates/psychopomp-render/src/render/stage_post.wgsl): every frame and sheet picks up shader edits
    without a Rust rebuild.
    Then render one behavior segment with audio (`plan render <reel> out.mp4 --cue <scene-id>`)
    or a 2–3 second window (`--range a..b`) and inspect frames extracted during
@@ -133,9 +133,9 @@ authoring. Engineering rules are in `AGENTS.md`.
 ## Improving Psychopomp
 
 When a reel needs something the engine cannot do, add it to Psychopomp rather than
-working around it in one scene: plan types and validation in `crates/psychopomp`,
+working around it in one scene: plan types and validation in [`crates/psychopomp`](https://github.com/kitlangton/psychopomp/tree/main/crates/psychopomp),
 strict-channel preflight in `plan_runtime`, pixels in `render`, GPU-free tests plus
-an `#[ignore]` GPU test, and the docs `AGENTS.md` asks you to keep current. Run
+an `#[ignore]` GPU test, and the docs [`AGENTS.md`](https://github.com/kitlangton/psychopomp/blob/main/AGENTS.md) asks you to keep current. Run
 `cargo run --release -- verify baseline` before the change and `verify compare
 --expect <scenes you changed>` after it to prove every other showroom and film is
 untouched.
@@ -144,6 +144,6 @@ Build from small reusable pieces. Interpolation, easing, curves, shape ports, an
 connectors belong in `psychopomp::math` (organized like pmndrs `math`: core `lerp`/
 `remap`/`smoothstep`, `easing`, `curve`, `shapes`, `random`; glam vectors). Extend it
 instead of inlining math in a renderer or scene, and split renderers into one small
-helper per element, as `render/stage.rs` does. Keep
+helper per element, as [`render/stage.rs`](https://github.com/kitlangton/psychopomp/blob/main/crates/psychopomp-render/src/render/stage.rs) does. Keep
 `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
 and `cargo test --workspace` green.

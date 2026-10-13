@@ -2,8 +2,8 @@
 
 Sizes in the source diagram recipes are diagram pixels on 44 px cards; multiply
 by about 1.4 for 110 to 124 px cards in a 1080p frame. Psychopomp implements
-these in `crates/psychopomp/src/stage.rs` (`packet`, `StageActor`) and
-`crates/psychopomp-render/src/render/stage.rs`. The larger HDR Stage uses the
+these in [`crates/psychopomp/src/stage.rs`](https://github.com/kitlangton/psychopomp/blob/main/crates/psychopomp/src/stage.rs) (`packet`, `StageActor`) and
+[`crates/psychopomp-render/src/render/stage.rs`](https://github.com/kitlangton/psychopomp/blob/main/crates/psychopomp-render/src/render/stage.rs). The larger HDR Stage uses the
 restrained calibration immediately below.
 
 ## Current Stage calibration
@@ -53,7 +53,7 @@ restrained calibration immediately below.
 
 ## Hype register
 
-For deliberately over-the-top films (see `scenes/psychopomp-intro`), keep the
+For deliberately over-the-top films (see [`scenes/psychopomp-intro`](https://github.com/kitlangton/psychopomp/tree/main/scenes/psychopomp-intro)), keep the
 quiet rules for the sweet beats and let the loud ones escalate:
 
 - **Build:** ramp `camera.quake` linearly between shouted words (0.45 → 1.0 →

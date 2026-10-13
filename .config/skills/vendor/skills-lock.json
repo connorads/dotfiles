@@ -104,7 +104,7 @@
       "source": "kitlangton/psychopomp",
       "sourceType": "github",
       "skillPath": ".agents/skills/explainer-motion/SKILL.md",
-      "computedHash": "f28ada84e12e09d03dc65d7a08dafd835a74ce140c2c37830744d2b26cd5171d"
+      "computedHash": "13aec70f73f9f65fe3d64645956f47c8429c4a04f295a035dde05da16928774b"
     },
     "fframes-video": {
       "source": "dmtrKovalenko/fframes",
@@ -146,7 +146,7 @@
       "source": "ayghri/i-have-adhd",
       "sourceType": "github",
       "skillPath": "skills/i-have-adhd/SKILL.md",
-      "computedHash": "2be8f3214ebd0907429eafacc95c1cc3b4f21fe9d1892a30df9be7f32dc09d65"
+      "computedHash": "e12ff08dfe4b5baae7065c2f05a5738b8a55f3ccbed82ba45f5496c8e83b2a25"
     },
     "ketchup": {
       "source": "cursor/plugins",
@@ -200,7 +200,7 @@
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/minimalist-skill/SKILL.md",
-      "computedHash": "08873a3131d3be27bef9bf3304b310b16b44ca6e3561aebe532797be3443f6bd"
+      "computedHash": "b201c0763796192405cfed7933b55e3dab6d530ca7f06a5e8095063d476635d7"
     },
     "mutation-testing": {
       "source": "citypaul/.dotfiles",
@@ -230,7 +230,7 @@
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "fffa128d19849b3b7815cd3ecd62e2e999c2b2b237a6fcb6ec89c296bce80254"
+      "computedHash": "70b3906c1ca063c873f53687b569e9a447de269d00b8ba5fef6203511533a8b0"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
@@ -242,13 +242,13 @@
       "source": "kitlangton/psychopomp",
       "sourceType": "github",
       "skillPath": ".agents/skills/psychopomp/SKILL.md",
-      "computedHash": "9a86ee47a3a1eb5a130f359e8b21dd5a37a32addd041a11cd0a20305e44bde54"
+      "computedHash": "66df5333b28ecabb044afd5d2be604cbf4db4f62d595b07de5e6730f6e2bfd61"
     },
     "redesign-existing-projects": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/redesign-skill/SKILL.md",
-      "computedHash": "b405eee0e0e80fc243f731d9aa368bca307e356db7e6157d27101d369dac6726"
+      "computedHash": "52f2ade5449b7005942ebd221e53808a245b3e088ff096c44a374e1e481e9f6b"
     },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
@@ -317,7 +317,7 @@
       "source": "vercel-labs/vgpu",
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
-      "computedHash": "833afea625ffec41cca8710a7d3782b6067508cdf5ee96ef799c3adedf0eb4c0"
+      "computedHash": "939ab6b2c32a199e12d10b235d9d0f8db35abe0f503fec64565d5fbd3c67d52d"
     },
     "visual-pr": {
       "source": "humanlayer/skills",
