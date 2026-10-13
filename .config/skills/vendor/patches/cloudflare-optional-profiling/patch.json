@@ -1,0 +1,6 @@
+{
+  "reason": "Do not fetch an unavailable profiling skill at task time",
+  "files": [
+    ".agents/skills/cloudflare/SKILL.md"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "reason": "Use installed guidance and require explicit authorisation for feedback",
+  "files": [
+    ".agents/skills/firecrawl/SKILL.md"
+  ]
+}
