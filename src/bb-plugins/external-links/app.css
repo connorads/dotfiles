@@ -1,0 +1,15 @@
+.bb-external-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.15em;
+  margin-left: 0.2em;
+  padding: 2px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.bb-external-link:hover { color: var(--primary); }
+.bb-external-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
