@@ -1,0 +1,6 @@
+{
+  "reason": "Scope system-font settings to fonts and require an explicit offline rendering boundary",
+  "files": [
+    ".agents/skills/diagram-design/references/style-guide.md"
+  ]
+}

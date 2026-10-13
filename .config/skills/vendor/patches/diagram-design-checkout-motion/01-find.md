@@ -1,0 +1,1 @@
+One scoped exception to the translation limit: a part in an exploded axonometric may travel straight up by exactly its explode distance, the declared `--lift` that `scripts/verify-exploded.py` checks against its geometry (`type-exploded.md`). Nothing else in that figure moves further than 24px, and every other type keeps the limit.

@@ -1,0 +1,6 @@
+{
+  "reason": "Describe font omission without claiming the SVG has no active resources",
+  "files": [
+    ".agents/skills/diagram-design/scripts/export_svg.py"
+  ]
+}

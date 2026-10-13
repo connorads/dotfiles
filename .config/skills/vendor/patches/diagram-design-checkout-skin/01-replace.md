@@ -1,0 +1,2 @@
+{{marker}}
+**These tokens belong to this type and do not invert.** They are the exception to hex values living only in [`style-guide.md`](style-guide.md). In the recorded upstream repository, `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette; `scripts/lint-skin-baseline.txt` records the example exceptions. These files are not packaged here. Phase labels use `band-label`, which must hold 4.5:1 against every band. For a custom skin, derive three steps from its darkest neutral and verify the fixed label colour against all three.

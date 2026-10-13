@@ -1,0 +1,6 @@
+{
+  "reason": "Identify checkout-only motion and skin checks without implied installed tooling",
+  "files": [
+    ".agents/skills/diagram-design/references/animation.md"
+  ]
+}

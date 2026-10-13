@@ -1,0 +1,6 @@
+{
+  "reason": "Scope system-font export to font imports and preserve the selected font mode",
+  "files": [
+    ".agents/skills/diagram-design/references/export.md"
+  ]
+}
