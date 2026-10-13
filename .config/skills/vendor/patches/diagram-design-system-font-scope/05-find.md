@@ -1,0 +1,1 @@
+To keep the editorial faces with no network at all, install Instrument Serif, Geist, and Geist Mono locally (all three are SIL Open Font License) and use `system`: the stacks resolve to the installed faces first.

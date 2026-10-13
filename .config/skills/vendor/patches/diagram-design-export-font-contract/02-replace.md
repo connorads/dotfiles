@@ -1,0 +1,1 @@
+- **Typography uses fallback fonts**: system-font output intentionally omits the Google Fonts link. For `web` font mode, check the intended font link and report failed font loading. Honour the selected font source when correcting the output.

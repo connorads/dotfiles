@@ -1,0 +1,6 @@
+{
+  "reason": "Honour existing onboarding authorisation and verify output without repeated approval gates",
+  "files": [
+    ".agents/skills/diagram-design/references/onboarding.md"
+  ]
+}

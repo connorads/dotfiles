@@ -1,0 +1,1 @@
+From a recorded upstream repository checkout, `python3 <repo-root>/scripts/lint-render.py` with network blocked measures fallback rendering. This renderer is absent from the installed skill. Use existing browser tools with network requests blocked and inspect the fallback layout; report checks that could not run.

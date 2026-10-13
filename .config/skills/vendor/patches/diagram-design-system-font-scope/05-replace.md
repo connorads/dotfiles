@@ -1,0 +1,1 @@
+For editorial fonts without font downloads, use `system` with locally provisioned Instrument Serif, Geist and Geist Mono. The stacks prefer installed faces. The host owns font provisioning; do not install fonts automatically.

@@ -1,0 +1,6 @@
+{
+  "reason": "Describe the offline checker as a source check rather than a browser network boundary",
+  "files": [
+    ".agents/skills/diagram-design/scripts/self_check.py"
+  ]
+}

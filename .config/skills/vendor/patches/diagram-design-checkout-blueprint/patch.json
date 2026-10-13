@@ -1,0 +1,6 @@
+{
+  "reason": "Distinguish repository-only diagram verification from packaged checks",
+  "files": [
+    ".agents/skills/diagram-design/references/type-service-blueprint.md"
+  ]
+}

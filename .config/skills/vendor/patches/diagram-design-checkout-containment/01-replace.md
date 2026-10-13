@@ -1,0 +1,2 @@
+{{marker}}
+The containment verifier is checkout-only at `scripts/verify-architecture-containment.py` in the recorded upstream repository. It checks IDs, parents, bounds, scope shapes, PaaS placement, endpoint targets, sibling axes, peerings and moved geometry. It skips files without `data-grammar="architecture-containment"`. This verifier is absent from the installed skill. Run the packaged self-check and inspect containment manually; do not claim the missing verifier ran.
