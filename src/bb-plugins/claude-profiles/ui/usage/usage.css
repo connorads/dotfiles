@@ -139,4 +139,19 @@
 .au-native-usage {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  font-size: var(--text-xs, 12px);
+  line-height: 1.5;
+  color: var(--muted-foreground);
 }
+
+.au-amp-balances { display: grid; gap: 10px; }
+.au-amp-balance { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; }
+.au-amp-balance dt { font-size: var(--text-xs, 12px); color: var(--muted-foreground); }
+.au-amp-balance dd { display: flex; align-items: baseline; gap: 7px; margin-left: auto; white-space: nowrap; }
+.au-amp-balance strong { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--foreground); }
+.au-amp-balance dd span { font-size: var(--text-xs, 12px); color: var(--au-subtle); }
+.au-amp-footer { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+.au-amp-footer .au-reading { margin: 0; }
+.au-amp-footer a { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-xs, 12px); color: var(--au-subtle); }
+.au-amp-footer a:hover { color: var(--foreground); }
+.au-amp-footer a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 2px; }

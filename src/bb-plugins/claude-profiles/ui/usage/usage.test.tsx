@@ -228,3 +228,22 @@ test('Amp failures stay explicit without hiding other provider quotas', async ()
   expect(await slot.findByText('Native command failed')).toBeTruthy();
   expect(await slot.findByRole('heading', { name: 'Codex' })).toBeTruthy();
 });
+
+test('Amp presents a clear account, remaining balance and credit settings link', async () => {
+  const app = await load();
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.inspection': async () => inspect(),
+    'usage.amp': async () => ({ machines: [{ hostId: 'host-one', hostName: 'Laptop', message: null,
+      reading: { status: 'ok', text: 'Signed in as member@example.com\nIndividual credits: $9.81 remaining (set up auto-reload to avoid running out) - https://ampcode.com/settings', observedAt: NOW.getTime() } }] }),
+  } });
+  await act(async () => openUsage());
+  const amp = await slot.findByRole('region', { name: 'Amp usage' });
+  await slot.findByText('$9.81');
+  expect(amp.textContent).toContain('member@example.com');
+  expect(amp.textContent).toContain('Individual credits');
+  expect(amp.textContent).toContain('remaining');
+  expect(amp.textContent).not.toContain('Signed in as');
+  expect(amp.textContent).not.toContain('auto-reload');
+  expect(amp.querySelector('.au-meter')).toBeNull();
+  expect(slot.getByRole('link', { name: 'Manage credits' }).getAttribute('href')).toBe('https://ampcode.com/settings');
+});
