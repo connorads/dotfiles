@@ -46,7 +46,7 @@ If you have old packages installed, remove them:
 
 ```bash
 # Remove deprecated packages
-npm uninstall elevenlabs
+pnpm remove elevenlabs
 
 # Install the current packages
 pnpm add @elevenlabs/elevenlabs-js
@@ -84,7 +84,7 @@ Once installed and authenticated, no headers or keys are needed on the command l
 
 ```bash
 elevenlabs text-to-speech convert --voice-id selected_voice_id \
-  --text "Hello world" --model-id eleven_multilingual_v2 --output output.mp3
+  --text "Hello world" --model-id eleven_v4 --output output.mp3
 ```
 
 ## Getting an API Key

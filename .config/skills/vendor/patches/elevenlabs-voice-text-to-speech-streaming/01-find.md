@@ -1,5 +1,15 @@
+```python
+from elevenlabs import ElevenLabs
+
+client = ElevenLabs()
+
 audio_stream = client.text_to_speech.stream(
-    text="This is a streaming example with ultra-low latency.",
+    text="This is a streaming example.",
     voice_id="JBFqnCBsd6RMkjVDRZzb",
-    model_id="eleven_flash_v2_5"
+    model_id="eleven_v4"
 )
+
+with open("output.mp3", "wb") as f:
+    for chunk in audio_stream:
+        f.write(chunk)
+```

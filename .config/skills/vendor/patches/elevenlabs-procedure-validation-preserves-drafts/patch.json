@@ -1,0 +1,6 @@
+{
+  "reason": "Validation never overwrites or discards unrelated agent drafts; service writes need their authorised lifecycle scope.",
+  "files": [
+    "elevenlabs/.agents/skills/agents/references/using-procedure-api.md"
+  ]
+}

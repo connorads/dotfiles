@@ -1,7 +1,8 @@
 ```python
-# First request
-audio1 = client.text_to_speech.convert(
-    text="This is the first part.",
+audio = client.text_to_speech.convert(
+    text="Bonjour, comment allez-vous?",
     voice_id="JBFqnCBsd6RMkjVDRZzb",
-    next_text="And this continues the story."
+    model_id="eleven_v4",
+    language_code="fr"  # ISO 639-1 code
 )
+```

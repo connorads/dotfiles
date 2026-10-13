@@ -1,5 +1,8 @@
+```python
 audio = client.text_to_speech.convert(
-    text="Hello, welcome to ElevenLabs!",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",  # George
-    model_id="eleven_multilingual_v2"
+    text="Bonjour, comment allez-vous?",
+    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    model_id="eleven_v4",
+    language_code="fr"  # ISO 639-1 code
 )
+```

@@ -1,3 +1,19 @@
+```python
+agent = client.conversational_ai.agents.create(
+    name="E-commerce Assistant",
+    conversation_config={
+        "agent": {
+            "first_message": "Hi! How can I help you today?",
+            "language": "en",
+            "prompt": {
+                "prompt": """You are an e-commerce support assistant.
+
+Available actions:
+- lookup_order: Check order status
+- show_product: Display products to customer
+- end_call: End conversation politely
+- transfer_to_number: Transfer to human support
+
 Always verify order ID before lookup. Offer transfer for complex issues.""",
                 "llm": "gemini-2.0-flash",
                 "tools": [
@@ -44,7 +60,7 @@ Always verify order ID before lookup. Offer transfer for complex issues.""",
                 }
             }
         },
-        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"}
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_v4_turbo"}
     }
 )
 ```

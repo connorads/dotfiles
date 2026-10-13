@@ -1,7 +1,8 @@
-# Second request using previous context
-audio2 = client.text_to_speech.convert(
-    text="And this continues the story.",
+```python
+audio = client.text_to_speech.convert(
+    text="Bonjour, comment allez-vous?",
     voice_id="JBFqnCBsd6RMkjVDRZzb",
-    previous_text="This is the first part."
+    model_id="eleven_v4",
+    language_code="fr"  # ISO 639-1 code
 )
 ```

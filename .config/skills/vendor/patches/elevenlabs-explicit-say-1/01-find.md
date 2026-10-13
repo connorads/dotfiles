@@ -1,0 +1,3 @@
+```bash
+elevenlabs say "Hello!"
+```
