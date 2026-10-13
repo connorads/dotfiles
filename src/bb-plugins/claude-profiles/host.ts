@@ -6,6 +6,7 @@ import { hostContract, type Profile } from './contracts.ts';
 import { checkLogin, collectUsage } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
 import type { Usage } from './src/accounts/quota.ts';
+import { collectAmpUsage } from './src/accounts/usage/amp.ts';
 import { collectGrokUsage } from './src/accounts/usage/grok.ts';
 import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
 
@@ -59,6 +60,7 @@ export default experimental_defineHostEntry({
       await transferSession(source.configDir ?? join(homedir(), '.claude'), selected.configDir ?? join(homedir(), '.claude'), input.sessionId);
       return { copied: true };
     },
+    ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
   },

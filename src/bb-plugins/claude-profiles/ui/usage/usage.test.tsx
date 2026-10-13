@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginCommandRegistration } from '@get-bb/plugin-sdk/app';
+import { usageContract } from '../../src/accounts/usage/contract.ts';
 import { closeUsage, openUsage } from './overlay-store.ts';
 import type { Header, Inspection, Snapshot } from '../../src/accounts/usage/contract.ts';
 
@@ -194,4 +195,36 @@ test('unknown reading ages and unavailable reset credits are explicit', async ()
   const region = await slot.findByRole('region', { name: 'Codex · Personal' });
   expect(region.textContent).toContain('Reading time unavailable');
   expect((await slot.findByRole('region', { name: 'Codex reset credits' })).textContent).toContain('Machine is offline.');
+});
+
+test('Amp displays native credit text without a percentage and refreshes independently of quota loading', async () => {
+  const app = await load();
+  const requests: boolean[] = [];
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.inspection': async () => inspect(),
+    'usage.amp': async input => {
+      requests.push(usageContract['usage.amp'].input.parse(input).refresh);
+      return { machines: [{ hostId: 'host-one', hostName: 'Laptop', message: null,
+        reading: { status: 'ok', text: 'Paid credits: $12.50\nWorkspace balance: $25', observedAt: NOW.getTime() } }] };
+    },
+  } });
+  await act(async () => openUsage());
+  const amp = await slot.findByRole('region', { name: 'Amp usage' });
+  expect(amp.textContent).toContain('Paid credits: $12.50');
+  expect(amp.textContent).not.toContain('%');
+  await waitFor(() => expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(false));
+  fireEvent.click(slot.getByRole('button', { name: 'Refresh' }));
+  await waitFor(() => expect(requests).toEqual([false, true]));
+});
+
+test('Amp failures stay explicit without hiding other provider quotas', async () => {
+  const app = await load();
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.inspection': async () => inspect(),
+    'usage.amp': async () => ({ machines: [{ hostId: 'host-one', hostName: 'Laptop', message: 'Native command failed',
+      reading: { status: 'unavailable', message: 'Native command failed' } }] }),
+  } });
+  await act(async () => openUsage());
+  expect(await slot.findByText('Native command failed')).toBeTruthy();
+  expect(await slot.findByRole('heading', { name: 'Codex' })).toBeTruthy();
 });

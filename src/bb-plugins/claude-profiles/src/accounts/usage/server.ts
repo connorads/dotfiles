@@ -1,8 +1,9 @@
+import type { AmpOverview } from './amp-reading.ts';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { usageContract } from './contract.ts';
 import { createUsageReader, type UsagePorts } from './overview.ts';
 
-type AccountPorts = Pick<UsagePorts, 'resetCredits' | 'claudeAccount' | 'claudeResource'>;
+type AccountPorts = Pick<UsagePorts, 'resetCredits' | 'claudeAccount' | 'claudeResource'> & { amp: (refresh: boolean) => Promise<AmpOverview> };
 
 export function registerUsage(bb: BbPluginApi, accounts: AccountPorts) {
   const reader = createUsageReader({
@@ -13,6 +14,7 @@ export function registerUsage(bb: BbPluginApi, accounts: AccountPorts) {
     listProviders: () => bb.sdk.providers.list(),
   });
   bb.rpc.register(usageContract, {
+    'usage.amp': input => accounts.amp(input.refresh),
     'usage.overview': input => reader.overview(input.refresh),
     'usage.header': input => reader.header(input.threadId),
     'usage.inspection': input => reader.inspection(input.refresh),

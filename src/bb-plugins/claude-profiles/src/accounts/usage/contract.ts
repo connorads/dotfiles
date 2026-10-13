@@ -1,5 +1,6 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
+import { ampOverviewSchema } from './amp-reading.ts';
 import { resetCreditsSchema } from './reset-credits.ts';
 
 const cost = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() }).nullable();
@@ -41,6 +42,7 @@ export const usageHostContract = defineRpcContract({
   resetCredits: { input: z.object({ refresh: z.boolean() }), output: resetCreditsSchema },
 });
 export const usageContract = defineRpcContract({
+  'usage.amp': { input: z.object({ refresh: z.boolean() }), output: ampOverviewSchema },
   'usage.overview': { input: z.object({ refresh: z.boolean() }), output: snapshotSchema },
   'usage.header': { input: z.object({ threadId: z.string() }), output: headerSchema },
   'usage.inspection': { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },

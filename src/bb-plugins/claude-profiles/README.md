@@ -121,6 +121,11 @@ Grok quota comes from the native CLI billing extension. Its allowance is shared
 across Grok products. The overlay shows the reported period, use and reset.
 Collection uses native CLI authentication and sends no model prompt.
 
+Amp shows the native `amp usage` text, including any reported allowances and
+credit balances. Its section loads independently of quotas. Refresh requests a
+new reading; a failed refresh retains the previous text with the failure.
+Balances have no invented percentage or pace projection.
+
 ## Shortcuts
 
 | Action | Shortcut |

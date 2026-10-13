@@ -1,3 +1,4 @@
+import { AmpUsage } from './amp.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { experimental_ProviderIcon as ProviderIcon, useRpc } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog.tsx';
@@ -167,6 +168,7 @@ export function UsageOverlay() {
   const now = useNow(30_000, open);
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const snapshot = inspection?.snapshot ?? null;
+  const [ampRefresh, setAmpRefresh] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
@@ -217,7 +219,7 @@ export function UsageOverlay() {
               : inspection === null ? 'Not yet checked' : 'Quota resets and credit expiries · local time'}
           </DialogDescription>
         </div>
-        <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => void refresh(true)}>
+        <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => { setAmpRefresh(value => value + 1); void refresh(true); }}>
           <span className="au-spin" data-spinning={loading || undefined}><Icon name="ArrowReloadHorizontal" className="size-4" /></span>
         </button>
         <DialogClose className="au-icon-button" aria-label="Close" title="Close"><Icon name="X" className="size-4" /></DialogClose>
@@ -236,6 +238,7 @@ export function UsageOverlay() {
           {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now}
             readings={inspection?.readings ?? []} resetCredits={inspection?.resetCredits.find(value => value.hostId === machine.id)?.reading ?? null} />)}
         </section>)}
+        <AmpUsage open={open} refreshToken={ampRefresh} now={now} />
       </div>
       <footer className="au-foot">
         <span className="au-legend"><span className="au-legend-mark" aria-hidden="true" />Even pace: where steady use would be by now</span>
