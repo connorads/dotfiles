@@ -1,0 +1,6 @@
+{
+  "reason": "Research branches remain local unless the user explicitly requests a push",
+  "files": [
+    "mattpocock/.agents/skills/wayfinder/SKILL.md"
+  ]
+}

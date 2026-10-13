@@ -1,0 +1,2 @@
+{{marker}}
+5. **Fire the research subagents.** For each `research` ticket you just created, spin up a subagent that calls the Skill tool with "research" to resolve it in parallel, capturing its findings on a throwaway `research/<name>` branch with a context pointer from the ticket. Keep the research branch local. Push only when the user explicitly requests it. Do not open or merge a PR for that branch.
