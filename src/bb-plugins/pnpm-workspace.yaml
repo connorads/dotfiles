@@ -1,10 +1,6 @@
 packages:
   - '*'
 minimumReleaseAge: 5760
-# bb 0.46.0 bundles plugin SDK 0.6.37, so plugin types must match it. It
-# clears the 4-day quarantine at 2026-10-13T22:36Z; delete this entry then.
-minimumReleaseAgeExclude:
-  - '@get-bb/plugin-sdk@0.6.37'
 allowBuilds: {}
 catalog:
   '@get-bb/plugin-sdk': 0.6.37
