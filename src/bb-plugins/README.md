@@ -58,3 +58,8 @@ message.
 [Caffeine](caffeine/README.md) keeps this Mac awake from BB: indefinitely, for a
 set time, with the lid closed, or while agents run. Alt+K opens it. It drives the
 tmux caffeine lib, so the BB chip and the tmux pill always agree.
+
+## Chat links
+
+[External Links](external-links/README.md) adds an arrow beside chat web links.
+The arrow opens the system browser. Link text follows BB's browser preference.

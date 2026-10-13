@@ -1,0 +1,28 @@
+{
+  "name": "bb-plugin-external-links",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
+  "bb": {
+    "name": "External Links",
+    "description": "Open chat web links in your normal browser with a separate arrow button.",
+    "branding": { "icon": "ExternalLink" },
+    "server": "./server.ts",
+    "app": "./app.ts",
+    "skills": []
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/node": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
