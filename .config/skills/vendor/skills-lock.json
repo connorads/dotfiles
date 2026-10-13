@@ -92,7 +92,7 @@
       "source": "vercel-labs/emulate",
       "sourceType": "github",
       "skillPath": "skills/emulate/SKILL.md",
-      "computedHash": "2a1e296eba9a59cbc4c7c1463948f5b4d5611e1a65f4f48836eba4780d03b69c"
+      "computedHash": "f312bab777d29d4c42010b414f39f50ebc6c68cb59d96583196a2a8d9f0fe86a"
     },
     "explain-then-fix": {
       "source": "jnsahaj/skills",
@@ -110,7 +110,7 @@
       "source": "dmtrKovalenko/fframes",
       "sourceType": "github",
       "skillPath": "skills/fframes-video/SKILL.md",
-      "computedHash": "cd94e0f3a86c9e9e43a4f769ada38ac4750107365c0f20325c16bf00f7657596"
+      "computedHash": "02623b7c323d58e365ad008818aeabe0f2f07ab141939bb39a0c542e90d6a71b"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -254,7 +254,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "bac35fc4933aedc4d971ba2e6254e6f8d5b1d987c26503726e29f7237a7b7205"
+      "computedHash": "5622d2809a04d655a2f89de7f480fcdd4eec827a417af6709a8e6e566784a48a"
     },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",

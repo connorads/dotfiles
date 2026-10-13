@@ -1,0 +1,6 @@
+{
+  "reason": "Shader compilation checks supplement required regression tests",
+  "files": [
+    ".agents/skills/fframes-video/references/api.md"
+  ]
+}
