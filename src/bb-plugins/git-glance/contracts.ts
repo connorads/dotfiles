@@ -102,7 +102,12 @@ export type CommitDetail = z.infer<typeof commitDetailSchema>;
 const diffOutput = z.object({ patch: z.string(), truncated: z.boolean() });
 const root = z.string().min(1);
 
+const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
+  folders: z.array(z.object({ name: z.string(), repository: z.boolean() })) });
+
 export const hostContract = defineRpcContract({
+  folders: { input: z.object({ root, path: z.string() }), output: folderList },
+  select: { input: z.object({ root, path: z.string() }), output: z.object({ root }) },
   /** Start watching (idempotent) and return the current snapshot. */
   watch: { input: z.object({ root }), output: snapshotSchema },
   unwatch: { input: z.object({ root }), output: z.object({}) },
@@ -120,15 +125,17 @@ const thread = { threadId: z.string().min(1) };
 /** Identifies one app window's interest in one thread, for leases. */
 const holder = { ...thread, clientId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
-  watch: { input: z.object(holder), output: z.object({ snapshot: snapshotSchema, op: opStateSchema.nullable() }) },
+  folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
+  select: { input: z.object({ ...thread, path: z.string().nullable() }), output: z.object({}) },
+  watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable() }) },
   unwatch: { input: z.object(holder), output: z.object({}) },
   diff: { input: z.object({ ...thread, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ ...thread, sha }), output: commitDetailSchema },
-  run: { input: z.object({ ...thread, request: opRequest, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
+  run: { input: z.object({ ...thread, root, request: opRequest, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
   branches: { input: z.object(thread), output: z.array(branchSchema) },
-  cancel: { input: z.object(thread), output: z.object({}) },
+  cancel: { input: z.object({ ...thread, root }), output: z.object({}) },
 });
 
 /** Realtime payloads; BB broadcasts to every window, so each names its threads. */
-export type SnapshotMessage = { threadIds: string[]; snapshot: Snapshot };
-export type OpMessage = { threadIds: string[]; op: OpState };
+export type SnapshotMessage = { threadIds: string[]; root: string; snapshot: Snapshot };
+export type OpMessage = { threadIds: string[]; root: string; op: OpState };

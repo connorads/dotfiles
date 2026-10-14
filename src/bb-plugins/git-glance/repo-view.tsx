@@ -22,11 +22,11 @@ const operationNames: Record<NonNullable<Repo['operation']>, string> = {
 
 type Selection = { kind: 'file'; key: string } | { kind: 'commit'; sha: string } | { kind: 'stash'; sha: string };
 
-export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose }: {
+export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
   repo: Repo; threadId: string; state: RepoState; actionError: string | null;
   dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => void; onCancel: () => void;
   picker: 'closed' | 'pointer' | 'keyboard'; onPicker: (state: 'closed' | 'pointer' | 'keyboard') => void;
-  onZoom: () => void; onClose: () => void;
+  onFolders: () => void; onZoom: () => void; onClose: () => void;
 }) {
   const zoomed = useContext(Zoomed);
   const now = useNow(1000);
@@ -81,7 +81,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     <header className="gg-header" data-tone={tone}>
       <div className="gg-eyebrow">
         <Icon name={repo.kind === 'dotfiles' ? 'Home' : 'FolderGit'} className="size-3.5" />
-        <span>{repo.name}</span>
+        <button type="button" className="gg-ghost" disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository">{repo.name}<Icon name="ChevronDown" className="size-3" /></button>
         {repo.kind === 'dotfiles' && <span className="gg-tag">bare repo</span>}
         <span className="gg-spacer" />
         <button type="button" className="gg-ghost gg-icon-button" onClick={onZoom} aria-pressed={zoomed}
@@ -94,6 +94,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
           <Icon name="X" className="size-3.5" />
         </button>
       </div>
+      <p className="gg-folder-path" title={state.root ?? undefined}>{state.root}</p>
       <div className="gg-title">
         <Icon name={branch.head ? 'GitBranch' : 'Circle'} className="gg-title-icon" />
         <button type="button" className="gg-branch" aria-haspopup="dialog" aria-expanded={picker !== 'closed'}

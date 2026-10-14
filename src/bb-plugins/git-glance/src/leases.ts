@@ -26,6 +26,20 @@ export function createLeases(ttlMs: number) {
       entries.delete(key);
       return entry.checkout;
     },
+    /** Move every window showing a thread to its selected repository. */
+    move(threadId: string, target: Checkout): Checkout[] {
+      const emptied: Checkout[] = [];
+      for (const [key, entry] of entries) {
+        if (key === checkoutKey(target)) continue;
+        for (const [holder, lease] of entry.holders) {
+          if (lease.threadId !== threadId) continue;
+          entry.holders.delete(holder);
+          this.touch(target, holder, threadId, lease.expiresAt - ttlMs);
+        }
+        if (entry.holders.size === 0) { entries.delete(key); emptied.push(entry.checkout); }
+      }
+      return emptied;
+    },
     /** Drops expired holders and returns checkouts nobody holds any more. */
     sweep(now: number): Checkout[] {
       const emptied: Checkout[] = [];
