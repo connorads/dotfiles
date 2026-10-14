@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_copyToClipboard, experimental_Icon as Icon, useComposer } from '@get-bb/plugin-sdk/app';
 import type { PreviewDto, RecordingDto } from './contracts.ts';
 import { discardLive, grabInto, insertRecording, nameLive, stop } from './actions.ts';
@@ -7,14 +8,7 @@ import { formatBytes, matches, readable, when } from './src/library.ts';
 import { humanAge, pill } from './src/state.ts';
 import { chipSelector, message, notify, previewer, rpc, useVox, type Anchor } from './vox-store.ts';
 
-const width = 820;
-const margin = 12;
-
-function place(anchor: Anchor) {
-  const w = Math.min(width, window.innerWidth - margin * 2);
-  if (!anchor) return { width: w, top: Math.round(window.innerHeight * 0.1), left: (window.innerWidth - w) / 2 };
-  return { width: w, top: anchor.bottom + 8, left: Math.min(Math.max(margin, anchor.right - w), window.innerWidth - w - margin) };
-}
+const chip = () => document.querySelector<HTMLElement>(chipSelector);
 
 export function useNow(intervalMs: number, active = true) {
   const [now, setNow] = useState(() => Date.now());
@@ -32,7 +26,6 @@ type Confirm = { action: 'delete' | 'reclaim'; name: string; label: string } | {
 export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => void }) {
   const composer = useComposer();
   const { status } = useVox();
-  const dialog = useRef<HTMLDialogElement>(null);
   const filterInput = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [recordings, setRecordings] = useState<RecordingDto[] | null>(null);
@@ -42,16 +35,11 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   const [preview, setPreview] = useState<PreviewDto | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
-  const position = useMemo(() => place(anchor ?? document.querySelector(chipSelector)?.getBoundingClientRect() ?? null), [anchor]);
   const recording = status?.state === 'recording' ? status.recording : null;
   const now = useNow(1000, recording !== null);
 
-  useLayoutEffect(() => {
-    const element = dialog.current;
-    element?.showModal();
-    filterInput.current?.focus();
-    return () => element?.close();
-  }, []);
+  // Runs after ChipPopover's showModal(), which focuses the first control.
+  useLayoutEffect(() => { filterInput.current?.focus(); }, []);
 
   const load = useCallback(async () => {
     try { setRecordings(await rpc().call('list', {})); setError(null); } catch (cause) { setError(message(cause)); }
@@ -98,8 +86,6 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   };
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    // Keep bb's global shortcuts from acting on keys meant for the dialog.
-    if (event.key !== 'Escape') event.stopPropagation();
     if (event.defaultPrevented || event.nativeEvent.isComposing) return;
     const focus = event.target === filterInput.current ? 'filter' : event.target === list.current ? 'list' : 'other';
     const decided = libraryKey({
@@ -138,76 +124,67 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   }
 
   const livePill = status ? pill(status, now / 1000) : null;
-  // bb reads `modalOpen` from aria-modal, not showModal(): without it Esc also fires bb's app.back.
-  return <dialog ref={dialog} className="vx-dialog" aria-label="Vox recordings" aria-modal="true" onKeyDown={keyboard}
-    style={{ top: position.top, left: position.left, width: position.width }}
-    onCancel={event => { event.preventDefault(); if (confirm) setConfirm(null); else if (renaming !== null) setRenaming(null); else onClose(); }}
-    onPointerDown={event => {
-      if (event.target !== event.currentTarget) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
-    }}>
-    <div className="vx-panel">
-      {recording && <section className="vx-live" aria-label="Live recording">
-        <span className="vx-live-dot" aria-hidden />
-        <strong>Recording</strong>
-        <span className="vx-muted">{recording.dir.split('/').at(-1)} · {livePill?.text ?? humanAge(0)}</span>
-        <span className="vx-spacer" />
-        <button type="button" onClick={() => { void grabInto(composer, null); onClose(); }} title="Transcribe the call so far into the composer (⌥Y)">Grab so far</button>
-        <button type="button" onClick={() => { void grabInto(composer, '5m'); onClose(); }}>Last 5 min</button>
-        <button type="button" onClick={() => { onClose(); void nameLive(); }}>Name…</button>
-        <button type="button" onClick={() => { void stop(); }}><Icon name="Square" className="vx-icon" />Stop</button>
-        <button type="button" className="vx-danger" onClick={() => setConfirm({ action: 'discard', label: 'Discard this recording without transcribing?' })}>Discard</button>
-      </section>}
-      <header className="vx-head">
-        <Icon name="Search" className="vx-icon vx-muted" />
-        <input ref={filterInput} className="vx-filter" placeholder="Filter, ↓ for the list" value={filter} aria-label="Filter recordings"
-          onChange={event => setFilter(event.target.value)} />
-        <span className="vx-hint">↵ insert · c copy · e open · r rename · o reveal · t retranscribe · d delete · x reclaim · / filter</span>
-      </header>
-      {confirm && <div className="vx-confirm" role="alertdialog">
-        <span>{confirm.label}</span>
-        <button type="button" className="vx-danger" onClick={() => { void runConfirmed(); }}>Yes (y)</button>
-        <button type="button" onClick={() => setConfirm(null)}>No (n)</button>
-      </div>}
-      <div className="vx-body">
-        <ul ref={list} tabIndex={0} className="vx-list" role="listbox" aria-label="Recordings">
-          {error && <li className="vx-blank vx-error">{error}</li>}
-          {!error && recordings === null && <li className="vx-blank">Reading recordings…</li>}
-          {recordings !== null && visible.length === 0 && <li className="vx-blank">{recordings.length ? 'Nothing matches.' : 'No recordings yet. ⌥V starts one.'}</li>}
-          {visible.map(r => <li key={r.name} role="option" aria-selected={r === current} className="vx-row" data-selected={r === current}
-            onClick={() => { setSelected(r.name); list.current?.focus(); }} onDoubleClick={() => insert(r)}>
-            {renaming !== null && r === current
-              ? <input className="vx-rename" autoFocus value={renaming} aria-label="New title" onChange={event => setRenaming(event.target.value)}
-                onKeyDown={event => {
-                  event.stopPropagation();
-                  if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); list.current?.focus(); }
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    const title = renaming;
-                    setRenaming(null);
-                    list.current?.focus();
-                    void act(async () => {
-                      const renamed = await rpc().call('rename', { name: r.name, title });
-                      if (!renamed.ok) throw new Error(renamed.reason);
-                      setSelected(renamed.path.split('/').at(-1) ?? null);
-                    }, 'Renamed');
-                  }
-                }} />
-              : <span className="vx-title">{r.title}</span>}
-            <span className="vx-kind" data-kind={r.kind}>{r.kind}</span>
-            <span className="vx-muted vx-when">{when(r.name)}</span>
-            <span className="vx-muted vx-size">{formatBytes(r.bytes)}</span>
-          </li>)}
-        </ul>
-        <div className="vx-preview" aria-live="polite">
-          {!preview ? null
-            : preview.kind === 'transcript' ? <pre>{preview.text}{preview.truncated ? '\n…' : ''}</pre>
-            : preview.kind === 'empty' ? <><strong>Transcribed to nothing: no speech recognised.</strong><pre>{preview.log}</pre></>
-            : preview.kind === 'transcribing' ? <><strong>Transcribing…</strong><pre>{preview.log}</pre></>
-            : <><strong>No transcript yet.</strong><pre>{preview.files.join('\n')}</pre></>}
-        </div>
+  return <ChipPopover panelClassName="vx-library" aria-label="Vox recordings" onKeyDown={keyboard} trigger={chip} anchor={anchor} width={820}
+    onClose={onClose} onEscape={() => { if (confirm) setConfirm(null); else if (renaming !== null) setRenaming(null); else onClose(); }}>
+    {recording && <section className="vx-live" aria-label="Live recording">
+      <span className="vx-live-dot" aria-hidden />
+      <strong>Recording</strong>
+      <span className="vx-muted">{recording.dir.split('/').at(-1)} · {livePill?.text ?? humanAge(0)}</span>
+      <span className="vx-spacer" />
+      <button type="button" onClick={() => { void grabInto(composer, null); onClose(); }} title="Transcribe the call so far into the composer (⌥Y)">Grab so far</button>
+      <button type="button" onClick={() => { void grabInto(composer, '5m'); onClose(); }}>Last 5 min</button>
+      <button type="button" onClick={() => { onClose(); void nameLive(); }}>Name…</button>
+      <button type="button" onClick={() => { void stop(); }}><Icon name="Square" className="vx-icon" />Stop</button>
+      <button type="button" className="vx-danger" onClick={() => setConfirm({ action: 'discard', label: 'Discard this recording without transcribing?' })}>Discard</button>
+    </section>}
+    <header className="vx-head">
+      <Icon name="Search" className="vx-icon vx-muted" />
+      <input ref={filterInput} className="vx-filter" placeholder="Filter, ↓ for the list" value={filter} aria-label="Filter recordings"
+        onChange={event => setFilter(event.target.value)} />
+      <span className="vx-hint">↵ insert · c copy · e open · r rename · o reveal · t retranscribe · d delete · x reclaim · / filter</span>
+    </header>
+    {confirm && <div className="vx-confirm" role="alertdialog">
+      <span>{confirm.label}</span>
+      <button type="button" className="vx-danger" onClick={() => { void runConfirmed(); }}>Yes (y)</button>
+      <button type="button" onClick={() => setConfirm(null)}>No (n)</button>
+    </div>}
+    <div className="vx-body">
+      <ul ref={list} tabIndex={0} className="vx-list" role="listbox" aria-label="Recordings">
+        {error && <li className="vx-blank vx-error">{error}</li>}
+        {!error && recordings === null && <li className="vx-blank">Reading recordings…</li>}
+        {recordings !== null && visible.length === 0 && <li className="vx-blank">{recordings.length ? 'Nothing matches.' : 'No recordings yet. ⌥V starts one.'}</li>}
+        {visible.map(r => <li key={r.name} role="option" aria-selected={r === current} className="vx-row" data-selected={r === current}
+          onClick={() => { setSelected(r.name); list.current?.focus(); }} onDoubleClick={() => insert(r)}>
+          {renaming !== null && r === current
+            ? <input className="vx-rename" autoFocus value={renaming} aria-label="New title" onChange={event => setRenaming(event.target.value)}
+              onKeyDown={event => {
+                event.stopPropagation();
+                if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); list.current?.focus(); }
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  const title = renaming;
+                  setRenaming(null);
+                  list.current?.focus();
+                  void act(async () => {
+                    const renamed = await rpc().call('rename', { name: r.name, title });
+                    if (!renamed.ok) throw new Error(renamed.reason);
+                    setSelected(renamed.path.split('/').at(-1) ?? null);
+                  }, 'Renamed');
+                }
+              }} />
+            : <span className="vx-title">{r.title}</span>}
+          <span className="vx-kind" data-kind={r.kind}>{r.kind}</span>
+          <span className="vx-muted vx-when">{when(r.name)}</span>
+          <span className="vx-muted vx-size">{formatBytes(r.bytes)}</span>
+        </li>)}
+      </ul>
+      <div className="vx-preview" aria-live="polite">
+        {!preview ? null
+          : preview.kind === 'transcript' ? <pre>{preview.text}{preview.truncated ? '\n…' : ''}</pre>
+          : preview.kind === 'empty' ? <><strong>Transcribed to nothing: no speech recognised.</strong><pre>{preview.log}</pre></>
+          : preview.kind === 'transcribing' ? <><strong>Transcribing…</strong><pre>{preview.log}</pre></>
+          : <><strong>No transcript yet.</strong><pre>{preview.files.join('\n')}</pre></>}
       </div>
     </div>
-  </dialog>;
+  </ChipPopover>;
 }

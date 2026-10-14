@@ -1,19 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChipPopover } from '@bb-plugins/chip';
 import type { Details, CaffeineView, ActionResult } from './src/domain.ts';
 import { GRACE_MS } from './src/agents.ts';
 import { clockAt, durationLabel, EXTEND_OPTIONS, longDuration, remainingFraction, START_OPTIONS, untilLabel } from './src/format.ts';
 import { keyAction, rowId, type Action, type Screen } from './src/keys.ts';
-import { message, rpc, useNow, type Anchor } from './store.ts';
-
-const width = 320;
-const margin = 12;
-
-function place(anchor: Anchor) {
-  const w = Math.min(width, window.innerWidth - margin * 2);
-  if (!anchor) return { width: w, top: Math.round(window.innerHeight * 0.14), left: (window.innerWidth - w) / 2, origin: 'top center' };
-  const left = Math.min(Math.max(margin, anchor.right - w), window.innerWidth - w - margin);
-  return { width: w, top: anchor.bottom + 8, left, origin: `${anchor.right - left}px 0` };
-}
+import { message, rpc, useNow, visibleChip, type Anchor } from './store.ts';
 
 const UNSUPPORTED: Record<Extract<CaffeineView, { kind: 'unsupported' }>['reason'], string> = {
   'not-macos': 'Keep awake works only on macOS.',
@@ -95,7 +86,6 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
   const [pending, setPending] = useState(false);
   /** The row that needs a second press: a lid session on battery. */
   const [armed, setArmed] = useState<string | null>(null);
-  const [position, setPosition] = useState(() => place(anchor));
   const now = useNow(1_000);
 
   const stuck = details?.sleepDisabled === true;
@@ -108,17 +98,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
     rpc().call('details', {}).then(setDetails, cause => setError(message(cause)));
   }, []);
 
-  useLayoutEffect(() => {
-    const element = dialog.current;
-    element?.showModal();
-    return () => element?.close();
-  }, []);
-  useEffect(() => {
-    loadDetails();
-    const resize = () => setPosition(place(anchor));
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, [anchor, loadDetails]);
+  useEffect(() => { loadDetails(); }, [loadDetails]);
   // Leaving OFF (a start from tmux, say) closes the lid picker with it.
   useEffect(() => { if (view?.kind !== 'off') setPicker(false); }, [view?.kind]);
   useEffect(() => {
@@ -198,8 +178,6 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
   }
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    // Keep BB's global shortcuts from acting on keys meant for the popover.
-    if (event.key !== 'Escape') event.stopPropagation();
     if (event.metaKey || event.ctrlKey || event.altKey || event.key === 'Escape') return;
     const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-row]:not(:disabled)') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
@@ -317,27 +295,18 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
   const keys = screen.kind === 'unsupported'
     ? <><kbd>q</kbd> close</>
     : <><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
-  return <dialog ref={dialog} className="cf-dialog cf-root" aria-label="Keep awake" aria-modal="true" onKeyDown={keyboard}
-    data-instant={instant || undefined} data-tone={tone}
-    style={{ top: position.top, left: position.left, width: position.width, transformOrigin: position.origin }}
-    onCancel={event => {
-      event.preventDefault();
+  return <ChipPopover ref={dialog} className="cf-dialog cf-root" panelClassName="cf-panel" aria-label="Keep awake" aria-busy={pending || undefined}
+    onKeyDown={keyboard} trigger={visibleChip} anchor={anchor} width={320} instant={instant} data-tone={tone} onClose={onClose}
+    onEscape={() => {
       if (armed) { setArmed(null); return; }
       const action = keyAction(screen, 'Escape');
       if (action) dispatch(action);
-    }}
-    onPointerDown={event => {
-      if (event.target !== event.currentTarget) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
     }}>
-    <div className="cf-panel" aria-busy={pending || undefined}>
-      {body}
-      {error && <p className="cf-error" role="status">{error}</p>}
-      <footer className="cf-footer">
-        {footnote && <span>{footnote}</span>}
-        <span className="cf-keys">{keys}</span>
-      </footer>
-    </div>
-  </dialog>;
+    {body}
+    {error && <p className="cf-error" role="status">{error}</p>}
+    <footer className="cf-footer">
+      {footnote && <span>{footnote}</span>}
+      <span className="cf-keys">{keys}</span>
+    </footer>
+  </ChipPopover>;
 }

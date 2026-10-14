@@ -18,13 +18,7 @@
 .gg-chip-behind { color: var(--attention); }
 @container page-header (max-width: 900px) { .gg-chip-ahead, .gg-chip-behind { display: none; } }
 
-/* Pop-up shell */
-.gg-dialog {
-  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0; background: transparent;
-  color: var(--popover-foreground); overflow: visible;
-  animation: gg-in .16s var(--gg-ease);
-}
-.gg-dialog::backdrop { background: color-mix(in oklch, var(--canvas, #000) 22%, transparent); animation: gg-fade .16s ease-out; }
+/* Pop-up shell from @bb-plugins/chip. */
 /* Zoom: a large centred view with room for side-by-side diffs. A click morphs
    between sizes; the z key switches at once. */
 /* Lets height transition to and from auto: expanding sections and the zoom. */
@@ -32,7 +26,7 @@
 .gg-dialog[data-morph] { transition: top .24s var(--gg-ease), left .24s var(--gg-ease), width .24s var(--gg-ease); }
 .gg-dialog[data-morph] .gg-panel { transition: height .24s var(--gg-ease), max-height .24s var(--gg-ease); }
 .gg-dialog[data-zoomed] .gg-panel { height: 92vh; max-height: 92vh; }
-.gg-dialog[data-zoomed]::backdrop { background: color-mix(in oklch, var(--canvas, #000) 45%, transparent); backdrop-filter: blur(2px); }
+.gg-dialog[data-zoomed]::backdrop { background: color-mix(in oklch, var(--background) 45%, transparent); backdrop-filter: blur(2px); }
 .gg-dialog[data-zoomed] .gg-diff { max-height: 62vh; }
 .gg-dialog[data-zoomed] .gg-message { max-height: 320px; }
 /* Zoomed: lists on the left, the selected file, stash or commit on the right. */
@@ -48,22 +42,9 @@
 .gg-detail .gg-diff[data-fill] { flex: 1; max-height: none; min-height: 120px; margin: 0; }
 .gg-detail .gg-commit-panel { padding: 0; }
 .gg-detail-empty { margin: auto; }
-/* Opened by shortcut: no entrance, as Raycast does. */
-.gg-dialog[data-instant], .gg-dialog[data-instant]::backdrop { animation: none; }
-.gg-dialog:focus { outline: none; }
 @keyframes gg-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
 @keyframes gg-fade { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .gg-dialog, .gg-dialog::backdrop { animation: none; } }
 
-.gg-panel {
-  display: flex; flex-direction: column; max-height: min(720px, calc(100vh - 80px));
-  border: 1px solid var(--border-hairline); border-radius: 14px; overflow: hidden;
-  background: var(--popover);
-  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--ink, #fff) 6%, transparent) inset,
-    0 24px 64px -12px rgb(0 0 0 / .45), 0 8px 20px -8px rgb(0 0 0 / .3);
-  font: var(--text-sm, 13px)/1.4 var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
 .gg-blank { display: grid; place-items: center; gap: 6px; padding: 48px 24px; text-align: center; color: var(--muted-foreground); }
 .gg-blank strong { color: var(--foreground); font-weight: 600; }
 .gg-blank-icon { width: 24px; height: 24px; }

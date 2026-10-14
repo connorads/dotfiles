@@ -3,7 +3,7 @@ import { definePluginApp, experimental_Icon as Icon, useRealtime, useRealtimeCon
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { rpcContract } from './contracts.ts';
-import { GitPopover, type Anchor } from './popover.tsx';
+import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renewAll, useRepo } from './repo-store.ts';
 import './app.css';
 
@@ -11,18 +11,13 @@ type Open = { threadId: string; anchor: Anchor; instant: boolean } | null;
 let opened: Open = null;
 const listeners = new Set<() => void>();
 function show(next: Open) { opened = next; listeners.forEach(listener => listener()); }
-const chip = (threadId: string) => document.querySelector<HTMLElement>(`[data-git-glance="${CSS.escape(threadId)}"]`);
 /** Keyboard opens skip the entrance: a shortcut used all day must feel instant. */
 function toggle(threadId: string, via: 'pointer' | 'keyboard') {
   if (opened?.threadId === threadId) { show(null); return; }
   const box = chip(threadId)?.getBoundingClientRect();
   show({ threadId, anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard' });
 }
-function close() {
-  const threadId = opened?.threadId;
-  show(null);
-  if (threadId) chip(threadId)?.focus({ preventScroll: true });
-}
+function close() { show(null); }
 
 function Overlay() {
   const current = useSyncExternalStore(listener => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => opened);

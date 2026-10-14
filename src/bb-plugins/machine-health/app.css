@@ -32,17 +32,8 @@
 .mh-machine-row:hover { background: var(--state-hover); }
 .mh-machine-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
-.mh-dialog {
-  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
-  background: transparent; color: var(--popover-foreground); overflow: visible;
-}
-.mh-dialog::backdrop { background: color-mix(in oklch, var(--canvas, #000) 22%, transparent); }
-.mh-dialog:focus { outline: none; }
-.mh-panel {
-  display: flex; flex-direction: column; gap: 14px; max-height: min(760px, calc(100vh - 80px)); overflow: auto;
-  padding: 14px 16px; border: 1px solid var(--border-hairline); border-radius: 14px; background: var(--popover);
-  box-shadow: 0 24px 64px -12px rgb(0 0 0 / .45); font: var(--text-sm, 13px)/1.4 var(--font-sans);
-}
+/* Pop-up shell from @bb-plugins/chip; this panel scrolls as a whole. */
+.bbp-popover-panel.mh-panel { gap: 14px; overflow: auto; padding: 14px 16px; }
 .mh-panel h3 { margin: 0 0 6px; font-size: var(--text-sm, 13px); font-weight: 600; }
 .mh-panel small, .mh-empty, .mh-gloss, .mh-why, .mh-count { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .mh-panel button { font: inherit; color: inherit; }

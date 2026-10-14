@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { definePluginApp, useRpc } from '@get-bb/plugin-sdk/app';
 import type { ExperimentalSidebarFooterDisclosureProps, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
-import { MachineDialog, Rows, type Anchor } from './dialog.tsx';
+import { chipEl, MachineDialog, Rows, type Anchor } from './dialog.tsx';
 import { chip, type Chip as ChipView, type LabelMode, type Tone } from './src/present.ts';
 import { MetricIcon } from './icons.tsx';
 import type { ChipTone } from '@bb-plugins/chip';
@@ -28,7 +28,6 @@ function toggleLabel() {
   localStorage.setItem(labelKey, labelMode);
   emit();
 }
-const chipEl = (threadId: string) => document.querySelector<HTMLElement>(`[data-machine-health="${CSS.escape(threadId)}"]`);
 function toggle(threadId: string) {
   if (opened?.threadId === threadId) { opened = null; emit(); return; }
   const box = chipEl(threadId)?.getBoundingClientRect();
@@ -36,10 +35,8 @@ function toggle(threadId: string) {
   emit();
 }
 function close() {
-  const threadId = opened?.threadId;
   opened = null;
   emit();
-  if (threadId) chipEl(threadId)?.focus({ preventScroll: true });
 }
 
 /**

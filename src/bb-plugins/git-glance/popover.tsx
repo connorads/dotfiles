@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, rpcContract } from './contracts.ts';
 import { renew, useRepo } from './repo-store.ts';
@@ -6,22 +7,15 @@ import { RepoView } from './repo-view.tsx';
 import { available } from './sync-bar.tsx';
 import { message, Zoomed } from './ui.tsx';
 
-const popoverWidth = 640;
-const margin = 12;
 export type Anchor = { top: number; right: number; bottom: number; left: number } | null;
 
-const zoomedWidth = 1240;
 const zoomKey = 'git-glance:zoomed';
+export const chip = (threadId: string) => document.querySelector<HTMLElement>(`[data-git-glance="${CSS.escape(threadId)}"]`);
 
-function place(anchor: Anchor, zoomed: boolean) {
-  if (zoomed) {
-    const width = Math.min(zoomedWidth, window.innerWidth - margin * 4);
-    return { width, top: Math.round(window.innerHeight * 0.04), left: (window.innerWidth - width) / 2, origin: 'top center' };
-  }
-  const width = Math.min(popoverWidth, window.innerWidth - margin * 2);
-  if (!anchor) return { width, top: Math.round(window.innerHeight * 0.1), left: (window.innerWidth - width) / 2, origin: 'top center' };
-  const left = Math.min(Math.max(margin, anchor.right - width), window.innerWidth - width - margin);
-  return { width, top: anchor.bottom + 8, left, origin: `${anchor.right - left}px 0` };
+/** Zoomed: a large centred view with room for side-by-side diffs. */
+function placeZoomed() {
+  const width = Math.min(1240, window.innerWidth - 48);
+  return { width, top: Math.round(window.innerHeight * 0.04), left: (window.innerWidth - width) / 2, origin: 'top center' };
 }
 
 export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: string; anchor: Anchor; instant: boolean; onClose: () => void }) {
@@ -35,26 +29,10 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     setMorph(via === 'pointer');
     setZoomed(current => { localStorage.setItem(zoomKey, current ? '0' : '1'); return !current; });
   }, []);
-  const [position, setPosition] = useState(() => place(anchor, zoomed));
   /** Open branch picker, and how it was opened: a shortcut opens it without motion. */
   const [picker, setPicker] = useState<'closed' | 'pointer' | 'keyboard'>('closed');
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useLayoutEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    element.showModal();
-    return () => element.close();
-  }, []);
-  useEffect(() => {
-    const resize = () => {
-      const chip = document.querySelector(`[data-git-glance="${CSS.escape(threadId)}"]`)?.getBoundingClientRect();
-      setPosition(place(chip ?? anchor, zoomed));
-    };
-    resize();
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, [threadId, anchor, zoomed]);
   // Once data arrives: focus the first row for the arrow keys, and fetch so the
   // pull count is current. The server skips the fetch if one ran recently.
   const opened = useRef(false);
@@ -75,8 +53,6 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
 
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    // Keep BB's global shortcuts from acting on keys meant for the pop-up.
-    if (event.key !== 'Escape') event.stopPropagation();
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-row]') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
@@ -101,24 +77,16 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   }
 
   const repo = state.snapshot?.kind === 'none' ? null : state.snapshot;
-  return <dialog ref={dialog} className="gg-dialog" aria-label="Git status" onKeyDown={keyboard} data-instant={instant || undefined}
-    data-zoomed={zoomed || undefined} data-morph={morph || undefined}
-    style={{ top: position.top, left: position.left, width: position.width, transformOrigin: position.origin }}
-    onCancel={event => { event.preventDefault(); onClose(); }}
-    onPointerDown={event => {
-      if (event.target !== event.currentTarget) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
-    }}>
-    <div className="gg-panel">
-      {repo ? <Zoomed.Provider value={zoomed}><RepoView repo={repo} threadId={threadId} state={state} actionError={actionError}
-        dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
-        picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
-        : <div className="gg-blank">
-          {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span></>
-            : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span></>
-            : <><span className="gg-spinner" /><span>Reading repository…</span></>}
-        </div>}
-    </div>
-  </dialog>;
+  return <ChipPopover ref={dialog} className="gg-dialog" panelClassName="gg-panel" aria-label="Git status" onKeyDown={keyboard}
+    trigger={() => chip(threadId)} anchor={anchor} width={640} instant={instant} place={zoomed ? placeZoomed : undefined}
+    data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose}>
+    {repo ? <Zoomed.Provider value={zoomed}><RepoView repo={repo} threadId={threadId} state={state} actionError={actionError}
+      dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
+      picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
+      : <div className="gg-blank">
+        {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span></>
+          : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span></>
+          : <><span className="gg-spinner" /><span>Reading repository…</span></>}
+      </div>}
+  </ChipPopover>;
 }

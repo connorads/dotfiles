@@ -27,12 +27,12 @@
   box-shadow: 0 24px 64px -12px rgb(0 0 0 / .45), 0 8px 20px -8px rgb(0 0 0 / .3);
   font: var(--text-sm, 13px)/1.4 var(--font-sans);
 }
-.vx-panel button {
+.vx-panel button, .vx-library button {
   display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border: 1px solid var(--border);
   border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; cursor: pointer;
 }
-.vx-panel button:hover { background: var(--state-hover); }
-.vx-panel button.vx-danger { color: var(--destructive-text); }
+.vx-panel button:hover, .vx-library button:hover { background: var(--state-hover); }
+.vx-panel button.vx-danger, .vx-library button.vx-danger { color: var(--destructive-text); }
 .vx-muted { color: var(--muted-foreground); }
 .vx-spacer { flex: 1; }
 .vx-hint { color: var(--muted-foreground); font-size: var(--text-xs, 12px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
