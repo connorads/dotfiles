@@ -238,8 +238,31 @@ bb claude-profiles header THREAD_ID
 ## Scope
 
 The new-thread picker lists profiles from the first connected host. The first
-send resolves the choice on the thread's own host. Sessions with subagent
-sidecars cannot switch profiles in this version. BB's Claude bridge copies a
+send resolves the choice on the thread's own host. A switch copies the parent
+transcript and its session directory, including subagent history and tool results.
+Existing JSONL files must match or extend the target at a complete line boundary.
+Other existing files must match exactly. Target-only files and conflicting
+metadata stop the switch without overwriting the conflicting history.
+
+The transfer refuses symlinks and special files. Limits are 64 MiB per file,
+256 MiB per session and 4096 files and directories. The runtime must be idle.
+Files are staged and both histories are checked again before publication.
+Child files are published before the parent transcript. An interrupted transfer
+can leave some child files updated; retrying completes a compatible transfer.
+The copy is not a filesystem transaction or a lock against external writers.
+Credentials and settings stay in their own profiles.
+
+```mermaid
+flowchart LR
+    Idle[Stop runtime] --> Snapshot[Read session files]
+    Snapshot --> Check[Reject conflicts]
+    Check --> Stage[Stage and recheck]
+    Stage --> Children[Publish child files]
+    Children --> Parent[Publish parent transcript]
+    Parent --> Bind[Save profile selection]
+```
+
+BB's Claude bridge copies a
 fork's session in its own config directory, not in the thread's account. A
 Claude fork therefore works only when the source and the fork both run on
 Default.
@@ -276,6 +299,6 @@ dependencies provide React and the official SDK app harness locally.
 build first, copy the plugin to a new `$TMPDIR` directory and build there.
 
 Tests cover transcript copying, return switching, conflicts, symlinks, subagent
-refusal, quota parsing, control requests, cancellation, the new-thread rule,
+continuation, quota parsing, control requests, cancellation, the new-thread rule,
 favourites with saved effort, the picker and the usage views.
 The disposable live proof is documented in [SPIKE.md](./SPIKE.md).

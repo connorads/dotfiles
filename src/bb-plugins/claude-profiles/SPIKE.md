@@ -73,3 +73,43 @@ Verified 2026-10-12 against BB 0.46.0 and SDK 0.6.37:
   Sending again relaunched with the stretch directory and recalled the earlier word.
 - Passed: a later send to the healthy thread proceeded without a refusal.
 - Passed: 28 core tests, including fake-host wiring tests, and 9 app tests.
+
+## Subagent profile transfer verification
+
+Verified 2026-10-14 with Claude Code 2.1.293 and BB CLI 0.45.0.
+The disposable BB thread is `thr_zk5qywwqyb`.
+
+The test compares a deliberate refusal with native child continuation through
+`bb claude-profiles switch`. It uses the same parent session and child ID.
+The child reads a random marker and returns only `READY`. The parent transcript
+is checked for marker leakage before the input file is deleted. Recall requires
+the original child; a new child or parent-only recall cannot pass the test.
+
+- Passed: the installed old plugin refuses the session with the original
+  subagent-files error.
+- Passed: after build and reload, the installed plugin switches that session
+  to another profile. The original child returns the exact marker.
+- Passed: the migrated child reads a second marker without exposing it to the
+  parent. After deleting its input and switching back, the child recalls it.
+- Passed: the final build switches the same session again and the original
+  child recalls a third isolated marker.
+- Passed: launch events record the selected configuration directory on each
+  provider restart. Parent session identity stays constant.
+- Passed: regression tests cover child-log extension, matching metadata,
+  tool-result copying, conflicting histories, target-only state, symlinks,
+  oversized files, source and target changes, and interrupted-copy retry.
+
+The native CLI control copies only the parent transcript into another profile.
+Resuming its child fails because the child transcript is missing. Copying the
+session directory makes the same child recall succeed. An earlier control lacks
+`SendMessage` and is excluded. A usage-limited target is also excluded.
+
+This proves continuation for one completed native child with Read-only context,
+including a return switch. It does not establish every workflow or agent-team
+state. Differing non-JSONL metadata remains a conflict. The transfer publishes
+files individually and cannot lock out independent native writers.
+
+The design preserves session identity and profile isolation. Forking creates
+another conversation and does not provide this switch behaviour. Shared storage
+avoids copies but couples account writers and retention. The transfer keeps the
+existing profile layout and rejects histories it cannot safely extend.
