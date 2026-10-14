@@ -1,5 +1,8 @@
 {
   "name": "bb-plugins",
   "private": true,
+  "scripts": {
+    "build:chip": "pnpm -r --filter \"...^@bb-plugins/chip\" build"
+  },
   "packageManager": "pnpm@12.9.0"
 }

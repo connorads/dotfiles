@@ -25,7 +25,8 @@ to rebuild and reload on save.
 ## Header chips
 
 Every thread-header action uses the shared [chip](chip/README.md) package. After a
-change to `chip/`, rebuild and reload each plugin that depends on it.
+change to `chip/`, run `pnpm build:chip` to rebuild each plugin that depends on
+it, then reload them.
 [ADR 0002](docs/adr/0002-shared-header-chip-package.md) records why.
 
 ## Agent Switcher
