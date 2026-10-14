@@ -1,0 +1,1 @@
+| Unexpected charges / a session you forgot | `start --non-interactive` does NOT auto-stop | Always `npx --yes eas-cli@latest simulator:stop --id <id>`. List leftovers with `npx --yes eas-cli@latest simulator:list`. |

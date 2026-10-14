@@ -1,0 +1,1 @@
+| `An Expo user account is required` / `whoami` shows logged-out | No browser login on a cloud/CI/headless box, or `EXPO_TOKEN` unset/invalid | Set **`EXPO_TOKEN`** (expo.dev → Account → Access Tokens) in the env; verify `npx --yes eas-cli@latest whoami`. (Interactive machines can `eas login`.) |

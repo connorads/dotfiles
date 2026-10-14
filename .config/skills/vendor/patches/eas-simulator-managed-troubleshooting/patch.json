@@ -1,0 +1,6 @@
+{
+  "reason": "Simulator workflows use installed managed CLIs and explicitly authorised feedback only.",
+  "files": [
+    "expo/.agents/skills/eas-simulator/references/troubleshooting.md"
+  ]
+}

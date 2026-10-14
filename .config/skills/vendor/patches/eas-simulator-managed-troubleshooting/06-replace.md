@@ -1,0 +1,1 @@
+| `start` keeps "Waiting for … session to be ready" but it never returns | `start`'s readiness poll can miss a session that's actually live | Don't rely on it — poll `eas simulator:get --id <id> --json` for `status: IN_PROGRESS` + a populated `remoteConfig`. |

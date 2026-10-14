@@ -1,0 +1,1 @@
+| `simulator:start` rejects `--name` (e.g. `Nonexistent flag: --name`) | The managed `eas-cli` lacks the required flag | Stop and report the missing managed CLI prerequisite. Do not remove `--name` or install or upgrade a CLI during this task. |
