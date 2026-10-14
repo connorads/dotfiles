@@ -60,6 +60,8 @@ export interface WindowView {
   /** What the reading means for the user now. */
   status: string;
   reset: string | null;
+  /** One trailing phrase for a compact row: the reset, or what the bar cannot show. */
+  detail: string | null;
   /** Credits are an allowance, not a rate limit. */
   credit: boolean;
 }
@@ -74,8 +76,9 @@ export function viewWindow(window: UsageWindow, now: Date, reading: ReadingState
     : credit ? `Expires ${clock(until, now)}`
     : `Resets ${clock(until, now)} · in ${duration(until.getTime() - now.getTime())}`;
   if (credit && window.cost) {
-    return { pace: value, tone: tone(window.usedPercent, value), credit, reset,
-      status: value.kind === 'elapsed' ? 'Expired · refresh needed' : `${money(window.cost.usedUsdCents)} of ${money(window.cost.limitUsdCents)}` };
+    const status = value.kind === 'elapsed' ? 'Expired · refresh needed' : `${money(window.cost.usedUsdCents)} of ${money(window.cost.limitUsdCents)}`;
+    const expiry = until && value.kind !== 'elapsed' ? ` · expires ${until.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : '';
+    return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status, detail: status + expiry };
   }
   const status = (() => {
     if (value.kind !== 'elapsed' && reading !== 'fresh') return reading === 'stale' ? 'Cached reading' : 'Reading age unknown';
@@ -90,7 +93,10 @@ export function viewWindow(window: UsageWindow, now: Date, reading: ReadingState
         return { under: 'Under pace', on: 'On pace', ahead: 'Ahead of pace', over: 'Ahead of pace' }[value.status];
     }
   })();
-  return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status };
+  const detail = value.kind === 'elapsed' ? status
+    : value.kind === 'paced' && value.status === 'over' && value.runsOutAt && until
+      ? `Out ${clock(value.runsOutAt, now)} · resets ${clock(until, now)}` : reset;
+  return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status, detail };
 }
 
 const RANK: Record<Tone, number> = { normal: 0, warning: 1, critical: 2 };

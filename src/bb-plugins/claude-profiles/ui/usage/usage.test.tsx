@@ -189,7 +189,7 @@ test('old readings suppress projections and do not become fresh when the panel l
   act(() => openUsage());
   const region = await slot.findByRole('region', { name: 'Codex · Personal' });
   expect(region.textContent).toContain('Read 1h 0m ago');
-  expect(region.textContent).toContain('Cached reading');
+  expect(slot.getByRole('row', { name: /Cached reading/ })).toBeTruthy();
   expect(region.textContent).not.toContain('runs out');
   expect(slot.queryByText('Updated just now')).toBeNull();
   expect(slot.queryByText('Every account is within its limits.')).toBeNull();

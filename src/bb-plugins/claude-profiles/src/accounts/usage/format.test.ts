@@ -27,3 +27,12 @@ test('expired credit allowances request a refresh instead of suggesting an activ
   assert.equal(viewWindow({ ...window, period: null, resetsAt: '2026-10-11T12:00:00Z',
     cost: { usedUsdCents: 10, limitUsdCents: 100 } }, now).status, 'Expired · refresh needed');
 });
+
+test('the detail line folds projections and credit balances into one trailing phrase', () => {
+  assert.match(viewWindow(window, now).detail ?? '', /^Out .+ · resets /);
+  assert.match(viewWindow({ ...window, usedPercent: 10 }, now).detail ?? '', /^Resets .+ · in 2h 0m$/);
+  assert.match(viewWindow({ ...window, period: null, resetsAt: '2026-11-04T12:00:00Z', cost: { usedUsdCents: 6, limitUsdCents: 25000 } }, now).detail ?? '',
+    /^\$0\.06 of \$250 · expires .*4/);
+  assert.equal(viewWindow({ ...window, period: null, resetsAt: '2026-10-11T12:00:00Z',
+    cost: { usedUsdCents: 10, limitUsdCents: 100 } }, now).detail, 'Expired · refresh needed');
+});
