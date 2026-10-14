@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
-import { hostContract, hostSignals, rpcContract, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
+import { hostContract, hostSignals, rpcContract, subjectProject, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
 import { checkoutKey, createLeases, type Checkout } from './src/leases.ts';
 import { finish, progress, start, type OpState } from './src/ops.ts';
 
@@ -19,6 +19,12 @@ export default function plugin(bb: BbPluginApi) {
     bb.log.warn(`${message}${cause ? `: ${cause instanceof Error ? cause.message : JSON.stringify(cause)}` : ''}`);
 
   async function environment(threadId: string): Promise<Checkout | null> {
+    const projectId = subjectProject(threadId);
+    if (projectId !== null) {
+      const { sources } = await bb.sdk.projects.get({ projectId });
+      const source = sources.find(s => s.isDefault) ?? sources[0];
+      return source ? { hostId: source.hostId, root: source.path } : null;
+    }
     const { environmentId } = await bb.sdk.threads.get({ threadId });
     if (!environmentId) return null;
     const { hostId, path } = await bb.sdk.environments.get({ environmentId });
