@@ -1,9 +1,7 @@
-import { definePluginApp } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_copyToClipboard } from '@get-bb/plugin-sdk/app';
 import { findTerminal, tweak } from './xterm.ts';
 
-const writeClipboard = (text: string) => {
-  navigator.clipboard.writeText(text).catch(() => {});
-};
+const writeClipboard = (text: string) => { void experimental_copyToClipboard({ text }); };
 
 export default definePluginApp(app => {
   app.contentScripts.register({
