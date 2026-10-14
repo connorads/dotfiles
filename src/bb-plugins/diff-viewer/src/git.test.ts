@@ -231,6 +231,14 @@ test('the fingerprint changes with each edit, commit and new file, and leaves th
   assert.equal(await fingerprint(tempDir(), '/nowhere'), null);
 });
 
+test('the fingerprint changes when the default branch moves under a branch with no upstream', async () => {
+  const work = clonedRepo();
+  git(work, 'checkout', '-qb', 'feature');
+  const before = await fingerprint(work, '/nowhere');
+  git(work, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+  assert.notEqual(await fingerprint(work, '/nowhere'), before);
+});
+
 test('a submodule bump reads as its own file, whatever diff.submodule says', async () => {
   const work = clonedRepo();
   const sub = tempDir();

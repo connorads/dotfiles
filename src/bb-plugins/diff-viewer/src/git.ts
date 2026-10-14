@@ -177,18 +177,21 @@ export async function load(root: string, home: string, scope: Scope): Promise<Lo
 }
 
 /**
- * A hash that changes when HEAD, the upstream, the status or a listed file's
- * size or mtime changes. Status shows the index's blob, not the work tree's,
+ * A hash that changes when HEAD, the upstream, origin/HEAD, a default-branch
+ * candidate, the status or a listed file's size or mtime changes. Status shows the index's blob, not the work tree's,
  * so a second edit to a modified file shows only in its stat data.
  */
 export async function fingerprint(root: string, home: string): Promise<string | null> {
   const repo = await resolveRepo(root, home);
   if (!repo) return null;
   const untracked = repo.kind === 'repo' ? '--untracked-files=all' : '--untracked-files=no';
-  const status = await git(repo, ['status', '--porcelain=v2', '-z', '--branch', untracked]);
+  const [status, refs] = await Promise.all([
+    git(repo, ['status', '--porcelain=v2', '-z', '--branch', untracked]),
+    git(repo, ['for-each-ref', '--format=%(refname) %(objectname) %(symref)', 'refs/remotes/origin/HEAD', ...defaultBranchCandidates]),
+  ]);
   const stats = await mapLimited(parseStatusPaths(status), 32,
     path => lstat(join(repo.cwd, path)).then(info => `${info.size}:${info.mtimeMs}`, () => '-'));
-  return createHash('sha1').update(status).update(stats.join('\n')).digest('hex');
+  return createHash('sha1').update(status).update(refs).update(stats.join('\n')).digest('hex');
 }
 
 function relative(path: string) {
