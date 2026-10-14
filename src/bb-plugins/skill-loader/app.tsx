@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import * as bbApp from '@get-bb/plugin-sdk/app';
-import { definePluginApp, experimental_Icon as Icon, useComposer, useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_copyToClipboard, experimental_Icon as Icon, useComposer, useRpc } from '@get-bb/plugin-sdk/app';
 import type { rpcContract } from './contracts.ts';
 import { pillParts } from './src/mention.ts';
 import { chosenRefs, cursorRow, initialState, onKey, setQuery, type Action } from './src/picker.ts';
@@ -10,23 +9,6 @@ const POPUP_ID = 'skl';
 
 type Catalogue = { hostId: string; canInstall: boolean; rows: Row[] };
 type Notice = { tone: 'info' | 'error'; text: string };
-
-/** bb's clipboard writer first; the Clipboard API needs window focus, so it is only the fallback. */
-async function copyText(text: string): Promise<boolean> {
-  // experimental_copyToClipboard: in the runtime app shim, absent from the 0.6.15 types.
-  const native = (bbApp as Record<string, unknown>).experimental_copyToClipboard;
-  if (typeof native === 'function') {
-    try {
-      return Boolean(await (native as (content: { text: string }) => Promise<boolean>)({ text }));
-    } catch { /* fall through to the Clipboard API */ }
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
@@ -97,7 +79,7 @@ function SklPopup() {
       setBusy(true);
       try {
         const { text } = await rpc.call('pointers', { hostId: catalogue.hostId, refs: [...refs] });
-        if (await copyText(text)) composer.experimental_closePopup();
+        if (await experimental_copyToClipboard({ text })) composer.experimental_closePopup();
         else setNotice({ tone: 'error', text: 'Could not write to the clipboard.' });
       } catch (cause) {
         setNotice({ tone: 'error', text: message(cause) });

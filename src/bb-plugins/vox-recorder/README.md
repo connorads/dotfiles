@@ -232,12 +232,6 @@ other option.
 - BB refuses a file preview from the app overlay that holds the library. So
   `e` borrows the opener of a header pill's pane. It needs a thread on screen,
   and with a split it opens in the newest pane.
-- Copy uses `experimental_copyToClipboard`, which the 0.6.15 types lack, read
-  from the runtime module. A runtime without it falls back to the Clipboard
-  API, which needs window focus.
-- `registerTool` takes a JSON schema from `z.toJSONSchema` and parses inside
-  `execute`. The SDK 0.6.15 types use zod 4.6, and the plugin's zod 4.3 schema
-  fails its zod overload.
 - vox runs on `system.config().primaryHostId`, which must be macOS.
 - The host reads `VOX_STORE`, `VOX_STATEFILE`, `VOX_SEENFILE` and `VOX_BIN`
   from the worker's environment at load. Variables set only in the shell

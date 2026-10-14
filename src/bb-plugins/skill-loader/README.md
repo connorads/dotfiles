@@ -103,9 +103,8 @@ flowchart TD
 - **The pointer is hidden from the user** and cannot be edited per message.
 - **No pane target.** Pills reach bb composers only. `ctrl-y` covers the rest.
 - **No toasts.** Copy closes silently. Errors and install output show inline.
-- **Clipboard.** `experimental_copyToClipboard` exists at runtime but not in
-  the 0.6.15 types, so the app feature-detects it and falls back to
-  `navigator.clipboard`.
+- **Clipboard.** `ctrl-y` writes through `experimental_copyToClipboard`. It
+  closes the popup only when the write succeeds.
 - **Tests cover the pure core and the host entry.** The popup has no UI tests.
 
 Seen in a running bb (web UI, bb 0.46): `Alt+S` and the + menu open the

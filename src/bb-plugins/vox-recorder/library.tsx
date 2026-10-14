@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import * as bbApp from '@get-bb/plugin-sdk/app';
-import { experimental_Icon as Icon, useComposer } from '@get-bb/plugin-sdk/app';
+import { experimental_copyToClipboard, experimental_Icon as Icon, useComposer } from '@get-bb/plugin-sdk/app';
 import type { PreviewDto, RecordingDto } from './contracts.ts';
 import { discardLive, grabInto, insertRecording, nameLive, stop } from './actions.ts';
 import { libraryKey, type LetterAction } from './src/keys.ts';
@@ -25,14 +24,6 @@ export function useNow(intervalMs: number, active = true) {
     return () => clearInterval(id);
   }, [intervalMs, active]);
   return now;
-}
-
-/** bb's clipboard writer works without window focus; the Clipboard API is for a runtime without it. */
-async function copyText(text: string): Promise<boolean> {
-  // experimental_copyToClipboard: in the bb runtime, absent from the 0.6.15 types.
-  const native = (bbApp as Record<string, unknown>).experimental_copyToClipboard;
-  if (typeof native === 'function') return Boolean(await (native as (content: { text: string }) => Promise<boolean>)({ text }));
-  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
 /** A y/n question names its target when asked, so moving the selection before `y` cannot retarget it. */
@@ -91,7 +82,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
 
   const copy = (name: string) => act(async () => {
     const { text } = await rpc().call('transcript', { name });
-    if (!await copyText(text)) throw new Error('Could not copy the transcript.');
+    if (!await experimental_copyToClipboard({ text })) throw new Error('Could not copy the transcript.');
   }, 'Copied transcript');
   const openFile = (name: string) => act(async () => {
     const { hostId, path } = await rpc().call('location', { name });
