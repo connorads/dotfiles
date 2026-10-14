@@ -3,9 +3,9 @@ import { rpcContract } from './contracts.ts';
 import { makeOpenLazygit } from './open.ts';
 
 export default function plugin(bb: BbPluginApi) {
-  const open = makeOpenLazygit(bb.sdk.terminals);
+  const open = makeOpenLazygit(bb.sdk.terminals, bb.sdk.projects);
   bb.rpc.register(rpcContract, {
-    open: async ({ threadId }) => ({ terminalId: await open(threadId) }),
+    open: async target => ({ terminalId: await open(target) }),
   });
   bb.cli.register({
     name: 'lazygit',
@@ -15,7 +15,7 @@ export default function plugin(bb: BbPluginApi) {
       if (argv.length !== 2 || argv[0] !== 'open' || !argv[1]) {
         return { exitCode: argv.includes('--help') ? 0 : 1, stdout: 'Usage: bb lazygit open <thread-id>' };
       }
-      return { exitCode: 0, stdout: JSON.stringify({ terminalId: await open(argv[1]) }) };
+      return { exitCode: 0, stdout: JSON.stringify({ terminalId: await open({ kind: 'thread', threadId: argv[1] }) }) };
     },
   });
 }
