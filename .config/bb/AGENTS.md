@@ -38,6 +38,14 @@ Read the [Preferences guide](../../src/bb-plugins/preferences/README.md) for own
 2. Run `bb preferences apply` to apply the tracked file.
 3. Run `bb settings keyboard list --json` to verify the live overrides.
 
+## Automation backups
+
+[Automation Backup](../../src/bb-plugins/automation-backup/README.md) exports live
+automation definitions to a private Git repository and pushes changed snapshots.
+Use `bb automation-backup run` after changing a task for an immediate backup.
+Do not copy prompts or snapshots into public dotfiles. BB owns live task settings;
+editing a snapshot does not change a task.
+
 ## Local plugins
 
 Plugin source lives in [src/bb-plugins](../../src/bb-plugins/README.md), a shared pnpm workspace.

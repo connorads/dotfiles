@@ -43,6 +43,12 @@ records why it absorbs Model Favourites and Agent Usage.
 [Preferences](preferences/README.md) applies tracked keyboard settings from
 `~/.config/bb/preferences.json`. Its guide covers installation and ownership.
 
+## Automation backups
+
+[Automation Backup](automation-backup/README.md) exports live task definitions to a
+private Git repository, commits changes and pushes every five minutes while enabled.
+BB remains authoritative; snapshots never activate or modify scheduled work.
+
 ## Voice controls
 
 [Handsfree](handsfree/README.md) connects Hex commands to the focused BB window.

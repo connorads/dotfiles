@@ -1,0 +1,34 @@
+{
+  "name": "bb-plugin-automation-backup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.37"
+  },
+  "bb": {
+    "name": "Automation Backup",
+    "description": "Back up BB automation definitions to a private GitHub repository.",
+    "branding": {
+      "icon": "Archive"
+    },
+    "server": "./server.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test *.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "hono": "catalog:",
+    "typescript": "catalog:"
+  }
+}
