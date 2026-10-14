@@ -1,6 +1,6 @@
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { experimental_ProviderIcon as ProviderIcon, useRpc } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog.tsx';
 import { Icon } from '../components/ui/icon.tsx';
@@ -39,7 +39,8 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now, observedAt }: { account: Account; now: Date; observedAt: number | null }) {
+function AccountBlock({ account, now, observedAt, resetCredits }: { account: Account; now: Date; observedAt: number | null;
+  resetCredits: ResetCredits | null }) {
   const usage = account.usage;
   const name = accountName(account);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
@@ -59,47 +60,68 @@ function AccountBlock({ account, now, observedAt }: { account: Account; now: Dat
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
       </div>}
+    {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null} />}
     {usage?.status === 'ok' && reading !== 'fresh' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
       {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
     </p>}
   </section>;
 }
 
-function CreditResets({ reading, now }: { reading: ResetCredits; now: Date }) {
+function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; now: Date; accountEmail: string | null }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
   if (reading.status === 'ok' && reading.held === 0 && !reading.message) return null;
-  if (reading.status === 'unavailable') return <section className="au-resets" aria-label="Codex reset credits">
-    <p className="au-reading">Reset credits unavailable · {reading.message}</p>
-  </section>;
+  if (reading.status === 'unavailable') return <div role="table" aria-label="Codex reset credits" className="au-rows au-resets">
+    <div className="au-row" role="row">
+      <span className="au-row-label" role="rowheader">Reset credits</span>
+      <span className="au-resets-note" role="cell">{reading.message}</span>
+    </div>
+  </div>;
   const first = reading.expiries[0];
   const deadline = first ? new Date(first.expiresAt) : null;
   const expired = deadline !== null && deadline <= now;
   const soon = deadline !== null && deadline.getTime() - now.getTime() <= 3 * 86_400_000;
   const stale = now.getTime() - reading.observedAt >= 15 * 60_000;
-  return <section className="au-resets" aria-label="Codex reset credits">
-    <div className="au-resets-heading">
-      <div><h4>Reset credits <span className="au-resets-count">{reading.held} held</span></h4>
-        <p className="au-reading">{reading.usable} usable at last check</p></div>
-      {deadline && <p className="au-resets-next" data-tone={soon ? 'warning' : 'normal'}>
-        {expired ? 'Expiry passed · refresh needed' : `Next expires in ${duration(deadline.getTime() - now.getTime())}`}
-        <span>{expiryClock(deadline)}</span>
-      </p>}
+  const next = deadline === null ? null : expired ? 'Expiry passed' : `Expires in ${duration(deadline.getTime() - now.getTime())}`;
+  // One expiry date is already the row's detail; a list only earns space when it adds dates.
+  const listed = reading.expiries.length > 1 || (reading.expiries.length > 0 && reading.unknownExpiryCount > 0);
+  const source = reading.accountLabel !== null && reading.accountLabel !== accountEmail ? reading.accountLabel : null;
+  const pips = reading.held <= 12 ? Array.from({ length: reading.held }, (_, index) => index < reading.usable) : null;
+  const plural = (count: number) => `${count} ${count === 1 ? 'reset' : 'resets'}`;
+  return <div role="table" aria-label="Codex reset credits" className="au-rows au-resets">
+    <div className="au-row" role="row" aria-label={`Reset credits: ${reading.held} held, ${reading.usable} usable.${
+      next && deadline ? ` ${next}, ${expiryClock(deadline)}.` : ''}`}>
+      <span className="au-row-label" role="rowheader">Reset credits</span>
+      <span className="au-resets-held" role="cell">
+        {pips && <span className="au-pips" aria-hidden="true">{pips.map((usable, index) => <span key={index} data-usable={usable || undefined} />)}</span>}
+        <span>{reading.usable} usable</span>
+      </span>
+      <span className="au-row-value" role="cell">{reading.held}</span>
+      <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={deadline ? expiryClock(deadline) : undefined}>
+        {listed ? <button type="button" className="au-resets-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)}>
+          {next}<Icon name="ChevronDown" className="au-resets-chevron size-3" />
+        </button> : next ?? ''}
+      </span>
     </div>
-    <p className="au-reading au-resets-source">CLI login{reading.accountLabel ? ` · ${reading.accountLabel}` : ' · account not reported'}</p>
-    <details className="au-expiries">
-      <summary>Expiry dates</summary>
-      <ul>{reading.expiries.map(expiry => {
+    {listed && open && <div id={listId} role="rowgroup" className="au-resets-list">
+      {reading.expiries.map(expiry => {
         const date = new Date(expiry.expiresAt);
-        return <li key={expiry.expiresAt}><span>{expiry.count} {expiry.count === 1 ? 'reset' : 'resets'}</span>
-          <span>{expiryClock(date)}<small>{date <= now ? 'Expired · refresh needed' : `In ${duration(date.getTime() - now.getTime())}`}</small></span></li>;
+        return <div key={expiry.expiresAt} className="au-row au-resets-expiry" role="row">
+          <span role="cell" />
+          <span role="cell">{plural(expiry.count)} · {expiryClock(date)}</span>
+          <span role="cell" />
+          <span className="au-row-detail" role="cell">{date <= now ? 'Expired' : `in ${duration(date.getTime() - now.getTime())}`}</span>
+        </div>;
       })}
-        {reading.unknownExpiryCount > 0 && <li>{reading.unknownExpiryCount} {reading.unknownExpiryCount === 1 ? 'reset' : 'resets'} · expiry unavailable</li>}
-      </ul>
-    </details>
-    <p className="au-reading" data-stale={stale || undefined} title={new Date(reading.observedAt).toLocaleString()}>
-      {readingAge(reading.observedAt, now)}{stale && ' · refresh needed'}
-    </p>
-    {reading.message && <p className="au-reading" role="status">{reading.message}</p>}
-  </section>;
+      {reading.unknownExpiryCount > 0 && <div className="au-row au-resets-expiry" role="row">
+        <span role="cell" /><span role="cell">{plural(reading.unknownExpiryCount)} · expiry unavailable</span>
+      </div>}
+    </div>}
+    {(source || stale || reading.message) && <p className="au-resets-note au-resets-foot" data-stale={stale || undefined} role={reading.message ? 'status' : undefined}
+      title={new Date(reading.observedAt).toLocaleString()}>
+      {[source && `From CLI login · ${source}`, stale && `${readingAge(reading.observedAt, now)} · refresh needed`, reading.message].filter(Boolean).join(' · ')}
+    </p>}
+  </div>;
 }
 
 function ProviderGroup({ accounts, now, readings, resetCredits }: { accounts: Account[]; now: Date;
@@ -111,9 +133,10 @@ function ProviderGroup({ accounts, now, readings, resetCredits }: { accounts: Ac
       <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />
       {first.displayName}
     </h3>
+    {/* Reset credits belong to the CLI login, which is the machine's one Codex account. */}
     <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now}
-      observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null} />)}
-      {first.providerId === 'codex' && resetCredits && <CreditResets reading={resetCredits} now={now} />}
+      observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null}
+      resetCredits={account === first && first.providerId === 'codex' ? resetCredits : null} />)}
     </div>
   </section>;
 }
