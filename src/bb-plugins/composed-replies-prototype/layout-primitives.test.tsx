@@ -217,3 +217,59 @@ it("keeps a decorative icon grouped beside wrapping label text", () => {
       .success,
   ).toBe(false);
 });
+
+for (const [format, input] of [
+  [
+    "openui",
+    'root = Stack([NumberInput("Workers", $n, 10, 20, 1, ""), Caption($n)])\n$n = 12',
+  ],
+  [
+    "json-render",
+    JSON.stringify({
+      root: "root",
+      state: { n: 12 },
+      elements: {
+        root: { type: "Stack", props: {}, children: ["control", "caption"] },
+        control: {
+          type: "NumberInput",
+          props: {
+            label: "Workers",
+            value: { $bindState: "/n" },
+            min: 10,
+            max: 20,
+            step: 1,
+            unit: "",
+          },
+          children: [],
+        },
+        caption: {
+          type: "Caption",
+          props: { text: { $state: "/n" } },
+          children: [],
+        },
+      },
+    }),
+  ],
+] as const)
+  it(`${format} number input lets a draft pass outside its range`, () => {
+    render(
+      <CompositionView
+        composition={parseComposition({ format, source: input, title: "N" })}
+      />,
+    );
+    const field = screen.getByRole("spinbutton") as HTMLInputElement;
+    fireEvent.change(field, { target: { value: "" } });
+    expect(field.value).toBe("");
+    fireEvent.change(field, { target: { value: "1" } });
+    expect(field.value).toBe("1");
+    expect(screen.getByText("12", { selector: "p" })).toBeTruthy();
+    fireEvent.change(field, { target: { value: "15" } });
+    expect(screen.getByText("15", { selector: "p" })).toBeTruthy();
+    fireEvent.change(field, { target: { value: "99" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(field.value).toBe("20");
+    expect(screen.getByText("20", { selector: "p" })).toBeTruthy();
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.blur(field);
+    expect(field.value).toBe("20");
+  });

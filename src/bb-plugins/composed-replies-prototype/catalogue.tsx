@@ -8,7 +8,7 @@ import {
 } from "@openuidev/react-lang";
 import { defineCatalog, type ComputedFunction } from "@json-render/core";
 import { schema, defineRegistry, useBoundProp } from "@json-render/react";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 import {
   richProps,
@@ -104,10 +104,18 @@ function NumericControl({
   setValue: (v: number) => void;
 }) {
   const id = useId();
+  // A typed draft stays unclamped until blur or Enter, so a value can pass
+  // through out-of-range prefixes ("1" on the way to "15" with min 10).
+  const [draft, setDraft] = useState<string | null>(null);
   if (value === undefined) return <span role="status">Loading {label}...</span>;
   props.Slider.parse({ label, value, min, max, step, unit });
   if (min > max || value < min || value > max)
     throw new Error("Control range invalid");
+  const commit = () => {
+    const n = Number(draft);
+    if (draft && Number.isFinite(n)) setValue(Math.min(max, Math.max(min, n)));
+    setDraft(null);
+  };
   return (
     <label htmlFor={id} style={{ display: "grid", gap: 6, fontSize: 13 }}>
       <span>
@@ -119,13 +127,19 @@ function NumericControl({
       <input
         id={id}
         type={type}
-        value={value}
+        value={draft ?? value}
         min={min}
         max={max}
         step={step}
         onChange={(e) => {
-          const n = Number(e.target.value);
-          if (Number.isFinite(n)) setValue(Math.min(max, Math.max(min, n)));
+          const raw = e.target.value;
+          const n = Number(raw);
+          if (type === "number") setDraft(raw);
+          if (raw !== "" && n >= min && n <= max) setValue(n);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
         }}
         style={{
           width: "100%",
