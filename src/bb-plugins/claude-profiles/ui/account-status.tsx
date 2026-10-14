@@ -6,7 +6,7 @@ import { open } from './picker/store.ts';
 import './account-status.css';
 
 // The new-thread composer can switch provider, so the status shows only while Claude Code is selected.
-export const isClaude = (composer: PluginComposerApi) => composer.scope.kind === 'thread' || composer.selection?.providerId === 'claude-code';
+export const isClaude = (composer: PluginComposerApi) => composer.selection?.providerId === 'claude-code';
 
 export function openAccount(composer: PluginComposerApi) { open(composer, { focus: 'account' }); }
 
@@ -27,8 +27,8 @@ export function AccountStatus() {
   if (!isClaude(composer) || !profiles.length) return null;
   const label = profiles.find(profile => profile.id === currentId)?.label ?? 'Default';
   return <button type="button" className="cp-trigger" onClick={() => openAccount(composer)}
-    aria-label={`Claude account ${label}`} title="Switch Claude account">
+    aria-label={`Claude account ${label}`} title="Switch Claude account (Alt+A)">
     <span className="cp-dot" />
-    {composer.layout === 'expanded' && <span>{label}</span>}
+    <span>{label}</span>
   </button>;
 }

@@ -6,11 +6,12 @@ import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Effort, Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
+import { AccountPicker } from './account-picker.tsx';
 import { AccountMenu } from './account-menu.tsx';
 import { EFFORT_LABEL, EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
-import { close, open, openedState, subscribe, type Focus } from './store.ts';
+import { close, open, openedState, subscribe } from './store.ts';
 import './picker.css';
 
 const controllers = new Map<string, Controller>();
@@ -35,11 +36,13 @@ export function Overlay() {
   const composers = useComposers();
   const composer = composers.find(candidate => candidate.key === opened?.key);
   useEffect(() => { if (opened && !composer) close(); }, [opened, composer]);
-  return composer ? <ModelPicker key={composer.key} composer={composer} focus={opened?.focus}
-    onClose={() => { close(); composer.focus(); }} /> : null;
+  if (!composer) return null;
+  const onClose = () => { close(); composer.focus(); };
+  return opened?.focus === 'account' ? <AccountPicker key={composer.key} composer={composer} onClose={onClose} />
+    : <ModelPicker key={composer.key} composer={composer} onClose={onClose} />;
 }
 
-export function ModelPicker({ composer, focus = 'search', onClose }: { composer: PluginComposerApi; focus?: Focus | undefined; onClose: () => void }) {
+export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi; onClose: () => void }) {
   const ownController = useController(composer);
   const controller = controllers.get(composer.key) ?? ownController;
   const rpc = useRpc<typeof rpcContract>();
@@ -103,12 +106,6 @@ export function ModelPicker({ composer, focus = 'search', onClose }: { composer:
     revealed.current = true;
     dialog.current?.querySelector('.mf-list [data-selected]')?.scrollIntoView?.({ block: 'center' });
   }, [loading]);
-  // The account list loads after the dialog opens, so account focus waits for the button.
-  const accountFocused = useRef(false);
-  useEffect(() => {
-    if (focus !== 'account' || accountFocused.current || !accountButton.current) return;
-    accountFocused.current = true; accountButton.current.focus();
-  }, [focus, accounts]);
   async function run(work: () => Promise<unknown>, reload = false) {
     if (working.current) return;
     working.current = true; setBusy(true); setError(null);

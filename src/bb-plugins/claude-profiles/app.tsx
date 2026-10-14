@@ -13,6 +13,7 @@ export default definePluginApp(app => {
     actions: [{ id: 'claude-account', component: AccountStatus }],
   });
   app.composer.experimental_registerCommand({ id: 'open-switcher', title: 'Switch Claude account',
+    defaultShortcut: { key: 'a', alt: true },
     run: ({ composer }) => { if (isClaude(composer)) openAccount(composer); } });
   app.slots.experimental_appOverlay({ id: 'picker', component: Overlay });
   app.composer.customize({ id: 'agent-switcher', scopes: ['thread', 'new-thread'],
