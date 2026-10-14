@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "unslop": {
+      "source": "poteto/plugins",
+      "sourceType": "github",
+      "skillPath": "pstack/skills/unslop/SKILL.md",
+      "computedHash": "bf0fa50406da04d3831e99807c199e392321cfb52c061567e7177b078bda0682"
+    }
+  }
+}
