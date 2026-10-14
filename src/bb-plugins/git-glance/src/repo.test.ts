@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,6 +28,18 @@ test('snapshot marks commits missing from every remote and counts ahead', async 
   const untracked = await diff(repo!, { path: 'new.txt', origPath: null, source: { kind: 'work-tree', area: 'untracked' } });
   assert.match(untracked.patch, /\+hello/);
   await assert.rejects(diff(repo!, { path: '../remote.git/HEAD', origPath: null, source: { kind: 'work-tree', area: 'untracked' } }), /outside the repository/);
+});
+
+test('snapshot leaves the index untouched after a stat-only change', async () => {
+  const work = temp();
+  git(work, 'init', '-q');
+  writeFileSync(join(work, 'f.txt'), '1\n'); git(work, 'add', '.'); git(work, 'commit', '-qm', 'init');
+  const index = join(work, '.git', 'index');
+  const before = statSync(index).mtimeMs;
+  const later = new Date(Date.now() + 5_000);
+  utimesSync(join(work, 'f.txt'), later, later);
+  await snapshot((await resolveRepo(work))!);
+  assert.equal(statSync(index).mtimeMs, before);
 });
 
 test('an unborn branch has no commits', async () => {

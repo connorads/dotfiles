@@ -45,8 +45,9 @@ flowchart LR
   `git check-ignore` drops ignored paths.
 - Refreshes run one at a time; changes during a run queue one more. A snapshot
   is sent only when it differs from the last one.
-- Status runs with `GIT_OPTIONAL_LOCKS=0`, so it never writes the index. A
-  refresh therefore cannot trigger the watcher again or block an agent's commit.
+- Reads run with `GIT_OPTIONAL_LOCKS=0` and `diff.autoRefreshIndex=false`, so
+  they never write the index. A refresh therefore cannot trigger the watcher
+  again or block an agent's commit.
 - After a realtime reconnect or window focus, the app renews its leases, which
   returns a fresh snapshot.
 
