@@ -33,3 +33,5 @@ export function ChipDot({ tone, className, children, ...span }: HTMLAttributes<H
     <i aria-hidden="true" />{children}
   </span>;
 }
+
+export { ChipPopover } from './popover.tsx';

@@ -27,7 +27,9 @@ to rebuild and reload on save.
 Every thread-header action uses the shared [chip](chip/README.md) package. After a
 change to `chip/`, run `pnpm build:chip` to rebuild each plugin that depends on
 it, then reload them.
-[ADR 0002](docs/adr/0002-shared-header-chip-package.md) records why.
+[ADR 0002](docs/adr/0002-shared-header-chip-package.md) records why. A chip's
+pop-up uses the package's `ChipPopover`;
+[ADR 0003](docs/adr/0003-shared-chip-popover.md) records why.
 
 ## Agent Switcher
 
