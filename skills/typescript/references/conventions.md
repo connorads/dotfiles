@@ -140,21 +140,21 @@ oxlint's type-aware `typescript/no-deprecated` echoes that message verbatim.
 
 ## JSDoc
 
-Every exported function, class, method, constant, and usually exported type gets
-JSDoc. Explain invariants, trade-offs, non-obvious rules, and safety
-justifications - not what the code already says.
+Document exported contracts when callers need an invariant, external constraint
+or rationale the name and types cannot express. Use the domain's ordinary words.
+Omit comments that only repeat the signature.
 
 ```ts
-/**
- * Parse an email address from untrusted input.
- * @param input - The untrusted string to parse.
- * @returns A parsed email address, or `InvalidEmailAddress` when invalid.
- */
-export function parse(input: string): Result<EmailAddress, InvalidEmailAddress>;
+/** Resolve the batch before injection; stop at the first invalid ref. */
+export function resolveRefs(
+  refs: readonly string[],
+  skills: readonly DiscoveredSkill[],
+): Result<DiscoveredSkill[], ResolveError>;
 ```
 
-Use `@template` for generics and document the fields of complex exported object
-types. `@throws` is for defects only, never for expected typed errors (`errors.md`).
+Use `@template` and field documentation when they explain information absent
+from the types. `@throws` is for defects only, never for expected typed errors
+(`errors.md`).
 
 ## TypeScript testing specifics
 
