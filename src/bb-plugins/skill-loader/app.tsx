@@ -177,9 +177,9 @@ function SklPopup() {
             const selected = index === Math.min(state.cursor, visible.length - 1);
             return (
               <div key={row.ref} role="option" aria-selected={selected}
-                tabIndex={0}
+                tabIndex={-1}
                 className={`flex cursor-default items-baseline gap-2 rounded px-2 py-1 ${selected ? 'bg-state-active' : 'hover:bg-state-hover'}`}
-                onMouseDown={event => { event.preventDefault(); event.currentTarget.focus(); }}
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => setState(previous => ({ ...previous, cursor: index }))}
                 onDoubleClick={() => void run('load', [row.ref])}>
                 <span className="w-3 shrink-0 text-xs text-foreground">{marked.has(row.ref) ? '●' : ''}</span>
