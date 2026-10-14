@@ -71,6 +71,15 @@ export function relativeMarkdownPath(
   }
   return parts.join('/');
 }
+// FNV-1a keeps task ids short and identical in the server and browser bundles.
+function hash(value: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
 function plain(value: string): string {
   return value
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
@@ -121,6 +130,7 @@ export function parseTasks(
   let section = '';
   let fence: { char: string; length: number } | null = null;
   let last: Task | undefined;
+  const seen = new Map<string, number>();
   const reviewed =
     /Last reviewed:\s*(\d{4}-\d{2}-\d{2})/.exec(markdown)?.[1] ?? null;
   markdown.split(/\r?\n/).forEach((line, index) => {
@@ -192,8 +202,12 @@ export function parseTasks(
           : /doing|in progress/i.test(section)
             ? 'doing'
             : 'next';
+    // Ids follow content, not line numbers, so edits elsewhere in the file keep an open task selected.
+    const key = hash(`${section}\n${raw}`);
+    const occurrence = seen.get(key) ?? 0;
+    seen.set(key, occurrence + 1);
     last = {
-      id: `${path}:${index + 1}`,
+      id: `${path}:${key}:${occurrence}`,
       path,
       line: index + 1,
       raw,

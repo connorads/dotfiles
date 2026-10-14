@@ -105,10 +105,13 @@ test('source selection changes only plugin configuration, and rejects escaping p
 test('context must be linked by the current task; arbitrary documents remain unread', async () => {
   const { harness } = setup();
   try {
+    const selection = { projectId: 'project', sourceId: null };
+    const { tasks } = rpcContract.snapshot.output.parse(
+      await harness.behavior.callRpc('snapshot', selection),
+    );
     const input = {
-      projectId: 'project',
-      sourceId: null,
-      taskId: 'TODO.md:2',
+      ...selection,
+      taskId: tasks[0]?.id ?? '',
       path: 'engagements/acme/journal.md',
     };
     const result = rpcContract.context.output.parse(
