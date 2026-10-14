@@ -135,19 +135,32 @@ test('the rebindable usage command opens the overlay', async () => {
   expect(await slot.findByRole('dialog', { name: 'Agent usage' })).toBeTruthy();
 });
 
-test('reset credits distinguish held from usable and disclose expiry dates', async () => {
+test('reset credits sit in one row and disclose extra expiry dates on demand', async () => {
   const app = await load();
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect() } });
   act(() => openUsage());
-  const region = await slot.findByRole('region', { name: 'Codex reset credits' });
-  expect(region.textContent).toContain('3 held');
-  expect(region.textContent).toContain('0 usable at last check');
-  expect(region.textContent).toContain('CLI login · cli@example.com');
-  const disclosure = region.querySelector('summary')!;
-  expect(disclosure.textContent).toContain('Expiry dates');
-  fireEvent.click(disclosure);
-  expect(region.querySelector('details')?.open).toBe(true);
-  expect(region.textContent).toContain('1 reset · expiry unavailable');
+  const table = await slot.findByRole('table', { name: 'Codex reset credits' });
+  const row = slot.getByRole('row', { name: /^Reset credits: 3 held, 0 usable\. Expires in 2d 0h/ });
+  expect(row.textContent).toContain('0 usable');
+  expect(table.textContent).toContain('From CLI login · cli@example.com');
+  expect(table.textContent).not.toContain('Read ');
+  const toggle = slot.getByRole('button', { name: /Expires in 2d 0h/ });
+  expect(table.textContent).not.toContain('expiry unavailable');
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(table.textContent).toContain('1 reset · expiry unavailable');
+  expect(table.textContent).toContain('in 4d 0h');
+});
+
+test('reset credits hide the CLI login when it is the account shown', async () => {
+  const app = await load();
+  const value = inspect();
+  const codex = value.snapshot.machines[0]!.providers[0]!;
+  if (codex.usage?.status === 'ok') codex.usage.accountEmail = 'cli@example.com';
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => value } });
+  act(() => openUsage());
+  const table = await slot.findByRole('table', { name: 'Codex reset credits' });
+  expect(table.textContent).not.toContain('CLI login');
 });
 
 test('closing after a responsive header remount returns focus to the same thread\'s replacement badge', async () => {
@@ -200,7 +213,7 @@ test('unknown reading ages and unavailable reset credits are explicit', async ()
   act(() => openUsage());
   const region = await slot.findByRole('region', { name: 'Codex · Personal' });
   expect(region.textContent).toContain('Reading time unavailable');
-  expect((await slot.findByRole('region', { name: 'Codex reset credits' })).textContent).toContain('Machine is offline.');
+  expect((await slot.findByRole('table', { name: 'Codex reset credits' })).textContent).toContain('Machine is offline.');
 });
 
 test('Amp displays native credit text without a percentage and refreshes independently of quota loading', async () => {
