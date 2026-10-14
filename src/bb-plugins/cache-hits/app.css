@@ -1,4 +1,60 @@
-/* Chip anatomy from @bb-plugins/chip. The chip has no pop-up: the title holds the detail. */
-.cache-hits { cursor: default; }
-.cache-hits:active { transform: none; }
+/* Chip anatomy from @bb-plugins/chip; the pop-up shell is its ChipPopover. */
 .ch-cold > i { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+
+.ch-panel {
+  --ch-read: var(--success);
+  --ch-write: var(--primary);
+  --ch-miss: var(--destructive-text);
+  --ch-rest: var(--muted-foreground);
+}
+.bbp-popover-panel.ch-panel { gap: 14px; overflow: auto; padding: 14px 16px 16px; }
+.ch-panel h3 { margin: 0 0 6px; font-size: var(--text-xs, 12px); font-weight: 500; color: var(--muted-foreground); }
+
+.ch-status { display: grid; gap: 8px; }
+.ch-status[data-level="ok"] { --ch-tone: var(--success); }
+.ch-status[data-level="warn"] { --ch-tone: var(--warning-text); }
+.ch-status[data-level="danger"] { --ch-tone: var(--destructive-text); }
+.ch-headline { display: flex; align-items: baseline; gap: 8px; color: var(--muted-foreground); }
+.ch-headline strong {
+  color: var(--ch-tone); font-size: 22px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.ch-note { margin: 0; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.ch-note b { color: var(--foreground); font-weight: 500; }
+.ch-meter { display: block; height: 4px; border-radius: 2px; background: color-mix(in oklch, var(--foreground) 10%, transparent); overflow: hidden; }
+.ch-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--ch-tone); transition: width 1s linear; }
+
+.ch-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--border); }
+.ch-stat { display: grid; gap: 2px; padding: 8px 10px; background: var(--popover); }
+.ch-stat dt { color: var(--muted-foreground); font-size: 11px; }
+.ch-stat dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ch-stat dd.ch-sub { color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+
+.ch-chart { display: grid; gap: 6px; margin: 0; }
+.ch-chart figcaption { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.ch-legend { display: flex; gap: 10px; font-size: 11px; }
+.ch-legend > span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; background: var(--ch-part); vertical-align: -1px; }
+[data-part="read"] { --ch-part: var(--ch-read); }
+[data-part="write"] { --ch-part: var(--ch-write); }
+[data-part="miss"] { --ch-part: var(--ch-miss); }
+[data-part="rest"] { --ch-part: var(--ch-rest); }
+
+.ch-plot { position: relative; padding-top: 14px; }
+.ch-axis-y { position: absolute; top: 0; left: 0; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ch-bars {
+  display: flex; align-items: flex-end; gap: 2px; height: 72px; margin: 0; padding: 0; list-style: none;
+  border-top: 1px dashed color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+.ch-bars > li { display: flex; flex: 1 1 0; flex-direction: column; justify-content: flex-end; min-width: 2px; max-width: 14px; height: 100%; border-radius: 2px 2px 0 0; overflow: hidden; cursor: default; }
+.ch-bars > li:hover { filter: brightness(1.25); }
+.ch-bars > li > i { display: block; flex: none; background: var(--ch-part); }
+.ch-bars > li > i[data-part="rest"] { opacity: .5; }
+.ch-bars > li > i[data-part="read"] { opacity: .75; }
+/* Compaction shrinks the prompt on purpose: a gap before the bar marks the new baseline. */
+.ch-bars > li[data-reset] { margin-left: 4px; box-shadow: -3px 0 0 -1px color-mix(in oklch, var(--foreground) 30%, transparent); }
+.ch-axis-x { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ch-empty { margin: 0; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+
+.ch-misses ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ch-misses li { display: grid; grid-template-columns: 44px 44px 1fr; gap: 8px; font-size: var(--text-xs, 12px); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ch-misses b { color: var(--ch-miss); font-weight: 500; text-align: right; }
