@@ -110,6 +110,10 @@ one sentence on the worst window. When an account needs attention, it names the
 same provider's account with the most room. **Refresh** requests fresh
 readings. Codex reset credits show beneath the Codex accounts.
 
+A Claude profile row shows the account email and plan cached in the profile's
+`.claude.json`. Team seats read as Team Standard or Team Premium with the
+premium multiplier.
+
 Each timed window compares use with even spending across the window.
 
 | Status | Meaning |

@@ -3,6 +3,7 @@ import { homedir, tmpdir } from 'node:os';
 import { readdir, lstat } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { hostContract, type Profile } from './contracts.ts';
+import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, collectUsage } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
 import type { Usage } from './src/accounts/quota.ts';
@@ -48,7 +49,9 @@ export default experimental_defineHostEntry({
     usage: async (input, context): Promise<Usage> => {
       try {
         const selected = await profile(input.root, input.profileId);
-        return await collectUsage(input.executable, selected.configDir, tmpdir(), context.signal);
+        const [usage, account] = await Promise.all([collectUsage(input.executable, selected.configDir, tmpdir(), context.signal),
+          readAccount(selected.configDir ? join(selected.configDir, '.claude.json') : join(homedir(), '.claude.json'))]);
+        return usage.status === 'ok' ? { ...usage, account } : usage;
       }
       catch (error) { return { status: 'error', windows: [], observedAt: null,
         message: error instanceof Error ? error.message : 'Claude quota request failed.' }; }

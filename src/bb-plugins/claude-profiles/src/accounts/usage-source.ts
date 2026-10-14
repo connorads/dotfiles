@@ -26,6 +26,7 @@ export function measurement(value: Usage): Measurement {
   if (value.status !== 'ok') return { accountKey: null, observedAt: value.observedAt,
     usage: { status: 'error', ...fields, message: value.message ?? 'Claude quota unavailable.' } };
   return { accountKey: null, observedAt: value.observedAt, usage: { status: 'ok', ...fields,
+    accountEmail: value.account?.accountEmail ?? null, planLabel: value.account?.planLabel ?? null,
     windows: value.windows.map(window => ({ ...window,
       kind: window.id === 'five_hour' ? 'five-hour' : window.id.startsWith('seven_day') ? 'weekly' : 'custom',
       model: window.id.startsWith('seven_day_') ? window.id.slice('seven_day_'.length) : null,
