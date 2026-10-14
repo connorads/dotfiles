@@ -150,8 +150,8 @@ a zod schema drifts from a core type.
 
 | Command | Default |
 | --- | --- |
-| Machine health: Toggle dialog | `Alt+H` |
-| Machine health: Toggle full hostname | none; `Alt+Shift+H` is BB's previous thread |
+| Toggle machine health | `Alt+H` |
+| Toggle full hostname | none; `Alt+Shift+H` is BB's previous thread |
 
 `Alt+M` is BB's model cycle, so the dialog uses `Alt+H`. Rebind in Settings →
 Keyboard. The hostname mode is stored per window.

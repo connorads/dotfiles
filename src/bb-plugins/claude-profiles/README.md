@@ -66,7 +66,7 @@ new-thread draft reads it on the connected machine that lists its accounts.
 
 New thread:
 
-1. Click the account status, or run **Agent Switcher: switch account** with the caret in the composer.
+1. Click the account status, or run **Switch Claude account** with the caret in the composer.
 2. Choose an account in the **Claude account** menu.
 3. Send the first message. The thread starts on that account.
 
@@ -132,7 +132,7 @@ Balances have no invented percentage or pace projection.
 
 | Action | Shortcut |
 | --- | --- |
-| Open picker (**Agent Switcher: open picker**) | Alt+F |
+| Open model picker | Alt+F |
 | Next favourite | Alt+Shift+F |
 | Previous favourite | Assign in BB keyboard settings |
 | Select favourite 1-9 | Assign in BB keyboard settings |

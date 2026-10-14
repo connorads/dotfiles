@@ -18,7 +18,7 @@ Q closes the recordings library outside text fields. Q dismisses a pending confi
 | Start or stop recording | `Alt+V` |
 | Open the recordings library | `Alt+Shift+V`, or click the header pill |
 | Attach the live call so far to the composer | `Alt+Y` |
-| Attach the last 5 minutes of the live call | Palette: **Vox: Attach the last 5 minutes of the live call** |
+| Attach the last 5 minutes of the live call | Palette: **Attach last 5 minutes of live call** |
 
 Rebind any of them in Settings → Keyboard. No built-in, override or other
 workspace plugin uses these defaults; a colliding plugin default never binds.

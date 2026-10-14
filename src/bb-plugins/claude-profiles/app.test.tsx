@@ -74,7 +74,7 @@ test('clicking the status opens the picker with the account select focused', asy
 
 test('the switch account command opens the picker with account focus and has no shortcut', async () => {
   const { slot, switcher } = await render(thread);
-  expect(switcher?.title).toBe('Agent Switcher: switch account');
+  expect(switcher?.title).toBe('Switch Claude account');
   expect(switcher?.defaultShortcut).toBeNull();
   fireEvent.click(slot.getByTestId('run-switcher'));
   await waitFor(() => expect(document.activeElement).toBe(slot.getByLabelText('Claude account')));

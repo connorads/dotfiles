@@ -239,7 +239,7 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
 export default definePluginApp(app => {
   app.slots.threadPanelAction({ id: 'diff', title: 'Diff viewer', icon: 'FileDiff', layout: 'flush', component: DiffPanel });
   app.commands.register({
-    id: 'open', title: 'Diff viewer: Open', defaultShortcut: { key: 'd', mod: true, shift: true },
+    id: 'open', title: 'Open diff viewer', defaultShortcut: { key: 'd', mod: true, shift: true },
     isAvailable: ({ threadId }) => threadId !== null,
     run: context => { context.openPanel({ actionId: 'diff' }); },
   });

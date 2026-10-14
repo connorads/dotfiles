@@ -31,7 +31,7 @@ export default definePluginApp(app => {
   app.slots.experimental_threadHeaderAction({ id: 'chip', title: 'Keep awake', component: CaffeineChip });
   // No isAvailable: the shortcut works on the new-thread screen, where no chip is mounted.
   app.commands.register({
-    id: 'toggle', title: 'Keep awake: Toggle pop-up', defaultShortcut: { key: 'k', alt: true },
+    id: 'toggle', title: 'Toggle keep-awake controls', defaultShortcut: { key: 'k', alt: true },
     run: () => toggle('keyboard'),
   });
 });

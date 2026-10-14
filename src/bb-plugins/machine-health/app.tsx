@@ -142,10 +142,10 @@ export default definePluginApp(app => {
   app.slots.experimental_threadHeaderAction({ id: 'chip', title: 'Machine health', component: Chip });
   app.experimental_sidebarFooter.register({ kind: 'disclosure', id: 'machines', label: 'Machines', icon: 'Laptop', component: Machines });
   app.commands.register({
-    id: 'toggle', title: 'Machine health: Toggle dialog', defaultShortcut: { key: 'h', alt: true },
+    id: 'toggle', title: 'Toggle machine health', defaultShortcut: { key: 'h', alt: true },
     isAvailable: ({ threadId }) => threadId !== null,
     run: ({ threadId }) => { if (threadId) toggle(threadId); },
   });
   // No default: Alt+Shift+H is BB's previous-thread binding on macOS.
-  app.commands.register({ id: 'toggle-hostname', title: 'Machine health: Toggle full hostname', run: toggleLabel });
+  app.commands.register({ id: 'toggle-hostname', title: 'Toggle full hostname', run: toggleLabel });
 });

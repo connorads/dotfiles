@@ -12,7 +12,7 @@ export default definePluginApp(app => {
     id: 'claude-account', scopes: ['thread', 'new-thread'],
     actions: [{ id: 'claude-account', component: AccountStatus }],
   });
-  app.composer.experimental_registerCommand({ id: 'open-switcher', title: 'Agent Switcher: switch account',
+  app.composer.experimental_registerCommand({ id: 'open-switcher', title: 'Switch Claude account',
     run: ({ composer }) => { if (isClaude(composer)) openAccount(composer); } });
   app.slots.experimental_appOverlay({ id: 'picker', component: Overlay });
   app.composer.customize({ id: 'agent-switcher', scopes: ['thread', 'new-thread'],
@@ -20,15 +20,15 @@ export default definePluginApp(app => {
     actions: [{ id: 'picker', component: Trigger }],
     plusMenu: [{ id: 'picker', label: 'Switch model', icon: 'Star', run: ({ composer }) => openPicker(composer) }],
   });
-  app.composer.experimental_registerCommand({ id: 'open-picker', title: 'Agent Switcher: open picker',
+  app.composer.experimental_registerCommand({ id: 'open-picker', title: 'Open model picker',
     defaultShortcut: { key: 'f', alt: true }, run: ({ composer }) => openPicker(composer) });
-  app.composer.experimental_registerCommand({ id: 'next-favourite', title: 'Agent Switcher: next favourite',
+  app.composer.experimental_registerCommand({ id: 'next-favourite', title: 'Next favourite model',
     defaultShortcut: { key: 'f', alt: true, shift: true }, run: ({ composer }) => command(composer, controller => controller.cycle(1)) });
-  app.composer.experimental_registerCommand({ id: 'previous-favourite', title: 'Agent Switcher: previous favourite',
+  app.composer.experimental_registerCommand({ id: 'previous-favourite', title: 'Previous favourite model',
     run: ({ composer }) => command(composer, controller => controller.cycle(-1)) });
   for (let slot = 1; slot <= 9; slot++) app.composer.experimental_registerCommand({ id: `select-favourite-${slot}`,
-    title: `Agent Switcher: select favourite ${slot}`, run: ({ composer }) => command(composer, controller => controller.select(slot)) });
+    title: `Select favourite model ${slot}`, run: ({ composer }) => command(composer, controller => controller.select(slot)) });
   app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Usage', component: ThreadUsage });
   app.slots.experimental_appOverlay({ id: 'usage-overview', component: UsageOverlay });
-  app.commands.register({ id: 'show-usage', title: 'Agent Switcher: show usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
+  app.commands.register({ id: 'show-usage', title: 'Show agent usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });
