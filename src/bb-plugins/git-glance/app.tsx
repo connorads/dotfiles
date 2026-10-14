@@ -2,7 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useComposer, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
-import { projectSubject, subjectProject, type rpcContract } from './contracts.ts';
+import { projectSubject, type rpcContract } from './contracts.ts';
 import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
 import './app.css';
@@ -34,14 +34,12 @@ function Overlay() {
   return current ? <GitPopover key={current.threadId} threadId={current.threadId} anchor={current.anchor} instant={current.instant} onClose={close} /> : null;
 }
 
-function Chip({ threadId, isCompactViewport }: Pick<PluginThreadHeaderActionProps, 'threadId' | 'isCompactViewport'>) {
+function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const rpc = useRpc<typeof rpcContract>();
-  const { root, snapshot: data, op, error } = useRepo(threadId, rpc);
+  const { snapshot: data, op, error } = useRepo(threadId, rpc);
   const isOpen = useSyncExternalStore(listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     () => opened?.threadId === threadId);
   if (!data && !error) return null;
-  // A project with no checkout, such as "Don't work in a project", has nothing to choose from.
-  if (root === null && subjectProject(threadId) !== null && !error) return null;
   const repo = data?.kind === 'none' ? null : data;
   const files = repo ? new Set(repo.changes.map(c => c.path)).size + repo.hidden : 0;
   const danger = repo && (repo.operation || repo.changes.some(c => c.area === 'conflicted'));
@@ -64,20 +62,21 @@ function Chip({ threadId, isCompactViewport }: Pick<PluginThreadHeaderActionProp
 /** The New thread composer's picked project, which Alt+G opens when no thread is in view. */
 let composerSubject: string | null = null;
 
-function ComposerChip() {
+/** Renders nothing: it only tracks the picked project, so the composer stays uncluttered. */
+function ComposerSubject() {
   const { scope } = useComposer();
   const subject = scope.kind === 'new-thread' && scope.projectId !== null ? projectSubject(scope.projectId) : null;
   useEffect(() => {
     composerSubject = subject;
     return () => { if (composerSubject === subject) composerSubject = null; };
   }, [subject]);
-  return subject ? <Chip threadId={subject} isCompactViewport={false} /> : null;
+  return null;
 }
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'popover', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'status', title: 'Git status', component: Chip });
-  app.composer.customize({ id: 'status', scopes: ['new-thread'], actions: [{ id: 'status', component: ComposerChip }] });
+  app.composer.customize({ id: 'status', scopes: ['new-thread'], actions: [{ id: 'status', component: ComposerSubject }] });
   app.commands.register({
     id: 'toggle', title: 'Toggle git status', defaultShortcut: { key: 'g', alt: true },
     isAvailable: ({ threadId }) => (threadId ?? composerSubject) !== null,
