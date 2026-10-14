@@ -26,28 +26,9 @@
 .cf-glyph { font-family: var(--font-mono); line-height: 14px; color: var(--cf-ink); }
 .bbp-chip-icon > .cf-glyph { display: grid; place-items: center; font-size: 14px; }
 
-/* Pop-up shell, after git-glance. */
-.cf-dialog {
-  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0; background: transparent;
-  color: var(--popover-foreground); overflow: visible;
-  animation: cf-in .16s var(--cf-ease);
-}
-.cf-dialog::backdrop { background: color-mix(in oklch, var(--canvas, #000) 22%, transparent); animation: cf-fade .16s ease-out; }
-.cf-dialog:focus { outline: none; }
-/* Opened by shortcut: no entrance, so a key used all day feels instant. */
-.cf-dialog[data-instant], .cf-dialog[data-instant]::backdrop { animation: none; }
-@keyframes cf-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
-@keyframes cf-fade { from { opacity: 0; } }
-
-.cf-panel {
-  display: flex; flex-direction: column; max-height: min(640px, calc(100vh - 80px)); overflow: auto;
-  border: 1px solid var(--border-hairline); border-radius: 14px; background: var(--popover);
-  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--ink, #fff) 6%, transparent) inset,
-    0 24px 64px -12px rgb(0 0 0 / .45), 0 8px 20px -8px rgb(0 0 0 / .3);
-  font: var(--text-sm, 13px)/1.4 var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
-.cf-panel[aria-busy] .cf-row { cursor: progress; }
+/* Pop-up shell from @bb-plugins/chip; this panel scrolls as a whole. */
+.bbp-popover-panel.cf-panel { overflow: auto; }
+.cf-dialog[aria-busy] .cf-row { cursor: progress; }
 
 /* Header: a radial tint in the state's colour; OFF stays untinted. */
 .cf-header {
@@ -124,7 +105,6 @@
 .cf-keys kbd:not(:first-child):not(kbd + kbd) { margin-left: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cf-dialog, .cf-dialog::backdrop { animation: none; }
   .cf-row, .cf-meter i { transition: none; }
   .cf-row:active:not(:disabled) { transform: none; }
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ChipPopover } from '@bb-plugins/chip';
 import { useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import type { Outcome, ThreadRowData, TriageData, rpcContract } from './contracts.ts';
 import { gapText, humanMb } from './src/format.ts';
@@ -7,17 +8,10 @@ import { detailRows, type Machine } from './src/present.ts';
 import type { AppGroup } from './src/triage.ts';
 
 export type Anchor = { right: number; bottom: number } | null;
+export const chipEl = (threadId: string) => document.querySelector<HTMLElement>(`[data-machine-health="${CSS.escape(threadId)}"]`);
 
-const width = 600;
-const margin = 12;
 const topApps = 5;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
-
-function place(anchor: Anchor) {
-  const w = Math.min(width, window.innerWidth - margin * 2);
-  if (!anchor) return { width: w, top: Math.round(window.innerHeight * 0.1), left: (window.innerWidth - w) / 2 };
-  return { width: w, top: anchor.bottom + 8, left: Math.min(Math.max(margin, anchor.right - w), window.innerWidth - w - margin) };
-}
 
 export function Rows({ machine }: { machine: Machine }) {
   return <dl className="mh-rows">
@@ -148,7 +142,6 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const navigate = useBbNavigate();
-  const dialog = useRef<HTMLDialogElement>(null);
   const [data, setData] = useState<TriageData | null>(null);
   const [triageError, setTriageError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +149,6 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const [hibernated, setHibernated] = useState<Hibernated | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
-  const position = place(anchor);
 
   const refreshTriage = useCallback(async () => {
     setLoading(true);
@@ -166,11 +158,6 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   }, [rpc, threadId]);
   const refresh = useCallback(() => { onRefreshMachine(); void refreshTriage(); }, [onRefreshMachine, refreshTriage]);
 
-  useLayoutEffect(() => {
-    const element = dialog.current;
-    element?.showModal();
-    return () => element?.close();
-  }, []);
   useEffect(() => { void refreshTriage(); }, [refreshTriage]);
 
   const hibernate = async (threadIds: string[]) => {
@@ -193,41 +180,32 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   };
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    if (event.key !== 'Escape') event.stopPropagation();
     if (event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).tagName === 'INPUT') return;
     if ((event.key === 'q' || event.key === 'Q') && !(event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')))) { event.preventDefault(); onClose(); }
     else if (event.key === 'r' || event.key === 'R') { event.preventDefault(); refresh(); }
   }
 
-  return <dialog ref={dialog} className="mh-dialog" aria-label="Machine health" onKeyDown={keyboard}
-    style={{ top: position.top, left: position.left, width: position.width }}
-    onCancel={event => { event.preventDefault(); onClose(); }}
-    onPointerDown={event => {
-      if (event.target !== event.currentTarget) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
-    }}>
-    <div className="mh-panel">
-      <section aria-label="Vitals">
-        {machine ? <Rows machine={machine} /> : !machineError && <p className="mh-empty">Sampling…</p>}
-        {machineError && <p role="alert" className="mh-error">{machineError}</p>}
-      </section>
-      {!data && !triageError && <p className="mh-empty">Sampling footprints…</p>}
-      {triageError && <p className="mh-empty">{triageError}</p>}
-      {data && <>
-        <MemoryBars gauge={data.gauge} action={data.action} />
-        <Threads threads={data.threads} busy={busy} onHibernate={ids => { void hibernate(ids); }}
-          onOpen={id => { onClose(); navigate.toThread(id); }} />
-        <Apps apps={data.apps} onEnd={end} />
-      </>}
-      {hibernated && <HibernateResult {...hibernated} />}
-      {status && <p role="status" className="mh-result">{status}</p>}
-      {error && <p role="alert" className="mh-error">{error}</p>}
-      <footer className="mh-footer">
-        {labelButton}
-        <button type="button" onClick={refresh} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
-        <button type="button" onClick={onClose}>Close</button>
-      </footer>
-    </div>
-  </dialog>;
+  return <ChipPopover panelClassName="mh-panel" aria-label="Machine health" onKeyDown={keyboard}
+    trigger={() => chipEl(threadId)} anchor={anchor} width={600} onClose={onClose}>
+    <section aria-label="Vitals">
+      {machine ? <Rows machine={machine} /> : !machineError && <p className="mh-empty">Sampling…</p>}
+      {machineError && <p role="alert" className="mh-error">{machineError}</p>}
+    </section>
+    {!data && !triageError && <p className="mh-empty">Sampling footprints…</p>}
+    {triageError && <p className="mh-empty">{triageError}</p>}
+    {data && <>
+      <MemoryBars gauge={data.gauge} action={data.action} />
+      <Threads threads={data.threads} busy={busy} onHibernate={ids => { void hibernate(ids); }}
+        onOpen={id => { onClose(); navigate.toThread(id); }} />
+      <Apps apps={data.apps} onEnd={end} />
+    </>}
+    {hibernated && <HibernateResult {...hibernated} />}
+    {status && <p role="status" className="mh-result">{status}</p>}
+    {error && <p role="alert" className="mh-error">{error}</p>}
+    <footer className="mh-footer">
+      {labelButton}
+      <button type="button" onClick={refresh} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
+      <button type="button" onClick={onClose}>Close</button>
+    </footer>
+  </ChipPopover>;
 }

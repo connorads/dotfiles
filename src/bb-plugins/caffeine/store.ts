@@ -35,7 +35,7 @@ export function receiveView(payload: unknown) { set({ view: payload as CaffeineV
 
 const chipSelector = '[data-caffeine-chip]';
 /** The chip the user can see: split panes each mount one. */
-function visibleChip(): HTMLElement | null {
+export function visibleChip(): HTMLElement | null {
   return Array.from(document.querySelectorAll<HTMLElement>(chipSelector)).find(chip => chip.getClientRects().length > 0) ?? null;
 }
 
@@ -45,10 +45,7 @@ export function toggle(via: 'pointer' | 'keyboard', from?: HTMLElement) {
   set({ open: { anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard' } });
   void refresh();
 }
-export function close() {
-  set({ open: null });
-  visibleChip()?.focus({ preventScroll: true });
-}
+export function close() { set({ open: null }); }
 
 export function useNow(intervalMs: number, active = true) {
   const [now, setNow] = useState(() => Date.now());
