@@ -110,10 +110,10 @@ attention. Hover over it for every window. A Claude thread shows its bound
 account's quota.
 
 Click the badge or press `⌘⇧A` to open the usage overlay. It groups every
-account by provider, and by machine when more than one reports. It opens with
-one sentence on the worst window. When an account needs attention, it names the
-same provider's account with the most room. **Refresh** requests fresh
-readings. Codex reset credits show beneath the Codex accounts.
+account by provider, and by machine when more than one reports. Each window is
+one row: its bar, use and time to reset, or its run-out time when use will
+outlast it. Hover over that text for the full reset time. **Refresh** requests
+fresh readings. Codex reset credits show beneath the Codex accounts.
 
 A Claude profile row shows the account email and plan cached in the profile's
 `.claude.json`. Team seats read as Team Standard or Team Premium with the

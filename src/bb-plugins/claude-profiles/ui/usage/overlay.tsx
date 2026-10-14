@@ -6,7 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } fr
 import { Icon } from '../components/ui/icon.tsx';
 import type { rpcContract } from '../../contracts.ts';
 import type { Account, Inspection, UsageWindow } from '../../src/accounts/usage/contract.ts';
-import { bindingWindow, clock, duration, expiryClock, percent, readingAge, readingState, viewWindow, type ReadingState, type WindowView } from '../../src/accounts/usage/format.ts';
+import { duration, expiryClock, percent, readingAge, readingState, viewWindow, type ReadingState, type WindowView } from '../../src/accounts/usage/format.ts';
 import type { ResetCredits } from '../../src/accounts/usage/reset-credits.ts';
 import { closeUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
 import { useNow } from './use-now.ts';
@@ -31,7 +31,7 @@ function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; r
     <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
     <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
     {/* The bar's fill, colour and pace marker show the pace, so the row ends in one phrase the bar cannot show. */}
-    <span className="au-row-detail" role="cell" data-tone={view.tone}>{view.detail ?? ''}</span>
+    <span className="au-row-detail" role="cell" data-tone={view.tone} title={view.reset ?? undefined}>{view.detail ?? ''}</span>
   </div>;
 }
 
@@ -124,41 +124,6 @@ function byProvider(accounts: Account[]): Account[][] {
   return [...groups.values()];
 }
 
-const RANK = { normal: 0, warning: 1, critical: 2 } as const;
-
-/** One sentence that answers "can I keep going, and where should I go if not". */
-function Summary({ accounts, now, readings }: { accounts: Account[]; now: Date; readings: Inspection['readings'] }) {
-  const bound = accounts.flatMap(account => {
-    if (account.usage?.status !== 'ok' || readingState(readings.find(reading => reading.accountId === account.id)?.observedAt ?? null,
-      account.usage.windows, now) !== 'fresh') return [];
-    const binding = account.usage?.status === 'ok' ? bindingWindow(account.usage.windows, now) : null;
-    return binding ? [{ account, ...binding }] : [];
-  });
-  const incomplete = bound.length !== accounts.length;
-  if (bound.length === 0) return <p className="au-summary">Refresh to compare limits. Reading times are missing or the figures need a new reading.</p>;
-  const worst = [...bound].sort((a, b) => RANK[b.view.tone] - RANK[a.view.tone] || b.window.usedPercent - a.window.usedPercent)[0]!;
-  if (worst.view.tone === 'normal') {
-    return <p className="au-summary" data-tone="normal"><Icon name="CircleCheck" className="size-4" />
-      {incomplete ? 'Fresh readings are within their limits. Some accounts need a new reading.' : 'Every account is within its limits.'}</p>;
-  }
-  const subject = `${accountName(worst.account)} · ${worst.window.label}`;
-  const { pace } = worst.view;
-  const detail = pace.kind === 'limited' ? `limit reached. Back ${clock(pace.resetsAt, now)}.`
-    : pace.kind === 'paced' && pace.runsOutAt && worst.window.resetsAt
-      ? `at this pace, runs out ${clock(pace.runsOutAt, now)}, ${duration(new Date(worst.window.resetsAt).getTime() - pace.runsOutAt.getTime())} before it resets.`
-      : `${percent(worst.window.usedPercent)} used.`;
-  const roomiest = bound.filter(entry => entry.account.providerId === worst.account.providerId && entry.account !== worst.account
-    && entry.view.tone === 'normal').sort((a, b) => a.window.usedPercent - b.window.usedPercent)[0];
-  const others = bound.filter(entry => entry !== worst && entry.view.tone !== 'normal').length;
-  return <p className="au-summary" data-tone={worst.view.tone} role="status">
-    <Icon name={worst.view.tone === 'critical' ? 'AlertCircle' : 'AlertTriangle'} className="size-4" />
-    <span><strong>{subject}</strong> {detail}
-      {others > 0 && <span className="au-summary-hint"> {others === 1 ? '1 other account needs' : `${others} other accounts need`} attention.</span>}
-      {roomiest && <span className="au-summary-hint"> {accountName(roomiest.account)} has the most room ({percent(roomiest.window.usedPercent)} of {roomiest.window.label.toLowerCase()}).</span>}
-    </span>
-  </p>;
-}
-
 export function UsageOverlay() {
   const open = useUsageOpen();
   const panel = useRef<HTMLDivElement>(null);
@@ -238,7 +203,6 @@ export function UsageOverlay() {
         {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
         {quotaLoading && !snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
         {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
-        {snapshot && <Summary accounts={machines.flatMap(machine => machine.providers)} now={now} readings={inspection?.readings ?? []} />}
         {machines.map(machine => <section className="au-machine" key={machine.id} aria-label={machine.displayName}>
           {showMachines && <h2 className="au-machine-heading">
             <Icon name="Laptop" className="size-3.5" />{machine.displayName}

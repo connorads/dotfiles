@@ -81,9 +81,6 @@ test('overlay groups accounts by provider, explains pace and keeps figures when 
   expect(slot.getByRole('region', { name: 'Claude' }).querySelectorAll('.au-account')).toHaveLength(2);
   expect(slot.getByRole('row', { name: /^Weekly: 100% used\. Limit reached/ })).toBeTruthy();
   expect(slot.getByRole('row', { name: /^Credits: <1% used\. \$1\.25 of \$250\.$/ })).toBeTruthy();
-  const summary = slot.getByRole('status', { name: '' }).textContent ?? '';
-  expect(summary).toContain('Work · Weekly limit reached.');
-  expect(summary).toContain('Spare has the most room (12% of weekly).');
   fireEvent.click(slot.getByRole('button', { name: 'Refresh' }));
   expect((await slot.findByRole('alert')).textContent).toContain('Showing previous figures');
   expect(slot.getByRole('region', { name: 'Codex · Personal' })).toBeTruthy();
@@ -192,7 +189,6 @@ test('old readings suppress projections and do not become fresh when the panel l
   expect(slot.getByRole('row', { name: /Cached reading/ })).toBeTruthy();
   expect(region.textContent).not.toContain('runs out');
   expect(slot.queryByText('Updated just now')).toBeNull();
-  expect(slot.queryByText('Every account is within its limits.')).toBeNull();
 });
 
 test('unknown reading ages and unavailable reset credits are explicit', async () => {

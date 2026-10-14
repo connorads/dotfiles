@@ -60,7 +60,7 @@ export interface WindowView {
   /** What the reading means for the user now. */
   status: string;
   reset: string | null;
-  /** One trailing phrase for a compact row: the reset, or what the bar cannot show. */
+  /** The shortest phrase a compact row needs beyond its bar; `reset` carries the full time. */
   detail: string | null;
   /** Credits are an allowance, not a rate limit. */
   credit: boolean;
@@ -77,8 +77,7 @@ export function viewWindow(window: UsageWindow, now: Date, reading: ReadingState
     : `Resets ${clock(until, now)} · in ${duration(until.getTime() - now.getTime())}`;
   if (credit && window.cost) {
     const status = value.kind === 'elapsed' ? 'Expired · refresh needed' : `${money(window.cost.usedUsdCents)} of ${money(window.cost.limitUsdCents)}`;
-    const expiry = until && value.kind !== 'elapsed' ? ` · expires ${until.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : '';
-    return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status, detail: status + expiry };
+    return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status, detail: status };
   }
   const status = (() => {
     if (value.kind !== 'elapsed' && reading !== 'fresh') return reading === 'stale' ? 'Cached reading' : 'Reading age unknown';
@@ -94,8 +93,8 @@ export function viewWindow(window: UsageWindow, now: Date, reading: ReadingState
     }
   })();
   const detail = value.kind === 'elapsed' ? status
-    : value.kind === 'paced' && value.status === 'over' && value.runsOutAt && until
-      ? `Out ${clock(value.runsOutAt, now)} · resets ${clock(until, now)}` : reset;
+    : value.kind === 'paced' && value.status === 'over' && value.runsOutAt ? `Out ${clock(value.runsOutAt, now)}`
+    : until ? `Resets in ${duration(until.getTime() - now.getTime())}` : null;
   return { pace: value, tone: tone(window.usedPercent, value), credit, reset, status, detail };
 }
 
