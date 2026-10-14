@@ -88,7 +88,6 @@
       "zappy"
       "calibre"
       "onedrive"
-      "macwhisper"
       "anomalyco/tap/hex"
       "native-access"
       "google-chrome"
