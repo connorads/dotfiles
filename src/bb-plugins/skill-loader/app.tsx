@@ -205,7 +205,7 @@ export default definePluginApp(app => {
   });
   app.composer.experimental_registerCommand({
     id: 'pick',
-    title: 'Skill Loader: Load skill',
+    title: 'Load skill',
     defaultShortcut: { key: 's', alt: true },
     run: ({ composer }) => { composer.experimental_openPopup(POPUP_ID); },
   });

@@ -67,7 +67,7 @@ export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'popover', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'status', title: 'Git status', component: Chip });
   app.commands.register({
-    id: 'toggle', title: 'Git: Toggle repository status', defaultShortcut: { key: 'g', alt: true },
+    id: 'toggle', title: 'Toggle git status', defaultShortcut: { key: 'g', alt: true },
     isAvailable: ({ threadId }) => threadId !== null,
     run: ({ threadId }) => { if (threadId) toggle(threadId, 'keyboard'); },
   });

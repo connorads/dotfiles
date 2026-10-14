@@ -4,7 +4,7 @@ A side panel that shows every changed file of the thread's checkout in one
 continuous scroll. It is a calm reader in the style of `critique`, drawn with
 BB's own diff component.
 
-Open it with `Cmd+Shift+D`, with **Diff viewer: Open** in the command palette,
+Open it with `Cmd+Shift+D`, with **Open diff viewer** in the command palette,
 or from the thread panel's new-tab list. On Linux the shortcut is
 `Ctrl+Shift+D`. Rebind it in Settings → Keyboard.
 

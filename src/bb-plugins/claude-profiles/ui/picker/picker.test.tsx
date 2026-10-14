@@ -326,7 +326,7 @@ test('registers one picker overlay for both composer scopes and Alt+F opens it',
   const commands = (app as unknown as { commandPaletteActions: { id: string; title: string; defaultShortcut: unknown }[] }).commandPaletteActions;
   const open = commands.find(command => command.id === 'open-picker');
   expect(open?.defaultShortcut).toMatchObject({ key: 'f', alt: true, shift: false });
-  expect(open?.title).toBe('Agent Switcher: open picker');
+  expect(open?.title).toBe('Open model picker');
   expect(commands.find(command => command.id === 'next-favourite')?.defaultShortcut).toMatchObject({ key: 'f', alt: true, shift: true });
 });
 

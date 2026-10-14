@@ -102,8 +102,8 @@ function Chip({ isCompactViewport }: PluginThreadHeaderActionProps) {
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'vox', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'pill', title: 'Vox recording', component: Chip });
-  app.commands.register({ id: 'toggle', title: 'Vox: Start or stop recording', defaultShortcut: { key: 'v', alt: true }, run: () => { void toggleRecording(); } });
-  app.commands.register({ id: 'recordings', title: 'Vox: Recordings', defaultShortcut: { key: 'v', alt: true, shift: true }, run: openLibrary });
-  app.composer.experimental_registerCommand({ id: 'grab', title: 'Vox: Attach the live call so far', defaultShortcut: { key: 'y', alt: true }, run: ({ composer }) => grabInto(composer, null) });
-  app.composer.experimental_registerCommand({ id: 'grab-recent', title: 'Vox: Attach the last 5 minutes of the live call', run: ({ composer }) => grabInto(composer, '5m') });
+  app.commands.register({ id: 'toggle', title: 'Start or stop recording', defaultShortcut: { key: 'v', alt: true }, run: () => { void toggleRecording(); } });
+  app.commands.register({ id: 'recordings', title: 'Open recordings', defaultShortcut: { key: 'v', alt: true, shift: true }, run: openLibrary });
+  app.composer.experimental_registerCommand({ id: 'grab', title: 'Attach live call so far', defaultShortcut: { key: 'y', alt: true }, run: ({ composer }) => grabInto(composer, null) });
+  app.composer.experimental_registerCommand({ id: 'grab-recent', title: 'Attach last 5 minutes of live call', run: ({ composer }) => grabInto(composer, '5m') });
 });

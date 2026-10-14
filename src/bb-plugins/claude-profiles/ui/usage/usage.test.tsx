@@ -130,7 +130,7 @@ test('the rebindable usage command opens the overlay', async () => {
   const actions = Reflect.get(app, 'commandPaletteActions') as PluginCommandRegistration[];
   const command = actions.find(action => action.id === 'show-usage');
   if (!command) throw new Error('Missing usage command');
-  expect(command.title).toBe('Agent Switcher: show usage');
+  expect(command.title).toBe('Show agent usage');
   expect(command.defaultShortcut).toMatchObject({ key: 'a', mod: true, shift: true });
   expect(badge(app).title).toBe('Usage');
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect() } });
