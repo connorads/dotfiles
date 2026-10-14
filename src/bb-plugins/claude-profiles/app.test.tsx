@@ -64,20 +64,20 @@ test('the status hides when the new-thread composer selects another provider', a
   expect(slot.queryByRole('button', { name: /Claude account/ })).toBeNull();
 });
 
-test('clicking the status opens the picker with the account select focused', async () => {
+test('clicking the status opens the account picker with the current account focused', async () => {
   const { slot } = await render(thread);
-  expect(slot.queryByRole('dialog', { name: 'Switch model' })).toBeNull();
+  expect(slot.queryByRole('dialog', { name: 'Switch Claude account' })).toBeNull();
   fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
-  await slot.findByRole('dialog', { name: 'Switch model' });
-  await waitFor(() => expect(document.activeElement).toBe(slot.getByLabelText('Claude account')));
+  await slot.findByRole('dialog', { name: 'Switch Claude account' });
+  await waitFor(() => expect(document.activeElement).toBe(slot.getByRole('button', { name: 'Switch to Default' })));
 });
 
-test('the switch account command opens the picker with account focus and has no shortcut', async () => {
+test('Alt+A opens the account picker with account focus', async () => {
   const { slot, switcher } = await render(thread);
   expect(switcher?.title).toBe('Switch Claude account');
-  expect(switcher?.defaultShortcut).toBeNull();
+  expect(switcher?.defaultShortcut).toMatchObject({ key: 'a', alt: true });
   fireEvent.click(slot.getByTestId('run-switcher'));
-  await waitFor(() => expect(document.activeElement).toBe(slot.getByLabelText('Claude account')));
+  await waitFor(() => expect(document.activeElement).toBe(slot.getByRole('button', { name: 'Switch to Default' })));
 });
 
 test('the composer customisation registers no popups', async () => {
@@ -85,18 +85,15 @@ test('the composer customisation registers no popups', async () => {
   expect(app.composerCustomizations.flatMap(customization => customization.experimental_popups ?? [])).toEqual([]);
 });
 
-test('exactly one control in the composer and picker can change the account', async () => {
+test('account digits switch the account through the registered overlay', async () => {
   const { slot } = await render(thread);
   fireEvent.click(await slot.findByRole('button', { name: /Claude account/ }));
-  const dialog = await slot.findByRole('dialog', { name: 'Switch model' });
-  await slot.findByLabelText('Claude account');
-  expect(within(dialog).getAllByRole('button', { name: /^Claude account/ })).toHaveLength(1);
-  expect(slot.queryAllByRole('combobox')).toEqual([]);
-  // Pressing an account digit in the picker must not switch the account.
+  const dialog = await slot.findByRole('dialog', { name: 'Switch Claude account' });
+  await slot.findByRole('button', { name: 'Switch to work' });
+  expect(within(dialog).getAllByRole('button', { name: /^Switch to/ })).toHaveLength(2);
   fireEvent.keyDown(dialog, { key: '2' });
-  expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose')).toEqual([]);
-  fireEvent.click(slot.getByLabelText('Claude account'));
-  fireEvent.click(within(slot.getByRole('listbox', { name: 'Claude accounts' })).getByRole('option', { name: /^work/ }));
   await waitFor(() => expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose').map(call => call.input))
     .toEqual([{ threadId: 'thread-test', profileId: 'work' }]));
+  await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
+  expect(slot.inspection.composer.focusCount).toBeGreaterThan(0);
 });

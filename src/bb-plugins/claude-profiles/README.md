@@ -54,20 +54,27 @@ and update across open views.
 
 ### Accounts
 
-The account status shows in the composer while Claude Code is the selected
-provider. It shows the current account. Clicking it opens the picker with the
-**Claude account** menu focused. The picker is the only place to change the
-account.
+Press **Alt+A** or click the account name in the composer to open the account
+picker. It opens with the current account focused. Press **1-9** to select an
+account, or use **Up / Down** and **Enter**. **Escape** returns to the draft.
+Numbers follow the account list order, not quota rankings.
 
-The menu shows each account's five-hour and seven-day quota, for example
-`5h 12% · 7d 30%`. The quota loads after the menu opens and comes from the
-server's quota cache. A thread reads it on its own machine. A
-new-thread draft reads it on the connected machine that lists its accounts.
+Each account shows usage, elapsed time and reset times for its allowance windows.
+The filled bar marks allowance used. The vertical line marks time elapsed.
+Pace compares usage with even spending across the window. Stale readings are
+striped and omit pace projections. **Refresh** reloads readings; new-thread
+readings use the host's quota cache. Failed switches keep the picker open with
+the refusal. Successful switches confirm the account and return focus to the
+draft without changing the model or effort.
+
+A thread reads quota on its own machine. A new-thread draft reads it on the
+connected machine that lists its accounts. Account comparison remains available
+during a turn; switching requires an idle thread with no queued messages.
 
 New thread:
 
 1. Click the account status, or run **Switch Claude account** with the caret in the composer.
-2. Choose an account in the **Claude account** menu.
+2. Choose an account with its number or **Up / Down** and **Enter**.
 3. Send the first message. The thread starts on that account.
 
 The new-thread choice is remembered, like the model picker. A new Claude thread
@@ -76,8 +83,8 @@ starts on it until you choose another, unless another thread starts it. See the
 
 Existing thread:
 
-1. Finish or stop the turn. Clear queued messages. The account menu is disabled during a turn.
-2. Click the account status and choose an account.
+1. Finish or stop the turn. Clear queued messages. Account switching is disabled during a turn.
+2. Press **Alt+A** and choose an account.
 3. Send the next message. Claude resumes the same native conversation.
 
 **Default** means the thread has no named account. It uses the native default
@@ -136,7 +143,7 @@ Balances have no invented percentage or pace projection.
 | Next favourite | Alt+Shift+F |
 | Previous favourite | Assign in BB keyboard settings |
 | Select favourite 1-9 | Assign in BB keyboard settings |
-| Switch account (opens the picker on the account menu) | Assign in BB keyboard settings |
+| Open account picker | Alt+A |
 | Show usage | ⌘⇧A |
 
 Inside the picker:
