@@ -61,7 +61,7 @@ account.
 
 The menu shows each account's five-hour and seven-day quota, for example
 `5h 12% · 7d 30%`. The quota loads after the menu opens and comes from the
-server's one-minute quota cache. A thread reads it on its own machine. A
+server's quota cache. A thread reads it on its own machine. A
 new-thread draft reads it on the connected machine that lists its accounts.
 
 New thread:
@@ -234,9 +234,9 @@ content and tool results, so the target profile receives that content.
 Quota requests use Claude's stream-JSON control protocol: `initialize`, then
 `get_usage` with `skip_behaviors: true`. The plugin sends no user message. It bounds
 the request time and output size, terminates the process on cancellation, and
-caches successful measurements for one minute. The header badge and the RPC
-handlers share that cache. Refresh requests bypass it. Paid extra usage is
-outside the subscription quota display.
+caches successful measurements for five minutes and failures for one minute.
+The header badge and the RPC handlers share that cache. Refresh requests bypass
+it. Paid extra usage is outside the subscription quota display.
 
 The plugin also implements BB's discoverable `provider-usage.v1` source contract.
 An enabled Provider Usage panel can list these profiles and request individual
