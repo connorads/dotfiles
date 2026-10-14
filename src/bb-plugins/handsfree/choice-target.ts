@@ -49,7 +49,7 @@ function fingerprint(group: HTMLFieldSetElement): string {
   return JSON.stringify([meaningfulText(legend), ...controls(group).map(meaningfulText)]);
 }
 
-function blockingSurface(document: Document, picker?: ChoicePicker, monitor?: HTMLElement): boolean {
+export function blockingSurface(document: Document, picker?: ChoicePicker, monitor?: HTMLElement): boolean {
   return Array.from(
     document.querySelectorAll<HTMLElement>(
       '[role="dialog"],[aria-modal="true"],[data-promptbox-typeahead-menu],[role="listbox"],[role="menu"]',

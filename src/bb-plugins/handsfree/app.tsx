@@ -9,7 +9,7 @@ import type { ArchiveTarget } from './archive.ts';
 import { publishVoiceHeader, VoiceHeader } from './header.tsx';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
 import { HexActivity } from './diagnostics-view.tsx';
-import { captureChoice, watchQuestionFocus, type ChoiceCapture } from './choice-target.ts';
+import { blockingSurface, captureChoice, watchQuestionFocus, type ChoiceCapture } from './choice-target.ts';
 import './app.css';
 
 interface Choices {
@@ -382,8 +382,14 @@ function VoiceCard() {
 
   useRealtime('command', async payload => {
     const parsed = requestSchema.safeParse(payload);
-    if (!parsed.success || !document.hasFocus() || processing.current) return;
+    if (!parsed.success || !document.hasFocus()) return;
     if ('context' in parsed.data.command && !parsed.data.command.context.startsWith(`${windowId}|`)) return;
+    if (processing.current) {
+      const { requestId } = parsed.data;
+      const { claimed } = await rpc.call('claim', { requestId });
+      if (claimed) await rpc.call('complete', { requestId, reply: { ok: false, message: 'Busy with another voice command. Try again.' } });
+      return;
+    }
     processing.current = true;
     try {
       const { requestId, command } = parsed.data;
@@ -398,7 +404,7 @@ function VoiceCard() {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.isComposing || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-      if (event.key === 'Escape' && expanded) {
+      if (event.key === 'Escape' && expanded && !blockingSurface(document, undefined, card.current ?? undefined)) {
         event.preventDefault(); event.stopImmediatePropagation();
         close();
       } else if (expanded && choices && card.current?.contains(document.activeElement) && event.key === 'Enter') {

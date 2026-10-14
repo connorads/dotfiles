@@ -28,14 +28,14 @@ beforeEach(() => {
 });
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean } } = {}) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean } } = {}) {
   const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
   let receipts: unknown;
   const archives = makeArchives({
-    get: async id => { duringInspect?.(); return { id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }; },
+    get: async id => { await duringInspect?.(); return { id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }; },
     children: async () => 0,
     archive: async id => { archived.push(id); return [id]; },
     unarchive: async id => { restored.push(id); },
@@ -303,6 +303,21 @@ test('Escape dismisses choices and restores ordinary Enter behaviour', async () 
   expect(view.slot.inspection.composer.focusCount).toBe(1);
 });
 
+test('Escape reaches an unrelated BB popup while the monitor is open', async () => {
+  const view = await render();
+  await view.command({ action: 'monitor' });
+  const popup = document.createElement('div');
+  popup.setAttribute('role', 'dialog');
+  document.body.append(popup);
+  try {
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    fireEvent(popup, escape);
+    expect(escape.defaultPrevented).toBe(false);
+    expect(view.slot.getByRole('dialog', { name: 'Voice monitor' })).toBeTruthy();
+    expect(view.slot.inspection.composer.focusCount).toBe(0);
+  } finally { popup.remove(); }
+});
+
 test('returning to the composer leaves Enter and arrow keys available to BB', async () => {
   const view = await render();
   await view.command({ action: 'attention' });
@@ -351,6 +366,22 @@ test('unfocused windows do not claim or execute voice commands', async () => {
   await view.slot.behavior.emitRealtime('command', { requestId: 'background', command: { action: 'new' } });
   expect(view.slot.inspection.rpcCalls.filter(call => call.method !== 'diagnostics')).toEqual([]);
   expect(view.slot.inspection.navigateCalls).toEqual([]);
+});
+
+test('a busy focused window claims and rejects a second command', async () => {
+  let inspecting!: () => void;
+  const started = new Promise<void>(resolve => { inspecting = resolve; });
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const view = await render('idle', () => { inspecting(); return gate; });
+  await view.slot.behavior.emitRealtime('command', { requestId: 'first', command: { action: 'archive' } });
+  await started;
+  await view.slot.behavior.emitRealtime('command', { requestId: 'second', command: { action: 'new' } });
+  await waitFor(() => expect(view.slot.inspection.rpcCalls.filter(call => call.method === 'complete')).toHaveLength(1));
+  release();
+  await waitFor(() => expect(view.slot.inspection.rpcCalls.filter(call => call.method === 'complete')).toHaveLength(2));
+  const busy = view.slot.inspection.rpcCalls.find(call => call.method === 'complete' && (call.input as { requestId: string }).requestId === 'second');
+  expect(busy?.input).toMatchObject({ reply: { ok: false, message: expect.stringMatching(/Busy/) } });
 });
 
 test('model selection uses the visible composer and its machine without sending a message', async () => {
