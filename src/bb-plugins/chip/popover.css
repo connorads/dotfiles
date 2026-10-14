@@ -1,0 +1,25 @@
+/* Chip pop-up: the <dialog> is a transparent positioner; the panel is the surface.
+   Popover tokens only, so custom palettes reach every chip pop-up. */
+.bbp-popover {
+  position: fixed; inset: auto; margin: 0; padding: 0; max-width: none; max-height: none; border: 0; background: transparent;
+  color: var(--popover-foreground); overflow: visible;
+  animation: bbp-popover-in .16s cubic-bezier(.23, 1, .32, 1);
+}
+.bbp-popover::backdrop { background: color-mix(in oklch, var(--background) 22%, transparent); animation: bbp-popover-fade .16s ease-out; }
+.bbp-popover:focus { outline: none; }
+.bbp-popover[data-instant], .bbp-popover[data-instant]::backdrop { animation: none; }
+@keyframes bbp-popover-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+@keyframes bbp-popover-fade { from { opacity: 0; } }
+
+.bbp-popover-panel {
+  display: flex; flex-direction: column; max-height: min(720px, calc(100vh - 80px)); overflow: hidden;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--popover); color: var(--popover-foreground);
+  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--popover-foreground) 6%, transparent) inset,
+    0 24px 64px -12px var(--shadow-color), 0 8px 20px -8px var(--shadow-color);
+  font: var(--text-sm, 13px)/1.4 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bbp-popover, .bbp-popover::backdrop { animation: none; }
+}
