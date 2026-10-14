@@ -6,9 +6,12 @@ import { open } from './picker/store.ts';
 import './account-status.css';
 
 // The new-thread composer can switch provider, so the status shows only while Claude Code is selected.
-export const isClaude = (composer: PluginComposerApi) => composer.selection?.providerId === 'claude-code';
+export const isClaude = (composer: PluginComposerApi) => (composer.scope.kind === 'thread' || composer.scope.kind === 'new-thread')
+  && composer.selection?.providerId === 'claude-code';
 
-export function openAccount(composer: PluginComposerApi) { open(composer, { focus: 'account' }); }
+export const accountUnavailable = 'Account selection is unavailable in this draft. New Claude threads use your remembered account. You can switch after the first message.';
+
+export function openAccount(composer: PluginComposerApi) { if (isClaude(composer)) open(composer, { focus: 'account' }); }
 
 export function AccountStatus() {
   const composer = useComposer();
@@ -16,11 +19,13 @@ export function AccountStatus() {
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentId, setCurrentId] = useState('default');
+  const claude = isClaude(composer);
   const load = useCallback(() => {
+    if (!claude) { setProfiles([]); return; }
     rpc.call('accounts', { threadId }).then(value => {
       setProfiles(value.supported ? value.profiles : []); setCurrentId(value.currentId);
     }, () => setProfiles([]));
-  }, [rpc, threadId]);
+  }, [rpc, threadId, claude]);
   // A thread gains its environment during the first turn, so reload when a turn ends.
   useEffect(load, [load, composer.isRunning]);
   useRealtime('profiles-changed', load);

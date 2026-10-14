@@ -9,6 +9,7 @@ import type { UsageWindow } from '../../src/accounts/usage/contract.ts';
 import { percent, readingAge, readingState, viewWindow } from '../../src/accounts/usage/format.ts';
 import { pace, periodStart } from '../../src/accounts/usage/pace.ts';
 import { useNow } from '../usage/use-now.ts';
+import { accountUnavailable, isClaude } from '../account-status.tsx';
 import './picker.css';
 import './account-picker.css';
 
@@ -53,16 +54,20 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   const [quotas, setQuotas] = useState<Record<string, Usage>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [supported, setSupported] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
-  const blocked = busy || composer.isRunning || composer.isSubmitting;
+  const claude = isClaude(composer);
+  const blocked = !claude || !supported || busy || composer.isRunning || composer.isSubmitting;
   const load = useCallback(async (refresh = false) => {
     const request = ++generation.current;
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setProfiles([]);
+    if (!claude) { setSupported(false); setLoading(false); return; }
     try {
       const accounts = await rpc.call('accounts', { threadId });
       if (request !== generation.current) return;
-      if (!accounts.supported) throw new Error('Claude accounts are unavailable for this composer.');
+      setSupported(accounts.supported);
+      if (!accounts.supported) return;
       setProfiles(accounts.profiles); setCurrentId(accounts.currentId); setQuotas({});
       for (const profile of accounts.profiles) {
         const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id })
@@ -76,7 +81,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
       }
     } catch (cause) { if (request === generation.current) setError(cause instanceof Error ? cause.message : 'Could not load accounts.'); }
     finally { if (request === generation.current) setLoading(false); }
-  }, [rpc, threadId]);
+  }, [rpc, threadId, claude]);
   useEffect(() => { void load(); return () => { generation.current++; }; }, [load, composer.isRunning]);
   useRealtime('profiles-changed', () => { void load(); });
   const focused = useRef(false);
@@ -128,11 +133,12 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
         <button className="mf-dismiss" type="button" aria-label="Close account picker" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button></header>
       <div className="ap-intro"><span>Compare allowance with time elapsed</span>
         <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
+      {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
       {error && <p role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { void load(true); }}>Retry</button></p>}
       {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-list" aria-busy={loading || busy}>
         {loading && <p className="ap-note" role="status">Loading accounts…</p>}
-        {!loading && !profiles.length && !error && <p className="ap-note">No Claude accounts found.</p>}
+        {!loading && !profiles.length && !error && supported && <p className="ap-note">No Claude accounts found.</p>}
         {profiles.map((profile, index) => <button type="button" key={profile.id} data-account={profile.id}
           data-current={profile.id === currentId || undefined} className="ap-account" aria-label={`Switch to ${profile.label}`}
           aria-disabled={blocked || undefined} aria-current={profile.id === currentId || undefined}
@@ -142,8 +148,8 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
           <Quota usage={quotas[profile.id]} now={now} />
         </button>)}
       </div>
-      <footer className="mf-footer ap-footer"><span><kbd className="mf-kbd">1-9</kbd> switch</span><span><kbd className="mf-kbd">↑↓</kbd> move · <kbd className="mf-kbd">↵</kbd> switch</span>
-        <span>{busy ? 'Switching…' : 'Line marks time elapsed'}</span></footer>
+      <footer className="mf-footer ap-footer">{supported && <><span><kbd className="mf-kbd">1-9</kbd> switch</span><span><kbd className="mf-kbd">↑↓</kbd> move · <kbd className="mf-kbd">↵</kbd> switch</span></>}
+        <span>{busy ? 'Switching…' : supported ? 'Line marks time elapsed' : 'Escape returns to your draft'}</span></footer>
     </div>
   </ChipPopover>;
 }
