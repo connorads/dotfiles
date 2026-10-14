@@ -5,7 +5,11 @@ export function readTheme(element: HTMLElement): Theme {
   return Object.fromEntries([...tokens.map(token => [`--${token}`, style.getPropertyValue(`--${token}`).trim()]), ["font-family", style.fontFamily], ["color-scheme", style.colorScheme]]);
 }
 
+const fontNames = (stack = "") => stack.split(",").map(name => name.trim().replace(/^["']|["']$/g, "").toLowerCase());
+const firstSource = /src:\s*(url\((?:"[^"]*"|'[^']*'|[^)]*)\)(?:\s*format\([^)]*\))?)[^;]*/;
+
 async function copyFontFace(css: string, baseUrl: string): Promise<string> {
+  css = css.replace(firstSource, "src: $1");
   for (const match of css.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
     const url = new URL(match[1] ?? "", baseUrl);
     if (url.origin !== location.origin) continue;
@@ -23,21 +27,36 @@ async function copyFontFace(css: string, baseUrl: string): Promise<string> {
   return css;
 }
 
-// Font data stays in the frame; authored scripts cannot fetch host resources.
-export async function fontStyles(): Promise<string> {
+function sheetRules(sheet: CSSStyleSheet): CSSRule[] {
+  try {
+    return Array.from(sheet.cssRules);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "SecurityError") return [];
+    throw error;
+  }
+}
+
+async function copyFontFaces(families: Set<string>): Promise<string> {
   const faces: string[] = [];
   for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) {
-        if (rule instanceof CSSFontFaceRule) {
-          faces.push(await copyFontFace(rule.cssText, sheet.href ?? location.href));
-        }
-      }
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === "SecurityError")) throw error;
+    for (const rule of sheetRules(sheet)) {
+      if (!(rule instanceof CSSFontFaceRule) || !fontNames(/font-family:\s*([^;]+)/.exec(rule.cssText)?.[1]).some(name => families.has(name))) continue;
+      const face = await copyFontFace(rule.cssText, sheet.href ?? location.href).catch(() => null);
+      if (face) faces.push(face);
     }
   }
   return faces.join("\n");
+}
+
+const fontCache = new Map<string, Promise<string>>();
+// Font data stays in the frame; authored scripts cannot fetch host resources.
+// Only theme families are copied: host sheets also declare KaTeX faces that frames never use.
+export function fontStyles(theme: Theme): Promise<string> {
+  const families = new Set([...fontNames(theme["--font-sans"]), ...fontNames(theme["--font-mono"])]);
+  const key = [...families].join(",");
+  let styles = fontCache.get(key);
+  if (!styles) fontCache.set(key, styles = copyFontFaces(families));
+  return styles;
 }
 
 export function frameDocument(html: string, theme: Theme, fonts: string, nonce: string): string {
