@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { accountSchema } from './account.ts';
 
 export const windowSchema = z.object({
   id: z.string(), label: z.string(), usedPercent: z.number().nonnegative(), resetsAt: z.string().nullable(),
@@ -7,6 +8,7 @@ export const windowSchema = z.object({
 export const usageSchema = z.object({
   status: z.enum(['ok', 'unavailable', 'unauthenticated', 'error']),
   windows: z.array(windowSchema), message: z.string().nullable(), observedAt: z.number().nullable(),
+  account: accountSchema.nullable().optional(),
 });
 export type Usage = z.infer<typeof usageSchema>;
 const rawUsage = z.object({ rate_limits_available: z.boolean().optional(), rate_limits: z.record(z.string(), z.unknown()).nullable().optional() });

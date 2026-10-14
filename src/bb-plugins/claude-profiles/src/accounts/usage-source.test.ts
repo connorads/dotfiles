@@ -32,3 +32,8 @@ test('passes credit cost through to the BB usage contract', () => {
   assert.equal(measurementSchema.safeParse(result).success, true);
   if (result.usage.status === 'ok') assert.deepEqual(result.usage.windows[0]?.cost, cost);
 });
+test('passes the profile account email and plan label through', () => {
+  const result = measurement({ status: 'ok', observedAt: 1, message: null, windows: [],
+    account: { accountEmail: 'a@example.com', planLabel: 'Team Standard' } });
+  assert.partialDeepStrictEqual(result.usage, { status: 'ok', plan: null, accountEmail: 'a@example.com', planLabel: 'Team Standard' });
+});
