@@ -55,9 +55,13 @@ lockfiles last.
 
 ## Refresh
 
-The panel reloads when the scope changes, when the window regains focus (at
-most every 2 seconds) and on the refresh button. It does not poll. A refresh
-keeps the scroll position, collapse choices and any "Show all" expansions.
+The panel reloads when the scope changes and on the refresh button. While the
+panel is open and visible, it also checks a fingerprint of the checkout every
+4 seconds and when the window regains focus, and reloads only when the
+fingerprint changed. The fingerprint is a hash of `git status --porcelain=v2
+--branch` plus the size and mtime of each listed file, so it sees HEAD moves,
+commits, new files and further edits to a modified file. A refresh keeps the
+scroll position, collapse choices and any "Show all" expansions.
 
 ## How it works
 

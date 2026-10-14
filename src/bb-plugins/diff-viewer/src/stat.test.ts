@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { joinStats, parseUntracked } from './stat.ts';
+import { joinStats, parseStatusPaths, parseUntracked } from './stat.ts';
 
 test('name-status and numstat join per file, including renames and binaries', () => {
   const names = ['M', 'src/a.ts', 'R087', 'old.ts', 'new.ts', 'D', 'gone.md', 'A', 'logo.png', 'C100', 'a.txt', 'c.txt', 'T', 'link', ''].join('\0');
@@ -26,4 +26,15 @@ test('paths with tabs and newlines survive -z', () => {
 test('untracked listing drops nested repositories', () => {
   assert.deepEqual(parseUntracked('new.md\0vendor/repo/\0dir/x.ts\0').map(e => [e.path, e.untracked, e.status]),
     [['new.md', true, 'added'], ['dir/x.ts', true, 'added']]);
+});
+
+test('status paths: changed, renamed, unmerged and untracked, skipping headers and rename sources', () => {
+  const status = [
+    '# branch.oid 0123', '# branch.head main',
+    '1 .M N... 100644 100644 100644 aaa aaa a b.txt',
+    '2 R. N... 100644 100644 100644 aaa aaa R100 new name.ts', 'old.ts',
+    'u UU N... 100644 100644 100644 100644 aaa bbb ccc conflict.md',
+    '? fresh.txt', '',
+  ].join('\0');
+  assert.deepEqual(parseStatusPaths(status), ['a b.txt', 'new name.ts', 'conflict.md', 'fresh.txt']);
 });
