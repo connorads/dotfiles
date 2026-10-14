@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
+import { experimental_copyToClipboard, experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, Repo } from './contracts.ts';
 import { BranchPicker } from './branch-picker.tsx';
 import { CommitList, CommitPanel } from './commits.tsx';
@@ -50,7 +50,11 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     return next;
   });
   const copy = (sha: string) => {
-    void navigator.clipboard.writeText(sha).then(() => { setCopied(sha); setTimeout(() => setCopied(c => c === sha ? null : c), 1400); });
+    void experimental_copyToClipboard({ text: sha }).then(ok => {
+      if (!ok) return;
+      setCopied(sha);
+      setTimeout(() => setCopied(c => c === sha ? null : c), 1400);
+    });
   };
   const { branch } = repo;
   const totals = repo.changes.reduce((sum, c) => ({ added: sum.added + (c.added ?? 0), removed: sum.removed + (c.removed ?? 0) }), { added: 0, removed: 0 });

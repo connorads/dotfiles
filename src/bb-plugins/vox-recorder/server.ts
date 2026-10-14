@@ -87,12 +87,9 @@ export default function plugin(bb: BbPluginApi) {
       + 'source "live" transcribes the call being recorded right now (optionally only its last `window`, e.g. "5m"); '
       + '"latest" returns the newest finished transcript; "list" lists recordings matching `query`; '
       + '"recording" returns the transcript of the recording `name` from that list.',
-    // The JSON-schema overload: SDK 0.6.15 types its zod overload against zod 4.6,
-    // and a plugin's own zod 4.3 schema does not satisfy it. Validated below instead.
-    parameters: z.toJSONSchema(toolInput) as Record<string, unknown>,
+    parameters: toolInput,
     presentation: { label: { pending: 'Reading vox transcript', completed: 'Read vox transcript' }, icon: { glyph: 'Mic' } },
-    execute: async params => {
-      const { source, window, query, name } = toolInput.parse(params);
+    execute: async ({ source, window, query, name }) => {
       if (source === 'live') {
         const grab = await call('grab', { window: window ?? null }, grabTimeoutMs);
         return grab.ok ? resolveTarget(`grab:${grab.id}`) : { content: [{ type: 'text', text: grab.reason }], isError: true };

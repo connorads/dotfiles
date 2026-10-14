@@ -134,9 +134,8 @@ export function installIngestion(bb: BbPluginApi, host: HostPorts, openLedger = 
   bb.agents.registerTool({
     name: 'vox_ingestion_complete',
     description: 'Confirm that this Vox ingestion saved checked notes in Klimble, skipped non-business content, or failed. Call after committing saved notes.',
-    parameters: z.toJSONSchema(completionSchema) as Record<string, unknown>,
-    execute: async (input, context) => {
-      const result = completionSchema.parse(input);
+    parameters: completionSchema,
+    execute: async (result, context) => {
       const target = await destination();
       if (!target || context.projectId !== target.projectId) throw new Error('This is not the configured Klimble project.');
       const ledger = store();
