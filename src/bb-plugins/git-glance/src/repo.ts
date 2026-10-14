@@ -27,7 +27,7 @@ const patchLimit = 512 * 1024;
 interface Run { stdout: string; code: number }
 export function run(cwd: string, args: string[], okCodes: readonly number[] = [0]): Promise<Run> {
   return new Promise((resolve, reject) => {
-    // GIT_OPTIONAL_LOCKS=0: reads never take index.lock, so polling cannot block an agent's commit.
+    // GIT_OPTIONAL_LOCKS=0: status never takes index.lock, so polling cannot block an agent's commit.
     execFile('git', args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 10_000,
       env: gitEnv({ GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' }) }, (error, stdout, stderr) => {
       const code = error ? typeof error.code === 'number' ? error.code : -1 : 0;
@@ -36,8 +36,12 @@ export function run(cwd: string, args: string[], okCodes: readonly number[] = [0
     });
   });
 }
+/**
+ * `diff.autoRefreshIndex=false` stops a work-tree `git diff` rewriting the index to
+ * refresh stat data, which it does even with `GIT_OPTIONAL_LOCKS=0`.
+ */
 export const git = (repo: Repo, args: string[], okCodes?: readonly number[]) =>
-  run(repo.cwd, [...repo.select, ...args], okCodes).then(result => result.stdout);
+  run(repo.cwd, [...repo.select, '-c', 'diff.autoRefreshIndex=false', ...args], okCodes).then(result => result.stdout);
 
 /**
  * The checkout's repository, or the bare dotfiles repository when the checkout is
