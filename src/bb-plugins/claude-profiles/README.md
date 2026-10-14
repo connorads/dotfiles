@@ -263,9 +263,11 @@ measurements. Each resource belongs to its BB host. Listing reads directory
 metadata and never requests quota. The plugin does not enable that panel or change
 its other sources.
 
-Codex reset credits come from the tmux collector's `~/.cache/codex-usage.json`.
-A refresh runs `~/.config/zsh/functions/codex-usage` with its cache, lock and
-backoff rules. The plugin does not read credentials or redeem credits.
+Codex reset credits come from `~/.cache/codex-usage.json`. Opening the overlay
+refreshes missing readings or readings at least five minutes old. The open
+overlay checks every five minutes. Collection runs
+`~/.config/zsh/functions/codex-usage` with its cache, lock and backoff rules.
+No tmux session is required. The plugin does not read credentials or redeem credits.
 
 ## CLI
 

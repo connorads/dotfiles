@@ -3,21 +3,22 @@ import { readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { parseResetCredits, type ResetCredits } from './reset-credits.ts';
 
-/** The tmux collector owns credentials, backoff and locking. This adapter reads only its usage cache. */
+/** The usage collector owns credentials, backoff and locking. This adapter reads only its usage cache. */
 export async function readResetCredits(home: string, refresh: boolean, collect: () => Promise<boolean>): Promise<ResetCredits> {
   const path = join(home, '.cache/codex-usage.json');
-  const before = refresh ? await stat(path).catch(() => null) : null;
-  const collected = !refresh || await collect();
+  const before = await stat(path).catch(() => null);
+  const needsRefresh = refresh || before === null || Date.now() - before.mtimeMs >= 300_000;
+  const collected = !needsRefresh || await collect();
   try {
     const file = await stat(path);
-    if (file.size > 1024 * 1024) return { status: 'unavailable', message: 'Tmux usage cache exceeds the reading limit.' };
+    if (file.size > 1024 * 1024) return { status: 'unavailable', message: 'Usage cache exceeds the reading limit.' };
     const reading = parseResetCredits(JSON.parse(await readFile(path, 'utf8')), file.mtimeMs);
-    if (reading.status !== 'ok' || !refresh) return reading;
+    if (reading.status !== 'ok' || !needsRefresh) return reading;
     const message = !collected ? 'Reset-credit refresh failed. Showing the cached reading.'
       : before?.mtimeMs === file.mtimeMs ? 'Collector kept the cached reading. Refresh may be paused.' : null;
     return message ? { ...reading, message } : reading;
   } catch {
-    return { status: 'unavailable', message: 'No readable tmux usage cache. Refresh uses the installed codex-usage collector.' };
+    return { status: 'unavailable', message: 'No readable usage cache. Refresh uses the installed codex-usage collector.' };
   }
 }
 
