@@ -5,7 +5,7 @@ import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers, RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { rpcContract } from './contracts.ts';
-import { close } from './ui/picker/store.ts';
+import { close, openedState } from './ui/picker/store.ts';
 
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
@@ -60,7 +60,7 @@ test('the status shows the remembered account in a new-thread Claude composer', 
 
 test('the status hides when the new-thread composer selects another provider', async () => {
   const { slot } = await render({ ...newThread, selection: { ...newThread.selection, providerId: 'codex' } });
-  await waitFor(() => expect(slot.inspection.rpcCalls.some(call => call.method === 'accounts')).toBe(true));
+  expect(slot.inspection.rpcCalls.some(call => call.method === 'accounts')).toBe(false);
   expect(slot.queryByRole('button', { name: /Claude account/ })).toBeNull();
 });
 
@@ -96,4 +96,36 @@ test('account digits switch the account through the registered overlay', async (
     .toEqual([{ threadId: 'thread-test', profileId: 'work' }]));
   await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
   expect(slot.inspection.composer.focusCount).toBeGreaterThan(0);
+});
+
+test('Alt+A in a queued editor cannot change the new-thread account', async () => {
+  const { slot } = await render({ scope: { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queue-test' },
+    selection: { providerId: 'claude-code' } });
+  fireEvent.click(slot.getByTestId('run-switcher'));
+  expect(openedState()).toBeNull();
+  expect(slot.queryByRole('dialog', { name: 'Switch Claude account' })).toBeNull();
+  expect(slot.queryByRole('button', { name: /Claude account/ })).toBeNull();
+  expect(slot.inspection.rpcCalls.filter(call => call.method === 'accounts' || call.method === 'choose')).toEqual([]);
+});
+
+test('a Claude handoff explains account limits without changing the source or remembered account', async () => {
+  const { slot } = await render(thread, {
+    accounts: () => ({ supported: false, profiles: [], currentId: 'default' }),
+  });
+  fireEvent.click(slot.getByTestId('run-switcher'));
+  await slot.findByText(/New Claude threads use your remembered account/);
+  expect(slot.queryByRole('alert')).toBeNull();
+  expect(slot.queryByRole('button', { name: /^Switch to/ })).toBeNull();
+  expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
+  expect(slot.inspection.composer.submits).toEqual([]);
+});
+
+
+test('the model picker explains the same Claude handoff limitation', async () => {
+  const { slot } = await render(thread, {
+    accounts: () => ({ supported: false, profiles: [], currentId: 'default' }),
+  });
+  fireEvent.click(slot.getByRole('button', { name: 'Switch model' }));
+  await slot.findByText(/New Claude threads use your remembered account/);
+  expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
 });

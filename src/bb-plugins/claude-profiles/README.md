@@ -90,6 +90,11 @@ Existing thread:
 2. Press **Alt+A** and choose an account.
 3. Send the next message. Claude resumes the same native conversation.
 
+Account selection in a cross-provider handoff is unavailable before its first
+message. The picker explains this limit. New Claude threads use the remembered
+account; switch accounts after the first message. Alt+A does nothing in queued
+or sent-message editors and does not change the remembered account.
+
 **Default** means the thread has no named account. It uses the native default
 configuration.
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Effort, Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
+import { accountUnavailable, isClaude } from '../account-status.tsx';
 import { AccountPicker } from './account-picker.tsx';
 import { AccountMenu } from './account-menu.tsx';
 import { EFFORT_LABEL, EffortPill, Segmented } from './controls.tsx';
@@ -65,8 +66,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const [chipOverflow, setChipOverflow] = useState({ start: false, end: false });
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   // Queued-message editors cannot change a thread's account; choosing there would rewrite the next-thread account.
-  const claude = (composer.scope.kind === 'thread' || composer.scope.kind === 'new-thread')
-    && composer.selection?.providerId === 'claude-code';
+  const claude = isClaude(composer);
   const currentProvider = composer.selection?.providerId;
   const environmentKey = JSON.stringify(composer.selection?.environment);
   const refresh = useCallback(async () => {
@@ -294,7 +294,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
             const { currentId } = await rpc.call('choose', { threadId, profileId });
             setAccounts(previous => previous ? { ...previous, currentId } : previous);
           }); }} />
-          : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? 'Choose an account after the first message.'}</span>}
+          : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? accountUnavailable}</span>}
         {accounts?.supported && composer.isRunning ? <small>Available when this turn finishes.</small>
           : !threadId && accounts?.supported && <small>New Claude threads start on this account.</small>}
         {accounts?.supported && profileError && <small role="alert">{profileError}</small>}
