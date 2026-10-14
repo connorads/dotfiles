@@ -440,7 +440,16 @@ function TasksPage() {
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
-  const opened = tasks.find((task) => task.id === selected);
+  // An edit to the open task's own line changes its id; follow it by line.
+  const openedLine = useRef<number | null>(null);
+  const opened =
+    tasks.find((task) => task.id === selected) ??
+    (selected ? tasks.find((task) => task.line === openedLine.current) : undefined);
+  useEffect(() => {
+    if (!opened) return;
+    openedLine.current = opened.line;
+    if (opened.id !== selected) setSelected(opened.id);
+  }, [opened, selected]);
   const closeDetail = useCallback(() => {
     setSelected(null);
     requestAnimationFrame(() => {
