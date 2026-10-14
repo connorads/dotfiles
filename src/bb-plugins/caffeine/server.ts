@@ -16,13 +16,17 @@ const threadEvents = ['thread.active', 'thread.idle', 'thread.failed', 'thread.a
 export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
 
-  // Keep-awake is for the Mac BB runs on, which is the primary host.
-  let primary: Promise<Target> | null = null;
-  const target = () => primary ??= bb.sdk.system.config().then((config): Target => {
-    if (!config.primaryHostId) return { ok: false, reason: 'no-host' };
+  // Keep-awake is for the Mac BB runs on, which is the primary host. The
+  // platform is null until that host's daemon connects, which can be after
+  // this plugin loads, so only a resolved Mac is cached.
+  let primary: Target | null = null;
+  const target = async (): Promise<Target> => {
+    if (primary) return primary;
+    const config = await bb.sdk.system.config();
+    if (!config.primaryHostId || config.primaryHostPlatform === null) return { ok: false, reason: 'no-host' };
     if (config.primaryHostPlatform !== 'darwin') return { ok: false, reason: 'not-macos' };
-    return { ok: true, hostId: config.primaryHostId };
-  }).catch(error => { primary = null; throw error; });
+    return primary = { ok: true, hostId: config.primaryHostId };
+  };
   const call = async <M extends Method>(method: M, input: Parameters<typeof host.call<M>>[1], timeoutMs = 20_000) => {
     const resolved = await target();
     if (!resolved.ok) throw new Error(resolved.reason === 'no-host' ? 'BB has no primary host.' : 'Keep awake needs a macOS host.');
@@ -99,6 +103,12 @@ export default function plugin(bb: BbPluginApi) {
           threadsChanged();
         },
       });
+      const hostChanged = bb.sdk.subscribe({
+        event: 'host:changed',
+        callback: event => {
+          if (event.changes.includes('host-connected')) void readStatus().catch(() => {});
+        },
+      });
       try {
         await readStatus();
         await new Promise<void>(resolve => {
@@ -106,6 +116,7 @@ export default function plugin(bb: BbPluginApi) {
           else signal.addEventListener('abort', () => resolve(), { once: true });
         });
       } finally {
+        hostChanged();
         connection();
       }
     },
