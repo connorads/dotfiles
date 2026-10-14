@@ -72,3 +72,8 @@ tmux caffeine lib, so the BB chip and the tmux pill always agree.
 
 [External Links](external-links/README.md) adds an arrow beside chat web links.
 The arrow opens the system browser. Link text follows BB's browser preference.
+
+## Run commands from chat
+
+[Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat
+message into the thread's terminal. You press Enter to run them.

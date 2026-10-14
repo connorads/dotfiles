@@ -1,0 +1,31 @@
+{
+  "name": "bb-plugin-run-in-terminal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
+  "bb": {
+    "name": "Run in Terminal",
+    "description": "Paste shell commands from a chat message into the thread's terminal without running them.",
+    "branding": { "icon": "SquareTerminal" },
+    "server": "./server.ts",
+    "app": "./app.tsx",
+    "skills": []
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test *.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": { "zod": "catalog:" },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "hono": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:"
+  }
+}
