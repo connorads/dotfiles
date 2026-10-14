@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, expect, test } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/react';
-import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
+import { renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
 import { ModelPicker } from './picker.tsx';
@@ -317,17 +317,6 @@ test('search filters models and typing a slot number does not switch selection',
     fireEvent.change(search, { target: { value: 'nonexistent' } });
     expect(slot.getByText('No models found.')).toBeTruthy();
   } finally { slot.lifecycle.unmount(); }
-});
-
-test('registers one picker overlay for both composer scopes and Alt+F opens it', async () => {
-  const app = await loadPluginApp(() => import('../../app.tsx'));
-  expect(app.composerCustomizations.find(c => c.id === 'agent-switcher')?.scopes).toEqual(['thread', 'new-thread']);
-  expect(app.appOverlays.filter(overlay => overlay.id === 'picker')).toHaveLength(1);
-  const commands = (app as unknown as { commandPaletteActions: { id: string; title: string; defaultShortcut: unknown }[] }).commandPaletteActions;
-  const open = commands.find(command => command.id === 'open-picker');
-  expect(open?.defaultShortcut).toMatchObject({ key: 'f', alt: true, shift: false });
-  expect(open?.title).toBe('Open model picker');
-  expect(commands.find(command => command.id === 'next-favourite')?.defaultShortcut).toMatchObject({ key: 'f', alt: true, shift: true });
 });
 
 test('favourites filter shows one row per starred model and supports an empty list', async () => {

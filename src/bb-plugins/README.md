@@ -33,8 +33,8 @@ pop-up uses the package's `ChipPopover`;
 
 ## Agent Switcher
 
-[Agent Switcher](claude-profiles/README.md) chooses the model, saved effort and
-Claude Code account for a thread, and shows agent usage. Its plugin ID is
+[Agent Switcher](claude-profiles/README.md) chooses the Claude Code account for a thread and shows agent usage.
+BB owns model selection and favourites. Its plugin ID is
 `claude-profiles`. [ADR 0001](docs/adr/0001-consolidate-agent-switcher.md)
 records why it absorbs Model Favourites and Agent Usage.
 
