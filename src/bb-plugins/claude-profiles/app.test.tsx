@@ -97,13 +97,3 @@ test('account digits switch the account through the registered overlay', async (
   await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
   expect(slot.inspection.composer.focusCount).toBeGreaterThan(0);
 });
-
-
-test('BB owns model controls and shortcuts without a duplicate plugin picker', async () => {
-  const app = await loadPluginApp(() => import('./app.tsx'));
-  expect(app.composerCustomizations.flatMap(customization => customization.actions ?? []).map(action => action.id)).toEqual(['claude-account']);
-  expect(app.composerCustomizations.flatMap(customization => customization.plusMenu ?? [])).toEqual([]);
-  expect(app.composerCustomizations.flatMap(customization => customization.banners ?? [])).toEqual([]);
-  const commands = (app as unknown as { commandPaletteActions: { id: string }[] }).commandPaletteActions;
-  expect(commands.some(command => ['open-picker', 'next-favourite', 'previous-favourite'].includes(command.id) || command.id.startsWith('select-favourite-'))).toBe(false);
-});

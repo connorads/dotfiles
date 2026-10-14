@@ -8,22 +8,52 @@ The plugin ID is `claude-profiles`, so its CLI is `bb claude-profiles`. BB
 shows it as **Agent Switcher**. [ADR 0001](../docs/adr/0001-consolidate-agent-switcher.md)
 records why it absorbs Model Favourites and Agent Usage.
 
-## Model selection
+## Use
 
-BB owns the model picker and favourites. Alt+F opens its single model control.
-Favourites appear first. Press 1-9 with an empty search to apply the saved model
-and effort. Alt+Shift+F cycles available favourites. Use **Save current** in the
-native picker to save the selected model and reasoning. **Edit** reorders or
-removes favourites.
+### Picker
 
-BB stores up to nine ordered presets in the server-backed
-`modelPicker.favourites` UI preference. The CLI and SDK use the same preference.
-The plugin supplies no model button, model menu or model shortcuts.
+Press **Alt+F**, click the chevron beside the prompt star, or choose **Switch
+model** in the composer's plus menu. The picker opens on the focused composer, in a thread
+or a new-thread composer. It changes the next turn and keeps the draft. It never
+sends a prompt.
 
-Deploy this app bundle with a BB build that includes native favourites. Import
-existing plugin favourites into BB before reloading the app bundle. Keep the
-installed plugin bundle until that core build is active. The model RPCs retain
-access to stored favourites for the transfer.
+This picker works with standard BB. BB's native model selector remains visible
+alongside the plugin controls.
+
+1. Search by model or provider. Filter with the chips under the search field:
+   **All**, **Favourites** or one provider.
+2. Click a model to select it. Click its star to save or remove it as a
+   favourite. The star shows on hover or focus until the model is a favourite.
+3. Set the effort and tier for this turn in the **Now** strip. It shows the
+   current model and only the efforts and tiers that model supports.
+4. Choose the Claude account in the **Claude account** menu. It shows while
+   Claude Code is the selected provider.
+
+The list shows **Favourites** first, then one section per provider. A
+favourite row shows its slot number and its saved effort. The selected row has
+a check. An unavailable row is dimmed and shows the reason.
+
+### Favourites and effort
+
+The star beside the prompt shows whether the current model is a favourite. It
+is filled gold when it is. Click it to save the current model with the current
+effort, or to remove it. Its tooltip names the model and effort.
+
+Up to nine favourites fit in numbered slots. Removing one leaves the other slot
+numbers unchanged. Each favourite has a **Saved effort** pill. Click it to choose
+**Default** or an effort the model supports. With a favourite row focused,
+Left and Right step the saved effort.
+
+| Case | Behaviour |
+| --- | --- |
+| Saved effort that the model supports | Selecting the favourite sets that effort. |
+| Saved effort that the model no longer supports | The row is disabled with the reason. Its pill shows **(unavailable)** in amber and stays editable. |
+| No saved effort (**Default**) | Selecting the favourite uses the model's default effort, not the composer's current one. |
+| **Now** effort changed | Only this composer changes. Saved efforts stay. |
+
+Cycling skips disabled favourites. A favourite whose provider is unavailable on
+this machine stays visible with a reason. Favourites persist in plugin storage
+and update across open views.
 
 ### Accounts
 
@@ -112,19 +142,24 @@ Balances have no invented percentage or pace projection.
 
 | Action | Shortcut |
 | --- | --- |
-| Open native model picker | Alt+F |
-| Next native favourite | Alt+Shift+F |
-| Previous native favourite | Assign modelPicker.cycleFavouriteBackward in BB keyboard settings |
-| Select favourite 1-9 | 1-9 inside the native picker |
+| Open model picker | Alt+F |
+| Next favourite | Alt+Shift+F |
+| Previous favourite | Assign in BB keyboard settings |
+| Select favourite 1-9 | Assign in BB keyboard settings |
 | Open account picker | Alt+A |
 | Show usage | ⌘⇧A |
 
-Inside the native picker, Up and Down move through favourites and models.
-Enter selects the highlighted row. Digits select favourites when search is empty.
-Escape closes the picker. Reasoning controls remain below the model list.
+Inside the picker:
 
-Inside the account picker, Up and Down move between accounts. Enter or 1-9
-selects an account. Escape returns to the composer.
+| Action | Key |
+| --- | --- |
+| Move between models | Up / Down |
+| Select the focused model or first search result | Enter |
+| Select a favourite slot | 1-9 when search is empty, or outside the search field |
+| Step the focused favourite's saved effort | Left / Right |
+| Star or unstar the focused model | ⌘S or Ctrl+S |
+| Close the open effort or account menu | Escape |
+| Close and return to the composer | Escape, or Q outside text fields |
 
 ## New-thread rule
 
@@ -164,10 +199,10 @@ sequenceDiagram
     Claude->>Claude: Resume session under selected config directory
 ```
 
-`src/accounts/` owns bindings, routing, the guard, transcript handover, quota
-and usage. The account picker and usage overlay call the typed account RPC.
-`src/models/` exposes stored plugin favourites for migration to BB's native
-preference. It supplies no composer controls.
+The plugin has two modules. `src/accounts/` owns bindings, routing, the guard,
+transcript handover, quota and usage. `src/models/` owns favourites and their
+saved effort. The picker and the usage overlay in `ui/` own no data. They call
+the modules through the plugin's typed RPC.
 
 The server owns thread selection and checks BB state. The host worker owns local
 directory discovery, transcript copying, native CLI calls and Codex reset
