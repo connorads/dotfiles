@@ -20,8 +20,8 @@ const scopes: { kind: ScopeKind; label: string; hint: string }[] = [
 const lastScope = new Map<string, ScopeKind>();
 const viewKey = 'bb-diff-viewer:view';
 const readView = (): DiffViewMode => { try { return localStorage.getItem(viewKey) === 'split' ? 'split' : 'unified'; } catch { return 'unified'; } };
-/** Focus returning to the window refreshes, but not more often than this. */
-const focusRefreshGapMs = 2_000;
+/** How often a visible panel checks the checkout's fingerprint for changes. */
+const pollMs = 4_000;
 
 function isTyping(target: EventTarget | null) {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
@@ -68,13 +68,19 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const latest = useRef(0);
-  const loadedAt = useRef(0);
+  const settled = useRef(0);
+  /** The checkout's fingerprint when the shown load began. */
+  const printed = useRef<string | null>(null);
+  const checking = useRef(false);
 
   const scope = useMemo<Scope>(() => kind === 'unpushed' ? { kind, commit } : { kind }, [kind, commit]);
   const reload = useCallback(async () => {
     const request = ++latest.current;
     setLoading(true);
     try {
+      // Taken before the load, so a change during the load shows at the next check.
+      const print = await rpc.call('fingerprint', { threadId });
+      if (request === latest.current) printed.current = print;
       const next = await rpc.call('load', { threadId, scope });
       if (request !== latest.current) return;
       setResult(next);
@@ -84,20 +90,33 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
     } catch (cause) {
       if (request === latest.current) setError(message(cause));
     } finally {
-      if (request === latest.current) { setLoading(false); loadedAt.current = Date.now(); }
+      if (request === latest.current) { setLoading(false); settled.current = request; }
     }
   }, [rpc, threadId, scope]);
 
   useEffect(() => { lastScope.set(threadId, kind); }, [threadId, kind]);
   useEffect(() => { setResult(null); void reload(); }, [reload]);
   useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === 'visible' && Date.now() - loadedAt.current > focusRefreshGapMs) void reload();
+    // Reload only when the fingerprint moved; skip while a load or another check is in flight.
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || checking.current || settled.current !== latest.current) return;
+      checking.current = true;
+      const request = latest.current;
+      try {
+        const print = await rpc.call('fingerprint', { threadId });
+        if (request === latest.current && print !== printed.current) void reload();
+      } catch { /* the next check tries again */ } finally { checking.current = false; }
     };
+    const refresh = () => void check();
+    const timer = setInterval(refresh, pollMs);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
-    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
-  }, [reload]);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [rpc, threadId, reload]);
   useEffect(() => {
     // Opened by shortcut: take focus so j/k work at once, unless the reader is typing elsewhere.
     if (document.activeElement === document.body) rootRef.current?.focus({ preventScroll: true });

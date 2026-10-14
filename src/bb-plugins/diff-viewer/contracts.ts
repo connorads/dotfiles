@@ -73,10 +73,13 @@ export const hostContract = defineRpcContract({
   load: { input: z.object({ root, scope: scopeSchema }), output: loadResultSchema },
   /** One file's whole patch (to the expanded cap), for "show all" and deferred files. */
   file: { input: z.object({ root, ...fileInput }), output: bodySchema },
+  /** Cheap: changes whenever a load could differ. Null when the checkout is not a git work tree. */
+  fingerprint: { input: z.object({ root }), output: z.string().nullable() },
 });
 
 const thread = { threadId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
   load: { input: z.object({ ...thread, scope: scopeSchema }), output: loadResultSchema },
   file: { input: z.object({ ...thread, ...fileInput }), output: bodySchema },
+  fingerprint: { input: z.object(thread), output: z.string().nullable() },
 });

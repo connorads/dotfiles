@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { experimental_createHostEntryHarness } from '@get-bb/plugin-sdk/testing/host';
 import type { FileDiff, LoadResult, View } from '../contracts.ts';
 import entry from '../host.ts';
-import { load, loadFile } from './git.ts';
+import { fingerprint, load, loadFile } from './git.ts';
 import { fixtureGit as git, tempDir } from './test-git.ts';
 
 const commitAll = (cwd: string, message: string, ...select: string[]) => {
@@ -200,6 +200,35 @@ test('a stat-only change neither lists the file nor rewrites the index', async (
   const after = statSync(index);
   assert.deepEqual([after.ino, after.mtimeMs], [before.ino, before.mtimeMs]);
   assert.deepEqual(readFileSync(index), bytes);
+});
+
+test('the fingerprint changes with each edit, commit and new file, and leaves the index alone', async () => {
+  const work = clonedRepo();
+  const index = join(work, '.git', 'index');
+  const host = experimental_createHostEntryHarness(entry);
+  const print = () => host.experimental_call('fingerprint', { root: work });
+  const clean = await print();
+  assert.equal(await print(), clean);
+  utimesSync(join(work, 'a.txt'), new Date(2001, 0, 1), new Date(2001, 0, 1));
+  const before = statSync(index), bytes = readFileSync(index);
+  assert.equal(await print(), clean, 'a stat-only change is not a change');
+  const after = statSync(index);
+  assert.deepEqual([after.ino, after.mtimeMs], [before.ino, before.mtimeMs]);
+  assert.deepEqual(readFileSync(index), bytes);
+  writeFileSync(join(work, 'a.txt'), 'edited\n');
+  const edited = await print();
+  writeFileSync(join(work, 'a.txt'), 'edited again\n');
+  const again = await print();
+  mkdirSync(join(work, 'dir'));
+  writeFileSync(join(work, 'dir', 'new.md'), 'x\n');
+  const added = await print();
+  writeFileSync(join(work, 'dir', 'new.md'), 'xy\n');
+  const grown = await print();
+  commitAll(work, 'commit them');
+  const committed = await print();
+  await host.experimental_dispose();
+  assert.equal(new Set([clean, edited, again, added, grown, committed]).size, 6);
+  assert.equal(await fingerprint(tempDir(), '/nowhere'), null);
 });
 
 test('a submodule bump reads as its own file, whatever diff.submodule says', async () => {

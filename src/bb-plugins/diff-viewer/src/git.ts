@@ -1,5 +1,6 @@
 // Host-side git I/O. Runs in the host worker on the checkout's own machine.
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, lstat } from 'node:fs/promises';
 import { basename, isAbsolute, join } from 'node:path';
 import type { Body, Commit, FileDiff, LoadResult, Scope, Spec } from '../contracts.ts';
@@ -10,7 +11,7 @@ import {
   branchNote, commitLimit, commitSpec, defaultBranchCandidates, globalFlags, logArgv, parseLog, patchArgv,
   pickDefaultBranch, shortRef, statArgv, unpushedTip, untrackedArgv, untrackedListArgv,
 } from './scope.ts';
-import { joinStats, parseUntracked, type StatEntry } from './stat.ts';
+import { joinStats, parseStatusPaths, parseUntracked, type StatEntry } from './stat.ts';
 import { displayLimits, expandedLimits, truncatePatch, type Limits } from './truncate.ts';
 
 export interface Repo {
@@ -173,6 +174,21 @@ export async function load(root: string, home: string, scope: Scope): Promise<Lo
   if (!resolved.ok) return { ...base, view: resolved };
   const { files, hidden } = await changedFiles(repo, resolved.spec);
   return { ...base, view: { ok: true, spec: resolved.spec, label: resolved.label, commits: resolved.commits, note: resolved.note, files, hidden } };
+}
+
+/**
+ * A hash that changes when HEAD, the upstream, the status or a listed file's
+ * size or mtime changes. Status shows the index's blob, not the work tree's,
+ * so a second edit to a modified file shows only in its stat data.
+ */
+export async function fingerprint(root: string, home: string): Promise<string | null> {
+  const repo = await resolveRepo(root, home);
+  if (!repo) return null;
+  const untracked = repo.kind === 'repo' ? '--untracked-files=all' : '--untracked-files=no';
+  const status = await git(repo, ['status', '--porcelain=v2', '-z', '--branch', untracked]);
+  const stats = await mapLimited(parseStatusPaths(status), 32,
+    path => lstat(join(repo.cwd, path)).then(info => `${info.size}:${info.mtimeMs}`, () => '-'));
+  return createHash('sha1').update(status).update(stats.join('\n')).digest('hex');
 }
 
 function relative(path: string) {

@@ -25,5 +25,10 @@ export default function plugin(bb: BbPluginApi) {
       if (!target) throw new Error('This thread has no checkout.');
       return host.call('file', { root: target.root, ...input }, { hostId: target.hostId, timeoutMs: hostTimeoutMs });
     },
+    fingerprint: async ({ threadId }) => {
+      const target = await checkout(threadId);
+      if (!target) return null;
+      return host.call('fingerprint', { root: target.root }, { hostId: target.hostId, timeoutMs: hostTimeoutMs });
+    },
   });
 }

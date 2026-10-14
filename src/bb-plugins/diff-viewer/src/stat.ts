@@ -72,3 +72,20 @@ export function parseUntracked(text: string): StatEntry[] {
   return text.split('\0').filter(path => path && !path.endsWith('/'))
     .map(path => ({ path, oldPath: null, status: 'added' as const, additions: null, deletions: null, binary: false, untracked: true }));
 }
+
+/** Fields before the path in each `git status --porcelain=v2 -z` record type. */
+const statusFields: Record<string, number> = { '1': 8, '2': 9, u: 10, '?': 1 };
+
+/** Paths from `git status --porcelain=v2 -z`; a rename's source record follows it and is skipped. */
+export function parseStatusPaths(text: string): string[] {
+  const records = text.split('\0');
+  const paths: string[] = [];
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i]!;
+    const fields = statusFields[record.charAt(0)];
+    if (fields === undefined || record.charAt(1) !== ' ') continue;
+    paths.push(record.split(' ').slice(fields).join(' '));
+    if (record.charAt(0) === '2') i++;
+  }
+  return paths;
+}
