@@ -86,3 +86,22 @@ test('source links stay inside the project and exclude hidden paths', () => {
     assert.equal(relativeMarkdownPath('TODO.md', path), null, path);
   }
 });
+test('task ids follow task content, so edits above a task keep its id', () => {
+  const before = parseTasks(
+    '## Next\n- Call Ben\n- Call Ben\n## Later\n- Call Ben\n',
+    'TODO.md',
+  ).tasks;
+  const after = parseTasks(
+    '# Plan\n\n## Next\n- New task\n- Call Ben\n  with detail\n- Call Ben\n## Later\n- Call Ben\n',
+    'TODO.md',
+  ).tasks.slice(1);
+  assert.equal(new Set(before.map((t) => t.id)).size, 3);
+  assert.deepEqual(
+    after.map((t) => t.id),
+    before.map((t) => t.id),
+  );
+  assert.deepEqual(
+    after.map((t) => t.line),
+    [5, 7, 9],
+  );
+});
