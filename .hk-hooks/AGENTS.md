@@ -145,6 +145,15 @@ glob-scoped so only staged-project changes pay the cost. The shared
 `node_modules` is absent (fresh/offline machines); `mise run ts-checks`
 installs deps and runs typecheck + tests across all of them.
 
+bb-plugins packages import each other (`@bb-plugins/chip` through
+`workspace:*`) and share one pnpm catalog that pins the SDK, so a staged file
+there can break a package it does not touch. `~/.hk-hooks/bb-plugins-scope.sh`
+maps staged files to their own packages plus every workspace dependant,
+transitively. A staged `pnpm-workspace.yaml`, `pnpm-lock.yaml` or
+root `package.json` selects every package. A package is a top-level dir with a
+`package.json`, so `spikes/` stays out. Both `ts-typecheck-bb-plugins` and
+`ts-tests-scoped` use it.
+
 `.config/opencode` is a **typecheck-only bun project**, and the one whose
 manifest is also an interface: opencode's docs say to author a `package.json` in
 the config dir and that opencode runs `bun install` on it at startup, so the file
