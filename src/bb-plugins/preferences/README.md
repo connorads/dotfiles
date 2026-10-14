@@ -53,8 +53,8 @@ Uninstalling deletes ownership history and keeps already applied shortcuts.
 ## Verification
 
 Run `pnpm test`, `pnpm typecheck` and `pnpm build` in this directory.
-The SDK pin is the workspace's 0.6.15. The installed BB reports 0.6.37;
-the used API passes typecheck, build and live verification.
+The workspace and the engine floor use SDK 0.6.37. The used API passes
+typecheck, build and live verification.
 
 Live checks cover UI edits, atomic file replacement, invalid JSON, removed entries
 after restart, disable/enable, reload and preservation of unmanaged shortcuts.

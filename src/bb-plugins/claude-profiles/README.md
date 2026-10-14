@@ -282,7 +282,7 @@ design is not a guarantee against account suspension.
 
 ## Development
 
-Requirements: BB 0.46+, Plugin SDK 0.6.15, Node 24+, pnpm, native Claude Code.
+Requirements: BB 0.46+, Plugin SDK 0.6.37, Node 24+, pnpm, native Claude Code.
 Native continuation and quota collection are verified with Claude Code 2.1.293.
 
 ```sh

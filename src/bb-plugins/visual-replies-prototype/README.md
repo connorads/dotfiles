@@ -81,9 +81,7 @@ Focused tests cover queue maths, storage host ownership, boundary validation, st
 Live browser checks cover keyboard controls, mobile and desktop layout, theme propagation, fonts, reload and content height.
 The reference queue keeps chart labels at 12 screen pixels and uses a fixed 220-pixel chart height.
 
-The workspace supplies SDK 0.6.15. Live BB supplies SDK 0.6.37.
-Build and live registration succeed. `bb plugin types --check` reports the pin difference.
-The scaffold's 0.6.37 install is blocked by the existing package quarantine. No quarantine bypass is configured.
+The workspace and live BB both supply SDK 0.6.37. Build and live registration succeed.
 The tool uses the SDK's JSON-schema registration overload and parses input explicitly with the workspace Zod version.
 
 Agent-authored charts must follow the style contract. The renderer cannot repair fixed-width SVG layouts automatically.
