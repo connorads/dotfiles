@@ -86,7 +86,20 @@ only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
 rebooting or with `cleanup --target claude-temp --yes`. That opt-in target
 removes only current-user Claude session scratch older than 60 minutes. It
 protects live sessions from every configured profile and every hibernation
-record, including orphaned records whose pane is gone.
+record, including orphaned records whose pane is gone. It matches session
+dirs only: ad-hoc `mktemp` dirs that agents create at the root of
+`/private/tmp/claude-<uid>` are outside it (68G there against a 22M
+`claude-temp` candidate). Size the root with `du -d1` before quoting the
+target as the fix; for the ad-hoc dirs, offer a reboot or delete only the dirs
+the user names.
+
+Version stores that keep every release: `~/.codex/packages/app-server-daemon/releases`
+(about 310M each; only the `current` symlink target runs), pnpm's own versions
+under `~/.local/share/pnpm/package-manager-store/v11/links/@pnpm/` (keep those
+a repo's `packageManager` field pins; `pnpm store prune` never touches them),
+and a Claude Desktop VM per profile at
+`~/.claude-profiles/desktop/<profile>/vm_bundles` (9.4G). Check no process
+holds a release or VM before removing it.
 
 ## When the space comes back
 
@@ -184,10 +197,11 @@ audio manifest or deleting files.
   `git worktree remove` or `wt-remove`, precisely so `df` moves inside the
   session. Where `trash` is right, close by reporting how much is pending in it
   and that emptying is the user's action.
-- **`trash` on a many-file tree takes minutes** (it moves, it doesn't unlink),
-  so it outlives tool timeouts and gets killed mid-move, leaving some args done
-  and some untouched. Background it, and verify per-path afterwards with `ls
-  -d` rather than trusting one exit code for the whole list.
+- **`trash` duration is unpredictable.** One run on a many-file tree outlived
+  tool timeouts and was killed mid-move, leaving some args done and some
+  untouched; another moved 90 paths holding 19G of `node_modules` in seconds.
+  Background it with `trash -v`, and verify per-path afterwards with `ls -d`
+  rather than trusting one exit code for the whole list.
 - **Over SSH, trashing is close to one-way, and frees nothing.** A headless
   session can neither read `~/.Trash` (that needs Full Disk Access) nor drive
   Finder (Automation consent cannot be prompted with no GUI), so
@@ -318,7 +332,16 @@ audio manifest or deleting files.
 - **`stat` on PATH is GNU coreutils (nix).** BSD flags fail with `cannot read
   file system information for '%SB'`; call `/usr/bin/stat` for birth times.
 - **A full `cleanup --yes` can outlive a 5-minute tool timeout.** Background
-  it and read the `volume_available_*` JSON lines when it finishes.
+  it and read the `volume_available_*` JSON lines when it finishes. Targets
+  run in series, so one stalled step blocks every later one: `bun pm cache rm`
+  once spun at 100% CPU for 19 minutes with its cache size flat. Re-measure the
+  current target's dir with `du` while it runs. If it stops shrinking, ask the
+  user to stop the process, then rerun the remaining targets with explicit
+  `--target` flags.
+- **Apps from nix-darwin's Homebrew module come back after `brew uninstall`.**
+  Delete the cask line from the nix config and rebuild with `drs`; the
+  `cleanup = "uninstall"` activation setting removes it. App data dirs
+  (`~/Library/Android`, `~/.lmstudio`) stay behind for a separate step.
 - Don't pipe a long-running background command through `tail`: the output is
   lost to buffering and you end up polling for a result that never lands.
 
