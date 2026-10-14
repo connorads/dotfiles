@@ -1,0 +1,19 @@
+.fx-panel { display: grid; gap: 6px; padding: 8px; font-size: 13px; color: var(--foreground); }
+.fx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+.fx-title { font-weight: 600; }
+.fx-list { display: grid; max-height: 40vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.fx-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; }
+.fx-row:hover { background: var(--sidebar-accent, var(--muted)); }
+.fx-pick { display: flex; flex: 1; min-width: 0; align-items: center; gap: 8px; cursor: pointer; }
+.fx-pick input { margin: 0; accent-color: var(--primary); }
+.fx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-row[data-shown] .fx-name { font-weight: 500; }
+.fx-button, .fx-pin {
+  border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted-foreground);
+  font: inherit; font-size: 11px; padding: 1px 6px; cursor: pointer;
+}
+.fx-button:hover, .fx-pin:hover { color: var(--foreground); }
+.fx-pin { opacity: 0; }
+.fx-row:hover .fx-pin, .fx-pin:focus-visible, .fx-pin[aria-pressed="true"] { opacity: 1; }
+.fx-pin[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
+.fx-note { margin: 0; padding: 0 4px; font-size: 11px; color: var(--muted-foreground); }

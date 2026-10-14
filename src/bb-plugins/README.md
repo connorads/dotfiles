@@ -68,6 +68,12 @@ message.
 set time, with the lid closed, or while agents run. Alt+K opens it. It drives the
 tmux caffeine lib, so the BB chip and the tmux pill always agree.
 
+## Focus view
+
+[Focus](focus/README.md) shows only the sidebar projects you tick and moves the
+rest into More. `⌘⇧F` turns the view on or off, keeping your ticks, and the
+footer eye button picks projects. Turning it off restores the sidebar.
+
 ## Chat links
 
 [External Links](external-links/README.md) adds an arrow beside chat web links.
