@@ -256,13 +256,9 @@ bb claude-profiles switch THREAD_ID work
 bb claude-profiles usage THREAD_ID work
 bb claude-profiles overview [--refresh]
 bb claude-profiles header THREAD_ID
-bb claude-profiles migrate-favourites
 ```
 
 `overview` and `header` print the usage overlay and header data as JSON.
-`migrate-favourites` copies Model Favourites' list into this plugin's storage.
-It needs Model Favourites enabled, prints `{ imported, skipped }` and changes
-nothing on a second run.
 
 ## Scope
 
@@ -273,8 +269,6 @@ fork's session in its own config directory, not in the thread's account. A
 Claude fork therefore works only when the source and the fork both run on
 Default.
 Switching a thread to another host requires selecting a profile on that host.
-
-A migrated favourite keeps its service tier, but selection does not apply it.
 
 The plugin supports manual Claude switching and quota collection. It does not
 rotate accounts automatically, track historical token costs, or switch Codex
@@ -308,24 +302,5 @@ build first, copy the plugin to a new `$TMPDIR` directory and build there.
 
 Tests cover transcript copying, return switching, conflicts, symlinks, subagent
 refusal, quota parsing, control requests, cancellation, the new-thread rule,
-favourites with saved effort, migration, the picker and the usage views.
+favourites with saved effort, the picker and the usage views.
 The disposable live proof is documented in [SPIKE.md](./SPIKE.md).
-
-## Rollback to the three plugins
-
-Account bindings stay in this plugin's storage, so rollback restores only code
-and UI.
-
-1. `bb plugin enable model-favourites` and `bb plugin enable agent-usage`.
-   Their storage is untouched.
-2. Restore the source from before the consolidation, then rebuild:
-
-   ```sh
-   cd ~ && dotfiles restore --source=46da5dfb --worktree -- src/bb-plugins/claude-profiles
-   cd ~/src/bb-plugins/claude-profiles && pnpm build && bb plugin reload claude-profiles
-   ```
-
-3. To keep the restore, also restore the `claude-profile-leak-guard` hook and
-   its Bats cases, which name `src/accounts/claude.ts`.
-
-The `favourites` key stays in storage. The older code ignores it.

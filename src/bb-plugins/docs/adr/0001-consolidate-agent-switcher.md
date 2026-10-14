@@ -12,8 +12,8 @@ Three plugins cover one daily task: choose who runs a thread and on what.
 | Plugin | Owns | Calls |
 | --- | --- | --- |
 | [claude-profiles](../../claude-profiles/README.md) | Account bindings (`thread:<id>`), new-thread choice (`next-thread-profile`), env routing, post-launch guard, transcript handover, quota | `cache-hits` `invalidate` |
-| [model-favourites](../../model-favourites/README.md) | Favourites (`favourites`), Alt+F picker | `claude-profiles` `accounts`, `choose` |
-| [agent-usage](../../agent-usage/README.md) | Header badge, overview overlay, Codex reset-credit host entry | `bb--provider-usage`, `claude-profiles` `accounts`, `usage` |
+| `model-favourites` | Favourites (`favourites`), Alt+F picker | `claude-profiles` `accounts`, `choose` |
+| `agent-usage` | Header badge, overview overlay, Codex reset-credit host entry | `bb--provider-usage`, `claude-profiles` `accounts`, `usage` |
 
 The boundaries cost the following:
 

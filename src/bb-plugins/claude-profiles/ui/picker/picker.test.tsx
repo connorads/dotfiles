@@ -33,9 +33,7 @@ function render(initial = [first, second], error: string | null = null, account?
         : account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
     rpc: {
       'favourites.list': () => saved,
-      'favourites.move': () => saved,
       'favourites.add': input => { saved = [...saved, { ...input, id: 'new', slot: 2 }]; return saved; },
-      'favourites.rename': input => { saved = saved.map(f => f.id === input.id ? { ...f, name: input.name } : f); return saved; },
       'favourites.remove': input => { saved = saved.filter(f => f.id !== input.id); return saved; },
       'favourites.setEffort': input => {
         saved = saved.map(f => {
@@ -64,7 +62,6 @@ function render(initial = [first, second], error: string | null = null, account?
           { id: 'five_hour', label: 'Five hours', usedPercent: 12.4, resetsAt: null, cost: null },
           { id: 'seven_day', label: 'Seven days', usedPercent: 30, resetsAt: null, cost: null }] }
         : { status: 'unavailable', message: 'No quota', observedAt: null, windows: [] },
-      'usage.overview': () => { throw new Error('The picker must not request usage.'); },
       'usage.header': () => { throw new Error('The picker must not request usage.'); },
       'usage.amp': () => { throw new Error('Unused Amp usage'); },
       'usage.inspection': () => { throw new Error('The picker must not request usage.'); },

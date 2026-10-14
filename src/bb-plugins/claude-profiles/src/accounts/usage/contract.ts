@@ -43,7 +43,6 @@ export const usageHostContract = defineRpcContract({
 });
 export const usageContract = defineRpcContract({
   'usage.amp': { input: z.object({ refresh: z.boolean() }), output: ampOverviewSchema },
-  'usage.overview': { input: z.object({ refresh: z.boolean() }), output: snapshotSchema },
   'usage.header': { input: z.object({ threadId: z.string() }), output: headerSchema },
   'usage.inspection': { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },
 });

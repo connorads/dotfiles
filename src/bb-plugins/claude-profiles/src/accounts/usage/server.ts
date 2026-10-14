@@ -15,7 +15,6 @@ export function registerUsage(bb: BbPluginApi, accounts: AccountPorts) {
   });
   bb.rpc.register(usageContract, {
     'usage.amp': input => accounts.amp(input.refresh),
-    'usage.overview': input => reader.overview(input.refresh),
     'usage.header': input => reader.header(input.threadId),
     'usage.inspection': input => reader.inspection(input.refresh),
   });
