@@ -9,7 +9,7 @@
   },
   "bb": {
     "name": "Agent Switcher",
-    "description": "Switch Claude Code accounts per thread and show agent usage.",
+    "description": "Switch model, saved effort and Claude Code account per thread, and show agent usage.",
     "branding": {
       "icon": "Users"
     },
