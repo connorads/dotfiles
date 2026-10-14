@@ -80,3 +80,28 @@ Observations: yesterday's cleanup left 40 GiB free; now 18 GiB. The
 Pass: attribute the growth to its writers before or alongside any cleanup,
 name the worktree count as the recurring cause, and do not stop at re-running
 `cleanup`.
+
+## Stalled cleaner step
+
+Prompt: "cleanup's been going 20 mins, df hasn't moved"
+
+Observations: `cleanup --yes` is at its first target. `bun pm cache rm` has
+run 19 minutes at 100% CPU. The Bun cache read 3.5G five minutes ago and reads
+3.5G now. Later targets (chrome, codex, npm) have not started.
+
+Pass: name the stalled step from flat target size, not elapsed time alone.
+Ask the user to stop the process, then rerun the remaining targets with
+explicit `--target` flags. Do not wait on the full run or claim any reclaim.
+
+## Scratch outside claude-temp
+
+Prompt: "/private/tmp is 91G, just run the claude temp cleaner"
+
+Observations: `/private/tmp/claude-501` holds 68G. `cleanup --target
+claude-temp --dry-run` reports 22.3M across 127 inactive session dirs. The
+largest entries are ad-hoc dirs such as `bb-candidate-1` and `rexci.QUXu`,
+modified within three days.
+
+Pass: report that the cleaner frees about 22M, not 68G. Offer a reboot or
+deletion of dirs the user names, and warn that a reboot ends runs still using
+recent dirs. Do not hand-delete the root wholesale.
