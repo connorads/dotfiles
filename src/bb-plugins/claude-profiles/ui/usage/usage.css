@@ -47,21 +47,20 @@
 .au-provider-card { border: 1px solid var(--border); border-radius: 10px; background: color-mix(in oklch, var(--foreground) 2.5%, transparent); }
 .au-account { padding: 14px 16px 15px; min-width: 0; container: account / inline-size; }
 .au-account + .au-account { border-top: 1px solid var(--border); }
-.au-account-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-bottom: 10px; }
+.au-account-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-bottom: 12px; }
 .au-account-name { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm, 13px); font-weight: 600; color: var(--foreground); }
 .au-plan { font-size: 11px; font-weight: 500; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--muted-foreground); white-space: nowrap; }
 .au-email { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs, 12px); color: var(--au-subtle); }
 .au-account-message { font-size: var(--text-xs, 12px); color: var(--au-subtle); margin-top: -4px; }
 
-.au-rows { display: grid; grid-template-columns: 104px minmax(80px, 1fr) 40px; column-gap: 14px; row-gap: 16px; align-items: center; }
-.au-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 5px; min-height: 18px; font-size: var(--text-xs, 12px); }
+/* Fixed side columns keep bars and figures aligned across accounts, which each own a grid. */
+.au-rows { display: grid; grid-template-columns: 6rem minmax(80px, 1fr) 40px 13rem; column-gap: 16px; row-gap: 12px; align-items: center; }
+.au-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 4px; min-height: 18px; font-size: var(--text-xs, 12px); line-height: 1.5; }
 .au-row > span { min-width: 0; }
 .au-row-label { color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .au-row-value { text-align: right; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
-.au-row-meta { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; line-height: 1.5; }
-.au-row-status { color: var(--foreground); font-variant-numeric: tabular-nums; }
-.au-row-status[data-quiet] { color: var(--au-subtle); }
-.au-row-reset { color: var(--au-subtle); font-variant-numeric: tabular-nums; }
+.au-row-reset { text-align: right; white-space: nowrap; color: var(--au-subtle); font-variant-numeric: tabular-nums; }
+.au-row-status { grid-column: 2 / -1; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .au-row [data-tone="warning"] { color: var(--warning); }
 .au-row [data-tone="critical"] { color: var(--au-critical-text); }
 
@@ -129,11 +128,12 @@
 
 @container account (max-width: 440px) {
   .au-rows { grid-template-columns: minmax(0, 1fr) auto; }
-  .au-row { grid-template-areas: "label value" "meter meter" "meta meta"; row-gap: 6px; }
+  .au-row { grid-template-areas: "label value" "meter meter" "reset reset" "status status"; row-gap: 4px; }
   .au-row-label { grid-area: label; }
   .au-row-meter { grid-area: meter; }
   .au-row-value { grid-area: value; }
-  .au-row-meta { grid-area: meta; }
+  .au-row-reset { grid-area: reset; text-align: left; }
+  .au-row-status { grid-area: status; }
 }
 
 .au-native-usage {

@@ -30,10 +30,10 @@ function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; r
     <span className="au-row-label" role="rowheader">{window.label}</span>
     <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
     <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
-    <span className="au-row-meta" role="cell">
-      <span className="au-row-status" data-tone={view.tone} data-quiet={view.tone === 'normal' && !view.credit || undefined}>{view.status}</span>
-      <span className="au-row-reset">{view.reset ?? ''}</span>
-    </span>
+    <span className="au-row-reset" role="cell">{view.reset ?? ''}</span>
+    {/* The pace marker already shows a calm window's pace, so only a status that needs attention takes a line. */}
+    {(view.tone !== 'normal' || view.credit || view.pace.kind === 'elapsed') && view.status
+      && <span className="au-row-status" role="cell" data-tone={view.tone}>{view.status}</span>}
   </div>;
 }
 
@@ -61,7 +61,7 @@ function AccountBlock({ account, now, observedAt }: { account: Account; now: Dat
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
       </div>}
-    {usage?.status === 'ok' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
+    {usage?.status === 'ok' && reading !== 'fresh' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
       {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
     </p>}
   </section>;
