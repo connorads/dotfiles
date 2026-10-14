@@ -14,6 +14,9 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
   Click a commit for its message, author and changed files, each with a diff.
 - diffs use BB's own viewer, which is built on Pierre diffs
 
+On the New thread screen, the chip sits in the composer bar. It shows the picked
+project's default checkout, and `Alt+G` opens it. "Don't work in a project" hides it.
+
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, `l` opens
 lazygit, and `q` or `esc` closes. On a file row `x` arms discard and a second `x` confirms; on a

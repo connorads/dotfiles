@@ -121,6 +121,14 @@ export const hostSignals = {
   progress: { payload: z.object({ root, opId: z.string(), progress }) },
 };
 
+/**
+ * The New thread screen has no thread, so its chip names the composer's picked
+ * project instead. `threadId` fields carry either a thread ID or this subject.
+ */
+const projectPrefix = 'project:';
+export const projectSubject = (projectId: string) => `${projectPrefix}${projectId}`;
+export const subjectProject = (threadId: string) => threadId.startsWith(projectPrefix) ? threadId.slice(projectPrefix.length) : null;
+
 const thread = { threadId: z.string().min(1) };
 /** Identifies one app window's interest in one thread, for leases. */
 const holder = { ...thread, clientId: z.string().min(1) };
