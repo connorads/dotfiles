@@ -86,7 +86,9 @@ local fast_steps = new Mapping<String, Step> {
             ".hk-hooks/tsv-separator-lint.py",
             ".hk-hooks/skills-no-local-paths.sh",
             ".hk-hooks/adr-unique-number.sh",
-            ".hk-hooks/no-gitlinks.sh"
+            ".hk-hooks/no-gitlinks.sh",
+            ".hk-hooks/bb-plugins-scope.sh",
+            ".hk-hooks/ts-tests.sh"
         )
         check = new CommandSpec {
             command = "env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE hk test --quiet"
@@ -1033,12 +1035,66 @@ local fast_steps = new Mapping<String, Step> {
     // node_modules is present: the slow half of `mise run ts-checks` is its
     // frozen-lockfile installs, not the tests (0.1-3.1s scoped, ~8s for all).
     // The eight roots are duplicated in ts-tests.sh's own list; gate-coverage
-    // asserts the two agree.
+    // asserts the two agree. A bb-plugins file also tests the packages
+    // bb-plugins-scope.sh says it can break. That is its workspace dependants,
+    // or every package for a workspace root file.
     // Missing jq/runner/node_modules warns and passes, same never-brick posture
     // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
     ["ts-tests-scoped"] {
         glob = List("src/skl/**", "src/pin-audit/**", "src/xreview/**", "src/opencode-plugins/**", "src/bb-plugins/**", ".pi/agent/extensions/**", ".config/opencode/**", ".config/hex/**")
         check = "bash .hk-hooks/ts-tests.sh {{files}}"
+
+        // HOME is "." because ts-tests.sh runs from $HOME and test env values
+        // are literal, so PATH can only reach the pnpm stub as ./bin. Bash
+        // hashes that relative path from the sandbox root and reuses it after
+        // the cd into a package, so every package carries its own copy.
+        // The stub logs which package's suite ran.
+        local stub = "#!/bin/sh\n[ \"$1\" = --version ] && exit 0\nprintf '%s\\n' \"${PWD##*/}\" >>../../../ran.log\n"
+        local setup = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/ts-tests.sh {{root}}/.hk-hooks/bb-plugins-scope.sh .hk-hooks/ && chmod +x bin/pnpm src/bb-plugins/*/bin/pnpm"
+        local env_ = new Mapping { ["HOME"] = "."; ["PATH"] = "./bin:" + read("env:PATH") }
+        local workspace = new Mapping {
+            ["bin/pnpm"] = stub
+            ["src/bb-plugins/chip/bin/pnpm"] = stub
+            ["src/bb-plugins/a/bin/pnpm"] = stub
+            ["src/bb-plugins/b/bin/pnpm"] = stub
+            ["src/bb-plugins/package.json"] = "{}"
+            ["src/bb-plugins/pnpm-lock.yaml"] = ""
+            ["src/bb-plugins/pnpm-workspace.yaml"] = ""
+            ["src/bb-plugins/chip/package.json"] = #"{"name":"@x/chip","scripts":{"test":"t"}}"#
+            ["src/bb-plugins/chip/node_modules/.keep"] = ""
+            ["src/bb-plugins/chip/chip.css"] = ""
+            ["src/bb-plugins/a/package.json"] = #"{"name":"a","scripts":{"test":"t"},"dependencies":{"@x/chip":"workspace:*"}}"#
+            ["src/bb-plugins/a/node_modules/.keep"] = ""
+            ["src/bb-plugins/b/package.json"] = #"{"name":"b","scripts":{"test":"t"}}"#
+            ["src/bb-plugins/b/node_modules/.keep"] = ""
+        }
+
+        tests {
+            ["a shared bb-plugins package also tests its dependants"] {
+                run = "check"
+                tmpdir = true
+                write = workspace
+                env = env_
+                before = setup
+                files = List("src/bb-plugins/chip/chip.css")
+                expect {
+                    code = 0
+                    files { ["ran.log"] = "a\nchip\n" }
+                }
+            }
+            ["a bb-plugins workspace root file tests every package"] {
+                run = "check"
+                tmpdir = true
+                write = workspace
+                env = env_
+                before = setup
+                files = List("src/bb-plugins/pnpm-workspace.yaml")
+                expect {
+                    code = 0
+                    files { ["ran.log"] = "a\nb\nchip\n" }
+                }
+            }
+        }
     }
 
     // First-party TS typecheck gates (tsgo via mise): one glob-scoped step per
@@ -1063,35 +1119,47 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/ts-typecheck.sh src/opencode-plugins"
     }
     // One step for the whole workspace, so a new plugin is gated the day it exists.
-    // Typechecks only plugins with staged files: hk's stash keeps untracked files,
-    // so another plugin's half-committed work would otherwise fail every commit.
-    // Plugins do not import each other, so an unstaged plugin cannot break.
+    // Typechecks the packages bb-plugins-scope.sh says the staged files can
+    // break. That is their own packages plus every workspace dependant (most
+    // plugins import chip/), or every package for a workspace root file.
+    // Unrelated plugins stay out: hk's stash keeps untracked files, so another
+    // plugin's half-committed work would otherwise fail every commit.
     ["ts-typecheck-bb-plugins"] {
-        glob = List("src/bb-plugins/**/*.ts", "src/bb-plugins/**/*.tsx", "src/bb-plugins/*/tsconfig.json")
-        check = "for d in $(for f in {{files}}; do r=${f#*src/bb-plugins/}; echo \"src/bb-plugins/${r%%/*}\"; done | sort -u); do [ -f \"$d/tsconfig.json\" ] || continue; bash .hk-hooks/ts-typecheck.sh \"$d\" || exit 1; done"
+        glob = List("src/bb-plugins/**/*.ts", "src/bb-plugins/**/*.tsx", "src/bb-plugins/*/tsconfig.json", "src/bb-plugins/*/package.json", "src/bb-plugins/package.json", "src/bb-plugins/pnpm-workspace.yaml", "src/bb-plugins/pnpm-lock.yaml")
+        check = "for d in $(bash .hk-hooks/bb-plugins-scope.sh {{files}}); do [ -f \"$d/tsconfig.json\" ] || continue; bash .hk-hooks/ts-typecheck.sh \"$d\" || exit 1; done"
+
+        // The ts-typecheck.sh stub logs each package it is asked to check.
+        local setup = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/bb-plugins-scope.sh .hk-hooks/"
+        local logger = "echo \"$1\" >> checked\n"
 
         tests {
             ["typechecks only plugins with staged files"] {
                 run = "check"
                 write {
+                    ["{{tmp}}/src/bb-plugins/a/package.json"] = #"{"name":"a"}"#
                     ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/package.json"] = #"{"name":"b"}"#
                     ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
                     ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "[ \"$1\" = src/bb-plugins/a ]\n"
                     ["{{tmp}}/src/bb-plugins/a/app.ts"] = ""
                     ["{{tmp}}/src/bb-plugins/a/x.tsx"] = ""
                 }
+                before = setup
                 files = List("{{tmp}}/src/bb-plugins/a/app.ts", "{{tmp}}/src/bb-plugins/a/x.tsx")
                 expect { code = 0 }
             }
             ["a failing staged plugin fails the step"] {
                 run = "check"
                 write {
+                    ["{{tmp}}/src/bb-plugins/a/package.json"] = #"{"name":"a"}"#
                     ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/package.json"] = #"{"name":"b"}"#
                     ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
                     ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "[ \"$1\" = src/bb-plugins/a ]\n"
                     ["{{tmp}}/src/bb-plugins/a/app.ts"] = ""
                     ["{{tmp}}/src/bb-plugins/b/app.ts"] = ""
                 }
+                before = setup
                 files = List("{{tmp}}/src/bb-plugins/a/app.ts", "{{tmp}}/src/bb-plugins/b/app.ts")
                 expect { code = 1 }
             }
@@ -1099,10 +1167,53 @@ local fast_steps = new Mapping<String, Step> {
                 run = "check"
                 write {
                     ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = "exit 1\n"
+                    ["{{tmp}}/src/bb-plugins/spikes/x/package.json"] = #"{"name":"x"}"#
+                    ["{{tmp}}/src/bb-plugins/spikes/x/tsconfig.json"] = "{}"
                     ["{{tmp}}/src/bb-plugins/spikes/x/app.ts"] = ""
                 }
+                before = setup
                 files = List("{{tmp}}/src/bb-plugins/spikes/x/app.ts")
                 expect { code = 0 }
+            }
+            ["a shared package also typechecks its dependants, transitively"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/src/bb-plugins/chip/package.json"] = #"{"name":"@x/chip"}"#
+                    ["{{tmp}}/src/bb-plugins/chip/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/a/package.json"] = #"{"name":"a","dependencies":{"@x/chip":"workspace:*"}}"#
+                    ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/package.json"] = #"{"name":"b","devDependencies":{"a":"workspace:^"}}"#
+                    ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/c/package.json"] = #"{"name":"c","dependencies":{"@x/chip":"1.0.0"}}"#
+                    ["{{tmp}}/src/bb-plugins/c/tsconfig.json"] = "{}"
+                    ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = logger
+                    ["{{tmp}}/src/bb-plugins/chip/chip.tsx"] = ""
+                }
+                before = setup
+                files = List("{{tmp}}/src/bb-plugins/chip/chip.tsx")
+                expect {
+                    code = 0
+                    files { ["{{tmp}}/checked"] = "src/bb-plugins/a\nsrc/bb-plugins/b\nsrc/bb-plugins/chip\n" }
+                }
+            }
+            ["a workspace root file typechecks every package"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/src/bb-plugins/pnpm-workspace.yaml"] = ""
+                    ["{{tmp}}/src/bb-plugins/a/package.json"] = #"{"name":"a"}"#
+                    ["{{tmp}}/src/bb-plugins/a/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/b/package.json"] = #"{"name":"b"}"#
+                    ["{{tmp}}/src/bb-plugins/b/tsconfig.json"] = "{}"
+                    ["{{tmp}}/src/bb-plugins/spikes/x/package.json"] = #"{"name":"x"}"#
+                    ["{{tmp}}/src/bb-plugins/spikes/x/tsconfig.json"] = "{}"
+                    ["{{tmp}}/.hk-hooks/ts-typecheck.sh"] = logger
+                }
+                before = setup
+                files = List("{{tmp}}/src/bb-plugins/pnpm-workspace.yaml")
+                expect {
+                    code = 0
+                    files { ["{{tmp}}/checked"] = "src/bb-plugins/a\nsrc/bb-plugins/b\n" }
+                }
             }
         }
     }

@@ -11,6 +11,7 @@
 # .pi/agent/extensions/agent-guard ungated is exactly what this avoids.
 set -euo pipefail
 
+here=$(cd "$(dirname "$0")" && pwd)
 cd "$HOME"
 
 # The dhk and pre-commit wrappers export GIT_DIR/GIT_WORK_TREE for the bare-repo
@@ -86,7 +87,13 @@ if [ "${1:-}" = "--all" ]; then
 	projects=$(find $roots_present -name package.json -not -path '*/node_modules/*' |
 		sed 's#/package\.json$##' | sort -u)
 else
-	projects=$(for f in "$@"; do project_of "$f"; done | sort -u)
+	# bb-plugins packages import each other through `workspace:` ranges and
+	# share one catalog, so a staged file there also tests the packages it can
+	# break, not only the nearest package.json.
+	projects=$({
+		for f in "$@"; do project_of "$f"; done
+		bash "$here/bb-plugins-scope.sh" "$@"
+	} | sort -u)
 fi
 
 fail=0
