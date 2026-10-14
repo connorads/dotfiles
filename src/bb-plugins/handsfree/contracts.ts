@@ -7,6 +7,7 @@ export const candidateSchema = z.object({
   title: z.string().min(1).max(1024).optional(),
   project: z.string().max(1024).optional(),
 });
+export const decisionSchema = z.enum(['allow_once', 'allow_for_session', 'deny']);
 export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('capture') }).strict(),
   z.object({ action: z.literal('list'), kind: kindSchema }).strict(),
@@ -27,6 +28,7 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('confirm-archive') }).strict(),
   z.object({ action: z.literal('cancel-archive') }).strict(),
   z.object({ action: z.literal('restore') }).strict(),
+  z.object({ action: z.literal('approve'), decision: decisionSchema }).strict(),
   z.object({ action: z.literal('notice'), message: z.string().max(1024), problem: z.boolean().optional() }).strict(),
 ]);
 export const replySchema = z.object({

@@ -14,6 +14,9 @@ const fixed: Record<string, Command> = {
   'archive this thread': { action: 'archive' }, 'archive thread': { action: 'archive' },
   'confirm archive': { action: 'confirm-archive' }, 'cancel archive': { action: 'cancel-archive' },
   'unarchive last thread': { action: 'restore' }, 'restore last thread': { action: 'restore' },
+  'allow once': { action: 'approve', decision: 'allow_once' },
+  'allow for session': { action: 'approve', decision: 'allow_for_session' },
+  'deny approval': { action: 'approve', decision: 'deny' },
 }
 export function parseSpeech(transcript: string): Speech {
   const text = transcript.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
