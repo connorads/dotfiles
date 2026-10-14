@@ -13,6 +13,51 @@ tsp down [https-port]        # Tear down a served port
 tsp prune --dry-run          # Preview stale served routes
 ```
 
+### Mac mini Screen Sharing
+
+[darwin-server.nix](../.config/nix/modules/darwin-server.nix) blocks inbound Screen Sharing on the mini's Ethernet, Wi-Fi, Thunderbolt and peer-to-peer LAN interfaces.
+The rules cover TCP 5900 and UDP 5900-5902, for standard and High Performance sharing, across IPv4 and IPv6.
+Loopback and VPN interfaces are unaffected. Add new LAN interfaces to the rules before using them.
+Activation validates and reloads the existing PF anchor. Its launchd service loads the anchor at boot.
+
+```mermaid
+flowchart LR
+  Air[MacBook Air] --> Policy[Tailscale access policy]
+  Policy --> Sharing[Mini Screen Sharing]
+  Sharing --> Login[macOS account login]
+  LAN[LAN devices] --> Firewall[Mini PF rules]
+  Firewall --> Blocked[Blocked]
+```
+
+Initial setup requires macOS approval. Nix does not enable Screen Sharing or grant screen-control permission.
+Apple restricts command-line enablement on modern macOS. See [Apple's remote-management guidance](https://support.apple.com/en-gb/guide/remote-desktop/apd8b1c65bd/mac).
+
+1. On the mini, run `drs` and confirm the rebuild succeeds before enabling Screen Sharing.
+2. On the mini, open System Settings > General > Sharing and enable Screen Sharing.
+3. In the mini's Screen Sharing settings, select "Only these users" and allow only `connorads`.
+4. Leave permission requests and generic VNC-password access disabled on the mini.
+5. On the Air, open Screen Sharing and connect to `mac-mini.goose-rohu.ts.net` with the mini's account credentials.
+
+The Tailscale policy controls which peers can reach the mini. The Air's Screen Sharing grant has this shape:
+
+```json
+{
+  "src": ["100.90.109.86/32", "fd7a:115c:a1e0::e135:6d56/128"],
+  "dst": ["100.125.154.87/32", "fd7a:115c:a1e0::9235:9a58/128"],
+  "ip": ["tcp:5900", "udp:5900-5902"]
+}
+```
+
+Grants are additive. Narrow other matching grants or ACLs to restrict sharing to the Air; preserve required SSH and other service access.
+Verify device addresses with `ts status --json` before editing the policy. See [Tailscale's grant syntax](https://tailscale.com/docs/reference/syntax/grants).
+
+Verify actual pointer and keyboard control from the Air through Tailscale.
+From a second LAN machine, check that `nc -vz <mini-LAN-address> 5900` fails while sharing is enabled.
+Test both IP families where available. A failed connection while sharing is disabled does not verify the firewall.
+After restricting the policy, confirm another Tailscale device cannot reach TCP 5900.
+Confirm High Performance sharing works when selected; a TCP check does not test its UDP traffic.
+Repeat the connection checks after reboot. FileVault requires local unlock after an unplanned restart.
+
 ### Local dev servers
 
 When writing or updating scripts that start local dev servers, bind them explicitly to loopback instead of relying on tool defaults.

@@ -3,8 +3,8 @@
 # ==============================================================================
 #
 # Repurposes the M4 Mac mini into an unattended remote dev box reachable only
-# over Tailscale SSH (no display/keyboard, no native sshd). Imported alongside
-# darwin-shared.nix.
+# over Tailscale SSH and optional Screen Sharing (no native sshd). Imported
+# alongside darwin-shared.nix. Screen Sharing requires approval in macOS Settings.
 #
 # Intended differences vs the old shared desktop config on this host:
 #   - no desktop casks/masApps (homebrew cleanup removes them on first switch;
@@ -39,6 +39,13 @@
     pkgs.blender
   ];
 
+  # -- Screen Sharing: block physical and peer-to-peer LAN interfaces --
+  environment.etc."pf.anchors/dev-firewall".text = lib.mkAfter ''
+    screen_sharing_interfaces = "{ en0, en1, en2, en3, en4, en5, en6, en7, bridge0, awdl0, llw0, ap1 }"
+    block return in quick on $screen_sharing_interfaces proto tcp from any to any port 5900
+    block return in quick on $screen_sharing_interfaces proto udp from any to any port 5900:5902
+  '';
+
   # -- Power: stay awake, but blank + lock the idle display --
   # The box never sleeps (remote dev must stay reachable), but the physical
   # screen turns off after 10 min idle and the session locks, so an unattended
@@ -65,6 +72,9 @@
   #   powernap 0      — no Power Nap wake cycles
   system.activationScripts.postActivation.text = lib.mkAfter ''
     /usr/bin/pmset -a autorestart 1 disablesleep 1 displaysleep 10 powernap 0
+
+    /sbin/pfctl -n -f /etc/pf.anchors/dev-firewall
+    /sbin/pfctl -a com.apple/dev-firewall -f /etc/pf.anchors/dev-firewall
 
     # -- mosh-server: allow inbound UDP through the Application Firewall --
     # ALF silently drops inbound UDP to *unsigned* binaries unless they are
@@ -130,5 +140,5 @@
 
   # NB: no security.pam.services.sudo_local here (password sudo).
   # services.openssh stays enable = false (inherited from shared); remote access
-  # is Tailscale SSH, configured out-of-band in the tailnet ACL.
+  # uses Tailscale SSH and optional Screen Sharing. The tailnet policy owns peer access.
 }
