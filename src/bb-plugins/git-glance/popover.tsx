@@ -3,6 +3,7 @@ import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, rpcContract } from './contracts.ts';
 import { renew, useRepo } from './repo-store.ts';
+import { FolderPicker } from './folder-picker.tsx';
 import { RepoView } from './repo-view.tsx';
 import { available } from './sync-bar.tsx';
 import { message, Zoomed } from './ui.tsx';
@@ -31,6 +32,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   }, []);
   /** Open branch picker, and how it was opened: a shortcut opens it without motion. */
   const [picker, setPicker] = useState<'closed' | 'pointer' | 'keyboard'>('closed');
+  const [folders, setFolders] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Once data arrives: focus the first row for the arrow keys, and fetch so the
@@ -40,19 +42,21 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     if (opened.current || !state.snapshot) return;
     opened.current = true;
     dialog.current?.querySelector<HTMLElement>('[data-row]')?.focus({ preventScroll: true });
-    if (state.snapshot.kind !== 'none' && state.snapshot.remotes.length > 0) {
-      rpc.call('run', { threadId, request: { kind: 'fetch' }, origin: 'auto' }).catch(() => {});
+    if (state.root && state.snapshot.kind !== 'none' && state.snapshot.remotes.length > 0) {
+      rpc.call('run', { threadId, root: state.root, request: { kind: 'fetch' }, origin: 'auto' }).catch(() => {});
     }
-  }, [state.snapshot, rpc, threadId]);
+  }, [state.snapshot, state.root, rpc, threadId]);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const runOp = useCallback((request: OpRequest) => {
+    if (!state.root) return;
     setActionError(null);
-    rpc.call('run', { threadId, request, origin: 'user' }).catch(cause => setActionError(message(cause)));
-  }, [rpc, threadId]);
-  const cancelOp = useCallback(() => { rpc.call('cancel', { threadId }).catch(cause => setActionError(message(cause))); }, [rpc, threadId]);
+    rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).catch(cause => setActionError(message(cause)));
+  }, [rpc, threadId, state.root]);
+  const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError(message(cause))); }, [rpc, threadId, state.root]);
 
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
+    if (folders || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-row]') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
@@ -68,7 +72,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (event.key === 'b' && repo) { event.preventDefault(); setPicker('keyboard'); }
     else if (event.key === 'q') { event.preventDefault(); onClose(); }
     // The lazygit plugin listens; without it the key does nothing.
-    else if (event.key === 'l') { event.preventDefault(); onClose(); window.dispatchEvent(new CustomEvent('lazygit:open', { detail: { threadId } })); }
+    else if (event.key === 'l' && !state.selected) { event.preventDefault(); onClose(); window.dispatchEvent(new CustomEvent('lazygit:open', { detail: { threadId } })); }
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();
@@ -80,12 +84,15 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   return <ChipPopover ref={dialog} className="gg-dialog" panelClassName="gg-panel" aria-label="Git status" onKeyDown={keyboard}
     trigger={() => chip(threadId)} anchor={anchor} width={640} instant={instant} place={zoomed ? placeZoomed : undefined}
     data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose}>
-    {repo ? <Zoomed.Provider value={zoomed}><RepoView repo={repo} threadId={threadId} state={state} actionError={actionError}
+    {folders ? <FolderPicker threadId={threadId} onClose={() => setFolders(false)} onSelected={() => {
+      opened.current = false; setPicker('closed'); setDismissed(null); setActionError(null);
+      void renew(threadId).then(() => setFolders(false));
+    }} /> : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={actionError}
       dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
       picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
       : <div className="gg-blank">
-        {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span></>
-          : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span></>
+        {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span><button type="button" className="gg-ghost" onClick={() => setFolders(true)}>Choose repository</button></>
+          : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span><button type="button" className="gg-ghost" onClick={() => setFolders(true)}>Choose repository</button></>
           : <><span className="gg-spinner" /><span>Reading repository…</span></>}
       </div>}
   </ChipPopover>;

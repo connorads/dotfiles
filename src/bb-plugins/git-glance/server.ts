@@ -13,15 +13,22 @@ export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
   const leases = createLeases(leaseTtlMs);
   const snapshots = new Map<string, Snapshot>();
+  const selecting = new Set<string>();
   const ops = new Map<string, { state: OpState; abort: AbortController | null }>();
   const warn = (message: string, cause?: unknown) =>
     bb.log.warn(`${message}${cause ? `: ${cause instanceof Error ? cause.message : JSON.stringify(cause)}` : ''}`);
 
-  async function checkout(threadId: string): Promise<Checkout | null> {
+  async function environment(threadId: string): Promise<Checkout | null> {
     const { environmentId } = await bb.sdk.threads.get({ threadId });
     if (!environmentId) return null;
     const { hostId, path } = await bb.sdk.environments.get({ environmentId });
     return path ? { hostId, root: path } : null;
+  }
+  const selectionKey = (threadId: string) => `repository:${threadId}`;
+  async function checkout(threadId: string): Promise<Checkout | null> {
+    const base = await environment(threadId);
+    const selected = await bb.storage.kv.get<{ base: Checkout; root: string }>(selectionKey(threadId));
+    return base && selected && checkoutKey(selected.base) === checkoutKey(base) ? { ...base, root: selected.root } : base;
   }
   async function required(threadId: string) {
     const target = await checkout(threadId);
@@ -31,12 +38,12 @@ export default function plugin(bb: BbPluginApi) {
   function publishSnapshot(target: Checkout, snapshot: Snapshot) {
     snapshots.set(checkoutKey(target), snapshot);
     const threadIds = leases.threads(target);
-    if (threadIds.length) bb.realtime.publish('snapshot', { threadIds, snapshot } satisfies SnapshotMessage);
+    if (threadIds.length) bb.realtime.publish('snapshot', { threadIds, root: target.root, snapshot } satisfies SnapshotMessage);
   }
   function setOp(target: Checkout, state: OpState, abort: AbortController | null) {
     ops.set(checkoutKey(target), { state, abort });
     const threadIds = leases.threads(target);
-    if (threadIds.length) bb.realtime.publish('op', { threadIds, op: state } satisfies OpMessage);
+    if (threadIds.length) bb.realtime.publish('op', { threadIds, root: target.root, op: state } satisfies OpMessage);
   }
   const watch = (target: Checkout) => host.call('watch', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000 });
 
@@ -62,13 +69,39 @@ export default function plugin(bb: BbPluginApi) {
   bb.onDispose(() => clearInterval(sweep));
 
   bb.rpc.register(rpcContract, {
+    folders: async ({ threadId, path }) => {
+      const base = await environment(threadId);
+      if (!base) throw new Error('This thread has no checkout.');
+      return host.call('folders', { root: base.root, path }, { hostId: base.hostId, timeoutMs: 30_000 });
+    },
+    select: async ({ threadId, path }) => {
+      if (selecting.has(threadId)) throw new Error('Repository selection is already running.');
+      selecting.add(threadId);
+      try {
+        const base = await environment(threadId);
+        if (!base) throw new Error('This thread has no checkout.');
+        const previous = await required(threadId);
+        if (ops.get(checkoutKey(previous))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
+        const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path }, { hostId: base.hostId })) };
+        await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
+        for (const emptied of leases.move(threadId, target)) {
+          snapshots.delete(checkoutKey(emptied));
+          await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
+        }
+        const snapshot = await watch(target);
+        snapshots.set(checkoutKey(target), snapshot);
+        bb.realtime.publish('repository', { threadId });
+        return {};
+      } finally { selecting.delete(threadId); }
+    },
     watch: async ({ threadId, clientId }) => {
       const target = await checkout(threadId);
-      if (!target) return { snapshot: { kind: 'none' as const }, op: null };
+      if (!target) return { root: null, selected: false, snapshot: { kind: 'none' as const }, op: null };
       leases.touch(target, `${clientId}:${threadId}`, threadId, Date.now());
       const snapshot = await watch(target);
       snapshots.set(checkoutKey(target), snapshot);
-      return { snapshot, op: ops.get(checkoutKey(target))?.state ?? null };
+      const base = await environment(threadId);
+      return { root: target.root, selected: base !== null && checkoutKey(target) !== checkoutKey(base), snapshot, op: ops.get(checkoutKey(target))?.state ?? null };
     },
     unwatch: async ({ threadId, clientId }) => {
       const target = await checkout(threadId);
@@ -91,8 +124,9 @@ export default function plugin(bb: BbPluginApi) {
       const target = await required(threadId);
       return host.call('branches', { root: target.root }, { hostId: target.hostId, timeoutMs: 15_000 });
     },
-    run: async ({ threadId, request, origin }) => {
+    run: async ({ threadId, root, request, origin }) => {
       const target = await required(threadId);
+      if (selecting.has(threadId) || target.root !== root) throw new Error('Repository changed. Refresh Git status before running an action.');
       const key = checkoutKey(target);
       const snapshot = snapshots.get(key);
       const current = ops.get(key)?.state ?? null;
@@ -111,8 +145,10 @@ export default function plugin(bb: BbPluginApi) {
         });
       return { op: state };
     },
-    cancel: async ({ threadId }) => {
-      ops.get(checkoutKey(await required(threadId)))?.abort?.abort();
+    cancel: async ({ threadId, root }) => {
+      const target = await required(threadId);
+      if (target.root !== root) throw new Error('Repository changed. Refresh Git status before cancelling.');
+      ops.get(checkoutKey(target))?.abort?.abort();
       return {};
     },
   });

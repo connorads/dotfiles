@@ -411,3 +411,17 @@
   .gg-ghost:active, .gg-sync:active, .gg-sha:active { transform: none; }
 }
 @media (max-width: 520px) { .gg-keys { display: none; } .gg-blocks { display: none; } }
+
+.gg-folder-picker { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.gg-breadcrumbs { display: flex; flex-wrap: wrap; gap: 4px; color: var(--muted-foreground); font-size: 12px; }
+.gg-breadcrumbs button:hover { color: var(--foreground); text-decoration: underline; }
+.gg-folder-search { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: transparent; color: var(--foreground); font: inherit; }
+.gg-folder-search:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
+.gg-folder-path { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; margin: 0; }
+.gg-folder-list { max-height: 340px; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
+.gg-folder-list li { display: flex; }
+.gg-folder-list button { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 5px; text-align: left; }
+.gg-folder-list button:first-child { flex: 1; min-width: 0; }
+.gg-folder-list button:hover, .gg-folder-list button:focus-visible { background: var(--accent); }
+.gg-folder-list button span:not(.gg-spacer):not(.gg-tag) { overflow-wrap: anywhere; }
+.gg-folder-picker footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }

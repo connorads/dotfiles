@@ -75,6 +75,29 @@ with progress, a result line and cancel.
 
 ## Repository discovery
 
+When the checkout has no repository, the header chip offers **Choose repo**.
+**Choose repository** opens a folder browser rooted at the thread checkout.
+The repository name in Git status opens the same browser.
+
+- Search filters the current folder's immediate subfolders.
+- Git rows select a repository. Their arrow browses inside it.
+- Ordinary folders open for deeper browsing. Breadcrumbs return to an ancestor.
+- **Use this repository** selects the displayed folder's repository.
+- **Use thread checkout** restores the thread's default repository.
+- Selection is saved per thread and checkout. It changes Git Glance's reads,
+  watches and actions; the thread's working directory stays the same.
+- The selected path appears above the branch. Selection waits for running Git
+  operations to finish. Stale actions fail instead of targeting another repo.
+- Browsing stays inside the checkout and omits symlink directories and `.git`.
+- The `l` shortcut opens lazygit only for the thread's default repository.
+
+```mermaid
+flowchart LR
+  Chip[Choose repo or repository name] --> Browser[Browse and filter subfolders]
+  Browser --> Selected[Selected repository's Git status]
+  Selected --> Browser
+```
+
 The home-directory checkout has no enclosing repository, so the plugin falls
 back to the bare dotfiles repository at `~/git/dotfiles`, as `lgdf` does.
 
