@@ -19,7 +19,12 @@ import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 - Without a pop-up or with several icons, put the `bbp-chip` classes on your own
   element and import the package for its CSS.
 
-After a change here, rebuild and reload every plugin that depends on it:
-`grep -l '@bb-plugins/chip' */package.json`.
+When the thread header is 900 px wide or less, every `ChipValue` hides and the
+chip shows only its icon and dot. The header is BB's `page-header` container, so
+this follows pane width, not the viewport. Give each chip a `title` and
+`aria-label` that carry the full value. Text outside `ChipValue` stays visible.
+
+After a change here, run `pnpm build:chip` from the workspace root to rebuild
+every plugin that depends on it, then reload each one.
 
 Run `pnpm test` and `pnpm typecheck` from this directory.

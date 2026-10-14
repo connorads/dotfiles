@@ -26,6 +26,12 @@
   box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 22%, transparent);
 }
 
+/* BB's thread header is the `page-header` inline-size container, so this tracks pane width, not the viewport.
+   Collapsed chips keep icon and dot; the full value stays in each chip's title and aria-label. */
+@container page-header (max-width: 900px) {
+  .bbp-chip-value { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bbp-chip { transition: none; }
   .bbp-chip:active { transform: none; }
