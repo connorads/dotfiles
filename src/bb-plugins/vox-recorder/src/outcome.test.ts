@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { afterStart, interpret } from './outcome.ts';
+import { afterStart, DISCARD_GRACE_MS, interpret } from './outcome.ts';
 
 test('success is exit 0 with a path on stdout', () => {
   assert.deepEqual(interpret({ code: 0, stdout: '/r/2026-01-01-000000\n', stderr: 'vox: recording\n' }, 'x'), { ok: true, path: '/r/2026-01-01-000000' });
@@ -22,8 +22,14 @@ test('Enter keeps the recording and renames it only when titled', () => {
   assert.deepEqual(afterStart(start, { kind: 'enter', title: '' }), { kind: 'keep', name: '2026-01-01-000000' });
 });
 
-test('Esc discards, but a failed start is reported and never discarded', () => {
-  assert.deepEqual(afterStart({ ok: true, path: '/r/2026-01-01-000000' }, { kind: 'escape' }), { kind: 'discard', name: '2026-01-01-000000' });
-  assert.deepEqual(afterStart({ ok: false, path: '/r/old', reason: 'vox: already recording since 3m ago' }, { kind: 'escape' }),
+test('Esc discards within the grace window, but a failed start is reported and never discarded', () => {
+  assert.deepEqual(afterStart({ ok: true, path: '/r/2026-01-01-000000' }, { kind: 'escape', afterMs: 2_000 }), { kind: 'discard', name: '2026-01-01-000000' });
+  assert.deepEqual(afterStart({ ok: false, path: '/r/old', reason: 'vox: already recording since 3m ago' }, { kind: 'escape', afterMs: 2_000 }),
     { kind: 'failed', reason: 'vox: already recording since 3m ago' });
+});
+
+test('Esc after the grace window keeps the recording', () => {
+  const start = { ok: true as const, path: '/r/2026-01-01-000000' };
+  assert.deepEqual(afterStart(start, { kind: 'escape', afterMs: DISCARD_GRACE_MS + 1 }), { kind: 'keep', name: '2026-01-01-000000' });
+  assert.deepEqual(afterStart(start, { kind: 'escape', afterMs: 30 * 60_000 }), { kind: 'keep', name: '2026-01-01-000000' });
 });

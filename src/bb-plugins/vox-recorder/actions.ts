@@ -11,8 +11,9 @@ import { askTitle, closeDialog, currentStatus, message, notify, dismiss, promptO
  */
 export async function startWithPrompt() {
   const started: Promise<Outcome> = rpc().call('start', {}).catch(cause => ({ ok: false as const, path: null, reason: message(cause) }));
+  const asked = Date.now();
   const answer = await askTitle('start', null);
-  const decision = afterStart(await started, answer === null ? { kind: 'escape' } : { kind: 'enter', title: answer });
+  const decision = afterStart(await started, answer === null ? { kind: 'escape', afterMs: Date.now() - asked } : { kind: 'enter', title: answer });
   try {
     switch (decision.kind) {
       case 'failed': notify('error', decision.reason); break;
