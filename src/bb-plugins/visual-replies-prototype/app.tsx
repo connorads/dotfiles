@@ -40,7 +40,7 @@ export function VisualReply({ attributes, message }: PluginMessageDirectiveProps
     media.addEventListener("change", update);
     const load = async () => {
       const parsed = visualId.parse(id);
-      const [visual, fonts] = await Promise.all([rpc.call("read", { threadId: message.threadId, id: parsed }), fontStyles()]);
+      const [visual, fonts] = await Promise.all([rpc.call("read", { threadId: message.threadId, id: parsed }), fontStyles(readTheme(element))]);
       if (!disposed) setContent({ src: frameDocument(visual.html, readTheme(element), fonts, nonce), title: visual.title });
     };
     load().catch(cause => { if (!disposed) setError(cause instanceof Error ? cause.message : String(cause)); });
