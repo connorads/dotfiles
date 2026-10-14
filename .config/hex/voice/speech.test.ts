@@ -11,6 +11,12 @@ test('dictated punctuation and supported command aliases use existing BB actions
   expect(parseSpeech('New thread in KB')).toEqual({ kind: 'project', target: 'kb' })
   expect(parseSpeech('please delete everything')).toHaveProperty('error')
 })
+test('approval phrases answer with exact decisions only', () => {
+  expect(parseSpeech('Allow once.')).toEqual({ command: { action: 'approve', decision: 'allow_once' } })
+  expect(parseSpeech('Allow for session')).toEqual({ command: { action: 'approve', decision: 'allow_for_session' } })
+  expect(parseSpeech('Deny approval')).toEqual({ command: { action: 'approve', decision: 'deny' } })
+  expect(parseSpeech('allow')).toHaveProperty('error')
+})
 test('pedal search offers even a unique literal match without navigating', async () => {
   const commands: Command[] = []
   const ports: BbPorts = {

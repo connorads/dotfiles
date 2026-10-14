@@ -75,6 +75,10 @@ not required.
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
 | `unarchive last thread` / `restore last thread` | Restore the most recent voice archive |
+| `allow once` / `allow for session` / `deny approval` | Answer the selected thread's single pending approval |
+
+Approval commands resolve through BB's interaction API with the same grants as the card's buttons.
+Several pending approvals, plan approvals and unavailable decisions are rejected; use the buttons.
 
 "Choose" selects from visible voice matches or the focused pane's native question.
 Voice matches own their numbers until dismissed. Selecting an answer keeps the

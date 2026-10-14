@@ -33,6 +33,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
   const replies: Reply[] = [];
   const archived: string[] = [];
   const restored: string[] = [];
+  const approvals: unknown[] = [];
   let receipts: unknown;
   const archives = makeArchives({
     get: async id => { await duringInspect?.(); return { id, title: 'Selected thread', projectId: 'p1', status: archiveStatus, archivedAt: null }; },
@@ -64,6 +65,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
       archiveTarget: ({ threadId }) => archives.inspect(threadId),
       archive: ({ target, confirmed }) => archives.archive(target, confirmed),
       restore: () => archives.restore(),
+      approve: input => { approvals.push(input); return { ok: true, outcome: 'completed', message: 'Allowed once: ls' }; },
       claim: () => ({ claimed: true }), complete: ({ reply }) => { replies.push(reply); return { accepted: true }; },
     },
     sdk: {
@@ -81,7 +83,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
   headerSlot = renderSlot(app.threadHeaderActions[0], { threadId: 't1', projectId: 'p1', isCompactViewport: false });
   let sequence = 0;
   return {
-    archived, restored,
+    archived, restored, approvals,
     slot: rendered,
     async command(command: Command) {
       const count = replies.length;
@@ -262,6 +264,12 @@ test('Enter does not confirm an archive or submit the retained draft', async () 
   fireEvent.keyDown(document, { key: 'Enter' });
   expect(view.archived).toEqual([]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('approval decisions target the selected thread', async () => {
+  const view = await render();
+  expect(await view.command({ action: 'approve', decision: 'allow_once' })).toMatchObject({ ok: true, message: 'Allowed once: ls' });
+  expect(view.approvals).toEqual([{ threadId: 't1', decision: 'allow_once' }]);
 });
 
 test('new thread opens a draft in the current project without submitting text', async () => {

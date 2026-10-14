@@ -6,6 +6,7 @@ import { commandSchema } from './contracts.ts';
 import { rpcContract } from './rpc.ts';
 import { makeBroker } from './broker.ts';
 import { makeArchives } from './archive.ts';
+import { makeApprovals } from './approval.ts';
 
 export default function plugin(bb: BbPluginApi) {
   const diagnostics = makeDiagnostics(join(homedir(), 'Library/Application Support/voice-control/logs/live.ndjson'));
@@ -16,6 +17,12 @@ export default function plugin(bb: BbPluginApi) {
     unarchive: async id => { await bb.sdk.threads.unarchive({ threadId: id }); },
     load: () => bb.storage.kv.get('voice-archives'),
     save: value => bb.storage.kv.set('voice-archives', value),
+  });
+  const approvals = makeApprovals({
+    list: threadId => bb.sdk.threads.interactions.list({ threadId }),
+    resolve: async (threadId, interactionId, resolution) => {
+      await bb.sdk.threads.interactions.resolve({ threadId, interactionId, resolution });
+    },
   });
   const broker = makeBroker(request => bb.realtime.publish('command', request));
   bb.onDispose(() => broker.dispose());
@@ -28,6 +35,7 @@ export default function plugin(bb: BbPluginApi) {
     archiveTarget: ({ threadId }) => archives.inspect(threadId),
     archive: ({ target, confirmed }) => archives.archive(target, confirmed),
     restore: () => archives.restore(),
+    approve: ({ threadId, decision }) => approvals.decide(threadId, decision),
     claim: ({ requestId }) => ({ claimed: broker.claim(requestId) }),
     complete: ({ requestId, reply }) => ({ accepted: broker.complete(requestId, reply) }),
   });

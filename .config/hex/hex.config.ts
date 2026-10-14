@@ -168,6 +168,27 @@ export default defineHexConfig({
       description: "Archive the selected BB thread",
       run: async () => { await runBb(bbPorts, { action: "archive" }) },
     },
+    "bb-allow-once": {
+      phrases: ["allow once"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Allow the selected BB thread's pending approval once",
+      run: async () => { await runBb(bbPorts, { action: "approve", decision: "allow_once" }) },
+    },
+    "bb-allow-for-session": {
+      phrases: ["allow for session"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Allow the selected BB thread's pending approval for the session",
+      run: async () => { await runBb(bbPorts, { action: "approve", decision: "allow_for_session" }) },
+    },
+    "bb-deny-approval": {
+      phrases: ["deny approval"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Deny the selected BB thread's pending approval",
+      run: async () => { await runBb(bbPorts, { action: "approve", decision: "deny" }) },
+    },
     "bb-confirm-archive": {
       phrases: ["confirm archive"],
       when: { application: "bb" },

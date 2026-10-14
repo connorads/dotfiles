@@ -246,6 +246,9 @@ function VoiceCard() {
         }
         return { ok: true, outcome: result.outcome, message: result.message };
       }
+      case 'approve':
+        if (!context.threadId) throw new Error('Select a thread with a pending approval.');
+        return rpc.call('approve', { threadId: context.threadId, decision: command.decision });
       case 'cancel-archive':
         setArchiveConfirmation(null);
         return { ok: true, outcome: 'cancelled', message: 'Archive cancelled.' };
@@ -457,6 +460,7 @@ function VoiceCard() {
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Use Sonnet”</dt><dd>Select a model</dd>
+        <dt>“Allow once” / “Allow for session” / “Deny approval”</dt><dd>Answer the selected thread's single pending approval</dd>
         <dt>“Choose one” / “Choose two”</dt><dd>Select a numbered voice match or native question answer. Submit answers separately.</dd>
       </dl></section>
       <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
