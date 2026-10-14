@@ -1,0 +1,32 @@
+{
+  "name": "bb-plugin-focus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
+  "bb": {
+    "name": "Focus",
+    "description": "A focus view for the sidebar: show only the projects you pick, hide the rest, and restore the sidebar after.",
+    "branding": { "icon": "EyeOff" },
+    "server": "./server.ts",
+    "app": "./app.tsx",
+    "skills": []
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": { "zod": "catalog:" },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "better-sqlite3": "catalog:",
+    "cron-parser": "catalog:",
+    "hono": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:"
+  }
+}
