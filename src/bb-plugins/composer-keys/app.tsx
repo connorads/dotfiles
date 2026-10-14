@@ -81,23 +81,29 @@ function RewindPicker() {
   const { threadId } = useBbContext();
   const sdk = useSdk();
   const [view, setView] = useState<View>({ kind: 'closed' });
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  // null while a load is in flight.
+  const [prompts, setPrompts] = useState<Prompt[] | null>(null);
   const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const origin = useRef<HTMLElement | null>(null);
-  const prompt = prompts[index];
+  const load = useRef(0);
+  const prompt = prompts?.[index];
+  const count = prompts?.length ?? 0;
 
   useEffect(() => {
     const open = () => {
       if (!threadId) return;
       origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // Only the latest open's load lands, so the list never holds another load's prompts.
+      const token = ++load.current;
       setError(null);
+      setPrompts(null);
       setView({ kind: 'list' });
       loadPrompts(sdk, threadId)
-        .then(found => { setPrompts(found); setIndex(found.length - 1); })
-        .catch((cause: unknown) => setError(String(cause)));
+        .then(found => { if (token === load.current) { setPrompts(found); setIndex(found.length - 1); } })
+        .catch((cause: unknown) => { if (token === load.current) setError(String(cause)); });
     };
     window.addEventListener(REWIND_EVENT, open);
     return () => window.removeEventListener(REWIND_EVENT, open);
@@ -137,18 +143,18 @@ function RewindPicker() {
     const keydown = (event: KeyboardEvent) => {
       if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
       const move = event.key === 'ArrowUp' || event.key === 'k' ? -1 : event.key === 'ArrowDown' || event.key === 'j' ? 1
-        : event.key === 'Home' ? -prompts.length : event.key === 'End' ? prompts.length : 0;
+        : event.key === 'Home' ? -count : event.key === 'End' ? count : 0;
       if (move === 0 && !['Enter', 'Escape', 'f'].includes(event.key)) return;
       event.preventDefault(); event.stopImmediatePropagation();
       if (busy) return;
-      if (move !== 0) setIndex(i => Math.min(Math.max(i + move, 0), prompts.length - 1));
+      if (move !== 0) setIndex(i => Math.min(Math.max(i + move, 0), count - 1));
       else if (event.key === 'Escape') close();
       else if (event.key === 'Enter' && prompt) setView({ kind: 'edit', draft: prompt.text });
       else if (event.key === 'f') fork();
     };
     document.addEventListener('keydown', keydown, true);
     return () => document.removeEventListener('keydown', keydown, true);
-  }, [busy, close, fork, prompt, prompts.length, view.kind]);
+  }, [busy, close, count, fork, prompt, view.kind]);
 
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
@@ -163,11 +169,12 @@ function RewindPicker() {
           if (event.defaultPrevented || event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) || busy) return;
           if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); close(); }
         }}>
-          {prompts.map((p, i) => <li key={p.seq} role="option" aria-selected={i === index}
+          {prompts?.map((p, i) => <li key={p.seq} role="option" aria-selected={i === index}
             onMouseEnter={() => setIndex(i)} onClick={() => setView({ kind: 'edit', draft: p.text })}>
             <span className="ck-num">{i + 1}</span><span className="ck-text">{firstLine(p.text)}</span>
           </li>)}
-          {prompts.length === 0 && !error && <li className="ck-empty">Loading…</li>}
+          {!error && (prompts === null ? <li className="ck-empty">Loading…</li>
+            : count === 0 && <li className="ck-empty">No messages to rewind yet.</li>)}
         </ol>
         : <textarea autoFocus value={view.draft} disabled={busy} aria-label="Edited message"
           onChange={e => setView({ kind: 'edit', draft: e.target.value })}
