@@ -201,7 +201,8 @@ The command schemas live in [contracts.ts](contracts.ts).
 List replies carry a context identifier. Selection and choice requests must
 return it unchanged. A changed thread, project or provider rejects stale choices.
 Only one window claims each request. Unclaimed requests expire without replay;
-plugin reload cancels pending requests. No focused window produces an explicit error.
+plugin reload cancels pending requests. No focused window produces an explicit error
+after 1.5 seconds. A window busy with another command rejects the new one.
 
 Tests cover command ownership, expiry, stale context, drafts, model selection,
 attention filters and pedal behaviour. Live checks cover BB navigation and the

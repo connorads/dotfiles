@@ -24,6 +24,27 @@ test('unclaimed commands expire without a later window executing them', async ()
   broker.dispose();
 });
 
+test('an unclaimed command fails at the claim deadline rather than the completion timeout', async () => {
+  const broker = makeBroker(() => {}, 1000, 5);
+  const started = Date.now();
+  const reply = await broker.dispatch({ action: 'help' });
+  assert.equal(reply.ok, false);
+  assert.match(reply.message, /No focused BB window/);
+  assert.ok(Date.now() - started < 500);
+  broker.dispose();
+});
+
+test('a claimed command outlives the claim deadline', async () => {
+  let requestId = '';
+  const broker = makeBroker(request => { requestId = request.requestId; }, 1000, 5);
+  const reply = broker.dispatch({ action: 'help' });
+  assert.equal(broker.claim(requestId), true);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(broker.complete(requestId, { ok: true, message: 'Voice help' }), true);
+  assert.equal((await reply).ok, true);
+  broker.dispose();
+});
+
 test('reload releases pending requests and rejects new work', async () => {
   const broker = makeBroker(() => {});
   const reply = broker.dispatch({ action: 'help' });
