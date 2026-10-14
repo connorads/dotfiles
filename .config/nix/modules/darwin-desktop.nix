@@ -235,6 +235,31 @@
     };
   };
 
+  # -- vox audio retention --
+  # Transcripts are the record; audio is kept 14 days for re-transcription.
+  launchd.user.agents.vox-prune = {
+    serviceConfig = {
+      Label = "dev.connorads.vox-prune";
+      ProgramArguments = [
+        "/bin/zsh"
+        "/Users/connorads/.local/bin/vox"
+        "prune"
+        "--older"
+        "14d"
+        "--force"
+      ];
+      StartCalendarInterval = [
+        {
+          Hour = 4;
+          Minute = 0;
+        }
+      ];
+      ProcessType = "Background";
+      StandardOutPath = "/Users/connorads/.cache/vox-prune.log";
+      StandardErrorPath = "/Users/connorads/.cache/vox-prune.log";
+    };
+  };
+
   launchd.user.agents.linearmouse.serviceConfig = {
     ProgramArguments = [
       "/usr/bin/open"
