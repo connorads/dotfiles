@@ -16,6 +16,7 @@
 .bbp-chip[data-tone="danger"] .gg-chip-branch { text-transform: capitalize; }
 .gg-chip-ahead { color: var(--gg-lane-0); }
 .gg-chip-behind { color: var(--attention); }
+@container page-header (max-width: 900px) { .gg-chip-ahead, .gg-chip-behind { display: none; } }
 
 /* Pop-up shell */
 .gg-dialog {

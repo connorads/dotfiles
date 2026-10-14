@@ -69,6 +69,6 @@ export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderA
   return <Chip data-au-thread={threadId} expanded={open} tone={tone === 'critical' ? 'danger' : tone === 'warning' ? 'warn' : undefined}
     aria-label={`Open all agent usage. ${title}`} title={title} onClick={openUsage}
     icon={binding ? <Ring window={binding.window} view={binding.view} /> : <Icon name="ChartColumn" />}>
-    {!isCompactViewport && (text ? <ChipValue>{text}</ChipValue> : error || header ? <span>Usage</span> : null)}
+    {!isCompactViewport && (text ? <ChipValue>{text}</ChipValue> : error || header ? <ChipValue>Usage</ChipValue> : null)}
   </Chip>;
 }
