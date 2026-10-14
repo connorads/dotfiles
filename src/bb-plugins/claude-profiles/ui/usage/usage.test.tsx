@@ -170,6 +170,16 @@ test('closing after a responsive header remount returns focus to the same thread
   await waitFor(() => expect(document.activeElement).toBe(replacement));
 });
 
+test('a calm fresh window shows its reset on one line and keeps its pace for screen readers', async () => {
+  const app = await load();
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect() } });
+  act(() => openUsage());
+  const region = await slot.findByRole('region', { name: 'Codex · Personal' });
+  const row = await slot.findByRole('row', { name: /^Weekly: 6% used\. Under pace\./ });
+  expect(row.textContent).not.toContain('Under pace');
+  expect(region.textContent).not.toMatch(/Read /);
+});
+
 test('old readings suppress projections and do not become fresh when the panel loads', async () => {
   const app = await load();
   const value = inspect({ machines: [{ ...snapshot.machines[0]!, providers: [account('Codex', 'Personal',
