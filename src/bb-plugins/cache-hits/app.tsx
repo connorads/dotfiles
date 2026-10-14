@@ -1,24 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
-import { ChipDot, ChipValue } from '@bb-plugins/chip';
+import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
 import { expiresAt, hitRatio, type CacheState } from './src/cache.ts';
+import { clock, countdown, lifetime, percent, tokens } from './src/format.ts';
+import { CachePopover, warmth } from './popover.tsx';
 import './app.css';
-
-function tokens(value: number) {
-  if (value < 1000) return String(value);
-  return value < 10000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value / 1000)}k`;
-}
-const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
-function clock(ms: number) {
-  const seconds = Math.ceil(ms / 1000);
-  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60];
-  return `${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${String(s).padStart(2, '0')}`;
-}
-/** Whole minutes while there is time; seconds only in the last two minutes. */
-const countdown = (ms: number) => ms >= 120_000 ? `${Math.floor(ms / 60_000)}m` : clock(ms);
-const lifetime = (ms: number) => ms >= 3_600_000 ? `${ms / 3_600_000}h` : `${ms / 60_000}m`;
 
 function describe(state: CacheState, now: number) {
   const lines: string[] = [];
@@ -41,8 +29,11 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   const rpc = useRpc<typeof rpcContract>();
   const [state, setState] = useState<CacheState | null>(null);
   const [now, setNow] = useState(Date.now);
+  const [open, setOpen] = useState(false);
+  // The clicked button, so focus and placement follow the chip in this pane even when a split shows the same thread.
+  const chip = useRef<HTMLButtonElement | null>(null);
   const load = useCallback(() => { rpc.call('thread', { threadId }).then(setState, () => setState(null)); }, [rpc, threadId]);
-  useEffect(() => { setState(null); load(); }, [load]);
+  useEffect(() => { setState(null); setOpen(false); load(); }, [load]);
   useRealtime('cache-changed', (payload: unknown) => {
     if ((payload as { threadId?: unknown } | null)?.threadId === threadId) load();
   });
@@ -53,20 +44,19 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [expiry]);
-  const ratio = state?.last ? hitRatio(state.last.read, state.last.prompt) : null;
-  if (!state || ratio === null) return null;
-  // The dot shows cache warmth when the provider reports a lifetime, otherwise the last hit rate.
-  const left = expiry === null || state.ttlMs === null ? null : (expiry - now) / state.ttlMs;
-  const [fraction, ok, warn] = left === null ? [ratio, 0.8, 0.5] : [left, 0.5, 0.2];
-  const level = fraction > ok ? 'ok' : fraction > warn ? 'warn' : 'danger';
+  const view = state && warmth(state, now);
+  if (!state || !view) return null;
   const summary = describe(state, now);
   // Codex reports no lifetime, so its value is the hit rate; Claude's is the time left.
-  const value = left === null ? percent(ratio) : left <= 0 ? 'cold' : countdown(expiry! - now);
-  return <span className="bbp-chip cache-hits" role="status" aria-label={`Prompt cache. ${summary}`} title={summary}>
-    <span className="bbp-chip-icon" aria-hidden="true"><Icon name="Zap" /></span>
-    {!isCompactViewport && <ChipValue>{value}</ChipValue>}
-    <ChipDot tone={level} className={left !== null && left <= 0 ? 'ch-cold' : undefined}>{state.misses > 0 ? state.misses : null}</ChipDot>
-  </span>;
+  const value = view.left === null ? percent(view.ratio) : view.left <= 0 ? 'cold' : countdown(expiry! - now);
+  return <>
+    <Chip className="cache-hits" icon={<Icon name="Zap" />} expanded={open} aria-label={`Prompt cache. ${summary}`} title={summary}
+      onClick={event => { chip.current = event.currentTarget; setOpen(!open); }}>
+      {!isCompactViewport && <ChipValue>{value}</ChipValue>}
+      <ChipDot tone={view.level} className={view.left !== null && view.left <= 0 ? 'ch-cold' : undefined}>{state.misses > 0 ? state.misses : null}</ChipDot>
+    </Chip>
+    {open && <CachePopover state={state} now={now} view={view} trigger={() => chip.current} onClose={() => setOpen(false)} />}
+  </>;
 }
 
 export default definePluginApp(app => {

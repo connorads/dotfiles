@@ -14,6 +14,20 @@ over 20%, then red). Without a lifetime, as on Codex, it follows the hit rate
 Hover the chip for last read and write tokens, the thread-wide hit rate, and
 the size and idle gap of the last miss.
 
+Click the chip for the detail popover:
+
+- A countdown with a draining meter and the clock time the cache goes cold.
+- The tokens the next request rewrites if the cache goes cold, and the write
+  price: 1.25× input for the 5-minute lifetime, 2× for the 1-hour one. Read
+  prices vary by model, so the popover does not quote them.
+- Thread, last-request and miss totals.
+- One bar per request for the last 48: cached, written, and re-sent on a miss.
+  Hover a bar for its tokens and miss cause. A gap before a bar marks
+  compaction.
+- The four most recent misses with their idle gap or account switch.
+
+Threads keep history from the first request after installation.
+
 ## How it reads usage
 
 ```mermaid
