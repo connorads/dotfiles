@@ -176,7 +176,12 @@ export function UsageOverlay() {
     pending.current = false;
     if (mounted.current) setLoading(false);
   }, [rpc]);
-  useEffect(() => { if (open) void refresh(false); }, [open, refresh]);
+  useEffect(() => {
+    if (!open) return;
+    void refresh(false);
+    const timer = window.setInterval(() => void refresh(false), 300_000);
+    return () => window.clearInterval(timer);
+  }, [open, refresh]);
   const machines = (snapshot?.machines ?? []).map(machine => ({ ...machine,
     providers: machine.providers.filter(account => account.usage?.status !== 'not_installed') }))
     .filter(machine => machine.providers.length > 0 || machine.error !== null);
