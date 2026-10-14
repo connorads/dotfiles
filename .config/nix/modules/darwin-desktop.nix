@@ -78,7 +78,6 @@
       "utm"
       "retroarch"
       "visual-studio-code"
-      "t3-code"
       "t3-code@nightly"
       "bb"
       "zed"
