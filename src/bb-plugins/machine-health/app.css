@@ -20,6 +20,10 @@
 .mh-icon { width: 13px; height: 13px; flex: none; color: var(--muted-foreground); }
 .mh-metric[data-tone="warn"] .mh-icon, .mh-metric[data-tone="critical"] .mh-icon { color: inherit; }
 .mh-label { overflow: hidden; text-overflow: ellipsis; }
+@container page-header (max-width: 900px) {
+  .mh-chip { gap: 6px; }
+  .mh-chip .mh-label, .mh-chip .mh-value { display: none; }
+}
 .mh-machine-row {
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; min-height: 28px; padding: 4px 8px;
   border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--foreground);
