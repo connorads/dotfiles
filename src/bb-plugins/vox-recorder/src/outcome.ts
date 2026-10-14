@@ -22,7 +22,10 @@ export const reasonOf = (run: Run, fallback: string) => lines(run.stderr).filter
 
 export const baseName = (path: string) => path.replace(/\/+$/, '').split('/').at(-1) ?? path;
 
-export type Answer = { kind: 'enter'; title: string } | { kind: 'escape' };
+export type Answer = { kind: 'enter'; title: string } | { kind: 'escape'; afterMs: number };
+
+/** How long after the prompt opens Esc still discards; later, Esc is a reflex and keeps. */
+export const DISCARD_GRACE_MS = 10_000;
 export type AfterStart =
   | { kind: 'failed'; reason: string }
   | { kind: 'rename'; name: string; title: string }
@@ -32,13 +35,14 @@ export type AfterStart =
 /**
  * The prompt opens at once while the capture starts behind it, and how it is
  * dismissed decides the recording's fate: Enter keeps it (renamed if titled),
- * Esc discards it. The answer only acts once the start has returned, so a
+ * Esc discards it only within DISCARD_GRACE_MS of the prompt opening, so a
+ * reflex Esc minutes into a call keeps the capture. The answer only acts once the start has returned, so a
  * start that failed is reported and neither renames nor discards.
  */
 export function afterStart(start: Outcome, answer: Answer): AfterStart {
   if (!start.ok) return { kind: 'failed', reason: start.reason };
   const name = baseName(start.path);
-  if (answer.kind === 'escape') return { kind: 'discard', name };
+  if (answer.kind === 'escape') return answer.afterMs <= DISCARD_GRACE_MS ? { kind: 'discard', name } : { kind: 'keep', name };
   const title = answer.title.trim();
   return title ? { kind: 'rename', name, title } : { kind: 'keep', name };
 }

@@ -27,8 +27,10 @@ included. `Alt+Y` is a composer command, so it needs a prompt and does not fire
 from a terminal. No shortcut fires while a vox dialog is open.
 
 - **Start.** `Alt+V` starts the capture at once and opens a title prompt over
-  it. Enter keeps the recording, renamed if you typed a title. Esc discards it
-  with `vox cancel`. A prompt that closes with no answer keeps the recording.
+  it. Enter keeps the recording, renamed if you typed a title. Esc in the first
+  10 s discards it with `vox cancel`. After that, Esc keeps it, and only the
+  library's confirmed Discard removes it. A prompt that closes with no answer
+  keeps the recording.
 - **Stop.** `Alt+V` while recording runs `vox stop` in the background. A notice
   reports the transcript when transcription ends. The capture still reads as
   recording while it flushes, so a second stop or a discard of it is refused.
@@ -210,8 +212,8 @@ up after 10 s with "the capture did not start".
    `AudioHardwareCreateProcessTap failed` means system audio is refused. A
    microphone error means the microphone is refused.
 5. Install the plugin and press `Alt+V`. A pass is the `~ 0s` pill with the
-   title prompt open. Press Esc to discard. Expect the notice "Discarded
-   <name>" and no new directory from `ls -t ~/Recordings/vox | head -1`.
+   title prompt open. Press Esc within 10 s to discard. Expect the notice
+   "Discarded <name>" and no new directory from `ls -t ~/Recordings/vox | head -1`.
 6. If step 3 fails with no prompt, turn BB on under both settings from step 1,
    or run `tccutil reset Microphone dev.bb.desktop`, and repeat from step 3.
 
