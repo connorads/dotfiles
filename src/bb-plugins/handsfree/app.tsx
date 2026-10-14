@@ -153,12 +153,14 @@ function VoiceCard() {
     const destination = thread ? `Viewing ${thread.displayTitle} (${projectName(thread.projectId)}).` : 'Viewing a new thread draft.';
     const requested = navigationRequest.current;
     navigationRequest.current = null;
-    if (requested && requested.expires >= Date.now() && (!requested.threadId || requested.threadId === context.threadId)) {
+    const spoken = requested && requested.expires >= Date.now() && (!requested.threadId || requested.threadId === context.threadId);
+    if (spoken) {
       void rpc.call('observed', { requestId: requested.requestId, threadId: context.threadId ?? null, title: thread?.displayTitle ?? 'New thread draft' }).catch(() => {});
+      // Only a spoken request needs its landing confirmed; clicks and shortcuts show where they went.
+      setMessage(destination);
+      setFeedback(true);
+      setProblem(false);
     }
-    setMessage(destination);
-    setFeedback(true);
-    setProblem(false);
     setHistory(items => [...items, { at: Date.now(), message: destination, problem: false }].slice(-50));
   }, [context.threadId, thread, sidebar.projects]);
 

@@ -120,6 +120,7 @@ Missing or unreadable logs show `Hex diagnostics unavailable on this BB server`.
 The monitor opens beside the header or draft control. It is an in-app surface.
 A detached desktop window requires support from BB's desktop window API.
 Navigation requests report the observed destination when the selected thread changes.
+The header confirms only spoken navigation. Clicks and shortcuts log their destination in Activity.
 
 Each spoken BB request writes one outcome to `~/.local/state/hex/voice.jsonl`.
 Search records include heard words, matching method, candidate choices, Jev
