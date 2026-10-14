@@ -170,7 +170,6 @@ Keyboard. The hostname mode is stored per window.
   Work that starts in that gap without a new turn dies with the stop.
 - The host can only send signals, so it cannot quit an app gracefully as
   `pclose` does.
-- The plugin pins `@get-bb/plugin-sdk` 0.6.15; the installed bb ships 0.6.37.
 - End is offered on a shared `codex app-server`, which serves every Codex
   thread on its bridge worker. Only the End? confirmation guards it.
 - Archived threads whose provider process still runs are refused, so their
