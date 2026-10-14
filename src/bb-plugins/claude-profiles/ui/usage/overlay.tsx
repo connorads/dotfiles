@@ -30,10 +30,8 @@ function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; r
     <span className="au-row-label" role="rowheader">{window.label}</span>
     <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
     <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
-    <span className="au-row-reset" role="cell">{view.reset ?? ''}</span>
-    {/* The pace marker already shows a calm window's pace, so only a status that needs attention takes a line. */}
-    {(view.tone !== 'normal' || view.credit || view.pace.kind === 'elapsed') && view.status
-      && <span className="au-row-status" role="cell" data-tone={view.tone}>{view.status}</span>}
+    {/* The bar's fill, colour and pace marker show the pace, so the row ends in one phrase the bar cannot show. */}
+    <span className="au-row-detail" role="cell" data-tone={view.tone}>{view.detail ?? ''}</span>
   </div>;
 }
 

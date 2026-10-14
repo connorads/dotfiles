@@ -54,13 +54,12 @@
 .au-account-message { font-size: var(--text-xs, 12px); color: var(--au-subtle); margin-top: -4px; }
 
 /* Fixed side columns keep bars and figures aligned across accounts, which each own a grid. */
-.au-rows { display: grid; grid-template-columns: 6rem minmax(80px, 1fr) 40px 13rem; column-gap: 16px; row-gap: 12px; align-items: center; }
+.au-rows { display: grid; grid-template-columns: 6rem minmax(80px, 1fr) 40px 13rem; column-gap: 16px; row-gap: 10px; align-items: center; }
 .au-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 4px; min-height: 18px; font-size: var(--text-xs, 12px); line-height: 1.5; }
 .au-row > span { min-width: 0; }
 .au-row-label { color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .au-row-value { text-align: right; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
-.au-row-reset { text-align: right; white-space: nowrap; color: var(--au-subtle); font-variant-numeric: tabular-nums; }
-.au-row-status { grid-column: 2 / -1; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.au-row-detail { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--au-subtle); font-variant-numeric: tabular-nums; }
 .au-row [data-tone="warning"] { color: var(--warning); }
 .au-row [data-tone="critical"] { color: var(--au-critical-text); }
 
@@ -128,12 +127,11 @@
 
 @container account (max-width: 440px) {
   .au-rows { grid-template-columns: minmax(0, 1fr) auto; }
-  .au-row { grid-template-areas: "label value" "meter meter" "reset reset" "status status"; row-gap: 4px; }
+  .au-row { grid-template-areas: "label value" "meter meter" "detail detail"; row-gap: 4px; }
   .au-row-label { grid-area: label; }
   .au-row-meter { grid-area: meter; }
   .au-row-value { grid-area: value; }
-  .au-row-reset { grid-area: reset; text-align: left; }
-  .au-row-status { grid-area: status; }
+  .au-row-detail { grid-area: detail; text-align: left; }
 }
 
 .au-native-usage {
