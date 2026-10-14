@@ -1,0 +1,6 @@
+{
+  "reason": "agents must never create tmux sessions on the live default socket; the harness runs on an isolated server",
+  "files": [
+    "poteto-plugins/.agents/skills/control-cli/SKILL.md"
+  ]
+}
