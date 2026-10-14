@@ -21,8 +21,8 @@ Do not disable reconciliation to make a settings edit persist.
 
 The custom **Agent Switcher** plugin (`claude-profiles`) owns the usage badge and
 `⌘⇧A` overlay. Read its [guide](../../src/bb-plugins/claude-profiles/README.md#usage).
-The retired `agent-usage` package stays disabled. The built-in
-`bb--provider-usage` plugin collects quota sources for Agent Switcher.
+The built-in `bb--provider-usage` plugin collects quota sources for Agent
+Switcher.
 
 Before choosing files, check `bb plugin list --json` and
 `bb settings keyboard list --json`. The usage command is

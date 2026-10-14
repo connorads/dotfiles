@@ -1,5 +1,4 @@
-import { listSchema, nameSchema, type Effort, type Favourite, type FavouriteInput } from './contract.ts';
-import { mergeLegacy, type Skipped } from './migrate.ts';
+import { listSchema, type Effort, type Favourite, type FavouriteInput } from './contract.ts';
 
 export function createStore(
   storage: { get(): Promise<unknown>; set(value: Favourite[]): Promise<void> },
@@ -35,20 +34,8 @@ export function createStore(
         return [...list, { ...input, id: newId(), slot }];
       });
     },
-    rename(id: string, name: string) {
-      return mutate(list => { const favourite = list[find(list, id)]; if (favourite) favourite.name = nameSchema.parse(name); return list; });
-    },
     remove(id: string) {
       return mutate(list => { list.splice(find(list, id), 1); return list; });
-    },
-    move(id: string, direction: -1 | 1) {
-      return mutate(list => {
-        const index = find(list, id);
-        const current = list[index];
-        const neighbour = list[index + direction];
-        if (current && neighbour) [current.slot, neighbour.slot] = [neighbour.slot, current.slot];
-        return list;
-      });
     },
     setEffort(id: string, level: Effort | null) {
       return mutate(list => {
@@ -57,15 +44,6 @@ export function createStore(
         list[index] = level === null ? rest : { ...rest, reasoningLevel: level };
         return list;
       });
-    },
-    async importLegacy(legacy: Favourite[]) {
-      let report: { imported: number; skipped: Skipped[] } = { imported: 0, skipped: [] };
-      await mutate(list => {
-        const { list: merged, imported, skipped } = mergeLegacy(list, legacy);
-        report = { imported, skipped };
-        return merged;
-      });
-      return report;
     },
   };
 }

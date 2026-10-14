@@ -11,9 +11,7 @@ export const setupSchema = z.object({
 }).strict();
 export const nameSchema = z.string().trim().max(60);
 export const favouriteSchema = setupSchema.extend({ name: nameSchema, id: z.string().min(1), slot: z.number().int().min(1).max(9) });
-// Model Favourites' stored shape, which allows the same model twice.
-export const legacyListSchema = z.array(favouriteSchema).max(9);
-export const listSchema = legacyListSchema.refine(
+export const listSchema = z.array(favouriteSchema).max(9).refine(
   list => new Set(list.map(f => f.id)).size === list.length && new Set(list.map(f => f.slot)).size === list.length,
   'Favourite IDs and shortcut slots must be unique',
 ).refine(
@@ -29,7 +27,5 @@ export const modelsContract = defineRpcContract({
   'favourites.list': { input: z.object({}).strict(), output: listSchema },
   'favourites.add': { input: addSchema, output: listSchema },
   'favourites.remove': { input: z.object({ id: z.string() }).strict(), output: listSchema },
-  'favourites.rename': { input: z.object({ id: z.string(), name: nameSchema }).strict(), output: listSchema },
-  'favourites.move': { input: z.object({ id: z.string(), direction: z.union([z.literal(-1), z.literal(1)]) }).strict(), output: listSchema },
   'favourites.setEffort': { input: z.object({ id: z.string(), reasoningLevel: effortSchema.nullable() }).strict(), output: listSchema },
 });

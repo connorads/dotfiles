@@ -18,7 +18,7 @@ export default function plugin(bb: BbPluginApi) {
     profileRoot: { type: 'string', label: 'Claude profile root on each host', default: '~/.claude-profiles/code' },
     executable: { type: 'string', label: 'Native Claude executable', default: 'claude' },
   });
-  const models = registerModels(bb);
+  registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
   const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
@@ -252,14 +252,10 @@ export default function plugin(bb: BbPluginApi) {
     },
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
-  const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD | migrate-favourites';
-  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage or migrate model favourites',
+  const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD';
+  bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
-        if (argv[0] === 'migrate-favourites') {
-          if (argv.length > 1) throw new Error('migrate-favourites takes no arguments.');
-          return await models.migrateFavourites();
-        }
         if (argv[0] === 'overview' || argv[0] === 'header') {
           const valid = argv[0] === 'overview' ? argv.length === 1 || (argv.length === 2 && argv[1] === '--refresh') : argv.length === 2;
           if (!valid) throw new Error(usageText);

@@ -22,13 +22,10 @@ test('concurrent saves persist both entries and deletion leaves shortcut slots s
   assert.deepEqual(await reopened.list(), await store.list());
 });
 
-test('renaming and reordering persist and missing ids cannot remove another favourite', async () => {
+test('missing ids cannot remove another favourite', async () => {
   const { store } = memory();
   await store.add({ name: 'One', ...setup });
   await store.add({ name: 'Two', ...setup, model: 'model-b' });
-  await store.rename('1', ' Renamed ');
-  await store.move('1', 1);
-  assert.deepEqual((await store.list()).map(f => f.name), ['Two', 'Renamed']);
   await assert.rejects(store.remove('missing'), /Favourite no longer exists/);
   assert.equal((await store.list()).length, 2);
 });
@@ -45,11 +42,10 @@ test('a saved effort changes without moving the favourite, and null clears it', 
   const { store } = memory();
   await store.add({ name: '', ...setup });
   await store.add({ name: '', ...setup, model: 'model-b', reasoningLevel: 'low' });
-  await store.move('2', -1);
-  const [moved] = await store.setEffort('2', 'xhigh');
-  assert.deepEqual([moved?.id, moved?.slot, moved?.reasoningLevel], ['2', 1, 'xhigh']);
+  const [, changed] = await store.setEffort('2', 'xhigh');
+  assert.deepEqual([changed?.id, changed?.slot, changed?.reasoningLevel], ['2', 2, 'xhigh']);
   const cleared = (await store.setEffort('2', null)).find(f => f.id === '2');
-  assert.equal(cleared?.slot, 1);
+  assert.equal(cleared?.slot, 2);
   assert.equal('reasoningLevel' in (cleared ?? {}), false);
   await assert.rejects(store.setEffort('missing', 'low'), /Favourite no longer exists/);
 });
