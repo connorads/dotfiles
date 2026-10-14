@@ -12,6 +12,7 @@
     { "path": "~/.config/skills/vendor/jakubkrehel/.agents/skills", "name": "jakubkrehel" },
     { "path": "~/.config/skills/vendor/mattpocock/.agents/skills", "name": "mattpocock" },
     { "path": "~/.config/skills/vendor/nextjs/.agents/skills", "name": "nextjs" },
+    { "path": "~/.config/skills/vendor/poteto-plugins/.agents/skills", "name": "poteto-plugins" },
     { "path": "~/.config/skills/vendor/vercel-labs-agent-skills/.agents/skills", "name": "vercel-labs-agent-skills" },
     { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
     { "path": "~/.config/skills/vendor/manual", "name": "manual" }
