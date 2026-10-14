@@ -1,0 +1,1 @@
+| `simulator:start`/`build`: no linked project / missing `projectId` | A fresh `create-expo-app` isn't linked to EAS | `npx --yes eas-cli@latest init` to create/link it (writes `extra.eas.projectId`). |

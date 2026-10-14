@@ -1,0 +1,1 @@
+| `prebuild`/`eas build` prompts for or fails on a missing **iOS bundle identifier** | A fresh app often has no `ios.bundleIdentifier` | Set it in app config (e.g. `dev.<owner>.<slug>`); confirm via `npx expo config --json` (may live in `app.config.js`). |

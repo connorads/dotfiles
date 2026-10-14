@@ -1,0 +1,1 @@
+| `simulator:start` rejects `--name` (e.g. `Nonexistent flag: --name`) | `eas-cli` too old — `--name` was added after `simulator:start` itself | Run via `npx --yes eas-cli@latest …`, or upgrade `eas-cli`. If you can't upgrade, retry once **without** `--name`; the session starts unnamed. |
