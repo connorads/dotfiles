@@ -39,7 +39,8 @@ export async function collectGrokUsage(options: {
     pending?.reject(failure);
     pending = undefined;
   }
-  child.on('error', () => fail('Grok CLI unavailable.'));
+  let missing = false;
+  child.on('error', (error: NodeJS.ErrnoException) => { missing = error.code === 'ENOENT'; fail('Grok CLI unavailable.'); });
   child.on('close', () => fail('Grok CLI exited before returning usage.'));
   child.stdin.on('error', () => fail('Grok CLI communication failed.'));
   let responseBytes = 0;
@@ -83,6 +84,7 @@ export async function collectGrokUsage(options: {
         usedPercent: billing.data.config.creditUsagePercent, resetsAt: period?.end ?? null, model: null, cost: null }],
     } };
   } catch (error) {
+    if (missing) return { accountKey: null, observedAt: null, usage: { status: 'not_installed', ...fields } };
     return unavailable(error instanceof Error ? error.message : 'Grok usage unavailable.');
   } finally {
     clearTimeout(timer);
