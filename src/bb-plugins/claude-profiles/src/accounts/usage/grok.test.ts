@@ -56,9 +56,9 @@ for (const mode of ['auth', 'missing', 'timeout', 'stubborn', 'oversize']) {
   });
 }
 
-test('Grok reports a missing executable as unavailable', async () => {
+test('Grok reports a missing executable as not installed', async () => {
   const result = await collectGrokUsage({ command: ['/nonexistent/grok'] });
-  assert.equal(result.usage.status, 'error');
+  assert.equal(result.usage.status, 'not_installed');
 });
 
 test('Grok preserves reported quota overage', async () => {
