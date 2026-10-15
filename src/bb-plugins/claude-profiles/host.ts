@@ -4,7 +4,7 @@ import { readdir, lstat } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { hostContract, type Profile } from './contracts.ts';
 import { readAccount } from './src/accounts/account.ts';
-import { checkLogin, collectUsage } from './src/accounts/claude.ts';
+import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
@@ -49,8 +49,13 @@ export default experimental_defineHostEntry({
     usage: async (input, context): Promise<Usage> => {
       try {
         const selected = await profile(input.root, input.profileId);
-        const [usage, account] = await Promise.all([collectUsage(input.executable, selected.configDir, tmpdir(), context.signal),
+        const [collected, account] = await Promise.all([
+          collectUsage(input.executable, selected.configDir, tmpdir(), context.signal).catch((error): Usage => ({ status: 'error',
+            windows: [], observedAt: null, message: error instanceof Error ? error.message : 'Claude quota request failed.' })),
           readAccount(selected.configDir ? join(selected.configDir, '.claude.json') : join(homedir(), '.claude.json'))]);
+        // Windows prove a login, so only an empty or failed reading pays for the login check.
+        const ambiguous = collected.status === 'error' || (collected.status === 'ok' && collected.windows.length === 0);
+        const usage = ambiguous ? classifyUsage(collected, await loginState(input.executable, selected.configDir, context.signal)) : collected;
         return usage.status === 'ok' ? { ...usage, account } : usage;
       }
       catch (error) { return { status: 'error', windows: [], observedAt: null,

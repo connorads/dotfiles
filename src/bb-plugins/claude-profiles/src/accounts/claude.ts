@@ -21,18 +21,44 @@ export function profileEnvironment(configDir: string | null): NodeJS.ProcessEnv 
 const responseSchema = z.object({ type: z.literal('control_response'), response: z.object({
   request_id: z.string(), subtype: z.string(), response: z.unknown().optional(),
 }) });
-export async function checkLogin(executable: string, configDir: string | null, signal: AbortSignal): Promise<void> {
-  let stdout: string;
-  try {
-    ({ stdout } = await promisify(execFile)(executable, ['auth', 'status', '--json'], {
-      env: profileEnvironment(configDir), signal, timeout: 10000, maxBuffer: 65536,
-    }));
-  } catch { throw new Error('Native Claude login check failed. Sign in to this profile with the CLI.'); }
+export type Login = 'signed-in' | 'signed-out';
+const signedOut = 'This profile is not signed in. Use native Claude login first.';
+
+/** Reads `claude auth status --json`; null when the shape is not one this plugin knows. */
+export function parseLogin(stdout: string): Login | null {
   let value: unknown;
-  try { value = JSON.parse(stdout); } catch { throw new Error('Claude returned an unsupported login status.'); }
-  if (!z.object({ loggedIn: z.literal(true) }).safeParse(value).success) {
-    throw new Error('This profile is not signed in. Use native Claude login first.');
+  try { value = JSON.parse(stdout); } catch { return null; }
+  const parsed = z.object({ loggedIn: z.boolean() }).safeParse(value);
+  return parsed.success ? parsed.data.loggedIn ? 'signed-in' : 'signed-out' : null;
+}
+async function readLogin(executable: string, configDir: string | null, signal: AbortSignal): Promise<Login | null> {
+  try {
+    const { stdout } = await promisify(execFile)(executable, ['auth', 'status', '--json'], {
+      env: profileEnvironment(configDir), signal, timeout: 10000, maxBuffer: 65536,
+    });
+    return parseLogin(stdout);
+  } catch (error) {
+    // Signed out, the CLI still prints its status but exits 1.
+    const stdout = (error as { stdout?: unknown }).stdout;
+    if (typeof stdout === 'string' && stdout) return parseLogin(stdout);
+    throw error;
   }
+}
+export async function checkLogin(executable: string, configDir: string | null, signal: AbortSignal): Promise<void> {
+  let login: Login | null;
+  try { login = await readLogin(executable, configDir, signal); }
+  catch { throw new Error('Native Claude login check failed. Sign in to this profile with the CLI.'); }
+  if (login === null) throw new Error('Claude returned an unsupported login status.');
+  if (login === 'signed-out') throw new Error(signedOut);
+}
+/** The login status, or null when it cannot be read. */
+export function loginState(executable: string, configDir: string | null, signal: AbortSignal): Promise<Login | null> {
+  return readLogin(executable, configDir, signal).catch(() => null);
+}
+
+/** Quota alone cannot show a signed-out profile: Claude answers it with no windows or exits early. */
+export function classifyUsage(usage: Usage, login: Login | null): Usage {
+  return login === 'signed-out' ? { status: 'unauthenticated', windows: [], message: signedOut, observedAt: usage.observedAt } : usage;
 }
 
 /** Sends control requests only. No user message or model prompt is created. */
@@ -65,7 +91,9 @@ export async function collectUsage(executable: string, configDir: string | null,
       }
       const abort = () => finish(new Error('Claude quota request cancelled.'));
       signal.addEventListener('abort', abort, { once: true });
-      child.on('error', () => finish(new Error('Could not start Claude. Check the executable setting.')));
+      child.on('error', (error: NodeJS.ErrnoException) => error.code === 'ENOENT'
+        ? finish(null, { status: 'not_installed', windows: [], message: 'Claude CLI not found. Check the executable setting.', observedAt: null })
+        : finish(new Error('Could not start Claude. Check the executable setting.')));
       child.on('close', () => finish(new Error('Claude exited before returning usage. Sign in with the native CLI.')));
       child.stdin.on('error', () => finish(new Error('Claude control connection closed.')));
       child.stdout.on('data', chunk => {

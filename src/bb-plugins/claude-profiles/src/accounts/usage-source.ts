@@ -17,13 +17,18 @@ export const measurementSchema = z.object({
       usedPercent: z.number().nonnegative(), resetsAt: z.string().nullable(), model: z.string().nullable(),
       cost: z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() }).nullable(),
     })) }),
+    z.object({ status: z.literal('not_installed'), ...accountFields }),
+    z.object({ status: z.literal('unauthenticated'), ...accountFields }),
     z.object({ status: z.literal('error'), ...accountFields, message: z.string() }),
   ]),
 });
 export type Measurement = z.infer<typeof measurementSchema>;
 export function measurement(value: Usage): Measurement {
   const fields = { plan: null, accountEmail: null, planLabel: null };
-  if (value.status !== 'ok') return { accountKey: null, observedAt: value.observedAt,
+  // BB never caches an error, so only a genuine failure travels as one.
+  if (value.status === 'not_installed' || value.status === 'unauthenticated')
+    return { accountKey: null, observedAt: value.observedAt, usage: { status: value.status, ...fields } };
+  if (value.status === 'error') return { accountKey: null, observedAt: value.observedAt,
     usage: { status: 'error', ...fields, message: value.message ?? 'Claude quota unavailable.' } };
   return { accountKey: null, observedAt: value.observedAt, usage: { status: 'ok', ...fields,
     accountEmail: value.account?.accountEmail ?? null, planLabel: value.account?.planLabel ?? null,

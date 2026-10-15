@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, chmod, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { collectUsage, profileEnvironment, providerEnv } from './claude.ts';
+import { classifyUsage, collectUsage, loginState, parseLogin, profileEnvironment, providerEnv } from './claude.ts';
 
 test('default profile removes inherited account overrides and keeps HOME', () => {
   const env = profileEnvironment(null);
@@ -55,4 +55,28 @@ test('quota output limit also catches an unterminated line', async () => {
   await writeFile(cli, `#!${process.execPath}\nprocess.stdout.write('x'.repeat(3 * 1024 * 1024)); setInterval(() => {}, 10000);\n`);
   await chmod(cli, 0o700);
   await assert.rejects(collectUsage(cli, null, root, new AbortController().signal), /output exceeded/);
+});
+test('login status reads the CLI JSON and rejects unknown shapes', () => {
+  assert.equal(parseLogin('{"loggedIn":true,"authMethod":"claude.ai"}'), 'signed-in');
+  assert.equal(parseLogin('{"loggedIn":false,"authMethod":"none"}'), 'signed-out');
+  assert.equal(parseLogin('{"status":"?"}'), null);
+  assert.equal(parseLogin('not json'), null);
+});
+test('a signed-out profile is unauthenticated whatever the quota request returned', () => {
+  const empty = { status: 'ok' as const, windows: [], message: 'No limits reported', observedAt: 1 };
+  const failed = { status: 'error' as const, windows: [], message: 'Claude exited before returning usage.', observedAt: null };
+  for (const usage of [empty, failed]) assert.equal(classifyUsage(usage, 'signed-out').status, 'unauthenticated');
+  assert.deepEqual(classifyUsage(empty, 'signed-in'), empty);
+  assert.deepEqual(classifyUsage(failed, null), failed);
+});
+test('a missing Claude executable is not installed', async () => {
+  const result = await collectUsage('/nonexistent/claude', null, tmpdir(), new AbortController().signal);
+  assert.equal(result.status, 'not_installed');
+});
+test('a signed-out CLI exits non-zero but its JSON still decides the login', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'claude-login-test-'));
+  const cli = join(root, 'claude');
+  await writeFile(cli, `#!${process.execPath}\nconsole.log(JSON.stringify({ loggedIn: false, authMethod: 'none' })); process.exit(1);\n`);
+  await chmod(cli, 0o700);
+  assert.equal(await loginState(cli, null, new AbortController().signal), 'signed-out');
 });

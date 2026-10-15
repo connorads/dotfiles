@@ -152,7 +152,7 @@ export function createUsageReader(ports: UsagePorts) {
       return { ...base, accountLabel,
         windows: usage.windows.filter(window => window.id === 'five_hour' || window.id === 'seven_day').map(window => describeWindow({
           label: window.id === 'five_hour' ? '5h' : '7d', usedPercent: window.usedPercent, resetsAt: window.resetsAt, cost: null,
-        })), message: usage.status !== 'ok' ? usage.message ?? 'Usage unavailable' : null };
+        })), message: usage.status === 'ok' && usage.windows.length ? null : usage.message ?? 'Usage unavailable' };
     }
     if (!thread.environmentId) return { ...base, message: 'Usage unavailable' };
     const environment = await ports.getEnvironment({ environmentId: thread.environmentId });
