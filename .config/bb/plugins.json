@@ -1,3 +1,18 @@
 {
+  "cache-hits": true,
+  "caffeine": true,
+  "claude-profiles": true,
+  "composer-keys": true,
+  "diff-viewer": true,
+  "external-links": true,
+  "git-glance": true,
+  "handsfree": true,
+  "lazygit": true,
+  "machine-health": true,
+  "preferences": true,
+  "repo-tasks": true,
+  "run-in-terminal": true,
+  "skill-loader": true,
+  "terminal-tweaks": true,
   "workflows": true
 }

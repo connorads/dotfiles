@@ -46,11 +46,10 @@ Use `bb automation-backup run` after changing a task for an immediate backup.
 Do not copy prompts or snapshots into public dotfiles. BB owns live task settings;
 editing a snapshot does not change a task.
 
-## Workflows
+## Plugin setup
 
-BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
-Enable it with `bb plugin enable workflows`. Verify its state with `bb plugin list --json`.
 Desired plugin states live in [plugins.json](./plugins.json).
+The [workspace setup recipe](../../src/bb-plugins/README.md#setup) installs enabled local plugins and applies these states.
 Run `bb-plugins check` to inspect differences and `bb-plugins apply` to apply them.
 Unlisted plugins retain their current state. Removing an entry stops managing it.
 BB must be running. The command requires zsh and jq, and honours `BB_CLI`.
@@ -58,6 +57,11 @@ Exit codes are 0 for matching state, 1 for drift during check, and 2 for errors.
 Apply validates every listed plugin before writing, skips unchanged states and verifies the result.
 Changes are sequential. On failure, earlier changes remain applied; rerun to finish.
 The command manages enablement only; install missing plugins separately.
+
+## Workflows
+
+BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
+Its enabled state is managed by [plugins.json](./plugins.json).
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
 
 ## Local plugins
