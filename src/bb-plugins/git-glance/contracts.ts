@@ -24,8 +24,6 @@ export const snapshotSchema = z.discriminatedUnion('kind', [
     operation: z.enum(['bisect', 'cherry-pick', 'merge', 'rebase', 'revert']).nullable(),
     /** Newest first; `index` is its current `stash@{n}`. */
     stashes: z.array(z.object({ sha: z.string(), index: z.number(), subject: z.string(), time: z.number() })),
-    /** When FETCH_HEAD last changed, in milliseconds; null before the first fetch. */
-    fetchedAt: z.number().nullable(),
     remotes: z.array(z.string()),
     changes: z.array(change),
     /** Changes past the display cap, which the list omits. */
@@ -62,6 +60,11 @@ const failure = z.object({
   reason: z.enum(['auth', 'cancelled', 'conflict', 'diverged', 'dirty', 'locked', 'network', 'no-remote', 'rejected', 'timeout', 'unknown']),
   message: z.string(),
 });
+export const fetchHealthSchema = z.object({
+  lastSucceededAt: z.number().nullable(),
+  failure: failure.nullable(),
+});
+export type FetchHealth = z.infer<typeof fetchHealthSchema>;
 const progress = z.object({ phase: z.string(), percent: z.number().nullable() });
 const opResult = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true), summary: z.string() }),
@@ -135,7 +138,7 @@ const holder = { ...thread, clientId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
   select: { input: z.object({ ...thread, path: z.string().nullable() }), output: z.object({}) },
-  watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable() }) },
+  watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable(), fetch: fetchHealthSchema }) },
   unwatch: { input: z.object(holder), output: z.object({}) },
   diff: { input: z.object({ ...thread, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ ...thread, sha }), output: commitDetailSchema },
@@ -146,4 +149,4 @@ export const rpcContract = defineRpcContract({
 
 /** Realtime payloads; BB broadcasts to every window, so each names its threads. */
 export type SnapshotMessage = { threadIds: string[]; root: string; snapshot: Snapshot };
-export type OpMessage = { threadIds: string[]; root: string; op: OpState };
+export type OpMessage = { threadIds: string[]; root: string; op: OpState; fetch: FetchHealth };

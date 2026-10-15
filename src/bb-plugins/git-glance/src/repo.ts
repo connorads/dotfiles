@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { access, readdir, stat } from 'node:fs/promises';
+import { access, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, join } from 'node:path';
 import type { Change, CommitDetail, DiffSource, Snapshot } from '../contracts.ts';
@@ -72,13 +72,12 @@ async function operation(gitDir: string) {
 const order: Record<Change['area'], number> = { conflicted: 0, staged: 1, unstaged: 2, untracked: 3 };
 
 export async function snapshot(repo: Repo): Promise<Snapshot> {
-  const [statusText, staged, unstaged, remotes, op, fetchedAt, stashText] = await Promise.all([
+  const [statusText, staged, unstaged, remotes, op, stashText] = await Promise.all([
     git(repo, ['status', '--porcelain=v2', '--branch', '--show-stash', '-z']),
     git(repo, ['diff', '--cached', '--numstat', '-z']),
     git(repo, ['diff', '--numstat', '-z']),
     git(repo, ['remote']),
     operation(repo.gitDir),
-    stat(join(repo.gitDir, 'FETCH_HEAD')).then(info => info.mtimeMs, () => null),
     git(repo, ['stash', 'list', `-n${stashLimit}`, '--format=%H%x1f%gs%x1f%ct']),
   ]);
   const status = parseStatus(statusText);
@@ -91,7 +90,7 @@ export async function snapshot(repo: Repo): Promise<Snapshot> {
   const changes = withStats(status.changes, parseNumstat(staged), parseNumstat(unstaged))
     .sort((a, b) => order[a.area] - order[b.area] || a.path.localeCompare(b.path));
   return {
-    kind: repo.kind, name: repo.name, branch: status.branch, operation: op, stashes: parseStashes(stashText), fetchedAt,
+    kind: repo.kind, name: repo.name, branch: status.branch, operation: op, stashes: parseStashes(stashText),
     remotes: remotes.split('\n').filter(Boolean),
     changes: changes.slice(0, changeLimit), hidden: Math.max(0, changes.length - changeLimit),
     commits: parseLog(logText).map(commit => ({ ...commit, unpushed: unpushed.has(commit.sha) })),
