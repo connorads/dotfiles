@@ -127,7 +127,6 @@
   .au-resets-expiry > .au-row-detail { grid-area: auto; grid-column: 3; }
   .au-email { margin-left: 0; flex-basis: 100%; }
 }
-}
 
 .au-native-usage {
   white-space: pre-wrap;
@@ -137,14 +136,17 @@
   color: var(--muted-foreground);
 }
 
-.au-amp-balances { display: grid; gap: 10px; }
-.au-amp-balance { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; }
-.au-amp-balance dt { font-size: var(--text-xs, 12px); color: var(--muted-foreground); }
-.au-amp-balance dd { display: flex; align-items: baseline; gap: 7px; margin-left: auto; white-space: nowrap; }
-.au-amp-balance strong { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--foreground); }
-.au-amp-balance dd span { font-size: var(--text-xs, 12px); color: var(--au-subtle); }
-.au-amp-footer { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
-.au-amp-footer .au-reading { margin: 0; }
-.au-amp-footer a { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-xs, 12px); color: var(--au-subtle); }
-.au-amp-footer a:hover { color: var(--foreground); }
-.au-amp-footer a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 2px; }
+.au-amp-link { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-xs, 12px); color: var(--au-subtle); white-space: nowrap; }
+.au-amp-link:hover { color: var(--foreground); }
+.au-amp-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 2px; }
+.au-amp-row > .au-row-label { grid-column: 1 / 3; }
+/* Amounts can outgrow the percentage column; they overflow leftwards so they stay right-aligned with the percentages. */
+.au-amp-amount { grid-column: 3; justify-self: unsafe end; white-space: nowrap; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.au-amp-row > .au-row-detail { text-align: left; }
+.au-amp-details { margin-top: 10px; }
+
+@container account (max-width: 440px) {
+  .au-amp-row > .au-row-label { grid-area: label; }
+  .au-amp-row > .au-amp-amount { grid-area: detail; }
+  .au-amp-row > .au-row-detail { grid-area: value; }
+}
