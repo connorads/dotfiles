@@ -49,14 +49,15 @@ editing a snapshot does not change a task.
 ## Plugin setup
 
 Desired plugin states live in [plugins.json](./plugins.json).
-The [workspace setup recipe](../../src/bb-plugins/README.md#setup) installs enabled local plugins and applies these states.
+Desired plugin settings live in [plugin-config.json](./plugin-config.json), keyed by plugin ID then setting key.
+The [workspace setup recipe](../../src/bb-plugins/README.md#setup) installs enabled local plugins and applies these states and settings.
 Run `bb-plugins check` to inspect differences and `bb-plugins apply` to apply them.
-Unlisted plugins retain their current state. Removing an entry stops managing it.
+Unlisted plugins and settings retain their current values. Removing an entry stops managing it.
 BB must be running. The command requires zsh and jq, and honours `BB_CLI`.
 Exit codes are 0 for matching state, 1 for drift during check, and 2 for errors.
-Apply validates every listed plugin before writing, skips unchanged states and verifies the result.
+Apply validates every listed plugin and setting key before writing, skips unchanged values and verifies the result.
 Changes are sequential. On failure, earlier changes remain applied; rerun to finish.
-The command manages enablement only; install missing plugins separately.
+The command manages enablement and settings only; install missing plugins separately.
 
 ## Workflows
 
