@@ -1,7 +1,7 @@
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { experimental_ProviderIcon as ProviderIcon, useRpc } from '@get-bb/plugin-sdk/app';
+import { experimental_ProviderIcon as ProviderIcon, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog.tsx';
 import { Icon } from '../components/ui/icon.tsx';
 import type { rpcContract } from '../../contracts.ts';
@@ -39,10 +39,13 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now, observedAt, resetCredits }: { account: Account; now: Date; observedAt: number | null;
-  resetCredits: ResetCredits | null }) {
+function AccountBlock({ account, now, observedAt, resetCredits, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
+  resetCredits: ResetCredits | null; hostId: string; connected: boolean }) {
+  const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
+  const canLogin = account.providerId === 'claude-code' && (usage?.status === 'expired' || usage?.status === 'unauthenticated')
+    && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'));
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
   const message = usage === null ? 'Usage not reported'
@@ -56,7 +59,15 @@ function AccountBlock({ account, now, observedAt, resetCredits }: { account: Acc
       {usage?.status === 'ok' && usage.planLabel && <span className="au-plan">{usage.planLabel}</span>}
       {email && <span className="au-email">{email}</span>}
     </header>
-    {message ? <p className="au-account-message">{message}</p>
+    {message ? <div className="au-account-message"><span>{message}</span>
+      {canLogin && <button type="button" className="au-login-button" disabled={!connected}
+        title={connected ? `Sign in to ${name} on this machine` : 'Connect this machine before signing in'}
+        aria-label={`Sign in again to ${name}`} onClick={() => {
+          closeUsage();
+          // BB encodes route segments; pass the target without URL encoding.
+          navigate.toPluginPanel('claude-login', { subPath: JSON.stringify({ hostId, accountId: account.id }) });
+        }}>Sign in again</button>}
+    </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
       </div>}
@@ -124,8 +135,8 @@ function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; n
   </div>;
 }
 
-function ProviderGroup({ accounts, now, readings, resetCredits }: { accounts: Account[]; now: Date;
-  readings: Inspection['readings']; resetCredits: ResetCredits | null }) {
+function ProviderGroup({ accounts, now, readings, resetCredits, hostId, connected }: { accounts: Account[]; now: Date;
+  readings: Inspection['readings']; resetCredits: ResetCredits | null; hostId: string; connected: boolean }) {
   const [first] = accounts;
   if (!first) return null;
   return <section className="au-provider" aria-label={first.displayName}>
@@ -134,7 +145,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits }: { accounts: Ac
       {first.displayName}
     </h3>
     {/* Reset credits belong to the CLI login, which is the machine's one Codex account. */}
-    <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now}
+    <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now} hostId={hostId} connected={connected}
       observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null}
       resetCredits={account === first && first.providerId === 'codex' ? resetCredits : null} />)}
     </div>
@@ -238,6 +249,7 @@ export function UsageOverlay() {
           </h2>}
           {machine.error && <p className="au-notice" data-tone="warning" role="status"><Icon name="AlertTriangle" className="size-3.5" />{machine.error} Some figures may be out of date.</p>}
           {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now}
+            hostId={machine.id} connected={machine.status === 'connected'}
             readings={inspection?.readings ?? []} resetCredits={inspection?.resetCredits.find(value => value.hostId === machine.id)?.reading ?? null} />)}
         </section>)}
         {(snapshot || error) && <AmpUsage value={amp} message={ampMessage} loading={ampLoading} now={now} />}

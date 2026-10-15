@@ -7,6 +7,7 @@ import type { Usage } from './src/accounts/quota.ts';
 import { createQuotaCache } from './src/accounts/quota-cache.ts';
 import { newThreadAccount, startingThreadId } from './src/accounts/routing.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
+import { createLogin } from './src/accounts/usage/login.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { createAmpSource } from './src/accounts/usage/amp-source.ts';
 import { createGrokSource } from './src/accounts/usage/grok-source.ts';
@@ -195,6 +196,8 @@ export default function plugin(bb: BbPluginApi) {
     catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
   }
   const usageReader = registerUsage(bb, {
+    login: createLogin({ terminals: bb.sdk.terminals, config: () => settings.get(), hosts: () => bb.sdk.hosts.list(),
+      profiles: (hostId, root) => host.call('profiles', { root }, { hostId }) }),
     amp: refresh => amp.read(refresh),
     resetCredits: (hostId, refresh) => host.call('resetCredits', { refresh }, { hostId, timeoutMs: 30_000 }),
     claudeAccount: async threadId => {

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFakePluginHost, makeMessageDispatchHookContext, makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 import plugin from '../../server.ts';
+import { authOverrides } from './claude.ts';
 
 const profile = { id: 'stretch', label: 'stretch', configDir: '/profiles/stretch' };
 
@@ -213,4 +214,67 @@ test('a new-thread draft reads an account\'s quota on this machine through the s
   assert.equal((quota as { status: string }).status, 'ok');
   await harness.behavior.callRpc('usage', { threadId: 't1', profileId: 'stretch', refresh: false });
   assert.deepEqual(hostCalls.filter(call => call.method === 'usage').map(call => call.hostId), ['h1']);
+});
+
+
+function loginFixture() {
+  const created: { scope: unknown; start?: { mode: string; argv?: string[] } }[] = [];
+  let exited = false;
+  const terminal = () => ({ id: 'terminal-login', status: exited ? 'exited' : 'running' });
+  const { bb, harness } = createFakePluginHost({
+    sdk: {
+      hosts: { list: async () => [{ id: 'remote', name: 'Remote', status: 'connected' }] },
+      terminals: {
+        create: async (args: typeof created[number]) => { created.push(args); exited = false; return terminal(); },
+        get: async () => terminal(),
+      },
+    } as never,
+    experimental_callHostRpc: async ({ method, hostId }) => {
+      assert.equal(hostId, 'remote');
+      assert.equal(method, 'profiles');
+      return [{ id: 'default', label: 'Default', configDir: null },
+        { id: 'work', label: 'Work', configDir: "/profiles/work's account" }];
+    },
+  });
+  plugin(bb);
+  return { harness, created, exit: () => { exited = true; } };
+}
+const loginAccount = (profile: string) => `claude-profiles:${JSON.stringify(['remote', '~/.claude-profiles/code', profile])}`;
+
+test('usage login starts on the account host, isolates its profile, and reuses an active terminal', async t => {
+  const { harness, created, exit } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  const input = { hostId: 'remote', accountId: loginAccount('work') };
+  const results = await Promise.all([harness.behavior.callRpc('usage.login', input), harness.behavior.callRpc('usage.login', input)]);
+  assert.deepEqual(results, [{ terminalId: 'terminal-login' }, { terminalId: 'terminal-login' }]);
+  assert.equal(created.length, 1);
+  assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
+  assert.equal(created[0]?.start?.mode, 'argv');
+  assert.ok(created[0]?.start?.argv?.includes("CLAUDE_CONFIG_DIR=/profiles/work's account"));
+  assert.deepEqual(created[0]?.start?.argv?.slice(-3), ['claude', 'auth', 'login']);
+  for (const name of authOverrides) assert.ok(created[0]?.start?.argv?.includes(name));
+  exit();
+  await harness.behavior.callRpc('usage.login', input);
+  assert.equal(created.length, 2);
+});
+
+test('native Default login clears profile overrides and uses the host home directory', async t => {
+  const { harness, created } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  await harness.behavior.callRpc('usage.login', { hostId: 'remote', accountId: 'provider-claude-code:["remote","claude-code"]' });
+  assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
+  assert.ok(created[0]?.start?.argv?.includes('CLAUDE_CONFIG_DIR'));
+  assert.ok(!created[0]?.start?.argv?.some(value => value.startsWith('CLAUDE_CONFIG_DIR=')));
+});
+
+test('login rejects stale profiles, another host, and unrelated usage sources before opening a terminal', async t => {
+  const { harness, created } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  for (const [hostId, accountId] of [
+    ['offline', loginAccount('work')], ['remote', loginAccount('missing')],
+    ['remote', 'claude-profiles:["other","~/.claude-profiles/code","work"]'],
+    ['remote', 'claude-profiles:["remote","/old-root","work"]'],
+    ['remote', 'provider-codex:["remote","codex"]'],
+  ]) await assert.rejects(harness.behavior.callRpc('usage.login', { hostId, accountId }));
+  assert.equal(created.length, 0);
 });

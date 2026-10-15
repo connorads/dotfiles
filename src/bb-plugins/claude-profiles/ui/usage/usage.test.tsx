@@ -285,3 +285,65 @@ for (const first of ['amp', 'quotas'] as const) {
     expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(false);
   });
 }
+
+
+test('expired Claude login opens the account-specific sign-in page and offline accounts cannot start login', async () => {
+  const app = await load();
+  const expired = { ...snapshot.machines[0]!.providers[1]!, providerId: 'claude-code', accountLabel: 'Default',
+    id: 'claude-profiles:["host-one","~/.claude-profiles/code","default"]', usage: { status: 'unauthenticated' as const } };
+  const offline = { ...expired, id: 'claude-profiles:["offline","~/.claude-profiles/code","work"]', accountLabel: 'Work' };
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect({ machines: [
+    { ...snapshot.machines[0]!, providers: [expired, { ...expired, id: 'codex', providerId: 'codex', accountLabel: 'Codex' }] },
+    { ...snapshot.machines[0]!, id: 'offline', status: 'disconnected', providers: [offline] },
+  ] }) } });
+  act(() => openUsage());
+  expect((await slot.findByRole('button', { name: 'Sign in again to Work' })).hasAttribute('disabled')).toBe(true);
+  expect(slot.queryByRole('button', { name: 'Sign in again to Codex' })).toBeNull();
+  fireEvent.click(slot.getByRole('button', { name: 'Sign in again to Default' }));
+  expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login', options: {
+    subPath: JSON.stringify({ hostId: 'host-one', accountId: expired.id }),
+  } });
+  await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
+});
+
+const loginTarget = encodeURIComponent(JSON.stringify({ hostId: 'host-one', accountId: 'provider-claude-code:["host-one","claude-code"]' }));
+const terminal = (exitCode: number) => ({ id: 'login-terminal', status: 'exited' as const, exitCode,
+  hostId: 'host-one', environmentId: null, threadId: null, initialCwd: '/home/user', title: 'Claude sign-in',
+  cols: 100, rows: 30, createdAt: 0, updatedAt: 0, lastUserInputAt: null, closeReason: 'process-exit' as const });
+
+for (const success of [true, false]) test(`sign-in ${success ? 'success refreshes usage' : 'failure keeps the error visible without refreshing'}`, async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const refreshes: unknown[] = [];
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }),
+      'usage.inspection': async input => { refreshes.push(input); return inspect(); } },
+    sdk: { terminals: { get: async () => terminal(success ? 0 : 1) } },
+    openTerminal: () => true,
+  });
+  if (success) {
+    await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'));
+    expect(refreshes).toEqual([{ refresh: true }]);
+  } else {
+    expect((await slot.findByRole('alert')).textContent).toContain('Sign-in did not finish');
+    expect(refreshes).toEqual([]);
+    expect(slot.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  }
+  expect(slot.inspection.navigateCalls).toContainEqual({ method: 'experimental_openTerminal', options: { terminalId: 'login-terminal' } });
+});
+
+
+test('a usage refresh failure after sign-in does not offer another login', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }),
+      'usage.inspection': async () => { throw new Error('Quota unavailable'); } },
+    sdk: { terminals: { get: async () => terminal(0) } }, openTerminal: () => true,
+  });
+  await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Open Agent usage to retry the usage refresh.'));
+  expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
+  expect(slot.getByRole('button', { name: 'Agent usage' })).toBeTruthy();
+});
