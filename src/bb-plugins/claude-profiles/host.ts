@@ -6,6 +6,7 @@ import { hostContract, type Profile } from './contracts.ts';
 import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
+import { adoptSession, isSessionId, locateSession, paneSession } from './src/accounts/import.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
 import { collectGrokUsage } from './src/accounts/usage/grok.ts';
@@ -67,6 +68,15 @@ export default experimental_defineHostEntry({
       if (!source) throw new Error('Current profile is outside the configured profile root. Set the correct root before switching.');
       await transferSession(source.configDir ?? join(homedir(), '.claude'), selected.configDir ?? join(homedir(), '.claude'), input.sessionId);
       return { copied: true };
+    },
+    locate: async input => {
+      const dirs = (await profiles(input.root)).map(value => ({ id: value.id, dir: value.configDir ?? join(homedir(), '.claude') }));
+      return isSessionId(input.ref) ? locateSession(dirs, input.ref) : paneSession(dirs, input.ref);
+    },
+    adopt: async input => {
+      const selected = await profile(input.root, input.profileId);
+      await adoptSession(selected.configDir ?? join(homedir(), '.claude'), input.sourceSessionId, input.sessionId);
+      return { adopted: true as const };
     },
     ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
