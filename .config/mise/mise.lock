@@ -612,7 +612,7 @@ version = "1.10.0"
 backend = "npm:apify-cli"
 
 [[tools."npm:bb-app"]]
-version = "0.45.0"
+version = "0.46.0"
 backend = "npm:bb-app"
 
 [tools."npm:bb-app".options]
