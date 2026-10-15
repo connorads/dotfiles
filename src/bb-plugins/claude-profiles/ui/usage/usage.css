@@ -97,7 +97,8 @@
 }
 
 @media (max-width: 767px) {
-  .au-overlay { padding: 0 16px 16px; gap: 0; }
+  .au-overlay { width: 100%; padding: 0 16px 16px; gap: 0; }
+  .au-icon-button { width: 44px; height: 44px; flex-shrink: 0; }
   .au-head { padding: 4px 0 12px; }
   .au-body { padding: 4px 0 8px; }
   .au-foot { display: none; }
@@ -127,7 +128,7 @@
   .au-row-label { grid-area: label; }
   .au-row-meter, .au-resets-held { grid-area: meter; }
   .au-row-value { grid-area: value; }
-  .au-row-detail { grid-area: detail; }
+  .au-row-detail { grid-area: detail; white-space: normal; overflow-wrap: anywhere; }
   .au-resets-expiry { grid-template-areas: none; }
   .au-resets-expiry > :empty { display: none; }
   .au-resets-expiry > :nth-child(2) { grid-column: 1 / 3; }
