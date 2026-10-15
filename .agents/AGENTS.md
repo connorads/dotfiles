@@ -19,8 +19,8 @@ Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head
 
 Do not read or write secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh`, ... - the srt
 `denyRead` list in `~/.config/srt/base.json`); the deny rules and the Bash guard hold even
-under `--dangerously-skip-permissions`. For a deliberate exception, prefix the command with
-`SECRETS_OK=1`.
+under `--dangerously-skip-permissions`. Use `SECRETS_OK=1` only after explicit user approval
+for the named path and operation.
 
 ## Research
 
@@ -31,6 +31,8 @@ Check online for external facts: docs, APIs, tools, dependencies, errors, standa
 Grep `~/git/kb/notes/` alongside the web - my Obsidian vault of compiled notes; `index.md` maps its domains.
 For dependency behaviour, read installed source such as `node_modules`; if absent, clone the repo into `/tmp`.
 Use subagents for broad research so the main context stays focused.
+Default research subagents to read-only work. Assign non-overlapping paths before parallel edits.
+The coordinating agent owns integration and commits. Workers must not commit unless explicitly assigned that responsibility.
 
 ## Communication
 
@@ -91,9 +93,11 @@ Use the `architecture` skill for domain modelling, ports/adapters, error design,
 
 ## Compatibility
 
-Whether external callers exist is the user's call, not the agent's: a change's exposed surface is visible in the code, its consumers are not. Deployed, published, or still present is not evidence of a consumer.
-Default to changing the thing outright and updating every caller in the repo; deleting the old path beats deprecating it.
-When a change alters a surface others could call - exported API, CLI flags, config schema, HTTP route, stored data shape, published package - ask before adding or skipping compatibility. Do not decide it silently either way.
+When changing an exposed surface, establish compatibility requirements with the user before implementation.
+Exposed surfaces include exported APIs, CLI flags, config schemas, HTTP routes, stored data shapes and published packages.
+Ask whether external callers or existing data require compatibility when the session has not established this.
+Do not infer requirements from project age, release status or repository callers alone. Reuse explicit session decisions within their agreed scope.
+When compatibility is unnecessary, change the interface outright, update repository callers and remove obsolete paths.
 Where compatibility is agreed, use expand-migrate-contract with a named deletion condition (`refactoring` skill), and note the decision in the commit message.
 Never add an unrequested shim, legacy flag, or silent fallback.
 
