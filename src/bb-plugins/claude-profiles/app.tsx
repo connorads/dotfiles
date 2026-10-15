@@ -6,8 +6,10 @@ import { open as openPicker } from './ui/picker/store.ts';
 import { ThreadUsage } from './ui/usage/badge.tsx';
 import { UsageOverlay } from './ui/usage/overlay.tsx';
 import { openUsage } from './ui/usage/overlay-store.ts';
+import { LoginPage } from './ui/usage/login.tsx';
 
 export default definePluginApp(app => {
+  app.slots.navPanel({ id: 'claude-login', title: 'Claude sign-in', icon: 'SquareTerminal', path: 'claude-login', component: LoginPage });
   app.composer.customize({
     id: 'claude-account', scopes: ['thread', 'new-thread'],
     actions: [{ id: 'claude-account', component: AccountStatus }],

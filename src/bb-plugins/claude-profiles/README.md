@@ -99,8 +99,7 @@ or sent-message editors and does not change the remembered account.
 configuration.
 
 Profiles come from `~/.claude-profiles/code/` on the thread's host. Plugin
-settings accept another profile root and Claude executable. The plugin does not
-create accounts or sign you in.
+settings accept another profile root and Claude executable.
 
 ### Usage
 
@@ -132,6 +131,15 @@ Each timed window compares use with even spending across the window.
 Amber marks 1.2× pace or 70% used. Red marks 1.4× pace, 90% used or a full
 window. A reading becomes stale after 4% of its shortest window, with a
 15-minute minimum. Stale bars use stripes and omit projections.
+
+Expired or signed-out Claude accounts show **Sign in again**. The button opens
+**Claude sign-in**, a BB page with a terminal on that account's machine. Complete
+the native browser login there. Default uses the machine's native configuration;
+named accounts use their profile directory. Concurrent clicks reuse the active
+login terminal. Offline accounts require their machine to reconnect first.
+Successful login refreshes usage and reopens the overlay. Failed login keeps the
+terminal available with **Try again**. The **Claude sign-in** sidebar page also
+provides **Agent usage** to return to the account list.
 
 The overlay reads BB's built-in **Provider usage** plugin. Enable it for
 providers other than Claude.
