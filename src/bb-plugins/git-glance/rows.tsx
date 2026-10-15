@@ -13,7 +13,7 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
   inline?: boolean;
   /** Set when the row is new or changed in this update; a new value replays the highlight. */
   flash?: string | null;
-  /** A hold-to-confirm action shown over the row's right edge; `x` on the row presses it. */
+  /** A hold-to-confirm action shown over the row's right edge; `d` on the row presses it. */
   action?: ReactNode;
 }) {
   const { dir, name } = splitPath(file.path);
@@ -28,7 +28,7 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
       onFocus={inline || directory ? undefined : onToggle}
       title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
       onKeyDown={event => {
-        if (event.key !== 'x' || !action || event.metaKey || event.ctrlKey || event.altKey) return;
+        if (event.key !== 'd' || event.repeat || !action || event.metaKey || event.ctrlKey || event.altKey) return;
         event.preventDefault(); event.stopPropagation();
         event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.gg-row-actions .gg-hold')?.click();
       }}>

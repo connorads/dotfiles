@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
 import type { Change } from './contracts.ts';
 import { diffBlocks } from './src/format.ts';
@@ -34,13 +34,26 @@ export function CopyIcon({ done }: { done: boolean }) {
 
 /**
  * A destructive action that needs intent: hold the pointer for the fill to
- * complete, or press twice from the keyboard. Releasing early cancels.
+ * complete, or click or press twice. Releasing early stops the hold.
  */
 export function HoldButton({ icon, label, confirmLabel, onConfirm, disabled = false }: {
   icon: string; label: string; confirmLabel: string; onConfirm: () => void; disabled?: boolean;
 }) {
   const [holding, setHolding] = useState(false);
   const [armed, setArmed] = useState(false);
+  const held = useRef(false);
+  const confirm = useRef(onConfirm);
+  useEffect(() => { confirm.current = onConfirm; }, [onConfirm]);
+  useEffect(() => {
+    if (!holding || disabled) return;
+    const id = setTimeout(() => {
+      held.current = true;
+      setHolding(false);
+      setArmed(false);
+      confirm.current();
+    }, 2000);
+    return () => clearTimeout(id);
+  }, [holding, disabled]);
   useEffect(() => {
     if (!armed) return;
     const id = setTimeout(() => setArmed(false), 3000);
@@ -48,16 +61,14 @@ export function HoldButton({ icon, label, confirmLabel, onConfirm, disabled = fa
   }, [armed]);
   const release = () => setHolding(false);
   return <button type="button" className="gg-hold" data-holding={holding || undefined} data-armed={armed || undefined}
-    disabled={disabled} aria-label={armed ? confirmLabel : label} title={armed ? confirmLabel : `Hold to ${label.toLowerCase()}`}
-    onPointerDown={event => { if (event.button === 0) { event.currentTarget.setPointerCapture(event.pointerId); setHolding(true); } }}
+    disabled={disabled} aria-label={armed ? confirmLabel : label} title={armed ? confirmLabel : `Hold or press twice to ${label.toLowerCase()}`}
+    onPointerDown={event => { if (event.button === 0) { held.current = false; event.currentTarget.setPointerCapture(event.pointerId); setHolding(true); } }}
     onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
-    onClick={event => {
-      // Pointer clicks act only through the hold; detail 0 is a keyboard click.
-      if (event.detail !== 0) return;
+    onClick={() => {
+      if (held.current) { held.current = false; return; }
       if (armed) { setArmed(false); onConfirm(); } else setArmed(true);
     }}>
-    <span className="gg-hold-fill" aria-hidden
-      onTransitionEnd={event => { if (event.propertyName === 'clip-path' && holding) { setHolding(false); onConfirm(); } }} />
+    <span className="gg-hold-fill" aria-hidden />
     <Icon name={icon} className="size-3.5" />
     <span>{armed ? confirmLabel : label}</span>
   </button>;
