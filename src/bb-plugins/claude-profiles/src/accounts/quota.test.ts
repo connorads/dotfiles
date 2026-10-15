@@ -11,8 +11,9 @@ test('preserves quota windows including model-specific limits', () => {
   assert.deepEqual(result.windows.map(w => w.usedPercent), [12, 21, 4]);
 });
 test('does not invent zero usage when Claude returns no recognised limits', () => {
-  assert.equal(parseUsage({ rate_limits_available: true, rate_limits: {} }).status, 'unavailable');
-  assert.equal(parseUsage({ rate_limits_available: false }).status, 'unavailable');
+  for (const input of [{ rate_limits_available: true, rate_limits: {} }, { rate_limits_available: false }]) {
+    assert.partialDeepStrictEqual(parseUsage(input), { status: 'ok', windows: [], message: 'No limits reported' });
+  }
 });
 test('rejects invalid percentages without breaking other windows', () => {
   const result = parseUsage({ rate_limits_available: true, rate_limits: {
@@ -23,7 +24,7 @@ test('rejects invalid percentages without breaking other windows', () => {
 test('does not present paid extra usage as a subscription quota window', () => {
   assert.equal(parseUsage({ rate_limits_available: true, rate_limits: {
     extra_usage: { utilization: 100, is_enabled: false },
-  } }).status, 'unavailable');
+  } }).windows.length, 0);
 });
 test('presents a dollar allowance as credits, not a codename rate limit', () => {
   const result = parseUsage({ rate_limits_available: true, rate_limits: {

@@ -14,11 +14,19 @@ test('maps CLI quota into the BB usage contract without inventing account identi
     assert.equal(result.usage.windows[0]?.model, 'sonnet');
   }
 });
-test('unavailable quota remains an error with the last measurement timestamp', () => {
-  const result = measurement({ status: 'unavailable', windows: [], observedAt: 123, message: 'Not returned' });
+test('failed quota remains an error with the last measurement timestamp', () => {
+  const result = measurement({ status: 'error', windows: [], observedAt: 123, message: 'Timed out' });
   assert.equal(result.usage.status, 'error');
   assert.equal(result.observedAt, 123);
 });
+// BB caches every status but error, so a signed-out profile must not travel as one.
+for (const status of ['unauthenticated', 'not_installed'] as const) {
+  test(`${status} quota reaches BB as ${status}`, () => {
+    const result = measurement({ status, windows: [], observedAt: null, message: 'Sign in' });
+    assert.equal(measurementSchema.safeParse(result).success, true);
+    assert.equal(result.usage.status, status);
+  });
+}
 test('resource IDs preserve host, profile root and profile names without delimiter ambiguity', () => {
   assert.deepEqual(decodeResourceId(JSON.stringify(['host-1', '/profiles', 'account:two'])), ['host-1', '/profiles', 'account:two']);
   assert.throws(() => decodeResourceId('["host-1"]'), /Invalid/);

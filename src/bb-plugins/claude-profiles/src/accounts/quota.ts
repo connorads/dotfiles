@@ -6,7 +6,7 @@ export const windowSchema = z.object({
   cost: z.object({ usedUsdCents: z.number().nonnegative(), limitUsdCents: z.number().positive() }).nullable(),
 });
 export const usageSchema = z.object({
-  status: z.enum(['ok', 'unavailable', 'unauthenticated', 'error']),
+  status: z.enum(['ok', 'not_installed', 'unauthenticated', 'error']),
   windows: z.array(windowSchema), message: z.string().nullable(), observedAt: z.number().nullable(),
   account: accountSchema.nullable().optional(),
 });
@@ -35,6 +35,6 @@ export function parseUsage(input: unknown): Usage {
         resetsAt: window.data.resets_at ?? null, cost });
     }
   }
-  return windows.length ? { status: 'ok', windows, message: null, observedAt: Date.now() }
-    : { status: 'unavailable', windows, message: 'Claude did not return quota windows for this profile.', observedAt: null };
+  // A signed-out profile also answers with no windows; the caller tells the two apart with the login status.
+  return { status: 'ok', windows, message: windows.length ? null : 'No limits reported', observedAt: Date.now() };
 }

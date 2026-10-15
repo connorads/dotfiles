@@ -61,7 +61,7 @@ function render(initial = [first, second], error: string | null = null, account?
         ? { status: 'ok', message: null, observedAt: 0, windows: [
           { id: 'five_hour', label: 'Five hours', usedPercent: 12.4, resetsAt: null, cost: null },
           { id: 'seven_day', label: 'Seven days', usedPercent: 30, resetsAt: null, cost: null }] }
-        : { status: 'unavailable', message: 'No quota', observedAt: null, windows: [] },
+        : { status: 'ok', message: 'No limits reported', observedAt: null, windows: [] },
       'usage.header': () => { throw new Error('The picker must not request usage.'); },
       'usage.amp': () => { throw new Error('Unused Amp usage'); },
       'usage.inspection': () => { throw new Error('The picker must not request usage.'); },
