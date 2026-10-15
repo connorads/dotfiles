@@ -6,7 +6,7 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - pull, push and fetch, with git's own progress and a hint when one fails
 - a branch switcher on the branch name: filter, then switch, or track a remote branch
 - stashes, each openable for its files, with apply, pop and hold-to-drop
-- discard for unstaged edits and untracked paths, held or pressed twice
+- discard for unstaged edits and untracked paths, held, clicked twice or pressed twice
 - branch, upstream, stash count and any merge or rebase in progress
 - conflicted, staged, unstaged and untracked files with line counts
 - an inline diff for each file, in BB's diff viewer
@@ -19,7 +19,7 @@ default checkout. That screen shows no chip.
 
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, `l` opens
-lazygit, and `q` or `esc` closes. On a file row `x` arms discard and a second `x` confirms; on a
+lazygit, and `q` or `esc` closes. On a file row `d` arms discard and a second `d` confirms; on a
 stash row `a` applies and `g` pops.
 
 `z` expands to a large two-pane view, and the size is remembered. The lists sit
