@@ -1,0 +1,32 @@
+{
+  "name": "bb-plugin-mobile-home-spacing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.37"
+  },
+  "bb": {
+    "name": "Mobile Home Spacing",
+    "description": "Fill the compact start screen with recent threads above the composer.",
+    "branding": {
+      "icon": "AlignStartVertical"
+    },
+    "server": "./server.ts",
+    "app": "./app.ts",
+    "skills": []
+  },
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@playwright/test": "1.64.0",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -135,3 +135,8 @@ The arrow opens the system browser. Link text follows BB's browser preference.
 
 [Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat
 message into the thread's terminal. You press Enter to run them.
+
+## Mobile start screen
+
+[Mobile Home Spacing](mobile-home-spacing/README.md) places recent threads below
+the compact toolbar and fills the space above the pinned composer.
