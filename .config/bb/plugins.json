@@ -9,6 +9,7 @@
   "handsfree": true,
   "lazygit": true,
   "machine-health": true,
+  "mobile-home-spacing": true,
   "preferences": true,
   "repo-tasks": true,
   "run-in-terminal": true,
