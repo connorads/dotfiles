@@ -46,6 +46,13 @@ Use `bb automation-backup run` after changing a task for an immediate backup.
 Do not copy prompts or snapshots into public dotfiles. BB owns live task settings;
 editing a snapshot does not change a task.
 
+## Workflows
+
+BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
+Enable it with `bb plugin enable workflows`. Verify its state with `bb plugin list --json`.
+BB stores plugin enablement locally; dotfiles does not track that state.
+Use the supplied `workflows` skill for authoring, validation, execution and inspection.
+
 ## Local plugins
 
 Plugin source lives in [src/bb-plugins](../../src/bb-plugins/README.md), a shared pnpm workspace.
