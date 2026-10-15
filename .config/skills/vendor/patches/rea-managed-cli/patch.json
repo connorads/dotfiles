@@ -1,0 +1,6 @@
+{
+  "reason": "REA uses the mise-owned CLI; MCP registration, runtime package downloads and self-updates are disabled.",
+  "files": [
+    ".agents/skills/reverse-engineer-anything/SKILL.md"
+  ]
+}

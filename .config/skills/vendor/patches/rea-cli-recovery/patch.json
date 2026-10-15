@@ -1,0 +1,6 @@
+{
+  "reason": "REA recovery checks the managed CLI and task prerequisites without configuring MCP.",
+  "files": [
+    ".agents/skills/reverse-engineer-anything/references/connection-and-recovery.md"
+  ]
+}

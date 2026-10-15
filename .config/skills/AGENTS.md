@@ -441,6 +441,11 @@ procedure before replacing vetted content.
   and restore its `LICENSE` from the recorded upstream revision. The lock hash
   describes the pristine upstream skill, before patches and these additions.
 
+- `reverse-engineer-anything` is catalogue-only and uses the mise-owned `rea` CLI.
+  Keep its upstream tag aligned with the exact `npm:rea-agents` version in mise.
+  The `rea-managed-cli` and `rea-cli-recovery` patches disable MCP setup,
+  package-runner downloads and self-updates. Native analysis requires an existing engine.
+
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
   dotfiles)` in the file). Two classes: **posture** patches strip upstream directives that
   make agents self-install or refresh skills at task time - which bypasses pin-and-review

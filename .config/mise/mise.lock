@@ -675,6 +675,10 @@ backend = "npm:playwright"
 version = "0.15.7"
 backend = "npm:portless"
 
+[[tools."npm:rea-agents"]]
+version = "6.4.0"
+backend = "npm:rea-agents"
+
 [[tools."npm:remobi"]]
 version = "1.2.1"
 backend = "npm:remobi"
