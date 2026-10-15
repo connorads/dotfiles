@@ -1,1 +1,8 @@
-{}
+{
+  "provider-claude-code": {
+    "memoryEnabled": false
+  },
+  "provider-codex": {
+    "memoryEnabled": false
+  }
+}
