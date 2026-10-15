@@ -70,12 +70,12 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       onConfirm={() => onRun({ kind: 'discard', path, area })} />;
   };
   const running = op?.status === 'running' ? op : null;
-  const fetched = repo.fetchedAt ? age(repo.fetchedAt / 1000, now) : null;
+  const fetched = state.fetch.lastSucceededAt !== null ? age(state.fetch.lastSucceededAt / 1000, now) : null;
+  const fetchError = state.fetchRequestError ?? state.fetch.failure?.message ?? null;
   // A user's failure stays until dismissed; a success fades after a few seconds.
-  const failure = op?.status === 'failed' && op.origin === 'user' && dismissed !== op.id ? op : null;
+  const failure = op?.status === 'failed' && op.origin === 'user' && op.request.kind !== 'fetch' && dismissed !== op.id ? op : null;
   const success = op?.status === 'succeeded' && op.origin === 'user' && now - op.finishedAt < 6000 ? op : null;
   const fresh = useFresh(repo);
-  const autoFailed = op?.status === 'failed' && op.origin === 'auto' ? op : null;
 
   return <>
     <header className="gg-header" data-tone={tone}>
@@ -113,6 +113,15 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
           <CopyIcon done={copied === branch.oid} />{copied === branch.oid ? 'Copied' : branch.oid.slice(0, 7)}
         </button>}
       </div>
+      {fetchError && repo.remotes.length > 0 && <div className="gg-banner gg-failure" role="alert">
+        <Icon name="AlertTriangle" className="size-4" />
+        <div className="gg-failure-body">
+          <strong>Couldn’t check the remote.</strong> Counts use cached remote data.
+          {state.fetch.failure && <p>{hints[state.fetch.failure.reason]}</p>}
+          <button type="button" className="gg-ghost" disabled={op?.status === 'running'} onClick={() => onRun({ kind: 'fetch' })}>Retry fetch</button>
+          <details><summary>Error details</summary><pre>{fetchError}</pre></details>
+        </div>
+      </div>}
       {repo.operation && <div className="gg-banner" role="status"><Icon name="AlertTriangle" className="size-4" />
         <span><strong>{operationNames[repo.operation]} in progress.</strong> Resolve conflicts, then continue or abort in lazygit.</span></div>}
       {actionError && <div className="gg-banner" role="alert"><Icon name="CircleX" className="size-4" /><span>{actionError}</span></div>}
@@ -201,11 +210,11 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
 
     <footer className="gg-footer">
       <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
-      <span className="gg-live" data-state={state.error || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
-        title={state.error ?? autoFailed?.failure.message ?? 'Updates when files or refs change'}>
+      <span className="gg-live" data-state={state.error || fetchError || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
+        title={state.error ?? fetchError ?? 'Watches local files and refs. Fetch checks the remote.'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />
         {state.error ? 'Out of date' : connection !== 'connected' ? 'Reconnecting…'
-          : autoFailed ? 'Fetch failed' : running ? `${describe(running.request).doing}…` : 'Live'}
+          : fetchError ? 'Fetch failed' : running ? `${describe(running.request).doing}…` : 'Watching files'}
       </span>
     </footer>
   </>;

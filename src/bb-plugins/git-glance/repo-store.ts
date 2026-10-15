@@ -3,13 +3,15 @@
 // operation updates then arrive over realtime instead of being polled.
 import { useEffect, useSyncExternalStore } from 'react';
 import type { PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { OpMessage, OpState, Snapshot, SnapshotMessage, rpcContract } from './contracts.ts';
+import type { FetchHealth, OpMessage, OpState, Snapshot, SnapshotMessage, rpcContract } from './contracts.ts';
 
 export interface RepoState {
   root: string | null;
   selected: boolean;
   snapshot: Snapshot | null;
   op: OpState | null;
+  fetch: FetchHealth;
+  fetchRequestError: string | null;
   error: string | null;
   updatedAt: number | null;
 }
@@ -27,7 +29,7 @@ interface Entry {
 const renewMs = 30_000;
 const clientId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random()).slice(2);
 const entries = new Map<string, Entry>();
-const empty: RepoState = { root: null, selected: false, snapshot: null, op: null, error: null, updatedAt: null };
+const empty: RepoState = { root: null, selected: false, snapshot: null, op: null, fetch: { lastSucceededAt: null, failure: null }, fetchRequestError: null, error: null, updatedAt: null };
 
 function entry(threadId: string) {
   let found = entries.get(threadId);
@@ -47,9 +49,11 @@ export async function renew(threadId: string) {
   if (!item?.rpc || item.holders === 0) return;
   const revision = ++item.revision;
   try {
-    const { root, selected, snapshot, op } = await item.rpc.call('watch', { threadId, clientId });
+    const { root, selected, snapshot, op, fetch } = await item.rpc.call('watch', { threadId, clientId });
     if (revision !== item.revision || item.holders === 0) return;
-    set(threadId, { root, selected, snapshot, op, error: null, updatedAt: Date.now() });
+    set(threadId, { root, selected, snapshot, op, fetch,
+      fetchRequestError: root !== item.state.root || (fetch.lastSucceededAt ?? 0) > (item.state.fetch.lastSucceededAt ?? 0) ? null : item.state.fetchRequestError,
+      error: null, updatedAt: Date.now() });
   } catch (cause) { if (revision === item.revision && item.holders > 0) set(threadId, { error: message(cause) }); }
 }
 export function renewAll() { for (const threadId of entries.keys()) void renew(threadId); }
@@ -59,14 +63,18 @@ export function receiveSnapshot(payload: unknown) {
   for (const threadId of threadIds ?? []) if (entries.get(threadId)?.holders && entries.get(threadId)?.state.root === root) set(threadId, { snapshot, error: null, updatedAt: Date.now() });
 }
 export function receiveOp(payload: unknown) {
-  const { threadIds, root, op } = payload as OpMessage;
+  const { threadIds, root, op, fetch } = payload as OpMessage;
   for (const threadId of threadIds ?? []) {
     if (entries.get(threadId)?.state.root !== root) continue;
     const current = entries.get(threadId)?.state.op;
     // Ignore an older operation's late update once a newer one has started.
     if (current && current.id !== op.id && current.startedAt > op.startedAt) continue;
-    if (entries.get(threadId)?.holders) set(threadId, { op });
+    if (entries.get(threadId)?.holders) set(threadId, { op, fetch, ...(op.request.kind === 'fetch' && op.status === 'succeeded' ? { fetchRequestError: null } : {}) });
   }
+}
+
+export function fetchRequestFailed(threadId: string, root: string, cause: unknown) {
+  if (entry(threadId).state.root === root) set(threadId, { fetchRequestError: message(cause) });
 }
 
 export function useRepo(threadId: string, rpc: Rpc): RepoState {

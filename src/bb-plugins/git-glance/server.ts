@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
-import { hostContract, hostSignals, rpcContract, subjectProject, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
+import { hostContract, hostSignals, rpcContract, subjectProject, type FetchHealth, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
 import { checkoutKey, createLeases, type Checkout } from './src/leases.ts';
 import { finish, progress, start, type OpState } from './src/ops.ts';
 
@@ -12,7 +12,8 @@ const runTimeoutMs = 3 * 60_000 + 10_000;
 export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
   const leases = createLeases(leaseTtlMs);
-  const snapshots = new Map<string, Snapshot>();
+  const fetches = new Map<string, FetchHealth>();
+  const fetchHealth = (target: Checkout): FetchHealth => fetches.get(checkoutKey(target)) ?? { lastSucceededAt: null, failure: null };
   const selecting = new Set<string>();
   const ops = new Map<string, { state: OpState; abort: AbortController | null }>();
   const warn = (message: string, cause?: unknown) =>
@@ -42,14 +43,19 @@ export default function plugin(bb: BbPluginApi) {
     return target;
   }
   function publishSnapshot(target: Checkout, snapshot: Snapshot) {
-    snapshots.set(checkoutKey(target), snapshot);
     const threadIds = leases.threads(target);
     if (threadIds.length) bb.realtime.publish('snapshot', { threadIds, root: target.root, snapshot } satisfies SnapshotMessage);
   }
   function setOp(target: Checkout, state: OpState, abort: AbortController | null) {
     ops.set(checkoutKey(target), { state, abort });
+    if (state.request.kind === 'fetch' && state.status !== 'running') {
+      const previous = fetchHealth(target);
+      fetches.set(checkoutKey(target), state.status === 'succeeded'
+        ? { lastSucceededAt: state.finishedAt, failure: null }
+        : { ...previous, failure: state.failure });
+    }
     const threadIds = leases.threads(target);
-    if (threadIds.length) bb.realtime.publish('op', { threadIds, root: target.root, op: state } satisfies OpMessage);
+    if (threadIds.length) bb.realtime.publish('op', { threadIds, root: target.root, op: state, fetch: fetchHealth(target) } satisfies OpMessage);
   }
   const watch = (target: Checkout) => host.call('watch', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000 });
 
@@ -68,7 +74,6 @@ export default function plugin(bb: BbPluginApi) {
   });
   const sweep = setInterval(() => {
     for (const target of leases.sweep(Date.now())) {
-      snapshots.delete(checkoutKey(target));
       host.call('unwatch', { root: target.root }, { hostId: target.hostId }).catch(cause => warn(`Unwatching ${target.root} failed`, cause));
     }
   }, 20_000);
@@ -91,29 +96,25 @@ export default function plugin(bb: BbPluginApi) {
         const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path }, { hostId: base.hostId })) };
         await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
         for (const emptied of leases.move(threadId, target)) {
-          snapshots.delete(checkoutKey(emptied));
           await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
         }
-        const snapshot = await watch(target);
-        snapshots.set(checkoutKey(target), snapshot);
+        await watch(target);
         bb.realtime.publish('repository', { threadId });
         return {};
       } finally { selecting.delete(threadId); }
     },
     watch: async ({ threadId, clientId }) => {
       const target = await checkout(threadId);
-      if (!target) return { root: null, selected: false, snapshot: { kind: 'none' as const }, op: null };
+      if (!target) return { root: null, selected: false, snapshot: { kind: 'none' as const }, op: null, fetch: { lastSucceededAt: null, failure: null } };
       leases.touch(target, `${clientId}:${threadId}`, threadId, Date.now());
       const snapshot = await watch(target);
-      snapshots.set(checkoutKey(target), snapshot);
       const base = await environment(threadId);
-      return { root: target.root, selected: base !== null && checkoutKey(target) !== checkoutKey(base), snapshot, op: ops.get(checkoutKey(target))?.state ?? null };
+      return { root: target.root, selected: base !== null && checkoutKey(target) !== checkoutKey(base), snapshot, op: ops.get(checkoutKey(target))?.state ?? null, fetch: fetchHealth(target) };
     },
     unwatch: async ({ threadId, clientId }) => {
       const target = await checkout(threadId);
       const emptied = target && leases.release(target, `${clientId}:${threadId}`);
       if (emptied) {
-        snapshots.delete(checkoutKey(emptied));
         await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
       }
       return {};
@@ -134,10 +135,9 @@ export default function plugin(bb: BbPluginApi) {
       const target = await required(threadId);
       if (selecting.has(threadId) || target.root !== root) throw new Error('Repository changed. Refresh Git status before running an action.');
       const key = checkoutKey(target);
-      const snapshot = snapshots.get(key);
       const current = ops.get(key)?.state ?? null;
       const id = randomUUID();
-      const state = start(current, { id, request, origin, startedAt: Date.now() }, snapshot?.kind === 'none' ? null : snapshot?.fetchedAt ?? null);
+      const state = start(current, { id, request, origin, startedAt: Date.now() }, fetchHealth(target).lastSucceededAt);
       if (!state) return { op: current };
       const abort = new AbortController();
       setOp(target, state, abort);

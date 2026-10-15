@@ -61,6 +61,12 @@ flowchart LR
 - Push publishes a branch with no upstream to `origin`, or to the only remote.
 - Opening the pop-up fetches, unless a fetch or other operation ran in the last
   two minutes.
+- Counts use cached remote data. The pop-up shows when Git Glance last fetched
+  successfully in this server session. Before that, it shows **Remote not checked**.
+- Failed automatic and manual fetches warn in the header and beside the sync
+  controls, with **Retry fetch** and error details. The warning survives local
+  operations and clears after a successful fetch.
+- **Watching files** describes local file and ref updates, separately from remote checks.
 - One operation runs per checkout. Click the running button to cancel it.
 - Git never prompts. Credential helpers and a running ssh-agent work; anything
   that needs a prompt fails with a hint to authenticate in a terminal.

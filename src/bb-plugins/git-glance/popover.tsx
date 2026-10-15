@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, rpcContract } from './contracts.ts';
-import { renew, useRepo } from './repo-store.ts';
+import { fetchRequestFailed, renew, useRepo } from './repo-store.ts';
 import { FolderPicker } from './folder-picker.tsx';
 import { RepoView } from './repo-view.tsx';
 import { available } from './sync-bar.tsx';
@@ -43,14 +43,17 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     opened.current = true;
     dialog.current?.querySelector<HTMLElement>('[data-row]')?.focus({ preventScroll: true });
     if (state.root && state.snapshot.kind !== 'none' && state.snapshot.remotes.length > 0) {
-      rpc.call('run', { threadId, root: state.root, request: { kind: 'fetch' }, origin: 'auto' }).catch(() => {});
+      rpc.call('run', { threadId, root: state.root, request: { kind: 'fetch' }, origin: 'auto' }).catch(cause => fetchRequestFailed(threadId, state.root!, cause));
     }
   }, [state.snapshot, state.root, rpc, threadId]);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const runOp = useCallback((request: OpRequest) => {
     if (!state.root) return;
     setActionError(null);
-    rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).catch(cause => setActionError(message(cause)));
+    rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).catch(cause => {
+      if (request.kind === 'fetch') fetchRequestFailed(threadId, state.root!, cause);
+      else setActionError(message(cause));
+    });
   }, [rpc, threadId, state.root]);
   const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError(message(cause))); }, [rpc, threadId, state.root]);
 

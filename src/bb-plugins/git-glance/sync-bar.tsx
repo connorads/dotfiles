@@ -71,6 +71,8 @@ export function SyncBar({ repo, op, fetched, onSync, onCancel }: {
     {button({ kind: 'push', icon: 'ArrowUp', label: branch.upstream || repo.remotes.length === 0 ? 'Push' : 'Publish',
       count: branch.upstream ? branch.ahead : null, tone: branch.ahead > 0 || (!branch.upstream && repo.remotes.length > 0) ? 'ahead' : 'quiet' })}
     {button({ kind: 'fetch', icon: 'ArrowReloadHorizontal', label: 'Fetch', count: null, tone: 'quiet' })}
-    {fetched && !running && <span className="gg-fetched" title="Last fetch">{fetched === 'now' ? 'just now' : `${fetched} ago`}</span>}
+    {repo.remotes.length > 0 && <span className="gg-fetched" title="Counts use cached remote data. Fetch checks for changes.">
+      {fetched ? `Remote checked ${fetched === 'now' ? 'just now' : `${fetched} ago`}` : 'Remote not checked'}
+    </span>}
   </div>;
 }
