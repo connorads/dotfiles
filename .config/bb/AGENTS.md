@@ -50,7 +50,14 @@ editing a snapshot does not change a task.
 
 BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
 Enable it with `bb plugin enable workflows`. Verify its state with `bb plugin list --json`.
-BB stores plugin enablement locally; dotfiles does not track that state.
+Desired plugin states live in [plugins.json](./plugins.json).
+Run `bb-plugins check` to inspect differences and `bb-plugins apply` to apply them.
+Unlisted plugins retain their current state. Removing an entry stops managing it.
+BB must be running. The command requires zsh and jq, and honours `BB_CLI`.
+Exit codes are 0 for matching state, 1 for drift during check, and 2 for errors.
+Apply validates every listed plugin before writing, skips unchanged states and verifies the result.
+Changes are sequential. On failure, earlier changes remain applied; rerun to finish.
+The command manages enablement only; install missing plugins separately.
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
 
 ## Local plugins
