@@ -285,9 +285,30 @@ bb claude-profiles switch THREAD_ID work
 bb claude-profiles usage THREAD_ID work
 bb claude-profiles overview [--refresh]
 bb claude-profiles header THREAD_ID
+bb claude-profiles import SESSION_ID|TMUX_PANE
 ```
 
 `overview` and `header` print the usage overlay and header data as JSON.
+
+### Import
+
+`import` continues a Claude Code session from outside BB, such as one in a
+tmux pane, in a new BB thread. BB has no API to bind a thread to an existing
+session, so the import works in 5 steps:
+
+1. Find the source session. A pane target such as `tri:5.2` resolves through
+   the pane's processes and `sessions/<pid>.json`. The session must be idle.
+2. Spawn a thread in the BB environment whose path is the session's working
+   directory. Its stub turn replies `OK`. The title is the session's AI title.
+3. Switch the thread to the profile that holds the source transcript.
+4. Copy the source transcript and its session directory over the stub's
+   session, with the session ID rewritten.
+5. The next message resumes with the full history.
+
+The source is only read, so the original session can continue. The two
+histories then diverge. BB renders the timeline from its own events, so the
+imported history is in Claude's context but not in the BB timeline. On failure
+the error names the stub thread. Archive it and retry.
 
 ## Scope
 

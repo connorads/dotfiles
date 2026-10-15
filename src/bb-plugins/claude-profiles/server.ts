@@ -173,6 +173,33 @@ export default function plugin(bb: BbPluginApi) {
       return value;
     } finally { switching.delete(threadId); }
   }
+  // BB has no API to bind a thread to an existing session, so a stub thread's own session takes over the history.
+  async function importSession(ref: string) {
+    const hostId = await localHostId();
+    if (!hostId) throw new Error('No connected machine to import on.');
+    const config = await settings.get();
+    const source = await host.call('locate', { root: config.profileRoot, ref }, { hostId });
+    const environment = (await bb.sdk.environments.list({ hostId, path: source.cwd, status: 'ready' }))
+      .sort((a, b) => Number(b.environmentProviderId === 'project-checkout') - Number(a.environmentProviderId === 'project-checkout'))[0];
+    if (!environment) throw new Error(`No ready BB environment at ${source.cwd}. Add the project to BB first.`);
+    const thread = await bb.sdk.threads.spawn({ projectId: environment.projectId, providerId: 'claude-code', title: source.title,
+      environment: { type: 'reuse', environmentId: environment.id },
+      prompt: 'This thread imports an existing Claude Code session. Reply with only: OK' });
+    const failed = (step: string, error: unknown) =>
+      new Error(`Import into ${thread.id} stopped at ${step}: ${error instanceof Error ? error.message : String(error)}`);
+    try {
+      await bb.sdk.threads.wait({ threadId: thread.id, status: 'idle', timeoutMs: 300_000 });
+      await select(thread.id, source.profileId);
+    } catch (error) { throw failed('the stub turn', error); }
+    const [identity] = await bb.sdk.threads.events.list({ threadId: thread.id, types: ['thread/identity'], order: 'desc', limit: '1' });
+    if (identity?.type !== 'thread/identity') throw failed('the session ID', 'the stub recorded none');
+    try {
+      await host.call('adopt', { root: config.profileRoot, profileId: source.profileId,
+        sourceSessionId: source.sessionId, sessionId: identity.data.providerThreadId }, { hostId });
+    } catch (error) { throw failed('the transcript copy', error); }
+    return { threadId: thread.id, title: source.title, profileId: source.profileId,
+      sourceSessionId: source.sessionId, sessionId: identity.data.providerThreadId };
+  }
   async function localProfiles() {
     const hostId = await localHostId();
     if (!hostId) return null;
@@ -255,7 +282,8 @@ export default function plugin(bb: BbPluginApi) {
     },
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
-  const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD';
+  const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
+    + ' | import SESSION-ID|TMUX-PANE';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
@@ -264,6 +292,10 @@ export default function plugin(bb: BbPluginApi) {
           if (!valid) throw new Error(usageText);
           const value = argv[0] === 'overview' ? await usageReader.overview(argv.length === 2) : await usageReader.header(argv[1]!);
           return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };
+        }
+        if (argv[0] === 'import') {
+          if (argv.length !== 2) throw new Error(usageText);
+          return { exitCode: 0, stdout: JSON.stringify(await importSession(argv[1]!), null, 2) + '\n' };
         }
         const [command, threadId, profileId, ...extra] = argv;
         if (extra.length || !threadId || (command !== 'list' && !profileId)) throw new Error(usageText);
