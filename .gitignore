@@ -215,7 +215,7 @@
 /src/bb-plugins/**/node_modules
 /src/bb-plugins/**/dist/
 /src/bb-plugins/.pnpm-store/
-/src/bb-plugins/.playwright-cli/
+/src/bb-plugins/**/.playwright-cli/
 /src/bb-plugins/spikes/
 
 # skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
