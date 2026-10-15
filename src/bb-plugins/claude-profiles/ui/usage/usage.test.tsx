@@ -287,10 +287,11 @@ for (const first of ['amp', 'quotas'] as const) {
 }
 
 
-test('expired Claude login opens the account-specific sign-in page and offline accounts cannot start login', async () => {
+test.each(['expired', 'unauthenticated'] as const)('%s Claude login shows one action and offline accounts retain their CLI hint', async status => {
   const app = await load();
   const expired = { ...snapshot.machines[0]!.providers[1]!, providerId: 'claude-code', accountLabel: 'Default',
-    id: 'claude-profiles:["host-one","~/.claude-profiles/code","default"]', usage: { status: 'unauthenticated' as const } };
+    id: 'claude-profiles:["host-one","~/.claude-profiles/code","default"]', usage: { status },
+    signInHint: 'Run `claude` on the machine to sign in.', expiredHint: 'Your Claude session expired. Run `claude`, then reload.' };
   const offline = { ...expired, id: 'claude-profiles:["offline","~/.claude-profiles/code","work"]', accountLabel: 'Work' };
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect({ machines: [
     { ...snapshot.machines[0]!, providers: [expired, { ...expired, id: 'codex', providerId: 'codex', accountLabel: 'Codex' }] },
@@ -299,6 +300,10 @@ test('expired Claude login opens the account-specific sign-in page and offline a
   act(() => openUsage());
   expect((await slot.findByRole('button', { name: 'Sign in again to Work' })).hasAttribute('disabled')).toBe(true);
   expect(slot.queryByRole('button', { name: 'Sign in again to Codex' })).toBeNull();
+  const online = slot.getByRole('region', { name: 'Claude · Default' });
+  expect(online.textContent).toContain(status === 'expired' ? 'Session expired' : 'Not signed in');
+  expect(online.textContent).not.toContain('Run `claude`');
+  expect(slot.getByRole('region', { name: 'Claude · Work' }).textContent).toContain('Run `claude`');
   fireEvent.click(slot.getByRole('button', { name: 'Sign in again to Default' }));
   expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login', options: {
     subPath: JSON.stringify({ hostId: 'host-one', accountId: expired.id }),

@@ -48,7 +48,8 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
     && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'));
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
-  const message = usage === null ? 'Usage not reported'
+  const message = canLogin && connected ? (usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
+    : usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
     : usage.status === 'error' ? usage.message
