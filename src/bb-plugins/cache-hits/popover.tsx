@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { DotTone } from '@bb-plugins/chip';
 import { expiresAt, hitRatio, type CacheState, type HistoryEntry } from './src/cache.ts';
-import { clock, gap, lifetime, percent, timeOfDay, tokens, writeMultiplier } from './src/format.ts';
+import { clock, gap, lifetime, missReason, percent, timeOfDay, tokens, writeMultiplier } from './src/format.ts';
 
 export type Warmth = {
   /** Share of the lifetime left, or null when the provider reports none (Codex, Pi). */
@@ -67,7 +67,7 @@ function Stats({ state }: { state: CacheState }) {
 
 function describeEntry(entry: HistoryEntry) {
   const parts = [`${timeOfDay(entry.at)} · ${tokens(entry.prompt)} prompt`, `read ${tokens(entry.read)}`, `wrote ${tokens(entry.write)}`];
-  if (entry.miss) parts.push(`miss: ${tokens(entry.miss.tokens)} re-sent ${entry.miss.cause === 'account' ? 'after account switch' : `after ${gap(entry.miss.idleMs)} idle`}`);
+  if (entry.miss) parts.push(`miss: ${tokens(entry.miss.tokens)} re-sent, ${missReason(entry.miss)}`);
   if (entry.afterReset) parts.push('after compaction');
   return parts.join('\n');
 }
@@ -112,7 +112,7 @@ function Misses({ history }: { history: HistoryEntry[] }) {
     <ul>{misses.map((entry, index) => <li key={`${entry.at}-${index}`}>
       <span className="ch-time">{timeOfDay(entry.at)}</span>
       <b>{tokens(entry.miss!.tokens)}</b>
-      <span>{entry.miss!.cause === 'account' ? 'after an account switch' : `after ${gap(entry.miss!.idleMs)} idle`}</span>
+      <span>{missReason(entry.miss!)}</span>
     </li>)}</ul>
   </section>;
 }

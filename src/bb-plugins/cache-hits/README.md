@@ -24,7 +24,7 @@ Click the chip for the detail popover:
 - One bar per request for the last 48: cached, written, and re-sent on a miss.
   Hover a bar for its tokens and miss cause. A gap before a bar marks
   compaction.
-- The four most recent misses with their idle gap or account switch.
+- The four most recent misses with their cause.
 
 Threads keep history from the first request after installation.
 
@@ -55,13 +55,33 @@ entries and other entry types are skipped. The transcript format is internal
 to Claude Code and can change in any release.
 
 A request misses when `min(previous prompt, this prompt) - cache reads` is
-over 1024 tokens. This is Pi's rule (`core/cache-stats.js`). Compaction and
-context clears reset the baseline.
+over 1024 tokens and over 25% of that shared prefix. The token floor is Pi's
+rule (`core/cache-stats.js`). The share drops partial hits: OpenAI often
+serves part of a warm prefix, and Claude Code trims old tool results
+mid-prefix. Without it, about 70% of Codex misses came within a minute of the
+previous request and lost a median 6% of the prefix. Compaction and context
+clears reset the baseline.
+
+Each miss gets the likeliest cause, most certain first:
+
+| Cause | Signal |
+| --- | --- |
+| model switched | the request's `message.model` differs from the previous one; each model has its own cache |
+| expired | the idle gap is longer than the cache lifetime |
+| account switched | the `invalidate` RPC, or a `credential_org` transcript attachment |
+| tools, skills or MCP changed | `deferred_tools_delta`, `mcp_instructions_delta` or `skill_listing` attachments |
+| prompt prefix changed | a `thinking_drop` attachment with reason `prefix_mismatch`, Claude Code's own detection |
+| after N idle | nothing else explains it |
+
+Expiry outranks the transcript signals because a resumed session re-sends its
+account and tool list whether or not the cache was warm. Over 300 real
+transcripts (17k requests, 222 misses): 180 expired, 27 account, 5 tools, 5
+model, 5 unexplained. Only Claude Code transcripts carry them; Codex and Pi
+misses show the idle gap.
 
 Anthropic keeps each account's prompt cache separate. After an account switch,
 [Claude Profiles](../claude-profiles/README.md) calls this plugin's `invalidate`
-RPC. The chip shows `cold` at once, and the next miss reads "after account
-switch" instead of an idle time.
+RPC. The chip shows `cold` at once.
 
 Expiry is the last request time plus its cache lifetime, because Anthropic
 refreshes a cache entry each time a request reads it. The transcript stamps

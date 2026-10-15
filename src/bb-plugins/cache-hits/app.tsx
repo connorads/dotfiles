@@ -4,7 +4,7 @@ import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
 import { expiresAt, hitRatio, type CacheState } from './src/cache.ts';
-import { clock, countdown, lifetime, percent, tokens } from './src/format.ts';
+import { clock, countdown, lifetime, missReason, percent, tokens } from './src/format.ts';
 import { CachePopover, warmth } from './popover.tsx';
 import './app.css';
 
@@ -21,7 +21,7 @@ function describe(state: CacheState, now: number) {
   const thread = hitRatio(state.read, state.prompt);
   if (thread !== null) lines.push(`Thread: ${percent(thread)} cached`);
   if (state.lastMiss) lines.push(`${state.misses} miss${state.misses === 1 ? '' : 'es'}, ${tokens(state.missedTokens)} re-sent; `
-    + `last ${tokens(state.lastMiss.tokens)} after ${state.lastMiss.cause === 'account' ? 'account switch' : `${Math.round(state.lastMiss.idleMs / 60_000)}m`}`);
+    + `last ${tokens(state.lastMiss.tokens)}, ${missReason(state.lastMiss)}`);
   return lines.join('\n');
 }
 

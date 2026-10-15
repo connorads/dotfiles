@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { bbSample, cacheStateSchema, expiresAt, HISTORY_LIMIT, hitRatio, initialState, observe, type CacheState, type Observation } from './cache.ts';
 
 const run = (observations: Observation[]) => observations.reduce<CacheState>(observe, initialState());
-const request = (at: number, prompt: number, read: number, ttlMs: number | null = null): Observation =>
-  ({ kind: 'usage', sample: { at, prompt, read, write: prompt - read, ttlMs } });
+const request = (at: number, prompt: number, read: number, { ttlMs = null, model = null }: { ttlMs?: number | null; model?: string | null } = {}): Observation =>
+  ({ kind: 'usage', sample: { at, prompt, read, write: prompt - read, ttlMs, model } });
+const hour = 3_600_000;
 
 test('Codex input already contains cached tokens', () => {
   const sample = bbSample('codex', { inputTokens: 133468, cachedInputTokens: 133248, cacheReadInputTokens: 133248, cacheWriteInputTokens: 0 }, 1);
-  assert.deepEqual(sample, { at: 1, prompt: 133468, read: 133248, write: 0, ttlMs: null });
+  assert.deepEqual(sample, { at: 1, prompt: 133468, read: 133248, write: 0, ttlMs: null, model: null });
 });
 
 test('Pi input excludes cache reads and writes', () => {
@@ -28,14 +29,43 @@ test('the uncached tail of a warm request is noise, not a miss', () => {
   assert.equal(state.misses, 0);
 });
 
+test('a partial hit under a quarter of the shared prefix is not a miss, whatever its size', () => {
+  // OpenAI often serves part of a warm prefix; Claude Code trims old tool results mid-prefix.
+  const state = run([request(0, 400000, 399000), request(1, 401000, 320000)]);
+  assert.equal(state.misses, 0);
+});
+
+test('a miss past the cache lifetime is expired', () => {
+  const state = run([request(0, 100000, 0, { ttlMs: hour }), request(hour + 1, 101000, 0)]);
+  assert.equal(state.lastMiss?.cause, 'expired');
+});
+
+test('a miss on a different model names the switch, even past the lifetime', () => {
+  const state = run([request(0, 100000, 0, { ttlMs: hour, model: 'claude-fable-5-1' }), request(2 * hour, 101000, 0, { ttlMs: hour, model: 'claude-opus-5-5' })]);
+  assert.equal(state.lastMiss?.cause, 'model');
+});
+
+test('transcript signals before a warm miss name its cause, and clear on the next request', () => {
+  const tools = run([request(0, 100000, 0, { ttlMs: hour }), { kind: 'signal', signal: 'tools' }, request(1000, 101000, 0)]);
+  assert.equal(tools.lastMiss?.cause, 'tools');
+  const prefix = run([request(0, 100000, 0, { ttlMs: hour }), { kind: 'signal', signal: 'prefix' }, request(1000, 101000, 0)]);
+  assert.equal(prefix.lastMiss?.cause, 'prefix');
+  const cleared = run([request(0, 100000, 0, { ttlMs: hour }), { kind: 'signal', signal: 'tools' }, request(1000, 101000, 100000), request(2000, 102000, 0)]);
+  assert.equal(cleared.lastMiss?.cause, 'idle');
+});
+
+test('an expired cache stays expired even when a resumed session also re-sent its account', () => {
+  const state = run([request(0, 100000, 0, { ttlMs: hour }), { kind: 'signal', signal: 'account' }, request(2 * hour, 101000, 0)]);
+  assert.equal(state.lastMiss?.cause, 'expired');
+});
+
 test('compaction resets the baseline, so the smaller rebuilt prompt is not a miss', () => {
   const state = run([request(0, 150000, 149000), { kind: 'reset' }, request(1, 30000, 0), request(2, 31000, 29952)]);
   assert.equal(state.misses, 0);
 });
 
 test('every read refreshes the cache lifetime from the last write', () => {
-  const hour = 3_600_000;
-  const state = run([request(0, 50000, 0, hour), request(600000, 51000, 50000)]);
+  const state = run([request(0, 50000, 0, { ttlMs: hour }), request(600000, 51000, 50000)]);
   assert.equal(expiresAt(state), 600000 + hour);
 });
 
@@ -44,14 +74,12 @@ test('expiry is unknown until a request reports its cache lifetime', () => {
 });
 
 test('an account switch makes a warm cache cold at once', () => {
-  const hour = 3_600_000;
-  const state = run([request(0, 100000, 99000, hour), { kind: 'invalidate', at: 60000 }]);
+  const state = run([request(0, 100000, 99000, { ttlMs: hour }), { kind: 'invalidate', at: 60000 }]);
   assert.equal(expiresAt(state), 60000);
 });
 
 test('the request after an account switch is a miss caused by the switch and warms the cache again', () => {
-  const hour = 3_600_000;
-  const state = run([request(0, 100000, 99000, hour), { kind: 'invalidate', at: 60000 }, request(120000, 101000, 12000, hour)]);
+  const state = run([request(0, 100000, 99000, { ttlMs: hour }), { kind: 'invalidate', at: 60000 }, request(120000, 101000, 12000, { ttlMs: hour })]);
   assert.equal(state.misses, 1);
   assert.equal(state.lastMiss?.cause, 'account');
   assert.equal(expiresAt(state), 120000 + hour);
