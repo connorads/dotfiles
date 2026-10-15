@@ -1,0 +1,51 @@
+#!/usr/bin/env zsh
+# bb-plugins: Check or apply file-managed BB plugin states
+emulate -L zsh
+
+local mode=${1:-} bb_cli=${BB_CLI:-bb}
+if (( $# != 1 )) || [[ $mode != check && $mode != apply ]]; then
+  print -u2 'Usage: bb-plugins check|apply'
+  return 2
+fi
+local desired current changes plugin_id action enabled
+local config_file="$HOME/.config/bb/plugins.json"
+desired=$(jq -ce 'if type == "object" and all(to_entries[]; (.key | length > 0) and (.value | type == "boolean")) then . else error("Expected plugin IDs mapped to booleans") end' "$config_file") || return 2
+current=$("$bb_cli" plugin list --json) || return 2
+# Validate the complete plan before allowing the first mutation.
+changes=$(jq -cen --argjson desired "$desired" --argjson current "$current" '
+  if ($current.plugins | type) != "array" or
+     any($current.plugins[]; (.id | type) != "string" or (.enabled | type) != "boolean")
+  then error("Invalid BB plugin list")
+  else [$desired | to_entries[] | . as $entry |
+    [$current.plugins[] | select(.id == $entry.key)] as $matches |
+    if ($matches | length) != 1 then error("Missing or duplicate installed plugin: " + $entry.key)
+    elif $matches[0].enabled != $entry.value then $entry else empty end]
+  end') || return 2
+if [[ $changes == '[]' ]]; then
+  print 'Managed BB plugins match configuration.'
+  return 0
+fi
+local entry
+while IFS= read -r entry; do
+  plugin_id=$(jq -r '.key' <<< "$entry") || return 2
+  enabled=$(jq -r '.value' <<< "$entry") || return 2
+  action=disable
+  [[ $enabled == true ]] && action=enable
+  print -r -- "$action $plugin_id"
+  if [[ $mode == apply ]]; then
+    if ! "$bb_cli" plugin "$action" "$plugin_id" --json; then
+      print -u2 -r -- "Failed to $action $plugin_id. Earlier changes remain applied; rerun to finish."
+      return 2
+    fi
+  fi
+done < <(jq -c '.[]' <<< "$changes")
+[[ $mode == check ]] && return 1
+current=$("$bb_cli" plugin list --json) || return 2
+if ! jq -en --argjson desired "$desired" --argjson current "$current" '
+  all($desired | to_entries[]; . as $entry |
+    [$current.plugins[] | select(.id == $entry.key and .enabled == $entry.value)] | length == 1)
+' > /dev/null; then
+  print -u2 'Verification failed: managed BB plugins differ from configuration.'
+  return 2
+fi
+print 'Managed BB plugins match configuration.'
