@@ -10,6 +10,7 @@ pnpm quarantine settings. Decisions that span plugins are recorded in
 [plugins.json](../../.config/bb/plugins.json) declares the selected plugins and their enabled states.
 Enabled entries with a local `package.json` select plugins for installation from this workspace.
 Other entries refer to installed plugins, including BB's built-in plugins.
+[plugin-config.json](../../.config/bb/plugin-config.json) declares managed plugin settings; `bb-plugins apply` applies both files.
 Unlisted plugins keep their current state. Focus, Vox Recorder, Automation Backup and prototypes require separate selection and setup.
 
 ```mermaid

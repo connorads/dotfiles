@@ -380,3 +380,4 @@ __pycache__/
 !/.config/bb/AGENTS.md
 !/.config/bb/preferences.json
 !/.config/bb/plugins.json
+!/.config/bb/plugin-config.json

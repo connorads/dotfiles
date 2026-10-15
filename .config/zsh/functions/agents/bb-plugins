@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# bb-plugins: Check or apply file-managed BB plugin states
+# bb-plugins: Check or apply file-managed BB plugin states and settings
 emulate -L zsh
 
 local mode=${1:-} bb_cli=${BB_CLI:-bb}
@@ -7,10 +7,18 @@ if (( $# != 1 )) || [[ $mode != check && $mode != apply ]]; then
   print -u2 'Usage: bb-plugins check|apply'
   return 2
 fi
-local desired current changes plugin_id action enabled
-local config_file="$HOME/.config/bb/plugins.json"
-desired=$(jq -ce 'if type == "object" and all(to_entries[]; (.key | length > 0) and (.value | type == "boolean")) then . else error("Expected plugin IDs mapped to booleans") end' "$config_file") || return 2
+local desired desired_config current current_config changes config_changes plugin_id values action enabled
+local states_file="$HOME/.config/bb/plugins.json" config_file="$HOME/.config/bb/plugin-config.json"
+desired=$(jq -ce 'if type == "object" and all(to_entries[]; (.key | length > 0) and (.value | type == "boolean")) then . else error("Expected plugin IDs mapped to booleans") end' "$states_file") || return 2
+desired_config=$(jq -ce 'if type == "object" and all(to_entries[]; (.key | length > 0) and (.value | type == "object") and
+    all(.value | to_entries[]; .value | type | IN("boolean", "number", "string")))
+  then . else error("Expected plugin IDs mapped to setting objects") end' "$config_file") || return 2
 current=$("$bb_cli" plugin list --json) || return 2
+current_config='{}'
+for plugin_id in ${(f)"$(jq -r 'keys[]' <<< "$desired_config")"}; do
+  values=$("$bb_cli" plugin config "$plugin_id" --json) || return 2
+  current_config=$(jq -c --arg id "$plugin_id" --argjson values "$values" '.[$id] = $values' <<< "$current_config") || return 2
+done
 # Validate the complete plan before allowing the first mutation.
 changes=$(jq -cen --argjson desired "$desired" --argjson current "$current" '
   if ($current.plugins | type) != "array" or
@@ -21,11 +29,18 @@ changes=$(jq -cen --argjson desired "$desired" --argjson current "$current" '
     if ($matches | length) != 1 then error("Missing or duplicate installed plugin: " + $entry.key)
     elif $matches[0].enabled != $entry.value then $entry else empty end]
   end') || return 2
-if [[ $changes == '[]' ]]; then
+config_changes=$(jq -cen --argjson desired "$desired_config" --argjson current "$current_config" '
+  [$desired | to_entries[] | .key as $id | .value | to_entries[] | . as $setting |
+    if ($current[$id].schema | type) != "object" or ($current[$id].values | type) != "object"
+    then error("Invalid BB plugin config: " + $id)
+    elif ($current[$id].schema | has($setting.key)) | not then error("Unknown setting: " + $id + "." + $setting.key)
+    elif $current[$id].values[$setting.key] != $setting.value then {id: $id, key: $setting.key, value: $setting.value}
+    else empty end]') || return 2
+if [[ $changes == '[]' && $config_changes == '[]' ]]; then
   print 'Managed BB plugins match configuration.'
   return 0
 fi
-local entry
+local entry key value
 while IFS= read -r entry; do
   plugin_id=$(jq -r '.key' <<< "$entry") || return 2
   enabled=$(jq -r '.value' <<< "$entry") || return 2
@@ -39,11 +54,31 @@ while IFS= read -r entry; do
     fi
   fi
 done < <(jq -c '.[]' <<< "$changes")
+while IFS= read -r entry; do
+  plugin_id=$(jq -r '.id' <<< "$entry") || return 2
+  key=$(jq -r '.key' <<< "$entry") || return 2
+  value=$(jq -r '.value | tostring' <<< "$entry") || return 2
+  print -r -- "set $plugin_id $key=$value"
+  if [[ $mode == apply ]]; then
+    if ! "$bb_cli" plugin config "$plugin_id" set "$key" "$value" --json > /dev/null; then
+      print -u2 -r -- "Failed to set $plugin_id $key. Earlier changes remain applied; rerun to finish."
+      return 2
+    fi
+  fi
+done < <(jq -c '.[]' <<< "$config_changes")
 [[ $mode == check ]] && return 1
 current=$("$bb_cli" plugin list --json) || return 2
-if ! jq -en --argjson desired "$desired" --argjson current "$current" '
+current_config='{}'
+for plugin_id in ${(f)"$(jq -r 'keys[]' <<< "$desired_config")"}; do
+  values=$("$bb_cli" plugin config "$plugin_id" --json) || return 2
+  current_config=$(jq -c --arg id "$plugin_id" --argjson values "$values" '.[$id] = $values' <<< "$current_config") || return 2
+done
+if ! jq -en --argjson desired "$desired" --argjson current "$current" \
+  --argjson desired_config "$desired_config" --argjson current_config "$current_config" '
   all($desired | to_entries[]; . as $entry |
-    [$current.plugins[] | select(.id == $entry.key and .enabled == $entry.value)] | length == 1)
+    [$current.plugins[] | select(.id == $entry.key and .enabled == $entry.value)] | length == 1) and
+  all($desired_config | to_entries[]; .key as $id |
+    all(.value | to_entries[]; $current_config[$id].values[.key] == .value))
 ' > /dev/null; then
   print -u2 'Verification failed: managed BB plugins differ from configuration.'
   return 2
