@@ -5,6 +5,57 @@ One pnpm workspace with one directory per BB plugin. Each plugin keeps its own
 pnpm quarantine settings. Decisions that span plugins are recorded in
 [docs/adr/](docs/adr/).
 
+## Setup
+
+[plugins.json](../../.config/bb/plugins.json) declares the selected plugins and their enabled states.
+Enabled entries with a local `package.json` select plugins for installation from this workspace.
+Other entries refer to installed plugins, including BB's built-in plugins.
+Unlisted plugins keep their current state. Focus, Vox Recorder, Automation Backup and prototypes require separate selection and setup.
+
+```mermaid
+flowchart LR
+  Config[Tracked plugin states] --> Build[Build enabled local plugins]
+  Build --> Install[Install local plugins]
+  Install --> Apply[Apply and verify enablement]
+```
+
+1. In zsh, resolve installed runtimes and the BB CLI. BB must be running.
+   `mise which` resolves installed paths without installing missing tools.
+   If a tool is missing, install that named tool before continuing.
+   `mise exec` and `mise env` can install unrelated configured tools.
+
+   ```zsh
+   node_bin=$(mise which node) || exit
+   pnpm_bin=$(mise which pnpm) || exit
+   bb_cli=${BB_CLI:-$(mise which bb)}
+   test -x "$bb_cli" || exit 1
+   export BB_CLI="$bb_cli"
+   export PATH="${node_bin:h}:${pnpm_bin:h}:${bb_cli:h}:$HOME/.local/bin:$PATH"
+   ```
+
+2. With those paths loaded, install workspace dependencies and selected local plugins.
+   Stop on the first failure. Repeating installation reloads existing plugins and keeps their configuration.
+
+   ```zsh
+   (
+     set -e
+     cd "$HOME/src/bb-plugins"
+     pnpm install --frozen-lockfile
+     while IFS= read -r plugin; do
+       if [[ -f "$plugin/package.json" ]]; then
+         pnpm --dir "$plugin" build
+         "$BB_CLI" plugin install "path:$PWD/$plugin" --yes
+       fi
+     done < <(jq -r 'to_entries[] | select(.value) | .key' "$HOME/.config/bb/plugins.json")
+     bb-plugins apply
+     bb-plugins check
+     "$BB_CLI" preferences apply
+   )
+   ```
+
+3. Verify live plugin status with `"$BB_CLI" plugin list` and inspect any reported errors.
+   Install missing non-local plugins separately before rerunning the recipe.
+
 ## Add a plugin
 
 1. Run `bb plugin new <name>` here. Rename `bb-plugin-<name>/` to `<name>/`.
