@@ -23,20 +23,20 @@ async function render(thread: PluginRpcTestHandlers<typeof rpcContract>['thread'
 }
 
 test('Codex: shows the last request hit rate and miss count, without a countdown', async () => {
-  const state: CacheState = { ...initialState(), last: { at: 2, prompt: 100000, read: 92000, write: 0, ttlMs: null },
+  const state: CacheState = { ...initialState(), last: { at: 2, prompt: 100000, read: 92000, write: 0, ttlMs: null, model: null },
     prompt: 200000, read: 190000, misses: 2, missedTokens: 140000, lastMiss: { at: 2, tokens: 90000, idleMs: 420000, cause: 'idle' } };
   const slot = await render(() => state);
   try {
     const chip = await slot.findByRole('button');
     expect(chip.textContent).toBe('92%2');
-    expect(chip.getAttribute('title')).toBe('Last request: 92% cached (read 92k, wrote 0 of 100k)\nThread: 95% cached\n2 misses, 140k re-sent; last 90k after 7m');
+    expect(chip.getAttribute('title')).toBe('Last request: 92% cached (read 92k, wrote 0 of 100k)\nThread: 95% cached\n2 misses, 140k re-sent; last 90k, after 7m idle');
   } finally { slot.lifecycle.unmount(); }
 });
 
 test('Claude: counts down the cache lifetime in whole minutes', async () => {
   const at = Date.now() - 60_000;
   const slot = await render(() => ({ ...initialState(), ttlMs: hour, prompt: 182593, read: 180933,
-    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour } }));
+    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour, model: null } }));
   try {
     const chip = await slot.findByRole('button');
     expect(chip.textContent).toMatch(/^5[89]m$/);
@@ -47,7 +47,7 @@ test('Claude: counts down the cache lifetime in whole minutes', async () => {
 test('Claude: shows cold and the rebuild size once the lifetime has passed', async () => {
   const at = Date.now() - 2 * hour;
   const slot = await render(() => ({ ...initialState(), ttlMs: hour, prompt: 182593, read: 180933,
-    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour } }));
+    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour, model: null } }));
   try {
     const chip = await slot.findByRole('button');
     expect(chip.textContent).toBe('cold');
@@ -58,13 +58,13 @@ test('Claude: shows cold and the rebuild size once the lifetime has passed', asy
 test('Claude: an account switch shows cold at once and names the switch as the miss cause', async () => {
   const at = Date.now() - 60_000;
   const slot = await render(() => ({ ...initialState(), ttlMs: hour, prompt: 400000, read: 300000, misses: 1, missedTokens: 200000,
-    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour }, invalidatedAt: Date.now() - 1000,
+    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour, model: null }, invalidatedAt: Date.now() - 1000,
     lastMiss: { at: at - hour, tokens: 200000, idleMs: 5000, cause: 'account' } }));
   try {
     const chip = await slot.findByRole('button');
     expect(chip.textContent).toBe('cold1');
     expect(chip.getAttribute('title')).toMatch(/^Claude account switched; the next request rebuilds 183k\n/);
-    expect(chip.getAttribute('title')).toMatch(/last 200k after account switch$/);
+    expect(chip.getAttribute('title')).toMatch(/last 200k, account switched$/);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -80,12 +80,12 @@ test('Claude: a click opens the countdown, rebuild cost, per-request chart and r
   const at = Date.now() - 60_000;
   const history = [
     { at: at - 3 * hour, prompt: 90000, read: 0, write: 90000, miss: null, afterReset: false },
-    { at: at - 2 * hour, prompt: 120000, read: 0, write: 120000, miss: { tokens: 90000, idleMs: hour + 300_000, cause: 'idle' as const }, afterReset: false },
+    { at: at - 2 * hour, prompt: 120000, read: 0, write: 120000, miss: { tokens: 90000, idleMs: hour + 300_000, cause: 'expired' as const }, afterReset: false },
     { at, prompt: 182593, read: 180933, write: 1658, miss: null, afterReset: false },
   ];
   const slot = await render(() => ({ ...initialState(), ttlMs: hour, prompt: 392593, read: 180933, misses: 1, missedTokens: 90000,
-    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour }, history,
-    lastMiss: { at: at - 2 * hour, tokens: 90000, idleMs: hour + 300_000, cause: 'idle' } }));
+    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour, model: null }, history,
+    lastMiss: { at: at - 2 * hour, tokens: 90000, idleMs: hour + 300_000, cause: 'expired' } }));
   try {
     const chip = await slot.findByRole('button');
     expect(chip.getAttribute('aria-expanded')).toBe('false');
@@ -95,8 +95,8 @@ test('Claude: a click opens the countdown, rebuild cost, per-request chart and r
     expect(dialog.querySelector('.ch-headline')?.textContent).toMatch(/^5[89]:\d\dleft of 1h/);
     expect(dialog.querySelector('.ch-note')?.textContent).toBe('Each request resets the 1h clock. Going cold rewrites 183k at 2× the input price.');
     expect(dialog.querySelectorAll('.ch-bars > li')).toHaveLength(3);
-    expect(dialog.querySelector('.ch-bars > li[data-miss="idle"]')?.getAttribute('title')).toMatch(/miss: 90k re-sent after 1h 5m idle$/);
-    expect(dialog.querySelector('.ch-misses li')?.textContent).toMatch(/90kafter 1h 5m idle$/);
+    expect(dialog.querySelector('.ch-bars > li[data-miss="expired"]')?.getAttribute('title')).toMatch(/miss: 90k re-sent, expired after 1h 5m idle$/);
+    expect(dialog.querySelector('.ch-misses li')?.textContent).toMatch(/90kexpired after 1h 5m idle$/);
     fireEvent.click(chip);
     expect(slot.queryByRole('dialog')).toBe(null);
   } finally { slot.lifecycle.unmount(); }
