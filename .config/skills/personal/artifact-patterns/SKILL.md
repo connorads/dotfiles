@@ -55,6 +55,10 @@ The terminal session owns the repo; the chat panel cannot touch it. So route
 anything that needs code changes through comments sent to Claude, not through
 clicks.
 
+When another agent delegates publishing, comments reach the watching Claude session, not the originating agent.
+For publishing from an agent without native artifact tools, use `claude-artifact-handoff`.
+That skill owns the publishing handoff; forwarding feedback requires a separately verified return channel.
+
 ## Pick the pattern by job
 
 | Job | Pattern | Read |
