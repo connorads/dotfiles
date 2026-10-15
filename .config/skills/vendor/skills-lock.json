@@ -256,6 +256,13 @@
       "skillPath": "skills/remotion-best-practices/SKILL.md",
       "computedHash": "5622d2809a04d655a2f89de7f480fcdd4eec827a417af6709a8e6e566784a48a"
     },
+    "reverse-engineer-anything": {
+      "source": "morluto/rea",
+      "ref": "rea-agents-6.4.0",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/reverse-engineer-anything/SKILL.md",
+      "computedHash": "cae64595905f3bea4cb2c808fb54dfcc4ac23f3b0f49b1f03208aa3cf9a5b1d7"
+    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",
