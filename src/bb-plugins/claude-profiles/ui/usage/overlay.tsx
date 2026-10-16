@@ -1,3 +1,4 @@
+import { RollingValue } from './rolling-value.tsx';
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -17,7 +18,8 @@ function Meter({ window, view, stale = false }: { window: UsageWindow; view: Win
   const fill = elapsed ? 0 : Math.min(100, Math.max(0, window.usedPercent));
   const marker = view.pace.kind === 'paced' || view.pace.kind === 'early' ? view.pace.expectedPercent : null;
   return <span className="au-meter" data-tone={view.tone} data-elapsed={elapsed || undefined} data-stale={stale || undefined} aria-hidden="true">
-    <span className="au-meter-fill" style={{ width: `${fill}%` }} />
+    <span className="au-meter-fill" style={{ transform: `scaleX(${fill / 100})` }} />
+    <span className="au-meter-sheen" />
     {marker !== null && <span className="au-meter-pace" style={{ left: `${marker}%` }} />}
   </span>;
 }
@@ -29,7 +31,7 @@ function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; r
   return <div className="au-row" role="row" aria-label={`${window.label}: ${description}.${expected}`}>
     <span className="au-row-label" role="rowheader">{window.label}</span>
     <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
-    <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : percent(window.usedPercent)}</span>
+    <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : <RollingValue value={percent(window.usedPercent)} />}</span>
     {/* The bar's fill, colour and pace marker show the pace, so the row ends in one phrase the bar cannot show. */}
     <span className="au-row-detail" role="cell" data-tone={view.tone} title={view.reset ?? undefined}>{view.detail ?? ''}</span>
   </div>;
@@ -108,7 +110,7 @@ function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; n
         {pips && <span className="au-pips" aria-hidden="true">{pips.map((usable, index) => <span key={index} data-usable={usable || undefined} />)}</span>}
         <span>{reading.usable} usable</span>
       </span>
-      <span className="au-row-value" role="cell">{reading.held}</span>
+      <span className="au-row-value" role="cell"><RollingValue value={String(reading.held)} /></span>
       <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={deadline ? expiryClock(deadline) : undefined}>
         {listed ? <button type="button" className="au-resets-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)}>
           {next}<Icon name="ChevronDown" className="au-resets-chevron size-3" />
@@ -226,7 +228,7 @@ export function UsageOverlay() {
       event.preventDefault();
       scrollArea.current?.focus();
     }} onCloseAutoFocus={event => { event.preventDefault(); }} onAfterCloseAutoFocus={restoreUsageFocus}>
-      <header className="au-head">
+      <header className="au-head" data-refreshing={loading || undefined}>
         <div className="au-head-title">
           <DialogTitle>Agent usage</DialogTitle>
           <DialogDescription>
@@ -235,7 +237,7 @@ export function UsageOverlay() {
           </DialogDescription>
         </div>
         <button className="au-icon-button" type="button" aria-label="Refresh" title="Refresh" disabled={loading} onClick={() => { void refresh(true); }}>
-          <span className="au-spin" data-spinning={loading || undefined}><Icon name="ArrowReloadHorizontal" className="size-4" /></span>
+          <Icon name="ArrowReloadHorizontal" className="size-4" />
         </button>
         <DialogClose className="au-icon-button" aria-label="Close" title="Close"><Icon name="X" className="size-4" /></DialogClose>
       </header>
@@ -243,7 +245,7 @@ export function UsageOverlay() {
         {error && <p role="alert" className="au-notice" data-tone="critical"><Icon name="AlertCircle" className="size-4" />{snapshot ? 'Showing previous figures. ' : ''}{error}</p>}
         {quotaLoading && !snapshot && !error && <div className="au-skeleton" role="status" aria-label="Loading usage"><span /><span /><span /></div>}
         {snapshot && machines.length === 0 && <p className="au-empty" role="status">No usage sources reported. Enable Provider usage in BB’s plugin settings.</p>}
-        {machines.map(machine => <section className="au-machine" key={machine.id} aria-label={machine.displayName}>
+        {machines.map(machine => <section className="au-machine" data-refreshing={quotaLoading || undefined} key={machine.id} aria-label={machine.displayName}>
           {showMachines && <h2 className="au-machine-heading">
             <Icon name="Laptop" className="size-3.5" />{machine.displayName}
             {machine.status === 'disconnected' && <span className="au-pill">Offline</span>}

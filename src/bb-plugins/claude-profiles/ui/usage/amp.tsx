@@ -1,3 +1,4 @@
+import { RollingValue } from './rolling-value.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { Icon } from '../components/ui/icon.tsx';
 import { presentAmpUsage } from '../../src/accounts/usage/amp-presentation.ts';
@@ -6,9 +7,9 @@ import { readingAge, readingState } from '../../src/accounts/usage/format.ts';
 export function AmpUsage({ value, message, loading, now }: {
   value: AmpOverview | null; message: string | null; loading: boolean; now: Date;
 }) {
-  return <section className="au-provider" role="region" aria-label="Amp usage" aria-busy={loading}>
+  return <section className="au-provider" role="region" aria-label="Amp usage" aria-busy={loading} data-refreshing={loading || undefined}>
     <h3 className="au-provider-heading"><Icon name="Zap" className="size-3.5" />Amp</h3>
-    {loading && <p className="au-reading">Checking Amp…</p>}
+    {loading && !value && <p className="au-reading">Checking Amp…</p>}
     {message && <p className="au-account-message">{message}</p>}
     {value?.machines.map(machine => {
       const reading = machine.reading;
@@ -28,7 +29,7 @@ export function AmpUsage({ value, message, loading, now }: {
             {presentation.balances.length > 0 && <div role="table" aria-label="Amp balances" className="au-rows">
               {presentation.balances.map(balance => <div className="au-row au-amp-row" role="row" key={balance.label}>
                 <span className="au-row-label" role="rowheader">{balance.label}</span>
-                <span className="au-amp-amount" role="cell">{balance.amount}</span>
+                <span className="au-amp-amount" role="cell"><RollingValue value={balance.amount} /></span>
                 <span className="au-row-detail" role="cell">remaining</span>
               </div>)}
             </div>}

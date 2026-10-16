@@ -112,7 +112,9 @@ Click the badge or press `⌘⇧A` to open the usage overlay. It groups every
 account by provider, and by machine when more than one reports. Each window is
 one row: its bar, use and time to reset, or its run-out time when use will
 outlast it. Hover over that text for the full reset time. **Refresh** requests
-fresh readings. Codex reset credits show beneath the Codex accounts.
+fresh readings. A light sweep marks pending requests. Changed figures roll into
+place with their bar fills when readings arrive. Reduced motion disables these
+animations. Codex reset credits show beneath the Codex accounts.
 
 A Claude profile row shows the account email and plan cached in the profile's
 `.claude.json`. Team seats read as Team Standard or Team Premium with the
