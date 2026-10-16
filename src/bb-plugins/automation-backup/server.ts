@@ -73,7 +73,7 @@ export default function plugin(bb: BbPluginApi) {
       while (!signal.aborted) {
         const config = await settings.get();
         if (config.directory && config.repository) await run().catch(() => {});
-        try { await sleep(300_000, undefined, { signal }); }
+        try { await sleep(3_600_000, undefined, { signal }); }
         catch (error) { if (!signal.aborted) throw error; }
       }
     },

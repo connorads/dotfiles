@@ -9,7 +9,7 @@ Use `bb automation-backup run` to export, commit and push live definitions now.
 Use `bb automation-backup status` to see the last outcome.
 Use `bb plugin logs automation-backup` to inspect failures.
 
-The plugin runs on the BB server at startup and every five minutes while enabled.
+The plugin runs on the BB server at startup and every hour while enabled.
 Its `directory` and `repository` settings select a dedicated private Git checkout
 and GitHub repository. Read the plugin README before changing configuration.
 

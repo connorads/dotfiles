@@ -98,7 +98,7 @@ records why it absorbs Model Favourites and Agent Usage.
 ## Automation backups
 
 [Automation Backup](automation-backup/README.md) exports live task definitions to a
-private Git repository, commits changes and pushes every five minutes while enabled.
+private Git repository, commits changes and pushes every hour while enabled.
 BB remains authoritative; snapshots never activate or modify scheduled work.
 
 ## Voice controls

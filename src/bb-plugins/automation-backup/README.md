@@ -13,7 +13,7 @@ flowchart LR
 
 ## Operation
 
-The server background service runs on plugin startup and every five minutes.
+The server background service runs on plugin startup and every hour.
 It runs while BB is running and the plugin is enabled. Manual and background
 backups share one operation; a checkout lock excludes another plugin process.
 The service exports every project, including Personal.
@@ -51,7 +51,7 @@ and snapshots stay outside the public plugin source and dotfiles repository.
 - `bb plugin logs automation-backup` reports failed commands.
 - `bb plugin disable automation-backup` stops background backups.
 
-A failed cycle retries after five minutes. Fix dirty state or failed hooks before
+A failed cycle retries after one hour. Fix dirty state or failed hooks before
 retrying. A stale `.git/automation-backup.lock` requires explicit inspection;
 the plugin does not clear another owner's lock. Git history preserves deleted tasks.
 
