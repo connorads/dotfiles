@@ -2,6 +2,7 @@ import { choice, defineHexConfig, digit, letter, union } from "@hex/commands"
 import { runGoto, runNext, runStart } from "./voice/run.ts"
 import { systemPorts } from "./voice/system.ts"
 import { matchBb, requestBb, runBb } from "./voice/bb.ts"
+import { runSpeech } from "./voice/speech.ts"
 
 const bbPorts = { ...systemPorts, request: requestBb }
 
@@ -143,15 +144,36 @@ export default defineHexConfig({
       phrases: ["use {model}", "change model to {model}", "switch model to {model}"],
       when: { application: "bb" },
       group: "BB",
-      description: "Select a model for the next BB message",
-      run: async ({ captures }) => { await matchBb(bbPorts, "model", captures.model ?? "") },
+      description: "Select a model, numbered favourite or account for the next BB message",
+      run: async ({ captures }) => { await runSpeech(bbPorts, `use ${captures.model ?? ""}`) },
     },
     "bb-models": {
       phrases: ["show models", "list models", "change model", "switch model"],
       when: { application: "bb" },
       group: "BB",
-      description: "Show numbered models for the selected agent",
+      description: "Show numbered models across available agents",
       run: async () => { await matchBb(bbPorts, "model", "") },
+    },
+    "bb-accounts": {
+      phrases: ["show accounts", "list accounts", "change account", "switch account"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show numbered Claude accounts",
+      run: async () => { await matchBb(bbPorts, "account", "") },
+    },
+    "bb-account": {
+      phrases: ["change account to {account}", "switch account to {account}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Select a Claude account",
+      run: async ({ captures }) => { await matchBb(bbPorts, "account", captures.account ?? "") },
+    },
+    "bb-favourites": {
+      phrases: ["show favourites", "list favourites", "show favorites", "list favorites"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show saved models and effort",
+      run: async () => { await matchBb(bbPorts, "favourite", "") },
     },
     "bb-choose": {
       phrases: ["choose {n}"],

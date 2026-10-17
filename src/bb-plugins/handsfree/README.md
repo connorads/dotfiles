@@ -69,8 +69,10 @@ not required.
 | `show projects` / `list projects` | Show numbered draft projects |
 | `select project kb` / `switch project to kb` | Change the draft's project or open a draft from a conversation |
 | `new thread in dotfiles` | Match a project and open its draft |
-| `use Sonnet` | Match a model offered by the selected agent |
-| `show models` / `change model` / `switch model` | Show numbered models offered by the selected agent |
+| `use Sonnet` | Match a model across available providers |
+| `show models` / `change model` / `switch model` | Show numbered models across available providers |
+| `show favourites` / `use favourite two` | List saved models or select a slot with its saved effort |
+| `show accounts` / `use account work` | List Claude accounts or select one by name |
 | `choose two` | Select a numbered voice match or native question answer |
 | `voice help` | Open the monitor command list |
 | `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
@@ -158,8 +160,18 @@ asks you to restore before closing BB. Unavailable storage blocks new archives.
 Restoration opens the conversation; it does not restart stopped work or restore
 retired workspaces. BB keeps running turns and terminals for a 30-second archive grace period.
 
-Model selection changes the next message. It does not switch agent providers or
-interrupt a running turn. A draft retains its text until the user submits it.
+Model selection changes the next message. Selecting another provider uses BB's
+handoff flow. BB adds the handoff context to the draft; the next send starts the
+destination thread. Selection does not interrupt a running turn or submit text.
+Favourites apply Agent Switcher's saved model and effort. Their spoken slot
+numbers remain stable when another favourite is removed. Numbered list choices
+follow the displayed order; `use favourite two` refers to saved slot two.
+
+Account selection reuses Agent Switcher's Claude account transfer. It requires
+an idle thread without queued messages. A new draft remembers its choice for
+the next Claude thread. A provider handoff must send its first message before
+account selection becomes available. Codex account selection is unavailable.
+See [Agent Switcher](../claude-profiles/README.md#accounts) for account ownership.
 The thread matcher offers the 200 most recently updated visible, unarchived
 threads. Attention lists show up to nine threads.
 
@@ -219,8 +231,10 @@ bb handsfree command '{"action":"list","kind":"model"}'
 ```
 
 The command schemas live in [contracts.ts](contracts.ts).
-List replies carry a context identifier. Selection and choice requests must
-return it unchanged. A changed thread, project or provider rejects stale choices.
+List kinds are `thread`, `project`, `model`, `account` and `favourite`.
+Model candidate IDs encode the provider and model together. Clients return the
+opaque candidate ID without constructing it. List replies carry a context identifier. Selection and choice requests must
+return it unchanged. A changed thread, project, provider or machine rejects stale choices.
 Only one window claims each request. Unclaimed requests expire without replay;
 plugin reload cancels pending requests. No focused window produces an explicit error
 after 1.5 seconds. A window busy with another command rejects the new one.

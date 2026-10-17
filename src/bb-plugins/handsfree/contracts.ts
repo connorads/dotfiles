@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const kindSchema = z.enum(['thread', 'project', 'model']);
+export const kindSchema = z.enum(['thread', 'project', 'model', 'account', 'favourite']);
 export const candidateSchema = z.object({
   id: z.string().min(1).max(512),
   label: z.string().min(1).max(1024),

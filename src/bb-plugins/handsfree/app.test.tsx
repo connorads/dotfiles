@@ -8,6 +8,7 @@ import { commandSchema, type Command, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
 import { makeArchives } from './archive.ts';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
+import { makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 
 const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSidebarThread => ({
   id, projectId: 'p1', title: id, titleFallback: null, displayTitle: id,
@@ -28,7 +29,7 @@ beforeEach(() => {
 });
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout'] } = {}) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout']; sdk?: RenderSlotOptions['sdk'] } = {}) {
   const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
@@ -70,7 +71,25 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
       claim: () => ({ claimed: true }), complete: ({ reply }) => { replies.push(reply); return { accepted: true }; },
     },
     sdk: {
-      system: { config: async () => { throw new Error('No keyboard configuration in this fixture.'); } },
+      system: { config: async () => { throw new Error('No keyboard configuration in this fixture.'); },
+        executionOptions: async ({ providerId = 'codex' } = {}) => ({
+          providers: ['codex', 'claude-code'].map(id => ({ id, available: true, displayName: id, pluginId: id, logoUrl: null,
+            completedTurnDisplay: 'collapse' as const, composerActions: [], maintenance: { health: false, installation: false, usage: false },
+            capabilities: { modelCatalogScope: 'host' as const, permissionModes: ['auto' as const], supportsFork: false,
+              supportsNativeUserQuestion: false, supportsServiceTier: false, supportsSessionRewind: false,
+              supportsThreadArchive: false, supportsThreadRename: false },
+          })), permissionCeiling: 'auto', selectedOnlyModels: [], modelLoadError: null,
+          models: (providerId === 'claude-code' ? ['sonnet'] : ['new-model', 'other-model']).map(model => ({
+            id: model, model, displayName: model === 'new-model' ? 'New model' : model, description: '', isDefault: false,
+            defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }],
+          })),
+        }),
+      },
+      threads: { get: async () => makeThreadResponse({ id: 't1', environmentId: 'e1' }) },
+      plugins: { callRpc: async ({ method, outputSchema }) => outputSchema.parse(method === 'favourites.list'
+        ? [{ id: 'deep', slot: 2, name: 'Deep', providerId: 'codex', model: 'new-model', reasoningLevel: 'high' }]
+        : method === 'accounts' ? { supported: true, currentId: 'default', profiles: [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: null }] }
+          : { currentId: 'work' }) },
       providers: { models: async () => ({
         modelLoadError: null, permissionCeiling: 'full', providers: [], selectedOnlyModels: [],
         models: [{ id: 'new-model', model: 'new-model', displayName: 'New model', description: '',
@@ -78,6 +97,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
           { id: 'other-model', model: 'other-model', displayName: 'Other model', description: '',
             defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }],
       }) },
+      ...options.sdk,
     },
   });
   const rendered = slot;
@@ -455,12 +475,71 @@ test('model selection uses the visible composer and its machine without sending 
   const view = await render();
   const current = await view.command({ action: 'list', kind: 'model' });
   if (!current.context) throw new Error('No voice context');
-  const reply = await view.command({ action: 'select', kind: 'model', id: 'new-model', context: current.context });
+  const reply = await view.command({ action: 'select', kind: 'model', id: JSON.stringify(['codex', 'new-model']), context: current.context });
   expect(reply.ok).toBe(true);
-  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'providers.models', args: [{ providerId: 'codex', hostId: 'h1' }] });
-  expect(view.slot.inspection.composer.selections).toEqual([{ model: 'new-model' }]);
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'system.executionOptions', args: [{ providerId: 'codex', environmentId: 'e1' }] });
+  expect(view.slot.inspection.composer.selections).toEqual([{ providerId: 'codex', model: 'new-model', reasoningLevel: 'medium' }]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('models include other providers and a selection applies the provider without sending', async () => {
+  const view = await render();
+  const list = await view.command({ action: 'list', kind: 'model' });
+  expect(list.candidates).toContainEqual({ id: '["claude-code","sonnet"]', title: 'sonnet', label: 'sonnet (claude-code)' });
+  const reply = await view.command({ action: 'select', kind: 'model', id: '["claude-code","sonnet"]', context: list.context! });
+  expect(reply.ok).toBe(true);
+  expect(view.slot.inspection.composer.selection).toMatchObject({ providerId: 'claude-code', model: 'sonnet', reasoningLevel: 'medium' });
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('favourites retain their slots and apply saved effort', async () => {
+  const view = await render();
+  const list = await view.command({ action: 'list', kind: 'favourite' });
+  expect(list.candidates?.[0]).toMatchObject({ id: 'deep', title: '2' });
+  expect(await view.command({ action: 'select', kind: 'favourite', id: 'deep', context: list.context! })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.composer.selection).toMatchObject({ model: 'new-model', reasoningLevel: 'high' });
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('accounts switch Claude threads through Agent Switcher', async () => {
+  const view = await render('idle', undefined, undefined, { composer: { selection: { providerId: 'claude-code', model: 'sonnet' } } });
+  const list = await view.command({ action: 'list', kind: 'account' });
+  expect(await view.command({ action: 'select', kind: 'account', id: 'work', context: list.context! })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'plugins.callRpc', args: [expect.objectContaining({ pluginId: 'claude-profiles', method: 'choose', input: { threadId: 't1', profileId: 'work' } })] });
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('account selection targets a new draft and leaves its text intact', async () => {
+  const view = await render('idle', undefined, undefined, { composer: {
+    scope: { kind: 'new-thread', projectId: 'p1' }, selection: { providerId: 'claude-code', model: 'sonnet' },
+  } });
+  const list = await view.command({ action: 'list', kind: 'account' });
+  expect(await view.command({ action: 'select', kind: 'account', id: 'work', context: list.context! })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'plugins.callRpc', args: [expect.objectContaining({ method: 'choose', input: { threadId: null, profileId: 'work' } })] });
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('accounts reject unsupported providers and running turns without sending a switch', async () => {
+  const unsupported = await render();
+  expect(await unsupported.command({ action: 'list', kind: 'account' })).toMatchObject({ ok: false, message: expect.stringMatching(/Claude Code/) });
+  unsupported.slot.lifecycle.unmount();
+  headerSlot?.lifecycle.unmount();
+  const running = await render('active', undefined, undefined, { composer: { isRunning: true, selection: { providerId: 'claude-code', model: 'sonnet' } } });
+  const list = await running.command({ action: 'list', kind: 'account' });
+  expect(await running.command({ action: 'select', kind: 'account', id: 'work', context: list.context! })).toMatchObject({ ok: false, message: expect.stringMatching(/finish this turn/) });
+  expect(running.slot.inspection.sdkCalls.filter(call => call.method === 'plugins.callRpc').some(call => (call.args[0] as { method: string }).method === 'choose')).toBe(false);
+});
+
+test('focus loss during final model validation prevents changing the old composer', async () => {
+  let reads = 0;
+  const view = await render('idle', undefined, undefined, { sdk: { threads: { get: async () => {
+    if (++reads === 3) vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    return makeThreadResponse({ id: 't1', environmentId: 'e1' });
+  } } } });
+  const list = await view.command({ action: 'list', kind: 'model' });
+  expect(await view.command({ action: 'select', kind: 'model', id: '["codex","new-model"]', context: list.context! })).toMatchObject({ ok: false, message: expect.stringMatching(/focus changed/) });
+  expect(view.slot.inspection.composer.selections).toEqual([]);
 });
 
 test('project choices open a draft without moving the existing thread', async () => {
@@ -582,7 +661,7 @@ test.each(['thread', 'project', 'model'] as const)('a single %s match selects di
   expect(view.slot.queryByRole('dialog')).toBeNull();
   if (kind === 'thread') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: option.id }]);
   if (kind === 'project') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: option.id, focusPrompt: true } }]);
-  if (kind === 'model') expect(view.slot.inspection.composer.selections).toEqual([{ model: option.id }]);
+  if (kind === 'model') expect(view.slot.inspection.composer.selections).toEqual([{ providerId: 'codex', model: 'new-model', reasoningLevel: 'medium' }]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });

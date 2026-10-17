@@ -1,9 +1,10 @@
-import type { PluginBrowserBbSdk, PluginComposerApi, PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { rpcContract } from '../../contracts.ts';
-import type { Favourite } from '../../src/models/contract.ts';
+import type { PluginBrowserBbSdk, PluginComposerApi } from '@get-bb/plugin-sdk/app';
+import type { Favourite, Setup } from '../../src/models/contract.ts';
 import { availability, matches, nextFavourite, planSelection } from '../../src/models/favourites.ts';
 
-export function createController(composer: PluginComposerApi, sdk: PluginBrowserBbSdk, rpc: PluginRpcClient<typeof rpcContract>) {
+export function createController(composer: PluginComposerApi, sdk: PluginBrowserBbSdk, rpc: {
+  call(method: 'favourites.list', input: Record<string, never>): Promise<Favourite[]>;
+}, assertCurrent: () => void = () => {}) {
   let busy = false;
   async function scope() {
     if (composer.scope.kind === 'queued-message') throw new Error('Use the main chat input to switch favourites.');
@@ -42,7 +43,7 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     busy = true;
     try { return await work(); } finally { busy = false; }
   }
-  async function applyChecked(favourite: Favourite) {
+  async function applyChecked(favourite: Setup) {
     if (composer.scope.kind !== 'thread' && composer.scope.kind !== 'new-thread') throw new Error('Use the main chat input to switch models.');
     const options = await sdk.system.executionOptions({ ...await scope(), providerId: favourite.providerId });
     const reason = availability(favourite, {
@@ -58,6 +59,7 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     const supportsTier = options.providers.find(p => p.id === favourite.providerId)?.capabilities.supportsServiceTier;
     const serviceTier = supportsTier ? (currentTier && tiers.some(t => t.id === currentTier) ? currentTier : 'default') : undefined;
     const requested = { ...plan, ...(serviceTier ? { serviceTier } : {}) };
+    assertCurrent();
     const settled = await composer.setSelection(requested);
     if (!settled || !matches(requested, settled) || settled.reasoningLevel !== plan.reasoningLevel || (serviceTier !== undefined && settled.serviceTier !== serviceTier)) {
       throw new Error('BB could not apply this selection. Check the current model before sending.');
@@ -82,7 +84,7 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
         }
       }));
     },
-    apply(favourite: Favourite) {
+    apply(favourite: Setup) {
       return exclusive(() => applyChecked(favourite));
     },
     select(slot: number) {

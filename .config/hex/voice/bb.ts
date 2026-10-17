@@ -117,11 +117,12 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, { trace, 
   const name = (candidate: Candidate) => normalise(candidate.title ?? candidate.label)
   const exact = candidates.filter(candidate => name(candidate) === target || normalise(candidate.id) === target)
   let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target)
+    || ((kind === "model" || kind === "favourite") && normalise(candidate.label).includes(target))
     || (kind === "thread" && name(candidate).replaceAll(" ", "").includes(target.replaceAll(" ", ""))))
   const show = (options: Candidate[]) => {
     trace.offered = options.slice(0, 9)
     return request({
-    action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : kind === "thread" ? "Choose a thread." : "Choose a project for a new draft.",
+    action: "choices", kind, context, options: options.slice(0, 9), message: utterance ? `Choose a ${kind} for “${utterance}”.` : kind === "project" ? "Choose a project for a new draft." : `Choose a ${kind}.`,
     })
   }
   trace.method = 'literal'

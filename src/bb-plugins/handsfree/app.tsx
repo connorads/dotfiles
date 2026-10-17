@@ -10,6 +10,7 @@ import { publishVoiceHeader, VoiceHeader } from './header.tsx';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
 import { HexActivity } from './diagnostics-view.tsx';
 import { blockingSurface, captureChoice, watchQuestionFocus, type ChoiceCapture } from './choice-target.ts';
+import { switcher } from './switcher.ts';
 import './app.css';
 
 interface Choices {
@@ -53,6 +54,9 @@ function VoiceCard() {
   };
   const capturedChoice = useRef<{ token: string; capture: ChoiceCapture } | null>(null);
   const sdk = useSdk();
+  const agentSwitcher = switcher(composer, sdk, () => {
+    if (latestContext.current !== contextKey || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
+  });
   const rpc = useRpc<typeof rpcContract>();
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [position, setPosition] = useState({ top: 70, left: 18 });
@@ -83,7 +87,7 @@ function VoiceCard() {
   const thread = sidebar.threads.find(row => row.id === context.threadId);
   const projectId = composer.scope.kind === 'new-thread'
     ? composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId : context.projectId;
-  const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}:${focusedPane?.paneId ?? ''}`;
+  const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}:${focusedPane?.paneId ?? ''}:${JSON.stringify(composer.selection?.environment)}`;
   const latestContext = useRef(contextKey);
   latestContext.current = contextKey;
   const latestComposer = useRef(composer);
@@ -176,14 +180,11 @@ function VoiceCard() {
     if (kind === 'thread') return threads.slice().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 200).map(threadCandidate);
     if (kind === 'project') return sidebar.projects.map(row => ({ id: row.id, label: row.name }));
     if (!composerAvailable) throw new Error('The focused chat composer is unavailable. Open a chat and try again.');
-    const providerId = composer.selection?.providerId;
-    if (!providerId) throw new Error('Select an agent in the BB composer first.');
-    const environment = composer.selection?.environment;
-    const hostId = thread?.host?.id ?? (environment && 'hostId' in environment ? environment.hostId : undefined);
-    const models = await sdk.providers.models(hostId ? { providerId, hostId } : { providerId });
-    if (models.modelLoadError) throw new Error(models.modelLoadError.detail ?? 'BB could not load the model list.');
-    return models.models.filter(model => !model.routeProviderId || model.routeProviderId === providerId)
-      .map(model => ({ id: model.model, label: model.displayName }));
+    if (kind === 'account') return (await agentSwitcher.accounts()).profiles.map(profile => ({ id: profile.id, label: profile.label }));
+    if (kind === 'favourite') return (await agentSwitcher.favourites()).sort((a, b) => a.slot - b.slot)
+      .map(favourite => ({ id: favourite.id, title: String(favourite.slot),
+        label: `${favourite.slot}. ${favourite.name || favourite.model} (${favourite.providerId}, ${favourite.reasoningLevel ?? 'default'} effort)` }));
+    return (await agentSwitcher.models()).map(({ id, label, title }) => ({ id, label, title }));
   };
 
   const select = async (kind: Kind, id: string, expectedContext: string): Promise<Reply> => {
@@ -206,8 +207,15 @@ function VoiceCard() {
       return { ok: true, outcome: ready ? 'completed' : 'requested', message: ready
         ? `Draft ready in ${candidate.label}. Dictate, then press Enter.` : `Opening a new thread in ${candidate.label}.` };
     }
-    const selection = await composer.setSelection({ model: id });
-    if (selection.model !== id) throw new Error('BB did not select that model. Check the composer picker.');
+    if (kind === 'account') await agentSwitcher.chooseAccount(id);
+    else if (kind === 'favourite') {
+      const favourite = (await agentSwitcher.favourites()).find(row => row.id === id);
+      if (!favourite) throw new Error('That favourite was removed. Say the command again.');
+      if (expectedContext !== latestContext.current || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
+      await agentSwitcher.controller.apply(favourite);
+    } else {
+      await agentSwitcher.applyModel(id);
+    }
     setChoices(null);
     composer.focus();
     return { ok: true, message: `${candidate.label} selected for the next message.` };
@@ -478,7 +486,9 @@ function VoiceCard() {
         <dt>“Focus chat” / “Focus message”</dt><dd>Focus the chat input for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
-        <dt>“Use Sonnet”</dt><dd>Select a model</dd>
+        <dt>“Show models” / “Use Sonnet”</dt><dd>Select a model across available providers. Changing provider prepares a handoff for the next message.</dd>
+        <dt>“Show favourites” / “Use favourite two”</dt><dd>Select a saved model and its effort</dd>
+        <dt>“Show accounts” / “Use account work”</dt><dd>Select a Claude account after the current turn finishes</dd>
         <dt>“Allow once” / “Allow for session” / “Deny approval”</dt><dd>Answer the selected thread's single pending approval</dd>
         <dt>“Choose one” / “Choose two”</dt><dd>Select a numbered voice match or native question answer. Submit answers separately.</dd>
       </dl></section>

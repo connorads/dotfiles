@@ -36,6 +36,15 @@ test('approval phrases answer with exact decisions only', () => {
   expect(parseSpeech('Deny approval')).toEqual({ command: { action: 'approve', decision: 'deny' } })
   expect(parseSpeech('allow')).toHaveProperty('error')
 })
+
+test('account and favourite commands remain separate from model searches', () => {
+  expect(parseSpeech('Use account work.')).toEqual({ kind: 'account', target: 'work' })
+  expect(parseSpeech('Switch account to work')).toEqual({ kind: 'account', target: 'work' })
+  expect(parseSpeech('Show accounts')).toEqual({ kind: 'account', target: '' })
+  expect(parseSpeech('Show favourites')).toEqual({ kind: 'favourite', target: '' })
+  expect(parseSpeech('Use favourite two')).toEqual({ kind: 'favourite', target: '2' })
+  expect(parseSpeech('Use favorite 9')).toEqual({ kind: 'favourite', target: '9' })
+})
 test('pedal search offers even a unique literal match without navigating', async () => {
   const commands: Command[] = []
   const ports: BbPorts = {
