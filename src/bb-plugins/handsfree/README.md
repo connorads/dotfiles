@@ -78,6 +78,12 @@ not required.
 | `send message` / `send task` | Submit the focused chat draft through BB |
 | `stop agent` / `stop this agent` | Stop work in the selected thread |
 | `voice help` | Open the monitor command list |
+| `where am I` | Read the thread, project, provider, model, effort and available Claude account |
+| `what did you hear` | Read the preceding command recognition result |
+| `go back` | Return to the previous thread or draft in this window |
+| `read the last answer` / `stop reading` | Read the last reply aloud or stop reading |
+| `read confirmations` / `mute confirmations` | Enable or disable spoken command feedback |
+| `pause commands` / `resume commands` | Pause or resume BB voice actions in this window |
 | `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
 | `archive this thread` / `archive thread` | Archive the selected thread |
 | `confirm archive` / `cancel archive` | Answer an archive confirmation |
@@ -128,6 +134,22 @@ the end of its draft without submitting. A blocking popup requires `close popup`
 first. Say `open BB` to activate the application before focusing its chat input.
 The monitor keeps fifty recent BB results in memory, including heard search targets.
 Reloading clears this history. Hex's diagnostic logs have separate retention.
+
+`go back` keeps twenty thread and draft destinations per window. It removes a
+destination only after BB observes the return. Failed navigation can be retried.
+Draft navigation preserves the current draft rather than restoring an older copy.
+Reloading clears navigation history and resumes paused BB commands.
+
+Pausing blocks BB actions. Context queries, recognition feedback, help and resume
+remain available. Hex still recognises speech; dictation and global app commands
+remain available.
+
+Spoken confirmations default off. Their plugin setting persists across reloads.
+Explicit state queries and reply readouts speak regardless of that preference.
+Speech uses this device's browser speech engine. Readouts remove Markdown markers
+and link destinations, and split long text into chunks. A command that completes
+still succeeds when speech output is unavailable. `stop reading` cancels the
+Handsfree readout without stopping an agent.
 
 Activity reads the latest 256 KiB of Hex's `live.ndjson` on the BB server every
 750 ms. It shows the last capture state, transcript, and fifty native attempts.

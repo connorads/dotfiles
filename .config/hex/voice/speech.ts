@@ -23,6 +23,11 @@ const fixed: Record<string, Command> = {
   'submit answer': { action: 'submit-answer' }, 'submit answers': { action: 'submit-answer' }, 'next question': { action: 'submit-answer' },
   'send message': { action: 'send' }, 'send task': { action: 'send' },
   'stop agent': { action: 'stop' }, 'stop this agent': { action: 'stop' },
+  'where am i': { action: 'state' }, 'what did you hear': { action: 'heard' },
+  'go back': { action: 'back' }, 'read the last answer': { action: 'read' }, 'read last answer': { action: 'read' },
+  'stop reading': { action: 'stop-reading' },
+  'read confirmations': { action: 'feedback', enabled: true }, 'mute confirmations': { action: 'feedback', enabled: false },
+  'pause commands': { action: 'listen', enabled: false }, 'resume commands': { action: 'listen', enabled: true },
 }
 export function parseSpeech(transcript: string): Speech {
   const text = transcript.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()

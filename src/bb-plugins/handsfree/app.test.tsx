@@ -26,10 +26,12 @@ let headerSlot: RenderedSlot | undefined;
 beforeEach(() => {
   vi.spyOn(document, 'hasFocus').mockReturnValue(true);
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
+  vi.stubGlobal('speechSynthesis', { speak: vi.fn(), cancel: vi.fn() });
+  vi.stubGlobal('SpeechSynthesisUtterance', class { constructor(public text: string) {} });
 });
-afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
+afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout']; sdk?: RenderSlotOptions['sdk'] } = {}) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout']; sdk?: RenderSlotOptions['sdk']; settings?: RenderSlotOptions['settings'] } = {}) {
   const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
@@ -56,6 +58,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
     context: { threadId: options.composer?.scope?.kind === 'new-thread' ? null : 't1', projectId: 'p1' },
     composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' }, ...options.composer },
     sidebarSplitLayout: options.sidebarSplitLayout,
+    settings: options.settings,
     sidebarThreads: {
       threads: threads ?? [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' },
@@ -353,6 +356,68 @@ test('focus chat closes voice choices and focuses the composer without submittin
   expect(view.slot.queryByRole('dialog')).toBeNull();
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
   expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('state names the focused thread, project, provider and model', async () => {
+  const view = await render();
+  expect(await view.command({ action: 'state' })).toMatchObject({ ok: true, message: expect.stringContaining('dotfiles') });
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('pausing BB commands blocks actions and resuming restores them', async () => {
+  const view = await render();
+  expect(await view.command({ action: 'listen', enabled: false })).toMatchObject({ ok: true });
+  expect(await view.command({ action: 'new' })).toMatchObject({ ok: false, message: expect.stringMatching(/paused/) });
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
+  expect(await view.command({ action: 'listen', enabled: true })).toMatchObject({ ok: true });
+  expect(await view.command({ action: 'new' })).toMatchObject({ ok: true });
+});
+
+test('heard feedback reports the preceding recognition attempt rather than its own phrase', async () => {
+  const view = await render('idle', undefined, undefined, { diagnostics: () => ({ available: true, state: null, transcript: null,
+    attempts: [{ at: 1, kind: 'command', heard: 'Start the thread', command: null, result: 'Unmatched speech', problem: false, unmatched: true, context: 'bb' },
+      { at: 2, kind: 'command', heard: 'What did you hear?', command: 'bb-heard', result: 'Submitted', problem: false, unmatched: false, context: 'bb' }],
+  }) });
+  expect(await view.command({ action: 'heard' })).toMatchObject({ ok: true, message: expect.stringContaining('Start the thread') });
+});
+
+test('reading queues the last reply without speaking Markdown markup and can stop it', async () => {
+  const speak = vi.spyOn(speechSynthesis, 'speak');
+  const view = await render('idle', undefined, undefined, { sdk: { threads: { output: async () => ({ output: '**Done.** See [the report](https://example.com).' }) } } });
+  expect(await view.command({ action: 'read' })).toMatchObject({ ok: true });
+  expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'Done. See the report.' }));
+  const cancel = vi.spyOn(speechSynthesis, 'cancel').mockClear();
+  await view.command({ action: 'stop-reading' });
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('long readouts retain all words across bounded speech chunks', async () => {
+  const speak = vi.spyOn(speechSynthesis, 'speak');
+  const output = 'A complete sentence. '.repeat(200).trim();
+  const view = await render('idle', undefined, undefined, { sdk: { threads: { output: async () => ({ output }) } } });
+  await view.command({ action: 'read' });
+  const chunks = speak.mock.calls.map(([utterance]) => utterance.text);
+  expect(chunks.length).toBeGreaterThan(1);
+  expect(chunks.every(chunk => chunk.length <= 1500)).toBe(true);
+  expect(chunks.join(' ')).toBe(output);
+});
+
+test('unavailable speech cannot turn a completed action into a failed command', async () => {
+  vi.stubGlobal('speechSynthesis', undefined);
+  const view = await render('idle', undefined, undefined, { settings: { spokenFeedback: true } });
+  expect(await view.command({ action: 'new' })).toMatchObject({ ok: true, message: expect.stringContaining('Speech output is unavailable') });
+  expect(view.slot.inspection.navigateCalls).toHaveLength(1);
+});
+
+test('spoken confirmations persist through plugin settings and can be muted', async () => {
+  const view = await render('idle', undefined, undefined, { sdk: { plugins: {
+    updateSettings: async ({ values }) => ({ ok: true, schema: {}, values }),
+  } } });
+  expect(await view.command({ action: 'feedback', enabled: true })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'plugins.updateSettings', args: [{ pluginId: 'handsfree', values: { spokenFeedback: true } }] });
+  await view.command({ action: 'feedback', enabled: false });
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'plugins.updateSettings', args: [{ pluginId: 'handsfree', values: { spokenFeedback: false } }] });
 });
 
 test('focus chat refuses an unavailable pane composer instead of focusing another thread', async () => {

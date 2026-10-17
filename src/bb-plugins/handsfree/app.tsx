@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   definePluginApp, experimental_useSidebarThreads,
-  useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk, useSidebarSplitLayout,
+  useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk, useSettings, useSidebarSplitLayout,
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
@@ -11,6 +11,8 @@ import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract
 import { HexActivity } from './diagnostics-view.tsx';
 import { blockingSurface, captureChoice, watchQuestionFocus, type ChoiceCapture } from './choice-target.ts';
 import { switcher } from './switcher.ts';
+import { createReadout } from './readout.ts';
+import { createNavigationHistory } from './navigation.ts';
 import './app.css';
 
 interface Choices {
@@ -58,6 +60,13 @@ function VoiceCard() {
     if (latestContext.current !== contextKey || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
   });
   const rpc = useRpc<typeof rpcContract>();
+  const settings = useSettings();
+  const [spokenFeedback, setSpokenFeedback] = useState(false);
+  useEffect(() => setSpokenFeedback(settings.values?.spokenFeedback === true), [settings.values?.spokenFeedback]);
+  const paused = useRef(false);
+  const [readout] = useState(createReadout);
+  useEffect(() => () => readout.stop(), [readout]);
+  const speak = (text: string) => readout.read(text, message => { setMessage(message); setProblem(true); setFeedback(true); });
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [position, setPosition] = useState({ top: 70, left: 18 });
   const card = useRef<HTMLDivElement>(null);
@@ -87,6 +96,10 @@ function VoiceCard() {
   const thread = sidebar.threads.find(row => row.id === context.threadId);
   const projectId = composer.scope.kind === 'new-thread'
     ? composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId : context.projectId;
+  const [navigationHistory] = useState(() => createNavigationHistory({ threadId: context.threadId, projectId }));
+  useEffect(() => {
+    navigationHistory.observe({ threadId: context.threadId, projectId });
+  }, [navigationHistory, context.threadId, projectId]);
   const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}:${focusedPane?.paneId ?? ''}:${JSON.stringify(composer.selection?.environment)}`;
   const latestContext = useRef(contextKey);
   latestContext.current = contextKey;
@@ -240,8 +253,64 @@ function VoiceCard() {
   };
 
   const handle = async (command: Command): Promise<Reply> => {
+    if (paused.current && !['listen', 'state', 'heard', 'help', 'notice', 'capture', 'list', 'stop-reading'].includes(command.action)) {
+      throw new Error('BB commands are paused. Say “resume commands”.');
+    }
     if (!['confirm-archive', 'cancel-archive', 'notice', 'list', 'capture'].includes(command.action)) setArchiveConfirmation(null);
     switch (command.action) {
+      case 'listen':
+        paused.current = !command.enabled;
+        return { ok: true, message: command.enabled ? 'BB commands resumed.' : 'BB commands paused. Say “resume commands” to continue.' };
+      case 'feedback':
+        if (command.enabled && !readout.available()) throw new Error('Speech output is unavailable on this device.');
+        await sdk.plugins.updateSettings({ pluginId: 'handsfree', values: { spokenFeedback: command.enabled } });
+        setSpokenFeedback(command.enabled);
+        if (command.enabled) speak('Spoken confirmations enabled.');
+        return { ok: true, message: command.enabled ? 'Spoken confirmations enabled.' : 'Spoken confirmations disabled.' };
+      case 'stop-reading':
+        readout.stop();
+        return { ok: true, message: 'Reading stopped.' };
+      case 'read': {
+        if (!context.threadId) throw new Error('Select a thread with a reply to read.');
+        const expectedContext = contextKey;
+        const result = await sdk.threads.output({ threadId: context.threadId });
+        if (latestContext.current !== expectedContext || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
+        if (!result.output?.trim()) throw new Error('This thread has no reply to read yet.');
+        speak(result.output);
+        return { ok: true, message: 'Reading the last reply. Say “stop reading” to stop.' };
+      }
+      case 'state': {
+        const expectedContext = contextKey;
+        const selection = composer.selection;
+        let account = '';
+        if (selection?.providerId === 'claude-code') {
+          const result = await agentSwitcher.accounts().catch(() => null);
+          account = result ? ` Account ${result.profiles.find(profile => profile.id === result.currentId)?.label ?? result.currentId}.` : ' Account selection unavailable.';
+        }
+        if (latestContext.current !== expectedContext || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
+        const message = `${thread?.displayTitle ?? 'New thread draft'}. Project ${projectId ? projectName(projectId) : 'not selected'}. ${selection?.providerId ?? 'No provider'}, ${selection?.model ?? 'no model'}, ${selection?.reasoningLevel ?? 'default'} effort.${account}${paused.current ? ' BB commands paused.' : ''}`;
+        speak(message);
+        return { ok: true, message };
+      }
+      case 'heard': {
+        const expectedContext = contextKey;
+        const snapshot = await rpc.call('diagnostics', {});
+        if (latestContext.current !== expectedContext || !document.hasFocus()) throw new Error('BB focus changed. Say the command again.');
+        const attempt = snapshot.attempts.filter(entry => entry.kind === 'command' && entry.command !== 'bb-heard'
+          && !/^what did you hear[?.!]*$/i.test(entry.heard.trim())).at(-1);
+        const message = attempt ? `Heard “${attempt.heard}”. ${attempt.result}.` : 'No earlier recognition attempt is available.';
+        speak(message);
+        return { ok: true, message };
+      }
+      case 'back': {
+        const previous = navigationHistory.back();
+        if (!previous) throw new Error('No previous view is available in this window.');
+        trackNavigation(previous.threadId ?? undefined);
+        setChoices(null);
+        if (previous.threadId) navigate.toThread(previous.threadId);
+        else navigate.toCompose({ ...(previous.projectId ? { projectId: previous.projectId } : {}), focusPrompt: true });
+        return { ok: true, outcome: 'requested', message: 'Returning to the previous view.' };
+      }
       case 'focus':
         if (!composerAvailable) throw new Error('The focused chat composer is unavailable. Open a chat and try again.');
         if (blockingSurface(document, undefined, card.current ?? undefined)) throw new Error('Close the popup first. Say “close popup”, then “focus chat”.');
@@ -408,6 +477,9 @@ function VoiceCard() {
     setBusy(true);
     try {
       const reply = await handle(command);
+      if (spokenFeedback && !['list', 'capture', 'notice', 'feedback', 'read', 'stop-reading', 'state', 'heard'].includes(command.action)) {
+        try { speak(reply.message); } catch { reply.message += ' Speech output is unavailable on this device.'; }
+      }
       if (command.action !== 'list') {
         setMessage(reply.message);
         setFeedback(true);
@@ -422,6 +494,9 @@ function VoiceCard() {
       setProblem(true);
       setFeedback(true);
       setHistory(items => [...items, { at: Date.now(), message, problem: true }].slice(-50));
+      if (spokenFeedback && !['list', 'capture', 'notice', 'feedback'].includes(command.action)) {
+        try { speak(message); } catch { /* Keep the command failure visible when speech is unavailable. */ }
+      }
       return { ok: false, outcome: 'error', message };
     } finally { setBusy(false); }
   };
@@ -493,6 +568,11 @@ function VoiceCard() {
       </div>
       <section role="tabpanel" id="voice-commands-panel" aria-labelledby="voice-commands" hidden={view !== 'commands'}><dl>
         <dt>“Voice monitor” / “Voice history”</dt><dd>Show recognition, dictation and command results</dd>
+        <dt>“Where am I?” / “What did you hear?”</dt><dd>Read the current selection or the preceding recognition result</dd>
+        <dt>“Go back”</dt><dd>Return to the previous thread or draft in this window</dd>
+        <dt>“Read the last answer” / “Stop reading”</dt><dd>Read or stop the selected thread's last reply</dd>
+        <dt>“Read confirmations” / “Mute confirmations”</dt><dd>Save the spoken feedback preference</dd>
+        <dt>“Pause commands” / “Resume commands”</dt><dd>Pause or resume BB voice actions in this window</dd>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
@@ -501,11 +581,11 @@ function VoiceCard() {
         <dt>“Who needs me?” / “Next finished”</dt><dd>Show pending questions or unread successful results</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
         <dt>“Focus chat” / “Focus message”</dt><dd>Focus the chat input for dictation</dd>
-        <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
+        {context.threadId && <><dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd></>}
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Show models” / “Use Sonnet”</dt><dd>Select a model across available providers. Changing provider prepares a handoff for the next message.</dd>
         <dt>“Show favourites” / “Use favourite two”</dt><dd>Select a saved model and its effort</dd>
-        <dt>“Show accounts” / “Use account work”</dt><dd>Select a Claude account after the current turn finishes</dd>
+        {composer.selection?.providerId === 'claude-code' && <><dt>“Show accounts” / “Use account work”</dt><dd>Select a Claude account after the current turn finishes</dd></>}
         <dt>“Allow once” / “Allow for session” / “Deny approval”</dt><dd>Answer the selected thread's single pending approval</dd>
         <dt>“Choose one” / “Choose two”</dt><dd>Select a numbered voice match or native question answer. Submit answers separately.</dd>
         <dt>“Submit answer” / “Next question”</dt><dd>Use the question's native submit or next button</dd>
