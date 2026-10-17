@@ -135,6 +135,44 @@ test('spoken choose selects a native answer without submitting', async () => {
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });
 
+test('spoken submission completes the question without submitting the retained task', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  await view.command({ action: 'choose', number: 2 });
+  expect(await view.command({ action: 'submit-answer' })).toMatchObject({ ok: true, outcome: 'completed' });
+  expect(view.slot.queryByRole('button', { name: 'Submit answers' })).toBeNull();
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('recorded submission rejects a changed answer and cannot submit twice', async () => {
+  const view = await render('idle', undefined, undefined, { nativeQuestion: {} });
+  const recorded = await view.command({ action: 'capture' });
+  await view.command({ action: 'choose', number: 1 });
+  expect(await view.command({ action: 'submit-answer', target: recorded.choiceTarget })).toMatchObject({ ok: false });
+  expect(await view.command({ action: 'submit-answer', target: recorded.choiceTarget })).toMatchObject({ ok: false });
+  expect(view.slot.getByRole('button', { name: 'Submit answers' })).toBeTruthy();
+});
+
+test('send submits through BB and refuses to send beneath a popup', async () => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  expect(await view.command({ action: 'send' })).toMatchObject({ ok: false });
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+  await view.command({ action: 'dismiss' });
+  expect(await view.command({ action: 'send' })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.composer.submits).toHaveLength(1);
+});
+
+test('stop targets the focused thread and reports an unconfirmed interrupt honestly', async () => {
+  const view = await render('active', undefined, undefined, { sdk: { threads: {
+    stop: async () => ({ ok: true }),
+    get: async () => makeThreadResponse({ id: 't1', status: 'stopping' }),
+  } } });
+  expect(await view.command({ action: 'stop' })).toMatchObject({ ok: true, outcome: 'requested', message: expect.stringMatching(/still stopping/) });
+  expect(view.slot.inspection.sdkCalls).toContainEqual({ method: 'threads.stop', args: [{ threadId: 't1' }] });
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
 test('spoken choose preserves multiple selection toggles', async () => {
   const view = await render('idle', undefined, undefined, { nativeQuestion: { multi: true } });
   await view.command({ action: 'choose', number: 1 });

@@ -87,6 +87,9 @@ test('recorded choices keep their captured target through recognition feedback',
   commands.length = 0
   await runSpeech(ports, 'Next thread.', 'recording-target')
   expect(commands.at(-1)).toEqual({ action: 'next' })
+  commands.length = 0
+  await runSpeech(ports, 'Submit answer.', 'recording-target')
+  expect(commands.at(-1)).toEqual({ action: 'submit-answer', target: 'recording-target' })
 })
 
 test('capture replies retain the target through the command bridge', () => {

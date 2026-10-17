@@ -74,6 +74,9 @@ not required.
 | `show favourites` / `use favourite two` | List saved models or select a slot with its saved effort |
 | `show accounts` / `use account work` | List Claude accounts or select one by name |
 | `choose two` | Select a numbered voice match or native question answer |
+| `submit answer` / `submit answers` / `next question` | Submit the current answer or advance to the next question |
+| `send message` / `send task` | Submit the focused chat draft through BB |
+| `stop agent` / `stop this agent` | Stop work in the selected thread |
 | `voice help` | Open the monitor command list |
 | `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
 | `archive this thread` / `archive thread` | Archive the selected thread |

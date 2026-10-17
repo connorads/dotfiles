@@ -247,6 +247,21 @@ function VoiceCard() {
         if (blockingSurface(document, undefined, card.current ?? undefined)) throw new Error('Close the popup first. Say “close popup”, then “focus chat”.');
         close();
         return { ok: true, outcome: 'completed', message: 'Chat input focused. Ready for dictation.' };
+      case 'send':
+        if (!composerAvailable) throw new Error('The focused chat composer is unavailable.');
+        if (blockingSurface(document, undefined, card.current ?? undefined) || choices || archiveConfirmation) throw new Error('Close the popup before sending the message.');
+        await composer.submit({ experimental_data: null });
+        return { ok: true, outcome: 'completed', message: 'Message accepted by BB.' };
+      case 'stop': {
+        if (!context.threadId) throw new Error('Select an existing thread to stop.');
+        const expectedContext = contextKey;
+        const target = context.threadId;
+        await sdk.threads.stop({ threadId: target });
+        const stopped = await sdk.threads.get({ threadId: target });
+        if (latestContext.current !== expectedContext) return { ok: true, outcome: 'requested', message: `Stop requested for ${thread?.displayTitle ?? target}.` };
+        return { ok: true, outcome: stopped.status === 'idle' || stopped.status === 'error' ? 'completed' : 'requested',
+          message: stopped.status === 'idle' || stopped.status === 'error' ? 'Agent stopped.' : 'Stop requested. The agent is still stopping.' };
+      }
       case 'archive':
       case 'confirm-archive': {
         if (!context.threadId) throw new Error('Select an existing thread to archive.');
@@ -303,7 +318,8 @@ function VoiceCard() {
         setHighlight(0);
         return { ok: true, outcome: 'choices', message: command.message };
       }
-      case 'choose': {
+      case 'choose':
+      case 'submit-answer': {
         let capture: ChoiceCapture;
         if (command.target) {
           const recorded = capturedChoice.current;
@@ -311,7 +327,8 @@ function VoiceCard() {
           capturedChoice.current = null;
           capture = recorded.capture;
         } else capture = captureTarget();
-        return capture.ok ? capture.apply(command.number) : { ok: false, outcome: 'error', message: capture.reason };
+        return capture.ok ? command.action === 'choose' ? capture.apply(command.number) : capture.submit()
+          : { ok: false, outcome: 'error', message: capture.reason };
       }
       case 'show': {
         setChoices(null);
@@ -491,6 +508,8 @@ function VoiceCard() {
         <dt>“Show accounts” / “Use account work”</dt><dd>Select a Claude account after the current turn finishes</dd>
         <dt>“Allow once” / “Allow for session” / “Deny approval”</dt><dd>Answer the selected thread's single pending approval</dd>
         <dt>“Choose one” / “Choose two”</dt><dd>Select a numbered voice match or native question answer. Submit answers separately.</dd>
+        <dt>“Submit answer” / “Next question”</dt><dd>Use the question's native submit or next button</dd>
+        <dt>“Send message” / “Stop this agent”</dt><dd>Send the draft or stop the selected thread's work</dd>
       </dl></section>
       <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
         <HexActivity snapshot={diagnostics} now={now}>

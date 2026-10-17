@@ -20,6 +20,9 @@ const fixed: Record<string, Command> = {
   'allow once': { action: 'approve', decision: 'allow_once' },
   'allow for session': { action: 'approve', decision: 'allow_for_session' },
   'deny approval': { action: 'approve', decision: 'deny' },
+  'submit answer': { action: 'submit-answer' }, 'submit answers': { action: 'submit-answer' }, 'next question': { action: 'submit-answer' },
+  'send message': { action: 'send' }, 'send task': { action: 'send' },
+  'stop agent': { action: 'stop' }, 'stop this agent': { action: 'stop' },
 }
 export function parseSpeech(transcript: string): Speech {
   const text = transcript.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
@@ -48,7 +51,7 @@ export async function runSpeech(ports: BbPorts, transcript: string, choiceTarget
   await runBb(ports, { action: 'notice', message: `Heard: “${transcript}”.` })
   if ('error' in speech) return runBb(ports, { action: 'notice', message: speech.error, problem: true })
   if ('command' in speech) {
-    const command = speech.command.action === 'choose' && choiceTarget !== undefined
+    const command = (speech.command.action === 'choose' || speech.command.action === 'submit-answer') && choiceTarget !== undefined
       ? { ...speech.command, target: choiceTarget } : speech.command
     return runBb(ports, command)
   }

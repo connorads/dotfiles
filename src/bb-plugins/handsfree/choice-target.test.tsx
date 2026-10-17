@@ -60,6 +60,37 @@ test('selects from composer focus, restores native form focus, and consumes once
   expect(await apply(target, 1)).toMatchObject({ ok: false });
   expect(calls).toBe(1);
 });
+
+test('submission uses the native question button and consumes the recording once', async () => {
+  const { group } = question();
+  const root = group.parentElement!;
+  const submit = document.createElement('button');
+  submit.textContent = 'Submit answer';
+  submit.onclick = () => { calls++; root.remove(); };
+  root.append(submit);
+  const target = capture();
+  if (!target.ok) throw new Error(target.reason);
+  expect(await target.submit()).toMatchObject({ ok: true, outcome: 'completed' });
+  expect(await target.submit()).toMatchObject({ ok: false });
+  expect(calls).toBe(1);
+});
+
+test('changed answers and disabled submit buttons reject recorded submission', async () => {
+  const { group, buttons } = question();
+  const submit = document.createElement('button');
+  submit.textContent = 'Next';
+  submit.onclick = () => { calls++; };
+  group.parentElement!.append(submit);
+  const target = capture();
+  if (!target.ok) throw new Error(target.reason);
+  buttons[0].setAttribute('aria-pressed', 'true');
+  expect(await target.submit()).toMatchObject({ ok: false });
+  const second = capture();
+  if (!second.ok) throw new Error(second.reason);
+  submit.disabled = true;
+  expect(await second.submit()).toMatchObject({ ok: false });
+  expect(calls).toBe(0);
+});
 test('separate captures toggle multiple selections and Other focuses its textarea', async () => {
   const { group, buttons } = question(true);
   await apply(capture(), 1);

@@ -183,6 +183,27 @@ export default defineHexConfig({
       description: "Choose a numbered BB voice match",
       run: async ({ captures }) => { await runBb(bbPorts, { action: "choose", number: captures.n }) },
     },
+    "bb-submit-answer": {
+      phrases: ["submit answer", "submit answers", "next question"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Submit the current question answer or advance to its next page",
+      run: async () => { await runBb(bbPorts, { action: "submit-answer" }) },
+    },
+    "bb-send": {
+      phrases: ["send message", "send task"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Send the selected chat draft",
+      run: async () => { await runBb(bbPorts, { action: "send" }) },
+    },
+    "bb-stop": {
+      phrases: ["stop agent", "stop this agent"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Stop work in the selected thread",
+      run: async () => { await runBb(bbPorts, { action: "stop" }) },
+    },
     "bb-monitor": {
       phrases: ["voice monitor", "voice history", "show voice"],
       when: { application: "bb" },
