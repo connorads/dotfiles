@@ -142,6 +142,12 @@ The arrow opens the system browser. Link text follows BB's browser preference.
 [Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat
 message into the thread's terminal. You press Enter to run them.
 
+## Executor tools
+
+[Executor](executor/README.md) gives every thread the tools from your Executor
+organization through one connection. BB holds the API key, so no agent needs
+its own MCP config.
+
 ## Mobile start screen
 
 [Mobile Home Spacing](mobile-home-spacing/README.md) places recent threads below

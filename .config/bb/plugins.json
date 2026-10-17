@@ -4,6 +4,7 @@
   "claude-profiles": true,
   "composer-keys": true,
   "diff-viewer": true,
+  "executor": true,
   "external-links": true,
   "git-glance": true,
   "handsfree": true,
