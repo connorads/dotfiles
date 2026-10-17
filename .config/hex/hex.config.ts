@@ -112,14 +112,14 @@ export default defineHexConfig({
       run: async () => { await runBb(bbPorts, { action: "finished" }) },
     },
     "bb-new": {
-      phrases: ["new thread"],
+      phrases: ["new thread", "create new thread", "start new thread", "create a new thread", "start a new thread"],
       when: { application: "bb" },
       group: "BB",
       description: "Open a draft in the current BB project",
       run: async () => { await runBb(bbPorts, { action: "new" }) },
     },
     "bb-new-in": {
-      phrases: ["new thread in {project}"],
+      phrases: ["new thread in {project}", "create new thread in {project}", "start new thread in {project}", "create a new thread in {project}", "start a new thread in {project}"],
       when: { application: "bb" },
       group: "BB",
       description: "Open a draft in a named BB project",
@@ -140,11 +140,18 @@ export default defineHexConfig({
       run: async ({ captures }) => { await matchBb(bbPorts, "project", captures.project ?? "") },
     },
     "bb-model": {
-      phrases: ["use {model}"],
+      phrases: ["use {model}", "change model to {model}", "switch model to {model}"],
       when: { application: "bb" },
       group: "BB",
       description: "Select a model for the next BB message",
       run: async ({ captures }) => { await matchBb(bbPorts, "model", captures.model ?? "") },
+    },
+    "bb-models": {
+      phrases: ["show models", "list models", "change model", "switch model"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Show numbered models for the selected agent",
+      run: async () => { await matchBb(bbPorts, "model", "") },
     },
     "bb-choose": {
       phrases: ["choose {n}"],
@@ -162,7 +169,7 @@ export default defineHexConfig({
       run: async () => { await runBb(bbPorts, { action: "monitor" }) },
     },
     "bb-help": {
-      phrases: ["voice help"],
+      phrases: ["voice help", "what can i say", "what can i say here"],
       when: { application: "bb" },
       group: "BB",
       description: "Show BB voice commands",

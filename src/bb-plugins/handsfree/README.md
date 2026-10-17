@@ -70,6 +70,7 @@ not required.
 | `select project kb` / `switch project to kb` | Change the draft's project or open a draft from a conversation |
 | `new thread in dotfiles` | Match a project and open its draft |
 | `use Sonnet` | Match a model offered by the selected agent |
+| `show models` / `change model` / `switch model` | Show numbered models offered by the selected agent |
 | `choose two` | Select a numbered voice match or native question answer |
 | `voice help` | Open the monitor command list |
 | `voice monitor` / `voice history` / `show voice` | Open recognition, dictation and BB activity |
@@ -104,6 +105,12 @@ Requested help opens the command list. Failures remain available in Activity wit
 `previous conversation` also navigate. Use `next thread` or `go to next thread`
 without `the`. Hex can reject `go to the next thread` as an ambiguous command
 sequence because `go to the` is itself a valid captured command.
+
+`create new thread`, `start new thread`, `create a new thread` and
+`start a new thread` also open drafts. Each accepts `in …` to select a project.
+`change model to …` and `switch model to …` also select models.
+`list models` also lists models. `what can I say` and `what can I say here`
+also open command help. These phrases work through both Hex and the command pedal.
 
 Project selection changes the current draft through BB's project picker, preserving
 its text, mentions and attachments. BB can refuse the switch during uploads or

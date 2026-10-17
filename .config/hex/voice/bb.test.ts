@@ -61,9 +61,11 @@ test("unknown Jev choices never navigate", async () => {
 })
 
 test("dotfiles names the live home project", async () => {
-  const w = setup(["connorads", "kb"])
-  await matchBb(w.ports, "project", "dotfiles")
-  expect(w.commands.at(-1)).toMatchObject({ action: "select", kind: "project", id: "0" })
+  for (const target of ["dotfiles", "dot files"]) {
+    const w = setup(["connorads", "kb"])
+    await matchBb(w.ports, "project", target)
+    expect(w.commands.at(-1)).toMatchObject({ action: "select", kind: "project", id: "0" })
+  }
 })
 
 test("reply parsing rejects invalid keypresses and candidate records", () => {

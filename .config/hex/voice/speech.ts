@@ -10,7 +10,9 @@ const fixed: Record<string, Command> = {
   'next finished': { action: 'finished' }, 'show git': { action: 'show', view: 'git' },
   'show usage': { action: 'show', view: 'usage' }, 'close popup': { action: 'dismiss' },
   'close pop up': { action: 'dismiss' }, 'close voice monitor': { action: 'dismiss' },
-  'new thread': { action: 'new' }, 'voice help': { action: 'help' },
+  'new thread': { action: 'new' }, 'create new thread': { action: 'new' }, 'start new thread': { action: 'new' },
+  'create a new thread': { action: 'new' }, 'start a new thread': { action: 'new' },
+  'voice help': { action: 'help' }, 'what can i say': { action: 'help' }, 'what can i say here': { action: 'help' },
   'voice monitor': { action: 'monitor' }, 'voice history': { action: 'monitor' }, 'show voice': { action: 'monitor' },
   'archive this thread': { action: 'archive' }, 'archive thread': { action: 'archive' },
   'confirm archive': { action: 'confirm-archive' }, 'cancel archive': { action: 'cancel-archive' },
@@ -24,9 +26,10 @@ export function parseSpeech(transcript: string): Speech {
   if (fixed[text]) return { command: fixed[text] }
   if (text === 'show threads') return { kind: 'thread', target: '' }
   if (text === 'show projects' || text === 'list projects') return { kind: 'project', target: '' }
+  if (['show models', 'list models', 'change model', 'switch model'].includes(text)) return { kind: 'model', target: '' }
   const digit = text.match(/^choose (one|two|three|four|five|six|seven|eight|nine|[1-9])$/)?.[1]
   if (digit) return { command: { action: 'choose', number: Number(digit) || ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'].indexOf(digit) + 1 } }
-  for (const [prefix, kind] of [['new thread in ', 'project'], ['select project ', 'project'], ['switch project to ', 'project'], ['use ', 'model'], ['go to ', 'thread'], ['take me to ', 'thread'], ['can i go to ', 'thread']] as const) {
+  for (const [prefix, kind] of [['new thread in ', 'project'], ['create new thread in ', 'project'], ['start new thread in ', 'project'], ['create a new thread in ', 'project'], ['start a new thread in ', 'project'], ['select project ', 'project'], ['switch project to ', 'project'], ['change model to ', 'model'], ['switch model to ', 'model'], ['use ', 'model'], ['go to ', 'thread'], ['take me to ', 'thread'], ['can i go to ', 'thread']] as const) {
     if (text.startsWith(prefix) && text.length > prefix.length) {
       const target = text.slice(prefix.length)
       const navigation = target.replace(/^the /, '')

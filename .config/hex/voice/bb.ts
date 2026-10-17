@@ -113,7 +113,7 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, { trace, 
   if (!context || candidates.length === 0) return notice(`No ${kind} choices are available here.`, 'no-match')
   const target = kind === "thread"
     ? spoken.replace(/^the /, "").replace(/ threads?$/, "") || spoken
-    : kind === "project" && spoken === "dotfiles" ? "connorads" : spoken
+    : kind === "project" && spoken.replaceAll(" ", "") === "dotfiles" ? "connorads" : spoken
   const name = (candidate: Candidate) => normalise(candidate.title ?? candidate.label)
   const exact = candidates.filter(candidate => name(candidate) === target || normalise(candidate.id) === target)
   let matches = exact.length ? exact : candidates.filter(candidate => name(candidate).includes(target)

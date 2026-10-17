@@ -16,6 +16,20 @@ test('focus aliases reach the same BB action', () => {
     expect(parseSpeech(phrase)).toEqual({ command: { action: 'focus' } })
   }
 })
+
+test('natural draft and model phrases reach the existing actions', () => {
+  for (const phrase of ['Create new thread.', 'Start new thread', 'Create a new thread', 'Start a new thread']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'new' } })
+    expect(parseSpeech(`${phrase.replace('.', '')} in KB`)).toEqual({ kind: 'project', target: 'kb' })
+  }
+  for (const phrase of ['Change model.', 'Show models', 'List models', 'Switch model']) {
+    expect(parseSpeech(phrase)).toEqual({ kind: 'model', target: '' })
+  }
+  for (const phrase of ['Change model to Sonnet', 'Switch model to Sonnet']) {
+    expect(parseSpeech(phrase)).toEqual({ kind: 'model', target: 'sonnet' })
+  }
+  expect(parseSpeech('What can I say here?')).toEqual({ command: { action: 'help' } })
+})
 test('approval phrases answer with exact decisions only', () => {
   expect(parseSpeech('Allow once.')).toEqual({ command: { action: 'approve', decision: 'allow_once' } })
   expect(parseSpeech('Allow for session')).toEqual({ command: { action: 'approve', decision: 'allow_for_session' } })
