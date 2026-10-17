@@ -141,11 +141,18 @@ export default defineHexConfig({
       run: async ({ captures }) => { await matchBb(bbPorts, "project", captures.project ?? "") },
     },
     "bb-model": {
-      phrases: ["use {model}", "change model to {model}", "switch model to {model}"],
+      phrases: ["use {model}"],
       when: { application: "bb" },
       group: "BB",
       description: "Select a model, numbered favourite or account for the next BB message",
       run: async ({ captures }) => { await runSpeech(bbPorts, `use ${captures.model ?? ""}`) },
+    },
+    "bb-model-change": {
+      phrases: ["change model to {model}", "switch model to {model}"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Select a model for the next BB message",
+      run: async ({ captures }) => { await matchBb(bbPorts, "model", captures.model ?? "") },
     },
     "bb-models": {
       phrases: ["show models", "list models", "change model", "switch model"],
