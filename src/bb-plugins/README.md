@@ -95,6 +95,12 @@ records why it absorbs Model Favourites and Agent Usage.
 [Preferences](preferences/README.md) applies tracked keyboard settings from
 `~/.config/bb/preferences.json`. Its guide covers installation and ownership.
 
+## Shortcut reference
+
+[Shortcut Guide](shortcut-guide/README.md) opens with `Alt+/` or the keyboard
+chip. It groups a curated selection of commands, shows their bindings and saves
+personal favourites. Escape returns to the draft. It records no usage counts.
+
 ## Automation backups
 
 [Automation Backup](automation-backup/README.md) exports live task definitions to a

@@ -13,6 +13,7 @@
   "preferences": true,
   "repo-tasks": true,
   "run-in-terminal": true,
+  "shortcut-guide": true,
   "skill-loader": true,
   "terminal-tweaks": true,
   "workflows": true
