@@ -22,6 +22,13 @@ export default defineHexConfig({
   //   cancel: ["discard note"],
   // },
   commands: {
+    "bb-focus": {
+      phrases: ["focus chat", "focus message", "focus composer"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Focus the selected BB chat input for dictation",
+      run: async () => { await runBb(bbPorts, { action: "focus" }) },
+    },
     "bb-go-to": {
       phrases: ["go to {target}", "take me to {target}", "can i go to {target}"],
       when: { application: "bb" },

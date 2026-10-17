@@ -11,6 +11,11 @@ test('dictated punctuation and supported command aliases use existing BB actions
   expect(parseSpeech('New thread in KB')).toEqual({ kind: 'project', target: 'kb' })
   expect(parseSpeech('please delete everything')).toHaveProperty('error')
 })
+test('focus aliases reach the same BB action', () => {
+  for (const phrase of ['Focus chat.', 'Focus message', 'Focus composer']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'focus' } })
+  }
+})
 test('approval phrases answer with exact decisions only', () => {
   expect(parseSpeech('Allow once.')).toEqual({ command: { action: 'approve', decision: 'allow_once' } })
   expect(parseSpeech('Allow for session')).toEqual({ command: { action: 'approve', decision: 'allow_for_session' } })

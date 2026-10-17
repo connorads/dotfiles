@@ -3,6 +3,7 @@ import { matchBb, runBb, type BbPorts } from './bb.ts'
 
 type Speech = { command: Command } | { kind: Kind; target: string } | { error: string }
 const fixed: Record<string, Command> = {
+  'focus chat': { action: 'focus' }, 'focus message': { action: 'focus' }, 'focus composer': { action: 'focus' },
   'next thread': { action: 'next' }, 'next conversation': { action: 'next' },
   'previous thread': { action: 'previous' }, 'previous conversation': { action: 'previous' },
   'next unread': { action: 'unread' }, 'who needs me': { action: 'attention' }, 'next waiting': { action: 'attention' },

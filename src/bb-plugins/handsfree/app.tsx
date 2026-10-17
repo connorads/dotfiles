@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   definePluginApp, experimental_useSidebarThreads,
-  useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk,
+  useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk, useSidebarSplitLayout,
 } from '@get-bb/plugin-sdk/app';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
@@ -21,21 +21,35 @@ interface Choices {
 interface VoiceResult { at: number; message: string; problem: boolean }
 
 function VoiceCard() {
-  const context = useBbContext();
+  const routeContext = useBbContext();
+  const sidebar = experimental_useSidebarThreads();
+  const focusedPane = useSidebarSplitLayout()?.panes.find(pane => pane.isFocused);
+  const context = focusedPane ? {
+    threadId: focusedPane.threadId,
+    projectId: sidebar.threads.find(row => row.id === focusedPane.threadId)?.projectId ?? null,
+  } : routeContext;
   const routeComposer = useComposer();
   const composers = useComposers();
   const composer = composers.find(item => context.threadId
     ? item.scope.kind === 'thread' && item.scope.threadId === context.threadId
     : item.scope.kind === 'new-thread') ?? routeComposer;
-  const sidebar = experimental_useSidebarThreads();
+  const composerAvailable = context.threadId
+    ? composer.scope.kind === 'thread' && composer.scope.threadId === context.threadId
+    : composer.scope.kind === 'new-thread';
   const navigate = useBbNavigate();
-  const draftFocus = useRef<string | null>(null);
-  const openDraft = (projectId?: string) => {
-    if (projectId) {
-      if (composer.scope.kind === 'new-thread' && (composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId) === projectId) composer.focus();
-      else { draftFocus.current = projectId; navigate.toProject(projectId); }
+  const openDraft = async (projectId?: string) => {
+    if (composerAvailable && composer.scope.kind === 'new-thread') {
+      if (projectId) {
+        const selection = await composer.setSelection({ projectId });
+        if (selection.projectId !== projectId) throw new Error('BB did not switch projects. Check uploads and the project picker, then try again.');
+      }
+      const current = latestComposer.current;
+      if (document.hasFocus() && current.scope.kind === 'new-thread'
+        && (!projectId || current.selection?.projectId === projectId)) current.focus();
+      return true;
     }
-    else navigate.toCompose({ focusPrompt: true });
+    navigate.toCompose({ ...(projectId ? { projectId } : {}), focusPrompt: true });
+    return false;
   };
   const capturedChoice = useRef<{ token: string; capture: ChoiceCapture } | null>(null);
   const sdk = useSdk();
@@ -49,7 +63,7 @@ function VoiceCard() {
   const expanded = monitorOpen || choices !== null || archiveConfirmation !== null;
   const surfaceOpen = useRef(expanded);
   surfaceOpen.current = expanded;
-  const close = () => { setChoices(null); setArchiveConfirmation(null); setMonitorOpen(false); composer.focus(); };
+  const close = () => { setChoices(null); setArchiveConfirmation(null); setMonitorOpen(false); if (composerAvailable) composer.focus(); };
   const [highlight, setHighlight] = useState(0);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<VoiceResult[]>([]);
@@ -69,7 +83,7 @@ function VoiceCard() {
   const thread = sidebar.threads.find(row => row.id === context.threadId);
   const projectId = composer.scope.kind === 'new-thread'
     ? composer.selection?.projectId ?? composer.scope.projectId ?? context.projectId : context.projectId;
-  const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}`;
+  const contextKey = `${windowId}|${context.threadId ?? 'draft'}:${projectId ?? ''}:${composer.selection?.providerId ?? ''}:${focusedPane?.paneId ?? ''}`;
   const latestContext = useRef(contextKey);
   latestContext.current = contextKey;
   const latestComposer = useRef(composer);
@@ -136,13 +150,6 @@ function VoiceCard() {
     return () => window.removeEventListener('resize', place);
   }, [expanded]);
 
-  useEffect(() => {
-    if (draftFocus.current && composer.scope.kind === 'new-thread' && projectId === draftFocus.current) {
-      draftFocus.current = null;
-      if (document.hasFocus()) composer.focus();
-    }
-  }, [composer, composer.scope.kind, projectId]);
-
   useEffect(() => { setChoices(null); setArchiveConfirmation(null); setHighlight(0); }, [contextKey]);
   useEffect(() => {
     if (choices || archiveConfirmation) card.current?.focus();
@@ -168,6 +175,7 @@ function VoiceCard() {
     if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
     if (kind === 'thread') return threads.slice().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 200).map(threadCandidate);
     if (kind === 'project') return sidebar.projects.map(row => ({ id: row.id, label: row.name }));
+    if (!composerAvailable) throw new Error('The focused chat composer is unavailable. Open a chat and try again.');
     const providerId = composer.selection?.providerId;
     if (!providerId) throw new Error('Select an agent in the BB composer first.');
     const environment = composer.selection?.environment;
@@ -194,8 +202,9 @@ function VoiceCard() {
     if (kind === 'project') {
       setChoices(null);
       trackNavigation();
-      openDraft(id);
-      return { ok: true, message: `Draft ready in ${candidate.label}. Dictate, then press Enter.` };
+      const ready = await openDraft(id);
+      return { ok: true, outcome: ready ? 'completed' : 'requested', message: ready
+        ? `Draft ready in ${candidate.label}. Dictate, then press Enter.` : `Opening a new thread in ${candidate.label}.` };
     }
     const selection = await composer.setSelection({ model: id });
     if (selection.model !== id) throw new Error('BB did not select that model. Check the composer picker.');
@@ -225,6 +234,11 @@ function VoiceCard() {
   const handle = async (command: Command): Promise<Reply> => {
     if (!['confirm-archive', 'cancel-archive', 'notice', 'list', 'capture'].includes(command.action)) setArchiveConfirmation(null);
     switch (command.action) {
+      case 'focus':
+        if (!composerAvailable) throw new Error('The focused chat composer is unavailable. Open a chat and try again.');
+        if (blockingSurface(document, undefined, card.current ?? undefined)) throw new Error('Close the popup first. Say “close popup”, then “focus chat”.');
+        close();
+        return { ok: true, outcome: 'completed', message: 'Chat input focused. Ready for dictation.' };
       case 'archive':
       case 'confirm-archive': {
         if (!context.threadId) throw new Error('Select an existing thread to archive.');
@@ -243,7 +257,7 @@ function VoiceCard() {
           setArchiveConfirmation(null);
           if (result.outcome === 'archived' && latestContext.current === expectedContext) {
             trackNavigation();
-            openDraft(target.projectId);
+            await openDraft(target.projectId);
           }
         }
         return { ok: true, outcome: result.outcome, message: result.message };
@@ -329,11 +343,13 @@ function VoiceCard() {
         setHighlight(0);
         return { ok: true, outcome: 'choices', message: command.action === 'attention' ? 'These agents need you. Say “choose one”, or press Enter.' : 'Finished threads. Say “choose one”, or press Enter.' };
       }
-      case 'new':
+      case 'new': {
         trackNavigation();
         setChoices(null);
-        openDraft(projectId ?? undefined);
-        return { ok: true, message: 'Draft ready. Dictate your task, then press Enter.' };
+        const ready = await openDraft(projectId ?? undefined);
+        return { ok: true, outcome: ready ? 'completed' : 'requested', message: ready
+          ? 'Draft ready. Dictate your task, then press Enter.' : 'Opening a new thread draft.' };
+      }
       case 'monitor':
         setChoices(null); setView('activity'); setMonitorOpen(true);
         return { ok: true, message: 'Showing voice activity.' };
@@ -459,6 +475,7 @@ function VoiceCard() {
         <dt>“Close popup” / “Close voice monitor”</dt><dd>Close voice controls and dismiss the top popup with Escape</dd>
         <dt>“Who needs me?” / “Next finished”</dt><dd>Show pending questions or unread successful results</dd>
         <dt>“New thread” / “New thread in dotfiles”</dt><dd>Open a draft for dictation</dd>
+        <dt>“Focus chat” / “Focus message”</dt><dd>Focus the chat input for dictation</dd>
         <dt>“Archive this thread” / “Unarchive last thread”</dt><dd>Archive the selected thread or restore the last voice archive</dd>
         <dt>“Show projects” / “Select project kb”</dt><dd>Choose a project for a new draft</dd>
         <dt>“Use Sonnet”</dt><dd>Select a model</dd>

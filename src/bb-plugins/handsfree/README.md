@@ -65,8 +65,9 @@ not required.
 | `who needs me` / `next waiting` | Show threads with pending questions or approvals |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
-| `show projects` / `list projects` | Show numbered projects for a new draft |
-| `select project kb` / `switch project to kb` | Open a draft in that project |
+| `focus chat` / `focus message` / `focus composer` | Focus the selected chat input for dictation |
+| `show projects` / `list projects` | Show numbered draft projects |
+| `select project kb` / `switch project to kb` | Change the draft's project or open a draft from a conversation |
 | `new thread in dotfiles` | Match a project and open its draft |
 | `use Sonnet` | Match a model offered by the selected agent |
 | `choose two` | Select a numbered voice match or native question answer |
@@ -104,7 +105,15 @@ Requested help opens the command list. Failures remain available in Activity wit
 without `the`. Hex can reject `go to the next thread` as an ambiguous command
 sequence because `go to the` is itself a valid captured command.
 
-Project selection opens a new draft; it does not move an existing conversation.
+Project selection changes the current draft through BB's project picker, preserving
+its text, mentions and attachments. BB can refuse the switch during uploads or
+attachment copying. From an existing conversation, selection opens a new draft;
+it does not move the conversation. Navigation replies report the draft opening;
+project changes report success after BB confirms the selected project.
+
+Voice commands follow the focused split pane. `focus chat` places the caret at
+the end of its draft without submitting. A blocking popup requires `close popup`
+first. Say `open BB` to activate the application before focusing its chat input.
 The monitor keeps fifty recent BB results in memory, including heard search targets.
 Reloading clears this history. Hex's diagnostic logs have separate retention.
 

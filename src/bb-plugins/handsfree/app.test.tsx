@@ -2,9 +2,9 @@
 import { useState } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, waitFor } from '@testing-library/react';
-import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
+import { loadPluginApp, renderSlot, type RenderedSlot, type RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginSidebarThread } from '@get-bb/plugin-sdk';
-import type { Command, Reply } from './contracts.ts';
+import { commandSchema, type Command, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
 import { makeArchives } from './archive.ts';
 import { unavailableDiagnostics, type Diagnostics } from './diagnostics-contract.ts';
@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean } } = {}) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout'] } = {}) {
   const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
@@ -52,8 +52,9 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
     <VoiceComponent />
   </> };
   slot = renderSlot<object, typeof rpcContract>(wrapped, {}, {
-    context: { threadId: 't1', projectId: 'p1' },
-    composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' } },
+    context: { threadId: options.composer?.scope?.kind === 'new-thread' ? null : 't1', projectId: 'p1' },
+    composer: { scope: { kind: 'thread', threadId: 't1' }, text: 'Unsent task', selection: { providerId: 'codex', model: 'gpt-test' }, ...options.composer },
+    sidebarSplitLayout: options.sidebarSplitLayout,
     sidebarThreads: {
       threads: threads ?? [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' },
@@ -272,10 +273,68 @@ test('approval decisions target the selected thread', async () => {
   expect(view.approvals).toEqual([{ threadId: 't1', decision: 'allow_once' }]);
 });
 
+test('voice commands target the focused split pane instead of the route thread', async () => {
+  const view = await render('idle', undefined, [thread('t1'), thread('t2', { projectId: 'p2' })], {
+    composer: { scope: { kind: 'thread', threadId: 't2' } },
+    sidebarSplitLayout: { panes: [
+      { paneId: 'left', threadId: 't1', isFocused: false, rect: { x: 0, y: 0, width: 0.5, height: 1 } },
+      { paneId: 'right', threadId: 't2', isFocused: true, rect: { x: 0.5, y: 0, width: 0.5, height: 1 } },
+    ] },
+  });
+  await view.command({ action: 'approve', decision: 'allow_once' });
+  expect(view.approvals).toEqual([{ threadId: 't2', decision: 'allow_once' }]);
+  await view.command({ action: 'new' });
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: 'p2', focusPrompt: true } }]);
+});
+
+test('focus chat closes voice choices and focuses the composer without submitting', async () => {
+  const view = await render();
+  await view.command({ action: 'attention' });
+  expect((await view.command(commandSchema.parse({ action: 'focus' }))).ok).toBe(true);
+  expect(view.slot.inspection.composer.focusCount).toBe(1);
+  expect(view.slot.queryByRole('dialog')).toBeNull();
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('focus chat refuses an unavailable pane composer instead of focusing another thread', async () => {
+  const view = await render('idle', undefined, undefined, { sidebarSplitLayout: { panes: [
+    { paneId: 'other', threadId: 't2', isFocused: true, rect: { x: 0, y: 0, width: 1, height: 1 } },
+  ] } });
+  expect(await view.command(commandSchema.parse({ action: 'focus' }))).toMatchObject({ ok: false, message: expect.stringContaining('unavailable') });
+  expect(view.slot.inspection.composer.focusCount).toBe(0);
+});
+
+test('focus chat reports a blocking popup without stealing its focus', async () => {
+  const view = await render();
+  const popup = document.createElement('div');
+  popup.setAttribute('role', 'dialog');
+  document.body.append(popup);
+  try {
+    expect(await view.command(commandSchema.parse({ action: 'focus' }))).toMatchObject({ ok: false, message: expect.stringContaining('close popup') });
+    expect(view.slot.inspection.composer.focusCount).toBe(0);
+  } finally { popup.remove(); }
+});
+
+test('changing a draft project preserves its text and attachments without navigation or submission', async () => {
+  const view = await render('idle', undefined, undefined, { composer: {
+    scope: { kind: 'new-thread', projectId: 'p1' },
+    attachments: [{ type: 'localFile', path: 'uploads/spec.txt', name: 'spec.txt', sourceProjectId: 'p1' }],
+  } });
+  const before = view.slot.inspection.composer.draft;
+  const list = await view.command({ action: 'list', kind: 'project' });
+  expect(await view.command({ action: 'select', kind: 'project', id: 'p2', context: list.context ?? '' })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.composer.selections).toEqual([{ projectId: 'p2' }]);
+  expect(view.slot.inspection.composer.draft).toEqual(before);
+  expect(view.slot.inspection.composer.focusCount).toBe(1);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
 test('new thread opens a draft in the current project without submitting text', async () => {
   const view = await render();
   expect((await view.command({ action: 'new' })).ok).toBe(true);
-  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: 'p1' }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: 'p1', focusPrompt: true } }]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
@@ -345,7 +404,7 @@ test('returning to the composer leaves Enter and arrow keys available to BB', as
 test('routine success stays in the header while help opens the monitor', async () => {
   const view = await render();
   await view.command({ action: 'new' });
-  expect(view.slot.getByRole('button', { name: /Voice monitor\. Draft ready/ }).getAttribute('aria-expanded')).toBe('false');
+  expect(view.slot.getByRole('button', { name: /Voice monitor\. Opening a new thread/ }).getAttribute('aria-expanded')).toBe('false');
   expect(view.slot.queryByRole('dialog')).toBeNull();
   await view.command({ action: 'help' });
   expect(view.slot.getByRole('button', { name: /Voice monitor\./ }).getAttribute('aria-expanded')).toBe('true');
@@ -410,7 +469,7 @@ test('project choices open a draft without moving the existing thread', async ()
   if (!list.context || !list.candidates) throw new Error('Missing project list');
   await view.command({ action: 'choices', kind: 'project', context: list.context, options: list.candidates, message: 'Choose a project' });
   await view.command({ action: 'choose', number: 1 });
-  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: 'p1' }]);
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: 'p1', focusPrompt: true } }]);
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });
 
@@ -420,7 +479,7 @@ test('voice feedback retains the heard target alongside the result', async () =>
   await view.command({ action: 'new' });
   fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor\./ }));
   expect(view.slot.getByText('Heard thread target: access thread')).toBeTruthy();
-  expect(view.slot.getAllByText(/Draft ready/).length).toBeGreaterThan(0);
+  expect(view.slot.getAllByText(/Opening a new thread/).length).toBeGreaterThan(0);
 });
 
 
@@ -504,21 +563,12 @@ test('capture feedback expires and polling stops when the controller unmounts', 
 });
 
 
-test('project draft navigation focuses the arriving composer and preserves its text', async () => {
+test('opening a project draft requests host focus without claiming completion', async () => {
   const view = await render();
-  await view.command({ action: 'new' });
+  expect(await view.command({ action: 'new' })).toMatchObject({ ok: true, outcome: 'requested' });
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: 'p1', focusPrompt: true } }]);
   expect(view.slot.inspection.composer.focusCount).toBe(0);
-  await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
-  expect(view.slot.inspection.composer.focusCount).toBe(1);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
-});
-
-test('arriving project draft does not take focus after the window loses focus', async () => {
-  const view = await render();
-  await view.command({ action: 'new' });
-  vi.spyOn(document, 'hasFocus').mockReturnValue(false);
-  await view.slot.behavior.setComposerScope({ kind: 'new-thread', projectId: 'p1' });
-  expect(view.slot.inspection.composer.focusCount).toBe(0);
 });
 
 test.each(['thread', 'project', 'model'] as const)('a single %s match selects directly without a picker', async kind => {
@@ -531,7 +581,7 @@ test.each(['thread', 'project', 'model'] as const)('a single %s match selects di
   expect(reply.outcome).not.toBe('choices');
   expect(view.slot.queryByRole('dialog')).toBeNull();
   if (kind === 'thread') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: option.id }]);
-  if (kind === 'project') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toProject', projectId: option.id }]);
+  if (kind === 'project') expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toCompose', options: { projectId: option.id, focusPrompt: true } }]);
   if (kind === 'model') expect(view.slot.inspection.composer.selections).toEqual([{ model: option.id }]);
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
   expect(view.slot.inspection.composer.submits).toEqual([]);

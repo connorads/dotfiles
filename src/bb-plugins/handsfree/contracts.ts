@@ -10,6 +10,7 @@ export const candidateSchema = z.object({
 export const decisionSchema = z.enum(['allow_once', 'allow_for_session', 'deny']);
 export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('capture') }).strict(),
+  z.object({ action: z.literal('focus') }).strict(),
   z.object({ action: z.literal('list'), kind: kindSchema }).strict(),
   z.object({ action: z.literal('select'), kind: kindSchema, id: z.string().min(1).max(512), context: z.string() }).strict(),
   z.object({ action: z.literal('choices'), kind: kindSchema, options: z.array(candidateSchema).min(1).max(9), context: z.string(), message: z.string().max(1024) }).strict(),

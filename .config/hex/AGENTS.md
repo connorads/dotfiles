@@ -114,8 +114,9 @@ Hex rejects phrases with multiple command parses. `go to the next thread` can
 parse as a thread search or as `go to the` followed by `next thread`.
 Use `next thread`, `next conversation` or `go to next thread` without `the`.
 Adding an overlapping literal alias does not resolve this sequence ambiguity.
-`select project kb` opens a draft in the named project. The `dotfiles` alias matches
-the home project named `connorads`.
+`select project kb` changes the current draft's project or opens a draft from a conversation.
+`focus chat`, `focus message` and `focus composer` focus the selected BB chat input.
+The `dotfiles` alias matches the home project named `connorads`.
 
 Right Alt controls dictation. Enter selects a highlighted voice match or follows
 BB's normal send action. Escape closes the voice card and focuses the composer.
