@@ -52,3 +52,16 @@
 .handsfree-history details { margin-top: 8px; }
 .handsfree-history summary { cursor: pointer; }
 .handsfree-results-heading { font-size: 13px; margin: 16px 0 8px; }
+
+.handsfree-card ol li button { display: flex; align-items: center; gap: 12px; }
+.handsfree-choice-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--ink) 8%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.handsfree-choice-label { min-width: 0; }
+.handsfree-choice-label small { display: block; margin-top: 3px; font-size: 12px; opacity: .65; }

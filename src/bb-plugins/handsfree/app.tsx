@@ -21,6 +21,9 @@ interface Choices {
   context: string;
 }
 
+const choiceNumber = (choices: Choices, index: number) => choices.kind === 'favourite'
+  ? Number(choices.options[index]?.title) : index + 1;
+
 interface VoiceResult { at: number; message: string; problem: boolean }
 
 function VoiceCard() {
@@ -196,7 +199,7 @@ function VoiceCard() {
     if (kind === 'account') return (await agentSwitcher.accounts()).profiles.map(profile => ({ id: profile.id, label: profile.label }));
     if (kind === 'favourite') return (await agentSwitcher.favourites()).sort((a, b) => a.slot - b.slot)
       .map(favourite => ({ id: favourite.id, title: String(favourite.slot),
-        label: `${favourite.slot}. ${favourite.name || favourite.model} (${favourite.providerId}, ${favourite.reasoningLevel ?? 'default'} effort)` }));
+        label: `${favourite.name || favourite.model} (${favourite.providerId === 'claude-code' ? 'Claude Code' : favourite.providerId === 'codex' ? 'Codex' : favourite.providerId}, ${favourite.reasoningLevel ?? 'default'} effort)` }));
     return (await agentSwitcher.models()).map(({ id, label, title }) => ({ id, label, title }));
   };
 
@@ -243,7 +246,7 @@ function VoiceCard() {
       currentKey: () => latestChoices.current === choices
         ? choices.context + JSON.stringify(choices.options) : null,
       choose: async (number: number): Promise<Reply> => {
-        const option = choices.options[number - 1];
+        const option = choices.options.find((_, index) => choiceNumber(choices, index) === number);
         if (!option) return { ok: false, outcome: 'error', message: `Voice choice ${number} is unavailable.` };
         return select(choices.kind, option.id, choices.context);
       },
@@ -530,7 +533,7 @@ function VoiceCard() {
         close();
       } else if (expanded && choices && card.current?.contains(document.activeElement) && event.key === 'Enter') {
         event.preventDefault(); event.stopImmediatePropagation();
-        if (!busy) void run({ action: 'choose', number: highlight + 1 });
+        if (!busy) void run({ action: 'choose', number: choiceNumber(choices, highlight) });
       } else if (expanded && choices && card.current?.contains(document.activeElement) && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
         event.preventDefault(); event.stopImmediatePropagation();
         setHighlight(index => (index + (event.key === 'ArrowDown' ? 1 : choices.options.length - 1)) % choices.options.length);
@@ -549,17 +552,24 @@ function VoiceCard() {
         close();
       }
     }}>
-      <header className="handsfree-heading"><strong>{choices ? 'Choose a match' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'}</strong><button type="button" aria-label="Close voice controls"
+      <header className="handsfree-heading"><strong>{choices ? choices.kind === 'favourite' ? 'Favourite models' : 'Choose a match' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'}</strong><button type="button" aria-label="Close voice controls"
         onClick={close}>×</button></header>
       <p className="handsfree-context">Following {thread?.displayTitle ?? 'New thread'} · {projectId ? projectName(projectId) : 'Choose a project'}</p>
       <p role="status">{message}</p>
+      {choices && <p className="handsfree-context">Say “choose” and a number. ↑ ↓ then Enter also works.</p>}
       {archiveConfirmation && <div role="group" aria-label="Confirm archive">
         <button type="button" disabled={busy} onClick={() => void run({ action: 'confirm-archive' })}>Confirm archive</button>
         <button type="button" disabled={busy} onClick={() => void run({ action: 'cancel-archive' })}>Cancel archive</button>
       </div>}
       {choices ? <ol aria-label="Voice choices">{choices.options.map((option, index) => <li key={option.id}>
         <button type="button" disabled={busy} aria-current={index === highlight ? 'true' : undefined}
-          onClick={() => void run({ action: 'choose', number: index + 1 })}>{index + 1}. {option.label}</button>
+          onClick={() => void run({ action: 'choose', number: choiceNumber(choices, index) })}>
+            <span className="handsfree-choice-number">{choiceNumber(choices, index)}</span>
+            <span className="handsfree-choice-label">{choices.kind === 'favourite' ? <>
+              <span>{option.label.replace(/ \([^)]*\)$/, '')}</span>
+              <small>{option.label.match(/ \(([^)]*)\)$/)?.[1]}</small>
+            </> : option.label}</span>
+          </button>
       </li>)}</ol> : !archiveConfirmation && <>
       <div role="tablist" aria-label="Voice monitor views" className="handsfree-tabs">
         {(['activity', 'commands'] as const).map(tab => <button type="button" role="tab" id={`voice-${tab}`} key={tab}

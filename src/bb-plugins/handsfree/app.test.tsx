@@ -852,3 +852,20 @@ test('finishing a focused question returns to the composer without sending its d
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
   expect(view.slot.inspection.composer.submits).toEqual([]);
 });
+
+test('favourite choices show one stable slot number and choose that slot across gaps', async () => {
+  const view = await render('idle', undefined, undefined, { sdk: { plugins: {
+    callRpc: async ({ outputSchema }) => outputSchema.parse([
+      { id: 'deep', slot: 2, name: 'Deep', providerId: 'codex', model: 'new-model', reasoningLevel: 'high' },
+      { id: 'another', slot: 3, name: 'Another', providerId: 'codex', model: 'other-model', reasoningLevel: 'high' },
+    ]),
+  } } });
+  const list = await view.command({ action: 'list', kind: 'favourite' });
+  expect(list.candidates?.[0]?.label).toBe('Deep (Codex, high effort)');
+  await view.command({ action: 'choices', kind: 'favourite', options: [...list.candidates!, { id: 'another', title: '3', label: 'Another (Codex, low effort)' }], context: list.context!, message: 'Choose a favourite.' });
+  const button = view.slot.getByRole('button', { name: /2 Deep Codex, high effort/ });
+  expect(button.textContent).not.toContain('2. 2.');
+  expect(await view.command({ action: 'choose', number: 1 })).toMatchObject({ ok: false });
+  expect(await view.command({ action: 'choose', number: 2 })).toMatchObject({ ok: true });
+  expect(view.slot.inspection.composer.selection).toMatchObject({ model: 'new-model', reasoningLevel: 'high' });
+});
