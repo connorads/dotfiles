@@ -51,6 +51,8 @@ What kind of change is this?
 |   `-- make domain/application errors explicit and translate at the shell
 |-- Boundaries unknown / new domain / experts disagree
 |   `-- discover before scoring (Finding Boundaries)
+|-- Turning requirements into commands, events, aggregates, reactions
+|   `-- references/event-modelling.md
 |-- Weighing approaches / the first idea is the only idea
 |   `-- fork structurally different candidates (design-forking)
 |-- A boundary feels wrong / "should we decouple this?"
@@ -212,6 +214,8 @@ experts who contradict each other are usually both right in their own place,
 and that is where the context boundary is (Brandolini); a term changing meaning
 is the same signal (Evans). Drive to a plausible end-to-end story, then
 re-inject the corner cases you parked - the rosy scenario proves nothing.
+To turn that flow into commands, aggregates and reactions, follow
+references/event-modelling.md.
 
 ## Balancing Coupling
 
@@ -314,7 +318,8 @@ one nobody acts on is a log line, not a domain type.
 Triage every failure into one of three kinds (after Wlaschin):
 
 - domain errors - expected business outcomes; model them as typed values in the
-  domain language
+  domain language, carrying the evidence a caller needs to explain the refusal
+  (`InsufficientFunds { balance, requested }`)
 - panics - bugs and impossible states; throw and let them crash, caught once at
   the top
 - infrastructure errors - timeouts, auth, outages; handle per architecture, and
@@ -396,6 +401,7 @@ when-to-read line.
 
 | Reference | Read when |
 |---|---|
+| references/event-modelling.md | turning requirements into commands, events, rejections, aggregates, read models, policies |
 | references/balancing-coupling.md | a boundary feels wrong, "decouple it" is proposed, a rule ripples across services |
 | references/state-machines.md | lifecycle or event order controls legal actions; choosing functions, a transition function, or statecharts |
 | references/workflows-transactions.md | operations span aggregates/services; retries, sagas, idempotency, lost updates |
