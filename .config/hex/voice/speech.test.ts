@@ -98,3 +98,25 @@ test('capture replies retain the target through the command bridge', () => {
   expect(commandSchema.parse({ action: 'capture' })).toEqual({ action: 'capture' })
   expect(commandSchema.parse({ action: 'choose', number: 2, target: reply.choiceTarget })).toEqual({ action: 'choose', number: 2, target: 'recording-target' })
 })
+
+test('favourite model phrases and named model choices accept natural wording', () => {
+  for (const phrase of ['Show favourite models', 'List favourite models', 'Show favorite models', 'List favorite models']) {
+    expect(parseSpeech(phrase)).toEqual({ kind: 'favourite', target: '' })
+  }
+  expect(parseSpeech('Choose Opus 5.5')).toEqual({ kind: 'model', target: 'opus 5 5' })
+  expect(parseSpeech('Choose Opus five point five')).toEqual({ kind: 'model', target: 'opus five point five' })
+  expect(parseSpeech('Choose two')).toEqual({ command: { action: 'choose', number: 2 } })
+  expect(parseSpeech('Choose 10')).toHaveProperty('error')
+})
+
+test('choosing a named model selects a unique match without asking to choose it again', async () => {
+  const commands: Command[] = []
+  const ports: BbPorts = {
+    request: async command => { commands.push(command); return command.action === 'list'
+      ? { ok: true, message: '', context: 'test', candidates: [{ id: 'opus', label: 'Claude Opus 5.5', title: 'Claude Opus 5.5' }] }
+      : { ok: true, message: '' } },
+    judge: async () => ok({ choice: 'none', confidence: 1, probabilities: { none: 1 } }), notify: async () => {}, log: async () => {},
+  }
+  await runSpeech(ports, 'Choose Opus 5.5.')
+  expect(commands.at(-1)).toMatchObject({ action: 'select', kind: 'model', id: 'opus' })
+})

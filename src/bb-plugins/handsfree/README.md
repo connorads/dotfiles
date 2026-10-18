@@ -69,9 +69,9 @@ not required.
 | `show projects` / `list projects` | Show numbered draft projects |
 | `select project kb` / `switch project to kb` | Change the draft's project or open a draft from a conversation |
 | `new thread in dotfiles` | Match a project and open its draft |
-| `use Sonnet` | Match a model across available providers |
+| `use Sonnet` / `choose Opus 5.5` | Match a model across available providers |
 | `show models` / `change model` / `switch model` | Show numbered models across available providers |
-| `show favourites` / `use favourite two` | List saved models or select a slot with its saved effort |
+| `show favourites` / `show favourite models` / `use favourite two` | List saved models or select a slot with its saved effort |
 | `show accounts` / `use account work` | List Claude accounts or select one by name |
 | `choose two` | Select a numbered voice match or native question answer |
 | `submit answer` / `submit answers` / `next question` | Submit the current answer or advance to the next question |
@@ -122,6 +122,10 @@ sequence because `go to the` is itself a valid captured command.
 `change model to …` and `switch model to …` also select models.
 `list models` also lists models. `what can I say` and `what can I say here`
 also open command help. These phrases work through both Hex and the command pedal.
+`choose` accepts a model name or a number from one to nine. Model names search
+available providers; several matches offer numbered choices. Spoken versions such
+as `Opus five point five` match `Opus 5.5`. `list favourite models` also lists
+saved setups. American `favorite` spelling is accepted.
 
 Project selection changes the current draft through BB's project picker, preserving
 its text, mentions and attachments. BB can refuse the switch during uploads or

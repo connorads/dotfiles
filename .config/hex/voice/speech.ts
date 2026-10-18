@@ -36,12 +36,13 @@ export function parseSpeech(transcript: string): Speech {
   if (text === 'show projects' || text === 'list projects') return { kind: 'project', target: '' }
   if (['show models', 'list models', 'change model', 'switch model'].includes(text)) return { kind: 'model', target: '' }
   if (['show accounts', 'list accounts', 'change account', 'switch account'].includes(text)) return { kind: 'account', target: '' }
-  if (['show favourites', 'list favourites', 'show favorites', 'list favorites'].includes(text)) return { kind: 'favourite', target: '' }
+  if (['show favourites', 'list favourites', 'show favorites', 'list favorites', 'show favourite models', 'list favourite models', 'show favorite models', 'list favorite models'].includes(text)) return { kind: 'favourite', target: '' }
   const favourite = text.match(/^use favou?rite (one|two|three|four|five|six|seven|eight|nine|[1-9])$/)?.[1]
   if (favourite) return { kind: 'favourite', target: String(Number(favourite) || ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'].indexOf(favourite) + 1) }
   const digit = text.match(/^choose (one|two|three|four|five|six|seven|eight|nine|[1-9])$/)?.[1]
   if (digit) return { command: { action: 'choose', number: Number(digit) || ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'].indexOf(digit) + 1 } }
-  for (const [prefix, kind] of [['new thread in ', 'project'], ['create new thread in ', 'project'], ['start new thread in ', 'project'], ['create a new thread in ', 'project'], ['start a new thread in ', 'project'], ['select project ', 'project'], ['switch project to ', 'project'], ['use account ', 'account'], ['change account to ', 'account'], ['switch account to ', 'account'], ['change model to ', 'model'], ['switch model to ', 'model'], ['use ', 'model'], ['go to ', 'thread'], ['take me to ', 'thread'], ['can i go to ', 'thread']] as const) {
+  if (/^choose [0-9]+$/.test(text)) return { error: 'Choose a number from one to nine.' }
+  for (const [prefix, kind] of [['new thread in ', 'project'], ['create new thread in ', 'project'], ['start new thread in ', 'project'], ['create a new thread in ', 'project'], ['start a new thread in ', 'project'], ['select project ', 'project'], ['switch project to ', 'project'], ['use account ', 'account'], ['change account to ', 'account'], ['switch account to ', 'account'], ['change model to ', 'model'], ['switch model to ', 'model'], ['use ', 'model'], ['choose ', 'model'], ['go to ', 'thread'], ['take me to ', 'thread'], ['can i go to ', 'thread']] as const) {
     if (text.startsWith(prefix) && text.length > prefix.length) {
       const target = text.slice(prefix.length)
       const navigation = target.replace(/^the /, '')
@@ -60,5 +61,5 @@ export async function runSpeech(ports: BbPorts, transcript: string, choiceTarget
       ? { ...speech.command, target: choiceTarget } : speech.command
     return runBb(ports, command)
   }
-  return matchBb(ports, speech.kind, speech.target, { choose: true })
+  return matchBb(ports, speech.kind, speech.target, { choose: !/^choose\s/i.test(transcript.trim()) })
 }

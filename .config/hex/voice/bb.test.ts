@@ -177,3 +177,10 @@ test("joined ASR words offer choices when spaced titles are ambiguous", async ()
   expect(w.commands.at(-1)).toMatchObject({ action: "choices", options: [{ id: "0" }, { id: "1" }] })
   expect(w.judged()).toBe(false)
 })
+
+test('spoken model versions match literal versions without semantic guessing', async () => {
+  const w = setup(['claude-opus-5-5 (Claude)', 'claude-opus-5-4 (Claude)'])
+  await matchBb(w.ports, 'model', 'opus five point five')
+  expect(w.commands.at(-1)).toMatchObject({ action: 'select', id: '0' })
+  expect(w.judged()).toBe(false)
+})

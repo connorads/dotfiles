@@ -176,19 +176,18 @@ export default defineHexConfig({
       run: async ({ captures }) => { await matchBb(bbPorts, "account", captures.account ?? "") },
     },
     "bb-favourites": {
-      phrases: ["show favourites", "list favourites", "show favorites", "list favorites"],
+      phrases: ["show favourites", "list favourites", "show favorites", "list favorites", "show favourite models", "list favourite models", "show favorite models", "list favorite models"],
       when: { application: "bb" },
       group: "BB",
       description: "Show saved models and effort",
       run: async () => { await matchBb(bbPorts, "favourite", "") },
     },
     "bb-choose": {
-      phrases: ["choose {n}"],
-      captures: { n: digit({ min: 1, max: 9 }) },
+      phrases: ["choose {choice}"],
       when: { application: "bb" },
       group: "BB",
-      description: "Choose a numbered BB voice match",
-      run: async ({ captures }) => { await runBb(bbPorts, { action: "choose", number: captures.n }) },
+      description: "Choose a numbered option or a named model",
+      run: async ({ captures }) => { await runSpeech(bbPorts, `choose ${captures.choice ?? ""}`) },
     },
     "bb-submit-answer": {
       phrases: ["submit answer", "submit answers", "next question"],

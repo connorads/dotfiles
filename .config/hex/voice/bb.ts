@@ -98,7 +98,10 @@ const searchBb = async (ports: BbPorts, kind: Kind, utterance: string, { trace, 
     return { ...reply, ok: false, outcome: result }
   }
   if (utterance) await request({ action: "notice", message: `Heard ${kind} target: “${utterance}”.` })
-  const spoken = normalise(utterance)
+  const numbers: Record<string, string> = { zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9" }
+  const spoken = kind === "model"
+    ? normalise(utterance).split(" ").map(word => numbers[word] ?? word).join(" ").replace(/(\d) point (?=\d)/g, "$1 ")
+    : normalise(utterance)
   if (kind === "thread") {
     const navigation = spoken.replace(/^the /, "")
     if (navigation === "next thread" || navigation === "previous thread") {
