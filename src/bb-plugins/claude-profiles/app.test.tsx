@@ -129,3 +129,19 @@ test('the model picker explains the same Claude handoff limitation', async () =>
   await slot.findByText(/New Claude threads use your remembered account/);
   expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
 });
+
+test('the badge bridge loads thread accounts and reloads when an account changes', async () => {
+  const { getBadges } = await import('./ui/badges/store.ts');
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const bridge = app.appOverlays.find(registration => registration.id === 'account-badges');
+  if (!bridge) throw new Error('Missing badge bridge.');
+  let label = 'Team Beta';
+  const slot = renderSlot<object, typeof rpcContract>({ component: bridge.component }, {}, { rpc: {
+    threadAccounts: () => [{ threadId: 't1', profileId: 'Team Beta', label }],
+  } as Partial<PluginRpcTestHandlers<typeof rpcContract>> as PluginRpcTestHandlers<typeof rpcContract> });
+  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('Team Beta'));
+  label = 'Team Alpha';
+  await slot.behavior.emitRealtime('profiles-changed', { threadId: 't1' });
+  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('Team Alpha'));
+  expect(app.contentScripts.map(script => script.id)).toContain('account-badges');
+});

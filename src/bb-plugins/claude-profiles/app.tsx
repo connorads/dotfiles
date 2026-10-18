@@ -7,6 +7,9 @@ import { ThreadUsage } from './ui/usage/badge.tsx';
 import { UsageOverlay } from './ui/usage/overlay.tsx';
 import { openUsage } from './ui/usage/overlay-store.ts';
 import { LoginPage } from './ui/usage/login.tsx';
+import { BadgeBridge } from './ui/badges/bridge.tsx';
+import { mountAccountBadges } from './ui/badges/rows.ts';
+import './ui/badges/badges.css';
 
 export default definePluginApp(app => {
   app.slots.navPanel({ id: 'claude-login', title: 'Claude sign-in', icon: 'SquareTerminal', path: 'claude-login', component: LoginPage });
@@ -33,5 +36,7 @@ export default definePluginApp(app => {
     title: `Select favourite model ${slot}`, run: ({ composer }) => command(composer, controller => controller.select(slot)) });
   app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Usage', component: ThreadUsage });
   app.slots.experimental_appOverlay({ id: 'usage-overview', component: UsageOverlay });
+  app.slots.experimental_appOverlay({ id: 'account-badges', component: BadgeBridge });
+  app.contentScripts.register({ id: 'account-badges', mount: () => mountAccountBadges(document) });
   app.commands.register({ id: 'show-usage', title: 'Show agent usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });

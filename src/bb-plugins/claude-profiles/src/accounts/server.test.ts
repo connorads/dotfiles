@@ -129,7 +129,7 @@ async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default',
     thread: { id: 'child', providerId: 'claude-code', status: 'pending', parentThreadId, ...thread },
     host: hostId ? { id: hostId } : null, parentThreadId }));
   const binding = () => bb.storage.kv.get<{ hostId: string; profile: { id: string } }>('thread:child');
-  return { bb, firstSend, binding };
+  return { bb, harness, firstSend, binding };
 }
 
 test('a child of a thread on a named account starts on that account, not the composer account', async () => {
@@ -137,6 +137,22 @@ test('a child of a thread on a named account starts on that account, not the com
   await bb.storage.kv.set('thread:parent', { hostId: 'h2', profile: work });
   assert.deepEqual(await firstSend({ parentThreadId: 'parent' }), { action: 'proceed' });
   assert.deepEqual(await binding(), { hostId: 'h1', profile: work });
+});
+
+test('a first send that claims an account tells open views, so the sidebar badges the new thread', async () => {
+  const { firstSend, harness } = await newThreadSetup();
+  await firstSend();
+  assert.deepEqual(harness.inspection.realtimeSignals.map(signal => [signal.channel, signal.payload]),
+    [['profiles-changed', { threadId: 'child' }]]);
+});
+
+test('thread accounts list named bindings and omit Default', async () => {
+  const { bb, harness } = createFakePluginHost();
+  plugin(bb);
+  await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('thread:t2', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+  await bb.storage.kv.set('next-thread-profile', 'personal');
+  assert.deepEqual(await harness.behavior.callRpc('threadAccounts', {}), [{ threadId: 't1', profileId: 'work', label: 'Work' }]);
 });
 
 test('a fork starts on its source thread\'s account', async () => {

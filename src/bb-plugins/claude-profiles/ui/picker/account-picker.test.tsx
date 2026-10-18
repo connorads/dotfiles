@@ -28,6 +28,7 @@ function renderAccounts(running = false, fail = false) {
       'favourites.remove': () => [],
       'favourites.setEffort': () => [],
       nextThreadQuota: () => { throw new Error('Unused'); },
+      threadAccounts: () => [],
       accounts: () => ({ supported: true, profiles: [
         { id: 'default', label: 'Default', configDir: null },
         { id: 'work', label: 'Work', configDir: '/profiles/work' }], currentId: 'default' }),

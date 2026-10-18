@@ -55,6 +55,7 @@ function render(initial = [first, second], error: string | null = null, account?
         currentId = input.profileId;
         return { currentId };
       },
+      threadAccounts: () => [],
       nextThreadQuota: input => input.profileId === 'work'
         ? { status: 'ok', message: null, observedAt: 0, windows: [{ id: 'five_hour', label: 'Five hours', usedPercent: 40, resetsAt: null, cost: null }] }
         : { status: 'error', message: 'unavailable', observedAt: null, windows: [] },

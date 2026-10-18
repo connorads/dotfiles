@@ -10,6 +10,8 @@ export const profileSchema = z.object({ id: z.string(), label: z.string(), confi
 export type Profile = z.infer<typeof profileSchema>;
 export const selectionSchema = z.object({ hostId: z.string(), profile: profileSchema });
 export type Selection = z.infer<typeof selectionSchema>;
+export const threadAccountSchema = z.object({ threadId: z.string(), profileId: z.string(), label: z.string() });
+export type ThreadAccount = z.infer<typeof threadAccountSchema>;
 const rootInput = { root: z.string() };
 export const hostContract = defineRpcContract({
   profiles: { input: z.object(rootInput), output: z.array(profileSchema) },
@@ -34,6 +36,8 @@ export const accountsContract = defineRpcContract({
   usage: { input: z.object({ threadId: z.string(), profileId: z.string(), refresh: z.boolean() }), output: usageSchema },
   // A draft has no thread yet, so its quota is read on the machine that lists its accounts.
   nextThreadQuota: { input: z.object({ profileId: z.string() }), output: usageSchema },
+  // Threads on Default are omitted: the sidebar badges only named accounts.
+  threadAccounts: { input: z.object({}), output: z.array(threadAccountSchema) },
 });
 export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract });
 export const usageSourceContract = defineRpcContract({

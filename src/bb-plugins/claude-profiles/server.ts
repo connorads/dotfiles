@@ -60,6 +60,7 @@ export default function plugin(bb: BbPluginApi) {
         : `Claude account ${account.profileId} does not exist on this machine. Choose another account.`);
     }
     await bb.storage.kv.set(key(thread.id), { hostId, profile } satisfies Selection);
+    bb.realtime.publish('profiles-changed', { threadId: thread.id });
   }
   async function latestLaunch(threadId: string) {
     const [event] = await bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' });
@@ -258,6 +259,12 @@ export default function plugin(bb: BbPluginApi) {
       return { currentId: profileId };
     },
     usage: input => usage(input.threadId, input.profileId, input.refresh),
+    threadAccounts: async () => {
+      const selections = await Promise.all((await bb.storage.kv.list('thread:')).map(async entry =>
+        [entry.slice('thread:'.length), await bb.storage.kv.get<Selection>(entry)] as const));
+      return selections.flatMap(([threadId, selected]) => selected?.profile.configDir
+        ? [{ threadId, profileId: selected.profile.id, label: selected.profile.label }] : []);
+    },
   });
   bb.rpc.register(usageSourceContract, {
     'provider-usage.v1.listResources': async () => {
