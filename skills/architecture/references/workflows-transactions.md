@@ -41,6 +41,21 @@ covers that broker's own writes, so every external call carries its own key
 (see `event-driven-architecture` for outbox/inbox mechanics and idempotent
 consumers). Do not rely on "probably safe" repeated side effects.
 
+Derive each idempotency key from its cause rather than minting a fresh one: a
+policy's command id from the event that triggered it, a process step's from
+the run and step, an inbound webhook's from the provider's id, a client's from
+its session and a counter. A redelivery then reproduces the same id, and the
+dedup record catches it. Treat the expected repeat rejection as success
+(`AlreadyOpen` means the work is done), and let a command that changes nothing
+return no events rather than fail.
+
+A command that reports a fact already true in the world - a webhook, a fired
+timer, a settled payment - never rejects. No caller waits to handle the
+refusal, and refusing does not make the fact false. Verify the message at the
+edge, turn it into that command keyed by the provider's id, record the awkward
+case as its own event (`SettlementOnClosedAccount`), and let a policy
+compensate.
+
 Concurrency control is distinct from idempotency: idempotency makes a retry safe;
 concurrency control stops two simultaneous writers clobbering each other - the
 lost update. Hold the consistency boundary under concurrent writes by versioning
@@ -55,6 +70,22 @@ pessimistic locks (`SELECT ... FOR UPDATE`) when conflicts are frequent and a
 retry is expensive, minding deadlocks; serialisable snapshot isolation is
 optimistic and cheap at low contention, detecting write skew without the cost
 the word suggests. Pick by conflict rate and the cost of a lost update.
+
+When the invariant spans aggregates in the domain model, not just rows in one
+table, give it its own aggregate keyed by the value it protects: a
+`UsernameClaim` keyed by the username. Two claimants then race on one instance,
+which handles one command at a time, and exactly one wins. When the claim and
+the thing it guards are separate decisions, reserve then commit: record the
+request (`RegistrationRequested`), let a policy claim the value, then confirm
+or reject the request. Hang downstream reactions on the confirmed event only,
+never on the request.
+
+Model a timeout that races a decision as a domain command, not a shell timer.
+Schedule a command that cannot be rejected (`ExpireTransfer`) to the same
+aggregate that receives the decision. That aggregate serialises the two, so
+it settles the race: after an approval the expiry records nothing, and a late
+approval gets a rejection (`NotAwaitingApproval`). Test one tick either side
+of the deadline with an injected clock.
 
 Across processes, split the requirement first: an efficiency lock (a double run
 wastes work) can be approximate; a correctness lock (a double write corrupts

@@ -49,7 +49,9 @@ outcomes as events. Route lifecycle changes through the transition boundary.
 
 Define invalid-event behaviour explicitly: reject a requested action, ignore an
 obsolete result, or record it for reconciliation. Correlate asynchronous results
-with the operation or revision they belong to. Approval authorises an exact
+with the operation or revision they belong to. A timeout is an event into the
+same transition function as the decision it races, so the machine, not a
+timer, decides which wins (see `references/workflows-transactions.md`). Approval authorises an exact
 revision; an edit invalidates it. Cancellation stops admitting new work but
 cannot undo an external action already accepted.
 

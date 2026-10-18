@@ -24,6 +24,12 @@ explains the outcome without a debugger. Keep that vocabulary small and stable;
 it is what you group by. A core returning a bare `Rejected` has put the
 explanation somewhere the shell cannot reach.
 
+A rejection is an expected answer, not an error. Record it as an outcome
+attribute (`outcome=InsufficientFunds`) and keep the span successful, so error
+rates count defects only. Set the correlation id to the id of the first
+command in a business flow, and carry it through every command and event the
+flow causes, so one query returns the whole flow.
+
 Across a message boundary the same discipline needs trace context propagated in
 message headers rather than carried on a call stack; the
 `event-driven-architecture` skill's "Reaching Out" covers async tracing (W3C Trace
