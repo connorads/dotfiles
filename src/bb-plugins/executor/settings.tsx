@@ -64,7 +64,11 @@ function ConnectionRow({ connection, signIn, error, run }: {
         </div>
       </div>
       {connection.status === 'signed-out' &&
-        <Button size="sm" onClick={() => run(rpc().call('signIn', id))}>Sign in</Button>}
+        <>
+          <Button size="sm" onClick={() => run(rpc().call('signIn', { ...id, method: 'browser' }))}>Sign in</Button>
+          <Button size="sm" variant="ghost"
+            onClick={() => run(rpc().call('signIn', { ...id, method: 'device' }))}>Use a code</Button>
+        </>}
       {connection.status === 'signed-in' &&
         <Button size="sm" variant="ghost" onClick={() => run(rpc().call('signOut', id))}>Sign out</Button>}
       {!connection.isDefault &&
@@ -95,7 +99,7 @@ function AddConnection({ run }: { run: (work: Promise<unknown>) => void }) {
       if (!result.ok) { setProblem(result.message); return; }
       setName('');
       setUrl('');
-      await rpc().call('signIn', { id: result.id });
+      await rpc().call('signIn', { id: result.id, method: 'browser' });
     }).finally(() => setBusy(false)));
   }
 

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
@@ -7,18 +8,23 @@ const ISSUER = "https://auth.test/api/auth";
 
 export const connectionUrl = (id: string) => `${FAKE_ORIGIN}/mcp?connection=${id}`;
 
+type Client = { redirectUris: string[] };
+type AuthCode = { clientId: string; redirectUri: string; challenge: string; resource: string };
 type Device = { clientId: string; resource: string; userCode: string; decision: "pending" | "approved" | "denied" };
 type Grant = { clientId: string; resource: string };
 
 /**
- * An in-process stand-in for hosted Executor: OAuth device sign-in with
- * rotating refresh tokens, grants bound to one connection URL, and the
- * model-mode MCP tools, served by the real MCP server SDK.
+ * An in-process stand-in for Executor: OAuth browser and device sign-in
+ * with rotating refresh tokens, grants bound to one connection URL, and the
+ * model-mode MCP tools, served by the real MCP server SDK. `guardDevice`
+ * puts the device endpoint behind a sign-in gateway, as a self-hosted
+ * Executor behind an access proxy does.
  */
-export function fakeExecutor(options: { autoApprove?: boolean } = {}) {
+export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boolean } = {}) {
   let counter = 0;
   const next = (prefix: string) => `${prefix}_${++counter}`;
-  const clients = new Set<string>();
+  const clients = new Map<string, Client>();
+  const codes = new Map<string, AuthCode>();
   const devices = new Map<string, Device>();
   const accessTokens = new Map<string, Grant & { expired: boolean }>();
   const refreshTokens = new Map<string, Grant>();
@@ -66,6 +72,15 @@ export function fakeExecutor(options: { autoApprove?: boolean } = {}) {
       devices.delete(form.get("device_code")!);
       return issue({ clientId: device.clientId, resource: device.resource });
     }
+    if (form.get("grant_type") === "authorization_code") {
+      const code = codes.get(form.get("code") ?? "");
+      codes.delete(form.get("code") ?? "");
+      const verifier = form.get("code_verifier") ?? "";
+      const valid = code && code.clientId === form.get("client_id") && code.redirectUri === form.get("redirect_uri")
+        && code.challenge === createHash("sha256").update(verifier).digest("base64url") && code.resource === form.get("resource");
+      if (!valid) return oauth(400, { error: "invalid_grant" });
+      return issue({ clientId: code.clientId, resource: code.resource });
+    }
     if (form.get("grant_type") === "refresh_token") {
       const grant = refreshTokens.get(form.get("refresh_token") ?? "");
       if (!grant || grant.clientId !== form.get("client_id")) return oauth(400, { error: "invalid_grant" });
@@ -87,14 +102,20 @@ export function fakeExecutor(options: { autoApprove?: boolean } = {}) {
         issuer: ISSUER,
         token_endpoint: "https://auth.test/oauth2/token",
         registration_endpoint: "https://auth.test/oauth2/register",
+        authorization_endpoint: "https://auth.test/oauth2/authorize",
         device_authorization_endpoint: "https://auth.test/oauth2/device",
+        authorization_response_iss_parameter_supported: true,
         revocation_endpoint: "https://auth.test/oauth2/revoke",
       });
     }
     if (url.href === "https://auth.test/oauth2/register") {
+      const body = (await request.json()) as { redirect_uris?: string[] };
       const clientId = next("client");
-      clients.add(clientId);
+      clients.set(clientId, { redirectUris: body.redirect_uris ?? [] });
       return oauth(201, { client_id: clientId });
+    }
+    if (url.href === "https://auth.test/oauth2/device" && options.guardDevice) {
+      return new Response(null, { status: 302, headers: { location: "https://gateway.test/login" } });
     }
     if (url.href === "https://auth.test/oauth2/device") {
       const form = new URLSearchParams(await request.text());
@@ -124,8 +145,32 @@ export function fakeExecutor(options: { autoApprove?: boolean } = {}) {
     return new Response("not found", { status: 404 });
   };
 
+  /**
+   * Plays the person approving in a browser: checks the request as an
+   * authorization server would and returns where it redirects back to.
+   */
+  function authorize(authorizeUrl: string, decision: "approve" | "deny" = "approve", iss = ISSUER): string {
+    const params = new URL(authorizeUrl).searchParams;
+    const clientId = params.get("client_id") ?? "";
+    const redirectUri = params.get("redirect_uri") ?? "";
+    if (!clients.get(clientId)?.redirectUris.includes(redirectUri)) throw new Error("unregistered redirect URI");
+    if (params.get("code_challenge_method") !== "S256" || params.get("response_type") !== "code") throw new Error("bad request");
+    const back = new URL(redirectUri);
+    back.searchParams.set("state", params.get("state") ?? "");
+    back.searchParams.set("iss", iss);
+    if (decision === "deny") {
+      back.searchParams.set("error", "access_denied");
+      return back.href;
+    }
+    const code = next("code");
+    codes.set(code, { clientId, redirectUri, challenge: params.get("code_challenge") ?? "", resource: params.get("resource") ?? "" });
+    back.searchParams.set("code", code);
+    return back.href;
+  }
+
   return {
     fetch,
+    authorize,
     requests,
     clients,
     refreshTokens,

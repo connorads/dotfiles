@@ -8,7 +8,7 @@ async function signedIn() {
   const executor = fakeExecutor();
   const url = new URL(connectionUrl("c_1"));
   const endpoints = await discover(url, executor.fetch);
-  const clientId = await registerClient(endpoints, executor.fetch);
+  const clientId = await registerClient(endpoints, { kind: "device" }, executor.fetch);
   const start = await startDevice(endpoints, clientId, executor.fetch);
   const tokens = await pollDevice(endpoints, clientId, start, { fetch: executor.fetch, signal: new AbortController().signal, sleep: async () => {} });
   return { executor, url, token: tokens.accessToken };

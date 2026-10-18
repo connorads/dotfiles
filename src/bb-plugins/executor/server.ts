@@ -7,6 +7,7 @@ import { describe, ExecutorService, UserFacingError, type ToolCache } from "./sr
 import { bindTools, errorResult, toBbResult } from "./src/tools.ts";
 
 const MAX_INSTRUCTIONS = 4096;
+const CALLBACK_PATH = "/oauth/callback";
 
 type Options = {
   /** Serves Executor in-process for tests. */
@@ -61,6 +62,7 @@ async function load(bb: BbPluginApi, options: Options) {
       const names = cache.tools.map((t) => t.name);
       if (names.length !== toolsAtLoad.size || names.some((n) => !toolsAtLoad.has(n))) reload();
     }),
+    callbackUrl: () => `${bb.server.loopbackBaseUrl}/api/v1/plugins/${bb.pluginId}/http${CALLBACK_PATH}`,
     ...(options.sleep ? { sleep: options.sleep } : {}),
   });
   bb.onDispose(() => {
@@ -82,7 +84,7 @@ async function load(bb: BbPluginApi, options: Options) {
     add: async ({ name, url }) => service.add(name, url),
     remove: async ({ id }) => (await service.remove(id), null),
     setDefault: async ({ id }) => (await service.setDefault(id), null),
-    signIn: async ({ id }) => (await service.signIn(id), null),
+    signIn: async ({ id, method }) => (await service.signIn(id, method), null),
     cancelSignIn: async ({ id }) => (service.cancelSignIn(id), null),
     signOut: async ({ id }) => (await service.signOut(id), null),
     threadChoice: async ({ threadId }) => service.choiceFor(threadId),
@@ -91,6 +93,13 @@ async function load(bb: BbPluginApi, options: Options) {
       bb.realtime.publish(THREAD_CHANGED, { threadId });
       return null;
     },
+  });
+
+  // A top-level browser navigation sends no Origin header, which "local" accepts; the
+  // single-use `state` is what ties the request to a sign-in this plugin started.
+  bb.http.route("GET", CALLBACK_PATH, (c) => {
+    const result = service.completeBrowserSignIn(new URL(c.req.url).searchParams);
+    return new Response(callbackPage(result), { status: result.ok ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8" } });
   });
 
   // Never block load on the network: tools come from the cache, refreshed here.
@@ -127,6 +136,14 @@ function agentInstructions(server: string | null): string {
   if (text.length <= MAX_INSTRUCTIONS) return text;
   const note = "\n\n[Truncated. Call executor_skills for the full guide.]";
   return text.slice(0, MAX_INSTRUCTIONS - note.length) + note;
+}
+
+function callbackPage(result: { ok: true; name: string } | { ok: false; message: string }): string {
+  const escape = (text: string) => text.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  const body = result.ok
+    ? `<h1>Signing in to ${escape(result.name)}</h1><p>You can close this tab and return to BB.</p>`
+    : `<h1>Sign-in did not finish</h1><p>${escape(result.message)}</p>`;
+  return `<!doctype html><meta charset="utf-8"><title>Executor sign-in</title><style>body{font:15px system-ui;margin:15vh auto;max-width:28rem;padding:0 1rem}</style>${body}`;
 }
 
 function asArguments(params: unknown): Record<string, unknown> {

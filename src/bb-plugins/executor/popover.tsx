@@ -49,7 +49,7 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     try {
       await choose(threadId, row.choice);
       if (row.connection && row.connection.status === 'signed-out') {
-        await rpc().call('signIn', { id: row.connection.id });
+        await rpc().call('signIn', { id: row.connection.id, method: 'browser' });
         return;
       }
       onClose();

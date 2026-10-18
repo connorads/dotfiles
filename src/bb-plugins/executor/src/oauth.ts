@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
 export type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
@@ -10,9 +11,17 @@ export type Endpoints = {
   resource: string;
   token: string;
   registration: string;
-  device: string;
+  /** Absent when the server offers no browser sign-in. */
+  authorization: string | undefined;
+  /** Absent when the server offers no device sign-in. */
+  device: string | undefined;
   revocation: string | undefined;
+  /** RFC 9207: the callback must then carry this issuer as `iss`. */
+  issInResponse: boolean;
 };
+
+/** How a client signs in: in a browser it returns to, or with a code typed anywhere. */
+export type SignInMethod = { kind: "browser"; redirectUri: string } | { kind: "device" };
 
 export type Tokens = { accessToken: string; refreshToken: string; expiresAt: number };
 
@@ -27,7 +36,7 @@ export type DeviceStart = {
 
 /** `kind` decides what the UI offers: retry, sign in again, or nothing. */
 export class OAuthError extends Error {
-  readonly kind: "discovery" | "registration" | "denied" | "expired" | "invalid-grant" | "network";
+  readonly kind: "discovery" | "registration" | "unsupported" | "denied" | "expired" | "invalid-grant" | "network";
 
   constructor(kind: OAuthError["kind"], message: string) {
     super(message);
@@ -40,8 +49,10 @@ const ServerMetadata = z.object({
   issuer: z.string(),
   token_endpoint: z.url(),
   registration_endpoint: z.url(),
+  authorization_endpoint: z.url().optional(),
   device_authorization_endpoint: z.url().optional(),
   revocation_endpoint: z.url().optional(),
+  authorization_response_iss_parameter_supported: z.boolean().optional(),
 });
 const Registered = z.object({ client_id: z.string().min(1) });
 const DeviceResponse = z.object({
@@ -71,33 +82,85 @@ export async function discover(resource: URL, fetch: FetchLike): Promise<Endpoin
   const serverUrl = `${issuerUrl.origin}/.well-known/oauth-authorization-server${issuerUrl.pathname.replace(/\/$/, "")}`;
   const metadata = await getJson(fetch, serverUrl, ServerMetadata, "discovery");
   if (metadata.issuer !== issuer) throw new OAuthError("discovery", "Authorization server issuer does not match.");
-  if (!metadata.device_authorization_endpoint) {
-    throw new OAuthError("discovery", "This Executor does not offer device sign-in.");
-  }
   return {
     issuer,
     resource: protectedResource.resource,
     token: metadata.token_endpoint,
     registration: metadata.registration_endpoint,
+    authorization: metadata.authorization_endpoint,
     device: metadata.device_authorization_endpoint,
     revocation: metadata.revocation_endpoint,
+    issInResponse: metadata.authorization_response_iss_parameter_supported === true,
   };
 }
 
 /** A public client: no secret, so nothing beyond the grant itself needs protecting. */
-export async function registerClient(endpoints: Endpoints, fetch: FetchLike): Promise<string> {
-  const body = JSON.stringify({
-    client_name: "BB Executor plugin",
-    token_endpoint_auth_method: "none",
-    grant_types: [DEVICE_GRANT, "refresh_token"],
-    response_types: [],
-    scope: SCOPE,
-  });
+export async function registerClient(endpoints: Endpoints, method: SignInMethod, fetch: FetchLike): Promise<string> {
+  const grants = method.kind === "browser"
+    ? { grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], redirect_uris: [method.redirectUri] }
+    : { grant_types: [DEVICE_GRANT, "refresh_token"], response_types: [] };
+  const body = JSON.stringify({ client_name: "BB Executor plugin", token_endpoint_auth_method: "none", scope: SCOPE, ...grants });
   const registered = await postJson(fetch, endpoints.registration, { body, contentType: "application/json", schema: Registered, kind: "registration" });
   return registered.client_id;
 }
 
+export type BrowserStart = { url: string; state: string; verifier: string };
+
+/** RFC 7636 S256 and RFC 8707: the resource binds the grant to one connection URL. */
+export function startBrowser(endpoints: Endpoints, clientId: string, redirectUri: string): BrowserStart {
+  if (!endpoints.authorization) throw new OAuthError("unsupported", "This server offers no browser sign-in. Use a code instead.");
+  const verifier = randomBytes(32).toString("base64url");
+  const state = randomBytes(24).toString("base64url");
+  const url = new URL(endpoints.authorization);
+  url.search = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: SCOPE,
+    state,
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+    resource: endpoints.resource,
+  }).toString();
+  return { url: url.href, state, verifier };
+}
+
+/**
+ * Reads the redirect back to BB. `state` has already matched a pending
+ * sign-in; this checks the server's answer and, per RFC 9207, its issuer.
+ */
+export function readCallback(endpoints: Endpoints, params: URLSearchParams): { code: string } {
+  const iss = params.get("iss");
+  if (iss !== null ? iss !== endpoints.issuer : endpoints.issInResponse) {
+    throw new OAuthError("discovery", "The sign-in came back from a different server. Start again.");
+  }
+  const error = params.get("error");
+  if (error === "access_denied") throw new OAuthError("denied", "Sign-in was declined.");
+  if (error) throw new OAuthError("network", `The server refused the sign-in: ${error}`);
+  const code = params.get("code");
+  if (!code) throw new OAuthError("network", "The sign-in came back without a code. Start again.");
+  return { code };
+}
+
+export async function exchangeCode(
+  endpoints: Endpoints,
+  grant: { clientId: string; code: string; redirectUri: string; verifier: string },
+  fetch: FetchLike,
+  now = Date.now(),
+): Promise<Tokens> {
+  const form = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: grant.clientId,
+    code: grant.code,
+    redirect_uri: grant.redirectUri,
+    code_verifier: grant.verifier,
+    resource: endpoints.resource,
+  });
+  return toTokens(await postJson(fetch, endpoints.token, { body: form, schema: TokenResponse, kind: "network" }), now);
+}
+
 export async function startDevice(endpoints: Endpoints, clientId: string, fetch: FetchLike, now = Date.now()): Promise<DeviceStart> {
+  if (!endpoints.device) throw new OAuthError("unsupported", "This server offers no sign-in with a code. Use browser sign-in.");
   const form = new URLSearchParams({ client_id: clientId, scope: SCOPE, resource: endpoints.resource });
   const started = await postJson(fetch, endpoints.device, { body: form, schema: DeviceResponse, kind: "registration" });
   return {
@@ -187,16 +250,25 @@ async function postJson<T>(
   return parse(response, request.schema, request.kind);
 }
 
-/** Redirects are refused so a token request never follows a server to another host. */
+/**
+ * Redirects are never followed, so a token request cannot be led to another
+ * host. A redirect usually means a sign-in gateway guards the endpoint.
+ */
 async function send(fetch: FetchLike, url: string, init: RequestInit): Promise<Response> {
+  let response: Response;
   try {
     const headers = new Headers(init.headers);
     headers.set("accept", "application/json");
-    return await fetch(url, { ...init, redirect: "error", headers });
+    response = await fetch(url, { ...init, redirect: "manual", headers });
   } catch (error) {
     if (init.signal?.aborted) throw error;
     throw new OAuthError("network", `Could not reach ${new URL(url).origin}.`);
   }
+  if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+    const target = URL.parse(response.headers.get("location") ?? "", url)?.host ?? "another page";
+    throw new OAuthError("unsupported", `${new URL(url).pathname} on ${new URL(url).host} redirects to ${target}, so an app cannot use it.`);
+  }
+  return response;
 }
 
 async function parse<T>(response: Response, schema: z.ZodType<T>, kind: OAuthError["kind"]): Promise<T> {

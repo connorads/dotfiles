@@ -10,13 +10,17 @@ export const connectionView = z.object({
 });
 export type ConnectionView = z.infer<typeof connectionView>;
 
-export const signInView = z.object({
-  id: z.string(),
-  userCode: z.string(),
-  verificationUri: z.string(),
-  verificationUriComplete: z.string().nullable(),
-  expiresAt: z.number(),
-});
+export const signInView = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("browser"), id: z.string(), url: z.string(), expiresAt: z.number() }),
+  z.object({
+    kind: z.literal("device"),
+    id: z.string(),
+    userCode: z.string(),
+    verificationUri: z.string(),
+    verificationUriComplete: z.string().nullable(),
+    expiresAt: z.number(),
+  }),
+]);
 export type SignInView = z.infer<typeof signInView>;
 
 export const stateView = z.object({
@@ -47,7 +51,7 @@ export const rpcContract = defineRpcContract({
   },
   remove: { input: id, output: z.null() },
   setDefault: { input: id, output: z.null() },
-  signIn: { input: id, output: z.null() },
+  signIn: { input: z.object({ id: z.string(), method: z.enum(["browser", "device"]).default("browser") }), output: z.null() },
   cancelSignIn: { input: id, output: z.null() },
   signOut: { input: id, output: z.null() },
   threadChoice: { input: z.object({ threadId: z.string() }), output: threadChoice },

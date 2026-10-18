@@ -43,7 +43,7 @@ it('settings: adds a connection, then starts its sign-in', async () => {
   fireEvent.click(slot.getByRole('button', { name: 'Add and sign in' }));
   await waitFor(() => expect(slot.rpcCalls.map(c => c.method)).toContain('signIn'));
   expect(slot.rpcCalls.find(c => c.method === 'add')?.input).toEqual({ name: 'Coding', url: 'https://mcp.executor.sh/mcp?connection=c_1' });
-  expect(slot.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'coding' });
+  expect(slot.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'coding', method: 'browser' });
 });
 
 it('settings: shows why a URL was refused', async () => {
@@ -61,7 +61,7 @@ it('settings: shows why a URL was refused', async () => {
 it('settings: shows the device code while waiting and refetches on realtime', async () => {
   let view = stateOf({
     connections: [connection('coding', 'Coding', { status: 'signing-in', isDefault: true })],
-    signIns: [{ id: 'coding', userCode: 'WXYZ-QRST', verificationUri: 'https://app.executor.sh/device', verificationUriComplete: 'https://app.executor.sh/device?code=WXYZ-QRST', expiresAt: Date.now() + 600_000 }],
+    signIns: [{ kind: 'device', id: 'coding', userCode: 'WXYZ-QRST', verificationUri: 'https://app.executor.sh/device', verificationUriComplete: 'https://app.executor.sh/device?code=WXYZ-QRST', expiresAt: Date.now() + 600_000 }],
   });
   const slot = renderSlot(app.settingsSections[0]!, {}, { rpc: { state: () => view } });
   expect(await slot.findByText('WXYZ-QRST')).toBeTruthy();
@@ -116,7 +116,7 @@ it('chip: switches a thread by key and marks a signed-out choice', async () => {
   await waitFor(() => expect(overlay.getByRole('button', { name: /Default/ }).getAttribute('aria-pressed')).toBe('true'));
   fireEvent.keyDown(dialog, { key: '2' });
   await waitFor(() => expect(choice).toEqual({ kind: 'connection', id: 'ops' }));
-  expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'ops' });
+  expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'ops', method: 'browser' });
   expect(await chip.findByRole('button', { name: 'Executor: Ops, signed out' })).toBeTruthy();
 });
 

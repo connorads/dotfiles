@@ -10,7 +10,7 @@ const GrantSchema = z.object({
 export type Grant = z.infer<typeof GrantSchema>;
 
 const VaultSchema = z.object({
-  /** One public client per issuer serves every connection's grant. */
+  /** One public client per issuer and sign-in method serves every connection's grant. */
   clients: z.record(z.string(), z.string()),
   grants: z.record(z.string(), GrantSchema),
 });

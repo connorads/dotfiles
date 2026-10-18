@@ -13,16 +13,19 @@ passes Executor's own MCP tools through with an `executor_` prefix
 ## Use
 
 1. In Executor, open **Connect**, create or pick a scoped connection, and copy
-   its MCP URL.
+   its MCP URL. Hosted (`mcp.executor.sh`) and self-hosted Executors both
+   work: the plugin reads every endpoint from the server's OAuth metadata.
 2. In BB, open **Settings → Executor**, add it with a name, and press
-   **Add and sign in**. Open the link, check the page shows the same code, and
-   approve. The first connection becomes the default.
+   **Add and sign in**. Open the sign-in page, approve, and the browser returns
+   to BB. The first connection becomes the default.
 3. In a thread, the header chip names the connection the thread uses. Click it
    or press `⌥E` to pick another: `d` default, `1`-`9` a connection, `o` off.
    Picking a signed-out connection starts its sign-in.
 
 Settings → Executor also signs a connection out, makes it the default, or
-removes it (press **Remove** twice). Rebind `⌥E` in Settings → Keyboard.
+removes it (press **Remove** twice). **Use a code** signs in with a device code
+instead, for a browser that cannot reach BB, such as BB on another machine.
+Rebind `⌥E` in Settings → Keyboard.
 
 ## Model
 
@@ -36,9 +39,14 @@ flowchart LR
 - **Connection**: a name and the MCP URL from Executor's Connect page. The
   plugin keeps only its `connection` parameter, which is what Executor binds a
   sign-in to.
-- **Sign-in**: OAuth device authorization. You approve a code at
-  `app.executor.sh/device`; no callback reaches BB, so it works when BB runs on
-  another machine. Executor API keys are not used: they ignore connection limits.
+- **Sign-in**: OAuth authorization code with PKCE (S256). The browser returns
+  to BB's own loopback route, `/api/v1/plugins/executor/http/oauth/callback`,
+  which accepts a navigation with no `Origin` and checks a single-use `state`
+  and, per RFC 9207, the issuer. **Use a code** runs the device grant instead.
+  A gateway in front of an endpoint shows as a redirect, and the plugin names
+  it: a self-hosted Executor behind an access proxy may keep
+  `device-authorization` behind sign-in, which leaves only the browser flow.
+  Executor API keys are not used: they ignore connection limits.
 - **Thread choice**: kept in plugin storage, not thread metadata, so an agent
   cannot move its own thread to a broader connection. All connections expose
   the same tools, so a change applies on the thread's next call with no restart.

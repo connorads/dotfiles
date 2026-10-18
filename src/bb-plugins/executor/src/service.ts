@@ -3,7 +3,10 @@ import type { StateView } from "../contracts.ts";
 import { ExecutorConnection } from "./connection.ts";
 import { ConnectionSchema, parseConnectionUrl, resolveChoice, slugFor, type Connection, type ThreadChoice } from "./connections.ts";
 import type { CredentialStore } from "./credentials.ts";
-import { discover, OAuthError, pollDevice, refresh, registerClient, revoke, startDevice, type DeviceStart, type Endpoints, type FetchLike } from "./oauth.ts";
+import {
+  discover, exchangeCode, OAuthError, pollDevice, readCallback, refresh, registerClient, revoke, startBrowser, startDevice,
+  type DeviceStart, type Endpoints, type FetchLike, type SignInMethod, type Tokens,
+} from "./oauth.ts";
 
 type Kv = {
   get<T>(key: string): Promise<T | undefined>;
@@ -23,6 +26,8 @@ export type ServiceDeps = {
   changed(): void;
   /** Runs when the tool list is first known or changes shape. */
   toolsChanged(cache: ToolCache): void;
+  /** Where the browser returns after sign-in: BB's own loopback route. */
+  callbackUrl(): string;
   now?: () => number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 };
@@ -33,7 +38,22 @@ export class UserFacingError extends Error {}
 const REFRESH_MARGIN_MS = 60_000;
 const THREAD_PREFIX = "thread:";
 
-type SignIn = { start: DeviceStart; controller: AbortController };
+/** A browser sign-in waits for its callback; a device sign-in polls. Both expire. */
+type SignIn =
+  | { kind: "device"; start: DeviceStart; controller: AbortController }
+  | {
+      kind: "browser";
+      url: string;
+      state: string;
+      verifier: string;
+      redirectUri: string;
+      clientId: string;
+      endpoints: Endpoints;
+      expiresAt: number;
+      controller: AbortController;
+    };
+
+const BROWSER_SIGN_IN_MS = 10 * 60_000;
 
 export class ExecutorService {
   readonly #deps: ServiceDeps;
@@ -101,13 +121,17 @@ export class ExecutorService {
         status: this.#signIns.has(c.id) ? "signing-in" : this.#signedIn.has(c.id) ? "signed-in" : "signed-out",
         isDefault: c.id === this.#defaultId,
       })),
-      signIns: [...this.#signIns].map(([id, { start }]) => ({
-        id,
-        userCode: start.userCode,
-        verificationUri: start.verificationUri,
-        verificationUriComplete: start.verificationUriComplete ?? null,
-        expiresAt: start.expiresAt,
-      })),
+      signIns: [...this.#signIns].map(([id, pending]) =>
+        pending.kind === "browser"
+          ? { kind: "browser" as const, id, url: pending.url, expiresAt: pending.expiresAt }
+          : {
+              kind: "device" as const,
+              id,
+              userCode: pending.start.userCode,
+              verificationUri: pending.start.verificationUri,
+              verificationUriComplete: pending.start.verificationUriComplete ?? null,
+              expiresAt: pending.start.expiresAt,
+            }),
       errors: Object.fromEntries(this.#errors),
       toolsReady: this.#tools !== null,
     };
@@ -159,22 +183,66 @@ export class ExecutorService {
     }
   }
 
-  /** Starts device sign-in; progress and the result arrive through `state`. */
-  async signIn(id: string): Promise<void> {
+  /**
+   * Starts a sign-in; progress and the result arrive through `state`.
+   * Browser sign-in returns to BB's loopback route; a code works when BB runs
+   * on another machine, if the server lets apps start one.
+   */
+  async signIn(id: string, method: "browser" | "device"): Promise<void> {
     const connection = this.#require(id);
     this.cancelSignIn(id);
     this.#errors.delete(id);
     try {
       const endpoints = await this.#endpointsFor(connection);
-      const { clientId, start } = await this.#startDevice(endpoints);
       const controller = new AbortController();
-      this.#signIns.set(id, { start, controller });
+      if (method === "browser") {
+        const redirectUri = this.#deps.callbackUrl();
+        const clientId = await this.#clientFor(endpoints, { kind: "browser", redirectUri });
+        const start = startBrowser(endpoints, clientId, redirectUri);
+        const expiresAt = this.#now() + BROWSER_SIGN_IN_MS;
+        this.#signIns.set(id, { kind: "browser", ...start, redirectUri, clientId, endpoints, expiresAt, controller });
+        const timer = setTimeout(() => this.#expire(id, controller), BROWSER_SIGN_IN_MS);
+        controller.signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+      } else {
+        const { clientId, start } = await this.#startDevice(endpoints);
+        this.#signIns.set(id, { kind: "device", start, controller });
+        void this.#finishDevice(connection, { endpoints, clientId, start, controller });
+      }
       this.#deps.changed();
-      void this.#finishSignIn(connection, { endpoints, clientId, start, controller });
+    } catch (error) {
+      const hint = method === "device" && error instanceof OAuthError && error.kind === "unsupported" ? " Use Sign in instead." : "";
+      this.#errors.set(id, describe(error) + hint);
+      this.#deps.changed();
+    }
+  }
+
+  /**
+   * The browser came back to BB. Each `state` works once. The token exchange
+   * runs after the route answers, so the page never waits on the vault.
+   */
+  completeBrowserSignIn(params: URLSearchParams): { ok: true; name: string } | { ok: false; message: string } {
+    const entry = [...this.#signIns].find(([, p]) => p.kind === "browser" && p.state === params.get("state"));
+    if (!entry || entry[1].kind !== "browser") return { ok: false, message: "This sign-in link is no longer valid. Start again from BB." };
+    const [id, pending] = entry;
+    const connection = this.#require(id);
+    pending.controller.abort();
+    this.#signIns.delete(id);
+    let code: string;
+    try {
+      ({ code } = readCallback(pending.endpoints, params));
     } catch (error) {
       this.#errors.set(id, describe(error));
       this.#deps.changed();
+      return { ok: false, message: describe(error) };
     }
+    this.#deps.changed();
+    void exchangeCode(pending.endpoints, { clientId: pending.clientId, code, redirectUri: pending.redirectUri, verifier: pending.verifier }, this.#deps.fetch, this.#now())
+      .then((tokens) => this.#signedInWith(connection, pending.endpoints, pending.clientId, tokens))
+      .catch((error: unknown) => {
+        this.#errors.set(id, describe(error));
+        this.#deps.changed();
+      });
+    return { ok: true, name: connection.name };
   }
 
   cancelSignIn(id: string): void {
@@ -257,7 +325,7 @@ export class ExecutorService {
     return resolved.connection;
   }
 
-  async #finishSignIn(
+  async #finishDevice(
     connection: Connection,
     { endpoints, clientId, start, controller }: { endpoints: Endpoints; clientId: string; start: DeviceStart; controller: AbortController },
   ) {
@@ -268,21 +336,32 @@ export class ExecutorService {
         now: this.#now,
         ...(this.#deps.sleep ? { sleep: this.#deps.sleep } : {}),
       });
-      await this.#deps.credentials.update((vault) => {
-        vault.grants[connection.id] = { issuer: endpoints.issuer, clientId, ...tokens };
-      });
-      this.#signedIn.add(connection.id);
-      await this.#dropClient(connection.id);
       this.#signIns.delete(connection.id);
-      this.#deps.changed();
-      this.#deps.log.info(`signed in to ${connection.name}`);
-      if (this.#tools === null) await this.refreshTools().catch((e: unknown) => this.#deps.log.warn(`tool list: ${describe(e)}`));
+      await this.#signedInWith(connection, endpoints, clientId, tokens);
     } catch (error) {
       if (controller.signal.aborted) return;
       this.#signIns.delete(connection.id);
       this.#errors.set(connection.id, describe(error));
       this.#deps.changed();
     }
+  }
+
+  async #signedInWith(connection: Connection, endpoints: Endpoints, clientId: string, tokens: Tokens): Promise<void> {
+    await this.#deps.credentials.update((vault) => {
+      vault.grants[connection.id] = { issuer: endpoints.issuer, clientId, ...tokens };
+    });
+    this.#signedIn.add(connection.id);
+    await this.#dropClient(connection.id);
+    this.#deps.changed();
+    this.#deps.log.info(`signed in to ${connection.name}`);
+    if (this.#tools === null) await this.refreshTools().catch((e: unknown) => this.#deps.log.warn(`tool list: ${describe(e)}`));
+  }
+
+  #expire(id: string, controller: AbortController): void {
+    if (this.#signIns.get(id)?.controller !== controller) return;
+    this.#signIns.delete(id);
+    this.#errors.set(id, "The sign-in expired. Start again.");
+    this.#deps.changed();
   }
 
   async #accessToken(id: string): Promise<string> {
@@ -359,27 +438,29 @@ export class ExecutorService {
 
   /** A saved client Executor no longer knows is registered again, once. */
   async #startDevice(endpoints: Endpoints): Promise<{ clientId: string; start: DeviceStart }> {
-    const known = (await this.#deps.credentials.snapshot()).clients[endpoints.issuer];
+    const key = clientKey(endpoints, { kind: "device" });
+    const known = (await this.#deps.credentials.snapshot()).clients[key];
     if (known) {
       try {
         return { clientId: known, start: await startDevice(endpoints, known, this.#deps.fetch, this.#now()) };
       } catch (error) {
         if (!(error instanceof OAuthError && error.kind === "registration")) throw error;
         await this.#deps.credentials.update((vault) => {
-          delete vault.clients[endpoints.issuer];
+          delete vault.clients[key];
         });
       }
     }
-    const clientId = await this.#clientFor(endpoints);
+    const clientId = await this.#clientFor(endpoints, { kind: "device" });
     return { clientId, start: await startDevice(endpoints, clientId, this.#deps.fetch, this.#now()) };
   }
 
-  async #clientFor(endpoints: Endpoints): Promise<string> {
-    const known = (await this.#deps.credentials.snapshot()).clients[endpoints.issuer];
+  async #clientFor(endpoints: Endpoints, method: SignInMethod): Promise<string> {
+    const key = clientKey(endpoints, method);
+    const known = (await this.#deps.credentials.snapshot()).clients[key];
     if (known) return known;
-    const clientId = await registerClient(endpoints, this.#deps.fetch);
+    const clientId = await registerClient(endpoints, method, this.#deps.fetch);
     await this.#deps.credentials.update((vault) => {
-      vault.clients[endpoints.issuer] = clientId;
+      vault.clients[key] = clientId;
     });
     return clientId;
   }
@@ -394,6 +475,11 @@ export class ExecutorService {
     if (this.#defaultId === null) await this.#deps.kv.delete("default");
     else await this.#deps.kv.set("default", this.#defaultId);
   }
+}
+
+/** A browser client is registered for one redirect URI, so a new BB port registers again. */
+function clientKey(endpoints: Endpoints, method: SignInMethod): string {
+  return method.kind === "browser" ? `browser ${endpoints.issuer} ${method.redirectUri}` : `device ${endpoints.issuer}`;
 }
 
 export function describe(error: unknown): string {

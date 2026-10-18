@@ -10,11 +10,11 @@ const instant = async (_ms: number, signal: AbortSignal) => {
   await new Promise((resolve) => setImmediate(resolve));
 };
 
-async function setup(options: { autoApprove?: boolean } = {}) {
+async function setup(options: { autoApprove?: boolean; guardDevice?: boolean } = {}) {
   const executor = fakeExecutor(options);
   let reloads = 0;
   const factory = () => createPlugin({ fetch: executor.fetch, sleep: instant, reload: () => reloads++ });
-  const first = createFakePluginHost({ pluginId: "executor" });
+  const first = createFakePluginHost({ pluginId: "executor", loopbackBaseUrl: "http://127.0.0.1:38886" });
   await factory()(first.bb);
   /** A reload hands back a new host; every helper follows the current one. */
   let host = first;
@@ -28,11 +28,22 @@ async function setup(options: { autoApprove?: boolean } = {}) {
     }
     assert.fail(`state never matched: ${JSON.stringify(await state())}`);
   };
-  /** Adds and signs in to a connection, then reloads like BB does after the first tool list. */
+  /** The browser leg: approve at the authorization server, then follow its redirect into BB. */
+  const approveInBrowser = async (id: string, decision: "approve" | "deny" = "approve", iss?: string) => {
+    const pending = await waitFor((s) => s.signIns.some((x) => x.id === id && x.kind === "browser"));
+    const signIn = pending.signIns.find((x) => x.id === id);
+    assert.ok(signIn?.kind === "browser");
+    const back = new URL(executor.authorize(signIn.url, decision, iss));
+    assert.equal(`${back.origin}${back.pathname}`, "http://127.0.0.1:38886/api/v1/plugins/executor/http/oauth/callback");
+    return host.harness.behavior.fetchHttp("GET", `/oauth/callback${back.search}`);
+  };
+  /** Adds and signs in to a connection in the browser. */
   const connect = async (name: string, id: string) => {
     const added = await rpc<{ ok: boolean; id: string }>("add", { name, url: connectionUrl(id) });
     assert.ok(added.ok);
-    await rpc("signIn", { id: added.id });
+    await rpc("signIn", { id: added.id, method: "browser" });
+    const page = await approveInBrowser(added.id);
+    assert.equal(page.status, 200);
     await waitFor((s) => s.connections.find((c) => c.id === added.id)?.status === "signed-in" && s.toolsReady);
     return added.id;
   };
@@ -47,7 +58,7 @@ async function setup(options: { autoApprove?: boolean } = {}) {
     return JSON.parse((result.content[0] as { text: string }).text).connection as string;
   };
   return {
-    executor, rpc, state, waitFor, connect, reload, tools, whoami,
+    executor, rpc, state, waitFor, connect, approveInBrowser, reload, tools, whoami,
     reloads: () => reloads,
     get harness() {
       return host.harness;
@@ -62,15 +73,9 @@ test("starts with no tools and no connections", async () => {
   await t.harness.lifecycle.dispose();
 });
 
-test("device sign-in stores the grant, learns the tools and asks for one reload", async () => {
-  const t = await setup({ autoApprove: false });
-  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
-  await t.rpc("signIn", { id: added.id });
-  const pending = await t.waitFor((s) => s.signIns.length === 1);
-  assert.equal(pending.connections[0]?.status, "signing-in");
-  assert.match(pending.signIns[0]?.verificationUriComplete ?? "", /code=CODE-/);
-  t.executor.decide("approved");
-  await t.waitFor((s) => s.connections[0]?.status === "signed-in" && s.toolsReady);
+test("browser sign-in stores the grant, learns the tools and asks for one reload", async () => {
+  const t = await setup();
+  await t.connect("Coding", "c_1");
   assert.equal(t.reloads(), 1);
   await t.reload();
   assert.deepEqual(await t.tools(), ["executor_search", "executor_execute", "executor_chart", "executor_whoami"]);
@@ -79,10 +84,59 @@ test("device sign-in stores the grant, learns the tools and asks for one reload"
   await t.harness.lifecycle.dispose();
 });
 
-test("a declined sign-in reports the reason and stays signed out", async () => {
+test("a callback works once and must come from the issuer", async () => {
+  const t = await setup();
+  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
+  await t.rpc("signIn", { id: added.id, method: "browser" });
+  const forged = await t.approveInBrowser(added.id, "approve", "https://evil.test/api/auth");
+  assert.equal(forged.status, 400);
+  assert.match((await t.state()).errors[added.id] ?? "", /different server/);
+  const replay = await t.harness.behavior.fetchHttp("GET", "/oauth/callback?state=made-up&code=x");
+  assert.equal(replay.status, 400);
+  assert.equal((await t.state()).connections[0]?.status, "signed-out");
+  await t.harness.lifecycle.dispose();
+});
+
+test("a declined browser sign-in stays signed out with the reason", async () => {
+  const t = await setup();
+  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
+  await t.rpc("signIn", { id: added.id, method: "browser" });
+  const page = await t.approveInBrowser(added.id, "deny");
+  assert.equal(page.status, 400);
+  const s = await t.state();
+  assert.equal(s.connections[0]?.status, "signed-out");
+  assert.match(s.errors[added.id] ?? "", /declined/);
+  await t.harness.lifecycle.dispose();
+});
+
+test("a server that guards device sign-in says so instead of failing vaguely", async () => {
+  const t = await setup({ guardDevice: true });
+  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Self-hosted", url: connectionUrl("c_1") });
+  await t.rpc("signIn", { id: added.id, method: "device" });
+  const s = await t.waitFor((x) => x.errors[added.id] !== undefined);
+  assert.match(s.errors[added.id] ?? "", /redirects to gateway\.test.*Use Sign in instead/);
+  assert.equal(s.connections[0]?.status, "signed-out");
+  await t.harness.lifecycle.dispose();
+});
+
+test("device sign-in shows a code and completes once approved", async () => {
   const t = await setup({ autoApprove: false });
   const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
-  await t.rpc("signIn", { id: added.id });
+  await t.rpc("signIn", { id: added.id, method: "device" });
+  const pending = await t.waitFor((s) => s.signIns.length === 1);
+  assert.equal(pending.connections[0]?.status, "signing-in");
+  const signIn = pending.signIns[0];
+  assert.ok(signIn?.kind === "device");
+  assert.match(signIn.verificationUriComplete ?? "", /code=CODE-/);
+  t.executor.decide("approved");
+  await t.waitFor((s) => s.connections[0]?.status === "signed-in" && s.toolsReady);
+  await t.harness.lifecycle.dispose();
+});
+
+test("a declined device sign-in reports the reason and stays signed out", async () => {
+  const t = await setup({ autoApprove: false });
+  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
+  await t.rpc("signIn", { id: added.id, method: "device" });
   await t.waitFor((s) => s.signIns.length === 1);
   t.executor.decide("denied");
   const s = await t.waitFor((x) => x.errors[added.id] !== undefined);
@@ -169,12 +223,15 @@ test("signing out revokes the refresh token", async () => {
   await t.harness.lifecycle.dispose();
 });
 
-test("a client registration Executor forgot is replaced", async () => {
+test("a device client registration the server forgot is replaced", async () => {
   const t = await setup();
-  const id = await t.connect("Coding", "c_1");
+  const added = await t.rpc<{ ok: true; id: string }>("add", { name: "Coding", url: connectionUrl("c_1") });
+  const id = added.id;
+  await t.rpc("signIn", { id, method: "device" });
+  await t.waitFor((s) => s.connections[0]?.status === "signed-in");
   await t.rpc("signOut", { id });
   t.executor.forgetClients();
-  await t.rpc("signIn", { id });
+  await t.rpc("signIn", { id, method: "device" });
   await t.waitFor((s) => s.connections[0]?.status === "signed-in");
   await t.harness.lifecycle.dispose();
 });
