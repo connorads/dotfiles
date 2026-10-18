@@ -31,6 +31,8 @@ What is the task?
 |-- Invariant or illegal state to protect
 |   |-- Can a type make it unrepresentable? -> change the type, skip the test
 |   `-- Large input space? -> property-based tests alongside named examples
+|-- Aggregate, policy, saga or read-model behaviour
+|   `-- strict given/when/then stories (references/event-model-testing.md)
 |-- Flaky or brittle tests
 |   `-- remove time/order/network coupling and implementation-detail assertions
 `-- Coverage report, thresholds, or CI/hook enforcement
@@ -389,6 +391,9 @@ time/network coupling (see Core Rules).
 - [scenario-testing.md](references/scenario-testing.md) - Critical-journey
   selection, setup/cleanup through public surfaces, external fakes, accessible
   selectors, runtime policy, and anti-patterns for scenario/e2e suites.
+- [event-model-testing.md](references/event-model-testing.md) - Given/when/then
+  stories for aggregates, policies, sagas and read models; strict harness
+  rules, pending external calls, owned clock, and a coverage checklist.
 - [agentic-e2e.md](references/agentic-e2e.md) - When an AI agent step beats
   a locator, pinning agent goals, visible pending state, replay-cache cost,
   qualifying a test before CI, and TesterArmy e2e gotchas.
