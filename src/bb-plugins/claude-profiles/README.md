@@ -101,7 +101,8 @@ configuration.
 In the sidebar, a Claude thread on a named account shows the account's initial
 on its Claude icon. Each account keeps one colour. Hover over the row's icon for
 the account name. Threads on Default show no initial. The badge decorates BB's
-own thread list by DOM selector, so a BB markup change can hide it.
+own thread list by DOM selector, so a BB markup change can hide it; see
+[SDK frictions](../docs/sdk-frictions.md).
 
 Profiles come from `~/.claude-profiles/code/` on the thread's host. Plugin
 settings accept another profile root and Claude executable.

@@ -68,6 +68,11 @@ flowchart LR
 After an edit, run `pnpm build` and `bb plugin reload <id>`. Or run `pnpm dev`
 to rebuild and reload on save.
 
+## SDK frictions
+
+Record each BB SDK gap and its workaround in [docs/sdk-frictions.md](docs/sdk-frictions.md)
+when you find it. Each entry is a candidate BB feature request.
+
 ## Checks
 
 - `pnpm -r test` and `pnpm -r typecheck` run every plugin.

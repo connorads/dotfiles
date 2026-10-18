@@ -70,6 +70,7 @@ Use the supplied `workflows` skill for authoring, validation, execution and insp
 Plugin source lives in [src/bb-plugins](../../src/bb-plugins/README.md), a shared pnpm workspace.
 Read its guide and the affected plugin's README before changing source.
 The workspace guide owns build, test, installation and reload procedures.
+Record SDK gaps and workarounds in [SDK frictions](../../src/bb-plugins/docs/sdk-frictions.md) as you find them.
 
 [Handsfree](../../src/bb-plugins/handsfree/README.md) owns Hex voice controls for the focused BB window.
 
