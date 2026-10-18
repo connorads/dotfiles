@@ -133,6 +133,11 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   [choice-target.ts](../handsfree/choice-target.ts).
 - Ask: `app.commands.experimental_list()`, `experimental_dispatch(commandId, args?)` and
   `experimental_onInvoked(({ commandId, source }) => ...)`.
+- Planned trial: add invocation events in an isolated source build using the
+  [BB patch setup](../spikes/bb-patched/README.md). Verify one event per handled
+  native shortcut, plugin command and palette action; rejected commands emit none.
+  Use a temporary event viewer before adding local counts to Shortcut Guide.
+  Button coverage follows separately. Keep the daily server unchanged during the trial.
 - Status: open
 - Category: sdk-gap
 - Evidence: @thread:thr_6arvxhyzt4, @thread:thr_autjzsat5n, commit `879585d8`, `spikes/tmux/TRIAGE.md:158`
