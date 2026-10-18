@@ -1,57 +1,107 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { SdkHttpError, UnauthorizedError } from "@modelcontextprotocol/client";
-import { parseConfig } from "./src/config.ts";
-import { CallCancelledError, ExecutorConnection } from "./src/connection.ts";
+import { rpcContract, STATE_CHANGED, THREAD_CHANGED } from "./contracts.ts";
+import { CallCancelledError } from "./src/connection.ts";
+import { CredentialStore, vaultSettingSchema } from "./src/credentials.ts";
+import type { FetchLike } from "./src/oauth.ts";
+import { describe, ExecutorService, UserFacingError, type ToolCache } from "./src/service.ts";
 import { bindTools, errorResult, toBbResult } from "./src/tools.ts";
 
 const MAX_INSTRUCTIONS = 4096;
 
-/** `fetch` lets tests serve Executor in-process. */
-export function createPlugin(options: { fetch?: typeof fetch } = {}) {
+type Options = {
+  /** Serves Executor in-process for tests. */
+  fetch?: FetchLike;
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Replaces the self-reload that registers a newly known tool list. */
+  reload?: () => void;
+};
+
+export function createPlugin(options: Options = {}) {
   return (bb: BbPluginApi) => load(bb, options);
 }
 
 export default createPlugin();
 
-async function load(bb: BbPluginApi, options: { fetch?: typeof fetch }) {
+async function load(bb: BbPluginApi, options: Options) {
   const settings = bb.settings.define({
-    url: {
+    vault: {
       type: "string",
-      label: "MCP endpoint",
-      description: "Use https://mcp.executor.sh/org/<org>/mcp with a full-account key.",
-      default: "https://mcp.executor.sh/mcp",
-    },
-    token: {
-      type: "string",
-      label: "API key",
-      description: "An Executor API key limited to that organization.",
+      label: "Executor sign-ins",
+      description: "Managed by the Executor section below. Do not edit.",
       secret: true,
+      experimental_schema: vaultSettingSchema,
+    },
+  });
+  const credentials = new CredentialStore({
+    read: async () => (await settings.get()).vault,
+    write: async (raw) => {
+      await settings.experimental_set({ vault: raw });
     },
   });
 
-  const values = await settings.get();
-  const parsed = parseConfig({ url: values.url, token: values.token ?? "" });
-  if (!parsed.ok) {
-    bb.status.needsConfiguration(parsed.message);
-    return;
-  }
+  const reload = options.reload ?? (() => {
+    // After the current handler returns, so the reload does not dispose it mid-call.
+    setTimeout(() => void bb.sdk.plugins.reload({ pluginId: bb.pluginId }).catch((e: unknown) => log.warn(`reload: ${describe(e)}`)), 0);
+  });
+  const toolsAtLoad = new Set<string>();
+  // Background work can outlive a reload; the old API handle must not be touched then.
+  let disposed = false;
+  const live = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
+    if (!disposed) fn(...args);
+  };
+  const log = { info: live((m: string) => bb.log.info(m)), warn: live((m: string) => bb.log.warn(m)) };
 
-  const connection = new ExecutorConnection(parsed.config, options);
-  bb.onDispose(() => connection.close());
+  const service = await ExecutorService.load({
+    kv: bb.storage.kv,
+    credentials,
+    fetch: options.fetch ?? fetch,
+    log,
+    changed: live(() => bb.realtime.publish(STATE_CHANGED, null)),
+    toolsChanged: live((cache: ToolCache) => {
+      const names = cache.tools.map((t) => t.name);
+      if (names.length !== toolsAtLoad.size || names.some((n) => !toolsAtLoad.has(n))) reload();
+    }),
+    ...(options.sleep ? { sleep: options.sleep } : {}),
+  });
+  bb.onDispose(() => {
+    disposed = true;
+    return service.close();
+  });
 
-  let upstreamTools;
-  let serverInstructions;
-  try {
-    upstreamTools = await connection.listTools();
-    serverInstructions = await connection.instructions();
-  } catch (error) {
-    bb.status.needsConfiguration(connectFailure(parsed.config.url, error));
-    return;
-  }
+  const toolNames = registerTools(bb, service, service.tools);
+  for (const name of service.tools?.tools.map((t) => t.name) ?? []) toolsAtLoad.add(name);
+  const instructions = agentInstructions(service.tools?.instructions ?? null);
+  bb.agents.configure((ctx) => ({
+    tools: service.choiceFor(ctx.thread.id).kind === "off" ? [] : toolNames,
+    skills: [],
+    instructions,
+  }));
 
-  const { bindings, skipped } = bindTools(upstreamTools);
+  bb.rpc.register(rpcContract, {
+    state: async () => service.state(),
+    add: async ({ name, url }) => service.add(name, url),
+    remove: async ({ id }) => (await service.remove(id), null),
+    setDefault: async ({ id }) => (await service.setDefault(id), null),
+    signIn: async ({ id }) => (await service.signIn(id), null),
+    cancelSignIn: async ({ id }) => (service.cancelSignIn(id), null),
+    signOut: async ({ id }) => (await service.signOut(id), null),
+    threadChoice: async ({ threadId }) => service.choiceFor(threadId),
+    setThreadChoice: async ({ threadId, choice }) => {
+      await service.setThreadChoice(threadId, choice);
+      bb.realtime.publish(THREAD_CHANGED, { threadId });
+      return null;
+    },
+  });
+
+  // Never block load on the network: tools come from the cache, refreshed here.
+  void service.refreshTools().catch((e: unknown) => log.warn(`tool list: ${describe(e)}`));
+  bb.log.info(`loaded with ${toolNames.length} Executor tools`);
+}
+
+function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCache | null): string[] {
+  if (!cache) return [];
+  const { bindings, skipped } = bindTools(cache.tools);
   if (skipped.length > 0) bb.log.warn(`skipped tools whose BB names collide: ${skipped.join(", ")}`);
-
   for (const { bbName, upstream } of bindings) {
     bb.agents.registerTool({
       name: bbName,
@@ -60,24 +110,19 @@ async function load(bb: BbPluginApi, options: { fetch?: typeof fetch }) {
       presentation: { label: { pending: `Running Executor ${upstream.name}`, completed: `Ran Executor ${upstream.name}` } },
       async execute(params, ctx) {
         try {
-          const result = await connection.callTool(upstream.name, asArguments(params), ctx.signal);
-          return toBbResult(result);
+          return toBbResult(await service.call(ctx.threadId, upstream.name, asArguments(params), ctx.signal));
         } catch (error) {
-          if (error instanceof CallCancelledError) return errorResult(error.message);
+          if (error instanceof CallCancelledError || error instanceof UserFacingError) return errorResult(error.message);
           return errorResult(`Executor ${upstream.name} failed: ${describe(error)}`);
         }
       },
     });
   }
-
-  const toolNames = bindings.map((b) => b.bbName);
-  const instructions = agentInstructions(serverInstructions);
-  bb.agents.configure(() => ({ tools: toolNames, skills: [], instructions }));
-  bb.log.info(`registered ${toolNames.length} Executor tools`);
+  return bindings.map((b) => b.bbName);
 }
 
-function agentInstructions(server: string | undefined): string {
-  const lead = "Executor tools carry the `executor_` prefix in this thread.";
+function agentInstructions(server: string | null): string {
+  const lead = "Executor tools carry the `executor_` prefix. The person picks which Executor connection this thread uses.";
   const text = server ? `${lead}\n\n${server}` : lead;
   if (text.length <= MAX_INSTRUCTIONS) return text;
   const note = "\n\n[Truncated. Call executor_skills for the full guide.]";
@@ -86,17 +131,4 @@ function agentInstructions(server: string | undefined): string {
 
 function asArguments(params: unknown): Record<string, unknown> {
   return params && typeof params === "object" && !Array.isArray(params) ? (params as Record<string, unknown>) : {};
-}
-
-function connectFailure(url: URL, error: unknown): string {
-  if (error instanceof SdkHttpError && error.status === 403) {
-    return "The API key cannot use this organization. Use a key limited to it, or put /org/<org>/mcp in `url`.";
-  }
-  if (error instanceof UnauthorizedError) return describe(error);
-  return `Could not reach Executor at ${url.origin}: ${describe(error)}`;
-}
-
-function describe(error: unknown): string {
-  if (error instanceof UnauthorizedError) return "Executor rejected the API key. Set a valid `token`.";
-  return error instanceof Error ? error.message : String(error);
 }

@@ -144,9 +144,9 @@ message into the thread's terminal. You press Enter to run them.
 
 ## Executor tools
 
-[Executor](executor/README.md) gives every thread the tools from your Executor
-organization through one connection. BB holds the API key, so no agent needs
-its own MCP config.
+[Executor](executor/README.md) gives threads the tools from your Executor scoped
+connections. BB signs in once per connection, and each thread picks which
+connection it uses, so no agent needs its own MCP config.
 
 ## Mobile start screen
 

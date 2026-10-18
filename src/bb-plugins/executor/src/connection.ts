@@ -6,7 +6,6 @@ import {
   type CallToolResult,
   type Tool,
 } from "@modelcontextprotocol/client";
-import type { ExecutorConfig } from "./config.ts";
 
 type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -27,12 +26,15 @@ export class CallCancelledError extends Error {
  * started transport cannot be restarted.
  */
 export class ExecutorConnection {
-  readonly #config: ExecutorConfig;
+  readonly #url: URL;
+  readonly #token: () => Promise<string>;
   readonly #fetch: FetchLike | undefined;
   #client: Promise<Client> | undefined;
 
-  constructor(config: ExecutorConfig, options: { fetch?: FetchLike } = {}) {
-    this.#config = config;
+  /** `token` is asked before each request, so a refreshed token is used at once. */
+  constructor(url: URL, token: () => Promise<string>, options: { fetch?: FetchLike } = {}) {
+    this.#url = url;
+    this.#token = token;
     this.#fetch = options.fetch;
   }
 
@@ -94,9 +96,8 @@ export class ExecutorConnection {
       { versionNegotiation: { mode: "auto" }, capabilities: {} },
     );
     client.onclose = () => this.#drop();
-    const token = this.#config.token;
-    const transport = new StreamableHTTPClientTransport(this.#config.url, {
-      authProvider: { token: async () => token },
+    const transport = new StreamableHTTPClientTransport(this.#url, {
+      authProvider: { token: this.#token },
       ...(this.#fetch ? { fetch: this.#fetch } : {}),
     });
     await client.connect(transport, { timeout: CONNECT_TIMEOUT_MS });
