@@ -39,6 +39,26 @@ placed but not yet paid). Design explicit countermeasures - semantic locks, a
 is the concrete shape of the `architecture` skill's "eventual consistency must
 still converge."
 
+Shape each saga so its half-done states are safe and its outcome is visible:
+
+- **Record the request, reply, then run.** The request is a fact committed
+  before any step, so it is never lost and the caller never blocks on the
+  process.
+- **Key the run by the aggregate it is about.** A repeated start then returns
+  the same run instead of a second one.
+- **One command per step, rejections translated.** Map each downstream
+  rejection into the process's own words (`NotOpen` becomes
+  `DestinationClosed`), so the saga's outcomes are its own contract.
+- **Take before you give.** Debit before credit: a failure then leaves value
+  in flight, never created from nothing. Run compensatable steps before the
+  pivot - the one step that cannot be undone - and only retriable steps after
+  it (Richardson). Compensations run in reverse.
+- **Report the outcome to an aggregate.** The final step, or a finaliser on
+  failure, sends a command to the aggregate the run is about. Clients then
+  watch an ordinary read model, not the engine.
+- **Never wait on a saga from a policy.** A waiting policy blocks every later
+  event on its key. Start the saga and react to the events its steps record.
+
 ## A Third Option: Durable Execution
 
 Not a fourth topology - **orchestration done as code**. A durable-execution engine
