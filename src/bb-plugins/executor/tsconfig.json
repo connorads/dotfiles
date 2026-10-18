@@ -5,12 +5,24 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM"],
-    "types": ["node"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "noUncheckedSideEffectImports": false,
     "skipLibCheck": false
   },
-  "include": ["*.ts", "*.tsx", "src/*.ts"]
+  "include": [
+    "*.ts",
+    "*.tsx",
+    "src/*.ts",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "lib/*.ts"
+  ]
 }

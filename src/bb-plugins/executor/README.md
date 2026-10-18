@@ -10,6 +10,20 @@ apps it allows, the account each app runs as, and which tools. This plugin
 passes Executor's own MCP tools through with an `executor_` prefix
 (`executor_search`, `executor_execute`, ...).
 
+## Use
+
+1. In Executor, open **Connect**, create or pick a scoped connection, and copy
+   its MCP URL.
+2. In BB, open **Settings → Executor**, add it with a name, and press
+   **Add and sign in**. Open the link, check the page shows the same code, and
+   approve. The first connection becomes the default.
+3. In a thread, the header chip names the connection the thread uses. Click it
+   or press `⌥E` to pick another: `d` default, `1`-`9` a connection, `o` off.
+   Picking a signed-out connection starts its sign-in.
+
+Settings → Executor also signs a connection out, makes it the default, or
+removes it (press **Remove** twice). Rebind `⌥E` in Settings → Keyboard.
+
 ## Model
 
 ```mermaid
@@ -52,7 +66,7 @@ Executor asks before tools its apps mark as needing approval. The result has
 ## Checks
 
 ```zsh
-pnpm test        # in-process fake Executor: OAuth device flow plus MCP over the real SDK
+pnpm test        # core: fake Executor with OAuth and MCP over the real SDK; ui: BB slot harness
 pnpm typecheck
 pnpm build
 ```

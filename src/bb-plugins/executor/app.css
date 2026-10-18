@@ -1,0 +1,68 @@
+/* BB theme tokens only. Pop-up shell from @bb-plugins/chip. */
+.ex-chip-off { color: var(--muted-foreground); }
+
+.bbp-popover-panel.ex-panel { overflow: auto; }
+
+.ex-header {
+  display: flex; align-items: baseline; gap: 8px; padding: 12px 14px;
+  border-bottom: 1px solid var(--border-seam, var(--border));
+}
+.ex-header h2 { flex: 1; margin: 0; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
+.ex-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.ex-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
+
+.ex-rows { display: grid; padding: 4px; }
+.ex-row {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 4px 8px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .12s;
+}
+.ex-row:hover:not(:disabled), .ex-row:focus { background: var(--state-hover); outline: none; }
+.ex-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.ex-row:disabled { opacity: .55; cursor: default; }
+.ex-row[aria-pressed="true"] .ex-row-label { font-weight: 600; }
+.ex-row kbd, .ex-keys kbd {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
+  border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
+  font: 500 10.5px/1 var(--font-mono);
+}
+.ex-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.ex-row-aside[data-warn] { color: var(--warning-text, var(--warning)); }
+.ex-check { color: var(--foreground); }
+
+.ex-signin {
+  display: grid; gap: 8px; margin: 8px 12px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-recessed, transparent);
+}
+.ex-signin-line { margin: 0; font-size: var(--text-sm, 13px); color: var(--foreground); text-wrap: pretty; }
+.ex-signin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ex-code { padding: 1px 6px; border-radius: 4px; background: var(--muted); font: 600 13px/1.4 var(--font-mono); letter-spacing: .06em; }
+.ex-button {
+  display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent; color: var(--foreground);
+  font: 500 12px/1 var(--font-sans); text-decoration: none; cursor: pointer;
+}
+.ex-button:hover { background: var(--state-hover); }
+.ex-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.ex-button-primary { border-color: transparent; background: var(--foreground); color: var(--background); }
+.ex-button-primary:hover { background: color-mix(in oklch, var(--foreground) 90%, transparent); }
+
+.ex-badge {
+  flex: none; padding: 1px 6px; border-radius: 999px; background: var(--muted);
+  color: var(--muted-foreground); font: 600 10px/1.4 var(--font-sans); letter-spacing: .04em;
+}
+.ex-status[data-status="signed-out"] { color: var(--warning-text, var(--warning)); }
+
+.ex-error { margin: 0; padding: 6px 14px; color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); text-wrap: pretty; }
+
+.ex-footer {
+  display: grid; gap: 4px; padding: 8px 14px;
+  border-top: 1px solid var(--border-seam, var(--border)); background: var(--surface-recessed, transparent);
+  color: var(--subtle-foreground, var(--muted-foreground)); font-size: var(--text-xs, 12px);
+}
+.ex-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-row { transition: none; }
+}
