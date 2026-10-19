@@ -19,6 +19,21 @@ setup() {
   : >"$TEST_HOME/.config/mise/mise.lock" # committed lock exists, empty
   : >"$TEST_HOME/.config/nix/flake.lock" # committed lock exists, empty
 
+  write_stub scutil <<'EOF'
+#!/usr/bin/env bash
+echo "${UP_TEST_HOST:-Connors-Mac-mini}"
+EOF
+
+  write_stub nix <<'EOF'
+#!/usr/bin/env bash
+echo "nix $*" >>"$TEST_LOG"
+[ -n "${NIX_PLAN_FAIL:-}" ] && { echo 'cache query failed' >&2; exit 1; }
+if [ -n "${NIX_PLAN_BUILD:-}" ]; then
+  echo 'this derivation will be built:' >&2
+  echo '  /nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-compiler-heavy-tool.drv' >&2
+fi
+EOF
+
   # lockfile-audit runs for real (via the shebang) against stubbed
   # osv-scanner/dotfiles, so `up` tests exercise the actual audit wiring.
   ln -s "$FUNCTIONS_DIR/nix/lockfile-audit" "$TEST_BIN/lockfile-audit"
@@ -134,6 +149,47 @@ fi
 [ "$1" = "commit" ] && [ -n "${DOTFILES_FAIL_COMMIT:-}" ] && exit 1
 exit 0
 EOF
+}
+
+@test "up Air refuses an unapproved Nix build before sudo and leaves its lock uncommitted" {
+  export UP_TEST_HOST=Connors-MacBook-Air NIX_PLAN_BUILD=1
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"compiler-heavy-tool.drv"* ]]
+  ! grep -qE '^sudo |^drs |dotfiles commit -m chore\(nix\)' "$TEST_LOG"
+  [ -s "$HOME/.config/nix/flake.lock" ]
+  [[ "$output" == *"build review"*"FAILED"* || "$output" == *"Failed"*"build review"* ]]
+}
+
+@test "up Air approved plan precedes authentication rebuild and lock commit" {
+  export UP_TEST_HOST=Connors-MacBook-Air NIX_PLAN_BUILD=1
+  run_on_pty y zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qF 'nix build --dry-run --no-link --no-write-lock-file --option allow-import-from-derivation false' "$TEST_LOG"
+  grep -qF '#darwinConfigurations.Connors-MacBook-Air.system' "$TEST_LOG"
+  grep -qF 'drs' "$TEST_LOG"
+  grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
+  local plan_line sudo_line
+  plan_line=$(grep -n '^nix build' "$TEST_LOG" | cut -d: -f1)
+  sudo_line=$(grep -n '^sudo ' "$TEST_LOG" | cut -d: -f1)
+  [ "$plan_line" -lt "$sudo_line" ]
+}
+
+@test "up Air rejected frozen plan never rebuilds or bumps inputs" {
+  export UP_TEST_HOST=Connors-MacBook-Air NIX_PLAN_BUILD=1
+  run_on_pty n zsh --no-rcs "$UP" --frozen
+  [ "$status" -eq 1 ]
+  ! grep -qE '^drs |^nfu |mise lock --global --bump' "$TEST_LOG"
+}
+
+@test "up Air planning failure blocks rebuild and configuration already present needs no approval" {
+  export UP_TEST_HOST=Connors-MacBook-Air
+  NIX_PLAN_FAIL=1 run_zsh_function "$UP" --frozen
+  [ "$status" -eq 1 ]
+  ! grep -qF 'drs' "$TEST_LOG"
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  grep -qF 'drs' "$TEST_LOG"
 }
 
 @test "up cleanup summary separates policy from successful phase outcomes" {

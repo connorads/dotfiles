@@ -445,6 +445,39 @@ _up_reapply_patches() {
   return $rc
 }
 
+_up_confirm_builds() {
+  local host plan rc answer
+  host=$(scutil --get LocalHostName) || return $?
+  [[ $host == Connors-MacBook-Air ]] || return 0
+
+  plan=$(nix build --dry-run --no-link --no-write-lock-file \
+    --option allow-import-from-derivation false \
+    "$HOME/.config/nix#darwinConfigurations.$host.system" 2>&1)
+  rc=$?
+  print -r -- "$plan"
+  ((rc == 0)) || return $rc
+  [[ $plan == *'.drv'* ]] || return 0
+
+  print 'up: review every listed build; derivation names do not establish compile cost.'
+  print 'up: this plan review does not prevent a later cache miss.'
+  if [[ ! -t 0 ]]; then
+    print -u2 'up: build approval requires an attached terminal; no rebuild started.'
+    return 1
+  fi
+  print 'Approve the listed local builds? [y/N]'
+  read -r answer || return 1
+  [[ $answer == [yY] || $answer == [yY][eE][sS] ]]
+}
+
+_up_review_builds() {
+  local verbose=1
+  _up_run required "build review" "host build policy" _up_confirm_builds || {
+    _up_track_lock_if_dirty ".config/nix/flake.lock" "$flake_lock"
+    _up_next "review the build plan, then rerun 'up -s' in an attached terminal"
+    return 1
+  }
+}
+
 _up_brew() {
   # Homebrew locates gh itself for bottle attestation. A project-installed mise
   # shim can otherwise shadow the global wrapper without an active version.
@@ -605,6 +638,11 @@ fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   if [[ -n $up_blocked_by ]]; then
+    _up_not_run "build review"
+  else
+    _up_review_builds
+  fi
+  if [[ -n $up_blocked_by ]]; then
     _up_not_run rebuild
   elif _up_sudo_ready rebuild; then
     _up_run required rebuild "darwin" drs
@@ -641,8 +679,8 @@ elif [[ -n $up_blocked_by ]]; then
     print -u2 "!! flake update failed - NOT committing flake.lock"
     _up_track_lock_if_dirty ".config/nix/flake.lock" "$flake_lock"
     _up_next "dotfiles diff -- .config/nix/flake.lock"
-  elif [[ $up_blocked_by == rebuild || $up_blocked_by == "system rebuild" || $up_blocked_by == "home rebuild" ]]; then
-    print -u2 "!! rebuild failed - NOT committing flake.lock"
+  elif [[ $up_blocked_by == "build review" || $up_blocked_by == rebuild || $up_blocked_by == "system rebuild" || $up_blocked_by == "home rebuild" ]]; then
+    print -u2 "!! $up_blocked_by failed - NOT committing flake.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
     _up_track_lock_if_dirty ".config/nix/flake.lock" "$flake_lock"
     ((up_sudo_failed)) || _up_next "up -s"

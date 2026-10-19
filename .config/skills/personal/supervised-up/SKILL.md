@@ -16,7 +16,8 @@ For an explanation or review without execution, answer from source and run no up
 
 ```mermaid
 flowchart TD
-    A[Inspect state] --> B[Run up in a terminal]
+    A[Inspect state] --> J[Review source-backed tools]
+    J --> B[Run up in a terminal]
     B --> C{Required phases pass?}
     C -->|No| D[Read log and verify cause]
     D --> E{User decision needed?}
@@ -37,16 +38,37 @@ flowchart TD
    Preserve unrelated changes. Reconcile a dirty lock before starting a normal update.
    Match existing lock changes to the failed run's log. Ask about ownership when that evidence is absent.
    Do not commit another task's lock changes to clear preflight.
-4. Run `up` in an attached pseudo-terminal. With Codex's command runner, use `tty: true`.
+4. Complete the source-build review below before launching or retrying installation.
+   Run `up` in an attached pseudo-terminal. With Codex's command runner, use `tty: true`.
    Tell the user to approve the macOS fingerprint prompt when it appears.
    Run sudo authentication and the update in the same terminal session when pre-authentication is needed.
    A separate terminal can have a separate sudo timestamp.
 5. Keep the process session alive. Poll its output and inspect the log path printed by this invocation.
    Report progress at least once per minute. Quiet downloads and builds need log or process evidence before declaring a hang.
 
-Start with normal `up` unless the user requests frozen mode or supplies an existing failure to continue.
+After source-build review, start with normal `up` unless the user requests frozen mode or supplies an existing failure to continue.
 Invocation authorises routine update work, fixes, checks and local commits throughout the loop.
 Do not return with "rerun up" while you can run the retry yourself.
+
+## Source-build review
+
+Prefer cached packages or verified upstream binaries on the MacBook Air.
+Before launching an update, inspect configured source-capable mise backends and
+their release artifacts. Cargo and SPM can fall back to compilation.
+Binary Node and Python runtimes do not guarantee binary dependencies.
+If a tool needs substantial compilation, present its name, version and binary
+availability before asking for approval. Do not start its installation without approval.
+Use separate mise resolution and the reconciliation procedure when a source-backed
+update needs review before installation. Preserve and validate its lock throughout.
+Do not enable binary-only settings until the configured tools have supported artifacts.
+
+At the Air's Nix build review, inspect the displayed derivations before answering.
+Approve only verified configuration/file-copy builds or work the user already approved.
+Unknown builds require investigation. Names and `preferLocalBuild` do not prove low cost.
+Present substantial source builds to the user before approving them.
+Rejection or unavailable input leaves the rebuild blocked and the flake lock uncommitted.
+Review the plan again during frozen recovery. A later cache miss can change build work;
+this review is not strict compile prevention.
 
 ## Diagnose and fix
 
@@ -74,6 +96,8 @@ compatibility, app replacement, destructive cleanup or OS installation.
 Keep those decisions pending until answered. Reuse approval already given for the same action.
 
 ## Reconcile and resume
+
+Repeat source-build review before every installation retry. Locked versions can require compilation too.
 
 | Failed phase | Retry after verification |
 | --- | --- |

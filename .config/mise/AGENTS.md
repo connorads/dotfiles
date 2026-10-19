@@ -52,6 +52,12 @@ mise lock -g                                # refresh global lockfile checksums 
 Change the tool's configured range or exact pin before resolving a deliberate
 version-boundary update. Automatic project-lock creation stays enabled.
 
+On the MacBook Air, `up` reviews the current Nix build plan before sudo and
+rebuilding. Any planned local derivation requires terminal approval.
+Planning failure or missing approval blocks the rebuild and flake lock commit.
+Frozen recovery repeats the review against its existing inputs.
+This review does not enforce cache availability during the subsequent rebuild.
+
 ## aube
 
 **aube** (primary npm backend for mise): config at `~/.config/aube/config.toml`. Set via mise: `npm.package_manager = "aube"`, which selects aube **embedded as a library** (mise >= 2026.7.15, [jdx/mise#11149](https://github.com/jdx/mise/pull/11149)); `aube_cli` selects shelling out to the CLI. So "aube the setting value" and "aube the command" are different things: the `aube` binary on `PATH` is the real CLI, pinned to the 2.x range (released from `aubepkg/aube`; mise 2026.8.6 rejects its attestations, 2026.9.12 accepts them), and it does not install mise's npm tools. Anything driving that CLI against a mise install dir is addressing a store the embedded library does not use - it brands the virtual store `node_modules/.mise` while the CLI looks for `.aube`, and silently drops the work at `tracing::debug!`. Layered defenses beyond a simple age gate:

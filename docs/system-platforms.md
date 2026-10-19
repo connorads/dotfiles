@@ -64,6 +64,12 @@ Prefer cached Nix packages or verified upstream binaries on the MacBook Air.
 Ask before starting a substantial local source compile during updates.
 Check planned Nix builds before a rebuild; a cache miss can trigger compilation.
 Small configuration and file-copy derivations can build locally.
+On the MacBook Air, `up` displays the Nix build plan before authentication and
+rebuilding. Planned local builds require terminal approval, including small
+configuration builds. Failed planning, rejection or unavailable terminal input
+blocks rebuilding and leaves the flake lock uncommitted.
+The review uses the updated inputs, including during frozen recovery.
+It does not prevent compilation after a later cache miss.
 Atuin uses the upstream Apple Silicon release binary through Nix. Home Manager
 owns its shell integration and settings. The version and checksum are pinned in
 [atuin.nix](../.config/nix/packages/atuin.nix); flake updates do not change them.
