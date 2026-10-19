@@ -18,6 +18,7 @@
 # it). Unplanned power loss waits at the pre-boot unlock prompt — use
 # `fdesetup authrestart` for planned reboots, never bare `reboot`.
 {
+  config,
   lib,
   pkgs,
   packages,
@@ -116,6 +117,27 @@
     ConfigDataInstall = false;
   };
 
+  launchd.daemons.bb-server.serviceConfig = {
+    ProgramArguments = [
+      "${import ./bb-service-launcher.nix { inherit pkgs; }}"
+      "server"
+    ];
+    UserName = "connorads";
+    GroupName = "staff";
+    EnvironmentVariables = {
+      HOME = config.home-manager.users.connorads.home.homeDirectory;
+      USER = "connorads";
+      LOGNAME = "connorads";
+      PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
+    };
+    WorkingDirectory = config.home-manager.users.connorads.home.homeDirectory;
+    RunAtLoad = true;
+    KeepAlive.SuccessfulExit = false;
+    ThrottleInterval = 10;
+    StandardOutPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-server.log";
+    StandardErrorPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-server-error.log";
+  };
+
   # -- Services (later) --
   # Persistent container services aren't wanted yet. When they are, a boot
   # daemon to bring Colima up headlessly goes here, e.g.:
@@ -136,6 +158,7 @@
   # no osxkeychain credential helper (SSH remotes + gh's PAT instead).
   home-manager.users.connorads = {
     home.packages = packages.sharedPackages;
+    launchd.agents.bb-server.enable = lib.mkForce false;
   };
 
   # NB: no security.pam.services.sudo_local here (password sudo).

@@ -90,7 +90,9 @@ For mobile access, connect Tailscale on the phone and open the required BB serve
 
 ### BB service ownership
 
-[bb-services.nix](../.config/nix/modules/bb-services.nix) declares macOS user services.
+[darwin-server.nix](../.config/nix/modules/darwin-server.nix) declares the Mac mini's BB system daemon.
+It runs as `connorads` in the system launchd domain, independently of desktop login.
+[bb-services.nix](../.config/nix/modules/bb-services.nix) declares the other macOS user services.
 mise owns Node and BB installations. Services resolve installed versions at startup without installing packages or enabling BB auto-updates.
 The desktop app owns its local server when the declarative server service is disabled.
 
@@ -105,16 +107,31 @@ Missing configuration disables both services. A worker also requires an existing
 ```
 
 Set `server.enabled` for a standalone server. Set `worker.enabled` only after deliberate enrolment with a trusted server.
-Restart the relevant launch agent after changing this file. Services start at user login, not before FileVault unlock.
+Restart the relevant service after changing this file. The mini's server starts at system boot after FileVault unlock.
+User services start at login. The server launcher starts both the BB server and its local execution daemon.
 Server URLs, enrolment credentials and BB state stay outside Nix and Git.
+
+The mini uses `system/org.nixos.bb-server`. Keep the competing `gui/501/app.getbb.server` agent disabled.
+The mini's Home Manager server agent is disabled in Nix. Its worker remains a user service.
+Provider authentication needs verification outside a desktop login. Desktop automation still needs a desktop session.
+
+```bash
+sudo launchctl print system/org.nixos.bb-server
+sudo launchctl kickstart -k system/org.nixos.bb-server
+```
+
+Verify remote BB access and an agent task after logout. Restarting WindowServer ends GUI services and desktop applications.
+It does not test the system daemon until that daemon owns the running BB instance.
 
 ```mermaid
 flowchart LR
-  Nix[Public Nix module] --> Launchd[User launch agents]
-  Local[Private runtime configuration] --> Launchd
+  Nix[Public Nix modules] --> System[Mini system daemon as connorads]
+  Nix --> User[User launch agents]
+  Local[Private runtime configuration] --> System
+  Local --> User
   State[Private BB enrolment state] --> Worker[Execution daemon]
-  Launchd --> Worker
-  Launchd --> Server[Loopback BB server]
+  User --> Worker
+  System --> Server[Loopback BB server and local execution daemon]
 ```
 
 ### Public access options

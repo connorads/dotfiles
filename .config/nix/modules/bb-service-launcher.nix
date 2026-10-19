@@ -9,7 +9,7 @@ pkgs.writeShellScript "bb-service" ''
   mise="${pkgs.mise}/bin/mise"
   node_dir=$("$mise" -C "$HOME" where node)
   bb_dir=$("$mise" -C "$HOME" where npm:bb-app)
-  export PATH="$node_dir/bin:$bb_dir/node_modules/.bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  export PATH="$node_dir/bin:$bb_dir/node_modules/.bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   if test "$role" = server; then
     exec "$bb_dir/node_modules/.bin/bb-app" --server-bind-host 127.0.0.1
   fi
