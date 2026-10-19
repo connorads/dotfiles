@@ -6,22 +6,9 @@
 # It holds live secrets, so keep it owner-only:
 #   chmod 600 ~/.zshrc.local
 
-# Brave Search API - https://brave.com/search/api/
-export BRAVE_API_KEY=
-
-# Context7 API - https://context7.com/
-export CONTEXT7_API_KEY=
-
-# ElevenLabs uses fnox. Run: fnox exec -- elevenlabs voices get_all
-
-# Exa API - https://exa.ai/
-export EXA_API_KEY=
-
-# Gemini API - https://ai.google.dev/
-export GEMINI_API_KEY=
-
-# xAI API (Grok) - https://console.x.ai/
-export XAI_API_KEY=
+# Command API keys stay in local fnox storage, outside Git.
+# Run credential-dependent tools with: fnox exec -- <command>
+# Examples: fnox exec -- pi; fnox exec -- elevenlabs voices get_all
 
 # Homebrew GitHub API token - https://github.com/settings/personal-access-tokens
 # Zero-permission fine-grained PAT. Lifts anon GitHub API limit (60/hr -> 5000/hr)

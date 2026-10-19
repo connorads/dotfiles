@@ -8,13 +8,33 @@ The independent recovery identity is stored in Bitwarden's `fnox recovery` note.
 New command credentials use fnox rather than exports in `.zshrc.local`.
 Existing credentials stay in place until their consumers pass migration tests.
 Keep application-managed OAuth sessions and SSH keys in their native stores.
-Only ElevenLabs is configured in fnox; other services need individual assessment.
+fnox contains ElevenLabs, Brave, Exa, Typesafe, FreeAgent, fal and Sprite Fusion.
+Context7, Gemini and xAI have no configured values in the local shell file.
 
 Use `fnox exec -- <command>` to decrypt credentials into a command's environment.
 The command and its children can read their credentials. Direct injection adds
 no proxy size limit and does not buffer media streams.
 Select only the credentials each command needs. `fnox exec` loads all eligible
 secrets from the active configuration.
+
+## Launching consumers
+
+Prefix commands that need credentials with `fnox exec --`:
+
+```sh
+fnox exec -- pi
+fnox exec -- opencode
+fnox exec -- python3 path/to/script.py
+```
+
+The selected command receives every credential in the current global config.
+These prefixes are explicit; ordinary launches do not load fnox automatically.
+Restart existing consumers and shells after removing plaintext exports.
+Existing processes keep their inherited credentials until they exit.
+
+Migration verification checks exact value delivery, not service validity.
+Search consumer tests use synthetic requests; live API permissions need separate
+checks. Typesafe, FreeAgent and Sprite Fusion have no identified tracked consumer.
 
 ## Device authentication
 
@@ -65,6 +85,9 @@ Interactive authentication on the MacBook does not establish unattended access.
 Back up the encrypted `config.toml` privately after changing credentials.
 The Bitwarden recovery note contains the recovery identity, not the encrypted
 credential file. Recovery requires both.
+`~/.config/fnox/config.toml.backup` is a local encrypted snapshot.
+Keep an independent private copy off the Mac; the local snapshot does not cover
+loss of the machine. Refresh both copies after changing credentials.
 
 1. Keep the independent recovery identity in Bitwarden's `fnox recovery` note.
    Back up the device identity file too, but it cannot recover access on another
