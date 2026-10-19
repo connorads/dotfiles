@@ -78,6 +78,7 @@
 
 !/.config/
 /.config/**
+/.config/fnox/
 !/.config/opencode/
 /.config/opencode/**
 !/.config/opencode/tui.json

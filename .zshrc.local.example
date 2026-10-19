@@ -1,5 +1,7 @@
-# API Keys and secrets for local machine
+# Machine-local configuration and unmigrated credentials
 # This file is gitignored and won't be committed to dotfiles
+# New command credentials use fnox. See ~/docs/credentials.md.
+# Keep existing exports until their consumers pass migration tests.
 #
 # It holds live secrets, so keep it owner-only:
 #   chmod 600 ~/.zshrc.local
@@ -10,8 +12,7 @@ export BRAVE_API_KEY=
 # Context7 API - https://context7.com/
 export CONTEXT7_API_KEY=
 
-# ElevenLabs API - https://elevenlabs.io/app/settings/api-keys
-export ELEVENLABS_API_KEY=
+# ElevenLabs uses fnox. Run: fnox exec -- elevenlabs voices get_all
 
 # Exa API - https://exa.ai/
 export EXA_API_KEY=
@@ -34,10 +35,6 @@ export XAI_API_KEY=
 # GITHUB_TOKEN and would auth with this zero-perm PAT, 404ing private org repos
 # (the gh keyring token has that access). MISE_GITHUB_TOKEN is read only by mise.
 # export MISE_GITHUB_TOKEN=$HOMEBREW_GITHUB_TOKEN
-
-# Add more API keys as needed:
-# export FIGMA_API_KEY="..."
-# export SENTRY_API_KEY="..."
 
 # Claude account launchers (examples only; keep real names local/uncommitted).
 # `ccp default` runs the plain ~/.claude account; `ccp <name>` runs the

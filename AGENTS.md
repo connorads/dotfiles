@@ -21,6 +21,7 @@ when the task needs them.
 | Change tmux behaviour | [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | Change BB settings, shortcuts or local plugins | [.config/bb/AGENTS.md](./.config/bb/AGENTS.md) |
 | Change MCP bundles | [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
+| Add or migrate command credentials, change fnox or enrol a machine | [Command credentials](./docs/credentials.md) |
 | Change agent sandbox policies | [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
 | Expose a service or run remote commands | [Remote access](./docs/remote-access.md) |
 

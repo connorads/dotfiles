@@ -121,7 +121,7 @@ done
 
 # Machine-local config + helpers
 # Use .zshrc.local for config that shouldn't be committed
-# (API keys, PATH additions, etc.)
+# (host paths, private aliases, etc.)
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # https://github.com/ajeetdsouza/zoxide

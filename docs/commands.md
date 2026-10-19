@@ -4,6 +4,9 @@
 
 Run `<cmd> --help` for flags and subcommands.
 
+For encrypted command credentials and ElevenLabs proxy usage, see
+[command credentials](credentials.md).
+
 ```bash
 drs | hms | nrs        # rebuild: darwin (macOS) | home-manager (Linux) | nixos; add r (drsr...) to roll back
 up                     # update everything: bump + commit mise.lock and flake.lock, brew/apt, rebuild

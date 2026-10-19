@@ -43,6 +43,7 @@ Claude, Codex and pi run in tmux panes. Each window tab shows a state dot for it
 - [`up`, mise and lockfiles](.config/mise/AGENTS.md)
 - [Supply-chain controls](docs/supply-chain.md)
 - [Commands](docs/commands.md)
+- [Command credentials](docs/credentials.md)
 - [Decision records](docs/adr/README.md)
 
 ## Credit

@@ -69,6 +69,8 @@ pandoc = "3"
 # CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF in ~/.zshrc.
 claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 fnox = "1"
+age = "1"
+"github:remko/age-plugin-se" = "0.2.1"
 
 # github:/aqua tools: undateable releases slip the 4d gate, so the pin — not the
 # age gate — is the supply-chain control here. Keep these exact/known-good.
