@@ -3,7 +3,10 @@
 Show muted, centred gap markers before messages after a ten-minute pause,
 a local date change, or the confirmed start of the conversation. Closely spaced
 messages have no added timestamp footer. Hover a marker for the full local date
-and timezone. Exact per-message times remain in BB's native message menu.
+and timezone. Exact times appear to the right of each message's existing action
+buttons on hover, keyboard focus, or while its menu is open. They remain visible
+on touch devices. Full dates remain in the tooltip and native message menu.
+Messages without an action bar retain their gap markers without an extra footer.
 Assistant times mean message start, not completion or last edit.
 Existing visible timestamps retain their native display.
 

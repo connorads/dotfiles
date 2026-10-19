@@ -56,3 +56,21 @@ it('marks real pauses and date changes without inventing gaps from missing DOM r
   document.querySelector('[data-timeline-row-id="first"]')?.remove();
   expect(document.querySelector('[data-timeline-row-id="near"] time')).toBeNull();
 });
+
+it('places exact times after native actions even without a known gap, and cleans up redraws', async () => {
+  document.body.innerHTML = '<div data-timeline-row-id="a"><div data-message-column><div class="actions"><button aria-label="Message actions">Menu</button></div></div></div>';
+  setTimes([{ id: 'a', timestamp: 1000, role: 'assistant' }]);
+  dispose = mountTimestamps(document);
+  const actions = document.querySelector('.actions')!;
+  expect(actions.lastElementChild?.classList.contains('bb-message-exact')).toBe(true);
+  expect(actions.querySelector('time')?.dateTime).toBe('1970-01-01T00:00:01.000Z');
+  expect(document.querySelector('.bb-message-time')).toBeNull();
+  actions.innerHTML = '<button aria-label="Message actions">Replacement</button>';
+  await settle();
+  expect(actions.querySelectorAll('.bb-message-exact')).toHaveLength(1);
+  setTimes([{ id: 'a', timestamp: 2000, role: 'assistant' }]);
+  expect(actions.querySelector('time')?.dateTime).toBe('1970-01-01T00:00:02.000Z');
+  dispose();
+  expect(actions.querySelector('time')).toBeNull();
+  expect(actions.querySelector('button')?.textContent).toBe('Replacement');
+});

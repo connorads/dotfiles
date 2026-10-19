@@ -15,3 +15,13 @@
   flex: 1;
   border-top: 1px solid var(--border);
 }
+
+.bb-message-exact {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-menu-open] > .bb-message-exact { opacity: 1; }
