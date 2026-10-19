@@ -4,7 +4,7 @@
 
 Run `<cmd> --help` for flags and subcommands.
 
-For encrypted command credentials and ElevenLabs proxy usage, see
+For local encrypted command credentials and fnox usage, see
 [command credentials](credentials.md).
 
 ```bash

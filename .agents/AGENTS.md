@@ -15,6 +15,13 @@
 
 ## Secrets
 
+Use `fnox exec -- <command>` for command API credentials; do not add plaintext
+exports to `.zshrc.local`. Read `~/docs/credentials.md`
+before changing credential storage, delivery or machine enrolment. Encrypted
+credentials and private identities stay local, outside Git. The memory cache
+expires after 30 minutes without requests; `fnox daemon stop` clears it.
+Do not print credentials with `fnox get`, `env` or debugging output.
+
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
 Do not read or write secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh`, ... - the srt
