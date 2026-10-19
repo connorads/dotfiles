@@ -68,10 +68,12 @@ Use the supplied `workflows` skill for authoring, validation, execution and insp
 ## Local plugins
 
 Use stock BB with plugins. Do not build, install or switch to a patched BB core
-without explicit user authorisation. The discarded
-[account-routing spike](../../src/bb-plugins/spikes/bb-patched/README.md)
-is historical research, not the running installation or an approved delivery route.
+without explicit user authorisation. The discarded account-routing spike at
+`src/bb-plugins/spikes/bb-patched/` is ignored historical research, not the
+running installation or an approved delivery route.
 Plugin content scripts may decorate BB's DOM without modifying its core.
+Use the [DOM decoration method](../../src/bb-plugins/docs/dom-decorations.md)
+for additions like account badges, message times and link icons.
 
 Plugin source lives in [src/bb-plugins](../../src/bb-plugins/README.md), a shared pnpm workspace.
 Read its guide and the affected plugin's README before changing source.

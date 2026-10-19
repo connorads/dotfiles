@@ -141,6 +141,14 @@ footer eye button picks projects. Turning it off restores the sidebar.
 
 [External Links](external-links/README.md) adds an arrow beside chat web links.
 The arrow opens the system browser. Link text follows BB's browser preference.
+Default file links show a side-panel icon.
+
+## Chat timestamps
+
+[Chat Timestamps](chat-timestamps/README.md) shows recorded message times beneath
+messages. Assistant times represent the message start.
+
+UI decorations use [plugin content scripts](docs/dom-decorations.md) with stock BB.
 
 ## Run commands from chat
 

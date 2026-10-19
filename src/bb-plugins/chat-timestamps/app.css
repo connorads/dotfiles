@@ -1,0 +1,9 @@
+.bb-message-time {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.bb-message-time[data-role="user"] { text-align: right; }

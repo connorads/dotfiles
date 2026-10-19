@@ -1,6 +1,7 @@
 {
   "cache-hits": true,
   "caffeine": true,
+  "chat-timestamps": true,
   "claude-profiles": true,
   "composer-keys": true,
   "diff-viewer": true,
