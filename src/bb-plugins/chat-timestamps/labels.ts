@@ -13,6 +13,11 @@ export function mountTimestamps(doc: Document): () => void {
       wanted.add(id);
       const message = getTimes().get(id);
       if (!message) continue;
+      const date = new Date(message.timestamp);
+      const previous = message.previousTimestamp;
+      if (previous === undefined) continue;
+      const changedDay = previous !== null && date.toDateString() !== new Date(previous).toDateString();
+      if (previous !== null && !changedDay && message.timestamp - previous < 10 * 60 * 1000) continue;
       kept.add(column);
       let time = added.get(column);
       if (!time) {
@@ -20,21 +25,19 @@ export function mountTimestamps(doc: Document): () => void {
         time.className = 'bb-message-time';
         added.set(column, time);
       }
-      const date = new Date(message.timestamp);
       const iso = date.toISOString();
-      // Do not rewrite text on every DOM mutation; that would retrigger the observer.
-      if (time.dateTime !== iso) {
+      const today = date.toDateString() === new Date().toDateString();
+      const day = today ? 'Today' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      const clock = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      const label = `${day} · ${clock}`;
+      // Guard writes because this script observes its own DOM changes.
+      if (time.textContent !== label || time.dateTime !== iso) {
         time.dateTime = iso;
         time.title = date.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' });
-        const today = date.toDateString() === new Date().toDateString();
-        time.textContent = date.toLocaleString(undefined, {
-          ...(today ? {} : { day: 'numeric', month: 'short', year: 'numeric' }),
-          hour: '2-digit', minute: '2-digit',
-        });
-        time.setAttribute('aria-label', `${message.role === 'assistant' ? 'Message started' : 'Message sent'} ${time.title}`);
+        time.textContent = label;
+        time.setAttribute('aria-label', `Conversation resumes ${time.title}`);
       }
-      time.dataset.role = message.role;
-      if (column.lastChild !== time) column.append(time);
+      if (column.firstChild !== time) column.prepend(time);
     }
     for (const [column, time] of added) {
       if (!kept.has(column)) { time.remove(); added.delete(column); }

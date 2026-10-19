@@ -104,14 +104,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 ### Persistent message metadata
 
 - Found: 2026-10-19, chat-timestamps, SDK 0.6.37
-- Wanted: visible timestamps beneath messages without opening their action menus.
+- Wanted: visible chronology markers between message groups without opening action menus.
 - Gap: `messageAction` renders host-owned buttons, not persistent custom metadata.
   Content scripts have DOM access but cannot call `useSdk`.
 - Workaround: a null overlay reads deferred timeline metadata through `useSdk`.
   A module store joins recorded `startedAt` values to `data-timeline-row-id`.
-  A content script adds labels and requests missing times when rows appear.
+  A content script adds gap markers and requests missing times when rows appear.
   Row selectors and thread-prefixed IDs depend on BB's markup.
-- Ask: an additive message-footer slot with a stable message reference and recorded timestamp.
+- Ask: an additive message-boundary slot with a stable message reference and recorded timestamp.
 - Status: open
 - Category: sdk-gap
 - Evidence: [bridge.tsx](../chat-timestamps/bridge.tsx), [labels.ts](../chat-timestamps/labels.ts)

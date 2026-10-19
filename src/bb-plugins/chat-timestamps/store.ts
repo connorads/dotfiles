@@ -1,4 +1,4 @@
-export type MessageTime = { id: string; timestamp: number; role: 'user' | 'assistant' };
+export type MessageTime = { id: string; timestamp: number; role: 'user' | 'assistant'; previousTimestamp?: number | null };
 
 let times = new Map<string, MessageTime>();
 let wanted = new Set<string>();

@@ -9,7 +9,7 @@ const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)
 
 it('shows recorded times without requiring message actions and leaves existing times alone', () => {
   document.body.innerHTML = '<div data-timeline-row-id="a"><div data-message-column>Assistant</div></div><div data-timeline-row-id="b"><div data-message-column>Automation<time>12:00</time></div></div><div data-timeline-row-id="unknown"><div data-message-column>Unknown</div></div>';
-  setTimes([{ id: 'a', timestamp: Date.UTC(2026, 9, 19, 12, 34), role: 'assistant' }, { id: 'b', timestamp: 1, role: 'user' }]);
+  setTimes([{ id: 'a', timestamp: Date.UTC(2026, 9, 19, 12, 34), role: 'assistant', previousTimestamp: null }, { id: 'b', timestamp: 1, role: 'user', previousTimestamp: null }]);
   dispose = mountTimestamps(document);
   expect(document.querySelectorAll('.bb-message-time')).toHaveLength(1);
   const time = document.querySelector<HTMLTimeElement>('.bb-message-time')!;
@@ -26,14 +26,33 @@ it('decorates streamed rows, updates metadata, and removes stale labels on navig
   document.body.innerHTML = '<div data-timeline-row-id="a"><div data-message-column>Message</div></div>';
   await settle();
   expect(document.querySelector('.bb-message-time')).toBeNull();
-  setTimes([{ id: 'a', timestamp: 1, role: 'user' }]);
-  expect(document.querySelector('.bb-message-time')?.getAttribute('data-role')).toBe('user');
+  setTimes([{ id: 'a', timestamp: 1, role: 'user', previousTimestamp: null }]);
+  expect(document.querySelector('.bb-message-time')?.getAttribute('datetime')).toBe('1970-01-01T00:00:00.001Z');
   document.querySelector('[data-message-column]')!.innerHTML = 'Redrawn';
   await settle();
   expect(document.querySelectorAll('.bb-message-time')).toHaveLength(1);
   setTimes([]);
   expect(document.querySelector('.bb-message-time')).toBeNull();
   dispose();
-  setTimes([{ id: 'a', timestamp: 1, role: 'user' }]);
+  setTimes([{ id: 'a', timestamp: 1, role: 'user', previousTimestamp: null }]);
   expect(document.querySelector('.bb-message-time')).toBeNull();
+});
+
+it('marks real pauses and date changes without inventing gaps from missing DOM rows', () => {
+  const start = new Date(2026, 9, 19, 12).getTime();
+  document.body.innerHTML = ['first', 'near', 'gap', 'unknown', 'midnight'].map(id =>
+    `<div data-timeline-row-id="${id}"><div data-message-column>${id}</div></div>`).join('');
+  setTimes([
+    { id: 'first', timestamp: start, previousTimestamp: null, role: 'user' },
+    { id: 'near', timestamp: start + 60000, previousTimestamp: start, role: 'assistant' },
+    { id: 'gap', timestamp: start + 660000, previousTimestamp: start + 60000, role: 'assistant' },
+    { id: 'unknown', timestamp: start + 9999999, role: 'assistant' },
+    { id: 'midnight', timestamp: new Date(2026, 9, 20, 0, 1).getTime(), previousTimestamp: new Date(2026, 9, 19, 23, 59).getTime(), role: 'user' },
+  ]);
+  dispose = mountTimestamps(document);
+  expect(Array.from(document.querySelectorAll('.bb-message-time')).map(e => e.closest('[data-timeline-row-id]')?.getAttribute('data-timeline-row-id'))).toEqual(['first', 'gap', 'midnight']);
+  expect(document.querySelector('[data-timeline-row-id="first"] [data-message-column]')?.firstChild?.nodeName).toBe('TIME');
+  // Removing an intervening rendered message must not make a new gap.
+  document.querySelector('[data-timeline-row-id="first"]')?.remove();
+  expect(document.querySelector('[data-timeline-row-id="near"] time')).toBeNull();
 });

@@ -1,16 +1,22 @@
 # Chat Timestamps
 
-Show a muted local time beneath chat messages in the selected thread.
-Older messages include their date. Hover shows the full date and timezone.
+Show muted, centred gap markers before messages after a ten-minute pause,
+a local date change, or the confirmed start of the conversation. Closely spaced
+messages have no added timestamp footer. Hover a marker for the full local date
+and timezone. Exact per-message times remain in BB's native message menu.
 Assistant times mean message start, not completion or last edit.
 Existing visible timestamps retain their native display.
+
+Gaps compare consecutive recorded messages, including messages absent from the
+rendered DOM. Unknown predecessors produce no marker. The bridge reads another
+page when needed to establish a predecessor or the start of history.
 
 ```mermaid
 flowchart LR
   API[BB timeline API] --> Bridge[React overlay bridge]
   Bridge --> Store[Recorded row times]
   Store --> Script[Content script]
-  Script --> Labels[Message timestamps]
+  Script --> Labels[Gap markers]
   Rows[New rendered rows] --> Bridge
 ```
 

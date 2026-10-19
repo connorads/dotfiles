@@ -10,7 +10,7 @@ afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; setTimes([]); set
 type Page = Awaited<ReturnType<ReturnType<typeof useSdk>['threads']['timeline']>>;
 const message = (id: string, timestamp: number): Page['rows'][number] => ({
   kind: 'conversation', id, threadId: 'thread', turnId: null,
-  sourceSeqStart: 1, sourceSeqEnd: 1, messageSeq: 1,
+  sourceSeqStart: timestamp, sourceSeqEnd: timestamp, messageSeq: timestamp,
   role: 'assistant', startedAt: timestamp, createdAt: timestamp + 100,
   text: '', attachments: null, turnRequest: null,
 });
@@ -30,8 +30,10 @@ it('loads older pages for rendered messages and uses recorded start times', asyn
       ? page([message('thread:old', 1000)])
       : page([message('thread:new', 2000)], { anchorId: 'cursor', anchorSeq: 5 }) } },
   });
-  await waitFor(() => expect([...getTimes().keys()]).toEqual(['thread:new', 'thread:old']));
+  await waitFor(() => expect([...getTimes().keys()]).toEqual(['thread:old', 'thread:new']));
   expect(getTimes().get('thread:old')?.timestamp).toBe(1000);
+  expect(getTimes().get('thread:old')?.previousTimestamp).toBeNull();
+  expect(getTimes().get('thread:new')?.previousTimestamp).toBe(1000);
   expect(slot.inspection.sdkCalls).toHaveLength(2);
 });
 
@@ -81,4 +83,17 @@ it('does not read older history for an embedded chat from another thread', async
   });
   await waitFor(() => expect(getTimes().has('thread:a')).toBe(true));
   expect(slot.inspection.sdkCalls).toHaveLength(1);
+});
+
+it('reads a predecessor even when the rendered message already has a time', async () => {
+  setWanted(new Set(['thread:new']));
+  const app = await loadPluginApp(() => import('./app'));
+  slot = renderSlot(app.appOverlays[0], {}, {
+    context: { threadId: 'thread' },
+    sdk: { threads: { timeline: async args => args.beforeAnchorId
+      ? page([message('thread:old', 1000)])
+      : page([message('thread:new', 2000)], { anchorId: 'cursor', anchorSeq: 5 }) } },
+  });
+  await waitFor(() => expect(getTimes().get('thread:new')?.previousTimestamp).toBe(1000));
+  expect(slot.inspection.sdkCalls).toHaveLength(2);
 });

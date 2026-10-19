@@ -146,8 +146,9 @@ Labelled browser and generic editor controls use distinct destination icons.
 
 ## Chat timestamps
 
-[Chat Timestamps](chat-timestamps/README.md) shows recorded message times beneath
-messages. Assistant times represent the message start.
+[Chat Timestamps](chat-timestamps/README.md) shows muted gap markers after
+ten-minute pauses, date changes and the confirmed start of a conversation.
+Assistant times represent the message start.
 
 UI decorations use [plugin content scripts](docs/dom-decorations.md) with stock BB.
 
