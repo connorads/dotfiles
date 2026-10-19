@@ -141,7 +141,8 @@ footer eye button picks projects. Turning it off restores the sidebar.
 
 [External Links](external-links/README.md) adds an arrow beside chat web links.
 The arrow opens the system browser. Link text follows BB's browser preference.
-Default file links show a side-panel icon.
+Default file links and inline preview headers show a side-panel icon.
+Labelled browser and generic editor controls use distinct destination icons.
 
 ## Chat timestamps
 
