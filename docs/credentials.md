@@ -47,9 +47,15 @@ key once rather than unlocking each credential separately. After adding or
 replacing credentials, run `fnox reencrypt --provider age` to consolidate them.
 That maintenance operation can require several approvals for existing values.
 
-A new command may request authentication. Children retain inherited credentials
-for their lifetime. The fnox memory cache is disabled; there is no fixed-duration
-approval grant.
+The fnox memory cache is enabled with a 30-minute idle timeout. The first command
+requests authentication; later commands reuse cached credentials. Requests reset
+the idle timer. After 30 minutes without requests, the daemon exits and drops
+its cache. This is an inactivity timeout, not a fixed-duration approval grant.
+
+Run `fnox daemon stop` to drop the cache immediately. Use `--no-daemon` to bypass
+it for one command. Children retain inherited credentials for their lifetime,
+even after cache expiry. Other processes running as your user can request
+cached credentials.
 
 The restricted BB command sandbox blocks Secure Enclave access. Run fnox from
 a normal terminal or use approved execution outside that sandbox. This setup
