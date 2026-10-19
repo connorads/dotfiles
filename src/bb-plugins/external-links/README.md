@@ -2,7 +2,8 @@
 
 Chat web links have a separate arrow button that opens the system browser.
 Ordinary link clicks follow BB's existing browser preference. File and relative
-app links retain their own actions.
+app links retain their own actions. Default file links show a side-panel icon
+instead of an external-link arrow. Editor-specific icons retain their appearance.
 
 ```mermaid
 flowchart LR

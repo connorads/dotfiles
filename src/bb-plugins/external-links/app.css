@@ -13,3 +13,15 @@
 }
 .bb-external-link:hover { color: var(--primary); }
 .bb-external-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bb-file-preview-original { display: none !important; }
+.bb-file-preview-icon {
+  display: inline;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: 0.25rem;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  color: var(--muted-foreground);
+}
