@@ -60,6 +60,14 @@ First run of a fresh Xcode needs `sudo xcodebuild -license accept` and
 Rule of thumb: host-global and well-packaged -> Nix; project/version-selected ->
 mise; macOS vendor bundle -> Homebrew.
 
+Prefer cached Nix packages or verified upstream binaries on the MacBook Air.
+Ask before starting a substantial local source compile during updates.
+Check planned Nix builds before a rebuild; a cache miss can trigger compilation.
+Small configuration and file-copy derivations can build locally.
+Atuin uses the upstream Apple Silicon release binary through Nix. Home Manager
+owns its shell integration and settings. The version and checksum are pinned in
+[atuin.nix](../.config/nix/packages/atuin.nix); flake updates do not change them.
+
 Claude Code is mise-owned. Do not install it natively or re-enable its self-updater. Why: [docs/adr/0011](../docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
 
 ## Mouse buttons

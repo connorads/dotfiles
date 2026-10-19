@@ -126,6 +126,11 @@
 
   programs.atuin = {
     enable = true;
+    package =
+      if pkgs.stdenv.hostPlatform.system == "aarch64-darwin" then
+        pkgs.callPackage ../packages/atuin.nix { }
+      else
+        pkgs.atuin;
     enableZshIntegration = true;
     flags = [ "--disable-up-arrow" ];
     settings = {

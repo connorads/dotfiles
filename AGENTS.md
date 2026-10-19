@@ -104,6 +104,9 @@ as passed, failed or skipped; a hook that skips a missing tool is not verificati
 
 ## Supply Chain & Update Strategy
 
+Prefer cached packages or verified upstream binaries. Ask before substantial local
+source compiles on the MacBook Air. See [system platforms](./docs/system-platforms.md).
+
 ### Quarantine
 
 Every package manager installs only versions released 4+ days ago: mise, aube, pnpm, npm, bun, uv, pip and Yarn. Each spells it in its own unit: days for npm, 5760 minutes for pnpm and aube, 345600 seconds for bun, `P4D` for pip. The `quarantine-drift` gate blocks a commit when the nine configs disagree.
