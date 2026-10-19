@@ -6,22 +6,22 @@
 }:
 
 let
-  version = "2026.9.12";
+  version = "2026.10.5";
 
   # Upstream's release tarballs, checked against the release's SHASUMS256.txt.
   # Linux takes the static musl build so no glibc from the host is involved.
   sources = {
     aarch64-darwin = {
       suffix = "macos-arm64";
-      hash = "sha256-Dxx/PnTYya6Cl25pkAWPK8aIIazGtMN6aMIGyDZpJBk=";
+      hash = "sha256-xjhSPzv9OcfstsJMZ8bdg9cpMsX823eNPorUsHDuX9o=";
     };
     x86_64-linux = {
       suffix = "linux-x64-musl";
-      hash = "sha256-GyBR2NPvq02chc61mEmj6wUtskrUBqOQH9a0U3TFbr4=";
+      hash = "sha256-xqJ9yHiGU2PlgHy3vpCLKUkbAuFtLeB9KcUH07WqyOU=";
     };
     aarch64-linux = {
       suffix = "linux-arm64-musl";
-      hash = "sha256-Iufs08bITvNuTQx4xO70mnnj+4OqiOCR4pk/2cmj+KE=";
+      hash = "sha256-U+4skwIl/JoQ6r/G3DZ11V+Lb2+41oF4klE+1FGSMB0=";
     };
   };
 
