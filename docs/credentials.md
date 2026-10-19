@@ -42,6 +42,11 @@ mise installs `age` and `age-plugin-se`. The device identity requires Touch ID
 or the Mac login password. Copying its identity file to another Mac does not
 enable decryption there. Keep the identity file private despite this restriction.
 
+Credentials share one age-wrapped batch key. A fresh `fnox exec` unlocks that
+key once rather than unlocking each credential separately. After adding or
+replacing credentials, run `fnox reencrypt --provider age` to consolidate them.
+That maintenance operation can require several approvals for existing values.
+
 A new command may request authentication. Children retain inherited credentials
 for their lifetime. The fnox memory cache is disabled; there is no fixed-duration
 approval grant.
@@ -94,8 +99,9 @@ loss of the machine. Refresh both copies after changing credentials.
    Mac. Losing both the original Mac and the recovery identity prevents decryption.
 2. To replace the API key, run `fnox set ELEVENLABS_API_KEY --provider age`.
    Enter the replacement at the hidden prompt. Do not pass it as an argument.
-3. Verify voice listing with `fnox exec`, then revoke the old key in ElevenLabs.
-4. Update a private backup of the encrypted config. Keep it outside dotfiles.
+3. Run `fnox reencrypt --provider age` to consolidate the encrypted values.
+4. Verify voice listing with `fnox exec`, then revoke the old key in ElevenLabs.
+5. Update a private backup of the encrypted config. Keep it outside dotfiles.
 
 For a second Mac, select the credentials it needs in a separate configuration.
 Create a device identity and add its public recipient to that configuration's
