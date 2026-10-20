@@ -10,7 +10,7 @@ metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv
 
 Build voice AI agents with natural conversations, multiple LLM providers, custom tools, and easy web embedding.
 
-> **Setup:** See [Installation Guide](references/installation.md) for CLI and SDK setup.
+> **Setup, before writing any code:** if `ELEVENLABS_API_KEY` isn't set for this project, use the existing credential workflow. Report a missing credential and stop that path. Do not download a CLI or run onboarding to write project credentials. Otherwise see the [Installation Guide](references/installation.md) for CLI and SDK setup.
 
 ## Voice selection
 
@@ -190,6 +190,9 @@ function App({ signedUrl }: { signedUrl: string }) {
 
 Use `GET /v1/convai/llm/list` to inspect the current model catalog, including deprecation state, token/context limits, capability flags such as image-input support, and model-specific reasoning effort support.
 
+<!-- LOCAL PATCH (connorads dotfiles): Realtime guidance requires a separately reviewed companion; missing skills must not trigger automatic installation. -->
+For an ElevenLabs Realtime model (`conversation_config.realtime_model`), use the separately reviewed `realtime` skill when available. If it is unavailable, report the missing prerequisite and stop that route. Do not fetch or install companion skills during the task.
+
 Choose from the available voices using the voice selection rules above.
 
 **Turn eagerness:** `patient` (waits longer for user to finish), `normal`, or `eager` (responds quickly)
@@ -312,7 +315,7 @@ No-auth APIs useful for prototypes (URLs must be HTTPS):
 
 Route conversations through discrete steps with branching logic. Define under the agent's top-level `workflow` field. Reference: [Agent Workflows](https://elevenlabs.io/docs/eleven-agents/customization/agent-workflows).
 
-**Node types:** `start` (ID must be `"start_node"`), `end`, `override_agent` (subagent step with `label` + `additional_prompt`), `dispatch_tool` (executes a tool with success/failure routing), `agent_transfer`, `transfer_to_number`.
+**Node types:** `start` (ID must be `"start_node"`), `end` (`outcome` records the conversation as `success`, the default, or `failure`), `override_agent` (subagent step with `label` + `additional_prompt`), `dispatch_tool` (executes a tool with success/failure routing), `agent_transfer`, `transfer_to_number`.
 
 **Edge types:** `unconditional`, `llm` (natural-language condition), `expression` (deterministic data check). Tool nodes have separate success/failure edges.
 

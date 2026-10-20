@@ -1,0 +1,6 @@
+{
+  "reason": "Realtime guidance requires a separately reviewed companion; missing skills must not trigger automatic installation.",
+  "files": [
+    "elevenlabs/.agents/skills/agents/SKILL.md"
+  ]
+}
