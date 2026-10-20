@@ -294,12 +294,14 @@ test.each(['expired', 'unauthenticated'] as const)('%s Claude login shows one ac
     signInHint: 'Run `claude` on the machine to sign in.', expiredHint: 'Your Claude session expired. Run `claude`, then reload.' };
   const offline = { ...expired, id: 'claude-profiles:["offline","~/.claude-profiles/code","work"]', accountLabel: 'Work' };
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect({ machines: [
-    { ...snapshot.machines[0]!, providers: [expired, { ...expired, id: 'codex', providerId: 'codex', accountLabel: 'Codex' }] },
+    { ...snapshot.machines[0]!, providers: [expired, { ...expired, id: 'codex', providerId: 'codex', accountLabel: 'Codex' },
+      { ...expired, id: 'provider-codex:["host-one","codex"]', providerId: 'codex', accountLabel: 'Codex CLI' }] },
     { ...snapshot.machines[0]!, id: 'offline', status: 'disconnected', providers: [offline] },
   ] }) } });
   act(() => openUsage());
   expect((await slot.findByRole('button', { name: 'Sign in again to Work' })).hasAttribute('disabled')).toBe(true);
   expect(slot.queryByRole('button', { name: 'Sign in again to Codex' })).toBeNull();
+  expect(slot.getByRole('button', { name: 'Sign in again to Codex CLI' }).hasAttribute('disabled')).toBe(false);
   const online = slot.getByRole('region', { name: 'Claude · Default' });
   expect(online.textContent).toContain(status === 'expired' ? 'Session expired' : 'Not signed in');
   expect(online.textContent).not.toContain('Run `claude`');

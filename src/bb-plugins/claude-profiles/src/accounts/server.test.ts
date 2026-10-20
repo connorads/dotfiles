@@ -283,6 +283,17 @@ test('native Default login clears profile overrides and uses the host home direc
   assert.ok(!created[0]?.start?.argv?.some(value => value.startsWith('CLAUDE_CONFIG_DIR=')));
 });
 
+test('Codex login runs codex login on the account host and reuses an active terminal', async t => {
+  const { harness, created } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  const input = { hostId: 'remote', accountId: 'provider-codex:["remote","codex"]' };
+  await harness.behavior.callRpc('usage.login', input);
+  await harness.behavior.callRpc('usage.login', input);
+  assert.equal(created.length, 1);
+  assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
+  assert.deepEqual(created[0]?.start?.argv, ['codex', 'login']);
+});
+
 test('login rejects stale profiles, another host, and unrelated usage sources before opening a terminal', async t => {
   const { harness, created } = loginFixture();
   t.after(() => harness.lifecycle.dispose());
@@ -290,7 +301,8 @@ test('login rejects stale profiles, another host, and unrelated usage sources be
     ['offline', loginAccount('work')], ['remote', loginAccount('missing')],
     ['remote', 'claude-profiles:["other","~/.claude-profiles/code","work"]'],
     ['remote', 'claude-profiles:["remote","/old-root","work"]'],
-    ['remote', 'provider-codex:["remote","codex"]'],
+    ['remote', 'provider-codex:["other","codex"]'], ['offline', 'provider-codex:["offline","codex"]'],
+    ['remote', 'provider-grok:["remote","grok"]'],
   ]) await assert.rejects(harness.behavior.callRpc('usage.login', { hostId, accountId }));
   assert.equal(created.length, 0);
 });

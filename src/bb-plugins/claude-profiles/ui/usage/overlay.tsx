@@ -46,8 +46,9 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
   const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
-  const canLogin = account.providerId === 'claude-code' && (usage?.status === 'expired' || usage?.status === 'unauthenticated')
-    && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'));
+  const canLogin = (usage?.status === 'expired' || usage?.status === 'unauthenticated')
+    && (account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
+      || account.providerId === 'codex' && account.id.startsWith('provider-codex:'));
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
   const message = canLogin && connected ? (usage?.status === 'expired' ? 'Session expired' : 'Not signed in')

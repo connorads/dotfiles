@@ -12,7 +12,7 @@ import { mountAccountBadges } from './ui/badges/rows.ts';
 import './ui/badges/badges.css';
 
 export default definePluginApp(app => {
-  app.slots.navPanel({ id: 'claude-login', title: 'Claude sign-in', icon: 'SquareTerminal', path: 'claude-login', component: LoginPage });
+  app.slots.navPanel({ id: 'claude-login', title: 'Agent sign-in', icon: 'SquareTerminal', path: 'claude-login', component: LoginPage });
   app.composer.customize({
     id: 'claude-account', scopes: ['thread', 'new-thread'],
     actions: [{ id: 'claude-account', component: AccountStatus }],

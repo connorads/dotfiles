@@ -140,13 +140,14 @@ Amber marks 1.2× pace or 70% used. Red marks 1.4× pace, 90% used or a full
 window. A reading becomes stale after 4% of its shortest window, with a
 15-minute minimum. Stale bars use stripes and omit projections.
 
-Expired or signed-out Claude accounts show **Sign in again**. The button opens
-**Claude sign-in**, a BB page with a terminal on that account's machine. Complete
-the native browser login there. Default uses the machine's native configuration;
-named accounts use their profile directory. Concurrent clicks reuse the active
+Expired or signed-out Claude and Codex accounts show **Sign in again**. The button
+opens **Agent sign-in**, a BB page with a terminal on that account's machine. Complete
+the native browser login there: `claude auth login` or `codex login`. Claude Default
+uses the machine's native configuration; named accounts use their profile directory.
+Codex uses the machine's one CLI login. Concurrent clicks reuse the active
 login terminal. Offline accounts require their machine to reconnect first.
 Successful login refreshes usage and reopens the overlay. Failed login keeps the
-terminal available with **Try again**. The **Claude sign-in** sidebar page also
+terminal available with **Try again**. The **Agent sign-in** sidebar page also
 provides **Agent usage** to return to the account list.
 
 The overlay reads BB's built-in **Provider usage** plugin. Enable it for
