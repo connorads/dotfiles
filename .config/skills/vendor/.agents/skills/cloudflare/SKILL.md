@@ -81,6 +81,7 @@ Find the row closest to the user's task. Products can appear in multiple rows, a
 | Connect Workers to private services | Workers VPC | Access services in private networks from a Worker | [Workers VPC docs](https://developers.cloudflare.com/workers-vpc/index.md) |
 | Require employee login before accessing an internal app | Access | Put identity-based access policies in front of an internal application | `cloudflare-one` skill; [Access docs](https://developers.cloudflare.com/cloudflare-one/access-controls/index.md) |
 | Protect access to internal applications and networks | Cloudflare One | Apply identity and network access policies | `cloudflare-one` skill; [Cloudflare One docs](https://developers.cloudflare.com/cloudflare-one/index.md) |
+| Transform permitted Gateway HTTP traffic with a Worker | Gateway Forward + Workers | Apply custom request or response logic to traffic passing through Gateway | [gateway-workers skill](../gateway-workers/SKILL.md) |
 | Migrate existing access and network security configurations | Cloudflare One | The task is a supported migration to Cloudflare One | `cloudflare-one-migrations` skill; [Cloudflare One docs](https://developers.cloudflare.com/cloudflare-one/index.md) |
 | Proxy a TCP or UDP application | Spectrum | Protect and accelerate non-HTTP application traffic | [Spectrum docs](https://developers.cloudflare.com/spectrum/index.md) |
 | Connect a network directly to Cloudflare | Network Interconnect | Dedicated network connectivity is required | [Network Interconnect docs](https://developers.cloudflare.com/network-interconnect/index.md) |
@@ -102,16 +103,16 @@ Find the row closest to the user's task. Products can appear in multiple rows, a
 | Encode, store, and deliver live or on-demand video | Stream | Use managed video infrastructure | [Stream](references/stream/README.md) |
 | Build an audio/video calling application with SDKs | RealtimeKit | Use application-level SDKs for calls and meetings | [RealtimeKit docs](https://developers.cloudflare.com/realtime/realtimekit/index.md) |
 | Build custom real-time media infrastructure | Realtime SFU | Control the application while using a selective forwarding unit for media | [Realtime SFU docs](https://developers.cloudflare.com/realtime/sfu/index.md) |
-| Relay WebRTC connections through restrictive networks | TURN Service | Clients need a connectivity relay | [TURN](references/turn/README.md) |
+| Relay WebRTC connections through restrictive networks | TURN Service | Clients need a connectivity relay | [TURN docs](https://developers.cloudflare.com/realtime/turn/index.md) |
 | Deliver live media over QUIC | MoQ | Use the Media over QUIC protocol; check current compatibility and availability | [MoQ docs](https://developers.cloudflare.com/moq/index.md) |
 | Send transactional email | Email Service | Send application-generated messages | `cloudflare-email-service` skill; [Email Service docs](https://developers.cloudflare.com/email-service/index.md) |
 | Forward incoming email | Email Routing | Route addresses on a domain to destination mailboxes | `cloudflare-email-service` skill; [Route emails](https://developers.cloudflare.com/email-service/get-started/route-emails/index.md) |
 | Process incoming email in code | Email Workers | Apply custom logic to inbound messages | `cloudflare-email-service` skill; [Email handler](https://developers.cloudflare.com/email-service/api/route-emails/email-handler/index.md) |
-| Manage third-party tags and scripts | Zaraz | Load and manage third-party tools through Cloudflare | [Zaraz](references/zaraz/README.md) |
+| Manage third-party tags and scripts | Zaraz | Load and manage third-party tools through Cloudflare | [Zaraz docs](https://developers.cloudflare.com/zaraz/index.md) |
 | Run locally and manage resources from the CLI | Cloudflare CLI (`cf`); Wrangler for existing Wrangler projects | Develop, configure, deploy, and inspect the intended account and environment; choose the CLI as described in [Choose the CLI](#choose-the-cli) | `cf-cli` skill; [cf docs](https://developers.cloudflare.com/cf/index.md); `wrangler` skill for Wrangler projects |
 | Test Worker behavior before deployment | Workers testing tools | Choose runtime tests or integration tests for the affected behavior | [Testing docs](https://developers.cloudflare.com/workers/testing/index.md); `durable-objects` skill for DO tests |
 | Embed local Worker simulation in tooling | Miniflare | A programmatic emulator is needed for a custom development or test harness | [Miniflare](references/miniflare/README.md) |
-| Run or investigate the underlying Workers runtime | workerd | Work directly with the runtime outside normal managed deployment | [workerd](references/workerd/README.md) |
+| Run or investigate the underlying Workers runtime | workerd | Work directly with the runtime outside normal managed deployment | [workerd repository](https://github.com/cloudflare/workerd) |
 | Try a small Worker in the browser | Workers Playground | Explore or share a minimal example without local setup | [Workers Playground docs](https://developers.cloudflare.com/workers/playground/index.md) |
 | Build and deploy whenever code is pushed | Workers Builds | Connect a Git repository to automated builds and deployments | [Builds docs](https://developers.cloudflare.com/workers/ci-cd/builds/index.md) |
 | Test a branch or pull request in an isolated environment | Workers Previews | Create a branch environment under the same Worker with its own settings and URLs; check which bound resources are isolated or shared | [Previews docs](https://developers.cloudflare.com/workers/previews/index.md); `wrangler` skill |
@@ -123,9 +124,9 @@ Find the row closest to the user's task. Products can appear in multiple rows, a
 | Profile CPU usage or memory allocations in deployed Workers or Durable Objects | Workers profiling | Investigate CPU and memory issues in production | Installed `workers-profiling` skill if available; otherwise use official Workers observability documentation and report the unavailable companion |
 | Process Worker execution events in code | Tail Workers | Build custom log or exception processing | [Tail Workers](references/tail-workers/README.md) |
 | Export Worker logs to another system | Workers Logpush | Deliver logs to a supported external destination | [Logpush docs](https://developers.cloudflare.com/workers/observability/logs/logpush/index.md) |
-| Measure custom application events | Workers Analytics Engine | Analyze high-cardinality event data written from Workers | [Analytics Engine](references/analytics-engine/README.md) |
+| Measure custom application events | Workers Analytics Engine | Analyze high-cardinality event data written from Workers | [Analytics Engine docs](https://developers.cloudflare.com/analytics/analytics-engine/index.md) |
 | Measure website usage and visitor performance | Cloudflare Web Analytics | Add website analytics and real-user measurements | [Web Analytics docs](https://developers.cloudflare.com/web-analytics/index.md) |
-| Query metrics across Cloudflare products | GraphQL Analytics API | Retrieve product analytics programmatically | [GraphQL Analytics API](references/graphql-api/README.md) |
+| Query metrics across Cloudflare products | GraphQL Analytics API | Retrieve product analytics programmatically | [GraphQL Analytics API docs](https://developers.cloudflare.com/analytics/graphql-api/index.md) |
 | Audit page speed and find loading bottlenecks | Web performance tools | Measure and improve the site's actual browser performance | `web-perf` skill; [Web Analytics docs](https://developers.cloudflare.com/web-analytics/index.md) |
 | Ask questions about an account or diagnose its configuration in the dashboard | Agent Lee | Use the dashboard's AI assistant; check current account eligibility | [Agent Lee docs](https://developers.cloudflare.com/agent-lee/index.md) |
 

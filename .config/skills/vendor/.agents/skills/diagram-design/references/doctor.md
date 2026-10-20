@@ -42,7 +42,7 @@ Run all checks in this order and report each as `pass`, `warn`, or `fail`.
 
 2. Playwright availability for PNG export
 - Check whether Playwright import works in the active Python interpreter (`import playwright`); an optional package version attribute is not required.
-- Check whether Chromium is installed for Playwright (`playwright install --help` availability is sufficient for command presence; prefer also checking browser cache when practical).
+- Verify the default headless Chromium can launch in that interpreter and close it after the probe. This includes a supported headless-shell-only installation; the full Chromium executable path is not required for default PNG export. Bound browser startup to 5 seconds and the subprocess probe to 10 seconds, then terminate the owned probe tree on timeout. Windows tree cleanup and parent reaping each have an additional 2-second limit; report cleanup failures as warnings.
 - If missing, mark `warn` and report that the host environment must provision
   an approved Playwright installation and compatible browser.
 - Never auto-install dependencies.

@@ -68,7 +68,7 @@ Load the selected `type-*.md`. Override the grammar only when the content disagr
 - Start from a blank `viewBox` selected by the size preset. Mermaid positions do not exist in the source, and a renderer's positions must not be recreated.
 - Use semantic treatments from the chosen type. A Mermaid cylinder becomes Store/State; a rhombus stays a decision only in a flowchart; subgraphs become zones or collapsible groups.
 - Ignore init themes, `style`, `classDef`, `class`, inline `:::class` attachments, and `linkStyle`. One accent plus the ink ramp replaces the source theme. A leading `---` frontmatter block is title/config, so it is skipped with the same reasoning.
-- Reroute all connections with the SKILL.md §6 connector rules. Mermaid edge length markers are ranking hints, not content.
+- Reroute all connections with the SKILL.md §6 connector rules. Mermaid edge length markers are ranking hints, not content. Invisible `~~~` links are layout hints: their endpoints still become nodes, no edge is drawn, and the digest notes how many were ignored.
 - Do not add a component merely to fill space. Imports remain bounded by source meaning.
 
 ## Step 6 — Deliver
@@ -131,5 +131,7 @@ Markdown is the Mermaid analogue of multi-page draw.io. The header lists every f
 | Silently dropping content | Every import ships a fidelity ledger |
 
 Bare state declarations are retained even when disconnected from transitions.
+Single-line state notes are retained as inert text in the JSON `notes` array and
+the Markdown digest, in source order.
 Multiline state notes are opaque annotation text through `end note`; a missing
 terminator exits with the extractor's exit-2 diagnostic and the opening line number.

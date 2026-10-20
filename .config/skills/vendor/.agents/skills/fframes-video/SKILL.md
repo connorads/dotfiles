@@ -28,6 +28,46 @@ When matching a supplied video, first follow the reference-analysis guidance in
 `references/design.md`. Its cuts, pacing and motion take precedence over the design defaults
 below; fast edits and intentional black frames may be part of the requested result.
 
+## Two rules before anything else
+
+### Plan before you write code
+
+Do not open the template and start animating. First:
+
+1. Pin down the brief: who watches it and where (the platform decides format and length), the
+   one thing the viewer must remember, the tone, and the assets that exist (logo, product
+   shots, footage, music, voice-over). Ask the user for what is missing and matters. Never
+   invent product facts, numbers or quotes.
+2. When the video is cut to music or a voice, choose the sound first. Its tempo, beats and
+   phrases set the timing of everything else.
+3. Plan the motion design first, sync the motion design to the sound peaks to make a single
+   unique flow: where the elements will appear from, how they will transform. Try to create a
+   unique motion design for every scene so it looks unique and polished. The video shouldn't
+   look like a slide show.
+4. Try to reason about the feeling for the person that is watching the final video and adjust
+   every piece of design you do accordingly: the flow, tempo, beats, motion, and colors.
+
+### No slop
+
+Slop is a video made of default choices: it could be about any product with only the text
+changed, and viewers recognise it within a second. Unless the user asks for it, do not ship:
+
+- Template leftovers: the starter layout, colors, font or decorations, placeholder text, fake
+  logos, invented numbers.
+- Beat spam: the whole frame zooming, shaking or flashing on every beat. Sync small things to
+  the beat (a stroke, a word, a spark) and change the whole frame only at a few cuts.
+- One motion for everything: every element fading up 40 px with the same easing and duration.
+- Static scenes: one thing appears, holds and fades while nothing else moves.
+- Generic copy: "Introducing", "Unleash", "Seamless", "Next-level", three-word taglines
+  ("Fast. Simple. Powerful."). Write on-screen text the way a person would say it.
+- Text in general: the amount of text should be limited and on point.
+
+Instead, give every element a reason tied to the subject and remove what has none. Spend the
+effort on detail and motion rather than words: secondary motion, staggered entrances, drawn
+strokes, objects that react to each other, elements carried across cuts. Before showing the
+user anything, look at a strip and ask whether the video would still work for a different
+product with only the text changed. If it would, change the idea, not the colors.
+
 ## 1. Install
 
 Rust from <https://rustup.rs>, then the system libraries ffmpeg is built with:
@@ -103,8 +143,9 @@ R() { cargo run --release -- "$@"; }
 <!-- LOCAL PATCH (connorads dotfiles): Keep risk-appropriate tests alongside video and shader inspection -->
 Validate the video with `inspect`, rendered frames, contact sheets, audio checks and the native preview. For behavioural changes, run the existing relevant tests and add focused regression coverage where it verifies the changed contract.
 
-**For the GPU backend, offer the native preview before a full render.** Do not render the
-whole video as a routine review step. Once the changes are ready to review:
+**Preview, do not render.** If the video uses the GPU render backend and a GPU is available
+on this machine, run the native preview (or show the user the command) instead of rendering
+the video again after every change. Once the changes are ready to review:
 
 1. Show a complete command in a copyable shell code block, using the actual project path and
    package name; do not require the user to have defined the `$R` helper. For example:
@@ -129,9 +170,13 @@ After every change:
    appears on a scene's first frames is usually an entrance; check it with a strip.
 3. `$R strip <scene or range> -n 12` writes a contact sheet (`strip.png`): evenly spaced frames
    in one labelled image. Open it with your image tool. It is the fastest way to judge layout,
-   rhythm and motion.
+   rhythm and motion. `$R strip 2s,5s,9s` puts chosen times side by side.
 4. `$R frame Intro@end,Outro@50%` writes full-size PNGs into `frames/` for detail checks
-   (typography, alignment, contrast) and prints problems found in those frames.
+   (typography, alignment, contrast) and prints problems found in those frames. Judge small
+   details (contact between elements, edges, small shapes) on a sharp zoomed crop, never on a
+   scaled-down frame: `$R frame 3s --crop 1100,520,240,120` (video pixels, zoomed to about
+   960 px wide). `--ids` outlines and names every element that has an `id`, to find which
+   shape is which.
 5. `$R onion "Intro@0..Intro@1s" -n 6` blends frames into one image (`onion.png`) to show the
    path and spacing of a movement: easing, overshoot, stagger.
 6. `$R preview Intro` opens a real-time window with sound for the user to watch (space
@@ -141,6 +186,12 @@ After every change:
 
 When an encoded sample is needed, `$R render Intro --draft` encodes one scene at half
 resolution. `$R render` writes the full video for a requested final export.
+
+Before showing a finished video, run `$R inspect --pops`: it renders every frame small and
+warns about pops, parts of the picture that change in one frame between still frames, like an
+element that appears, vanishes or jumps in front of another one instead of moving there. Each
+warning gives the `frame ... --crop ...` command to look at it; repeats of the same region
+(counters, blinking lights) are grouped into one warning.
 
 Rules:
 - Look at the PNGs before saying anything looks good.
@@ -161,9 +212,9 @@ times with commas.
 | command | use it to |
 | --- | --- |
 | `timeline` | see scenes, durations, audio tracks and their mix settings |
-| `inspect [RANGE] [--every 0.1s \| --all-frames] [--fail-on warning]` | find problems without rendering pixels |
-| `strip [RANGE] -n N [--columns 4] [--width 480]` | review flow and motion in one image |
-| `frame TIMES [-o dir] [--svg]` | full-size PNGs (and the laid-out SVG) of chosen frames |
+| `inspect [RANGE] [--every 0.1s \| --all-frames] [--fail-on warning] [--pops]` | find problems without rendering pixels; `--pops` also finds elements that pop in or out |
+| `strip [RANGE \| TIMES] -n N [--columns 4] [--width 480] [--crop x,y,w,h]` | review flow and motion in one image |
+| `frame TIMES [-o dir] [--svg] [--crop x,y,w,h] [--zoom N] [--ids]` | full-size PNGs (and the laid-out SVG) of chosen frames, sharp crops, labelled elements |
 | `onion RANGE -n N` | see a movement's trajectory and easing |
 | `svg TIME` | read a frame's final SVG as text (positions, text, colors) |
 | `preview [TIME] [--paused] [--mute]` | real-time window with sound, for the user |
@@ -242,8 +293,8 @@ The short version of `references/design.md`:
 
 ## 6. Sound
 
-Put audio files in `media/` (compiled in, mono) or load a folder at runtime with
-`MediaDirectory` for stereo, then place them:
+Put audio files in `media/` (compiled in, mono unless `include_media_dir!(.., "media", stereo)`)
+or load a folder at runtime with `MediaDirectory`, then place them:
 
 ```rust
 AudioMap::from([
@@ -262,8 +313,9 @@ the user listen in `$R preview`.
 
 1. `$R inspect --fail-on warning` passes, or the remaining warnings are understood entrances.
 2. A strip of every scene looks right and key frames are checked at full size.
-3. `$R audio analyze` shows sensible levels.
-4. For GPU work awaiting review, show the preview command and offer to run it at the relevant
+3. Nothing from the "No slop" list at the top of this file is left in any strip.
+4. `$R audio analyze` shows sensible levels.
+5. For GPU work awaiting review, show the preview command and offer to run it at the relevant
    second. When the user requests the final export, run `$R render -o out.mp4`, then confirm
    size, frame count and audio with
    `ffprobe -v error -show_entries stream=codec_type,width,height,nb_frames,duration out.mp4`.

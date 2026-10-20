@@ -1,2 +1,2 @@
 {{marker}}
-`--system-fonts` omits the exporter's Google Fonts import. It preserves source SVG scripts, styles and resource references; it is not a sanitizer or a network boundary. Use it for the `system` font source. Before rendering offline output, inspect the HTML and exported SVG for active resources and block browser network requests. The diagram CSS still carries over.
+`--system-fonts` omits the exporter's Google Fonts import and carried `@font-face` declarations. It preserves source SVG scripts, styles and resource references; it is not a sanitizer or a network boundary. Use it for the `system` font source. Before rendering offline output, inspect the HTML and exported SVG for active resources and block browser network requests. The diagram CSS still carries over.

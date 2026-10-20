@@ -1,1 +1,1 @@
-Install: `pnpm exec shadcn add message-scroller message bubble attachment marker`
+Install: `pnpm exec shadcn add message-scroller message bubble attachment marker trace code-block`

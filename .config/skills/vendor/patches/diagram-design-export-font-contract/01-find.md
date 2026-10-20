@@ -1,1 +1,1 @@
-`--system-fonts` skips the Google Fonts `@import` (step 5) so the SVG makes no network request; use it when the skin's font source is `system` (see [style-guide.md § Font source](style-guide.md#font-source)). The diagram CSS still carries over.
+`--system-fonts` skips the Google Fonts `@import` and carried `@font-face` declarations (step 5) so the SVG makes no network request; use it when the skin's font source is `system` (see [style-guide.md § Font source](style-guide.md#font-source)). The diagram CSS still carries over.

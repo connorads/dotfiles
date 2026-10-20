@@ -49,7 +49,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "51522c6fbd95a2eaa9631a7651ba3ef434fcc92d9573c64eb28ef723290b6099"
+      "computedHash": "f08c8c1be96dfad7f9d5418b1345477dd2e55af58c8da01326c9a2616c7ed721"
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
@@ -62,7 +62,7 @@
       "source": "cursor/plugins",
       "sourceType": "github",
       "skillPath": "pstack/skills/correct/SKILL.md",
-      "computedHash": "61c8a417f95b6e3cc198cd869ba92ab5d65c68fcc4e3191a302a5a9f24bc2645"
+      "computedHash": "b7e0850f6e5370007dd560aca2a728b49891208b8782da67212b49638105827e"
     },
     "design-taste-frontend": {
       "source": "leonxlnx/taste-skill",
@@ -74,7 +74,7 @@
       "source": "cathrynlavery/diagram-design",
       "sourceType": "github",
       "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "e6fc3d04b70ee64a8273f79118721b4dde4645b7fc240835398f11c69b0bc79b"
+      "computedHash": "115a126a5bff5abd547b125e9865269c4ad737e4cb134df153118e0ffd679f82"
     },
     "dream-loop": {
       "source": "achimala/dream-loop",
@@ -110,7 +110,7 @@
       "source": "dmtrKovalenko/fframes",
       "sourceType": "github",
       "skillPath": "skills/fframes-video/SKILL.md",
-      "computedHash": "02623b7c323d58e365ad008818aeabe0f2f07ab141939bb39a0c542e90d6a71b"
+      "computedHash": "ea8c197a12bc46f39eafb94fb4997516b2881f585bb121e98612095d4c3f30e6"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -140,7 +140,7 @@
       "source": "blader/humanizer",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "fa4ffac562a8e7349282f606391ede22d23118e998dc8b5ac931662fa734c1b7"
+      "computedHash": "d85c4727f62296887c3206e32a99caeed7611af7c4701c1b9931897260e31a73"
     },
     "i-have-adhd": {
       "source": "ayghri/i-have-adhd",
@@ -152,7 +152,7 @@
       "source": "cursor/plugins",
       "sourceType": "github",
       "skillPath": "pstack/skills/ketchup/SKILL.md",
-      "computedHash": "c484f9c8ed997d3bbae3a6c121ffc2e5f5ab3431b4649909d53c67fd12a9e649"
+      "computedHash": "4115a76eb56d0cd3577cedb7cbda991ea4ea4006868e0993f8015c88e7c8839e"
     },
     "landing-page-design": {
       "source": "elayadesign/ai-design-skills",
@@ -254,7 +254,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "5622d2809a04d655a2f89de7f480fcdd4eec827a417af6709a8e6e566784a48a"
+      "computedHash": "fdfb39ef37810d696513590da2a833694825084a15c5e3c34b1b6c55f217e3b3"
     },
     "reverse-engineer-anything": {
       "source": "morluto/rea",
@@ -273,7 +273,7 @@
       "source": "shadcn-ui/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "da388f632cd83783c02967446e21941c9ee8291ccb43ba74c23f7d4e9b7c298c"
+      "computedHash": "b864a958765563321f485a96f4d59c0bb6539f4286ab6d8b8b66895b7ebd302d"
     },
     "show-me": {
       "source": "humanlayer/skills",
@@ -318,7 +318,7 @@
       "source": "vercel-labs/vgpu",
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
-      "computedHash": "939ab6b2c32a199e12d10b235d9d0f8db35abe0f503fec64565d5fbd3c67d52d"
+      "computedHash": "b0c9d358a6d419ee36503a59ca42a8f4b7ce0d641fc16365ec5479e348507b3c"
     },
     "visual-pr": {
       "source": "humanlayer/skills",

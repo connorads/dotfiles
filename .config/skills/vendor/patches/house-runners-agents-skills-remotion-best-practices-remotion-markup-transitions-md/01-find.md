@@ -1,1 +1,1 @@
-npx remotion add @remotion/transitions
+bunx remotion add @remotion/transitions

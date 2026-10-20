@@ -416,6 +416,28 @@ def parse_page(diagram: ET.Element, index: int) -> Page:
         raw[cid] = {"cell": cell, "attrs": attrs, "value": value}
         order.append(cid)
 
+    # draw.io hides a cell, a group or a whole layer with visible="0"; what the author hid is not
+    # part of the diagram, so drop it together with everything parented beneath it.
+    hidden: dict[str, bool] = {}
+
+    def is_hidden(cid: str) -> bool:
+        chain: list[str] = []
+        visited: set[str] = set()
+        current, result = cid, False
+        while current in raw and current not in visited:
+            if current in hidden:
+                result = hidden[current]
+                break
+            chain.append(current)
+            visited.add(current)
+            if raw[current]["cell"].get("visible") == "0":
+                result = True
+                break
+            current = raw[current]["cell"].get("parent") or ""
+        for seen in chain:
+            hidden[seen] = result
+        return result
+
     # Pass 2: vertices (absolute geometry resolved after the pass).
     edge_label_parts: dict[str, list[str]] = {}
     relative_offsets: dict[str, tuple[float, float]] = {}
@@ -424,7 +446,7 @@ def parse_page(diagram: ET.Element, index: int) -> Page:
         cell = entry["cell"]
         style = parse_style(cell.get("style"))
         parent = cell.get("parent")
-        if cell.get("edge") == "1":
+        if is_hidden(cid) or cell.get("edge") == "1":
             continue
         if cell.get("vertex") != "1":
             continue
@@ -514,7 +536,7 @@ def parse_page(diagram: ET.Element, index: int) -> Page:
     for cid in order:
         entry = raw[cid]
         cell = entry["cell"]
-        if cell.get("edge") != "1":
+        if is_hidden(cid) or cell.get("edge") != "1":
             continue
         style = parse_style(cell.get("style"))
         geom = cell.find("mxGeometry")
