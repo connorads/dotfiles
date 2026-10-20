@@ -219,6 +219,8 @@ The launch-args are iOS UserDefaults (`-Key Value`), verified in expo/expo `pack
 
 Method 1 passes each as two flags: `--launch-arg "<key>" --launch-arg "<value>"`. Method 2 passes them as `--launch-args`.
 
+On SDK 58+, you can put the same switches in the URL instead, which also works on **Android**, where launch-args don't apply: append `__expo_disable_onboarding=1&__expo_disable_fab=1&__expo_disable_auto_launch=1` to the `exp://` URL or to `<scheme>://?__expo_url=<encoded manifest URL>`. On SDK 57 and earlier, keep the launch-args on iOS; on Android, the legacy dev client URL takes `&disableOnboarding=1&disableFab=1&disableAutoLaunch=1` after `url=` (`disableFab` and `disableAutoLaunch` need `expo-dev-launcher` 57.0.20+). See `../../expo-overview/references/launch-without-dev-menu.md`.
+
 ### Metro tunnel backends (both methods)
 
 #### Tunnel scope and approvals
@@ -252,4 +254,3 @@ Start Metro on your OWN free port — each run gets its own tunnel URL, so never
 - **ngrok (plain `--tunnel`, no flag):** `<host>.exp.direct` host; blocked for robot/EXPO_TOKEN users.
 
 The ONLY 8081 lock is the LEGACY ws-tunnel path — hit WITHOUT the v2 account URL (an older CLI where the flag no-ops, or `EXPO_FORCE_WEBCONTAINER_ENV=1`). Do NOT set `EXPO_FORCE_WEBCONTAINER_ENV` to "fix" a port — it forces that legacy path and locks you to 8081. On an older CLI (e.g. expo 56) the v2 flag no-ops and you get ngrok on your chosen port (verified: expo 56.0.3 → ngrok on :8083).
-

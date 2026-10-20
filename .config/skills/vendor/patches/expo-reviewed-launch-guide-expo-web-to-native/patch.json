@@ -1,0 +1,6 @@
+{
+  "reason": "Launch guidance uses the reviewed upstream reference at the recorded revision without requiring an unvendored overview router.",
+  "files": [
+    "expo/.agents/skills/expo-web-to-native/references/verify-on-device.md"
+  ]
+}

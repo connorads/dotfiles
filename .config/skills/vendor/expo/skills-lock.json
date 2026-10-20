@@ -23,7 +23,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/eas-simulator/SKILL.md",
-      "computedHash": "9b3012124984966c72c661a34e64799862219fd7a9029171c616077fc380db13"
+      "computedHash": "dfd0e2c13371a19420a41a5de71e38945284e0b27514a0e55c58611ddaad8c6e"
     },
     "eas-update-insights": {
       "source": "expo/skills",
@@ -59,7 +59,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-dev-client/SKILL.md",
-      "computedHash": "9560a3f40e699af7b3317dbd3887cca646901d6addf7d78eb9429922e2d3baf3"
+      "computedHash": "a88abe00e809c33329aaa1b2ae5f9571270509a31344c5283d68dbfdfc676c03"
     },
     "expo-dom": {
       "source": "expo/skills",
@@ -119,7 +119,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-web-to-native/SKILL.md",
-      "computedHash": "c2c67dc18f2682f40da0aea1fb1f9846132ce19190f0e63b75e0edab530e8c09"
+      "computedHash": "616de87081be6964669e4eafaf2d344954f9eea5870ab7950216966f034fe195"
     }
   }
 }
