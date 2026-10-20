@@ -1288,7 +1288,7 @@ local fast_steps = new Mapping<String, Step> {
     // plugin checkout, so gating it would report missing-import noise. That
     // split is why the path logic lives in a plugin-free file at all.
     ["py-typecheck-tmux"] {
-        glob = List(".config/tmux/fzf_link_paths.py", ".config/tmux/pyrefly.toml")
+        glob = List(".config/tmux/fzf_link_paths.py", ".config/tmux/memory_trace.py", ".config/tmux/pyrefly.toml")
         check = "bash .hk-hooks/py-typecheck.sh .config/tmux"
     }
     ["py-typecheck-handoff"] {
@@ -1320,6 +1320,7 @@ local fast_steps = new Mapping<String, Step> {
     ["py-tests-tmux"] {
         glob = List(
             ".config/tmux/fzf_link_paths.py",
+            ".config/tmux/memory_trace.py",
             ".config/tmux/test_*.py",
             ".config/tmux/pytest.ini"
         )

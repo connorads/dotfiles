@@ -129,3 +129,32 @@ and the headless Chrome kill against `pgrep` / `pkill` stubs),
 and the RAM/mem
 pills in [`../zsh/tests/status-right.bats`](../../zsh/tests/status-right.bats).
 Keep the gauge legend in [`help.md`](../help.md) in sync with the lib.
+
+## Browser and graphics history
+
+On the Mac mini, `org.nixos.memory-trace` records a sample every 15 seconds.
+It runs outside the desktop session and starts at boot after FileVault unlock.
+The logger never terminates processes.
+
+```mermaid
+flowchart LR
+    P[Browser processes and parents] --> L[Memory logger]
+    G[Graphics footprints and compressor counters] --> L
+    L --> J[Rotating JSONL files]
+```
+
+Logs live in `~/Library/Logs/memory-trace/samples.jsonl`, with seven rotated files.
+Each file holds up to 10 MB. Files are private to the user.
+Samples include browser PIDs, executable paths, parent processes, RSS, `top` footprints,
+WindowServer, compressor counters, swap, `vm_stat` and the console user.
+Arguments, URLs and environment variables are excluded.
+A missing footprint is recorded as `unavailable` when a process exits during sampling.
+
+Read the latest sample with `tail -1 ~/Library/Logs/memory-trace/samples.jsonl | jq`.
+Check persistence with `sudo launchctl print system/org.nixos.memory-trace`.
+Run one read-only sample with `uv run --python 3.13 python ~/.config/tmux/memory_trace.py --once`.
+
+Compare browser starts with compressor growth across several sessions.
+Browser correlation alone does not establish which process retains graphics allocations.
+Capture a privileged `footprint --all --vmObjectDirty --swapped --wired` report during growth
+for allocation attribution. The logger does not require root.
