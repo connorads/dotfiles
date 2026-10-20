@@ -70,11 +70,13 @@ elevenlabs music compose \
 
 ## Getting an API Key
 
+Use the existing credential workflow. Use `fnox exec -- <command>` for command credentials. Report missing credentials and stop that path. Do not download a CLI, run onboarding, or write project credentials during this workflow. Any separately requested credential change follows the local credential-storage instructions.
+
+For an explicitly requested manual API-key setup:
+
 1. Sign up at [elevenlabs.io](https://elevenlabs.io)
 2. Go to [API Keys](https://elevenlabs.io/app/settings/api-keys)
 3. Click **Create API Key**
 4. Copy and store securely
-
-Or use the `setup-api-key` skill for guided setup.
 
 **Note:** Music generation requires a paid ElevenLabs plan.

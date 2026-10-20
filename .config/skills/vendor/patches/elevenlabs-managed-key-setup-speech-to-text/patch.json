@@ -1,0 +1,6 @@
+{
+  "reason": "ElevenLabs uses the installed managed CLI and existing credential delivery; task-time onboarding must not download tools or write project credentials.",
+  "files": [
+    "elevenlabs/.agents/skills/speech-to-text/references/installation.md"
+  ]
+}

@@ -10,7 +10,7 @@ metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv
 
 Generate natural speech from text - supports 90+ languages, multiple models for quality vs latency tradeoffs. Examples default to `eleven_v4`, the latest and highest-quality model.
 
-> **Setup:** See [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
+> **Setup, before writing any code:** if `ELEVENLABS_API_KEY` isn't set for this project, use the existing credential workflow. Report a missing credential and stop that path. Do not download a CLI or run onboarding to write project credentials. Otherwise see the [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
 
 ## Voice selection
 
@@ -180,6 +180,42 @@ audio = client.text_to_speech.convert(
     apply_text_normalization="on"
 )
 ```
+
+## Audio Effects
+
+Use `audio_effects` to process the generated audio with a filter preset, perceived distance, a reverb environment, a looped background noise bed, and stereo panning. Effects do not change the cost of a request.
+
+| Field | Range | Description |
+|-------|-------|-------------|
+| `filter_preset_id` | Catalog ID | Filter that colors the voice, such as `phone` or `old_radio` |
+| `distance` | 0-1 (default 0) | How far the speaker sounds from the microphone |
+| `environment_id` | Catalog ID | Reverb environment, such as `small_room` or `hall` |
+| `send_level` | 0-1 (default 1) | How much of the voice feeds the reverb; 0 turns reverb off |
+| `background_noise_id` | Catalog ID | Background noise looped under the voice, such as `cafe` or `keyboard` |
+| `pan` | -1 to 1 (default 0) | Stereo position of the voice, from hard left to hard right |
+
+List valid filter preset, environment, and background noise IDs with the catalog endpoint (`GET /v1/audio-effects/catalog`):
+
+```python
+from elevenlabs import EffectsSpecInput
+
+catalog = client.audio_effects.get_catalog()
+for environment in catalog.environments:
+    print(f"{environment.environment_id}: {environment.name}")
+
+audio = client.text_to_speech.convert(
+    text="Welcome to the concert hall.",
+    voice_id="selected_voice_id",
+    model_id="eleven_v4",
+    audio_effects=EffectsSpecInput(
+        environment_id="hall",
+        distance=0.3,
+        pan=-0.5,
+    )
+)
+```
+
+Reverb and non-zero `pan` produce stereo audio and are rejected for `ulaw_*`, `alaw_*`, and `pcm_*` output formats. Unknown effect IDs return a 404 error.
 
 ## Request Stitching
 

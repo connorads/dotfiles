@@ -10,7 +10,7 @@ metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv
 
 Generate music from text prompts - supports instrumental tracks, songs with lyrics, and fine-grained control via composition plans.
 
-> **Setup:** See [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
+> **Setup, before writing any code:** if `ELEVENLABS_API_KEY` isn't set for this project, use the existing credential workflow. Report a missing credential and stop that path. Do not download a CLI or run onboarding to write project credentials. Otherwise see the [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
 
 All examples below use `music_v2_5`, the most advanced generation model. Pass `music_v2` or
 `music_v1` only when an older model is explicitly requested.

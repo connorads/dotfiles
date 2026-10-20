@@ -1,0 +1,1 @@
+Run `npx -y @elevenlabs/cli@latest onboard init` from the app's folder and follow what it prints: it signs the user in and stores a key for the project. For an existing key that stopped working or was issued by an administrator, use the `setup-api-key` skill. To do it by hand instead:

@@ -11,25 +11,25 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "music/SKILL.md",
-      "computedHash": "7ceca67d5dcc5b777b876f1fe44a4a02134f9f78b71f7356a8b7791ba251b8e1"
+      "computedHash": "7a927279f746f280328cefb877eeee37d984263090b522c7c3ce7043a3c432d6"
     },
     "sound-effects": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "sound-effects/SKILL.md",
-      "computedHash": "4de004ec3405d836c33207320a477951ce3de2f3dcb68f5365734302b91ad72c"
+      "computedHash": "9378480696b5c69eee565fc9b6a942239d5cae9fa3a6a9efd234025be537e590"
     },
     "speech-to-text": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "speech-to-text/SKILL.md",
-      "computedHash": "06f18ad079255645ff81e3f2926a8e7dde145a6e6d6b0df06348cb2ba22d409d"
+      "computedHash": "db30945bd6a25842b6860c012f532d7ac23f8fe2f32ab652187ca8b81be08e1c"
     },
     "text-to-speech": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "text-to-speech/SKILL.md",
-      "computedHash": "bb182b4e3a864bdc7f04c0401dfd45b2b5c6f144281d5e6ddb7da0c00b7de3ad"
+      "computedHash": "451b0b1444cb9890107ec36ebc948868d12ae3bdcb42cc513c5461f8d15e3de0"
     }
   }
 }
