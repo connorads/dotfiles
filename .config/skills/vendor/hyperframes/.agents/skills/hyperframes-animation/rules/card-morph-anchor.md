@@ -7,6 +7,16 @@ metadata:
 
 # Card Morph Anchor
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Morph channels](#morph-channels)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 A free-floating container morphs apparent size, corner radius, and surface treatment between two shots — the morph itself IS the transition; the viewer's eye tracks the persistent container. Distinct from [anchored-layout-expand.md](anchored-layout-expand.md) (an edge-pinned live layout participant that grows along one axis and reflows neighbors — here nothing is pushed) and [theme-crossfade-morph.md](theme-crossfade-morph.md) (a whole-theme reskin under a fixed anchor — here a single container changes shape).
 
 ## How It Works

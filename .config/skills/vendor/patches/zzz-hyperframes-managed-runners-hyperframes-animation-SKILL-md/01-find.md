@@ -7,6 +7,17 @@ description: "All animation knowledge for HyperFrames — atomic motion rules, m
 
 # HyperFrames Animation
 
+## Contents
+
+- [Default: compose atomic rules](#default-compose-atomic-rules)
+- [Load a blueprint when](#load-a-blueprint-when)
+- [Routing](#routing)
+- [Picking a runtime](#picking-a-runtime)
+- [Critical Constraints](#critical-constraints)
+- [Scripts](#scripts)
+- [See Also](#see-also)
+- [Reference files](#reference-files)
+
 All motion knowledge in one skill: **rules** (atomic recipes), **blueprints** (multi-phase scene templates), **transitions** (scene-to-scene), **techniques** (broader motion-design patterns), and **adapters** (per-runtime APIs).
 
 For the composition contract (data attributes, sub-compositions, determinism) see `hyperframes-core`.
@@ -86,3 +97,127 @@ Reads every GSAP timeline registered on `window.__timelines`, enumerates tweens,
 - `hyperframes-core` — composition structure, data attributes, sub-compositions, deterministic render contract
 - `hyperframes-creative` — palettes, typography, narration, beat planning (non-animation creative direction)
 - `hyperframes-cli` — `npx hyperframes lint / check / snapshot / preview / render`
+
+## Reference files
+
+Read the matching file directly when its topic applies; the indexes remain available for choosing among recipes.
+
+### Adapters
+
+- [Text Effects — Reference](adapters/animate-text.md) — Read when using this animation runtime or adapter API.
+- [Anime.js for HyperFrames](adapters/animejs.md) — Read when using this animation runtime or adapter API.
+- [CSS Animations for HyperFrames](adapters/css-animations.md) — Read when using this animation runtime or adapter API.
+- [Easing, Stagger, and Function-Based Values](adapters/gsap-easing-and-stagger.md) — Read when using this animation runtime or adapter API.
+- [Timelines and Labels](adapters/gsap-timeline-and-labels.md) — Read when using this animation runtime or adapter API.
+- [Transforms and Performance](adapters/gsap-transforms-and-perf.md) — Read when using this animation runtime or adapter API.
+- [HyperFrames GSAP](adapters/gsap.md) — Read when using this animation runtime or adapter API.
+- [HTML-in-Canvas Patterns](adapters/html-in-canvas-patterns.md) — Read when using this animation runtime or adapter API.
+- [Lottie for HyperFrames](adapters/lottie.md) — Read when using this animation runtime or adapter API.
+- [Three.js for HyperFrames](adapters/three.md) — Read when using this animation runtime or adapter API.
+- [TypeGPU / WebGPU for HyperFrames](adapters/typegpu.md) — Read when using this animation runtime or adapter API.
+- [Web Animations API for HyperFrames](adapters/waapi.md) — Read when using this animation runtime or adapter API.
+
+### Blueprints
+
+- [agent-progress-theater — Agent Progress Theater](blueprints/agent-progress-theater.md) — Read when composing this multi-phase scene.
+- [camera-journey — Camera Journey](blueprints/camera-journey.md) — Read when composing this multi-phase scene.
+- [comparison-split — Comparison Split-Cards](blueprints/comparison-split.md) — Read when composing this multi-phase scene.
+- [constellation-hub — Constellation / Hub + Satellites](blueprints/constellation-hub.md) — Read when composing this multi-phase scene.
+- [cta-morph-press — CTA Morph & Press](blueprints/cta-morph-press.md) — Read when composing this multi-phase scene.
+- [cursor-ui-demo — Cursor-Driven UI Demo](blueprints/cursor-ui-demo.md) — Read when composing this multi-phase scene.
+- [dataviz-countup — Data-Viz / Count-Up](blueprints/dataviz-countup.md) — Read when composing this multi-phase scene.
+- [device-surface-showcase — Device / Surface Showcase](blueprints/device-surface-showcase.md) — Read when composing this multi-phase scene.
+- [fixed-anchor-cycle — Fixed Anchor, Cycling World](blueprints/fixed-anchor-cycle.md) — Read when composing this multi-phase scene.
+- [grid-card-assemble — Grid / Card Assemble](blueprints/grid-card-assemble.md) — Read when composing this multi-phase scene.
+- [kinetic-type-beats — Kinetic-Type Beats](blueprints/kinetic-type-beats.md) — Read when composing this multi-phase scene.
+- [logo-assemble-lockup — Logo Assemble → Lockup](blueprints/logo-assemble-lockup.md) — Read when composing this multi-phase scene.
+- [overwhelm-surround — Overwhelm / Close-In](blueprints/overwhelm-surround.md) — Read when composing this multi-phase scene.
+- [panel-edit-live-sync — Panel Edit, Live Sync](blueprints/panel-edit-live-sync.md) — Read when composing this multi-phase scene.
+- [prompt-type-submit-generate — Prompt, Submit, Generate](blueprints/prompt-type-submit-generate.md) — Read when composing this multi-phase scene.
+- [spatial-pan-stations — Spatial Pan / Stations](blueprints/spatial-pan-stations.md) — Read when composing this multi-phase scene.
+- [ticker-takeover — Ticker Displace / Takeover](blueprints/ticker-takeover.md) — Read when composing this multi-phase scene.
+- [titlecard-reveal — Title-Card / Single-Card Reveal](blueprints/titlecard-reveal.md) — Read when composing this multi-phase scene.
+- [transcript-scroll-artifact-reveal — Transcript-Scroll Artifact Reveal](blueprints/transcript-scroll-artifact-reveal.md) — Read when composing this multi-phase scene.
+- [typewriter-reveal — Typewriter Reveal](blueprints/typewriter-reveal.md) — Read when composing this multi-phase scene.
+- [video-text-pivot — Video → Text Pivot](blueprints/video-text-pivot.md) — Read when composing this multi-phase scene.
+- [zoom-out-workspace-reveal — Zoom-Out Workspace Reveal](blueprints/zoom-out-workspace-reveal.md) — Read when composing this multi-phase scene.
+
+### Guides
+
+- [Blueprints (the proven shapes)](blueprints-index.md) — Read when choosing a scene blueprint.
+- [Rules Index](rules-index.md) — Read when choosing atomic motion rules by trigger or tag.
+- [Visual Techniques Reference](techniques.md) — Read when choosing broader motion-design techniques.
+
+### References
+
+- [Motion blur — shutter smear on any animated element](references/motion-blur.md) — Read when choosing element-level motion blur and its limits.
+
+### Rules
+
+- [3D Camera Flight](rules/3d-camera-flight.md) — Read when applying this atomic motion recipe.
+- [3D Page Scroll](rules/3d-page-scroll.md) — Read when applying this atomic motion recipe.
+- [3D Text Depth Layers](rules/3d-text-depth-layers.md) — Read when applying this atomic motion recipe.
+- [AI Tracking Box](rules/ai-tracking-box.md) — Read when applying this atomic motion recipe.
+- [Ambient Glow Bloom](rules/ambient-glow-bloom.md) — Read when applying this atomic motion recipe.
+- [Anchored Layout Expand](rules/anchored-layout-expand.md) — Read when applying this atomic motion recipe.
+- [ASR Keyword Glow](rules/asr-keyword-glow.md) — Read when applying this atomic motion recipe.
+- [Avatar Cloud Network](rules/avatar-cloud-network.md) — Read when applying this atomic motion recipe.
+- [Two-Phase Camera Cursor Tracking](rules/camera-cursor-tracking.md) — Read when applying this atomic motion recipe.
+- [Card Morph Anchor](rules/card-morph-anchor.md) — Read when applying this atomic motion recipe.
+- [Center-Outward Expansion](rules/center-outward-expansion.md) — Read when applying this atomic motion recipe.
+- [Chart Scrub Readout](rules/chart-scrub-readout.md) — Read when applying this atomic motion recipe.
+- [Chromatic Glitch](rules/chromatic-glitch.md) — Read when applying this atomic motion recipe.
+- [Context-Sensitive Cursor](rules/context-sensitive-cursor.md) — Read when applying this atomic motion recipe.
+- [Control-Target Sync](rules/control-target-sync.md) — Read when applying this atomic motion recipe.
+- [Coordinate Target Zoom](rules/coordinate-target-zoom.md) — Read when applying this atomic motion recipe.
+- [Counting with Dynamic Scale](rules/counting-dynamic-scale.md) — Read when applying this atomic motion recipe.
+- [CSS Patterns for Marker Highlighting](rules/css-marker-patterns.md) — Read when applying this atomic motion recipe.
+- [Cursor Click Ripple](rules/cursor-click-ripple.md) — Read when applying this atomic motion recipe.
+- [Cursor Drag](rules/cursor-drag.md) — Read when applying this atomic motion recipe.
+- [Depth-of-Field Blur (Selective Focus / Rack Focus)](rules/depth-of-field-blur.md) — Read when applying this atomic motion recipe.
+- [Depth Scatter ↔ Assemble](rules/depth-scatter-assemble.md) — Read when applying this atomic motion recipe.
+- [Discrete Text Sequence](rules/discrete-text-sequence.md) — Read when applying this atomic motion recipe.
+- [Dynamic Content Sequencing](rules/dynamic-content-sequencing.md) — Read when applying this atomic motion recipe.
+- [Gradient Text Sweep](rules/gradient-text-sweep.md) — Read when applying this atomic motion recipe.
+- [GSAP Effects for HyperFrames](rules/gsap-effects.md) — Read when applying this atomic motion recipe.
+- [Hacker Flip 3D Reveal](rules/hacker-flip-3d.md) — Read when applying this atomic motion recipe.
+- [Kinetic Beat Slam](rules/kinetic-beat-slam.md) — Read when applying this atomic motion recipe.
+- [Motion-Blur Streak](rules/motion-blur-streak.md) — Read when applying this atomic motion recipe.
+- [Multi-Cursor Choreography](rules/multi-cursor-choreography.md) — Read when applying this atomic motion recipe.
+- [Multi-Phase Camera](rules/multi-phase-camera.md) — Read when applying this atomic motion recipe.
+- [Nudge Curve](rules/nudge-curve.md) — Read when applying this atomic motion recipe.
+- [Orbit with 3D Entry](rules/orbit-3d-entry.md) — Read when applying this atomic motion recipe.
+- [Particle Burst](rules/particle-burst.md) — Read when applying this atomic motion recipe.
+- [Physics Press Reaction (Cursor + Element Synced)](rules/physics-press-reaction.md) — Read when applying this atomic motion recipe.
+- [Press-Release Spring Chain](rules/press-release-spring.md) — Read when applying this atomic motion recipe.
+- [Reactive Displacement](rules/reactive-displacement.md) — Read when applying this atomic motion recipe.
+- [Scale-Swap Transition](rules/scale-swap-transition.md) — Read when applying this atomic motion recipe.
+- [Sine Wave Loop (subtle jitter / bounded ambient)](rules/sine-wave-loop.md) — Read when applying this atomic motion recipe.
+- [Split Tilt Cards](rules/split-tilt-cards.md) — Read when applying this atomic motion recipe.
+- [Spring-Pop Entrance](rules/spring-pop-entrance.md) — Read when applying this atomic motion recipe.
+- [Stat Bars & Fills](rules/stat-bars-and-fills.md) — Read when applying this atomic motion recipe.
+- [SVG Icon Enrichment](rules/svg-icon-enrichment.md) — Read when applying this atomic motion recipe.
+- [SVG Path Draw](rules/svg-path-draw.md) — Read when applying this atomic motion recipe.
+- [Theme Crossfade Morph](rules/theme-crossfade-morph.md) — Read when applying this atomic motion recipe.
+- [Vertical Spring Ticker (Slot Machine)](rules/vertical-spring-ticker.md) — Read when applying this atomic motion recipe.
+- [Viewport Change (Virtual Camera)](rules/viewport-change.md) — Read when applying this atomic motion recipe.
+- [Waterfall Entry](rules/waterfall-entry.md) — Read when applying this atomic motion recipe.
+
+### Transitions
+
+- [Transition Registry — machine source of truth](transitions/TRANSITION-REGISTRY.md) — Read when choosing or implementing this scene transition.
+- [Transition Catalog](transitions/catalog.md) — Read when choosing or implementing this scene transition.
+- [3D](transitions/css-3d.md) — Read when choosing or implementing this scene transition.
+- [Blur](transitions/css-blur.md) — Read when choosing or implementing this scene transition.
+- [Cover](transitions/css-cover.md) — Read when choosing or implementing this scene transition.
+- [Destruction](transitions/css-destruction.md) — Read when choosing or implementing this scene transition.
+- [Dissolve](transitions/css-dissolve.md) — Read when choosing or implementing this scene transition.
+- [Distortion](transitions/css-distortion.md) — Read when choosing or implementing this scene transition.
+- [Grid](transitions/css-grid.md) — Read when choosing or implementing this scene transition.
+- [Light](transitions/css-light.md) — Read when choosing or implementing this scene transition.
+- [Mechanical](transitions/css-mechanical.md) — Read when choosing or implementing this scene transition.
+- [Other](transitions/css-other.md) — Read when choosing or implementing this scene transition.
+- [Linear / Push](transitions/css-push.md) — Read when choosing or implementing this scene transition.
+- [Radial / Shape](transitions/css-radial.md) — Read when choosing or implementing this scene transition.
+- [Scale / Zoom](transitions/css-scale.md) — Read when choosing or implementing this scene transition.
+- [Scene Transitions](transitions/overview.md) — Read when choosing or implementing this scene transition.

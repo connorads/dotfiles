@@ -1,7 +1,7 @@
 ---
 name: motion-graphics
 description: >
-  A short, design-led motion graphic where motion is the message — kinetic
+  Use when creating a short, design-led motion graphic where motion is the message — kinetic
   typography, stat count-up, chart/data-viz hit, logo sting / brand lockup,
   lower-third / callout / social overlay, animated map (highlight regions,
   connect places, zoom to a location), animated tweet / news-article /

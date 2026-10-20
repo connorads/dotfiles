@@ -7,7 +7,7 @@ description: "Turn a GitHub pull request (a PR URL, owner/repo#N, or 'this PR' i
 
 <!-- LOCAL PATCH (connorads dotfiles): upstream's "keep this skill fresh - run silently, don't ask" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs. -->
 
-> **media-use**: Before sourcing audio/images/logos, call `/media-use` to resolve BGM/SFX/images from the HeyGen catalog and brand logos from their official sources. Run `--adopt` first to register existing assets. See `/media-use` skill. When the host app provides its own music or sound-effect tools, use those for music and sound effects.
+> **media-use**: Before sourcing audio/images/logos, call `/media-use` to resolve BGM/images from the HeyGen catalog, SFX from Openverse, and brand logos from their official sources. Run `--adopt` first to register existing assets. See `/media-use` skill. When the host app provides its own music or sound-effect tools, use those for music and sound effects.
 
 # PR to HyperFrames
 
@@ -147,7 +147,7 @@ If there is no narration and no `SCRIPT.md`, skip voice generation. BGM may stil
 
 Goal: Add the visual direction, layout intent, and motion choices to each storyboard frame.
 
-**Sketch the storyboard sheet first (collaborative only).** The moment the plan is approved, run the sketch pass — `../hyperframes/references/review-loop.md` § 2 (don't wait on Step 3.1; sketches don't use timings): wireframe every frame yourself as a cell of `storyboard.html` (`../hyperframes-creative/references/storyboard-recipe.md` § 3), mark each `built`, pause for the one layout question when every frame is `built`, and revise only the sketches named until the sheet is confirmed. Stand-ins: for a **code beat**, a plain code panel with the filename and a few real diff lines as text — the `code-*` block wiring belongs to the workers. Only then write the visual design below onto the confirmed layouts. In autonomous mode, or when the user chose to skip sketches at Step 3, skip this pass — frames go straight from `outline` to `animated` at Step 5.
+**Sketch the storyboard sheet first (collaborative only).** The moment the plan is approved, run the sketch pass — `../hyperframes/references/review-loop.md` § 2 (don't wait on Step 3.1; the stills don't use timings): pose every frame yourself in its composition, mount each in `index.html` at its planned start, snapshot all the stills in one run and write the board, `boards/storyboard.html` (`../hyperframes-creative/references/storyboard-recipe.md`), mark each `built`, pause for the one layout question when every frame is `built`, and revise only the frames named until the board is confirmed. Stand-ins: for a **code beat**, a plain code panel with the filename and a few real diff lines as text — the `code-*` block wiring belongs to the workers. Only then write the visual design below onto the confirmed layouts. In autonomous mode, or when the user chose to skip sketches at Step 3, skip this pass — frames go straight from `outline` to `animated` at Step 5.
 
 Edit `STORYBOARD.md` in place. Do not create another storyboard. Use `frame.md` as source of truth for color, type, layout feel, and style.
 
@@ -157,7 +157,7 @@ Read `references/visual-design.md`, `../hyperframes-animation/blueprints-index.m
 
 For every frame, write a **time-coded shot sequence** into `STORYBOARD.md` per `visual-design.md`'s method: pick the frame's blueprint (or compose), instantiate it with THIS frame's content, and pace each Scene's reveal to the voiceover so the frame develops across its full duration instead of front-loading then freezing. **For a code beat, the `code-*` block is the frame's `focal`** and the Scenes choreograph the surrounding code-editorial Code Surface (the entry of the file/header, the camera onto the hunk, the landing line) — **not** the code animation itself, which the block owns. Immediately after each code frame's fields, add a `### Source excerpt` fenced `diff` block containing only the exact real hunk the worker must render (12 lines maximum). Select it here from `capture/diff.patch`; workers are forbidden from reopening that full diff. State layout and motion **inline** per Scene (vocabularies in `visual-design.md` and `motion-language.md`). Add one video-wide `## Video direction` block.
 
-Do not change story, script, `transition_in`, `asset_candidates`, or the PR source. Do not write HTML in this step. There is **no asset-staging step** — the only real assets are the credits avatars, already in `assets/`.
+Do not change story, script, `transition_in`, `asset_candidates`, or the PR source. Do not write HTML in this step beyond the sketch pass's poses. There is **no asset-staging step** — the only real assets are the credits avatars, already in `assets/`.
 
 **Gate:** every frame has a time-coded shot sequence whose reveals are paced to the voiceover (no front-loading); code frames name a `code-*` block as the `focal`; `## Video direction` exists. Collaborative: the sketch sheet was confirmed.
 

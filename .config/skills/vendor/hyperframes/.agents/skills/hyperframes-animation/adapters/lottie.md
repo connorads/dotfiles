@@ -5,6 +5,19 @@ description: Lottie and dotLottie adapter patterns for HyperFrames. Use when emb
 
 # Lottie for HyperFrames
 
+## Contents
+
+- [Contract](#contract)
+- [lottie-web Pattern](#lottie-web-pattern)
+- [dotLottie Pattern](#dotlottie-pattern)
+- [Multiple Animations](#multiple-animations)
+- [Composition Duration](#composition-duration)
+- [Characters](#characters)
+- [Good Uses](#good-uses)
+- [Avoid](#avoid)
+- [Validation](#validation)
+- [Credits And References](#credits-and-references)
+
 HyperFrames can seek both `lottie-web` and dotLottie players through its `lottie` runtime adapter. Lottie is a strong fit because the animation timeline is already encoded in the asset; HyperFrames only needs a player object it can seek.
 
 ## Contract

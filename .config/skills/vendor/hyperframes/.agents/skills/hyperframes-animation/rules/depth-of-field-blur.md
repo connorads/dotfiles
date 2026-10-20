@@ -7,6 +7,15 @@ metadata:
 
 # Depth-of-Field Blur (Selective Focus / Rack Focus)
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 Pulls the eye to one focal element by **blurring** (and slightly **dimming**) everything around it while the focal layer stays sharp — the camera's depth-of-field falling off the background, or a rack-focus shifting which plane is in focus. `filter` and `opacity` are paint-only, so both tween seek-safe. This is the backing rule for the focus-falloff beat the blueprints reach for: outer nodes blurring during a push-in (`constellation-hub`), rack-focus across a parallax card stack (`cursor-ui-demo`), non-highlighted cards dimming to spotlight a hero metric (`dataviz-countup`).
 
 ## How It Works

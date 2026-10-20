@@ -7,6 +7,15 @@ metadata:
 
 # Split Tilt Cards
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 Two cards side-by-side with opposing `rotateY` (left `+TILT`, right `−TILT`) — a symmetric "book-open" 3D split for comparisons, before/after, feature pairs. Each card slides in from its own side (reinforcing "they came from their own worlds and met here"), then the pair idles in counter-phase.
 
 ## How It Works

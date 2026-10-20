@@ -5,6 +5,19 @@ description: Anime.js adapter patterns for HyperFrames. Use when writing Anime.j
 
 # Anime.js for HyperFrames
 
+## Contents
+
+- [Contract](#contract)
+- [Loading v4](#loading-v4)
+- [Basic Pattern](#basic-pattern)
+- [Timeline Pattern](#timeline-pattern)
+- [Module Builds](#module-builds)
+- [Determinism](#determinism)
+- [Good Uses](#good-uses)
+- [Avoid](#avoid)
+- [Validation](#validation)
+- [Credits And References](#credits-and-references)
+
 HyperFrames can seek Anime.js instances through its `animejs` runtime adapter. The composition owns the animation objects; HyperFrames owns the clock.
 
 **This page targets v4 (examples pinned to 4.5.0, MIT).** v4 is a hard break from v3 — there is no callable `anime()`, `easing:` is now `ease:`, and ease names lost their `ease` prefix. Writing v3 from memory produces a composition that throws or silently animates nothing.

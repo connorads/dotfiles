@@ -5,6 +5,17 @@ description: CSS animation adapter patterns for HyperFrames. Use when authoring 
 
 # CSS Animations for HyperFrames
 
+## Contents
+
+- [Contract](#contract)
+- [Basic Pattern](#basic-pattern)
+- [Stagger Pattern](#stagger-pattern)
+- [Good Uses](#good-uses)
+- [Avoid](#avoid)
+- [Composition Duration](#composition-duration)
+- [Validation](#validation)
+- [Credits And References](#credits-and-references)
+
 HyperFrames can seek CSS keyframe animations through its `css` runtime adapter. Use this for simple repeated motifs, background motion, shimmer, glow, masks, and non-sequenced decoration.
 
 For scene choreography, GSAP is usually clearer. CSS animations work best when the motion belongs to one element and has a fixed duration.

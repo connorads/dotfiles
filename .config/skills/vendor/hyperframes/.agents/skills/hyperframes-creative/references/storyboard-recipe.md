@@ -1,57 +1,33 @@
-# Storyboard recipe — plan a video like the launch films
+# Storyboard recipe — plan a video as stills the person approves
 
-Applies wherever a run plans on a storyboard (`storyboard: yes` in `brief-contract.md`). This file owns **how to make the storyboard**: what goes in it, and the one HTML page the user reviews. `review-loop.md` owns when the user is asked; `storyboard-format.md` owns the `STORYBOARD.md` file the scripts parse; `story-spine.md` owns the order of the story. The method is distilled from the shipped launch films' storyboards (a header, a named spine, a beat list, a contact sheet, a review round) and how their handoffs describe them, plus a few rules (the held frame, the slideshow/screensaver bans, the caption keep-out) that show up consistently in the wider storyboard corpus even where a given launch film omits them. Nothing here is a Studio feature: the agent writes the storyboard, the user reads it in chat and in a browser.
+Applies wherever a run plans on a storyboard (`storyboard: yes` in `brief-contract.md`), and whenever a run makes or changes a storyboard, a sketch sheet or a board of frames, whatever skill or workflow asked for one. This file owns **how to make the board**. `review-loop.md` owns when the person is asked; `storyboard-format.md` owns the `STORYBOARD.md` file the scripts parse; `story-spine.md` owns the order of the story.
 
-## 1. Open with the decisions, before any beat
+The person sees the plan as stills on the board, comments or draws on a frame, and says go. The board is `boards/storyboard.html`, and tools that show it find its frames by the classes in § 2; boxes marked any other way (`cell` boxes, `id="frame-NN"` markers) are not found.
 
-Message, audience, arc and format go in the `STORYBOARD.md` frontmatter (`storyboard-format.md`); the rest go in sections above the first `## Frame` heading. Frame packets take everything after a frame heading to the next one, so a section placed after the last frame leaks into that frame's packet. Repeat the first three in the chat proposal:
+## 1. The run
 
-- **Message**: one sentence, written as a claim, not a topic ("Close isn't final", not "About the inspector").
-- **Audience and arc**: who watches, and the arc named in one line (pain → turn → proof → logo, or the workflow's own archetype).
-- **Format**: aspect, target length, voiceover yes/no, music yes/no. Caption keep-out (content in the top ~83% when captions run).
-- **The spine**: the one device that threads every beat, named now, not discovered while building (a persistent window, a silent button that finally has sound, one background that leads every transition).
-- **Brand, from a capture**: palette by role with hex, three type roles (display, sans, mono) with sizes, radii and easings, each token noting where it came from. Take them from the real site or product, never from memory; `frame.md` holds them.
-- **Bans**: a short per-video "do not" list (no glow, no side-by-side explainer layouts, no fake product UI, no static endcard). Name two motion failures to avoid: the slideshow (every beat a fresh card) and the screensaver (motion that says nothing).
-- **Held frame**: allocate one beat on purpose where nothing moves and the line lands.
+1. **Pose each shot** in the composition the project renders, the root `index.html`, at its key moment: real words, real fonts, real colors, the focal point big enough to read on a phone. A shot posed in its own file (`compositions/frames/NN-*.html`) shows only once it is mounted in `index.html` (`data-composition-src`) at its planned start; `snapshot` renders `index.html` and nothing else.
+2. **Snapshot every still in one run** with your host's snapshot tool when one is offered (each shot's seconds, out `boards/stills`); otherwise `hyperframes snapshot --at <every shot's seconds, in film order> --no-end --describe false -o boards/stills`. Each still is named `frame-NN-at-<seconds>s.png`, NN its place in the film. Every `snapshot` run clears its `-o` folder and numbers from `00`, so never snapshot a single moment into `boards/stills/` itself (step 4). Look at every still yourself; fix and snapshot again until each one holds.
+3. **Write `boards/storyboard.html`** (§ 2), styled as a finished board: Inter or the system sans-serif, a light page, each frame a rounded card with its still above its words, even gaps.
+4. **Stop.** Hand the person the board and wait for their go. Notes on frames change only those frames. For each one: re-pose it, snapshot just its moment into `boards/stills/redo/` (`--at <its seconds>`), move that one file over the frame's old still under the old name (its new time in the name if the time changed, and the page's `src` with it), then rewrite the page and stop again. The other stills stay as approved.
+5. **Once they say go**, animate from the approved stills.
 
-## 2. The beat list
+## 2. The page
 
-One beat per idea, one focus per beat. Give each beat a short semantic name that will also be its composition filename.
+One `class="frame"` box per still, in film order, holding its image, a `class="title"` line "<two-digit number>: <name>" and a `class="time"` range in seconds. Optional: a `class="words"` line under it, and a `class="act"` heading before the first frame of each act.
 
-| Field       | Rule                                                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Heading     | `NN — Name (start–end, ~dur)`, absolute times. Sum the durations and state the total; check it against the target length by arithmetic. |
-| Beat length | 1.5–3.5 s. A beat that must be read gets ~3 s; a beat that only hands off gets 1.5–2 s; a line of 5–7 words gets 2–2.5 s.               |
-| On screen   | What is visible, in concrete terms (the object, its count, its position), with every on-screen word verbatim in quotes.                 |
-| Voiceover   | Verbatim, or `onscreen` for silent films. Reveals land on the word or beat cue that names them.                                         |
-| Hero prop   | The object that persists, and the beat where it returns (callback). A callback beat states which earlier beat it answers.               |
-| Motion      | Named moves with easing and duration, from a small vocabulary. First visible motion within 0.2 s of the beat starting.                  |
-| Seam out    | The named transition into the next beat and its direction. One direction rule for the whole film (leftward is the default).             |
-| Audio cue   | Sound effect or music cue with its time, when the film has sound.                                                                       |
-| Constraint  | At least one explicit "no …" per beat that could go generic.                                                                            |
-| Why         | The beat's job in the story, traced to the message. A beat whose why cannot be traced is cut.                                           |
+```html
+<section class="act">Act 1: The hook</section>
+<div class="frame">
+  <img src="stills/frame-00-at-1.5s.png" alt="" />
+  <div class="title">01: The hook</div>
+  <div class="time">0.0 to 3.0s</div>
+  <p class="words">The headline pushes in on a dark canvas.</p>
+</div>
+```
 
-Real product proof is real: a captured screen, the real command output, or a labelled placeholder beat that holds the slot. Never approximate the launched product's UI: use a capture or recording of it, rebuild only what the capture cannot move, or rebuild from its own design source (`/figma`). A third-party tool shown as context is rebuilt faithfully from a capture. Where the film depicts something real, add a truthfulness line saying what is real.
+Stills are written next to the page (`boards/stills/`), so `src` is relative to `boards/` and names the file `snapshot` wrote for that shot. A still written after the page shows by itself; never reopen or rename the page for it.
 
-Craft devices that make a storyboard specific are taught with examples in `docs/prompting/storyboards.mdx` (breather, callback, two-color discipline) and `docs/prompting/motion.mdx` (hero prop, accumulation); use them by name.
+## 3. The plan beside it
 
-## 3. `storyboard.html`: the page the user reviews
-
-Write one self-contained HTML file in the project root, `storyboard.html`, from `STORYBOARD.md`. Tell the user the path and to open it in a browser. It is the review surface, and it must be beautiful enough to judge the film from.
-
-- **Header**: title with a version (`v1`), one-line dek, and a tag with resolution, length and beat count.
-- **Grid**: three columns of 16:9 cells (`aspect-ratio: 16 / 9`, `container-type: inline-size`, sizes in `cqw` so the sheet matches the build), chronological, grouped under an act bar when there are acts.
-- **Each cell** carries `id="frame-NN"` (the build reads its layout from there) and shows the beat's key moment drawn with the real words in the real fonts and brand colors, plain shapes for panels, charts and media, one accent on the focal. Then a label row (`NN · NAME` left, `id · start–end` right), a note that says what moves first and which way the seam goes (bold lead-in, one or two sentences), and a small chip naming the seam.
-- **Two closing cells**: a seam map (every seam on one strip) and a tokens cell (palette, type roles, bans).
-- **No motion, no scripts, no external assets.** Fonts are local `@font-face` or a system stack; images are inlined or relative. It must open from `file://`.
-
-A sketch is a few dozen lines of HTML per cell; the whole sheet lands in minutes. Sketch fidelity is the point: a reviewer reacts to placement, hierarchy and copy, which is why the build later dresses the layout and never redraws it.
-
-## 4. The review round
-
-1. Present the chat proposal (`story-spine.md` § 3), then the sheet.
-2. Record the user's notes verbatim under `## Changes from v1` and unresolved questions under `## Still open` (above the first frame), then bump the version and revise **only the beats named**.
-3. Repeat until the user says the layout is locked, then list what is locked under `## Locked` (above the first frame, same reason as § 1). Build only after the lock.
-4. When the build lands, the compositions are the truth: regenerate the timing table from `index.html` (and the transcript when there is voiceover) and update `STORYBOARD.md` and `storyboard.html` to match, because every launch film drifted from its storyboard. State the final length.
-
-Do not render until asked.
+`STORYBOARD.md` at the project root (format: `hyperframes/references/storyboard-format.md`) names the same frames in the same order, and its words win over the page's: one heading per frame like `## Frame 1: The hook (0-3s)`, a `- act:` bullet for its act, and `- status: outline` until its still is posed.

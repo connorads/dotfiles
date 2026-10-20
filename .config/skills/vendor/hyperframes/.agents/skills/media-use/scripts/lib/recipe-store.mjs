@@ -14,6 +14,9 @@ import { appendRecord, mediaDir, nextId } from "./manifest.mjs";
 import { regenerateIndex } from "./index-gen.mjs";
 import { mergedPreferences } from "./prefs-store.mjs";
 
+// A filter keeps Node 22 off its native copy, which writes nothing under a non-ASCII path on Windows.
+const NON_ASCII_SAFE_DIR_COPY = { recursive: true, force: true, filter: () => true };
+
 /**
  * Recipes — the heavyweight tier of HyperFrames user memory.
  *
@@ -279,7 +282,7 @@ export function freezeRecipe({ projectDir, name, workflow, blocks }) {
   try {
     const userDir = join(userRecipesDir(), slug);
     mkdirSync(userDir, { recursive: true });
-    cpSync(dir, userDir, { recursive: true, force: true });
+    cpSync(dir, userDir, NON_ASCII_SAFE_DIR_COPY);
   } catch {
     // The project-tier freeze already landed.
   }
@@ -339,7 +342,7 @@ export function useRecipe({ projectDir, name }) {
       );
     }
     mkdirSync(dir, { recursive: true });
-    cpSync(userDir, dir, { recursive: true, force: true });
+    cpSync(userDir, dir, NON_ASCII_SAFE_DIR_COPY);
     const imported = readRecipeJson(dir);
     appendRecord(root, {
       id: nextId(root, "recipe"),

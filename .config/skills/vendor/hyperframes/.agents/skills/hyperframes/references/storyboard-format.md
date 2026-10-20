@@ -95,5 +95,5 @@ The old way: prompt, wait, get something that misses. Establish the pain we remo
 
 - A frame with `status: outline` and no built `src` renders as an outline placeholder.
 - `built` is the middle rung: the frame's HTML exists and its **layout is confirmed** (a wireframe sketch or better) — motion not yet added. Nothing is drawn yet beyond the approved layout.
-- The process that walks these statuses — plan, sketch, build, each pass reviewed in chat and in `storyboard.html` — is `review-loop.md`.
+- The process that walks these statuses — plan, sketch, build, each pass reviewed in chat and on the board (`boards/storyboard.html`, format in `hyperframes-creative/references/storyboard-recipe.md`) — is `review-loop.md`.
 - Multi-line `voiceover` values collapse to one line on save.

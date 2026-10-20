@@ -46,11 +46,11 @@ Then write `BRIEF.md` at the project root using `../hyperframes/references/brief
 
 Use only the canonical terms from `../hyperframes/references/brief-contract.md`:
 
-| Field          | Meaning                               | Effect                                                                              |
-| -------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
-| `flow`         | Who drives                            | `automation`: choose and execute the route. `companion`: co-create in conversation. |
-| `storyboard`   | Plan, sketch, and review before build | `yes`: run plan and sketch review (`storyboard.html`). `no`: build without it.      |
-| derived `mode` | How checkpoint gates behave           | Follow the brief contract. Never ask the user to name a mode.                       |
+| Field          | Meaning                               | Effect                                                                                                                                                     |
+| -------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flow`         | Who drives                            | `automation`: choose and execute the route. `companion`: co-create in conversation.                                                                        |
+| `storyboard`   | Plan, sketch, and review before build | `yes`: run plan and sketch review (`boards/storyboard.html`, format in `../hyperframes-creative/references/storyboard-recipe.md`). `no`: build without it. |
+| derived `mode` | How checkpoint gates behave           | Follow the brief contract. Never ask the user to name a mode.                                                                                              |
 
 Do not invent synonyms for these states. An ongoing “just build it” signal is handled by the intent layer and arrives as `flow: automation`, `storyboard: no`.
 

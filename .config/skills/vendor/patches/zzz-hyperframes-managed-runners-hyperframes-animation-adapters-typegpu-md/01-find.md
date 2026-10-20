@@ -5,6 +5,19 @@ description: TypeGPU and raw WebGPU adapter patterns for HyperFrames. Use when c
 
 # TypeGPU / WebGPU for HyperFrames
 
+## Contents
+
+- [Render-environment prerequisite (WebGPU + html-in-canvas)](#render-environment-prerequisite-webgpu--html-in-canvas)
+- [Contract](#contract)
+- [Basic Pattern](#basic-pattern)
+- [Timeline Registration](#timeline-registration)
+- [Video-Backed Effects (Liquid Glass, Distortion)](#video-backed-effects-liquid-glass-distortion)
+- [Frosted Blur via Downsample Pass](#frosted-blur-via-downsample-pass)
+- [Transparent vs Opaque Canvas](#transparent-vs-opaque-canvas)
+- [WGSL Full-Screen Triangle](#wgsl-full-screen-triangle)
+- [Rounded-Rect SDF (Liquid Glass Pill)](#rounded-rect-sdf-liquid-glass-pill)
+- [Deterministic Rendering](#deterministic-rendering)
+
 HyperFrames supports TypeGPU and raw WebGPU through its `typegpu` runtime adapter. The adapter does not own your pipeline. It publishes HyperFrames time and dispatches a seek event so your composition can render the exact GPU frame.
 
 ## Render-environment prerequisite (WebGPU + html-in-canvas)

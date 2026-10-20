@@ -107,8 +107,7 @@ export function recordInPlace(
     description: description || basename(path),
     ...(duration != null && { duration: Math.round(duration * 10) / 10 }),
   };
-  mkdirSync(mediaDir(projectDir), { recursive: true });
-  return withLock(mediaDir(projectDir), () => {
+  return withMediaLock(projectDir, () => {
     const latest = latestRecordFor(projectDir, path);
     const same = ["source", "description", "duration"].every(
       (key) => latest?.[key] === fields[key],
@@ -203,6 +202,12 @@ function withLock(dir, fn) {
   }
 }
 
+/** Runs `fn` holding the project's `.media/.lock`, so concurrent resolves take turns on what it guards. */
+export function withMediaLock(projectDir, fn) {
+  mkdirSync(mediaDir(projectDir), { recursive: true });
+  return withLock(mediaDir(projectDir), fn);
+}
+
 // Atomically allocate the next free id for `type` AND reserve it on disk, so a
 // slow download/copy between allocation and appendRecord can't let a concurrent
 // caller grab the same id (the MU-23 clobber). Under the lock we take the max id
@@ -210,10 +215,8 @@ function withLock(dir, fn) {
 // O_EXCL-create an empty marker under core's atomic temp name, which Studio's
 // project history skips. Returns { id, localPath, markerPath }.
 export function allocateId(projectDir, type, ext) {
-  mkdirSync(mediaDir(projectDir), { recursive: true });
-  const typeDir = typeDirPath(projectDir, type);
-  mkdirSync(typeDir, { recursive: true });
-  return withLock(mediaDir(projectDir), () => {
+  mkdirSync(typeDirPath(projectDir, type), { recursive: true });
+  return withMediaLock(projectDir, () => {
     const id = nextFreeId(projectDir, type);
     const localPath = `.media/${typeSubdir(type)}/${id}${ext}`;
     // Same shape as core atomicTempPath: an empty file at the final name would be committed.

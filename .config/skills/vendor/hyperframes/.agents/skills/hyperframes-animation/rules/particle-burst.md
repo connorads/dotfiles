@@ -7,6 +7,15 @@ metadata:
 
 # Particle Burst
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 Discrete flying particles as a one-shot event: a **confetti pop** that erupts upward and drifts back down on gravity, a **dot burst** radiating from behind a landing word, or a **glyph dissolve** where text breaks into particles that scatter and die. Particles are ephemeral garnish — born from a beat, fly, gone; they never become layout.
 
 Boundaries: [css-marker-patterns.md](css-marker-patterns.md)'s burst mode is radiating **drawn lines** — a static accent, no flight. [press-release-spring.md](press-release-spring.md)'s release burst is **one blurred radial layer** faking an explosion — enough when a single glow pop will do. [center-outward-expansion.md](center-outward-expansion.md) moves **real layout elements** to final resting slots; particles have no destination, only physics and a death.

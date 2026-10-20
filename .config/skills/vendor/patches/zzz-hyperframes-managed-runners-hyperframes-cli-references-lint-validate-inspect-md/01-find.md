@@ -44,7 +44,7 @@ npx hyperframes check --strict           # exit non-zero on warnings too (defaul
 One command, one Chrome boot. `check` runs the linter first and skips the browser entirely when lint reports errors. When the browser never ran (lint errors, a linter crash, or a browser launch failure), `browserSkipped` is `true` and the `layout`, `motion` and `contrast` sections are empty, not clean. Otherwise it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
 
 - **Runtime**: JavaScript console errors, unhandled exceptions, failed network requests (media-file `ERR_ABORTED` filtered out), HTTP 4xx/5xx.
-- **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), children escaping clipping containers.
+- **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), children escaping clipping containers. Text under a transparent `<video>` (a `remove-background` cutout) is measured per word against the frame's alpha: partial cover is info with the share hidden, a word 80% hidden or two neighbouring words each half hidden is an error, and a frame that cannot be read falls back to opaque with a `video_alpha_unread` note.
 - **Motion**: `*.motion.json` sidecar assertions against the same seeked timeline (see below).
 - **Contrast**: WCAG AA on visible text, sampled at 5 grid points. Failures are **errors** and each finding carries the sampled fg/bg colors, measured vs required ratio, and a suggested compliant color in the same palette direction, so most contrast fixes need no screenshot at all.
 
@@ -111,6 +111,14 @@ npx hyperframes snapshot --composition intro --frames 8 # 8 frames within this d
 Still PNGs. Each run writes `.hyperframes/artifacts/snapshots/<id>/` unless `--output` is set. `snapshot` is the standalone capture; `check --snapshots` is the gate.
 
 One of `--at`, `--range START:END` (seconds), or `--composition <data-composition-id>` (not a CSS selector). `--frames` defaults to 5. Range and composition sample just before the end and add no extra end frame; `--at` adds one unless `--no-end`.
+
+### Keep verification clean and inspect the actual pixels
+
+Inspect full-resolution frames in the opening 30 seconds, each mounted scene, and every reported problem interval. Contact sheets locate moments; use close-ups to judge thin edges, glass, particles, and WebGL geometry. Check the live preview and decoded render at matching times. Canvas shader defects can survive a successful DOM/layout audit. Record the browser/GPU and capture path when results differ across machines; isolate the failing material or pass before changing rendering defaults.
+
+Managed snapshot storage keeps the newest 10 run folders, the newest evidence for the current revision and retained rendered revisions, and the latest snapshot. Live captures and folders younger than 24 hours are also preserved. Automatic cleanup removes whole eligible old UUID folders, including contact sheets and descriptions; arbitrary `--output` folders are untouched. Save intentional before/after evidence outside this managed storage.
+
+For disposable checks, allocate a temporary output folder and remove that folder after inspecting it. Use `hyperframes clean --dry-run` to inspect broader cleanup. `clean --snapshots` explicitly discards snapshot evidence; use it only when that evidence is no longer needed. Never recommend removing all of `.hyperframes`, which also contains project history and other state.
 
 ### Zooming into a reported finding
 

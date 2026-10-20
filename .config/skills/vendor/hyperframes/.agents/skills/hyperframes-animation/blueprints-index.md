@@ -1,5 +1,12 @@
 # Blueprints (the proven shapes)
 
+## Contents
+
+- [The 22 blueprints](#the-22-blueprints)
+- [Role → blueprint menu](#role--blueprint-menu)
+- [Picking guidance](#picking-guidance)
+- [Motion coverage](#motion-coverage)
+
 > Entry point to the blueprint layer. Read this to find the shape for a frame; read `blueprints/<id>.md` to instantiate it. The Step-4 method (Reproduce / Adapt / Compose, what to write per frame) lives in `visual-design.md` — this file is the menu + the picker.
 
 A **blueprint** is a product-agnostic, **time-coded shot template** — `Scene N (a–b s): …` with `[slots]` and one named **signature move** — reverse-engineered from 178 golden product-launch clips across two mining rounds (plus 13 legacy blueprints reverse-translated to the same brief format). It encodes a whole shot across its full duration — reveals paced to the spoken line, not dumped at t=0 — so instantiating one structurally keeps content arriving instead of freezing. The full template lives in `blueprints/<id>.md`. **Step 4 (visual design) instantiates one blueprint per frame** (or composes from the motion vocabulary when none fits).

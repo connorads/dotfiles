@@ -7,7 +7,7 @@ description: "Turn a product or marketing URL, pasted script, or brief into a pr
 
 <!-- LOCAL PATCH (connorads dotfiles): upstream's "keep this skill fresh - run silently, don't ask" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs. -->
 
-> **media-use**: Before sourcing audio/images/logos, call `/media-use` to resolve BGM/SFX/images from the HeyGen catalog and brand logos from their official sources. Run `--adopt` first to register existing assets. See `/media-use` skill. When the host app provides its own music or sound-effect tools, use those for music and sound effects.
+> **media-use**: Before sourcing audio/images/logos, call `/media-use` to resolve BGM/images from the HeyGen catalog, SFX from Openverse, and brand logos from their official sources. Run `--adopt` first to register existing assets. See `/media-use` skill. When the host app provides its own music or sound-effect tools, use those for music and sound effects.
 
 > **figma source**: If the source is a figma.com URL, run `/figma` first — asset export, brand tokens, and components/storyboard reconstruction if needed — then build this workflow from its output. Don't drive Figma via raw MCP tools directly: that skips SVG sanitization, `.media/manifest.jsonl` provenance, and brand-token `var()` binding, so a later brand change can't propagate without a full re-import.
 
@@ -142,7 +142,7 @@ If there is no narration and no `SCRIPT.md`, skip voice generation. BGM may stil
 
 Goal: Add the visual direction, layout intent, and motion choices to each storyboard frame.
 
-**Sketch the storyboard sheet first (collaborative only).** The moment the plan is approved, run the sketch pass — `../hyperframes/references/review-loop.md` § 2 (don't wait on Step 3.1; sketches don't use timings): wireframe every frame yourself as a cell of `storyboard.html` (`../hyperframes-creative/references/storyboard-recipe.md` § 3), mark each `built`, pause for the one layout question when every frame is `built`, and revise only the sketches named until the sheet is confirmed. Stand-ins: plain labeled blocks for the captured assets — the real files arrive with Step 5's workers. Only then write the visual design below onto the confirmed layouts. In autonomous mode, or when the user chose to skip sketches at Step 3, skip this pass — frames go straight from `outline` to `animated` at Step 5.
+**Sketch the storyboard sheet first (collaborative only).** The moment the plan is approved, run the sketch pass — `../hyperframes/references/review-loop.md` § 2 (don't wait on Step 3.1; the stills don't use timings): pose every frame yourself in its composition, mount each in `index.html` at its planned start, snapshot all the stills in one run and write the board, `boards/storyboard.html` (`../hyperframes-creative/references/storyboard-recipe.md`), mark each `built`, pause for the one layout question when every frame is `built`, and revise only the frames named until the board is confirmed. Stand-ins: plain labeled blocks for the captured assets — the real files arrive with Step 5's workers. Only then write the visual design below onto the confirmed layouts. In autonomous mode, or when the user chose to skip sketches at Step 3, skip this pass — frames go straight from `outline` to `animated` at Step 5.
 
 Edit `STORYBOARD.md` in place. Do not create another storyboard. Use `frame.md` as source of truth for color, type, layout feel, and style.
 
@@ -154,7 +154,7 @@ For every visual frame, write a **time-coded shot sequence** into `STORYBOARD.md
 
 When an element visibly continues across a frame boundary, give both workers the same numerical handoff in `STORYBOARD.md`: add `handoff_out:` to the outgoing frame and a matching `handoff_in:` to the incoming frame. Name the element and its exact x/y position, scale, opacity, and motion direction/speed at the cut — state every field even when it does not change, because a constant is `opacity: 1`, not an omission. Omit the whole block only for a deliberate clean cut. The goal is simple: parallel workers must not invent two different versions of the same seam.
 
-Do not change story, script, asset choices, `asset_candidates`, `transition_in`, or captured source material. Do not write HTML in this step.
+Do not change story, script, asset choices, `asset_candidates`, `transition_in`, or captured source material. Do not write HTML in this step beyond the sketch pass's poses.
 
 Stage named assets after visual design is locked:
 

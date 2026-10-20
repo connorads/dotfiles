@@ -7,6 +7,15 @@ metadata:
 
 # Hacker Flip 3D Reveal
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 Characters flip down from 90° in 3D while cycling through pseudo-random glyphs, then settle on the target character — a "decryption" / airport flap-display reveal. Resolves to a short target word (typically a brand or label).
 
 ## How It Works

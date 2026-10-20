@@ -1,5 +1,13 @@
 # HTML-in-Canvas Patterns
 
+## Contents
+
+- [Core Boilerplate (same in every HTML-in-Canvas composition)](#core-boilerplate-same-in-every-html-in-canvas-composition)
+- [Effect Catalog](#effect-catalog)
+- [When to Use HTML-in-Canvas vs Standard GSAP](#when-to-use-html-in-canvas-vs-standard-gsap)
+- [More Effects You Can Build](#more-effects-you-can-build)
+- [Creating ANY Custom Effect](#creating-any-custom-effect)
+
 HyperFrames' most powerful visual capability. Capture ANY live HTML/CSS as a GPU texture, then render it through WebGL shaders, Three.js 3D scenes, or post-processing effects — at 60fps, pixel-perfect, with every CSS feature supported.
 
 **Read this file when a beat deserves cinematic treatment beyond flat GSAP animations.** Use for 1-3 hero beats per video, not every beat. The rest can use standard GSAP — the contrast between flat beats and HTML-in-Canvas beats IS part of the visual storytelling.

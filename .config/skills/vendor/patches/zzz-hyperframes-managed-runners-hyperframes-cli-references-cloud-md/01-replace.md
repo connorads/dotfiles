@@ -137,7 +137,7 @@ hyperframes cloud render --callback-url https://example.com/hf-hook --no-wait
 | `--no-wait`       | Submit and exit immediately; print the `render_id`. |
 | `--callback-url`  | HTTPS webhook fired when the render terminates.     |
 | `--callback-id`   | Opaque tracking ID echoed in webhook payloads.      |
-| `--poll-interval` | Poll cadence in seconds (default `10`).             |
+| `--poll-interval` | Poll cadence in seconds (default `2`).              |
 | `--max-wait`      | Max poll duration in minutes (default `60`).        |
 
 ## Managing renders

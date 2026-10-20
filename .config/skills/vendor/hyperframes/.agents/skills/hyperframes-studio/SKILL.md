@@ -26,15 +26,15 @@ and never invent a different form of the same edit.
 
 Read the message before you open a file. Decide what it asks for:
 
-| The person                                                                                 | You                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| names a change, however politely ("make the title bigger", "can you cut the third scene?") | Make it.                                                                                                                                                              |
-| gives a felt note on the built film ("the intro feels jolty", "it doesn't go long enough") | Find the cause, change the measurable thing, say what the note meant and what moved, and record it per `/hyperframes-creative` `references/storyboard-recipe.md` § 4. |
-| asks a question and names no change ("why does the title jump?")                           | Answer it. Change nothing.                                                                                                                                            |
-| says don't change anything, hold, "just thinking", "let's talk"                            | Change no file, not even a fix you noticed. Offer it in words.                                                                                                        |
-| brings an idea for this film with no concrete change ("I want the ending to feel bigger")  | Propose the change and add it to the plan (below). Change no composition file.                                                                                        |
-| asks for a new film                                                                        | Plan it (§ 5).                                                                                                                                                        |
-| approves a plan ("build it", "go")                                                         | Build what was approved.                                                                                                                                              |
+| The person                                                                                 | You                                                                                                                  |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| names a change, however politely ("make the title bigger", "can you cut the third scene?") | Make it.                                                                                                             |
+| gives a felt note on the built film ("the intro feels jolty", "it doesn't go long enough") | Find the cause, change the measurable thing, say what the note meant and what moved, and record it in STORYBOARD.md. |
+| asks a question and names no change ("why does the title jump?")                           | Answer it. Change nothing.                                                                                           |
+| says don't change anything, hold, "just thinking", "let's talk"                            | Change no file, not even a fix you noticed. Offer it in words.                                                       |
+| brings an idea for this film with no concrete change ("I want the ending to feel bigger")  | Propose the change and add it to the plan (below). Change no composition file.                                       |
+| asks for a new film                                                                        | Plan it (§ 5).                                                                                                       |
+| approves a plan ("build it", "go")                                                         | Build what was approved.                                                                                             |
 
 A message that asks a question and names a change gets the answer and the change. Only when you
 cannot tell whether it asks for anything is it a conversation: a wrong answer costs one message; a
@@ -52,7 +52,7 @@ A conversation reply:
 
 Keep the plan in the project, not only in the chat: the next message may start a new session that
 cannot see this one. Add it to STORYBOARD.md the way `/hyperframes-creative`
-`references/storyboard-recipe.md` § 4 records a round; never overwrite locked frames. If the person
+`references/storyboard-recipe.md` § 1 records notes on frames; never overwrite locked frames. If the person
 asked you to change nothing at all, write nothing: put the plan in the reply and offer to save it.
 
 ## 1. Every scene is a sub-composition

@@ -1,8 +1,13 @@
 # kinetic-type-beats — Kinetic-Type Beats
 
+## Contents
+
+- [roles served](#roles-served)
+- [rule mapping](#rule-mapping)
+
 **intent**: A flat, centered, bold-type shot where the motion IS the word/phrase changing — the line either swaps tokens in place by hard cut, or builds a statement across full-screen beats (each with its own move) that lands a spring-pop payoff.
 
-**roles served**
+## roles served
 
 - Hook (from `hook-kinetic-type-flash`): when one stationary line lands a punchy rhetorical question or "you keep doing X" callout and the in-place token swap itself is the joke.
 - Hook (from `hook-kinetic-type-escalation`): when ONE statement should escalate across distinct full-screen beats (each a different move) and punctuate on a spring-pop payoff element — a rising-intensity / "transform X into Y" opener.
@@ -73,7 +78,7 @@
 
 **motion vocabulary**: hard-cut / flash word swaps; in-place token cycle (instant cut, no roll/scroll/blur); type-on with trailing blinking caret; backspace-and-retype; per-word staggered fade/blur reveal; big→small scale-down; springy scale-in/scale-out overshoot; 3D letter-tumble scatter-and-reassemble; motion-blur fly-in / blur-off; prior text zoom-through-camera; letter-spacing collapse; bottom-up masked slide; drawn-on `[accent]` underline / strike-through; particle/dot burst from text; `[accent]` selection-box frame; bg-invert hard-flip with text-color invert; karaoke per-word highlight sweep; radial letter-explode; expanding-iris circle wipe-to-next; final spring-pop payoff element (square / emoji / logo mark); drifting `[accent]` motes / ambient shapes; segment-by-segment URL/wordmark build; final-token punctuation snap; settle-and-hold; scale-pop phrase relay (prior shrinks + split-slides off both edges with clip-fade); letter-tracking tighten-from-wide while scaling; corner arrows converging on a word; gradient-fill / hue-sweep across type with settle-to-solid snap; in-text traveling gradient sweep; background shape morph-open into a full-bleed field; RGB-split / chromatic-glitch jitter; horizontal stretch/slice glitch reveal; letter-scramble resolve with divider ticks; confetti burst up-and-drift; letter-slot emoji/mark swap + morph; alternating huge/small word scale chain; color-stripe wipes / blob expand frame-repaint; oversized phrase element-scroll (moving window); right→left marquee scroll-through; stacked outline-echo copies cycling behind a solid word; full-frame repeating-word pattern on a rolling 3D wave; accent shapes fly-in then drift-out-and-thin; masked grey fill snapping solid; brief 3D letter extrude-then-flatten; spring-bounce glyph+prop drop-in; glow-pulse-preceded logo formation; 3D shapes assemble-and-flatten into the mark; logo-lockup 3D rotation-snap; one-shot glow-ring pulse; chart bars growing in a top-down stagger; labeled collaborative cursor delete-and-retype; in-place role-word cycle; ambient plexus/pattern drift; spring shrink-to-0 exit / bounce-in from 0%; scattered-letter bounce-assembly with baseline settle; staggered wordmark part pop; phrase append; word→icon morph with continuous pulse; UI-collage rush-out with parallax from behind anchored type; zoom-blur title exit; long-held URL end card.
 
-**rule mapping**
+## rule mapping
 
 - hard-cut / flash word swaps, in-place token cycle, whole-line state swaps at time thresholds → `discrete-text-sequence`
 - type-on character-by-character + blinking trailing caret → `discrete-text-sequence` (text/typing state progression) + `context-sensitive-cursor` (caret blink/color-switch)

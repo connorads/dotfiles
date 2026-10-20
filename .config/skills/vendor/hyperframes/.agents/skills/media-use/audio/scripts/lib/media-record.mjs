@@ -43,7 +43,12 @@ export function voicePaths(hyperframesDir, lines, anomalies) {
   return paths;
 }
 
-const SFX_SOURCES = { heygen: "search", local: "bundled" };
+// A cue's source as the manifest records it, and who provided it. A source missing here records as the person's
+// file, so every rerun would write a numbered copy beside it.
+const SFX_SOURCES = {
+  openverse: { source: "search", provider: "openverse.audio" },
+  local: { source: "bundled", provider: "bundled.sfx" },
+};
 
 // The files one engine run wrote, each with how it was made, for the project's media manifest.
 export function writtenAssets({ only, lines, voices, ttsProvider, bgm, bgmFields, sfx }) {
@@ -73,8 +78,7 @@ export function writtenAssets({ only, lines, voices, ttsProvider, bgm, bgmFields
   }
   if (only.has("sfx")) {
     for (const cue of new Map(sfx.map((entry) => [entry.file, entry])).values()) {
-      const source = SFX_SOURCES[cue.source];
-      const provider = source === "search" ? "heygen" : "bundled.sfx";
+      const { source, provider } = SFX_SOURCES[cue.source];
       assets.push({
         path: cue.file,
         type: "sfx",

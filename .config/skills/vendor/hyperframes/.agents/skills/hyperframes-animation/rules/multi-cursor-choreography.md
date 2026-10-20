@@ -7,6 +7,15 @@ metadata:
 
 # Multi-Cursor Choreography
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 > **The camera never chases anyone.** No real camera — any "pan" is the canvas group translating inside a static frame. And per the motion doctrine's idle-motion ban, every cursor must **perform**: travel to a target, act, then rest still. Scheduled rest is stillness; aimless wander loops are wobble.
 
 THE ensemble primitive: **two to four labeled cursor actors** — each an arrow plus a name-tag pill in its own color — work one shared canvas at the same time. No single interaction is the subject; the **simultaneous liveness is** ("a team is in here, working"), usually as ambience under a headline building over the top. Distinct from [cursor-click-ripple.md](cursor-click-ripple.md) and [cursor-drag.md](cursor-drag.md): those are **one protagonist** the viewer follows click-by-click; here the actors are chorus, not lead — each action smaller and quieter than a solo cursor's, the value in the interleaving. Also distinct from [camera-cursor-tracking.md](camera-cursor-tracking.md): that locks the _viewport_ to one focal cursor; this rule forbids exactly that — the frame is static and the eye roams freely.

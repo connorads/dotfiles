@@ -7,6 +7,15 @@ metadata:
 
 # AI Tracking Box
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 A bounding box of four L-bracket corners + a confidence label that follows a moving target, simulating real-time AI detection. Rendered in detection yellow (`#facc15` family) on a dark background — the industry convention (AV HUDs, security CV, ML demos); red reads "warning", green "success", blue "info" — none read "detection."
 
 ## How It Works

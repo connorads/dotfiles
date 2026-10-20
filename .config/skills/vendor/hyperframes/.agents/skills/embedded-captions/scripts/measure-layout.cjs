@@ -17,6 +17,7 @@
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const { hfBrowser } = require("./hf-cli.cjs");
 
 // Locate hyperframes' bundled puppeteer. render-and-composite.sh exports
 // HYPERFRAMES_ROOT; standalone we also try the in-repo path + ~/Downloads, and
@@ -126,10 +127,6 @@ async function main() {
   }
 
   // Match render-and-composite's Chrome detection
-  const exe =
-    process.platform === "darwin"
-      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      : "/usr/bin/google-chrome";
 
   const W = plan?.width || 720;
   const H = plan?.height || 1290;
@@ -137,7 +134,7 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath: fs.existsSync(exe) ? exe : undefined,
+    executablePath: hfBrowser(),
     args: [
       "--disable-web-security",
       "--allow-file-access-from-files",

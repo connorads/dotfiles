@@ -1,0 +1,6 @@
+{
+  "reason": "Browser tests use a synthetic installed CLI rather than re-enabling unchecked source-checkout execution.",
+  "files": [
+    "hyperframes/.agents/skills/embedded-captions/scripts/hf-cli.test.mjs"
+  ]
+}

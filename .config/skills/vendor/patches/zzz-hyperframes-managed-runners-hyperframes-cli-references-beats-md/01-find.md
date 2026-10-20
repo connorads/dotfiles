@@ -8,12 +8,8 @@ npx hyperframes beats ./my-video
 npx hyperframes beats ./my-video --json
 ```
 
-The project must contain a local music `<audio>` source. Mark it with `data-timeline-role="music"`; an id containing `music`, `bgm`, or `soundtrack` is also recognized. The command analyzes that file in headless Chrome and writes `beats/<audio-relative-path>.json`.
+The project must contain a local music `<audio>` source. Mark it with `data-timeline-role="music"`; an id containing `music`, `bgm`, or `soundtrack` is also recognized. The command decodes that file with ffmpeg, tracks its beats, and writes `beats/<audio-relative-path>.json`.
 
-If no beats are detected, the command fails and writes nothing. If Chrome is unavailable, run:
-
-```bash
-npx hyperframes browser ensure
-```
+If the track has no steady beat, the command fails and writes nothing. If ffmpeg is missing, run `npx hyperframes doctor`.
 
 For a complete beat-synced video, route through `/music-to-video`. That workflow owns a different audio-driven pipeline and its `audiomap.json`; do not replace its analyzer with this Studio utility.

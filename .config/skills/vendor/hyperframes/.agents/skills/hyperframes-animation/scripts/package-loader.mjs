@@ -1,13 +1,4 @@
-// package-loader — bootstrap optional helper packages only when missing, with
-// defense-in-depth so a malicious or typo'd dependency can't run on install:
-//   • specs are version-pinned (assertPinnedPackageSpecs) — no floating "latest"
-//   • install runs `npm install --ignore-scripts` — package lifecycle scripts
-//     never execute
-//   • `--no-save` into a throwaway tmp dir — the host project is left untouched
-//   • requires an interactive y/N (or an explicit $HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1)
-//   • npm is spawned with an argv array (no shell) — never a built command string
-// The `installLine` strings below are DISPLAY ONLY (shown in the prompt / error
-// text); they are never handed to a shell or executed.
+// Resolve installed helper packages. Missing dependencies require reviewed project installation.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -44,7 +35,7 @@ export async function importPackagesOrBootstrap(packageNames, options = {}) {
       [
         `Could not resolve required package(s): ${missing.join(", ")}`,
         "Install them in this project, for example:",
-        `  npm install --save-dev ${packageNames.map(shellQuote).join(" ")}`,
+        `  pnpm add --save-dev --save-exact <reviewed pinned versions for ${packageNames.join(", ")}>; retain quarantine and install-script protections`,
       ].join("\n"),
     );
   }
@@ -294,37 +285,7 @@ function hasVersionSpec(packageSpec) {
 }
 
 async function confirmBootstrap(packageSpecs) {
-  if (process.env[BOOTSTRAP_CONFIRM_ENV] === "1") return;
-
-  const installLine = `npm install --ignore-scripts --no-save ${packageSpecs.map(shellQuote).join(" ")}`;
-  if (!process.stdin.isTTY) {
-    throw new Error(
-      [
-        "Required helper package(s) are missing.",
-        "To allow a one-time temporary dependency bootstrap for this run, set:",
-        `  ${BOOTSTRAP_CONFIRM_ENV}=1`,
-        "The bootstrap command will be:",
-        `  ${installLine}`,
-      ].join("\n"),
-    );
-  }
-
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  try {
-    const answer = await rl.question(
-      [
-        "HyperFrames helper package(s) are missing.",
-        `Run a temporary install with lifecycle scripts disabled?`,
-        `  ${installLine}`,
-        "Proceed? [y/N] ",
-      ].join("\n"),
-    );
-    if (!/^(y|yes)$/i.test(answer.trim())) {
-      throw new Error("Dependency bootstrap cancelled.");
-    }
-  } finally {
-    rl.close();
-  }
+  throw new Error("Required helper packages are missing. Add reviewed pinned versions with pnpm in the project; retain quarantine and install-script protections. Packages: " + packageSpecs.join(", "));
 }
 
 function ancestors(start) {

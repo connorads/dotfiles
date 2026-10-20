@@ -1,6 +1,7 @@
 {
   "reason": "Helper dependency guidance retains local quarantine and install-script protections.",
   "files": [
-    "hyperframes/.agents/skills/hyperframes-creative/scripts/package-loader.mjs"
+    "hyperframes/.agents/skills/hyperframes-creative/scripts/package-loader.mjs",
+    "hyperframes/.agents/skills/hyperframes-animation/scripts/package-loader.mjs"
   ]
 }

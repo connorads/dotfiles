@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { findByPrompt, readManifest } from "../../../scripts/lib/manifest.mjs";
@@ -97,7 +97,7 @@ test("music and sound effects are marked by where they came from", () => {
     sfx: [
       { file: "assets/sfx/whoosh.mp3", name: "whoosh", source: "local" },
       { file: "assets/sfx/whoosh.mp3", name: "whoosh", source: "local" },
-      { file: "assets/sfx/glass.mp3", name: "glass", source: "heygen" },
+      { file: "assets/sfx/glass.mp3", name: "glass", source: "openverse" },
     ],
   });
 
@@ -106,9 +106,28 @@ test("music and sound effects are marked by where they came from", () => {
     [
       ["assets/bgm/track.mp3", "search", undefined],
       ["assets/sfx/whoosh.mp3", "bundled", "bundled.sfx"],
-      ["assets/sfx/glass.mp3", "search", "heygen"],
+      ["assets/sfx/glass.mp3", "search", "openverse.audio"],
     ],
   );
+});
+
+test("a rerun of an Openverse sound effect writes over its own file, not a numbered copy", (t) => {
+  const dir = project(t);
+  mkdirSync(join(dir, "assets/sfx"), { recursive: true });
+  const anomalies = [];
+  for (let run = 0; run < 3; run++) {
+    const file = agentWritePath(dir, "assets/sfx/door-knock.mp3", { anomalies });
+    writeFileSync(join(dir, file), "knock");
+    const sfx = [{ file, name: "door knock", source: "openverse", duration_s: 1 }];
+    recordInManifest(
+      dir,
+      writtenAssets({ only: new Set(["sfx"]), lines: [], voices: [], sfx, ...noBgm }),
+    );
+  }
+
+  assert.deepEqual(readdirSync(join(dir, "assets/sfx")), ["door-knock.mp3"]);
+  assert.deepEqual(anomalies, []);
+  assert.equal(readManifest(dir).length, 1);
 });
 
 test("music made locally is marked generated once it is ready, not while pending", () => {

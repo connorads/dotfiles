@@ -7,6 +7,15 @@ metadata:
 
 # 3D Text Depth Layers
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 The same text rendered N times at increasing offsets — back layers translucent, front layer full opacity and brand color — creates a physical "stacked extrusion" depth illusion on large typography. Distinct from `text-shadow` (which can't have per-layer hue / opacity / animation): each layer is a real DOM element.
 
 ## How It Works

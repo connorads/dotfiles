@@ -1,5 +1,18 @@
 # Rules Index
 
+## Contents
+
+- [The contract — every rule assumes this](#the-contract--every-rule-assumes-this)
+- [Text & Typography](#text--typography)
+- [Data & Stats](#data--stats)
+- [Camera & Viewport](#camera--viewport)
+- [Layout & Network](#layout--network)
+- [SVG & Icons](#svg--icons)
+- [Idle & Ambient](#idle--ambient)
+- [Transition & Motion](#transition--motion)
+- [Effect Recipes (moved from hyperframes-creative)](#effect-recipes-moved-from-hyperframes-creative)
+- [See Also](#see-also)
+
 Atomic motion recipes. Each lives at `rules/<name>.md`. Compose 2-4 per scene with a single paused timeline.
 
 ## The contract — every rule assumes this

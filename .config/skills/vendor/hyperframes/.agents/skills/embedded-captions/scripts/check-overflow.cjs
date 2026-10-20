@@ -16,6 +16,7 @@
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const { hfBrowser } = require("./hf-cli.cjs");
 
 const HF_ROOTS = [
   process.argv[2] && path.resolve(process.argv[2]), // project-owned helper dependencies
@@ -69,13 +70,9 @@ async function main() {
   const H = num(/data-height="([0-9.]+)"/, 1080);
   const DUR = num(/data-duration="([0-9.]+)"/, 8);
 
-  const exe =
-    process.platform === "darwin"
-      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      : "/usr/bin/google-chrome";
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath: fs.existsSync(exe) ? exe : undefined,
+    executablePath: hfBrowser(),
     args: [
       "--disable-web-security",
       "--allow-file-access-from-files",

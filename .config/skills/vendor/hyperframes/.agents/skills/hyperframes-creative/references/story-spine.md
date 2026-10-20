@@ -34,7 +34,7 @@ When Step 3 presents the plan (a checkpoint gate — `hyperframes/references/bri
 
 - Recommendations keep their receipts (brief-contract § 3): the archetype choice, the beat count, and any beat the user might question each state their basis.
 
-How to write the storyboard itself, and the `storyboard.html` page it is reviewed on, is `storyboard-recipe.md`.
+How to write the storyboard itself, and the board it is reviewed on (`boards/storyboard.html`), is `storyboard-recipe.md`.
 
 The proposal shape — echo line → frame table → style / duration footer → "approve or adjust" — is the cheapest place to iterate: a frame change here costs 30 seconds; the same change after build costs minutes.
 

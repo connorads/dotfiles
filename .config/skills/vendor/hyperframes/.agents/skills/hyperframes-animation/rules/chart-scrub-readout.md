@@ -7,6 +7,15 @@ metadata:
 
 # Chart Scrub Readout
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 The chart is already ON screen — this rule **interrogates** it. A vertical tracking line rides the scrub position, a marker dot follows the series, and a live tooltip reads out `date: value` per position, values flickering past like an odometer. It's the "this data is real — look closer" beat: the scrub proves the chart is an instrument, not a picture.
 
 Boundary with its neighbors: [stat-bars-and-fills.md](stat-bars-and-fills.md) owns the chart's ARRIVAL; [counting-dynamic-scale.md](counting-dynamic-scale.md) owns a single number swelling in place. This rule assumes the graphic already exists and adds a **read head** moving across it. The three chain naturally: the line draws in (svg-path-draw / stat-bars), this rule scrubs it, and the landing value hands off to a count-up lockup.

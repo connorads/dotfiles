@@ -1,5 +1,16 @@
 # Motion blur — shutter smear on any animated element
 
+## Contents
+
+- [Read this part before you blur anything](#read-this-part-before-you-blur-anything)
+- [Two routes, and they are not interchangeable](#two-routes-and-they-are-not-interchangeable)
+- [The contract: one attribute](#the-contract-one-attribute)
+- [Options](#options)
+- [The failure modes are all silent](#the-failure-modes-are-all-silent)
+- [Cost](#cost)
+- [The numbers, so you can argue with them](#the-numbers-so-you-can-argue-with-them)
+- [See also](#see-also)
+
 ## Read this part before you blur anything
 
 Blur is not polish. It is the smear a real shutter leaves while the subject

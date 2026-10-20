@@ -7,6 +7,15 @@ metadata:
 
 # 3D Page Scroll
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 A webpage (or long content) presented as a tilted 3D card. Spring-eased scroll reveals specific sections while the static 3D perspective adds physical depth. (For a camera that actually travels/tilts, see [3d-camera-flight.md](3d-camera-flight.md) — this rule's tilt never moves.)
 
 ## How It Works

@@ -7,6 +7,15 @@ metadata:
 
 # Avatar Cloud Network
 
+## Contents
+
+- [How It Works](#how-it-works)
+- [Recipe](#recipe)
+- [Variations](#variations)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 Avatars on an elliptical ring around a central hub (logo / counter), with SVG dashed lines drawing outward from the hub to each avatar — "community" / social proof. Distinct from [orbit-3d-entry.md](orbit-3d-entry.md) (continuous orbit): this settles into a static composed formation.
 
 ## How It Works

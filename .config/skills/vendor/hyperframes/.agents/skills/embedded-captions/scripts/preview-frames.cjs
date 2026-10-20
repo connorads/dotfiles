@@ -25,6 +25,7 @@ const fs = require("fs");
 const os = require("os");
 const crypto = require("crypto");
 const { pathToFileURL } = require("url");
+const { hfBrowser } = require("./hf-cli.cjs");
 
 function sriSha384(source) {
   return `sha384-${crypto.createHash("sha384").update(source).digest("base64")}`;
@@ -223,13 +224,9 @@ async function main() {
   const outDir = path.join(project, "preview");
   fs.mkdirSync(outDir, { recursive: true });
 
-  const exe =
-    process.platform === "darwin"
-      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      : "/usr/bin/google-chrome";
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath: fs.existsSync(exe) ? exe : undefined,
+    executablePath: hfBrowser(),
     args: ["--disable-web-security", "--allow-file-access-from-files", "--disable-dev-shm-usage"],
   });
   const outs = [];

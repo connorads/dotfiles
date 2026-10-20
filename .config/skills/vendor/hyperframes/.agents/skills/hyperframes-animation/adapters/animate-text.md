@@ -6,12 +6,7 @@ For deterministic text-animation specs (e.g., `typewriter` at exact `240ms / 46m
 
 ## How to use it
 
-When a beat needs a deterministic text animation, load the upstream skill alongside this one:
-
-```bash
-# In your project root, install the upstream skill into .agents/skills/
-pnpm exec skills add pixel-point/animate-text
-```
+When a beat needs a deterministic text animation, use an already installed and reviewed `animate-text` skill. If it is absent, report the missing optional capability and use the available local animation recipes. Do not install or refresh a companion skill during video work.
 
 Or in a skill-aware agent runtime, the skill is invoked by name:
 

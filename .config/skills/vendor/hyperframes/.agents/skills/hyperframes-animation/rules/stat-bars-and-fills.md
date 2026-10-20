@@ -7,6 +7,13 @@ metadata:
 
 # Stat Bars & Fills
 
+## Contents
+
+- [Recipe](#recipe)
+- [Values](#values)
+- [Critical Constraints](#critical-constraints)
+- [See also](#see-also)
+
 The graphics that give a stat **visual weight** beside its number: a small bar chart, a progress bar/ring filling to a percentage, or a star row filling to a fractional rating. Pair these with [counting-dynamic-scale.md](counting-dynamic-scale.md) (the number) for a complete stat scene.
 
 **Layout blueprint — pick ONE and hold it across all stats:**

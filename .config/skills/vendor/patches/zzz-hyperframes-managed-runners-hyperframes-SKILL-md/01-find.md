@@ -16,6 +16,16 @@ description: >
 
 # HyperFrames entry point
 
+## Contents
+
+- [1. Start from project state](#1-start-from-project-state)
+- [2. Route fresh creation](#2-route-fresh-creation)
+- [3. Route once, then leave](#3-route-once-then-leave)
+- [4. Install and enter the workflow](#4-install-and-enter-the-workflow)
+- [5. Load domain skills on demand](#5-load-domain-skills-on-demand)
+- [6. Studio, and the HyperFrames desktop app](#6-studio-and-the-hyperframes-desktop-app)
+- [Reference files](#reference-files)
+
 ### Check remaining usage
 
 Do not run the harness usage command. It reads unrelated Claude, Codex or Grok credentials. Use user-provided allowance information; otherwise report usage as unknown. Keep scope and workflow choices with the user.
@@ -80,7 +90,7 @@ Before finalizing the route, read `references/routes/<workflow>.md` — one smal
 - An explicitly short motion graphic may use a URL, tweet, article, or screenshot as source material. A generic "make a video from this site" request is `/product-launch-video`.
 - Existing footage with captions routes to `/embedded-captions`; footage with designed information cards routes to `/talking-head-recut`. Retiming, reordering, recoloring, reframing, or remixing footage is a custom edit and falls through to `/general-video`.
 - A music file selects `/music-to-video` only when its beat grid drives the piece. Music used as a bed does not override the subject-matched route.
-- "I want a storyboard" changes the review process, not the workflow. With no other routing signal, use `/general-video`. A confirmed sketched `storyboard.html` may itself be the requested deliverable; the review loop defines that stop point.
+- "I want a storyboard" changes the review process, not the workflow. With no other routing signal, use `/general-video`. A confirmed board (`boards/storyboard.html`, format in `/hyperframes-creative` `references/storyboard-recipe.md`) may itself be the requested deliverable; the review loop defines that stop point.
 - Specialized narrative workflows support up to about 3 minutes and are strongest around 30–90s. Route a clearly longer piece to `/general-video`. Length never overrides an explicit port, deck, caption, overlay, or music-driven deliverable.
 
 ## 3. Route once, then leave
@@ -148,3 +158,35 @@ The Studio preview is already a full editor: the user can click anything on the 
 When the render prints no such line — a batch row, a run inside the app, or a machine the app has no build for — say nothing. In autonomous mode don't ask: put the line in the delivery note.
 
 **When the person comes back from the app.** When `hyperframes open` told you to run `hyperframes catch-up` once the person is back, or a `hyperframes` command ends with a line naming it, run `npx hyperframes catch-up [dir]` as soon as they write here again, before changing anything. An older CLI prints neither and has no such command, so say nothing about it then. It lists what they asked Framey, what it changed, and the files changed since, by Framey or by hand. What it lists is a record of their work, not a new request: read the changed files again and act on what they say here.
+
+## Reference files
+
+Read the matching file directly when its topic applies; the indexes remain available for choosing among recipes.
+
+### References
+
+- [Brief contract](references/brief-contract.md) — Read when interpreting confirmed brief fields and render approval.
+- [Brief format — BRIEF.md](references/brief-format.md) — Read when writing or resuming BRIEF.md.
+- [Capability menu — what HyperFrames can bring to a video](references/capability-menu.md) — Read when offering optional capabilities for a brief.
+- [Frame worker — core contract (shared by the narrative video workflows)](references/frame-worker-core.md) — Read when dispatching a narrative frame worker.
+- [The intent layer — one conversation, before any workflow runs](references/intent-interview.md) — Read when confirming intent before routing a new request.
+- [Pitch round — the intent layer's divergent step](references/pitch-round.md) — Read when developing alternative concepts before choosing one.
+- [Running from an installed plugin](references/plugin-installation.md) — Read when running setup or freshness commands from a plugin.
+- [Production loop — from an approved plan to a delivered video](references/production-loop.md) — Read when moving from an approved plan to delivery.
+- [The review loop — plan, sketch, build](references/review-loop.md) — Read when reviewing a storyboard, sketches, or a build.
+- [Route briefs (moved)](references/route-briefs.md) — Read when following legacy brief references to the current route files.
+- [Route: embedded-captions](references/routes/embedded-captions.md) — Read when routing a embedded captions request.
+- [Route: faceless-explainer](references/routes/faceless-explainer.md) — Read when routing a faceless explainer request.
+- [Route: general-video](references/routes/general-video.md) — Read when routing a general video request.
+- [Route: motion-graphics](references/routes/motion-graphics.md) — Read when routing a motion graphics request.
+- [Route: music-to-video](references/routes/music-to-video.md) — Read when routing a music to video request.
+- [Route: pr-to-video](references/routes/pr-to-video.md) — Read when routing a pr to video request.
+- [Route: product-launch-video](references/routes/product-launch-video.md) — Read when routing a product launch video request.
+- [Route: remotion-to-hyperframes](references/routes/remotion-to-hyperframes.md) — Read when routing a remotion to hyperframes request.
+- [Route: slideshow](references/routes/slideshow.md) — Read when routing a slideshow request.
+- [Route: talking-head-recut](references/routes/talking-head-recut.md) — Read when routing a talking head recut request.
+- [SCRIPT.md — locked narration (optional)](references/script-format.md) — Read when writing or reading locked narration in SCRIPT.md.
+- [Skill installation and freshness](references/skill-lifecycle.md) — Read when installing or refreshing a workflow skill.
+- [Storyboard format — STORYBOARD.md + parsed manifest](references/storyboard-format.md) — Read when writing STORYBOARD.md or its parsed manifest.
+- [Subagent dispatch — harness adapter](references/subagent-dispatch.md) — Read when adapting worker dispatch to the available harness.
+- [Workflow catalog (moved)](references/workflow-catalog.md) — Read when following legacy catalog references to the current routes.

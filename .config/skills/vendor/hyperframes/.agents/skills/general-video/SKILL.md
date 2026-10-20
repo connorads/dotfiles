@@ -46,11 +46,11 @@ Then write `BRIEF.md` at the project root using `../hyperframes/references/brief
 
 Use only the canonical terms from `../hyperframes/references/brief-contract.md`:
 
-| Field          | Meaning                               | Effect                                                                              |
-| -------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
-| `flow`         | Who drives                            | `automation`: choose and execute the route. `companion`: co-create in conversation. |
-| `storyboard`   | Plan, sketch, and review before build | `yes`: run plan and sketch review (`storyboard.html`). `no`: build without it.      |
-| derived `mode` | How checkpoint gates behave           | Follow the brief contract. Never ask the user to name a mode.                       |
+| Field          | Meaning                               | Effect                                                                                                                                                     |
+| -------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flow`         | Who drives                            | `automation`: choose and execute the route. `companion`: co-create in conversation.                                                                        |
+| `storyboard`   | Plan, sketch, and review before build | `yes`: run plan and sketch review (`boards/storyboard.html`, format in `../hyperframes-creative/references/storyboard-recipe.md`). `no`: build without it. |
+| derived `mode` | How checkpoint gates behave           | Follow the brief contract. Never ask the user to name a mode.                                                                                              |
 
 Do not invent synonyms for these states. An ongoing “just build it” signal is handled by the intent layer and arrives as `flow: automation`, `storyboard: no`.
 
@@ -141,7 +141,7 @@ Timed elements use `class="clip"`; the root and relevant ancestors are sized; ea
 
 ### Borrow workflows safely
 
-When the piece resembles a shipped workflow, borrow its genre references as examples. First run `hyperframes skills update <workflow-name>`. Borrow its story shape and taste, not its private scripts, pipeline state, or directory contract. The generic build remains owned by this skill.
+When the piece resembles a shipped workflow, borrow its genre references as examples. Read the matching sibling vendored skill. Report a missing skill; do not install or refresh it during video work. Borrow its story shape and taste, not its private scripts, pipeline state, or directory contract. The generic build remains owned by this skill.
 
 ## 7. Done
 

@@ -1,5 +1,15 @@
 # Transforms and Performance
 
+## Contents
+
+- [Transform Aliases](#transform-aliases)
+- [autoAlpha](#autoalpha)
+- [clearProps](#clearprops)
+- [CSS Variables](#css-variables)
+- [Relative and Directional Values](#relative-and-directional-values)
+- [SVG Specifics](#svg-specifics)
+- [Performance Rules](#performance-rules)
+
 ## Transform Aliases
 
 Prefer GSAP's transform aliases over raw `transform` strings:

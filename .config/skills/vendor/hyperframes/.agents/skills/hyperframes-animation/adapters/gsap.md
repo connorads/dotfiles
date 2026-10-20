@@ -5,6 +5,17 @@ description: GSAP animation API reference for HyperFrames. Use when writing seek
 
 # HyperFrames GSAP
 
+## Contents
+
+- [HyperFrames Contract](#hyperframes-contract)
+- [Core Tween Methods](#core-tween-methods)
+- [Common vars (cheatsheet)](#common-vars-cheatsheet)
+- [Animated Property Allowlist](#animated-property-allowlist)
+- [References](#references)
+- [Best Practices](#best-practices)
+- [Do Not](#do-not)
+- [Credits And References](#credits-and-references)
+
 GSAP usage scoped to HyperFrames' seek-driven render model. This skill is the GSAP reference _as constrained by HyperFrames_ — for the framework's broader composition contract see `hyperframes-core`.
 
 ## HyperFrames Contract

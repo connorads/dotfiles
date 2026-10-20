@@ -1,5 +1,13 @@
 # Transition Registry — machine source of truth
 
+## Contents
+
+- [How the injector applies a transition](#how-the-injector-applies-a-transition)
+- [Template placeholders](#template-placeholders)
+- [Registry](#registry)
+- [Default-derivation (used by prep.mjs when the planner omits `**Transition:**`)](#default-derivation-used-by-prepmjs-when-the-planner-omits-transition)
+- [Choosing as a planner (the only agent touchpoint)](#choosing-as-a-planner-the-only-agent-touchpoint)
+
 Single source of truth for **PLV scene-to-scene transitions**. The deterministic
 injector (`product-launch-video/scripts/transitions.mjs inject`) reads its vendored
 copy of the JSON block below (`product-launch-video/scripts/lib/transitions.json`)
