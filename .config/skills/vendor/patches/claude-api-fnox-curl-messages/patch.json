@@ -1,0 +1,6 @@
+{
+  "reason": "Run curl examples inside the configured fnox workload without plaintext key exports",
+  "files": [
+    ".agents/skills/claude-api/curl/examples.md"
+  ]
+}

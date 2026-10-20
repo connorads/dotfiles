@@ -1,0 +1,6 @@
+{
+  "reason": "Keep evaluation dependency installs on the frozen pnpm lockfile",
+  "files": [
+    ".agents/skills/claude-api/shared/evals/eval-hillclimb.md"
+  ]
+}

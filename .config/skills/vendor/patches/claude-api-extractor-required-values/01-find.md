@@ -1,0 +1,1 @@
+2. Scan the input for each field. Prefer explicit values over inferred ones. If a required field is genuinely absent, use null rather than guessing. If the schema itself is absent, do not guess it either: propose one and ask before you extract.

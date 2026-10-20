@@ -1,0 +1,1 @@
+store only the **identifiers** in the repo and fetch the real inputs at eval time, with an agreed redaction or non-persistence policy covering sensitive inputs, outputs, tool results and artifacts across `results.jsonl`, traces and reports, because runtime fetching alone does not keep sensitive data off disk;

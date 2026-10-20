@@ -1,0 +1,1 @@
+If `ant` is missing or older than 1.30.0 (`ant --version`), report the managed-tool prerequisite and follow `shared/anthropic-cli.md` -> Install and auth. Do not install or upgrade automatically. Use the SDK fallback when the user requests it or the platform requires it.

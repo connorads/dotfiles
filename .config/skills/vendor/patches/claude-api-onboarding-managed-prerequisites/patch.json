@@ -1,0 +1,6 @@
+{
+  "reason": "Keep onboarding on the managed Anthropic CLI and configured credentials",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-onboarding-from-url.md"
+  ]
+}

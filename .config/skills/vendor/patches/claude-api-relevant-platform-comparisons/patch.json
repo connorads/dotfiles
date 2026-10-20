@@ -1,0 +1,12 @@
+{
+  "reason": "Keep platform comparisons relevant and include costs when they affect the user decision",
+  "files": [
+    ".agents/skills/claude-api/ruby/claude-api/tool-use.md",
+    ".agents/skills/claude-api/csharp/claude-api/tool-use.md",
+    ".agents/skills/claude-api/php/claude-api/tool-use.md",
+    ".agents/skills/claude-api/java/claude-api/tool-use.md",
+    ".agents/skills/claude-api/typescript/claude-api/tool-use.md",
+    ".agents/skills/claude-api/python/claude-api/tool-use.md",
+    ".agents/skills/claude-api/go/claude-api/tool-use.md"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "reason": "Runtime fetches need an explicit persistence policy before sensitive production inputs enter eval results, traces or reports.",
+  "files": [
+    ".agents/skills/claude-api/shared/evals/build-eval.md"
+  ]
+}

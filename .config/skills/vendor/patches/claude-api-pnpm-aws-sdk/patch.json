@@ -1,0 +1,6 @@
+{
+  "reason": "Use pnpm for AWS SDK dependencies",
+  "files": [
+    ".agents/skills/claude-api/shared/claude-platform-on-aws.md"
+  ]
+}

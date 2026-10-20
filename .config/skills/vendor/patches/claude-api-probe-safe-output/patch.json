@@ -1,0 +1,6 @@
+{
+  "reason": "Refuse linked probe output files before writing reports or sending requests",
+  "files": [
+    ".agents/skills/claude-api/shared/preserved-thinking-migration/drop_block_probe.py"
+  ]
+}

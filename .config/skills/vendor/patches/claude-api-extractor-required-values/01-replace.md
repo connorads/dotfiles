@@ -1,0 +1,1 @@
+2. Scan the input for each field. Prefer explicit values over inferred ones. For a missing required field, use null only when the schema permits null. Otherwise stop extraction, name the missing fields and ask for source data or an approved schema change; do not emit an invalid result or invent values. If the schema itself is absent, propose one and ask before extracting.

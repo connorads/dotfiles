@@ -1,0 +1,1 @@
+If `ant` is missing or older than 1.30.0 (`ant --version`) - and the user is not on Claude Platform on AWS (below) - say so and offer to install or upgrade it (`shared/anthropic-cli.md` -> Install and auth). Ask before running an installer, and do not silently fall back to the SDK; use the SDK fallback below only if the user declines or it cannot be installed.

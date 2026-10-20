@@ -1,0 +1,6 @@
+{
+  "reason": "Confine scene screenshots to the requested directory with bounded, collision-resistant unsafe-ID names and literal caption text.",
+  "files": [
+    ".agents/skills/design-taste-frontend/scripts/scenes.mjs"
+  ]
+}

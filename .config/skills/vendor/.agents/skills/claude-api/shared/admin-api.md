@@ -19,13 +19,8 @@ Two credential types, both read automatically by the default SDK client and the 
 - Regular (non-admin) API keys do not work on any of these endpoints, and admin credentials do not work on the Messages API.
 - An `org:admin` token grants access to the whole organization regardless of any workspace binding.
 
-**Interactive OAuth token** - log in with the `ant` CLI under a dedicated profile (keeps routine commands from running with elevated access), then export the token. Tokens are short-lived; on 401, re-run the export. Profile and scope mechanics (why `org:admin` needs an explicit `--scope`, switching profiles): `shared/anthropic-cli.md`.
-
-```bash
-ant auth login --profile admin --scope "org:admin"
-export ANTHROPIC_AUTH_TOKEN=$(ant auth print-credentials --profile admin --access-token)
-# When done: unset ANTHROPIC_AUTH_TOKEN && ant profile activate default
-```
+<!-- LOCAL PATCH (connorads dotfiles): Keep privileged OAuth tokens in native profiles and API keys in fnox -->
+**Interactive OAuth** - use an existing dedicated native profile with the required admin scope. For example, `ant --profile admin beta:organization retrieve` consumes it directly. Do not export or print its access token. For configured Admin API keys, use `fnox exec -- <command>`. Verify the intended organisation and scope before privileged work. Follow the local command-credential guide before changing storage or delivery.
 
 **Automated workloads (CI)** - don't log in interactively. Create a federation rule with `oauth_scope: org:admin` targeting a service account whose `organization_role` is `admin` (this one rule must be created by a human in the Claude Console), then point the client at it with the federation env vars and construct it with no arguments - the SDK/CLI performs the token exchange automatically and refreshes before expiry:
 
@@ -120,7 +115,7 @@ client.beta.organization.workspaces.members.add(
 client.beta.organization.api_keys.update("apikey_...", status="inactive", name="New Key Name")
 
 # Rate limit reports (optional filters: model=..., group_type=...)
-client.beta.organization.rate_limits.list(model="claude-opus-5")
+client.beta.organization.rate_limits.list(model="claude-opus-5-5")
 client.beta.organization.workspaces.rate_limits.list("wrkspc_...")
 
 # Service accounts + WIF (org:admin OAuth token required)

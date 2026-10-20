@@ -1,0 +1,1 @@
+- **API key**: inject an already-configured `ANTHROPIC_API_KEY` with `fnox exec -- <command>`.

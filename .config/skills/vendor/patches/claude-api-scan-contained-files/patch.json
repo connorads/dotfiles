@@ -1,0 +1,6 @@
+{
+  "reason": "Keep the repository scan from following file symlinks outside the requested tree",
+  "files": [
+    ".agents/skills/claude-api/shared/preserved-thinking-migration/prefix_diff.py"
+  ]
+}

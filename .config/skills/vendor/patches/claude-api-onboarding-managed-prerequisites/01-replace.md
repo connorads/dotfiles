@@ -1,0 +1,1 @@
+- **`ant --version` is 1.34.0 or later** - required for vaults with `ant apply`. Use an existing managed executable. Missing or older: report the prerequisite and follow `shared/anthropic-cli.md` -> Install and auth. Do not install, upgrade or remove quarantine automatically.

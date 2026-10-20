@@ -1,0 +1,7 @@
+{
+  "reason": "Use pnpm for TypeScript SDK dependencies",
+  "files": [
+    ".agents/skills/claude-api/typescript/claude-api/README.md",
+    ".agents/skills/claude-api/typescript/managed-agents/README.md"
+  ]
+}

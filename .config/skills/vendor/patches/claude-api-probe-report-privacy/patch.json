@@ -1,0 +1,6 @@
+{
+  "reason": "Require review of probe metadata before sharing reports",
+  "files": [
+    ".agents/skills/claude-api/shared/preserved-thinking-migration.md"
+  ]
+}

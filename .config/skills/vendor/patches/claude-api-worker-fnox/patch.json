@@ -1,0 +1,6 @@
+{
+  "reason": "Inject the configured worker environment key through fnox",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-self-hosted-sandboxes.md"
+  ]
+}

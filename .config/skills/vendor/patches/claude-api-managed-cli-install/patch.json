@@ -1,0 +1,6 @@
+{
+  "reason": "Use the managed Anthropic CLI without automatic installation or quarantine bypasses",
+  "files": [
+    ".agents/skills/claude-api/shared/anthropic-cli.md"
+  ]
+}

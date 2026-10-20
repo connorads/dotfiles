@@ -1,0 +1,1 @@
+- **The configured credential targets the expected organisation and workspace.** Use `fnox exec -- ant auth status` for an already-configured API key, or `ant auth status` for an existing native OAuth profile. Missing or unexpected credentials: report the prerequisite. Follow the local command-credential guide before changing storage or delivery.

@@ -1,0 +1,6 @@
+{
+  "reason": "Deliver vault provisioning credentials through fnox and preserve exact host and scope checks",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-onboarding-from-url.md"
+  ]
+}

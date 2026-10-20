@@ -1,0 +1,6 @@
+{
+  "reason": "Deliver command credentials through fnox without printing or evaluating tokens",
+  "files": [
+    ".agents/skills/claude-api/shared/anthropic-cli.md"
+  ]
+}

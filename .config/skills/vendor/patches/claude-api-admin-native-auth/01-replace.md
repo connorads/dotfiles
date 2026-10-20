@@ -1,0 +1,2 @@
+{{marker}}
+**Interactive OAuth** - use an existing dedicated native profile with the required admin scope. For example, `ant --profile admin beta:organization retrieve` consumes it directly. Do not export or print its access token. For configured Admin API keys, use `fnox exec -- <command>`. Verify the intended organisation and scope before privileged work. Follow the local command-credential guide before changing storage or delivery.

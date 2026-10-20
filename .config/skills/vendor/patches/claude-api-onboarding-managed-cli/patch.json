@@ -1,0 +1,6 @@
+{
+  "reason": "Keep interview onboarding on existing managed tools",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-onboarding.md"
+  ]
+}

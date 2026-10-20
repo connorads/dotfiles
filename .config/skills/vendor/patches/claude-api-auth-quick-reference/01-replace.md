@@ -1,0 +1,2 @@
+{{marker}}
+For API-key commands, use `fnox exec -- <command>` with the credential already configured for that workload. Keep existing application-managed OAuth profiles in their native store; SDKs and `ant` can consume them directly. Run `ant auth status` only when needed to diagnose the active source. Do not extract or print tokens, evaluate credential output, add plaintext exports, or request keys in chat. Missing credentials or an unavailable CLI are prerequisites to report. Follow the local command-credential guide before changing storage or delivery.

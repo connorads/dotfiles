@@ -1,0 +1,6 @@
+{
+  "reason": "Market-close windows require actual timezone transitions and exchange calendars, including holidays and early closes.",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-quickstarts/watchlist-scanner.md"
+  ]
+}

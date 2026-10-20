@@ -1,0 +1,6 @@
+{
+  "reason": "Keep Anthropic authentication within managed command credentials and existing OAuth profiles",
+  "files": [
+    ".agents/skills/claude-api/SKILL.md"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "reason": "Migration examples honour current source verification and managed project package protections.",
+  "files": [
+    ".agents/skills/claude-api/shared/model-migration.md"
+  ]
+}

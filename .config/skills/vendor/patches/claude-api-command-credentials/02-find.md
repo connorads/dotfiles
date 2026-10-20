@@ -1,0 +1,1 @@
+- **API key**: set `ANTHROPIC_API_KEY` in the environment.

@@ -1,0 +1,6 @@
+{
+  "reason": "Keep deployment fallback credentials within native profiles or fnox",
+  "files": [
+    ".agents/skills/claude-api/shared/managed-agents-onboarding.md"
+  ]
+}

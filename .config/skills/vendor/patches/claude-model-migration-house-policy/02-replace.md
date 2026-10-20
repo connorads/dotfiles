@@ -1,0 +1,1 @@
+> **Snapshot model ID:** `claude-sonnet-5-5`. Honour the user's chosen target. Check current official model documentation and the project's installed SDK before applying a migration; this snapshot does not override live verification.
