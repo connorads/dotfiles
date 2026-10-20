@@ -41,8 +41,11 @@ export const inspectionSchema = z.object({
 export const usageHostContract = defineRpcContract({
   resetCredits: { input: z.object({ refresh: z.boolean() }), output: resetCreditsSchema },
 });
+export const loginMethodSchema = z.enum(['device', 'browser']);
+export type LoginMethod = z.infer<typeof loginMethodSchema>;
 export const usageContract = defineRpcContract({
-  'usage.login': { input: z.object({ hostId: z.string(), accountId: z.string() }), output: z.object({ terminalId: z.string() }) },
+  'usage.login': { input: z.object({ hostId: z.string(), accountId: z.string(), method: loginMethodSchema.optional() }),
+    output: z.object({ terminalId: z.string() }) },
   'usage.amp': { input: z.object({ refresh: z.boolean() }), output: ampOverviewSchema },
   'usage.header': { input: z.object({ threadId: z.string() }), output: headerSchema },
   'usage.inspection': { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },

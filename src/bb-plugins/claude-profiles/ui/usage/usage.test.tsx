@@ -373,3 +373,24 @@ test('a usage refresh failure after sign-in does not offer another login', async
   expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
   expect(slot.getByRole('button', { name: 'Agent usage' })).toBeTruthy();
 });
+
+test('Codex sign-in starts with a device code and can switch to the account machine browser', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const calls: unknown[] = [];
+  const codexTarget = encodeURIComponent(JSON.stringify({ hostId: 'host-one', accountId: 'provider-codex:["host-one","codex"]' }));
+  const slot = renderSlot(page, { subPath: codexTarget }, {
+    rpc: { 'usage.login': async input => { calls.push(input); return { terminalId: 'login-terminal' }; } },
+    sdk: { terminals: { get: async () => ({ ...terminal(0), status: 'running' as const, exitCode: null, closeReason: null }) } },
+    openTerminal: () => true,
+  });
+  await waitFor(() => expect(slot.getByRole('status').textContent).toContain('enter the code'));
+  expect(slot.container.textContent).toContain('device code sign-in');
+  expect(calls).toEqual([{ hostId: 'host-one', accountId: 'provider-codex:["host-one","codex"]', method: 'device' }]);
+  fireEvent.click(slot.getByRole('button', { name: 'Use browser instead' }));
+  await waitFor(() => expect(calls).toHaveLength(2));
+  expect(calls[1]).toMatchObject({ method: 'browser' });
+  await waitFor(() => expect(slot.getByRole('status').textContent).toContain('browser on the account machine'));
+  expect(slot.getByRole('button', { name: 'Use a device code instead' })).toBeTruthy();
+});

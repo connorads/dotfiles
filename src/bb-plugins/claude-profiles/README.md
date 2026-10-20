@@ -141,11 +141,14 @@ window. A reading becomes stale after 4% of its shortest window, with a
 15-minute minimum. Stale bars use stripes and omit projections.
 
 Expired or signed-out Claude and Codex accounts show **Sign in again**. The button
-opens **Agent sign-in**, a BB page with a terminal on that account's machine. Complete
-the native browser login there: `claude auth login` or `codex login`. Claude Default
-uses the machine's native configuration; named accounts use their profile directory.
-Codex uses the machine's one CLI login. Concurrent clicks reuse the active
-login terminal. Offline accounts require their machine to reconnect first.
+opens **Agent sign-in**, a BB page with a terminal on that account's machine. Claude
+runs `claude auth login`. Claude Default uses the machine's native configuration;
+named accounts use their profile directory. Codex uses the machine's one CLI login
+and starts `codex login --device-auth`: open the printed link on any device and
+enter the code. Device codes need device code sign-in turned on in ChatGPT security
+settings. **Use browser instead** switches to `codex login`, whose callback reaches
+only a browser on the account machine. Switching closes the running Codex login.
+Concurrent clicks reuse the active login terminal. Offline accounts require their machine to reconnect first.
 Successful login refreshes usage and reopens the overlay. Failed login keeps the
 terminal available with **Try again**. The **Agent sign-in** sidebar page also
 provides **Agent usage** to return to the account list.

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useBbNavigate, useRpc, useSdk, type PluginNavPanelProps } from '@get-bb/plugin-sdk/app';
 import { z } from 'zod';
 import type { rpcContract } from '../../contracts.ts';
+import type { LoginMethod } from '../../src/accounts/usage/contract.ts';
 import { openUsage } from './overlay-store.ts';
 
 const targetSchema = z.object({ hostId: z.string(), accountId: z.string() });
-const providerName = (subPath: string | undefined) => subPath?.includes('"provider-codex:') ? 'Codex' : 'Claude';
+const isCodex = (subPath: string | undefined) => decodeURIComponent(subPath ?? '').includes('"provider-codex:');
 
 export function LoginPage({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
@@ -13,7 +14,9 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
   const navigate = useBbNavigate();
   const [attempt, setAttempt] = useState(0);
   const [terminalId, setTerminalId] = useState<string | null>(null);
-  const name = providerName(subPath);
+  const codex = isCodex(subPath);
+  const name = codex ? 'Codex' : 'Claude';
+  const [method, setMethod] = useState<LoginMethod>('device');
   const [message, setMessage] = useState(`Opening ${name} sign-in…`);
   const [error, setError] = useState<string | null>(null);
   // Keep navigation from restarting the login when the terminal panel opens.
@@ -29,13 +32,15 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     async function start() {
       try {
         const target = targetSchema.parse(JSON.parse(decodeURIComponent(subPath)));
-        const { terminalId: id } = await rpc.call('usage.login', target);
+        const { terminalId: id } = await rpc.call('usage.login', codex ? { ...target, method } : target);
         if (!alive) return;
         setTerminalId(id);
         if (!await navigation.current.experimental_openTerminal({ terminalId: id }))
           throw new Error('BB could not show the sign-in terminal. Use Show terminal to try again.');
         if (!alive) return;
-        setMessage(`Complete ${name} sign-in in the terminal and browser.`);
+        setMessage(!codex ? `Complete ${name} sign-in in the terminal and browser.`
+          : method === 'device' ? 'Open the link in the terminal on any device and enter the code.'
+            : 'Complete Codex sign-in in the terminal and the browser on the account machine.');
         async function check() {
           try {
             const terminal = await sdk.terminals.get({ terminalId: id });
@@ -64,9 +69,11 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     }
     void start();
     return () => { alive = false; clearTimeout(timer); };
-  }, [subPath, attempt, rpc, sdk, name]);
+  }, [subPath, attempt, rpc, sdk, name, codex, method]);
   return <div className="au-login-page">
     <p role="status">{message}</p>
+    {codex && method === 'device' && <p className="au-login-hint">
+      Device codes need device code sign-in turned on in ChatGPT security settings.</p>}
     {error && <p role="alert">{error}</p>}
     <div className="au-login-actions">
       {terminalId && <button type="button" className="au-login-button" onClick={() => {
@@ -75,6 +82,9 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         }).catch(() => setError('BB could not show the sign-in terminal.'));
       }}>Show terminal</button>}
       {error && <button type="button" className="au-login-button" onClick={() => setAttempt(value => value + 1)}>Try again</button>}
+      {codex && <button type="button" className="au-login-button"
+        onClick={() => setMethod(value => value === 'device' ? 'browser' : 'device')}>
+        {method === 'device' ? 'Use browser instead' : 'Use a device code instead'}</button>}
       <button type="button" className="au-login-button" onClick={openUsage}>Agent usage</button>
     </div>
   </div>;

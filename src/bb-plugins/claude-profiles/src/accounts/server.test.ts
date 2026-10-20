@@ -235,6 +235,7 @@ test('a new-thread draft reads an account\'s quota on this machine through the s
 
 function loginFixture() {
   const created: { scope: unknown; start?: { mode: string; argv?: string[] } }[] = [];
+  const closed: unknown[] = [];
   let exited = false;
   const terminal = () => ({ id: 'terminal-login', status: exited ? 'exited' : 'running' });
   const { bb, harness } = createFakePluginHost({
@@ -243,6 +244,7 @@ function loginFixture() {
       terminals: {
         create: async (args: typeof created[number]) => { created.push(args); exited = false; return terminal(); },
         get: async () => terminal(),
+        close: async (args: unknown) => { closed.push(args); exited = true; return { ok: true }; },
       },
     } as never,
     experimental_callHostRpc: async ({ method, hostId }) => {
@@ -253,7 +255,7 @@ function loginFixture() {
     },
   });
   plugin(bb);
-  return { harness, created, exit: () => { exited = true; } };
+  return { harness, created, closed, exit: () => { exited = true; } };
 }
 const loginAccount = (profile: string) => `claude-profiles:${JSON.stringify(['remote', '~/.claude-profiles/code', profile])}`;
 
@@ -283,15 +285,26 @@ test('native Default login clears profile overrides and uses the host home direc
   assert.ok(!created[0]?.start?.argv?.some(value => value.startsWith('CLAUDE_CONFIG_DIR=')));
 });
 
-test('Codex login runs codex login on the account host and reuses an active terminal', async t => {
-  const { harness, created } = loginFixture();
+test('Codex login defaults to a device code on the account host and reuses an active terminal', async t => {
+  const { harness, created, closed } = loginFixture();
   t.after(() => harness.lifecycle.dispose());
   const input = { hostId: 'remote', accountId: 'provider-codex:["remote","codex"]' };
   await harness.behavior.callRpc('usage.login', input);
-  await harness.behavior.callRpc('usage.login', input);
+  await harness.behavior.callRpc('usage.login', { ...input, method: 'device' });
   assert.equal(created.length, 1);
   assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
-  assert.deepEqual(created[0]?.start?.argv, ['codex', 'login']);
+  assert.deepEqual(created[0]?.start?.argv, ['codex', 'login', '--device-auth']);
+  assert.deepEqual(closed, []);
+});
+
+test('switching Codex sign-in method closes the running login before starting the other', async t => {
+  const { harness, created, closed } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  const input = { hostId: 'remote', accountId: 'provider-codex:["remote","codex"]' };
+  await harness.behavior.callRpc('usage.login', input);
+  await harness.behavior.callRpc('usage.login', { ...input, method: 'browser' });
+  assert.deepEqual(closed, [{ terminalId: 'terminal-login', mode: 'force' }]);
+  assert.deepEqual(created.map(value => value.start?.argv), [['codex', 'login', '--device-auth'], ['codex', 'login']]);
 });
 
 test('login rejects stale profiles, another host, and unrelated usage sources before opening a terminal', async t => {

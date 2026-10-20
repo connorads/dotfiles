@@ -58,6 +58,7 @@
 .au-login-button:disabled { opacity: 0.5; cursor: default; }
 .au-login-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .au-login-page { padding: 20px; color: var(--foreground); }
+.au-login-hint { color: var(--muted-foreground); font-size: var(--text-xs, 12px); margin-top: 8px; }
 .au-login-page [role="alert"] { color: var(--destructive); margin-top: 12px; }
 .au-login-actions { display: flex; gap: 8px; margin-top: 16px; }
 

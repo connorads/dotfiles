@@ -2,31 +2,36 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { authOverrides } from '../claude.ts';
 import { decodeResourceId } from '../usage-source.ts';
+import type { LoginMethod } from './contract.ts';
 import type { Profile } from '../../../contracts.ts';
 import type { QuotaConfig } from '../quota-cache.ts';
 
 interface LoginPorts {
-  terminals: Pick<BbPluginApi['sdk']['terminals'], 'create' | 'get'>;
+  terminals: Pick<BbPluginApi['sdk']['terminals'], 'create' | 'get' | 'close'>;
   config(): Promise<QuotaConfig>;
   hosts(): Promise<{ id: string; status: string }[]>;
   profiles(hostId: string, root: string): Promise<Profile[]>;
 }
 
 export function createLogin(ports: LoginPorts) {
-  const terminals = new Map<string, string>();
+  const terminals = new Map<string, { terminalId: string; argv: string }>();
   const pending = new Map<string, Promise<{ terminalId: string }>>();
   function open(key: string, title: string, hostId: string, argv: string[]) {
     const running = pending.get(key);
     if (running) return running;
     const request = (async () => {
-      const existingId = terminals.get(key);
-      if (existingId) {
-        const existing = await ports.terminals.get({ terminalId: existingId }).catch(() => null);
-        if (existing?.status === 'starting' || existing?.status === 'running') return { terminalId: existing.id };
+      const previous = terminals.get(key);
+      if (previous) {
+        const existing = await ports.terminals.get({ terminalId: previous.terminalId }).catch(() => null);
+        if (existing?.status === 'starting' || existing?.status === 'running') {
+          if (previous.argv === JSON.stringify(argv)) return { terminalId: existing.id };
+          // Both logins write the same credentials, so a changed command replaces the running one.
+          await ports.terminals.close({ terminalId: existing.id, mode: 'force' });
+        }
       }
       const terminal = await ports.terminals.create({ scope: { kind: 'host_path', hostId, cwd: null },
         title, cols: 100, rows: 30, start: { mode: 'argv', argv } });
-      terminals.set(key, terminal.id);
+      terminals.set(key, { terminalId: terminal.id, argv: JSON.stringify(argv) });
       return { terminalId: terminal.id };
     })().finally(() => pending.delete(key));
     pending.set(key, request);
@@ -36,13 +41,15 @@ export function createLogin(ports: LoginPorts) {
     if (!(await ports.hosts()).some(host => host.id === hostId && host.status === 'connected'))
       throw new Error('Account machine is offline. Connect it before signing in.');
   }
-  return async function login(hostId: string, accountId: string): Promise<{ terminalId: string }> {
+  return async function login(hostId: string, accountId: string, method: LoginMethod = 'device'): Promise<{ terminalId: string }> {
     if (accountId.startsWith('provider-codex:')) {
       const [accountHost] = z.tuple([z.string(), z.literal('codex')])
         .parse(JSON.parse(accountId.slice('provider-codex:'.length)));
       if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
       await connected(hostId);
-      return open(JSON.stringify([hostId, 'codex']), 'Codex sign-in', hostId, ['codex', 'login']);
+      // The browser callback reaches only a browser on the account machine; a device code works from any device.
+      return open(JSON.stringify([hostId, 'codex']), 'Codex sign-in', hostId,
+        method === 'browser' ? ['codex', 'login'] : ['codex', 'login', '--device-auth']);
     }
     const config = await ports.config();
     let profileId: string;
