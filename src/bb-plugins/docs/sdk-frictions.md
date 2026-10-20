@@ -541,18 +541,36 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 - Found: 2026-10-02, claude-profiles, BB 0.46.0
 - Wanted: fork or side chat on a thread that runs on a non-default Claude account.
-- Gap: the bridge `handleThreadFork` calls `forkSession(id, { upToMessageId })` with no
-  account env, so it looks in the default config dir. The result is
-  `Session <id> not found`, or a stale copy. `ForkSessionOptions` has no per-call env.
-  No plugin hook runs before the lookup. A mid-thread switch can give "No conversation found".
+- Gap: the bridge `handleThreadFork` calls `forkSession(id, { upToMessageId })` in the
+  bridge worker, with no `dir`, `sessionStore` or env. The worker has no
+  `CLAUDE_CONFIG_DIR`, so the SDK scans only `~/.claude/projects`. The result is
+  `Session <id> not found`, or a fork of a stale Default copy. `ForkSessionOptions`
+  has no per-call env. A mid-thread switch can give "No conversation found".
+  Reconfirmed on BB 0.46.1 (SDK 0.3.245): live forks of Default threads work and
+  forks of two account threads fail. Changing only `CLAUDE_CONFIG_DIR` toggles the
+  SDK fork from fail to pass and back.
+- Hook order: `message.dispatch` runs for a fork's first dispatch at fork creation,
+  before provisioning and before the bridge forks. `claimBinding` therefore binds a
+  side chat to its source's account before launch, so a bridge that forked with the
+  launch env would need no plugin change.
 - Workaround: forks work only on Default
   ([claude-profiles/README.md](../claude-profiles/README.md)). The plugin copies the
   transcript on switch. See [session-context/README.md](../spikes/session-context/README.md).
+  Candidate (spiked, not built): stage the fork in the `message.dispatch` hook with one
+  link `~/.claude/projects/+bb-fork-stage-<forkThreadId>` to the source's account
+  project dir. The bridge then finds the source and writes the fork into the account.
+  Remove the link on the fork's identity event, with a TTL sweep on load. Delete when
+  a stock bridge forks with the launch env. Rejected: an account-wide shared
+  `projects/` store (cross-account retention sweep, shared memory and listings, lossy
+  migration of 10 diverged sessions), a context-seeded side chat (about half the
+  session context, a second menu item, 400-600 lines) and Default-only use.
+  Spikes: `spikes/side-chat-{staged-fork,shared-store,seeded}/`.
 - Ask: run provider session operations (fork, resume, history) with the thread's
   resolved launch env.
-- Status: open (patched locally: spikes/bb-patched/patches/04)
+- Status: open (patched locally: spikes/bb-patched/patches/04; upstream issue drafted, not filed)
 - Category: provider
-- Evidence: @thread:thr_zzwj5k863r, @thread:thr_fqyne6kvdz, commits `e555e65`, `2c4f4186`
+- Evidence: @thread:thr_zzwj5k863r, @thread:thr_fqyne6kvdz, @thread:thr_vdwff57q6d,
+  @thread:thr_rbf6afrp8v, commits `e555e65`, `2c4f4186`
 
 ### Queued limit retry blocks account switching
 
