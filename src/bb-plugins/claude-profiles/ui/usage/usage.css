@@ -51,6 +51,7 @@
 .au-account-name { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm, 13px); font-weight: 600; color: var(--foreground); }
 .au-plan { font-size: 11px; font-weight: 500; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--muted-foreground); white-space: nowrap; }
 .au-email { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs, 12px); color: var(--au-subtle); }
+.au-account-message [data-tone="warning"] { color: var(--warning); }
 .au-account-message { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--text-xs, 12px); color: var(--au-subtle); margin-top: -4px; }
 .au-login-button { padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; color: var(--foreground); font-size: var(--text-xs, 12px); cursor: pointer; white-space: nowrap; }
 .au-login-button:hover:not(:disabled) { background: var(--accent); }

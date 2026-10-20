@@ -141,7 +141,7 @@ test('reset credits sit in one row and disclose extra expiry dates on demand', a
   act(() => openUsage());
   const table = await slot.findByRole('table', { name: 'Codex reset credits' });
   const row = slot.getByRole('row', { name: /^Reset credits: 3 held, 0 usable\. Expires in 2d 0h/ });
-  expect(row.textContent).toContain('0 usable');
+  expect(row.textContent).toContain('0 of 3 usable');
   expect(table.textContent).toContain('From CLI login · cli@example.com');
   expect(table.textContent).not.toContain('Read ');
   const toggle = slot.getByRole('button', { name: /Expires in 2d 0h/ });
@@ -161,6 +161,25 @@ test('reset credits hide the CLI login when it is the account shown', async () =
   act(() => openUsage());
   const table = await slot.findByRole('table', { name: 'Codex reset credits' });
   expect(table.textContent).not.toContain('CLI login');
+});
+
+test('a signed-out Codex login shows one heading, a warning and a quiet stale note', async () => {
+  const app = await load();
+  const value = structuredClone(inspect());
+  const machine = value.snapshot.machines[0]!;
+  machine.providers = [{ ...machine.providers[0]!, id: 'provider-codex:["host-one","codex"]', accountLabel: null, usage: { status: 'expired' } }];
+  const credits = value.resetCredits[0]!.reading;
+  if (credits.status === 'ok') { credits.observedAt = NOW.getTime() - 51 * 60_000; credits.message = 'Collector kept the cached reading.'; }
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => value } });
+  act(() => openUsage());
+  const region = await slot.findByRole('region', { name: 'Codex · Codex' });
+  expect(region.querySelector('.au-account-heading')).toBeNull();
+  expect(slot.getByText('Session expired').dataset.tone).toBe('warning');
+  const table = slot.getByRole('table', { name: 'Codex reset credits' });
+  expect(table.textContent).toContain('51m ago · updates after sign-in');
+  expect(table.textContent).not.toContain('CLI login');
+  expect(table.textContent).not.toContain('Collector');
+  expect(table.querySelector('[data-stale]')).toBeNull();
 });
 
 test('closing after a responsive header remount returns focus to the same thread\'s replacement badge', async () => {

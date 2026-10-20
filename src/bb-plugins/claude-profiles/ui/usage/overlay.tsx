@@ -57,13 +57,15 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
     : usage.status === 'expired' ? account.expiredHint
     : usage.status === 'error' ? usage.message
     : usage.status === 'ok' && usage.windows.length === 0 ? 'No limits reported' : null;
+  const plan = usage?.status === 'ok' ? usage.planLabel : null;
   return <section className="au-account" aria-label={`${account.displayName} · ${name}`}>
-    <header className="au-account-heading">
+    {/* The provider heading already names an account that has no label, plan or email of its own. */}
+    {(name !== account.displayName || plan || email) && <header className="au-account-heading">
       <span className="au-account-name">{name}</span>
-      {usage?.status === 'ok' && usage.planLabel && <span className="au-plan">{usage.planLabel}</span>}
+      {plan && <span className="au-plan">{plan}</span>}
       {email && <span className="au-email">{email}</span>}
-    </header>
-    {message ? <div className="au-account-message"><span>{message}</span>
+    </header>}
+    {message ? <div className="au-account-message"><span data-tone={canLogin && connected ? 'warning' : undefined}>{message}</span>
       {canLogin && <button type="button" className="au-login-button" disabled={!connected}
         title={connected ? `Sign in to ${name} on this machine` : 'Connect this machine before signing in'}
         aria-label={`Sign in again to ${name}`} onClick={() => {
@@ -75,14 +77,15 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
       </div>}
-    {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null} />}
+    {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
+      signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
     {usage?.status === 'ok' && reading !== 'fresh' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
       {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
     </p>}
   </section>;
 }
 
-function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; now: Date; accountEmail: string | null }) {
+function CreditResets({ reading, now, accountEmail, signedOut }: { reading: ResetCredits; now: Date; accountEmail: string | null; signedOut: boolean }) {
   const [open, setOpen] = useState(false);
   const listId = useId();
   if (reading.status === 'ok' && reading.held === 0 && !reading.message) return null;
@@ -109,9 +112,9 @@ function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; n
       <span className="au-row-label" role="rowheader">Reset credits</span>
       <span className="au-resets-held" role="cell">
         {pips && <span className="au-pips" aria-hidden="true">{pips.map((usable, index) => <span key={index} data-usable={usable || undefined} />)}</span>}
-        <span>{reading.usable} usable</span>
+        <span>{reading.usable} of {reading.held} usable</span>
       </span>
-      <span className="au-row-value" role="cell"><RollingValue value={String(reading.held)} /></span>
+      <span role="cell" />
       <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={deadline ? expiryClock(deadline) : undefined}>
         {listed ? <button type="button" className="au-resets-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)}>
           {next}<Icon name="ChevronDown" className="au-resets-chevron size-3" />
@@ -132,7 +135,10 @@ function CreditResets({ reading, now, accountEmail }: { reading: ResetCredits; n
         <span role="cell" /><span role="cell">{plural(reading.unknownExpiryCount)} · expiry unavailable</span>
       </div>}
     </div>}
-    {(source || stale || reading.message) && <p className="au-resets-note au-resets-foot" data-stale={stale || undefined} role={reading.message ? 'status' : undefined}
+    {/* A signed-out login cannot refresh, so sign-in is the only fix and the collector's details add nothing. */}
+    {signedOut ? stale && <p className="au-resets-note au-resets-foot" title={new Date(reading.observedAt).toLocaleString()}>
+      {readingAge(reading.observedAt, now)} · updates after sign-in
+    </p> : (source || stale || reading.message) && <p className="au-resets-note au-resets-foot" data-stale={stale || undefined} role={reading.message ? 'status' : undefined}
       title={new Date(reading.observedAt).toLocaleString()}>
       {[source && `From CLI login · ${source}`, stale && `${readingAge(reading.observedAt, now)} · refresh needed`, reading.message].filter(Boolean).join(' · ')}
     </p>}
