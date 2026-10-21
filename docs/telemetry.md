@@ -258,3 +258,47 @@ errors in `chrome://policy` and `brave://policy`. Verify Apple's installed
 restrictions and named privacy controls separately. Existing browser native
 preferences remain independent evidence. Account consent and extension collection
 require separate checks.
+
+## Apple collection boundaries
+
+Mac diagnostic consent is separate from Apple service analytics and account personalisation.
+[Apple's macOS 26 guide](https://support.apple.com/en-gb/guide/mac-help/mh27990/26/mac/26)
+documents Privacy & Security > Analytics & Improvements. Local diagnostic logging can continue without submission.
+Optional Siri, assistive voice and iCloud improvement choices require separate native checks.
+Spotlight > Help Apple Improve Search is a separate improvement control.
+
+[Safari Advanced settings](https://support.apple.com/en-gb/guide/safari/ibrw1075/26.0/mac/26)
+contains two independent controls. Deselect Allow privacy-preserving measurement of ad effectiveness.
+Separately deselect Allow Highlights to share web addresses with Apple. Read both switches back.
+These control attribution and optional address donation. They do not establish suppression of functional Highlights requests.
+
+[Freeform](https://www.apple.com/legal/privacy/data/en/freeform/) exposes Privacy & Analytics > Share Analytics Data.
+Deselect it and read it back. The notice limits certain analytics use; session measurements remain separately described.
+No precise external native preference API is established for these Safari or Freeform switches.
+Use their named controls during normal application use.
+
+[Apple's TV notice](https://www.apple.com/legal/privacy/data/en/apple-tv-app/) documents
+TV > Account > Account Settings > Personalised Recommendations.
+The shared account choice covers App Store, Books, TV, Podcasts, iTunes Store and subscriptions.
+Turning it off changes recommendation use. It does not disable service analytics, purchases, fraud checks or content delivery.
+TV > Settings > Playback > Use Viewing History is a separate personalisation choice.
+
+[Music](https://www.apple.com/legal/privacy/data/en/apple-music/) collects playback information for royalties and financial records.
+Music > Settings > General > Use Listening History affects Replay, recommendations and follower visibility.
+It is not a general collection opt-out. Preserve library sync and playback.
+[News](https://www.apple.com/legal/privacy/data/en/apple-news/) and
+[Stocks](https://www.apple.com/legal/privacy/data/en/stocks/) describe product interactions independently of Personalised Ads.
+Identifier resets and recommendation-data clearing do not disable collection.
+[Game Center](https://www.apple.com/legal/privacy/data/en/game-center/) collects gameplay and interaction information.
+Activity Sharing controls disclosure to other users, not all Apple collection.
+[Games](https://www.apple.com/legal/privacy/data/en/apple-games/) also combines store, Arcade and Game Center data.
+
+[Maps](https://www.apple.com/legal/privacy/data/en/apple-maps/) describes request, interaction and performance data.
+[Weather](https://www.apple.com/legal/privacy/data/en/weather/) describes daily launch measurements for improvement.
+[Siri](https://www.apple.com/legal/privacy/data/en/ask-siri-dictation/) describes default request processing independently of optional audio donation.
+Shared Mac analytics consent does not establish suppression of these service paths.
+
+[Apple's per-app labels](https://www.apple.com/privacy/labels/) distinguish utility declarations individually.
+A vendor label is support evidence, not an installed-build or network audit.
+Photos > Settings > General > Enhanced Visual Search controls a search feature.
+It is separate from optional telemetry consent; disabling it removes functionality.
