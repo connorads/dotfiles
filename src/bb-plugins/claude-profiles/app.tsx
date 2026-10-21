@@ -9,6 +9,7 @@ import { openUsage } from './ui/usage/overlay-store.ts';
 import { LoginPage } from './ui/usage/login.tsx';
 import { BadgeBridge } from './ui/badges/bridge.tsx';
 import { mountAccountBadges } from './ui/badges/rows.ts';
+import { mountWorkflowAccounts } from './ui/badges/workflows.ts';
 import './ui/badges/badges.css';
 
 export default definePluginApp(app => {
@@ -37,6 +38,7 @@ export default definePluginApp(app => {
   app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Usage', component: ThreadUsage });
   app.slots.experimental_appOverlay({ id: 'usage-overview', component: UsageOverlay });
   app.slots.experimental_appOverlay({ id: 'account-badges', component: BadgeBridge });
+  app.contentScripts.register({ id: 'workflow-accounts', mount: () => mountWorkflowAccounts(document) });
   app.contentScripts.register({ id: 'account-badges', mount: () => mountAccountBadges(document) });
   app.commands.register({ id: 'show-usage', title: 'Show agent usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });

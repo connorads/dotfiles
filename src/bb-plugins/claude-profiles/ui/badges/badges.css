@@ -1,1 +1,2 @@
 .cp-row-badge { position: absolute; right: -4px; bottom: -3px; display: flex; align-items: center; justify-content: center; width: 9px; height: 9px; border-radius: 3px; font: 700 7px/1 var(--font-sans, system-ui); color: #fff; box-shadow: 0 0 0 1.5px var(--sidebar, var(--background)); pointer-events: none; }
+.cp-workflow-account { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11px/1.4 var(--font-sans, system-ui); }

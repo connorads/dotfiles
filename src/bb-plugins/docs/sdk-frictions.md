@@ -85,6 +85,22 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: `claude-profiles/ui/badges/rows.ts`
 
+### Workflow worker row accessories
+
+- Found: 2026-10-21, claude-profiles, SDK 0.6.37
+- Wanted: the worker's Claude account beside its workflow model details.
+- Gap: workflow worker rows expose neither an accessory slot nor a worker thread
+  ID. The preview section exposes its run directive through `title`.
+- Workaround: [workflows.ts](../claude-profiles/ui/badges/workflows.ts) reads
+  `workflowRunView` through the SDK, joins child thread IDs to account bindings,
+  and decorates uniquely labelled rows within each inline preview. It refreshes
+  visible-page runs every five seconds. Duplicate labels are omitted.
+- Ask: a workflow worker accessory slot with `{ runId, childThreadId }`, or stable
+  DOM attributes for both IDs.
+- Status: open
+- Category: sdk-gap
+- Evidence: `claude-profiles/ui/badges/workflows.ts`, @thread:thr_m6h4c8ja5e
+
 ### Content scripts cannot call plugin RPC or realtime
 
 - Found: 2026-10-18, claude-profiles, SDK 0.6.37

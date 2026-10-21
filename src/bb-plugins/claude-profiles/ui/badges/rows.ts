@@ -5,7 +5,7 @@ const ROWS = 'a[data-sidebar-thread-id]';
 const CLAUDE_ICON = '[data-sidebar-thread-provider="claude-code"]';
 const COLOURS = ['#d97757', '#3b82f6', '#10b981', '#a855f7', '#eab308', '#ec4899', '#14b8a6', '#f97316'];
 
-function colour(profileId: string) {
+export function accountColour(profileId: string) {
   let hash = 0;
   for (const char of profileId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return COLOURS[hash % COLOURS.length]!;
@@ -31,7 +31,7 @@ export function mountAccountBadges(doc: Document): () => void {
       const title = `Claude account: ${account.label}`;
       if (badge.textContent !== letter) badge.textContent = letter;
       if (badge.title !== title) badge.title = title;
-      badge.style.backgroundColor = colour(account.profileId);
+      badge.style.backgroundColor = accountColour(account.profileId);
       wanted.add(badge);
       added.add(badge);
     }
