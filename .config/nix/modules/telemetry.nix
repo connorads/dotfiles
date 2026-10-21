@@ -24,6 +24,10 @@ let
     VERCEL_TELEMETRY_DISABLED = "1";
     FIRECRAWL_NO_TELEMETRY = "1";
     TURBO_TELEMETRY_DISABLED = "1";
+    LAVISH_AXI_TELEMETRY = "0";
+    ORT_DISABLE_TELEMETRY = "1";
+    AWS_CLI_SESSION_ID_DISABLED = "true";
+    SAND_DISABLE_TELEMETRY = "1";
   }
   // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
     HOMEBREW_NO_ANALYTICS = "1";

@@ -113,6 +113,10 @@ replace them.
 | Slack CLI | `SLACK_DISABLE_TELEMETRY=1` | [Slack 4.2.0 environment reader](https://github.com/slackapi/slack-cli/blob/v4.2.0/internal/config/dotenv.go) |
 | EAS CLI | `DISABLE_EAS_ANALYTICS=1` | [EAS 24.14.0 analytics](https://github.com/expo/eas-cli/blob/v24.14.0/packages/eas-cli/src/analytics/AnalyticsManager.ts) |
 | cf CLI | `CF_SEND_TELEMETRY=false` | [Official telemetry policy](https://github.com/cloudflare/cf/blob/main/packages/cli/telemetry.md) |
+| Lavish Axi | `LAVISH_AXI_TELEMETRY=0` | [Telemetry resolver](https://github.com/kunchenguid/lavish-axi/blob/main/src/telemetry.js) |
+| ONNX Runtime | `ORT_DISABLE_TELEMETRY=1` | [1.30.0 privacy controls](https://github.com/microsoft/onnxruntime/blob/v1.30.0/docs/Privacy.md) |
+| AWS CLI | `AWS_CLI_SESSION_ID_DISABLED=true` | [2.38.1 session gate](https://github.com/aws/aws-cli/blob/2.38.1/awscli/telemetry.py) |
+| Grok Bot / Sand | `SAND_DISABLE_TELEMETRY=1` | Installed 0.71.2 main and local-exec daemon readers |
 
 Comfy Desktop's variable disables its PostHog client at startup. Its native
 usage-metrics consent and independent diagnostic paths require separate checks.
@@ -125,6 +129,12 @@ Its reviewed dispatcher prepares payloads and prints debug output; transmission 
 The declaration is a defensive gate. Invoked tools retain independent controls.
 These variables require inheritance before startup. Existing processes can retain
 earlier values. Support in older installed copies requires separate verification.
+
+ONNX Runtime's variable applies before native runtime initialisation. Its Python
+disable API can leave an initial event. No model execution is needed to set the variable.
+AWS CLI 2.37.9 and 2.38.1 support session suppression; 2.34.32 does not.
+This control suppresses session identifiers in request metadata, not required AWS requests.
+Sand's telemetry flag also opts out of analytics. Grok CLI has separate native controls.
 
 Stored settings and fresh-child environment checks establish configuration only.
 They do not establish absence of outbound collection. Browser policies, account
