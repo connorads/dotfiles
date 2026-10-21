@@ -1,15 +1,16 @@
 # Command credentials
 
 fnox loads command credentials from local encrypted values in
-`~/.config/fnox/config.toml`. The device-bound Secure Enclave identity stays in
-`~/.config/fnox/age.txt`, outside Git. Both files use mode `0600` and stay outside Git.
-The independent recovery identity is stored in Bitwarden's `fnox recovery` note.
+`~/.config/fnox/config.toml`. The Mini uses a local age identity in
+`~/.config/fnox/age.txt` for unattended decryption without Touch ID. Both files use
+mode `0600`; their directory uses mode `0700`. They stay outside Git.
+The Mini still needs a private off-machine backup of its identity and encrypted config.
 
 New command credentials use fnox rather than exports in `.zshrc.local`.
 Existing credentials stay in place until their consumers pass migration tests.
 Keep application-managed OAuth sessions and SSH keys in their native stores.
-fnox contains ElevenLabs, Brave, Exa, Typesafe, FreeAgent, fal and Sprite Fusion.
-Context7, Gemini and xAI have no configured values in the local shell file.
+The Mini's fnox contains ElevenLabs. Brave, Context7, Exa, Gemini and xAI have
+empty assignments in the local shell file.
 
 Use `fnox exec -- <command>` to decrypt credentials into a command's environment.
 The command and its children can read their credentials. Direct injection adds
@@ -32,23 +33,21 @@ These prefixes are explicit; ordinary launches do not load fnox automatically.
 Restart existing consumers and shells after removing plaintext exports.
 Existing processes keep their inherited credentials until they exit.
 
-Migration verification checks exact value delivery, not service validity.
-Search consumer tests use synthetic requests; live API permissions need separate
-checks. Typesafe, FreeAgent and Sprite Fusion have no identified tracked consumer.
+Migration checks verify exact delivery with inherited credential variables removed.
+A non-billable ElevenLabs voice-listing request verifies API access. Speech
+generation requires a separate billable check.
 
 ## Device authentication
 
-mise installs `age` and `age-plugin-se`. The device identity requires Touch ID
-or the Mac login password. Copying its identity file to another Mac does not
-enable decryption there. Keep the identity file private despite this restriction.
+mise installs fnox and age. The Mini's local age identity requires no interactive
+authentication. Processes that can read the identity can decrypt its credentials.
+The Air uses a device-bound Secure Enclave identity instead.
 
-Credentials share one age-wrapped batch key. A fresh `fnox exec` unlocks that
-key once rather than unlocking each credential separately. After adding or
-replacing credentials, run `fnox reencrypt --provider age` to consolidate them.
-That maintenance operation can require several approvals for existing values.
+After adding or replacing credentials, run `fnox reencrypt --provider age` to
+consolidate their encryption.
 
-The fnox memory cache is enabled with a 30-minute idle timeout. The first command
-requests authentication; later commands reuse cached credentials. Requests reset
+The fnox memory cache is enabled with a 30-minute idle timeout. The Mini decrypts
+without a prompt; later commands reuse cached credentials. Requests reset
 the idle timer. After 30 minutes without requests, the daemon exits and drops
 its cache. This is an inactivity timeout, not a fixed-duration approval grant.
 
@@ -57,7 +56,7 @@ it for one command. Children retain inherited credentials for their lifetime,
 even after cache expiry. Other processes running as your user can request
 cached credentials.
 
-The restricted BB command sandbox blocks Secure Enclave access. Run fnox from
+On the Air, the restricted BB command sandbox blocks Secure Enclave access. Run fnox from
 a normal terminal or use approved execution outside that sandbox. This setup
 does not change sandbox policy.
 
@@ -94,13 +93,14 @@ Interactive authentication on the MacBook does not establish unattended access.
 ## Recovery and rotation
 
 Back up the encrypted `config.toml` privately after changing credentials.
-The Bitwarden recovery note contains the recovery identity, not the encrypted
-credential file. Recovery requires both.
+The Air's Bitwarden recovery note contains its recovery identity, not its encrypted
+credential file. Mini recovery requires its local age identity and encrypted config.
+Back up both privately off the Mini.
 `~/.config/fnox/config.toml.backup` is a local encrypted snapshot.
 Keep an independent private copy off the Mac; the local snapshot does not cover
 loss of the machine. Refresh both copies after changing credentials.
 
-1. Keep the independent recovery identity in Bitwarden's `fnox recovery` note.
+1. On the Air, keep the independent recovery identity in Bitwarden's `fnox recovery` note.
    Back up the device identity file too, but it cannot recover access on another
    Mac. Losing both the original Mac and the recovery identity prevents decryption.
 2. To replace the API key, run `fnox set ELEVENLABS_API_KEY --provider age`.
@@ -115,7 +115,7 @@ age provider. Re-encrypt the selected credentials on an authorised machine
 with `fnox reencrypt --provider age`. Adding a recipient alone does not update
 existing ciphertext. Keep each private identity outside Git.
 
-For recovery without an authorised Mac, restore the Bitwarden recovery identity
+For Air recovery without an authorised Mac, restore the Bitwarden recovery identity
 to `~/.config/fnox/age.txt` with mode `0600`. Restore the encrypted config too. This enables decryption of the local
 config. Enrol a fresh device identity before removing the restored recovery file.
 Retain the recovery public recipient in the config.
