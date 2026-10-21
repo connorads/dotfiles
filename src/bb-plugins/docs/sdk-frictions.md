@@ -149,7 +149,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Ask: `app.commands.experimental_list()`, `experimental_dispatch(commandId, args?)` and
   `experimental_onInvoked(({ commandId, source }) => ...)`.
 - Planned trial: add invocation events in an isolated source build using the
-  [BB patch setup](../spikes/bb-patched/README.md). Verify one event per handled
+  local BB patch notes in `spikes/bb-patched/README.md` (ignored research). Verify one event per handled
   native shortcut, plugin command and palette action; rejected commands emit none.
   Use a temporary event viewer before adding local counts to Shortcut Guide.
   Button coverage follows separately. Keep the daily server unchanged during the trial.
@@ -535,7 +535,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   pre-teardown plugin hook.
 - Status: open
 - Category: app-bug
-- Evidence: [SPIKE.md](../spikes/tmux/worktree-reaper/SPIKE.md), `spikes/tmux/TRIAGE.md`
+- Evidence: `spikes/tmux/worktree-reaper/SPIKE.md` (ignored research), `spikes/tmux/TRIAGE.md`
 
 ### Claude fork and side chat ignore the account config dir
 
@@ -555,7 +555,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   launch env would need no plugin change.
 - Workaround: forks work only on Default
   ([claude-profiles/README.md](../claude-profiles/README.md)). The plugin copies the
-  transcript on switch. See [session-context/README.md](../spikes/session-context/README.md).
+  transcript on switch. See `spikes/session-context/README.md` (ignored research).
   Candidate (spiked, not built): stage the fork in the `message.dispatch` hook with one
   link `~/.claude/projects/+bb-fork-stage-<forkThreadId>` to the source's account
   project dir. The bridge then finds the source and writes the fork into the account.
@@ -703,7 +703,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Ask: a schema version check that refuses to start an older server on newer data.
 - Status: open
 - Category: app-bug
-- Evidence: @thread:thr_a2edzfz5r9, [bb-patched/README.md](../spikes/bb-patched/README.md)
+- Evidence: @thread:thr_a2edzfz5r9, `spikes/bb-patched/README.md` (ignored research)
 
 ### Plugin uninstall and rename strand stored data
 
