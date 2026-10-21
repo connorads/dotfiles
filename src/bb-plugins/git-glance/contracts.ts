@@ -40,6 +40,9 @@ const opKind = z.enum(['fetch', 'pull', 'push']);
 const stashSha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 /** Every mutating action, so each shares one lifecycle: one at a time, progress, a result. */
 const opRequest = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('stage'), path: z.string().min(1), area: z.enum(['unstaged', 'untracked']) }),
+  z.object({ kind: z.literal('unstage'), path: z.string().min(1) }),
+  z.object({ kind: z.literal('create-commit'), message: z.string().min(1).max(65536), head: z.string().nullable(), index: z.string() }),
   z.object({ kind: z.literal('fetch') }), z.object({ kind: z.literal('pull') }), z.object({ kind: z.literal('push') }),
   /** `track`: create a local branch from the remote branch `branch` names. */
   z.object({ kind: z.literal('switch'), branch: z.string().min(1), track: z.boolean() }),
@@ -108,6 +111,9 @@ const root = z.string().min(1);
 const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
   folders: z.array(z.object({ name: z.string(), repository: z.boolean() })) });
 
+export const reviewSchema = z.object({ head: z.string().nullable(), index: z.string(), count: z.number(), blocked: z.string().nullable(), draftKey: z.string() });
+export type CommitReview = z.infer<typeof reviewSchema>;
+
 export const hostContract = defineRpcContract({
   folders: { input: z.object({ root, path: z.string() }), output: folderList },
   select: { input: z.object({ root, path: z.string() }), output: z.object({ root }) },
@@ -117,6 +123,7 @@ export const hostContract = defineRpcContract({
   diff: { input: z.object({ root, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ root, sha }), output: commitDetailSchema },
   run: { input: z.object({ root, request: opRequest, opId: z.string() }), output: opResult },
+  review: { input: z.object({ root }), output: reviewSchema },
   branches: { input: z.object({ root }), output: z.array(branchSchema) },
 });
 export const hostSignals = {
@@ -143,6 +150,7 @@ export const rpcContract = defineRpcContract({
   diff: { input: z.object({ ...thread, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ ...thread, sha }), output: commitDetailSchema },
   run: { input: z.object({ ...thread, root, request: opRequest, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
+  review: { input: z.object(thread), output: reviewSchema },
   branches: { input: z.object(thread), output: z.array(branchSchema) },
   cancel: { input: z.object({ ...thread, root }), output: z.object({}) },
 });

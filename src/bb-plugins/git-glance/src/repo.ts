@@ -62,7 +62,7 @@ const operations = [
   ['rebase-merge', 'rebase'], ['rebase-apply', 'rebase'], ['MERGE_HEAD', 'merge'],
   ['CHERRY_PICK_HEAD', 'cherry-pick'], ['REVERT_HEAD', 'revert'], ['BISECT_LOG', 'bisect'],
 ] as const;
-async function operation(gitDir: string) {
+export async function operation(gitDir: string) {
   for (const [file, name] of operations) {
     if (await access(join(gitDir, file)).then(() => true, () => false)) return name;
   }
@@ -73,7 +73,7 @@ const order: Record<Change['area'], number> = { conflicted: 0, staged: 1, unstag
 
 export async function snapshot(repo: Repo): Promise<Snapshot> {
   const [statusText, staged, unstaged, remotes, op, stashText] = await Promise.all([
-    git(repo, ['status', '--porcelain=v2', '--branch', '--show-stash', '-z']),
+    git(repo, ['status', '--porcelain=v2', '--branch', '--show-stash', '--untracked-files=all', '-z']),
     git(repo, ['diff', '--cached', '--numstat', '-z']),
     git(repo, ['diff', '--numstat', '-z']),
     git(repo, ['remote']),
@@ -87,7 +87,8 @@ export async function snapshot(repo: Repo): Promise<Snapshot> {
     remotes.trim() ? git(repo, ['rev-list', `-n${commitLimit}`, 'HEAD', '--not', '--remotes']) : Promise.resolve(''),
   ]) : ['', ''];
   const unpushed = new Set(unpushedText.split('\n').filter(Boolean));
-  const changes = withStats(status.changes, parseNumstat(staged), parseNumstat(unstaged))
+  const unstagedStats = parseNumstat(unstaged);
+  const changes = withStats(status.changes.filter(change => repo.kind !== 'dotfiles' || change.area !== 'unstaged' || unstagedStats.has(change.path)), parseNumstat(staged), unstagedStats)
     .sort((a, b) => order[a.area] - order[b.area] || a.path.localeCompare(b.path));
   return {
     kind: repo.kind, name: repo.name, branch: status.branch, operation: op, stashes: parseStashes(stashText),
@@ -98,7 +99,7 @@ export async function snapshot(repo: Repo): Promise<Snapshot> {
 }
 
 export function relative(path: string) {
-  if (!path || isAbsolute(path) || path.split('/').includes('..')) throw new Error(`Refusing path outside the repository: ${path}`);
+  if (!path || path.includes('\0') || isAbsolute(path) || path.split('/').includes('..')) throw new Error(`Refusing path outside the repository: ${path}`);
   return path;
 }
 
@@ -114,7 +115,7 @@ export async function diff(repo: Repo, input: { path: string; origPath: string |
   const path = relative(input.path);
   // Untracked directories are listed collapsed; git has no single patch for one.
   if (path.endsWith('/')) return { patch: '', truncated: false };
-  const paths = input.origPath ? [relative(input.origPath), path] : [path];
+  const paths = (input.origPath ? [relative(input.origPath), path] : [path]).map(value => `:(literal)${value}`);
   const flags = ['diff', '--no-color', '--no-ext-diff', '-M'];
   const { source } = input;
   const patch = source.kind === 'commit'

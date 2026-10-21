@@ -23,11 +23,16 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
   return <li className="gg-change" data-open={open || undefined}>
     {flash && <span className="gg-flash" key={flash} aria-hidden />}
     {/* A folder has no single diff, but stays focusable so its action is reachable by key. */}
-    <button type="button" data-row className="gg-change-row" aria-expanded={directory ? undefined : open}
+    <button type="button" data-row data-file-path={file.path} data-file-area={source.kind === 'work-tree' ? source.area : undefined} className="gg-change-row" aria-expanded={directory ? undefined : open}
       aria-disabled={directory || undefined} onClick={directory ? undefined : onToggle}
       onFocus={inline || directory ? undefined : onToggle}
       title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
       onKeyDown={event => {
+        if (event.key === 's' && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault(); event.stopPropagation();
+          event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.gg-index-action')?.click();
+          return;
+        }
         if (event.key !== 'd' || event.repeat || !action || event.metaKey || event.ctrlKey || event.altKey) return;
         event.preventDefault(); event.stopPropagation();
         event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.gg-row-actions .gg-hold')?.click();

@@ -5,6 +5,8 @@ import { createMonitor, type Monitor } from './src/monitor.ts';
 import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
 import { listBranches, switchBranch } from './src/branches.ts';
 import { discard } from './src/discard.ts';
+import { review, editIndex, createCommit } from './src/index-edit.ts';
+import { realpath } from 'node:fs/promises';
 import { stashAction } from './src/stashes.ts';
 import type { OpOptions, OpResult } from './src/spawn.ts';
 import { sync } from './src/sync.ts';
@@ -22,6 +24,8 @@ const progressEveryMs = 150;
 
 function perform(repo: Repo, request: OpRequest, options: OpOptions): Promise<OpResult> {
   switch (request.kind) {
+    case 'stage': case 'unstage': return editIndex(repo, request, options);
+    case 'create-commit': return createCommit(repo, request, options);
     case 'fetch': case 'pull': case 'push': return sync(repo, request.kind, options);
     case 'switch': return switchBranch(repo, request.branch, request.track, options);
     case 'stash-apply': return stashAction(repo, 'apply', request.sha, options);
@@ -60,25 +64,27 @@ export default experimental_defineHostEntry({
     },
     diff: async ({ root, ...input }) => diff(await required(root), input),
     commit: async ({ root, sha }) => commitDetail(await required(root), sha),
+    review: async ({ root }) => review(await required(root)),
     branches: async ({ root }) => listBranches(await required(root)),
     run: async ({ root, request, opId }, context) => {
       const repo = await resolveRepo(root);
       if (!repo) return { ok: false as const, failure: { reason: 'unknown' as const, message: `${root} is not a git repository.` } };
-      if (syncing.has(root)) return { ok: false as const, failure: { reason: 'locked' as const, message: 'Another operation is running here.' } };
-      syncing.add(root);
+      const lock = await realpath(repo.gitDir);
+      if (syncing.has(lock)) return { ok: false as const, failure: { reason: 'locked' as const, message: 'Another operation is running here.' } };
+      syncing.add(lock);
       // Hold watcher refreshes: a pull or switch rewrites many files; one refresh at the end is enough.
       const monitor = await monitors.get(root)?.catch(() => null);
       monitor?.hold();
       let sent = 0;
       try {
         const remote = request.kind === 'fetch' || request.kind === 'pull' || request.kind === 'push';
-        return await perform(repo, request, { signal: context.signal, timeoutMs: remote ? remoteTimeoutMs : localTimeoutMs, onProgress: progress => {
+        return await perform(repo, request, { signal: context.signal, timeoutMs: request.kind === 'create-commit' ? 10 * 60_000 : remote ? remoteTimeoutMs : localTimeoutMs, onProgress: progress => {
           if (Date.now() - sent < progressEveryMs && progress.percent !== 100) return;
           sent = Date.now();
           void context.experimental_emitSignal('progress', { root, opId, progress });
         } });
       } finally {
-        syncing.delete(root);
+        syncing.delete(lock);
         monitor?.release();
       }
     },

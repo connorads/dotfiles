@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { experimental_copyToClipboard, experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, Repo } from './contracts.ts';
+import { CommitComposer } from './commit-composer.tsx';
 import { BranchPicker } from './branch-picker.tsx';
 import { CommitList, CommitPanel } from './commits.tsx';
 import type { RepoState } from './repo-store.ts';
@@ -24,7 +25,7 @@ type Selection = { kind: 'file'; key: string } | { kind: 'commit'; sha: string }
 
 export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
   repo: Repo; threadId: string; state: RepoState; actionError: string | null;
-  dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => void; onCancel: () => void;
+  dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => Promise<boolean>; onCancel: () => void;
   picker: 'closed' | 'pointer' | 'keyboard'; onPicker: (state: 'closed' | 'pointer' | 'keyboard') => void;
   onFolders: () => void; onZoom: () => void; onClose: () => void;
 }) {
@@ -34,8 +35,20 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
   // The zoomed view's detail pane: one file, commit or stash at a time.
+  const pendingFile = useRef<{ path: string; staged: boolean; before: Repo['changes']; focus: boolean } | null>(null);
+  useEffect(() => {
+    const pending = pendingFile.current;
+    if (!pending || pending.before === repo.changes) return;
+    const file = repo.changes.find(c => c.path === pending.path && (pending.staged ? c.area === 'staged' : c.area !== 'staged'));
+    if (!file) return;
+    pendingFile.current = null;
+    setSelection({ kind: 'file', key: changeKey(file) });
+    setExpanded(changeKey(file));
+    setCollapsed(previous => { const next = new Set(previous); next.delete(file.area); return next; });
+    if (pending.focus) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-file-path="${CSS.escape(file.path)}"][data-file-area="${file.area}"]`)?.focus());
+  }, [repo.changes]);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const selectedFile = selection?.kind === 'file' ? repo.changes.find(change => changeKey(change) === selection.key) ?? null : null;
+  const selectedFile = selection?.kind === 'file' ? repo.changes.find(change => changeKey(change) === selection.key) ?? repo.changes.find(change => change.path === selection.key.slice(selection.key.indexOf(':') + 1)) ?? null : null;
   useEffect(() => {
     if (!zoomed) return;
     // Keep the pane useful: a file that stops being changed hands over to the next one.
@@ -69,6 +82,14 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     return <HoldButton icon="Trash2" label="Discard" confirmLabel="Press again to discard" disabled={op?.status === 'running'}
       onConfirm={() => onRun({ kind: 'discard', path, area })} />;
   };
+  const indexAction = (change: Repo['changes'][number]) => change.area === 'conflicted' || change.path.endsWith('/') ? null :
+    <button type="button" className="gg-ghost gg-index-action" disabled={op?.status === 'running'}
+      aria-label={`${change.area === 'staged' ? 'Unstage' : 'Stage'} ${change.path}`} title={`${change.area === 'staged' ? 'Unstage' : 'Stage complete file'} ${change.path} (s)`}
+      onClick={() => {
+        pendingFile.current = { path: change.path, staged: change.area !== 'staged', before: repo.changes, focus: document.activeElement?.closest('.gg-change') !== null };
+        if (change.area === 'staged') void onRun({ kind: 'unstage', path: change.path });
+        else if (change.area === 'unstaged' || change.area === 'untracked') void onRun({ kind: 'stage', path: change.path, area: change.area });
+      }}>{change.area === 'staged' ? '− Unstage' : '+ Stage'}</button>;
   const running = op?.status === 'running' ? op : null;
   const fetched = state.fetch.lastSucceededAt !== null ? age(state.fetch.lastSucceededAt / 1000, now) : null;
   const fetchError = state.fetchRequestError ?? state.fetch.failure?.message ?? null;
@@ -134,6 +155,9 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={() => onDismiss(failure.id)}><Icon name="X" className="size-3.5" /></button>
       </div>}
       {success && <div className="gg-success" role="status" data-leaving={now - success.finishedAt >= 5000 || undefined}><Icon name="CircleCheck" className="size-4" />{success.summary}</div>}
+      {running?.request.kind === 'create-commit' && <div className="gg-banner" role="status">
+        <span>Running commit hooks and signing…</span><button type="button" className="gg-ghost" onClick={onCancel}>Cancel commit</button>
+      </div>}
       {running && <div className="gg-progress" role="progressbar" aria-label={`${describe(running.request).name} progress`}
         aria-valuenow={running.progress?.percent ?? undefined} data-indeterminate={running.progress?.percent == null || undefined}>
         <i style={running.progress?.percent != null ? { '--gg-progress': running.progress.percent / 100 } as React.CSSProperties : undefined} />
@@ -142,6 +166,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
 
     <div className="gg-body" data-split={zoomed || undefined}>
       <div className="gg-list">
+      <CommitComposer threadId={threadId} repository={state.root ?? repo.name} branch={branch.head ?? 'Detached HEAD'} op={op} onRun={onRun} onCancel={onCancel} />
       {files === 0 ? <div className="gg-clean">
         <span className="gg-clean-mark"><Icon name="Check" className="size-4" /></span>
         <div><strong>Working tree clean</strong><span>Nothing to commit{branch.head ? ` on ${branch.head}` : ''}.</span></div>
@@ -163,7 +188,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
             </button>
             {!closed && <ul>{items.map(change => <ChangeRow key={changeKey(change)} file={change} source={{ kind: 'work-tree', area: change.area }} threadId={threadId}
               flash={fresh.changes.has(changeKey(change)) ? fresh.stamp : null}
-              action={discardAction(change)}
+              action={<>{indexAction(change)}{discardAction(change)}</>}
               inline={!zoomed}
               open={zoomed ? selection?.kind === 'file' && selection.key === changeKey(change) : expanded === changeKey(change)}
               onToggle={zoomed ? () => setSelection({ kind: 'file', key: changeKey(change) })
@@ -197,6 +222,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         {selection?.kind === 'file' && selectedFile ? <>
           <div className="gg-detail-head">
             <span className="gg-code" data-code={selectedFile.code}>{selectedFile.code === '?' ? 'U' : selectedFile.code === 'U' ? '!' : selectedFile.code}</span>
+            {indexAction(selectedFile)}
             <span className="gg-detail-path">{selectedFile.origPath ? `${selectedFile.origPath} → ` : ''}{selectedFile.path}</span>
           </div>
           {selectedFile.path.endsWith('/')
@@ -209,7 +235,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     </div>
 
     <footer className="gg-footer">
-      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>d</kbd> discard twice <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
+      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>s</kbd> stage/unstage <kbd>d</kbd> discard twice <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
       <span className="gg-live" data-state={state.error || fetchError || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
         title={state.error ?? fetchError ?? 'Watches local files and refs. Fetch checks the remote.'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />

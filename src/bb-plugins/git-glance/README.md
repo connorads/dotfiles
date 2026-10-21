@@ -6,6 +6,7 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - pull, push and fetch, with git's own progress and a hint when one fails
 - a branch switcher on the branch name: filter, then switch, or track a remote branch
 - stashes, each openable for its files, with apply, pop and hold-to-drop
+- whole-file stage and unstage controls, with a staged-only commit composer
 - discard for unstaged edits and untracked paths, held, clicked twice or pressed twice
 - branch, upstream, stash count and any merge or rebase in progress
 - conflicted, staged, unstaged and untracked files with line counts
@@ -20,6 +21,7 @@ default checkout. That screen shows no chip.
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, `l` opens
 lazygit, and `q` or `esc` closes. On a file row `d` arms discard and a second `d` confirms; on a
+file row `s` stages or unstages the complete file; on a
 stash row `a` applies and `g` pops.
 
 `z` expands to a large two-pane view, and the size is remembered. The lists sit
@@ -111,3 +113,48 @@ The home-directory checkout has no enclosing repository, so the plugin falls
 back to the bare dotfiles repository at `~/git/dotfiles`, as `lgdf` does.
 
 Run `pnpm test`, `pnpm typecheck`, and `pnpm build` from this directory.
+
+## Staging and commits
+
+Use **Stage** or **Unstage** beside a file or in the expanded detail pane.
+The `s` key applies the same action on a focused file row. Staging uses the
+complete working file, including edits outside any existing staged version.
+Unstaging preserves working files. Renames restore both index paths.
+Unborn repositories support staging, unstaging and their first commit.
+Untracked files appear individually. Directory, conflict and submodule index
+actions are refused. Ignored files are never force-added.
+
+**Commit staged changes** opens an inline message field. Its first line must
+contain a subject; further lines provide the body. The review shows the complete
+staged-file count, including files outside the 400-row display limit.
+The commit includes the complete index, including changes staged elsewhere.
+It never stages files automatically or includes unstaged edits.
+
+```mermaid
+flowchart LR
+  File[Choose file] --> Stage[Stage complete file]
+  Stage --> Review[Review staged diff and complete count]
+  Review --> Message[Write subject and body]
+  Message --> Commit[Commit with hooks and signing]
+  Commit --> Refresh[Refresh status]
+```
+
+- Primary modifier plus Enter submits. Enter inserts a newline. Escape closes
+  the form and retains the draft.
+- Drafts persist in this browser's local storage, scoped by host and resolved
+  worktree Git directory. Closing, failure and cancellation retain them.
+  Confirmed success clears the submitted draft.
+- Empty indexes, conflicts and active repository operations prevent commits.
+  Continue merge or rebase operations and answer signing prompts in a terminal.
+- HEAD and index content must match the review before execution. Use
+  **Review index again** after external changes. External writers can still race
+  the preflight check; Git's native locks remain authoritative.
+- Normal Git hooks, clean filters and signing run. Commit hooks have a ten-minute
+  timeout. Failure output remains visible. No retries or hook bypass occur.
+- Cancellation reconciles HEAD before reporting failure. If HEAD changes, review
+  history before retrying because the commit may have completed.
+- Host operations serialise by resolved Git directory, including root aliases.
+  Linked worktrees retain separate indexes. Background reads never refresh index
+  stat entries; dotfiles clean-only churn is excluded through filtered diffs.
+- Bulk and hunk actions are unavailable. The display cap cannot define complete
+  bulk scope, and the SDK diff viewer provides no staging-selection callback.

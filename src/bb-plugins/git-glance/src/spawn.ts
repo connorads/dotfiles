@@ -5,7 +5,7 @@ import type { Repo } from './repo.ts';
 
 /** What every operation reports: a one-line summary, or a reason a person can act on. */
 export type OpResult = { ok: true; summary: string } | { ok: false; failure: Failure };
-export interface OpOptions { signal: AbortSignal; timeoutMs: number; onProgress(progress: Progress): void }
+export interface OpOptions { signal: AbortSignal; timeoutMs: number; onProgress(progress: Progress): void; input?: string }
 
 // Never prompt: with no terminal to answer it, a prompt would hang until the timeout.
 // Credential helpers (osxkeychain) and a running ssh-agent still work.
@@ -20,7 +20,9 @@ export function spawnGit(repo: Repo, args: string[], options: OpOptions) {
   return new Promise<Spawned>(resolve => {
     // A process group of its own, so cancelling also stops ssh and remote helpers.
     const child = spawn('git', [...repo.select, '-c', 'credential.interactive=never', ...args],
-      { cwd: repo.cwd, env: gitEnv(remoteEnv), stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+      { cwd: repo.cwd, env: gitEnv(remoteEnv), stdio: ['pipe', 'pipe', 'pipe'], detached: true });
+    child.stdin.on('error', () => {});
+    child.stdin.end(options.input);
     let stdout = '', output = '';
     let aborted: Spawned['aborted'] = null;
     const stop = (why: 'cancelled' | 'timeout') => {

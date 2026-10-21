@@ -7,7 +7,7 @@ import { finish, progress, start, type OpState } from './src/ops.ts';
 /** Windows renew every 30 seconds; two missed renewals end the lease. */
 const leaseTtlMs = 75_000;
 /** A little longer than the host's own git timeout, so the host reports it first. */
-const runTimeoutMs = 3 * 60_000 + 10_000;
+const runTimeoutMs = 10 * 60_000 + 10_000;
 
 export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
@@ -126,6 +126,11 @@ export default function plugin(bb: BbPluginApi) {
     commit: async ({ threadId, sha }) => {
       const target = await required(threadId);
       return host.call('commit', { root: target.root, sha }, { hostId: target.hostId, timeoutMs: 15_000 });
+    },
+    review: async ({ threadId }) => {
+      const target = await required(threadId);
+      const result = await host.call('review', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000 });
+      return { ...result, draftKey: JSON.stringify([target.hostId, result.draftKey]) };
     },
     branches: async ({ threadId }) => {
       const target = await required(threadId);

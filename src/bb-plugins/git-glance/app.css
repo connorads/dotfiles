@@ -425,3 +425,13 @@
 .gg-folder-list button:hover, .gg-folder-list button:focus-visible { background: var(--accent); }
 .gg-folder-list button span:not(.gg-spacer):not(.gg-tag) { overflow-wrap: anywhere; }
 .gg-folder-picker footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+.gg-composer { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.gg-composer form { display: grid; gap: 8px; }
+.gg-composer p { margin: 0; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.gg-composer textarea { display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: transparent; color: var(--foreground); resize: vertical; }
+.gg-index-action { white-space: nowrap; }
+
+.gg-commit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gg-commit-submit { border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; color: var(--primary-foreground); background: var(--primary); font: inherit; }
+.gg-commit-submit:disabled { opacity: .45; cursor: not-allowed; }

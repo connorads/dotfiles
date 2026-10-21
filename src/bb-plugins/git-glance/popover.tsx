@@ -48,18 +48,19 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   }, [state.snapshot, state.root, rpc, threadId]);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const runOp = useCallback((request: OpRequest) => {
-    if (!state.root) return;
+    if (!state.root) return Promise.resolve(false);
     setActionError(null);
-    rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).catch(cause => {
+    return rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).then(() => true, cause => {
       if (request.kind === 'fetch') fetchRequestFailed(threadId, state.root!, cause);
       else setActionError(message(cause));
+      return false;
     });
   }, [rpc, threadId, state.root]);
   const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError(message(cause))); }, [rpc, threadId, state.root]);
 
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    if (folders || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    if (folders || (event.target instanceof HTMLElement && event.target.closest('[contenteditable=true]')) || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-row]') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
@@ -79,7 +80,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();
-      if (available(repo, state.op)[op].enabled) runOp({ kind: op });
+      if (available(repo, state.op)[op].enabled) void runOp({ kind: op });
     }
   }
 

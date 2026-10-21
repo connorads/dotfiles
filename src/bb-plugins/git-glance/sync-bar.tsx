@@ -5,6 +5,9 @@ import { plural } from './src/format.ts';
 /** Labels for an operation: what it is, and what it is doing while it runs. */
 export function describe(request: OpRequest): { name: string; doing: string } {
   switch (request.kind) {
+    case 'stage': return { name: `Stage ${request.path}`, doing: 'Staging' };
+    case 'unstage': return { name: `Unstage ${request.path}`, doing: 'Unstaging' };
+    case 'create-commit': return { name: 'Commit staged changes', doing: 'Committing' };
     case 'fetch': return { name: 'Fetch', doing: 'Fetching' };
     case 'pull': return { name: 'Pull', doing: 'Pulling' };
     case 'push': return { name: 'Push', doing: 'Pushing' };
