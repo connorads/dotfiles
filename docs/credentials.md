@@ -1,16 +1,20 @@
 # Command credentials
 
 fnox loads command credentials from local encrypted values in
-`~/.config/fnox/config.toml`. The Mini uses a local age identity in
-`~/.config/fnox/age.txt` for unattended decryption without Touch ID. Both files use
-mode `0600`; their directory uses mode `0700`. They stay outside Git.
+`~/.config/fnox/config.toml`. The MacBook Air's device-bound Secure Enclave identity
+stays in `~/.config/fnox/age.txt`. The Mini uses a local age identity at the same path
+for unattended decryption without Touch ID. Both files use mode `0600` and stay outside
+Git. On the Mini, their directory uses mode `0700`.
+The Air's independent recovery identity is stored in Bitwarden's `fnox recovery` note.
 The Mini still needs a private off-machine backup of its identity and encrypted config.
 
 New command credentials use fnox rather than exports in `.zshrc.local`.
 Existing credentials stay in place until their consumers pass migration tests.
 Keep application-managed OAuth sessions and SSH keys in their native stores.
+The Air's fnox contains ElevenLabs, Brave, Exa, Typesafe, FreeAgent, fal and
+Sprite Fusion. Context7, Gemini and xAI have no configured values in its shell file.
 The Mini's fnox contains ElevenLabs. Brave, Context7, Exa, Gemini and xAI have
-empty assignments in the local shell file.
+empty assignments in its shell file.
 
 Use `fnox exec -- <command>` to decrypt credentials into a command's environment.
 The command and its children can read their credentials. Direct injection adds
@@ -89,6 +93,74 @@ credentials, using separate service keys where available. Keep the recovery
 private identity in Bitwarden rather than distributing it to workers.
 Test Mac Mini authentication from the actual background job before enrolment.
 Interactive authentication on the MacBook does not establish unattended access.
+
+## Mac Mini enrolment
+
+The shared mise configuration declares fnox, age and age-plugin-se. Tool versions
+come from the committed mise lockfile. Each machine creates its credential files
+locally; pulling dotfiles does not transfer credentials or private identities.
+
+1. On the Mini, pull the reviewed dotfiles changes without discarding local edits.
+   Install the three credential tools from the committed mise lockfile.
+2. Test a disposable encrypted value from the actual background execution context.
+   Try a Mini Secure Enclave identity without interactive authentication.
+   Do not assume successful terminal decryption proves background access.
+3. If Secure Enclave access fails unattended, use a local age identity with mode
+   `0600`. Protect its directory with mode `0700`. This permits unattended use but
+   does not protect credentials from processes with access to that identity.
+4. Inventory `.zshrc.local` credentials without displaying values. Migrate only
+   understood command credentials. Preserve shell functions, paths and unrelated
+   settings. Leave native OAuth sessions and SSH identities in their own stores.
+5. Verify exact value delivery in memory through `fnox exec`. Remove each old
+   assignment only after its consumer passes. Restart consumers to clear inherited
+   values. Report service validity separately from matching delivered values.
+6. Back up the encrypted configuration and recovery material privately. Verify
+   the backup before removing migration copies. Keep all credential files outside Git.
+
+Use separate Mini service keys with restricted permissions and spending limits
+where available. Until those exist, record any reused key names without values.
+Only provide credentials to commands that need them; do not wrap every BB process
+with the complete global credential configuration.
+
+Nix owns shared tool and service configuration. Credential files are runtime
+inputs, never Nix literals or files copied into the Nix store. Background service
+changes require their own review and verification. Enrolment does not change
+FileVault, login behaviour or reboot policy.
+
+Paste this into an agent thread running on the Mini:
+
+```text
+Set up local encrypted fnox credentials on this Mac Mini.
+Read ~/AGENTS.md and ~/docs/credentials.md first.
+Check existing tools and configuration before changing anything.
+Use the committed mise tool versions. Keep credentials and identities outside Git.
+
+I authorise reading ~/.zshrc.local with a local value-redacting helper and editing
+its credential assignments after successful migration. I authorise checking and
+creating or updating ~/.config/fnox/ credential configuration, encrypted backups,
+and the Mini's private identity. Use SECRETS_OK=1 only for these operations where
+the credential guard requires it. Never print values, private identities or hashes.
+
+Inventory credential names only. Do not source or execute .zshrc.local to discover
+them. Preserve unrelated shell settings and stop on assignments you cannot safely
+parse. Keep native OAuth sessions and SSH credentials unchanged.
+
+Test unattended decryption with dummy data before migrating real credentials.
+Try prompt-free Secure Enclave access from the actual background context first.
+Use a private local age identity if that cannot work unattended. Do not copy the
+Air's private identity or recover its private key from Bitwarden.
+
+Migrate existing Mini command credentials without putting plaintext in temporary
+files, command arguments, logs or chat. Compare delivered values only in memory.
+Remove old assignments only after delivery and consumer checks pass. Do not make
+billable API calls without asking. Explain any missing consumer checks.
+
+Help me make and verify a private recovery backup. Configure a 30-minute idle
+cache. Test repeated fnox launches and report the limits of cache expiry.
+Do not reboot, log out, change FileVault, restart BB or change service configuration.
+Report any background integration needed as a separate next step.
+Commit only relevant non-secret dotfiles changes. Do not push.
+```
 
 ## Recovery and rotation
 
