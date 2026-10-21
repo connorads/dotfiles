@@ -15,10 +15,10 @@ const badge = (threadId: string) => document.querySelector(`[data-sidebar-thread
 
 test('badges Claude rows bound to a named account with its initial and name', () => {
   document.body.innerHTML = row('t1', 'claude-code') + row('t2', 'claude-code') + row('t3', 'codex');
-  setBadges([{ threadId: 't1', profileId: 'Team Alpha', label: 'Team Alpha' }, { threadId: 't3', profileId: 'Team Beta', label: 'Team Beta' }]);
+  setBadges([{ threadId: 't1', profileId: 'alpha', label: 'alpha' }, { threadId: 't3', profileId: 'beta', label: 'beta' }]);
   dispose = mountAccountBadges(document);
-  expect(badge('t1')?.textContent).toBe('T');
-  expect(badge('t1')?.title).toBe('Claude account: Team Alpha');
+  expect(badge('t1')?.textContent).toBe('A');
+  expect(badge('t1')?.title).toBe('Claude account: alpha');
   expect(badge('t1')?.parentElement?.dataset.sidebarThreadProvider).toBe('claude-code');
   expect(badge('t2')).toBeNull();
   expect(badge('t3')).toBeNull();
@@ -27,12 +27,12 @@ test('badges Claude rows bound to a named account with its initial and name', ()
 test('follows account switches and rows rendered later, and cleans up on dispose', async () => {
   document.body.innerHTML = row('t1', 'claude-code');
   dispose = mountAccountBadges(document);
-  setBadges([{ threadId: 't1', profileId: 'Team Beta', label: 'Team Beta' }]);
+  setBadges([{ threadId: 't1', profileId: 'beta', label: 'beta' }]);
+  expect(badge('t1')?.textContent).toBe('B');
+  setBadges([{ threadId: 't1', profileId: 'alpha', label: 'alpha' }]);
   expect(badge('t1')?.textContent).toBe('A');
-  setBadges([{ threadId: 't1', profileId: 'Team Alpha', label: 'Team Alpha' }]);
-  expect(badge('t1')?.textContent).toBe('T');
   document.body.insertAdjacentHTML('beforeend', row('t2', 'claude-code'));
-  setBadges([{ threadId: 't1', profileId: 'Team Alpha', label: 'Team Alpha' }, { threadId: 't2', profileId: 'stretch', label: 'stretch' }]);
+  setBadges([{ threadId: 't1', profileId: 'alpha', label: 'alpha' }, { threadId: 't2', profileId: 'stretch', label: 'stretch' }]);
   await settle();
   expect(badge('t2')?.textContent).toBe('S');
   setBadges([{ threadId: 't2', profileId: 'stretch', label: 'stretch' }]);
@@ -44,17 +44,17 @@ test('follows account switches and rows rendered later, and cleans up on dispose
 
 test('re-adds a badge when the list re-renders the provider icon', async () => {
   document.body.innerHTML = row('t1', 'claude-code');
-  setBadges([{ threadId: 't1', profileId: 'Team Alpha', label: 'Team Alpha' }]);
+  setBadges([{ threadId: 't1', profileId: 'alpha', label: 'alpha' }]);
   dispose = mountAccountBadges(document);
   document.body.innerHTML = row('t1', 'claude-code');
   await settle();
-  expect(badge('t1')?.textContent).toBe('T');
+  expect(badge('t1')?.textContent).toBe('A');
 });
 
 test('gives each account a stable colour', () => {
   document.body.innerHTML = row('t1', 'claude-code') + row('t2', 'claude-code') + row('t3', 'claude-code');
-  setBadges([{ threadId: 't1', profileId: 'Team Beta', label: 'Team Beta' }, { threadId: 't2', profileId: 'Team Beta', label: 'Team Beta' },
-    { threadId: 't3', profileId: 'Team Alpha', label: 'Team Alpha' }]);
+  setBadges([{ threadId: 't1', profileId: 'beta', label: 'beta' }, { threadId: 't2', profileId: 'beta', label: 'beta' },
+    { threadId: 't3', profileId: 'alpha', label: 'alpha' }]);
   dispose = mountAccountBadges(document);
   expect(badge('t1')?.style.backgroundColor).toBe(badge('t2')?.style.backgroundColor);
   expect(badge('t1')?.style.backgroundColor).not.toBe(badge('t3')?.style.backgroundColor);

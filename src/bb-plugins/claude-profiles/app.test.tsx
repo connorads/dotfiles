@@ -135,13 +135,13 @@ test('the badge bridge loads thread accounts and reloads when an account changes
   const app = await loadPluginApp(() => import('./app.tsx'));
   const bridge = app.appOverlays.find(registration => registration.id === 'account-badges');
   if (!bridge) throw new Error('Missing badge bridge.');
-  let label = 'Team Beta';
+  let label = 'beta';
   const slot = renderSlot<object, typeof rpcContract>({ component: bridge.component }, {}, { rpc: {
-    threadAccounts: () => [{ threadId: 't1', profileId: 'Team Beta', label }],
+    threadAccounts: () => [{ threadId: 't1', profileId: 'beta', label }],
   } as Partial<PluginRpcTestHandlers<typeof rpcContract>> as PluginRpcTestHandlers<typeof rpcContract> });
-  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('Team Beta'));
-  label = 'Team Alpha';
+  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('beta'));
+  label = 'alpha';
   await slot.behavior.emitRealtime('profiles-changed', { threadId: 't1' });
-  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('Team Alpha'));
+  await waitFor(() => expect(getBadges().get('t1')?.label).toBe('alpha'));
   expect(app.contentScripts.map(script => script.id)).toContain('account-badges');
 });

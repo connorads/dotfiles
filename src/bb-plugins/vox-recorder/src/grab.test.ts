@@ -25,12 +25,12 @@ test('grab ids are generated in the shape the reader accepts', () => {
 });
 
 test('mention ids route to a recording or a grab and refuse anything else', () => {
-  assert.deepEqual(parseMentionId('rec:2026-09-17-100825-Team Alpha', isRecordingName), { kind: 'recording', name: '2026-09-17-100825-Team Alpha' });
+  assert.deepEqual(parseMentionId('rec:2026-09-17-100825-alpha', isRecordingName), { kind: 'recording', name: '2026-09-17-100825-alpha' });
   assert.deepEqual(parseMentionId('grab:grab-20261011-090507-abc123', isRecordingName), { kind: 'grab', id: 'grab-20261011-090507-abc123' });
   assert.equal(parseMentionId('rec:../secrets', isRecordingName), null);
   assert.equal(parseMentionId('nonsense', isRecordingName), null);
 });
 
 test('mention context names its source and path before the text', () => {
-  assert.equal(mentionContext('Vox recording "Team Alpha"', '/r/t.md', '\nhello\n\n'), 'Vox recording "Team Alpha". Saved at /r/t.md.\n\nhello\n');
+  assert.equal(mentionContext('Vox recording "alpha"', '/r/t.md', '\nhello\n\n'), 'Vox recording "alpha". Saved at /r/t.md.\n\nhello\n');
 });

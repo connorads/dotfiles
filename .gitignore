@@ -123,6 +123,7 @@
 # ~/Recordings, which the /* deny-all already covers.
 !/.config/vox/
 !/.config/vox/**
+/.config/vox/vocabulary.tsv
 /.config/vox/__pycache__/
 /.config/vox/.pytest_cache/
 

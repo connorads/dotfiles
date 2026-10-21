@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { classify, formatBytes, hasSegments, isRecordingName, lastLines, matches, parseName, search, titleOf, when } from './library.ts';
 
 test('only the timestamp prefix is parsed; the slug is the title', () => {
-  const parsed = parseName('2026-07-28-140312-Team Alpha-kickoff');
-  assert.equal(parsed?.slug, 'Team Alpha-kickoff');
+  const parsed = parseName('2026-07-28-140312-alpha-kickoff');
+  assert.equal(parsed?.slug, 'alpha-kickoff');
   assert.equal(parsed?.startedAt, new Date(2026, 6, 28, 14, 3, 12).getTime());
-  assert.equal(titleOf('2026-07-28-140312-Team Alpha-kickoff'), 'Team Alpha kickoff');
+  assert.equal(titleOf('2026-07-28-140312-alpha-kickoff'), 'alpha kickoff');
   assert.equal(titleOf('2026-07-28-140312'), 'untitled');
 });
 
@@ -38,8 +38,8 @@ test('bytes read like du -h', () => {
 });
 
 test('search matches every word against title and name', () => {
-  const recording = { name: '2026-09-17-100825-Team Alpha', title: 'Team Alpha', startedAt: 0, kind: 'solo' as const, bytes: 0 };
-  assert.equal(matches(recording, 'Triv 09-17'), true);
+  const recording = { name: '2026-09-17-100825-alpha', title: 'alpha', startedAt: 0, kind: 'solo' as const, bytes: 0 };
+  assert.equal(matches(recording, 'Alpha 09-17'), true);
   assert.equal(matches(recording, 'kickoff'), false);
   assert.equal(matches(recording, ''), true);
 });
@@ -50,7 +50,7 @@ test('search returns only readable recordings, newest first, capped', () => {
     rec('2026-01-04-000000-standup', 'pending'), rec('2026-01-05-000000-retro', 'solo')];
   assert.deepEqual(search(all, 'standup', 5).map(r => r.name), ['2026-01-03-000000-standup', '2026-01-01-000000-standup']);
   assert.deepEqual(search(all, '', 1).map(r => r.name), ['2026-01-05-000000-retro']);
-  assert.equal(when('2026-09-17-100825-Team Alpha'), '2026-09-17 10:08');
+  assert.equal(when('2026-09-17-100825-alpha'), '2026-09-17 10:08');
 });
 
 test('log tail keeps the last lines', () => {

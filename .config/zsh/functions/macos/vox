@@ -25,7 +25,7 @@
 #
 # The store convention is the load-bearing decision:
 #
-#   ~/Recordings/vox/2026-07-28-140312-Team Alpha-kickoff/
+#   ~/Recordings/vox/2026-07-28-140312-alpha-kickoff/
 #       mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
 #                             until stop compacts it, or kept if the transcript was empty
 #       mic.json sys.json     per-track segments (segments.py), what merge reads
@@ -68,7 +68,6 @@ local vox_voxtap="${VOX_VOXTAP:-voxtap}"
 local vox_merge="${VOX_MERGE:-$HOME/.config/vox/merge.py}"
 local vox_segments="${VOX_SEGMENTS:-$HOME/.config/vox/segments.py}"
 local vox_snapshot="${VOX_SNAPSHOT:-$HOME/.config/vox/snapshot.py}"
-local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
 local vox_python="${VOX_PYTHON:-python3}"
 local vox_fluid=fluidaudiocli
 # BB and other non-login callers do not load .zprofile's mise PATH.
@@ -375,7 +374,7 @@ _vox_publish_transcript() {
 }
 
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
-# per-track JSON is kept so a re-merge (new vocabulary, changed gap) never
+# per-track JSON is kept so a re-merge (changed gap) never
 # re-transcribes.
 _vox_transcribe() {
 	local dir=$1
@@ -394,7 +393,6 @@ _vox_transcribe() {
 	_vox_report_blanked "$dir"
 
 	local -a merge_args=(--me "$dir/mic.json" --them "$dir/sys.json")
-	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
 	_vox_publish_transcript "$dir" "${merge_args[@]}" || return 1
 	_vox_require_transcript "$dir"
 }
@@ -422,7 +420,6 @@ _vox_transcribe_file() {
 	}
 
 	local -a merge_args=(--me "$dir/mic.json" --me-name Speaker)
-	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
 	_vox_publish_transcript "$dir" "${merge_args[@]}" || return 1
 	# Same contract as `vox stop`: the path either way, the status says whether
 	# there is anything in it.
@@ -540,7 +537,6 @@ _vox_grab() {
 	to=$(vox_elapsed_secs)
 	(( to < from )) && to=$from
 	local -a merge_args=(--me "$out/mic.json" --them "$out/sys.json")
-	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
 	{
 		printf '# Call in progress: %s, %02d:%02d:%02d-%02d:%02d:%02d so far. An auto-transcribed draft; Me = me, Them = the other side.\n\n' \
 			"${title:-untitled}" $((from / 3600)) $((from % 3600 / 60)) $((from % 60)) \

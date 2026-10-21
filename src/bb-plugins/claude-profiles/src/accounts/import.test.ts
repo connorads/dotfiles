@@ -15,7 +15,7 @@ const history = [
 ].join('\n');
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'claude-import-test-'));
-  const profile = { id: 'Team Alpha', dir: join(root, 'Team Alpha') };
+  const profile = { id: 'alpha', dir: join(root, 'alpha') };
   const other = { id: 'default', dir: join(root, 'default') };
   const project = join(profile.dir, 'projects', '-work-repo');
   await mkdir(join(project, source, 'subagents'), { recursive: true });
@@ -28,7 +28,7 @@ async function fixture() {
 test('locates a session by ID with its profile, working directory and latest title', async () => {
   const f = await fixture();
   assert.deepEqual(await locateSession([f.other, f.profile], source),
-    { profileId: 'Team Alpha', sessionId: source, cwd: '/work/repo', title: 'Plugin version' });
+    { profileId: 'alpha', sessionId: source, cwd: '/work/repo', title: 'Plugin version' });
 });
 test('refuses an unknown session', async () => {
   const f = await fixture();
@@ -38,9 +38,9 @@ test('finds the live session of a pane process across profiles', async () => {
   const f = await fixture();
   await mkdir(join(f.profile.dir, 'sessions'), { recursive: true });
   await writeFile(join(f.profile.dir, 'sessions', '4407.json'),
-    JSON.stringify({ pid: 4407, sessionId: source, cwd: '/work/repo', name: 'Team Alpha-9e', status: 'idle' }));
+    JSON.stringify({ pid: 4407, sessionId: source, cwd: '/work/repo', name: 'alpha-9e', status: 'idle' }));
   assert.deepEqual(await liveSession([f.other, f.profile], [4406, 4407]),
-    { profileId: 'Team Alpha', sessionId: source, cwd: '/work/repo', name: 'Team Alpha-9e', status: 'idle' });
+    { profileId: 'alpha', sessionId: source, cwd: '/work/repo', name: 'alpha-9e', status: 'idle' });
   await assert.rejects(liveSession([f.other, f.profile], [1]), /No Claude session/);
 });
 test('collects a pane process and its descendants', () => {

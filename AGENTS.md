@@ -195,3 +195,13 @@ Update the owning documentation:
 - This file (`AGENTS.md`) - for standing rules and task routes
 - The relevant subsystem guide - for commands, configuration and procedures
 - [README.md](./README.md) - for changes to the dotfiles system itself
+
+## Public content privacy
+
+This repository is public. Use synthetic names, paths, dates and titles in examples, tests and evaluation cases.
+Never copy client or employer identifiers, private conversations, meeting notes or captured workspace metadata into tracked files.
+Preserve the tested behaviour with invented fixtures. Do not replace private content with redaction labels in working examples.
+Keep personal vocabulary and business mappings in ignored local files.
+Before committing, inspect the staged diff for private source material, including comments, fixture data and locally authored vendor patches.
+Treat upstream names as public examples unless evidence connects them to private work. Capitalisation alone is not evidence.
+Keep privacy audit reports and sensitive search terms outside tracked files. Never record removed identifiers in commit messages.

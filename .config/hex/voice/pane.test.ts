@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { paneLabel, parsePanes, stripGlyph } from "./pane.ts"
 
-// Captured from `agent ls --json` and `tmux list-panes -a -F '#{pane_id}\037#{pane_title}'`.
+// Synthetic agent rows and pane titles exercise the two command output formats.
 const AGENT_JSON = JSON.stringify([
-  { pane: "%48", state: "blocked", kind: "claude", name: null, loc: "str:2.1", window: "claude", cwd: "/work/project-alpha" },
-  { pane: "%87", state: "working", kind: "claude", name: null, loc: "git:4.1", window: "claude", cwd: "/Users/connorads/git" },
-  { pane: "%4", state: "idle", kind: "claude", name: null, loc: "fr:2.1", window: "claude", cwd: "/Users/connorads/git/project-beta" },
+  { pane: "%48", state: "blocked", kind: "claude", name: null, loc: "alpha:2.1", window: "claude", cwd: "/work/project-alpha" },
+  { pane: "%87", state: "working", kind: "claude", name: null, loc: "git:4.1", window: "claude", cwd: "/work/projects" },
+  { pane: "%4", state: "idle", kind: "claude", name: null, loc: "beta:2.1", window: "claude", cwd: "/work/project-beta" },
 ])
 const TITLES = [
   "%4\x1f✳ example-idle-task",
@@ -20,7 +20,7 @@ describe("parsePanes", () => {
     if (!r.ok) throw new Error(r.error)
     expect(r.value).toEqual([
       { id: "%48", state: "blocked", kind: "claude", project: "project-alpha", title: "Example blocked task" },
-      { id: "%87", state: "working", kind: "claude", project: "git", title: "example-active-task" },
+      { id: "%87", state: "working", kind: "claude", project: "projects", title: "example-active-task" },
       { id: "%4", state: "idle", kind: "claude", project: "project-beta", title: "example-idle-task" },
     ] as unknown as typeof r.value)
   })

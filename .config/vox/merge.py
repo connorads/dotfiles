@@ -5,7 +5,7 @@ A real Unix filter: it reads the two per-track JSON files vox keeps beside the
 audio, writes markdown to stdout, and has no other side effects. That makes it
 usable on its own and testable without any audio.
 
-    merge.py --me mic.json --them sys.json [--vocab vocabulary.tsv] > transcript.md
+    merge.py --me mic.json --them sys.json > transcript.md
 
 Input schema (segments.py's output; recordings from before it hold the
 MacWhisper CLI's `mw transcribe --format json`, the same shape):
@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from operator import attrgetter
 from pathlib import Path
@@ -81,35 +80,6 @@ def load_segments(payload: object, default_speaker: str) -> list[Segment]:
     return segments
 
 
-def parse_vocabulary(text: str) -> list[tuple[str, str]]:
-    """Parse a `wrong<TAB>right` vocabulary file. Blank and `#` lines ignored.
-
-    `fluidaudiocli transcribe` has no vocabulary or prompt flag, so correcting
-    names it reliably mangles has to happen after transcription.
-    """
-    pairs: list[tuple[str, str]] = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        wrong, _, right = line.partition("\t")
-        wrong, right = wrong.strip(), right.strip()
-        if wrong and right:
-            pairs.append((wrong, right))
-    return pairs
-
-
-def apply_vocabulary(text: str, pairs: list[tuple[str, str]]) -> str:
-    """Replace each whole-word `wrong` with `right`, ignoring case.
-
-    Whole-word so "admit" does not rewrite the inside of another word, and
-    case-insensitive because the model capitalises inconsistently mid-sentence.
-    """
-    for wrong, right in pairs:
-        text = re.sub(rf"\b{re.escape(wrong)}\b", right, text, flags=re.IGNORECASE)
-    return text
-
-
 def interleave(tracks: list[list[Segment]]) -> list[Segment]:
     """Merge the tracks into one timeline, ordered by start then end.
 
@@ -155,7 +125,6 @@ def read_track(path: Path | None, speaker: str) -> list[Segment]:
 def build(
     me: Path | None,
     them: Path | None,
-    vocab: Path | None,
     me_name: str,
     them_name: str,
     gap_ms: int = DEFAULT_GAP_MS,
@@ -164,11 +133,6 @@ def build(
     timeline = merge_gaps(
         interleave([read_track(me, me_name), read_track(them, them_name)]), gap_ms
     )
-    pairs: list[tuple[str, str]] = (
-        parse_vocabulary(vocab.read_text(encoding="utf-8")) if vocab and vocab.is_file() else []
-    )
-    if pairs:
-        timeline = [s._replace(text=apply_vocabulary(s.text, pairs)) for s in timeline]
     return render(timeline)
 
 
@@ -176,7 +140,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--me", type=Path, help="JSON transcript of the mic track")
     parser.add_argument("--them", type=Path, help="JSON transcript of the system track")
-    parser.add_argument("--vocab", type=Path, help="wrong<TAB>right substitutions")
     parser.add_argument("--me-name", default="Me", help="label for the mic track")
     parser.add_argument("--them-name", default="Them", help="label for the system track")
     parser.add_argument(
@@ -190,9 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.me is None and args.them is None:
         parser.error("at least one of --me/--them is required")
 
-    sys.stdout.write(
-        build(args.me, args.them, args.vocab, args.me_name, args.them_name, args.gap_ms)
-    )
+    sys.stdout.write(build(args.me, args.them, args.me_name, args.them_name, args.gap_ms))
     return 0
 
 

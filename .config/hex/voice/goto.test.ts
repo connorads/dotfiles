@@ -12,8 +12,8 @@ const pane = (id: string, title: string, project = "proj"): Pane => ({
 
 const PANES = [
   pane("%1", "Example blocked task"),
-  pane("%2", "Meeting prep with Ben", "notes"),
-  pane("%3", "Meeting prep with Ben", "work"),
+  pane("%2", "Example duplicate task", "notes"),
+  pane("%3", "Example duplicate task", "work"),
   pane("%4", "example-active-task"),
 ]
 
@@ -59,10 +59,10 @@ describe("decideGoto", () => {
 })
 
 test("gotoQuestion offers every pane by id plus none", () => {
-  const q = gotoQuestion("the crash one", PANES)
-  expect(q.state).toEqual({ utterance: "the crash one" })
+  const q = gotoQuestion("the blocked one", PANES)
+  expect(q.state).toEqual({ utterance: "the blocked one" })
   expect(Object.keys(q.questions.pane.criteria)).toEqual(["%1", "%2", "%3", "%4", "none"])
-  expect(q.questions.pane.criteria["%2"]).toBe("Meeting prep with Ben (notes, claude, idle)")
+  expect(q.questions.pane.criteria["%2"]).toBe("Example duplicate task (notes, claude, idle)")
 })
 
 describe("parseJevChoice", () => {

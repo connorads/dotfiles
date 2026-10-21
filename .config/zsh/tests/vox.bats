@@ -22,7 +22,6 @@ setup() {
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
-  export VOX_VOCAB="$HOME/vocab.tsv"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
 }
 
@@ -195,13 +194,13 @@ aged_recording() {
 
 @test "ls prints bare paths, newest first" {
   recording 2026-07-26-090000-standup
-  recording 2026-07-28-140312-Team Alpha-kickoff
+  recording 2026-07-28-140312-alpha-kickoff
   recording 2026-07-27-113000
 
   vox ls
 
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = "$VOX_STORE/2026-07-28-140312-Team Alpha-kickoff" ]
+  [ "${lines[0]}" = "$VOX_STORE/2026-07-28-140312-alpha-kickoff" ]
   [ "${lines[1]}" = "$VOX_STORE/2026-07-27-113000" ]
   [ "${lines[2]}" = "$VOX_STORE/2026-07-26-090000-standup" ]
 }
@@ -215,11 +214,11 @@ aged_recording() {
 
 @test "last prints the newest recording" {
   recording 2026-07-26-090000-standup
-  recording 2026-07-28-140312-Team Alpha-kickoff
+  recording 2026-07-28-140312-alpha-kickoff
 
   vox last
 
-  [ "$output" = "$VOX_STORE/2026-07-28-140312-Team Alpha-kickoff" ]
+  [ "$output" = "$VOX_STORE/2026-07-28-140312-alpha-kickoff" ]
 }
 
 @test "last fails when there is nothing to print" {
@@ -253,11 +252,11 @@ aged_recording() {
 @test "rename preserves the timestamp prefix" {
   recording 2026-07-28-140312
 
-  vox rename "$VOX_STORE/2026-07-28-140312" "Team Alpha Kickoff"
+  vox rename "$VOX_STORE/2026-07-28-140312" "Alpha Kickoff"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$VOX_STORE/2026-07-28-140312-Team Alpha-kickoff" ]
-  [ -f "$VOX_STORE/2026-07-28-140312-Team Alpha-kickoff/transcript.md" ]
+  [ "$output" = "$VOX_STORE/2026-07-28-140312-alpha-kickoff" ]
+  [ -f "$VOX_STORE/2026-07-28-140312-alpha-kickoff/transcript.md" ]
   [ ! -d "$VOX_STORE/2026-07-28-140312" ]
 }
 
@@ -272,9 +271,9 @@ aged_recording() {
 @test "rename sanitises a slug into lowercase single-dashed words" {
   recording 2026-07-28-140312
 
-  vox rename "$VOX_STORE/2026-07-28-140312" "  Team Beta // Q3 Review!  "
+  vox rename "$VOX_STORE/2026-07-28-140312" "  Beta // Q3 Review!  "
 
-  [ "$output" = "$VOX_STORE/2026-07-28-140312-Team Beta-q3-review" ]
+  [ "$output" = "$VOX_STORE/2026-07-28-140312-beta-q3-review" ]
 }
 
 @test "rename with an empty slug strips back to the bare timestamp" {
@@ -456,17 +455,17 @@ aged_recording() {
   require_macos
   stub_voxtap
 
-  vox --name "Team Alpha Kickoff"
+  vox --name "Alpha Kickoff"
   kill_capture
 
   [ "$status" -eq 0 ]
-  [[ "$(basename "$output")" == *-Team Alpha-kickoff ]]
+  [[ "$(basename "$output")" == *-alpha-kickoff ]]
 }
 
 @test "a bare argument is still a file to transcribe, never a title" {
   # Why --name is a flag: the *) branch treats a bare argument as a file, so a
   # mistyped path would silently become a title and record nothing.
-  vox "Team Alpha Kickoff"
+  vox "Alpha Kickoff"
 
   [ "$status" -ne 0 ]
   [ ! -f "$VOX_STATEFILE" ]
@@ -666,18 +665,19 @@ real_tracks() {
   [ "$output" = "IDLE" ]
 }
 
-@test "stop applies the vocabulary map to the transcript" {
+@test "stop preserves recognised words despite an old vocabulary file" {
   require_macos
   stub_ffmpeg
   stub_voxtap
   stub_fluid
-  export FLUID_WORDS=$'0 0.2 talking\n0.3 0.4 to\n0.5 0.7 admit\n0.8 1 today'
-  printf 'admit\tWidget\n' >"$VOX_VOCAB"
+  export FLUID_WORDS=$'0 0.2 talking\n0.3 0.4 to\n0.5 0.7 colour\n0.8 1 today'
+  mkdir -p "$HOME/.config/vox"
+  printf 'colour\tColour\n' >"$HOME/.config/vox/vocabulary.tsv"
 
   vox
   vox stop
 
-  [[ "$(cat "$output/transcript.md")" == *"talking to Widget today"* ]]
+  [[ "$(cat "$output/transcript.md")" == *"talking to colour today"* ]]
 }
 
 @test "a transcribe that writes no JSON is reported as failed" {

@@ -20,13 +20,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from merge import (
     Segment,
-    apply_vocabulary,
     build,
     format_timestamp,
     interleave,
     load_segments,
     merge_gaps,
-    parse_vocabulary,
     render,
 )
 
@@ -142,27 +140,6 @@ def test_an_interjection_stops_a_merge_across_it() -> None:
     assert [s.speaker for s in merge_gaps(segments)] == ["Me", "Them", "Me"]
 
 
-# --- vocabulary -------------------------------------------------------------
-
-
-def test_parse_vocabulary_ignores_blanks_and_comments() -> None:
-    text = "# a note\n\nadmit\tWidget\n  Gadget\tGadget  \nnotabpair\n"
-    assert parse_vocabulary(text) == [("admit", "Widget"), ("Gadget", "Gadget")]
-
-
-def test_vocabulary_substitution_is_case_insensitive() -> None:
-    assert apply_vocabulary("Admit and admit", [("admit", "Widget")]) == "Widget and Widget"
-
-
-def test_vocabulary_substitution_is_whole_word_only() -> None:
-    assert apply_vocabulary("admittedly", [("admit", "Widget")]) == "admittedly"
-
-
-def test_vocabulary_handles_regex_metacharacters_literally() -> None:
-    assert apply_vocabulary("a.b works", [("a.b", "AB")]) == "AB works"
-    assert apply_vocabulary("axb works", [("a.b", "AB")]) == "axb works"
-
-
 # --- rendering --------------------------------------------------------------
 
 
@@ -174,17 +151,14 @@ def test_render_emits_one_timestamped_line_per_segment() -> None:
 # --- the whole filter -------------------------------------------------------
 
 
-def test_build_merges_two_tracks_and_applies_the_vocabulary(tmp_path: Path) -> None:
-    me = write_track(tmp_path / "mic.json", [{"start": 0, "end": 1000, "text": "hello admit"}])
+def test_build_merges_two_tracks_without_changing_words(tmp_path: Path) -> None:
+    me = write_track(tmp_path / "mic.json", [{"start": 0, "end": 1000, "text": "hello colour"}])
     them = write_track(
         tmp_path / "sys.json",
         [{"start": 2000, "end": 3000, "text": "hi there", "speaker": "Speaker 1"}],
     )
-    vocab = tmp_path / "v.tsv"
-    vocab.write_text("admit\tWidget\n", encoding="utf-8")
-
-    assert build(me, them, vocab, "Me", "Them") == (
-        "[00:00:00] Me: hello Widget\n[00:00:02] Speaker 1: hi there\n"
+    assert build(me, them, "Me", "Them") == (
+        "[00:00:00] Me: hello colour\n[00:00:02] Speaker 1: hi there\n"
     )
 
 
@@ -192,13 +166,13 @@ def test_a_silent_system_track_yields_a_monologue_transcript(tmp_path: Path) -> 
     me = write_track(tmp_path / "mic.json", [{"start": 0, "end": 1000, "text": "just me"}])
     them = write_track(tmp_path / "sys.json", [])
 
-    assert build(me, them, None, "Me", "Them") == "[00:00:00] Me: just me\n"
+    assert build(me, them, "Me", "Them") == "[00:00:00] Me: just me\n"
 
 
 def test_a_missing_track_file_contributes_nothing(tmp_path: Path) -> None:
     me = write_track(tmp_path / "mic.json", [{"start": 0, "end": 1000, "text": "just me"}])
 
-    assert build(me, tmp_path / "absent.json", None, "Me", "Them") == "[00:00:00] Me: just me\n"
+    assert build(me, tmp_path / "absent.json", "Me", "Them") == "[00:00:00] Me: just me\n"
 
 
 # --- the CLI ----------------------------------------------------------------

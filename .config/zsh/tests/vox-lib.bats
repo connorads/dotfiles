@@ -138,10 +138,10 @@ statefile() {
 }
 
 @test "the recording directory is readable from the statefile" {
-  statefile 123 "$(date +%s)" "$HOME/Recordings/vox/2026-07-28-140312-Team Alpha kickoff"
+  statefile 123 "$(date +%s)" "$HOME/Recordings/vox/2026-07-28-140312-alpha kickoff"
   lib vox_dir
   # `read` puts the whole remainder in the last field, so spaces survive.
-  [ "$output" = "$HOME/Recordings/vox/2026-07-28-140312-Team Alpha kickoff" ]
+  [ "$output" = "$HOME/Recordings/vox/2026-07-28-140312-alpha kickoff" ]
 }
 
 # --- the pid list: mic capture first, system capture second -----------------
@@ -350,9 +350,9 @@ empty() {
 }
 
 @test "the transcribed recording is readable from its marker" {
-  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312-Team Alpha kickoff"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312-alpha kickoff"
   lib vox_job_dir
-  [ "$output" = "$VOX_STORE/2026-07-28-140312-Team Alpha kickoff" ]
+  [ "$output" = "$VOX_STORE/2026-07-28-140312-alpha kickoff" ]
 }
 
 # --- several transcriptions at once ------------------------------------------

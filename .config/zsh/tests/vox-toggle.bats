@@ -227,11 +227,11 @@ toggle_answering() {
 @test "a title renames the live recording" {
   stub_vox
 
-  toggle_answering 'enter name' 'Team Alpha Kickoff' Enter -- "$PANE"
+  toggle_answering 'enter name' 'Alpha Kickoff' Enter -- "$PANE"
 
   [ "$status" -eq 0 ]
-  grep -q "renamed $VOX_STORE/2026-07-28-140312 -> Team Alpha Kickoff" "$TEST_LOG"
-  grep -q 'display-message vox: recording 2026-07-28-140312-Team Alpha Kickoff' "$TEST_LOG"
+  grep -q "renamed $VOX_STORE/2026-07-28-140312 -> Alpha Kickoff" "$TEST_LOG"
+  grep -q 'display-message vox: recording 2026-07-28-140312-Alpha Kickoff' "$TEST_LOG"
   ! grep -q '^vox cancel$' "$TEST_LOG"
 }
 
@@ -280,11 +280,11 @@ toggle_answering() {
 @test "prompt renames the recording it was asked about" {
   stub_vox
 
-  toggle_answering 'enter name' 'Team Alpha Kickoff' Enter -- \
+  toggle_answering 'enter name' 'Alpha Kickoff' Enter -- \
     prompt "$VOX_STORE/2026-07-28-140312-standup"
 
   [ "$status" -eq 0 ]
-  grep -q "renamed $VOX_STORE/2026-07-28-140312-standup -> Team Alpha Kickoff" "$TEST_LOG"
+  grep -q "renamed $VOX_STORE/2026-07-28-140312-standup -> Alpha Kickoff" "$TEST_LOG"
 }
 
 @test "escaping the menu's prompt renames nothing and discards nothing" {

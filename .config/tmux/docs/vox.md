@@ -29,7 +29,7 @@ process and one clock, and what was measured before building it:
 recording under `${VOX_STORE:-~/Recordings/vox}`:
 
 ```text
-2026-07-28-140312-Team Alpha-kickoff/
+2026-07-28-140312-alpha-kickoff/
     mic.opus sys.opus     you / them (sys silent => it was a monologue); WAV
                           until stop compacts it, or kept if the transcript was empty
     mic.json sys.json     per-track segments (segments.py), what merge.py reads
@@ -145,10 +145,7 @@ Change as a set:
 - [`../vox/merge.py`](../../vox/merge.py) - a real Unix filter: two per-track JSON
   files in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
   Both filters are stdlib-only so the directory stays eligible for the
-  `py-typecheck-vox` pyrefly gate. Applies
-  [`../vox/vocabulary.tsv`](../../vox/vocabulary.tsv) (`wrong<TAB>right`,
-  whole-word and case-insensitive) because `fluidaudiocli transcribe` has no
-  vocabulary or prompt flag.
+  `py-typecheck-vox` pyrefly gate. Recognised words pass through unchanged.
 - [`scripts/vox-toggle.sh`](../scripts/vox-toggle.sh) - `prefix + Alt+v`, the
   key the subsystem is actually used through: idle starts, recording stops. Two
   orderings are the design. **The title prompt appears at once, with the capture

@@ -2,7 +2,8 @@
 
 ## Evidence And Status
 
-These synthetic scenarios define expected behaviour.
+These cases define synthetic review-video scenarios. They do not establish
+measured skill effectiveness. Test the instructions and triggers in fresh sessions.
 
 ## Behaviour Cases
 
