@@ -79,7 +79,15 @@ chooses whether to load it; each run records whether it did. It grades
 `checks` deterministically and `assertions` with a judge that is not told the
 arm, and writes `results.json` (the upstream `benchmark.json` shape) plus
 `report.md` linking every transcript - read those, per Grading below. `--help`
-lists the flags; exit 2 means the cost ceiling stopped the suite early.
+lists the flags. Exit 1 covers failed, errored or ungraded with-skill runs
+and invalid usage. Exit 2 means the cost ceiling stopped the suite early.
+
+Cases without `checks` or `assertions` still collect outputs for human review.
+A narrative `expected_output` does not create an automatic grader. These runs
+appear as `UNGRADED`, with `pass_rate: null` in `grading.json`. Each arm reports
+an `ungraded` count and excludes these runs from its pass-rate statistics.
+An arm with no scored runs has `pass_rate: null`. Ungraded runs prevent
+automatic suite success; inspect their transcripts and outputs manually.
 
 **Fallback, by hand** (another client, or no Python): run each prompt in a
 fresh headless session from a temp dir holding a copy of the case's `files`.

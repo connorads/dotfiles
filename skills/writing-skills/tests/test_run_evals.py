@@ -261,6 +261,24 @@ def test_aggregate_counts_errored_runs_as_zero():
     )
     assert b["run_summary"]["with_skill"]["pass_rate"]["mean"] == 0.0
     assert b["run_summary"]["with_skill"]["errors"] == 1
+    assert b["run_summary"]["with_skill"]["ungraded"] == 0
+
+
+@pytest.mark.parametrize("include_graded", [False, True])
+def test_aggregate_excludes_ungraded_runs_without_claiming_case_success(include_graded):
+    records = [record("a", "with_skill", 1, 0, 0, True)]
+    if include_graded:
+        records.append(record("a", "with_skill", 2, 1, 1, True))
+
+    bench = run_evals.aggregate(records)
+
+    arm = bench["run_summary"]["with_skill"]
+    assert arm["ungraded"] == 1
+    if include_graded:
+        assert arm["pass_rate"]["mean"] == 1.0
+    else:
+        assert arm["pass_rate"] is None
+    assert run_evals.case_passed(bench["cases"][0]) is False
 
 
 def test_run_one_records_an_unexpected_crash_as_that_runs_error(tmp_path):
@@ -406,6 +424,72 @@ def test_cli_runs_both_arms_and_writes_benchmark(tmp_path, env, agent):
     assert (out / "report.md").read_text().count("/transcript.jsonl)") == 2
     assert "spike-word" in r.stdout
     assert len(r.stdout.splitlines()) < 20
+
+
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+@pytest.mark.parametrize("keep_expected_output", [False, True])
+def test_cli_collects_ungraded_outputs_without_an_automatic_pass(
+    tmp_path, env, agent, keep_expected_output
+):
+    skill = make_skill(tmp_path)
+    evals_path = skill / "evals" / "evals.json"
+    data = json.loads(evals_path.read_text())
+    case = data["evals"][0]
+    case.pop("checks")
+    case.pop("assertions")
+    if not keep_expected_output:
+        case.pop("expected_output")
+    evals_path.write_text(json.dumps(data))
+    out = tmp_path / "out"
+
+    result = run_cli(env, str(skill), "--agent", agent, "--runs", "1", "--out", str(out))
+
+    assert result.returncode == 1, result.stderr
+    bench = json.loads((out / "results.json").read_text())
+    for arm in run_evals.ARMS:
+        assert bench["cases"][0][arm]["runs"] == 1
+        assert bench["cases"][0][arm]["ungraded"] == 1
+        assert bench["cases"][0][arm]["pass_rate"] is None
+        run_dir = out / "spike-word" / arm / "run-1"
+        assert (run_dir / "transcript.jsonl").read_text()
+        grading = json.loads((run_dir / "grading.json").read_text())
+        assert grading["summary"]["total"] == 0
+        assert grading["summary"]["pass_rate"] is None
+    assert bench["run_summary"]["delta"]["pass_rate"] is None
+    assert "UNGRADED" in result.stdout
+    report = (out / "report.md").read_text()
+    assert report.count("/transcript.jsonl)") == 2
+    assert "UNGRADED" in report
+    calls = [json.loads(line) for line in Path(env["FAKE_LOG"]).read_text().splitlines()]
+    assert len(calls) == 2
+    assert all("--json-schema" not in call["argv"] for call in calls)
+    assert all("--output-schema" not in call["argv"] for call in calls)
+
+
+def test_cli_keeps_mixed_cases_visible_and_scores_only_graded_results(tmp_path, env):
+    skill = make_skill(tmp_path)
+    evals_path = skill / "evals" / "evals.json"
+    data = json.loads(evals_path.read_text())
+    data["evals"].append({"name": "manual-review", "prompt": "Explain the spike word"})
+    evals_path.write_text(json.dumps(data))
+    out = tmp_path / "out"
+
+    result = run_cli(env, str(skill), "--agent", "claude", "--runs", "1", "--out", str(out))
+
+    assert result.returncode == 1, result.stderr
+    bench = json.loads((out / "results.json").read_text())
+    cases = {case["name"]: case for case in bench["cases"]}
+    assert set(cases) == {"spike-word", "manual-review"}
+    assert cases["spike-word"]["with_skill"]["pass_rate"]["mean"] == 1.0
+    assert cases["manual-review"]["with_skill"]["pass_rate"] is None
+    for arm in run_evals.ARMS:
+        summary = bench["run_summary"][arm]
+        assert summary["runs"] == 2
+        assert summary["ungraded"] == 1
+        assert summary["pass_rate"] == cases["spike-word"][arm]["pass_rate"]
+    report = (out / "report.md").read_text()
+    assert report.count("/transcript.jsonl)") == 4
+    assert "manual-review" in result.stdout
 
 
 def test_cli_isolates_codex_home_and_places_skill_for_both_clients(tmp_path, env):

@@ -19,8 +19,8 @@ Writes results.json (agentskills.io benchmark.json shape plus per-case detail)
 and report.md, linking every transcript, to --out (default: a new temp dir).
 stdout carries only the summary table; diagnostics go to stderr.
 
-Exit: 0 every case's with-skill runs passed; 1 a case failed, a run errored,
-or bad usage; 2 partial - the cost ceiling stopped the suite early.
+Exit: 0 every case's with-skill runs passed; 1 a with-skill run failed, errored
+or was ungraded, or bad usage; 2 partial - the cost ceiling stopped the suite early.
 """
 
 from __future__ import annotations
@@ -379,10 +379,10 @@ def grade(check: Check, t: Transcript, files: Mapping[str, str]) -> CheckResult:
 # --- Aggregation ------------------------------------------------------------------
 
 
-def _rate(r: RunRecord) -> float:
+def _rate(r: RunRecord) -> float | None:
     if r.error:
         return 0.0
-    return r.passed / r.total if r.total else 1.0
+    return r.passed / r.total if r.total else None
 
 
 def _stat(values: Sequence[float]) -> dict[str, float] | None:
@@ -399,7 +399,8 @@ def _arm(records: Sequence[RunRecord]) -> dict[str, Any]:
     return {
         "runs": len(records),
         "errors": sum(1 for r in records if r.error),
-        "pass_rate": _stat([_rate(r) for r in records]),
+        "ungraded": sum(1 for r in records if not r.error and not r.total),
+        "pass_rate": _stat([rate for r in records if (rate := _rate(r)) is not None]),
         "skill_load_rate": statistics.fmean(r.skill_loaded for r in records) if records else None,
         "time_seconds": _stat([r.seconds for r in records]),
         "tokens": _stat([r.tokens for r in records if r.tokens is not None]),
@@ -434,7 +435,13 @@ def aggregate(records: Sequence[RunRecord]) -> dict[str, Any]:
 
 def case_passed(case: dict[str, Any]) -> bool:
     w = case["with_skill"]
-    return bool(w["runs"]) and not w["errors"] and w["pass_rate"]["mean"] == 1.0
+    return (
+        bool(w["runs"])
+        and not w["errors"]
+        and not w["ungraded"]
+        and w["pass_rate"] is not None
+        and w["pass_rate"]["mean"] == 1.0
+    )
 
 
 # --- Judge prompt -------------------------------------------------------------------
@@ -820,7 +827,7 @@ def run_one(
                     "passed": passed,
                     "failed": len(results) - passed,
                     "total": len(results),
-                    "pass_rate": passed / len(results) if results else 1.0,
+                    "pass_rate": passed / len(results) if results else None,
                 },
                 "workspace": str(ws),
             },
@@ -865,15 +872,20 @@ def _fmt(stat: dict[str, float] | None, pct: bool = False) -> str:
 
 def table(bench: dict[str, Any]) -> str:
     rows = [
-        "case                                      arm            pass       load  tokens         cost"
+        "case                                      arm            pass       ungraded load  tokens         cost"
     ]
     for c in bench["cases"]:
         for arm in ARMS:
             a = c[arm]
             cost = "-" if a["cost_usd"] is None else f"${a['cost_usd']:.2f}"
             load = "-" if a["skill_load_rate"] is None else f"{a['skill_load_rate']:.0%}"
+            score = (
+                "UNGRADED"
+                if a["ungraded"] and a["pass_rate"] is None
+                else _fmt(a["pass_rate"], True)
+            )
             rows.append(
-                f"{c['name'][:40]:<41} {arm:<14} {_fmt(a['pass_rate'], True):<10} {load:<5} "
+                f"{c['name'][:40]:<41} {arm:<14} {score:<10} {a['ungraded']:<8} {load:<5} "
                 f"{_fmt(a['tokens']):<14} {cost}"
             )
     d = bench["run_summary"]["delta"]["pass_rate"]
@@ -894,7 +906,9 @@ def report(bench: dict[str, Any], records: Sequence[RunRecord]) -> str:
     ]
     for r in sorted(records, key=lambda r: (r.case, r.arm, r.run)):
         cost = "-" if r.cost_usd is None else f"${r.cost_usd:.3f}"
-        status = f"error: {r.error[:60]}" if r.error else f"{r.passed}/{r.total}"
+        status = f"{r.passed}/{r.total}" if r.total else "UNGRADED"
+        if r.error:
+            status = f"error: {r.error[:60]}"
         lines.append(
             f"| {r.case} | {r.arm} | {r.run} | {status} | {r.skill_loaded} | {r.tokens or '-'} | {cost} "
             f"| [{r.transcript}]({r.transcript}) |"
