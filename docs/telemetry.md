@@ -144,3 +144,18 @@ distinguishes `off`, `local` and `on`. Local mode collects counters without uplo
 `go telemetry` checks the mode. A mise shim without a selected Go version can fail;
 query the installed toolchain directly rather than changing the global version.
 These native settings affect future tool operations without restarting services.
+
+## Tailscale client logs
+
+The macOS daemon declaration includes `--no-logs-no-support` in
+[darwin-shared.nix](../.config/nix/modules/darwin-shared.nix).
+[Tailscale documents this opt-out](https://tailscale.com/docs/features/logging)
+for its open-source macOS daemon. It suppresses client log uploads and limits
+support that requires those logs. Required control-plane requests and server
+audit logs remain separate.
+
+Declaration evaluation confirms the flag. Deployment remains pending a normal
+Nix activation during a maintenance window. Activation restarts the daemon and
+can interrupt remote work. Check installed launch arguments and connectivity
+through `ts` after that activation. No running-daemon opt-out is established by
+an unapplied declaration.

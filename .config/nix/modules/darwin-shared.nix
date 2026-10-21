@@ -206,7 +206,7 @@
           cp -f ${pkgs.tailscale}/bin/.tailscaled-wrapped /usr/local/lib/tailscale/.tailscaled.new
           chmod 0755 /usr/local/lib/tailscale/.tailscaled.new
           mv -f /usr/local/lib/tailscale/.tailscaled.new /usr/local/lib/tailscale/tailscaled
-          exec /usr/local/lib/tailscale/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
+          exec /usr/local/lib/tailscale/tailscaled --no-logs-no-support --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
         ''
       ];
       RunAtLoad = true;
