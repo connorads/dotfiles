@@ -280,23 +280,29 @@ flags:
 ### Manual enforcement (no third-party service)
 
 For teams that prefer not to use Codecov/Coveralls:
+Generate `coverage-summary.json` with the `json-summary` reporter. The `json`
+reporter produces a different file. This check needs `jq`.
 
 ```bash
 #!/usr/bin/env bash
 # scripts/check-coverage-threshold.sh
 # Usage: ./scripts/check-coverage-threshold.sh coverage/unit/coverage-summary.json 100
+set -euo pipefail
 
 SUMMARY_FILE="$1"
 THRESHOLD="${2:-100}"
 
-COVERAGE=$(jq '.total.lines.pct' "$SUMMARY_FILE")
-
-if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-  echo "Coverage ${COVERAGE}% below threshold ${THRESHOLD}%"
+if ! jq -es --argjson floor "$THRESHOLD" '
+  length == 1
+  and ($floor | type) == "number" and $floor >= 0 and $floor <= 100
+  and (.[0].total.lines.pct | type) == "number"
+  and .[0].total.lines.pct >= $floor and .[0].total.lines.pct <= 100
+' "$SUMMARY_FILE" >/dev/null; then
+  echo "Coverage check failed: invalid or missing report, or below threshold" >&2
   exit 1
 fi
 
-echo "Coverage ${COVERAGE}% meets threshold ${THRESHOLD}%"
+echo "Coverage meets threshold ${THRESHOLD}%"
 ```
 
 Add to CI:
