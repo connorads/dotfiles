@@ -20,7 +20,7 @@ Do not disable reconciliation to make a settings edit persist.
 ## Agent usage
 
 The custom **Agent Switcher** plugin (`claude-profiles`) owns the usage badge and
-`⌘⇧A` overlay. Read its [guide](../../src/bb-plugins/claude-profiles/README.md#usage).
+`⌘⇧A` overlay. Read its [guide](../src/bb-plugins/claude-profiles/README.md#usage).
 The built-in `bb--provider-usage` plugin collects quota sources for Agent
 Switcher.
 
@@ -30,17 +30,17 @@ Before choosing files, check `bb plugin list --json` and
 
 ## Thread shortcuts
 
-The Preferences plugin manages thread shortcuts from [preferences.json](./preferences.json).
+The Preferences plugin manages thread shortcuts from [preferences.json](../.config/bb/preferences.json).
 Managed entries override UI and CLI edits. Other shortcuts remain unmanaged.
-Read the [Preferences guide](../../src/bb-plugins/preferences/README.md) for ownership, installation and removal rules.
+Read the [Preferences guide](../src/bb-plugins/preferences/README.md) for ownership, installation and removal rules.
 
-1. Edit [preferences.json](./preferences.json) for the requested command and platform.
+1. Edit [preferences.json](../.config/bb/preferences.json) for the requested command and platform.
 2. Run `bb preferences apply` to apply the tracked file.
 3. Run `bb settings keyboard list --json` to verify the live overrides.
 
 ## Automation backups
 
-[Automation Backup](../../src/bb-plugins/automation-backup/README.md) exports live
+[Automation Backup](../src/bb-plugins/automation-backup/README.md) exports live
 automation definitions to a private Git repository and pushes changed snapshots.
 Use `bb automation-backup run` after changing a task for an immediate backup.
 Do not copy prompts or snapshots into public dotfiles. BB owns live task settings;
@@ -48,9 +48,9 @@ editing a snapshot does not change a task.
 
 ## Plugin setup
 
-Desired plugin states live in [plugins.json](./plugins.json).
-Desired plugin settings live in [plugin-config.json](./plugin-config.json), keyed by plugin ID then setting key.
-The [workspace setup recipe](../../src/bb-plugins/README.md#setup) installs enabled local plugins and applies these states and settings.
+Desired plugin states live in [plugins.json](../.config/bb/plugins.json).
+Desired plugin settings live in [plugin-config.json](../.config/bb/plugin-config.json), keyed by plugin ID then setting key.
+The [workspace setup recipe](../src/bb-plugins/README.md#setup) installs enabled local plugins and applies these states and settings.
 Run `bb-plugins check` to inspect differences and `bb-plugins apply` to apply them.
 Unlisted plugins and settings retain their current values. Removing an entry stops managing it.
 BB must be running. The command requires zsh and jq, and honours `BB_CLI`.
@@ -62,7 +62,7 @@ The command manages enablement and settings only; install missing plugins separa
 ## Workflows
 
 BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
-Its enabled state is managed by [plugins.json](./plugins.json).
+Its enabled state is managed by [plugins.json](../.config/bb/plugins.json).
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
 
 ## Local plugins
@@ -72,15 +72,15 @@ without explicit user authorisation. The discarded account-routing spike at
 `src/bb-plugins/spikes/bb-patched/` is ignored historical research, not the
 running installation or an approved delivery route.
 Plugin content scripts may decorate BB's DOM without modifying its core.
-Use the [DOM decoration method](../../src/bb-plugins/docs/dom-decorations.md)
+Use the [DOM decoration method](../src/bb-plugins/docs/dom-decorations.md)
 for additions like account badges, message times and link icons.
 
-Plugin source lives in [src/bb-plugins](../../src/bb-plugins/README.md), a shared pnpm workspace.
+Plugin source lives in [src/bb-plugins](../src/bb-plugins/README.md), a shared pnpm workspace.
 Read its guide and the affected plugin's README before changing source.
 The workspace guide owns build, test, installation and reload procedures.
-Record SDK gaps and workarounds in [SDK frictions](../../src/bb-plugins/docs/sdk-frictions.md) as you find them.
+Record SDK gaps and workarounds in [SDK frictions](../src/bb-plugins/docs/sdk-frictions.md) as you find them.
 
-[Handsfree](../../src/bb-plugins/handsfree/README.md) owns Hex voice controls for the focused BB window.
+[Handsfree](../src/bb-plugins/handsfree/README.md) owns Hex voice controls for the focused BB window.
 
 ## Global instructions and feedback
 
@@ -88,7 +88,7 @@ The built-in Custom instructions plugin supplies host-wide agent instructions.
 Read them with `bb instructions get`; `bb instructions set` replaces the complete text.
 Preserve existing instructions when adding a rule.
 
-The feedback log is [SDK frictions](../../src/bb-plugins/docs/sdk-frictions.md).
+The feedback log is [SDK frictions](../src/bb-plugins/docs/sdk-frictions.md).
 It covers SDK gaps, app bugs, provider issues and CLI problems.
 Global BB instructions point agents to this log. Search for a matching entry before adding feedback.
 Keep private workspace metadata and security reports out of this public file.

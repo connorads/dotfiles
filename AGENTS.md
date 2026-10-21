@@ -19,7 +19,7 @@ when the task needs them.
 | Change Git guards, hooks or check coverage | [.hk-hooks/AGENTS.md](./.hk-hooks/AGENTS.md) |
 | Add, update or promote skills | [.config/skills/AGENTS.md](./.config/skills/AGENTS.md) |
 | Change tmux behaviour | [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
-| Change BB settings, shortcuts or local plugins | [.config/bb/AGENTS.md](./.config/bb/AGENTS.md) |
+| Change BB settings, shortcuts or local plugins | [BB maintenance](./docs/bb.md) |
 | Change MCP bundles | [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
 | Add or migrate command credentials, change fnox or enrol a machine | [Command credentials](./docs/credentials.md) |
 | Change agent sandbox policies | [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
@@ -148,7 +148,7 @@ The agents-root decision is recorded in [ADR 0002](./docs/adr/0002-agents-root.m
 ## BB
 
 Before changing BB settings, shortcuts, plugins or agent orchestration, read
-[the BB guide](./.config/bb/AGENTS.md).
+[the BB guide](./docs/bb.md).
 
 Check local ownership before changing live settings. File-managed preferences
 override UI and CLI edits.
