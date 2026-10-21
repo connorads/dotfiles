@@ -71,6 +71,7 @@ defines the native controls.
 | Discord | Account-level improvement-data switch | Inspect Data & Privacy |
 | Android Studio | Native Data Sharing consent | Inspect application settings |
 | T3 Code | Launch environment variables | Inspect the desktop server's environment after relaunch |
+| Raspberry Pi Imager | Nix native `com.raspberrypi.Raspberry Pi Imager` preference `telemetry=false` | Read only that boolean through CFPreferences |
 
 The desktop Nix module links VS Code's native settings path to its tracked file.
 Its Firefox activation links existing profiles to the tracked `user.js`.
@@ -85,6 +86,12 @@ and Android Studio remain manual checks.
 
 Browser profiles and application databases stay untracked. Account settings need
 manual checks where applications expose no supported declarative control.
+
+Imager's [2.0.12 CLI](https://github.com/raspberrypi/rpi-imager/blob/v2.0.12/src/main.cpp)
+persists the same boolean through QSettings. Qt's macOS backend uses
+CFPreferencesSetValue and synchronisation for this single key. This avoids
+rewriting neighbouring Wi-Fi and account settings. A concurrent writer of the
+same key can change consent again; existing process caches need separate checks.
 
 ## Sources
 
@@ -119,7 +126,8 @@ replace them.
 | Grok Bot / Sand | `SAND_DISABLE_TELEMETRY=1` | Installed 0.71.2 main and local-exec daemon readers |
 
 Comfy Desktop's variable disables its PostHog client at startup. Its native
-usage-metrics consent and independent diagnostic paths require separate checks.
+`telemetryEnabled=false` consent also gates Datadog tracking in 1.1.7.
+Use the native usage-telemetry switch; backend and custom-node collectors remain separate.
 Pi's control suppresses install reporting and default provider attribution.
 Its separate analytics setting and OpenCode session headers have separate paths.
 Slack CLI's control does not configure Slack desktop.
@@ -172,6 +180,25 @@ suppresses the signature while retaining version and security checks.
 Nonempty `TF_CLI_CONFIG_FILE` or `TERRAFORM_CONFIG` overrides bypass the drop-in directory.
 Those launch contexts need separate review. The file and source checks establish
 configuration and supported behaviour. Effective loading and outbound requests remain unverified.
+
+## Composer install notifications
+
+Composer's native global control is `composer --no-plugins --no-scripts config --global notify-on-install false`.
+The [documented setting](https://getcomposer.org/doc/06-config.md#notify-on-install)
+suppresses repository install notifications while preserving package downloads,
+audit and updates. Check only this key with
+`composer --no-plugins --no-scripts config --global notify-on-install`.
+Project configuration and an alternate COMPOSER_HOME can override the global value.
+The mutable native file stays untracked alongside its independent authentication file.
+
+## CuaDriver consent
+
+[CuaDriver's native control](https://cua.ai/docs/cua-driver/guides/operate#telemetry)
+is `cua-driver telemetry disable`. It persists `telemetry_enabled=false`.
+For the operation itself, set `CUA_DRIVER_RS_TELEMETRY_ENABLED=false` and
+`DO_NOT_TRACK=1` before startup. The environment gates apply to that process.
+Check the named saved value separately if the native status command stalls.
+Saved consent does not establish a running daemon's state. Updates remain separate.
 
 ## Tailscale client logs
 

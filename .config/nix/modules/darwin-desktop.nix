@@ -148,6 +148,10 @@
       ];
     };
     CustomUserPreferences = {
+      "com.raspberrypi.Raspberry Pi Imager" = {
+        telemetry = false;
+      };
+
       "org.mozilla.firefox" = {
         EnterprisePoliciesEnabled = true;
         DisableTelemetry = true;
