@@ -11,6 +11,7 @@ let
     BB_TELEMETRY = "false";
     HYPERFRAMES_NO_TELEMETRY = "1";
     GH_TELEMETRY = "false";
+    CF_SEND_TELEMETRY = "false";
     WRANGLER_SEND_METRICS = "false";
     EXPO_NO_TELEMETRY = "1";
     DISABLE_EAS_ANALYTICS = "1";
