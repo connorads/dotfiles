@@ -84,7 +84,6 @@ deliverable is responsive. Captures are cached, so a re-read costs nothing.
 
 ## Boundaries
 
-- `capture-brand` - evidence from one named brand's live site.
 - `ui-design-playbook` - making UI look designed once you know what you are building.
 - `inspo` - what real production sites look like, before you decide.
 
