@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>PayloadIdentifier</key>
+	<string>com.connorads.optional-collection</string>
+	<key>PayloadUUID</key>
+	<string>8F3D2038-162D-4EC1-A19F-A7F5C725A837</string>
+	<key>PayloadDisplayName</key>
+	<string>Optional collection opt-outs</string>
+	<key>PayloadDescription</key>
+	<string>Disable selected optional Apple diagnostics and advertising personalisation, Chrome reporting, and Brave analytics.</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.apple.applicationaccess</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadIdentifier</key>
+			<string>com.connorads.optional-collection.com.apple.applicationaccess</string>
+			<key>PayloadUUID</key>
+			<string>1A3D9FB9-F2E3-49F7-8CA5-3FC6AB114217</string>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>allowDiagnosticSubmission</key>
+			<false/>
+			<key>allowApplePersonalizedAdvertising</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.google.Chrome</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadIdentifier</key>
+			<string>com.connorads.optional-collection.com.google.Chrome</string>
+			<key>PayloadUUID</key>
+			<string>D39DA75A-5B0E-4472-89DE-01E8B11661D4</string>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>MetricsReportingEnabled</key>
+			<false/>
+			<key>UrlKeyedAnonymizedDataCollectionEnabled</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.brave.Browser</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadIdentifier</key>
+			<string>com.connorads.optional-collection.com.brave.Browser</string>
+			<key>PayloadUUID</key>
+			<string>96F1AB68-9C8E-45B9-A523-0C95B16C1790</string>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>BraveP3AEnabled</key>
+			<false/>
+			<key>BraveStatsPingEnabled</key>
+			<false/>
+			<key>MetricsReportingEnabled</key>
+			<false/>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -148,6 +148,11 @@
       ];
     };
     CustomUserPreferences = {
+      "org.mozilla.firefox" = {
+        EnterprisePoliciesEnabled = true;
+        DisableTelemetry = true;
+      };
+
       "com.apple.symbolichotkeys" = {
         AppleSymbolicHotKeys = {
           # Disable 'Cmd + Space' for Spotlight Search
@@ -321,6 +326,9 @@
           run /usr/bin/install -d -m 700 "$HOME/.config/linearmouse"
           run /usr/bin/install -m 600 ${settings} "$HOME/.config/linearmouse/linearmouse.json"
         '';
+
+      xdg.configFile."telemetry/optional-collection.mobileconfig".source =
+        ./optional-collection.mobileconfig;
 
       home.activation.braveTelemetry = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         run ${pkgs.python3}/bin/python3 ${./brave-telemetry.py}

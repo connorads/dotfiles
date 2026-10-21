@@ -79,8 +79,9 @@ New Firefox profiles receive the link on the next activation.
 
 Brave activation merges three opt-outs into its existing `Local State`.
 It preserves other preferences and refuses to write while Brave runs.
-Firefox controls passed a disposable headless-profile check. VS Code runtime
-verification needs an installed editor. Discord and Android Studio remain manual checks.
+Firefox controls passed a disposable headless-profile check. Running Firefox
+policy recognition and VS Code profile settings need separate checks. Discord
+and Android Studio remain manual checks.
 
 Browser profiles and application databases stay untracked. Account settings need
 manual checks where applications expose no supported declarative control.
@@ -159,3 +160,45 @@ Nix activation during a maintenance window. Activation restarts the daemon and
 can interrupt remote work. Check installed launch arguments and connectivity
 through `ts` after that activation. No running-daemon opt-out is established by
 an unapplied declaration.
+
+## Desktop policy delivery
+
+Firefox's native user preferences declare `EnterprisePoliciesEnabled=true` and
+`DisableTelemetry=true` in the desktop Nix module. Both named stored values
+are verified. The [policy gate](https://firefox-admin-docs.mozilla.org/reference/policies/enterprisepoliciesenabled/)
+accepts current-user macOS preferences since Firefox 63.
+[DisableTelemetry](https://firefox-admin-docs.mozilla.org/reference/policies/disabletelemetry/)
+also disables local telemetry storage since Firefox 83.
+After a normal browser startup, check `DisableTelemetry` and errors in
+`about:policies`. Stored values alone do not establish policy recognition.
+
+Nix owns a removable [configuration profile](../.config/nix/modules/optional-collection.mobileconfig)
+at `~/.config/telemetry/optional-collection.mobileconfig`. It contains only these
+optional collection controls:
+
+| Payload | Values |
+| --- | --- |
+| Apple application restrictions | `allowDiagnosticSubmission=false`, `allowApplePersonalizedAdvertising=false` |
+| Chrome | `MetricsReportingEnabled=false`, `UrlKeyedAnonymizedDataCollectionEnabled=false` |
+| Brave | `BraveP3AEnabled=false`, `BraveStatsPingEnabled=false`, `MetricsReportingEnabled=false` |
+
+The profile is prepared, XML-validated and uninstalled. Generating or linking it
+does not install restrictions. Installation requires the supported
+[System Settings profile procedure](https://support.apple.com/en-gb/guide/mac-help/mh35561/mac).
+Review its payloads before installation. Removal remains allowed.
+
+[Apple's schema](https://github.com/apple/device-management/blob/release/mdm/profiles/com.apple.applicationaccess.yaml)
+supports diagnostic submission restrictions from macOS 10.13 and advertising
+personalisation restrictions from macOS 12. These controls leave required Apple
+service requests separate.
+[Chrome's deployment guide](https://support.google.com/chrome/a/answer/9020077)
+uses profiles. Ordinary defaults do not establish mandatory policy enforcement.
+Brave's [P3A policy](https://github.com/brave/brave-core/blob/v1.91.180/components/policy/resources/templates/policy_definitions/BraveSoftware/BraveP3AEnabled.yaml)
+and [stats policy](https://github.com/brave/brave-core/blob/v1.91.180/components/policy/resources/templates/policy_definitions/BraveSoftware/BraveStatsPingEnabled.yaml)
+require mandatory delivery and a normal restart.
+
+After installation and normal startup, verify recognised mandatory values without
+errors in `chrome://policy` and `brave://policy`. Verify Apple's installed
+restrictions and named privacy controls separately. Existing browser native
+preferences remain independent evidence. Account consent and extension collection
+require separate checks.
