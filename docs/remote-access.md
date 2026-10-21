@@ -158,8 +158,8 @@ Nix activation can restart the daemon when its launch configuration changes.
 
 For a release update:
 
-1. Install desired versions through `up` or `mise install --locked node npm:bb-app`.
-2. Run `bb-deploy prepare` to verify exact versions and load native modules with the selected Node runtime.
+1. Run `up` to install desired versions and prepare the Mini's candidate without activating it.
+2. For a targeted update, run `mise install --locked node npm:bb-app`, then `bb-deploy prepare`.
 3. Run `bb-deploy status` to inspect current, candidate and previous pins.
 4. Authenticate with `sudo -v`, then run `bb-deploy activate` when BB is idle.
 

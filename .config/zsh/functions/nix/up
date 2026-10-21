@@ -580,6 +580,15 @@ else
   _up_commit_lock "mise lock" "$mise_lock" "chore(mise): update tool lock"
 fi
 
+if [[ -f "$HOME/.config/bb/deployment/current/mise.toml" ]]; then
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run "BB prepare"
+  else
+    _up_run required "BB prepare" "verify installed candidate; activation is explicit" bb-deploy prepare
+    _up_next "bb-deploy status; bb-deploy activate when idle"
+  fi
+fi
+
 # Reassert Claude binary/plugin patches after the mise phase. Each --reapply
 # command owns its warn-only stale-needle policy; unexpected failures aggregate.
 if [[ -z $up_blocked_by ]]; then

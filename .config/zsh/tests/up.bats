@@ -6,6 +6,42 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 UP="$FUNCTIONS_DIR/nix/up"
 
+stub_bb_deployment() {
+  mkdir -p "$TEST_HOME/.config/bb/deployment/current"
+  printf '[tools]\n' >"$TEST_HOME/.config/bb/deployment/current/mise.toml"
+  write_stub bb-deploy <<'EOF'
+#!/usr/bin/env bash
+echo "bb-deploy $*" >>"$TEST_LOG"
+exit "${BB_PREPARE_EXIT:-0}"
+EOF
+}
+
+@test "up prepares a deployed BB candidate after tool installation without activation" {
+  stub_bb_deployment
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qFx 'bb-deploy prepare' "$TEST_LOG"
+  ! grep -qFx 'bb-deploy activate' "$TEST_LOG"
+  local install_line prepare_line
+  install_line=$(grep -nFx 'mise install --locked' "$TEST_LOG" | cut -d: -f1)
+  prepare_line=$(grep -nFx 'bb-deploy prepare' "$TEST_LOG" | cut -d: -f1)
+  [ "$install_line" -lt "$prepare_line" ]
+}
+
+@test "up blocks rebuild when BB candidate verification fails" {
+  stub_bb_deployment
+  export BB_PREPARE_EXIT=1
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  ! grep -qFx drs "$TEST_LOG"
+}
+
+@test "up leaves interactive BB installations alone without deployment pins" {
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  ! grep -q '^bb-deploy ' "$TEST_LOG"
+}
+
 setup() {
   # Darwin-gate for determinism: the dispatch we assert is the macOS branch
   # (mise + brew + flake + drs). Linux paths (apt/nrs/hms) differ.
