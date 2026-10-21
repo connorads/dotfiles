@@ -44,7 +44,6 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
   }, [view, current, focusRow]);
 
   async function pick(row: Row) {
-    if (!threadId) return;
     setError(null);
     try {
       await choose(threadId, row.choice);
@@ -77,13 +76,13 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onClose={onClose}>
     <header className="ex-header">
       <h2>Executor connection</h2>
-      <span className="ex-muted">{threadId ? 'for this thread' : 'open a thread to choose'}</span>
+      <span className="ex-muted">{threadId ? 'for this thread' : 'before the first message'}</span>
     </header>
     {!view ? <p className="ex-empty">Loading…</p>
       : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one in Settings → Executor.</p>
       : <section className="ex-rows" aria-label="Connections">
         {rows.map(row => <button key={row.id} type="button" className="ex-row" data-row={row.id}
-          aria-pressed={row.id === current} disabled={!threadId} onClick={() => void pick(row)}>
+          aria-pressed={row.id === current} onClick={() => void pick(row)}>
           <kbd>{row.keycap}</kbd>
           <span className="ex-row-label">{row.label}</span>
           <span className="ex-row-aside" data-warn={row.connection && row.connection.status !== 'signed-in' ? '' : undefined}>
@@ -99,7 +98,8 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     {error && <p className="ex-error" role="alert">{error}</p>}
     <footer className="ex-footer">
       <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
-      <span>A change applies to this thread's next Executor call. Manage connections in Settings → Executor.</span>
+      <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
+      <span>Manage connections in Settings → Executor.</span>
     </footer>
   </ChipPopover>;
 }

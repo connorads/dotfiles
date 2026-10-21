@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { definePluginApp, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import { STATE_CHANGED, THREAD_CHANGED, type rpcContract } from './contracts.ts';
 import { ExecutorChip } from './chip.tsx';
+import { DraftConnection } from './draft.tsx';
 import { ExecutorPopover } from './popover.tsx';
 import { ExecutorSettings } from './settings.tsx';
 import { close, loadChoice, refresh, setClient, toggle, useExecutor } from './store.ts';
@@ -29,8 +30,8 @@ function useSync() {
 
 function Overlay() {
   useSync();
-  const { view, choices, open } = useExecutor();
-  return open ? <ExecutorPopover view={view} threadId={open.threadId} choice={open.threadId ? choices.get(open.threadId) : undefined}
+  const { view, choices, draft, open } = useExecutor();
+  return open ? <ExecutorPopover view={view} threadId={open.threadId} choice={open.threadId ? choices.get(open.threadId) : draft}
     anchor={open.anchor} instant={open.instant} onClose={close} /> : null;
 }
 
@@ -43,6 +44,7 @@ export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'popover', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'chip', title: 'Executor connection', component: ExecutorChip });
   app.slots.settingsSection({ id: 'connections', component: Settings });
+  app.composer.customize({ id: 'connection', scopes: ['new-thread'], actions: [{ id: 'connection', component: DraftConnection }] });
   app.commands.register({
     id: 'toggle', title: 'Choose Executor connection', defaultShortcut: { key: 'e', alt: true },
     run: ({ threadId }) => toggle(threadId ?? null, 'keyboard'),

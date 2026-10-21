@@ -861,6 +861,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: other
 - Evidence: @thread:thr_hg9ykryvqq
 
+### Composer submission data has no native-send hook
+
+- Wanted: attach a draft's Executor choice to every submission before dispatch.
+- Gap: `useComposer().submit({ experimental_data })` carries plugin data, but
+  composer customisations cannot attach it to native sends or another plugin's
+  `submit` call.
+- Workaround: Executor captures its new-thread form's submit event and editor
+  Enter, then submits through the SDK. Its dispatch hook saves the choice before
+  agent configuration. Other plugins' direct submissions bypass this bridge.
+- Ask: provide draft-scoped plugin submission data that all send paths carry.
+- Evidence: `executor/draft.tsx`, `executor/server.ts` and live request inspection.
+
 ## Unconfirmed signals
 
 - BB does not restart a running Claude process when provider env changes. (@thread:thr_7m6n8hipb3)

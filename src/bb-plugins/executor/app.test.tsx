@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, expect, it } from 'vitest';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { StateView } from './contracts.ts';
-import { close, toggle } from './store.ts';
+import { close, toggle, resetDraft } from './store.ts';
 
 const app = await loadPluginApp(() => import('./app.tsx'));
 
@@ -16,6 +16,7 @@ beforeAll(() => {
 afterEach(() => {
   close();
   cleanup();
+  resetDraft();
 });
 
 const connection = (id: string, name: string, extra: Partial<StateView['connections'][number]> = {}) =>
@@ -84,6 +85,70 @@ it('settings: asks twice before removing a connection', async () => {
   await waitFor(() => expect(slot.rpcCalls.find(c => c.method === 'remove')?.input).toEqual({ id: 'coding' }));
 });
 const two = stateOf({ connections: [connection('coding', 'Coding', { isDefault: true }), connection('ops', 'Ops', { status: 'signed-out' })] });
+
+function draftSurface(blocked?: string) {
+  const action = app.composerCustomizations.find(c => c.id === 'connection')?.actions?.[0];
+  const overlay = app.appOverlays[0];
+  if (!action || !overlay) throw new Error('Missing Executor composer surfaces.');
+  const Action = action.component;
+  const Overlay = overlay.component;
+  return renderSlot({ component: () => <><form data-promptbox aria-label="New thread">
+    <div contentEditable role="textbox" aria-label="Prompt" />
+    <Action />
+  </form><Overlay /></> }, {}, {
+    composer: { scope: { kind: 'new-thread', projectId: 'project-test' }, text: 'Synthetic prompt', submittingBlockedReason: blocked },
+    rpc: { state: () => two },
+  });
+}
+
+it.each(['Enter', 'Meta+Enter', 'Control+Enter', 'submit'])('draft: Off travels with %s before a thread exists and resets after sending', async method => {
+  const slot = draftSurface();
+  fireEvent.click(await slot.findByRole('button', { name: 'Executor: Coding (default)' }));
+  const off = await slot.findByRole('button', { name: /Off.*no Executor tools/ });
+  expect(off.hasAttribute('disabled')).toBe(false);
+  fireEvent.click(off);
+  await slot.findByRole('button', { name: 'Executor is off for this new thread' });
+  if (method === 'submit') fireEvent.submit(slot.getByRole('form'));
+  else fireEvent.keyDown(slot.getByRole('textbox'), { key: 'Enter', metaKey: method === 'Meta+Enter', ctrlKey: method === 'Control+Enter' });
+  await waitFor(() => expect(slot.inspection.composer.submits).toEqual([{ experimental_data: { executorChoice: { kind: 'off' } } }]));
+  await slot.findByRole('button', { name: 'Executor: Coding (default)' });
+  expect(slot.rpcCalls.some(c => c.method === 'setThreadChoice')).toBe(false);
+});
+
+it('draft: keyboard selects a connection, and leaving the draft restores the default', async () => {
+  const slot = draftSurface();
+  await slot.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle(null, 'keyboard'));
+  fireEvent.keyDown(await slot.findByRole('dialog'), { key: '1' });
+  await slot.findByRole('button', { name: 'Executor: Coding' });
+  fireEvent.submit(slot.getByRole('form'));
+  await waitFor(() => expect(slot.inspection.composer.submits[0]).toEqual({ experimental_data: { executorChoice: { kind: 'connection', id: 'coding' } } }));
+  slot.unmount();
+  const next = draftSurface();
+  await next.findByRole('button', { name: 'Executor: Coding (default)' });
+});
+
+it('draft: failed sends keep Off and show the reason', async () => {
+  const slot = draftSurface('Finish uploading first.');
+  fireEvent.click(await slot.findByRole('button', { name: 'Executor: Coding (default)' }));
+  fireEvent.click(await slot.findByRole('button', { name: /Off.*no Executor tools/ }));
+  fireEvent.submit(slot.getByRole('form'));
+  expect((await slot.findByRole('alert')).textContent).toBe('Finish uploading first.');
+  await slot.findByRole('button', { name: 'Executor is off for this new thread' });
+});
+
+it('draft: newline, composition and mention-menu keys do not send', async () => {
+  const slot = draftSurface();
+  const editor = slot.getByRole('textbox');
+  fireEvent.keyDown(editor, { key: 'Enter', shiftKey: true });
+  fireEvent.keyDown(editor, { key: 'Enter', isComposing: true });
+  const menu = document.createElement('div');
+  menu.setAttribute('role', 'listbox');
+  document.body.append(menu);
+  fireEvent.keyDown(editor, { key: 'Enter' });
+  menu.remove();
+  expect(slot.inspection.composer.submits).toEqual([]);
+});
 
 it('chip: names the default connection and hides with no connections', async () => {
   const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-chip', isCompactViewport: false } as never, {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createFakePluginHost, makePluginAgentConfigurationContext } from "@get-bb/plugin-sdk/testing";
+import { createFakePluginHost, makePluginAgentConfigurationContext, makeMessageDispatchHookContext } from "@get-bb/plugin-sdk/testing";
 import type { StateView } from "../contracts.ts";
 import { createPlugin } from "../server.ts";
 import { connectionUrl, FAKE_INSTRUCTIONS, fakeExecutor } from "./fake-executor.ts";
@@ -70,6 +70,31 @@ test("starts with no tools and no connections", async () => {
   const t = await setup();
   assert.deepEqual(await t.tools(), []);
   assert.deepEqual((await t.state()).connections, []);
+  await t.harness.lifecycle.dispose();
+});
+
+test("draft selection applies before first-session tools, survives reload, and leaves other threads alone", async () => {
+  const t = await setup();
+  await t.connect("Coding", "c_1");
+  const ops = await t.connect("Ops", "c_2");
+  await t.reload();
+  const hook = t.harness.inspection.registrations.hooks["message.dispatch"];
+  assert.ok(hook);
+  await hook(makeMessageDispatchHookContext({ thread: { id: "draft-off" }, experimental_submission: {
+    pluginId: "executor", data: { executorChoice: { kind: "off" } },
+  } }));
+  assert.deepEqual(await t.tools("draft-off"), []);
+  assert.ok((await t.tools("unrelated")).length > 0);
+  await hook(makeMessageDispatchHookContext({ thread: { id: "draft-ops" }, experimental_submission: {
+    pluginId: "executor", data: { executorChoice: { kind: "connection", id: ops } },
+  } }));
+  assert.equal(await t.whoami("draft-ops"), "c_2");
+  await hook(makeMessageDispatchHookContext({ thread: { id: "unrelated" }, experimental_submission: {
+    pluginId: "other-plugin", data: { executorChoice: { kind: "off" } },
+  } }));
+  assert.ok((await t.tools("unrelated")).length > 0);
+  await t.reload();
+  assert.deepEqual(await t.tools("draft-off"), []);
   await t.harness.lifecycle.dispose();
 });
 

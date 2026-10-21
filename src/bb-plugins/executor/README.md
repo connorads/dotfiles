@@ -18,9 +18,18 @@ passes Executor's own MCP tools through with an `executor_` prefix
 2. In BB, open **Settings → Executor**, add it with a name, and press
    **Add and sign in**. Open the sign-in page, approve, and the browser returns
    to BB. The first connection becomes the default.
-3. In a thread, the header chip names the connection the thread uses. Click it
-   or press `⌥E` to pick another: `d` default, `1`-`9` a connection, `o` off.
-   Picking a signed-out connection starts its sign-in.
+3. Before starting a thread, use the composer chip or `⌥E` to choose:
+   `d` default, `1`-`9` a connection, `o` off. The choice applies before the
+   agent receives tools. Off disables Executor tools only.
+4. In a thread, the header chip names its connection. Click it or press `⌥E`
+   to switch. Picking a signed-out connection starts its sign-in.
+
+New drafts start with the configured default. Sending successfully or leaving
+the composer resets its choice; a failed send keeps it. Enter, Cmd/Ctrl+Enter
+and the normal send button carry the choice with the submission. The server
+saves it at the dispatch checkpoint before starting the agent. Existing threads
+keep their saved choices.
+Other plugins that submit the draft directly do not carry this choice.
 
 Settings → Executor also signs a connection out, makes it the default, or
 removes it (press **Remove** twice). **Use a code** signs in with a device code

@@ -10,8 +10,8 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 /** instant: opened by keyboard, so it appears without an entrance. */
 export type Open = { threadId: string | null; anchor: Anchor; instant: boolean } | null;
 
-interface State { view: StateView | null; choices: ReadonlyMap<string, Choice>; open: Open }
-let state: State = { view: null, choices: new Map(), open: null };
+interface State { view: StateView | null; choices: ReadonlyMap<string, Choice>; draft: Choice; open: Open }
+let state: State = { view: null, choices: new Map(), draft: { kind: 'default' }, open: null };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -38,10 +38,14 @@ export async function loadChoice(threadId: string) {
   } catch { /* keep the last choice */ }
 }
 
-export async function choose(threadId: string, choice: Choice) {
+export async function choose(threadId: string | null, choice: Choice) {
+  if (!threadId) { set({ draft: choice }); return; }
   set({ choices: new Map(state.choices).set(threadId, choice) });
   await rpc().call('setThreadChoice', { threadId, choice });
 }
+
+export function resetDraft() { set({ draft: { kind: 'default' } }); }
+export function draftChoice() { return state.draft; }
 
 export type Resolved =
   | { kind: 'connection'; id: string; name: string; signedIn: boolean; viaDefault: boolean }

@@ -1,5 +1,7 @@
 /* BB theme tokens only. Pop-up shell from @bb-plugins/chip. */
 .ex-chip-off { color: var(--muted-foreground); }
+.ex-draft { display: inline-flex; align-items: center; gap: 6px; }
+.ex-draft-error { color: var(--destructive-text, var(--destructive)); font-size: 12px; }
 
 .bbp-popover-panel.ex-panel { overflow: auto; }
 

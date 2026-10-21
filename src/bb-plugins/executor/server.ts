@@ -1,5 +1,5 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { rpcContract, STATE_CHANGED, THREAD_CHANGED } from "./contracts.ts";
+import { rpcContract, STATE_CHANGED, THREAD_CHANGED, threadChoice } from "./contracts.ts";
 import { CallCancelledError } from "./src/connection.ts";
 import { CredentialStore, vaultSettingSchema } from "./src/credentials.ts";
 import type { FetchLike } from "./src/oauth.ts";
@@ -73,6 +73,17 @@ async function load(bb: BbPluginApi, options: Options) {
   const toolNames = registerTools(bb, service, service.tools);
   for (const name of service.tools?.tools.map((t) => t.name) ?? []) toolsAtLoad.add(name);
   const instructions = agentInstructions(service.tools?.instructions ?? null);
+  bb.experimental_hooks.on("message.dispatch", async (ctx) => {
+    const submission = ctx.experimental_submission;
+    if (submission?.pluginId !== bb.pluginId) return { action: "proceed" };
+    const data = submission.data;
+    if (data && typeof data === "object" && !Array.isArray(data) && "executorChoice" in data) {
+      const choice = threadChoice.parse(data.executorChoice);
+      await service.setThreadChoice(ctx.thread.id, choice);
+      bb.realtime.publish(THREAD_CHANGED, { threadId: ctx.thread.id });
+    }
+    return { action: "proceed" };
+  });
   bb.agents.configure((ctx) => ({
     tools: service.choiceFor(ctx.thread.id).kind === "off" ? [] : toolNames,
     skills: [],
