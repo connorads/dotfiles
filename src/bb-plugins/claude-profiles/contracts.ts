@@ -5,6 +5,7 @@ import { measurementSchema, resourceSchema } from './src/accounts/usage-source.t
 import { usageContract, usageHostContract } from './src/accounts/usage/contract.ts';
 import { ampReadingSchema } from './src/accounts/usage/amp-reading.ts';
 import { modelsContract } from './src/models/contract.ts';
+import { connectorsContract } from './src/accounts/connectors-contract.ts';
 
 export const profileSchema = z.object({ id: z.string(), label: z.string(), configDir: z.string().nullable() });
 export type Profile = z.infer<typeof profileSchema>;
@@ -45,7 +46,7 @@ export const accountsContract = defineRpcContract({
   // Threads on Default are omitted: the sidebar badges only named accounts.
   threadAccounts: { input: z.object({}), output: z.array(threadAccountSchema) },
 });
-export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract });
+export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract, ...connectorsContract });
 export const usageSourceContract = defineRpcContract({
   'provider-usage.v1.listResources': {
     input: z.object({}), output: z.object({ resources: z.array(resourceSchema) }),

@@ -1,0 +1,5 @@
+.cp-connectors { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.cp-connectors-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cp-connectors p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 11px; }
+.cp-connectors [role="alert"] { color: var(--destructive); }
+.cp-connectors [role="switch"][aria-checked="true"] { color: var(--primary); }

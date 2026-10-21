@@ -75,6 +75,34 @@ New-thread drafts use BB's native model picker for Daybreak. Save and apply
 Daybreak favourites after starting the thread. A cross-provider handoff must
 reach Codex before a Daybreak favourite can apply.
 
+### Account connectors
+
+The **Claude account connectors** switch appears in the account picker and
+below the account selector in the model picker. It controls apps connected
+through the selected Claude account, including Slack. Executor keeps its own
+connection switch.
+
+- New threads default off. Enable access after creating the thread.
+- Each thread remembers its choice across account changes. The composer shows
+  **connectors on** beside the account when access is enabled.
+- Forks inherit the source thread's choice. Child threads default off. Forks keep their
+  own copy.
+- Changes require an idle thread with no queued messages or background agents.
+  The switch stops the cached Claude session; the next turn resumes its conversation.
+- The picker distinguishes pending access from the value passed at launch.
+  **On requested at launch** does not override Claude settings or organisation policies.
+
+The [BB-wide default](../../../docs/bb.md#claude-account-connectors) must be
+provisioned on each BB server. It keeps connectors off for new processes even
+if Agent Switcher is unavailable. Existing processes keep their launch access.
+The switch leaves profile, project and plugin MCP servers available.
+
+```sh
+bb claude-profiles connectors THREAD
+bb claude-profiles connectors THREAD on
+bb claude-profiles connectors THREAD off
+```
+
 ### Accounts
 
 Press **Alt+A** or click the account name in the composer to open the account

@@ -9,6 +9,7 @@ import { availability, capture, matches } from '../../src/models/favourites.ts';
 import { accountUnavailable, isClaude } from '../account-status.tsx';
 import { AccountPicker } from './account-picker.tsx';
 import { AccountMenu } from './account-menu.tsx';
+import { AccountConnectors } from './connectors.tsx';
 import { EFFORT_LABEL, EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
@@ -321,6 +322,8 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
         {accounts?.supported && profileError && <small role="alert">{profileError}</small>}
         <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" title="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="ArrowReloadHorizontal" className="mf-refresh-icon" /></button>
       </div>}
+      {claude && accounts?.supported && <AccountConnectors threadId={threadId}
+        disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting} />}
       <div className="mf-footer" aria-hidden="true">
         <span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> move</span>
         <span><kbd className="mf-kbd">↵</kbd> select</span>

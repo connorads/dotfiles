@@ -12,6 +12,7 @@ import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { createAmpSource } from './src/accounts/usage/amp-source.ts';
 import { createGrokSource } from './src/accounts/usage/grok-source.ts';
 import { registerModels } from './src/models/server.ts';
+import { registerConnectors } from './src/accounts/connectors.ts';
 export { rpcContract } from './contracts.ts';
 
 export default function plugin(bb: BbPluginApi) {
@@ -24,6 +25,12 @@ export default function plugin(bb: BbPluginApi) {
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
   const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
   const switching = new Set<string>();
+  const connectors = registerConnectors(bb, switching, async threadId => {
+    const { thread } = await context(threadId);
+    requireIdle(thread);
+    await bb.sdk.threads.stop({ threadId });
+    requireIdle(await bb.sdk.threads.get({ threadId }));
+  });
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
   const guardKey = (id: string) => `guard:${id}`;
@@ -136,11 +143,12 @@ export default function plugin(bb: BbPluginApi) {
     return guard.notice;
   }
   bb.experimental_hooks.on('message.dispatch', async input => {
-    if (switching.has(input.thread.id)) return { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' };
+    if (switching.has(input.thread.id)) return { action: 'reject', message: 'Claude session settings are changing. Send your message after they finish.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
       try {
         await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null);
         await stageFork(input.thread, input.host?.id ?? null);
+        await connectors.claim(input.thread);
       }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
     } else if (input.thread.providerId === 'claude-code') {
@@ -162,8 +170,19 @@ export default function plugin(bb: BbPluginApi) {
   });
   bb.providers.experimental_contributeEnv('claude-code', async input => {
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
-    if (!selected || selected.hostId !== input.hostId) return [];
-    return providerEnv(selected.profile.configDir);
+    const accountEnv = selected?.hostId === input.hostId ? providerEnv(selected.profile.configDir) : [];
+    // Connector lookup must finish within BB's five-second contribution budget so account routing survives a failure.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const connectorEnv = await Promise.race([
+        connectors.env(input.threadId),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Connector lookup timed out')), 1000); }),
+      ]);
+      return [...accountEnv, ...connectorEnv];
+    } catch (error) {
+      bb.log.warn(`Account connectors use the BB default: ${error instanceof Error ? error.message : String(error)}`);
+      return accountEnv;
+    } finally { clearTimeout(timer); }
   });
   const hostUsage = createQuotaCache((hostId, config, profileId) => host.call('usage',
     { root: config.profileRoot, executable: config.executable, profileId }, { hostId, timeoutMs: 30000 }));
@@ -207,6 +226,7 @@ export default function plugin(bb: BbPluginApi) {
         ? directoryEntry.value || null : selected?.profile.configDir ?? null;
       await bb.sdk.threads.stop({ threadId });
       requireIdle(await bb.sdk.threads.get({ threadId }));
+      await connectors.invalidate(threadId);
       if (identity?.type === 'thread/identity') {
         await host.call('transfer', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
           { hostId: environment.hostId });
@@ -336,10 +356,16 @@ export default function plugin(bb: BbPluginApi) {
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
-    + ' | import SESSION-ID|TMUX-PANE';
+    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [on|off]';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
+        if (argv[0] === 'connectors') {
+          const [, threadId, value] = argv;
+          if (!threadId || argv.length > 3 || (value !== undefined && value !== 'on' && value !== 'off')) throw new Error(usageText);
+          const result = value === undefined ? await connectors.state(threadId) : await connectors.set(threadId, value === 'on');
+          return { exitCode: 0, stdout: JSON.stringify(result, null, 2) + '\n' };
+        }
         if (argv[0] === 'overview' || argv[0] === 'header') {
           const valid = argv[0] === 'overview' ? argv.length === 1 || (argv.length === 2 && argv[1] === '--refresh') : argv.length === 2;
           if (!valid) throw new Error(usageText);

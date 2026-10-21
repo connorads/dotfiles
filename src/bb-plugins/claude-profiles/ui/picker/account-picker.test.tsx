@@ -19,6 +19,8 @@ function renderAccounts(running = false, fail = false) {
     composer: { text: 'Keep my draft', isRunning: running,
       scope: { kind: 'thread', threadId: 'thread-test' }, selection: { providerId: 'claude-code', model: 'opus' } },
     rpc: {
+      'connectors.get': () => ({ enabled: false, launch: 'pending' }),
+      'connectors.set': input => ({ enabled: input.enabled, launch: 'pending' }),
       'usage.login': () => { throw new Error('Unused'); },
       'usage.amp': () => { throw new Error('Unused'); },
       'usage.header': () => { throw new Error('Unused'); },

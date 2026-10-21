@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { ChipPopover } from '@bb-plugins/chip';
+import { AccountConnectors } from './connectors.tsx';
 import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
@@ -134,6 +135,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
       <div className="ap-intro"><span>Compare allowance with time elapsed</span>
         <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
+      {supported && <AccountConnectors threadId={threadId} disabled={blocked} />}
       {error && <p role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { void load(true); }}>Retry</button></p>}
       {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-list" aria-busy={loading || busy}>

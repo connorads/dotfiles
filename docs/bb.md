@@ -28,6 +28,30 @@ Before choosing files, check `bb plugin list --json` and
 `bb settings keyboard list --json`. The usage command is
 `plugin:claude-profiles/show-usage`.
 
+## Claude account connectors
+
+BB's global machine environment sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
+This default applies across this BB server's machines and projects. It prevents
+Claude Code from fetching connectors attached to the selected Claude account.
+It leaves separately configured MCP servers and Executor connections available.
+
+[Agent Switcher](../src/bb-plugins/claude-profiles/README.md#account-connectors)
+owns the per-thread opt-in. Its provider environment contribution overrides the
+global default. If the plugin is unavailable or its contribution fails, a new
+Claude process uses the global off value.
+
+Provision the default on each BB server:
+
+```sh
+printf 'false\n' | bb machine env set ENABLE_CLAUDEAI_MCP_SERVERS \
+  --note 'BB default: Claude account connectors off; Agent Switcher owns per-thread opt-in.'
+```
+
+Keep this variable outside the telemetry declaration, which also writes shell
+exports. A project environment override can replace the global value. Removing
+or overriding the default removes protection when Agent Switcher is unavailable.
+Existing Claude processes keep their launch environment until restarted.
+
 ## Thread shortcuts
 
 The Preferences plugin manages thread shortcuts from [preferences.json](../.config/bb/preferences.json).

@@ -19,12 +19,14 @@ export function AccountStatus() {
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentId, setCurrentId] = useState('default');
+  const [connectors, setConnectors] = useState<boolean | null>(null);
   const claude = isClaude(composer);
   const load = useCallback(() => {
     if (!claude) { setProfiles([]); return; }
     rpc.call('accounts', { threadId }).then(value => {
       setProfiles(value.supported ? value.profiles : []); setCurrentId(value.currentId);
     }, () => setProfiles([]));
+    rpc.call('connectors.get', { threadId }).then(value => setConnectors(value.enabled), () => setConnectors(null));
   }, [rpc, threadId, claude]);
   // A thread gains its environment during the first turn, so reload when a turn ends.
   useEffect(load, [load, composer.isRunning]);
@@ -32,8 +34,9 @@ export function AccountStatus() {
   if (!isClaude(composer) || !profiles.length) return null;
   const label = profiles.find(profile => profile.id === currentId)?.label ?? 'Default';
   return <button type="button" className="cp-trigger" onClick={() => openAccount(composer)}
-    aria-label={`Claude account ${label}`} title="Switch Claude account (Alt+A)">
+    aria-label={`Claude account ${label}`} title={`Switch Claude account (Alt+A). Account connectors ${connectors === null ? 'unknown' : connectors ? 'on' : 'off'}.`}>
     <span className="cp-dot" />
     <span>{label}</span>
+    {connectors && <span> · connectors on</span>}
   </button>;
 }
