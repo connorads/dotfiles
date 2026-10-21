@@ -264,9 +264,8 @@ right home (see the deepsec note under Caveats).
 Where the repo's *skill* content is all wanted and only a large binary is not, the CLI
 bucket plus a name-scoped ignore rule beats the manual bucket: the skill keeps its
 lockfile entry and its place in the batch refresh, and the ignore line stops the binary
-entering history. `dream-loop` is the worked case - nine skill files wanted, one 6.7 MB
-README demo GIF ignored by name at `~/.gitignore`. Scope the rule to the filename, not
-the directory, so a new asset upstream adds surfaces as untracked for review.
+entering history. Scope the rule to the filename, not the directory, so a new asset
+upstream adds surfaces as untracked for review.
 
 ### Update vendored skills
 

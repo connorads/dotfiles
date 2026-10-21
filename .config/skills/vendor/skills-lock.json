@@ -76,12 +76,6 @@
       "skillPath": "skills/diagram-design/SKILL.md",
       "computedHash": "115a126a5bff5abd547b125e9865269c4ad737e4cb134df153118e0ffd679f82"
     },
-    "dream-loop": {
-      "source": "achimala/dream-loop",
-      "sourceType": "github",
-      "skillPath": "SKILL.md",
-      "computedHash": "a570baa1effd0c25035af0d2e83b80e794711bd8cf364c99f8373fc11d030c92"
-    },
     "effect": {
       "source": "kitlangton/skills",
       "sourceType": "github",
