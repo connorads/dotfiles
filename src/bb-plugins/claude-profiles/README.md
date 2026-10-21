@@ -104,12 +104,14 @@ the account name. Threads on Default show no initial. The badge decorates BB's
 own thread list by DOM selector, so a BB markup change can hide it; see
 [SDK frictions](../docs/sdk-frictions.md).
 
-Inline workflow previews show each named Claude account beside the worker's
+Workflow previews and the right panel show each named Claude account beside the worker's
 model details, using its sidebar colour. The label follows the worker thread's
 binding. Run data refreshes every five seconds while the page is visible.
 Default and unbound accounts have no label. Duplicate worker labels within one
 run have no account label because the rendered rows expose no worker ID.
-The decoration uses BB's preview markup and does not cover the right panel.
+The panel resolves its shortened run ID from active runs or recorded preview
+directives, including when the inline card is outside the rendered chat.
+Both views use the same decoration and preserve worker navigation.
 
 Profiles come from `~/.claude-profiles/code/` on the thread's host. Plugin
 settings accept another profile root and Claude executable.

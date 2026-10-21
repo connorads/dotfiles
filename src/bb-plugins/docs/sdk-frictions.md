@@ -90,11 +90,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Found: 2026-10-21, claude-profiles, SDK 0.6.37
 - Wanted: the worker's Claude account beside its workflow model details.
 - Gap: workflow worker rows expose neither an accessory slot nor a worker thread
-  ID. The preview section exposes its run directive through `title`.
+  ID. The preview section exposes its run directive through `title`. The right
+  panel displays only the last eight run-ID characters.
 - Workaround: [workflows.ts](../claude-profiles/ui/badges/workflows.ts) reads
   `workflowRunView` through the SDK, joins child thread IDs to account bindings,
-  and decorates uniquely labelled rows within each inline preview. It refreshes
-  visible-page runs every five seconds. Duplicate labels are omitted.
+  and decorates uniquely labelled rows in previews and the right panel.
+  [panel-runs.ts](../claude-profiles/ui/badges/panel-runs.ts) resolves panel IDs
+  from active runs or recorded assistant directives through paged timeline reads.
+  Visible-page runs refresh every five seconds. Duplicate labels are omitted.
 - Ask: a workflow worker accessory slot with `{ runId, childThreadId }`, or stable
   DOM attributes for both IDs.
 - Status: open

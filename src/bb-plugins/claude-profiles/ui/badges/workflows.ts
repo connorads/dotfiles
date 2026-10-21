@@ -10,24 +10,57 @@ type Call = z.infer<typeof callSchema>;
 type Loader = (threadId: string, runId: string, signal: AbortSignal) => Promise<Call[]>;
 let loader: Loader | null = null;
 const listeners = new Set<() => void>();
+type PanelContext = { threadId: string; resolve: (suffix: string, signal: AbortSignal) => Promise<string | null> };
+let panelContext: PanelContext | null = null;
+export function setWorkflowPanelContext(value: PanelContext | null) {
+  panelContext = value;
+  for (const listener of listeners) listener();
+}
 export function setWorkflowLoader(value: Loader | null) {
   loader = value;
   for (const listener of listeners) listener();
 }
 
-// Stock workflow previews expose run IDs in their directive title, but no worker IDs on rows.
+// Stock workflow surfaces expose run identity separately from their worker rows.
 export function mountWorkflowAccounts(doc: Document): () => void {
   const controller = new AbortController();
   const runs = new Map<string, { calls: Call[]; pending: boolean }>();
   const added = new Set<HTMLElement>();
+  const panelRuns = new Map<string, { runId: string | null; pending: boolean }>();
+  let context = panelContext;
   const sync = () => {
     if (controller.signal.aborted) return;
     const wanted = new Set<HTMLElement>();
     const visibleRuns = new Set<string>();
+    if (context !== panelContext) { panelRuns.clear(); context = panelContext; }
+    const surfaces: { section: HTMLElement; threadId: string; runId: string }[] = [];
     for (const section of Array.from(doc.querySelectorAll<HTMLElement>('[data-bb-plugin="workflows"] section[aria-label="Workflow"][title]'))) {
       const runId = /^::workflow-preview\{run="(wfr_[\w-]+)"\}$/.exec(section.title)?.[1];
       const threadId = section.closest<HTMLElement>('[data-timeline-row-id]')?.dataset.timelineRowId?.split(':')[0];
-      if (!runId || !threadId) continue;
+      if (runId && threadId) surfaces.push({ section, threadId, runId });
+    }
+    if (context) for (const section of Array.from(doc.querySelectorAll<HTMLElement>('[data-bb-plugin="workflows"] [data-detail-scroll-area="workflow-panel"]'))) {
+      const suffix = section.querySelector<HTMLElement>(':scope > div > span.ml-auto.font-mono')?.textContent?.trim();
+      if (!suffix || !/^[\w-]{8}$/.test(suffix)) continue;
+      const { threadId, resolve } = context;
+      const matching = surfaces.filter(surface => surface.threadId === threadId && surface.runId.endsWith(suffix));
+      const knownIds = new Set(matching.map(surface => surface.runId));
+      let entry = panelRuns.get(suffix);
+      if (knownIds.size === 1) {
+        entry = { runId: matching[0].runId, pending: false };
+        panelRuns.set(suffix, entry);
+      } else if (!entry) {
+        entry = { runId: null, pending: true };
+        panelRuns.set(suffix, entry);
+        const pending = entry;
+        void resolve(suffix, controller.signal).then(runId => { pending.runId = runId; }, () => {}).finally(() => {
+          pending.pending = false;
+          if (!controller.signal.aborted) sync();
+        });
+      }
+      if (entry.runId) surfaces.push({ section, threadId, runId: entry.runId });
+    }
+    for (const { section, threadId, runId } of surfaces) {
       const key = `${threadId}:${runId}`;
       visibleRuns.add(key);
       let run = runs.get(key);
@@ -70,9 +103,11 @@ export function mountWorkflowAccounts(doc: Document): () => void {
   const unsubscribe = subscribe(sync);
   listeners.add(sync);
   sync();
-  observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['title', 'data-timeline-row-id'] });
+  observer.observe(doc.body, { childList: true, subtree: true, attributes: true, characterData: true, attributeFilter: ['title', 'data-timeline-row-id'] });
   const timer = setInterval(() => {
     if (!loader || doc.visibilityState === 'hidden') return;
+    for (const [suffix, entry] of panelRuns) if (!entry.pending && entry.runId === null) panelRuns.delete(suffix);
+    sync();
     for (const [key, entry] of runs) {
       if (entry.pending) continue;
       const [threadId, runId] = key.split(':');
