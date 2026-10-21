@@ -349,10 +349,18 @@ flowchart LR
     Parent --> Bind[Save profile selection]
 ```
 
-BB's Claude bridge copies a
-fork's session in its own config directory, not in the thread's account. A
-Claude fork therefore works only when the source and the fork both run on
-Default.
+BB's Claude bridge copies a fork's session in its own config directory, which
+is Default, not the thread's account. For a fork on a named account, including
+a side chat, the dispatch hook first links the account's project directory into
+Default as `~/.claude/projects/+bb-fork-stage-<thread>`. The bridge then finds
+the source and writes the fork into the account. The plugin removes the link
+once the fork has its session or fails, and a five-minute sweep removes links
+older than ten minutes. A log warning names a fork that did not land in its
+account. If the source session cannot be staged, the fork is refused with the
+reason.
+
+Remove the staging when BB's bridge forks with the thread's launch env. Check by
+opening a side chat on a named-account thread with staging disabled.
 Switching a thread to another host requires selecting a profile on that host.
 
 The plugin supports manual Claude switching and quota collection. It does not

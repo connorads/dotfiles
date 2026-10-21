@@ -114,10 +114,23 @@ const work = { id: 'work', label: 'Work', configDir: '/profiles/work' };
 const personal = { id: 'personal', label: 'Personal', configDir: '/profiles/personal' };
 type ThreadFields = { parentThreadId?: string | null; originKind?: 'fork' | null; sourceThreadId?: string | null; lifecycleOwnerThreadId?: string | null };
 
-async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default', configDir: null }, work, personal]) {
+async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default', configDir: null }, work, personal],
+  stage: (input: unknown) => unknown = () => ({ link: '/link', target: '/target' })) {
+  const hostCalls: { method: string; input: unknown; hostId: string }[] = [];
+  const identities: Record<string, string> = { source: 'session-source' };
   const { bb, harness } = createFakePluginHost({
+    sdk: {
+      threads: { events: { list: async ({ threadId, types }: { threadId: string; types: string[] }) =>
+        types.includes('thread/identity') && identities[threadId]
+          ? [{ type: 'thread/identity', seq: 1, threadId, data: { providerThreadId: identities[threadId] } }] : [] } },
+      hosts: { list: async () => [{ id: 'h1', status: 'connected' }, { id: 'h2', status: 'disconnected' }] },
+    } as never,
     experimental_callHostRpc: call => {
+      hostCalls.push(call);
       if (call.method === 'profiles') return hostProfiles;
+      if (call.method === 'stageFork') return stage(call.input);
+      if (call.method === 'unstageFork') return { removed: true, forked: true };
+      if (call.method === 'sweepForkStages') return { removed: [] };
       throw new Error(`Unexpected host call ${call.method}`);
     },
   });
@@ -129,7 +142,8 @@ async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default',
     thread: { id: 'child', providerId: 'claude-code', status: 'pending', parentThreadId, ...thread },
     host: hostId ? { id: hostId } : null, parentThreadId }));
   const binding = () => bb.storage.kv.get<{ hostId: string; profile: { id: string } }>('thread:child');
-  return { bb, harness, firstSend, binding };
+  const calls = (method: string) => hostCalls.filter(call => call.method === method).map(call => [call.hostId, call.input]);
+  return { bb, harness, firstSend, binding, identities, calls };
 }
 
 test('a child of a thread on a named account starts on that account, not the composer account', async () => {
@@ -216,6 +230,63 @@ test('a fork of an unbound thread stays on Default, where BB wrote its session',
   const { firstSend, binding } = await newThreadSetup();
   assert.deepEqual(await firstSend({ originKind: 'fork', sourceThreadId: 'source' }), { action: 'proceed' });
   assert.equal(await binding(), undefined);
+});
+
+test('a fork on a named account stages its source session where BB looks for it', async () => {
+  const { bb, firstSend, calls } = await newThreadSetup();
+  await bb.storage.kv.set('thread:source', { hostId: 'h1', profile: work });
+  assert.deepEqual(await firstSend({ originKind: 'fork', sourceThreadId: 'source' }), { action: 'proceed' });
+  assert.deepEqual(calls('stageFork'), [['h1',
+    { root: '~/.claude-profiles/code', profileId: 'work', sessionId: 'session-source', forkThreadId: 'child' }]]);
+  assert.equal((await bb.storage.kv.get<{ hostId: string }>('stage:child'))?.hostId, 'h1');
+});
+
+test('a fork whose source session cannot be staged is refused before BB forks it', async () => {
+  const { bb, firstSend } = await newThreadSetup(undefined, () => { throw new Error('Source session x was not found in this account.'); });
+  await bb.storage.kv.set('thread:source', { hostId: 'h1', profile: work });
+  const refused = await firstSend({ originKind: 'fork', sourceThreadId: 'source' });
+  assert.equal(refused.action, 'reject');
+  assert.match(refused.action === 'reject' ? refused.message : '', /Could not prepare this fork on the Work account: Source session x was not found/);
+  assert.equal(await bb.storage.kv.get('stage:child'), undefined);
+});
+
+test('forks on Default and children that are not forks stage nothing', async () => {
+  const { bb, firstSend, calls } = await newThreadSetup();
+  await bb.storage.kv.set('thread:source', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
+  await firstSend({ originKind: 'fork', sourceThreadId: 'source' });
+  const other = await newThreadSetup();
+  await other.bb.storage.kv.set('thread:parent', { hostId: 'h1', profile: work });
+  await other.firstSend({ parentThreadId: 'parent' });
+  assert.deepEqual([...calls('stageFork'), ...other.calls('stageFork')], []);
+});
+
+test('a fork\'s stage is removed once its session exists, with a check that it landed in the account', async () => {
+  const { bb, harness, identities, calls } = await newThreadSetup();
+  await bb.storage.kv.set('stage:child', { hostId: 'h1', stagedAt: Date.now() });
+  const thread = makeThreadResponse({ id: 'child', providerId: 'claude-code', status: 'starting' });
+  await harness.behavior.emitThreadEvent('experimental_thread.events', { thread, sequence: 1 });
+  assert.deepEqual(calls('unstageFork'), []);
+  identities.child = 'session-fork';
+  await harness.behavior.emitThreadEvent('experimental_thread.events', { thread, sequence: 2 });
+  assert.deepEqual(calls('unstageFork'), [['h1', { forkThreadId: 'child', forkSessionId: 'session-fork' }]]);
+  assert.equal(await bb.storage.kv.get('stage:child'), undefined);
+});
+
+test('a fork that failed before it had a session still loses its stage', async () => {
+  const { bb, harness, calls } = await newThreadSetup();
+  await bb.storage.kv.set('stage:child', { hostId: 'h1', stagedAt: Date.now() });
+  const thread = makeThreadResponse({ id: 'child', providerId: 'claude-code', status: 'error' });
+  await harness.behavior.emitThreadEvent('experimental_thread.events', { thread, sequence: 1 });
+  assert.deepEqual(calls('unstageFork'), [['h1', { forkThreadId: 'child', forkSessionId: null }]]);
+});
+
+test('the stage sweep clears old links on connected machines and forgets expired stages', async () => {
+  const { bb, harness, calls } = await newThreadSetup();
+  await bb.storage.kv.set('stage:old', { hostId: 'h2', stagedAt: Date.now() - 60 * 60_000 });
+  await bb.storage.kv.set('stage:new', { hostId: 'h1', stagedAt: Date.now() });
+  await harness.behavior.runSchedule('fork-stage-sweep');
+  assert.deepEqual(calls('sweepForkStages'), [['h1', { maxAgeMs: 10 * 60_000 }]]);
+  assert.deepEqual(await bb.storage.kv.list('stage:'), ['stage:new']);
 });
 
 test('a child of a thread on Default needs no machine to start', async () => {

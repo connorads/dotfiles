@@ -23,6 +23,12 @@ export const hostContract = defineRpcContract({
     output: z.object({ profileId: z.string(), sessionId: z.string(), cwd: z.string(), title: z.string() }) },
   adopt: { input: z.object({ ...rootInput, profileId: z.string(), sourceSessionId: z.string(), sessionId: z.string() }),
     output: z.object({ adopted: z.literal(true) }) },
+  // Stock BB forks Claude sessions outside the account; see src/accounts/fork-stage.ts.
+  stageFork: { input: z.object({ ...rootInput, profileId: z.string(), sessionId: z.string(), forkThreadId: z.string() }),
+    output: z.object({ link: z.string(), target: z.string() }) },
+  unstageFork: { input: z.object({ forkThreadId: z.string(), forkSessionId: z.string().nullable() }),
+    output: z.object({ removed: z.boolean(), forked: z.boolean().nullable() }) },
+  sweepForkStages: { input: z.object({ maxAgeMs: z.number() }), output: z.object({ removed: z.array(z.string()) }) },
   ampUsage: { input: z.object({}), output: ampReadingSchema },
   grokUsage: { input: z.object({}), output: measurementSchema },
   ...usageHostContract,

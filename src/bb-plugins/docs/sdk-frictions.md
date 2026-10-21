@@ -556,11 +556,13 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Workaround: forks work only on Default
   ([claude-profiles/README.md](../claude-profiles/README.md)). The plugin copies the
   transcript on switch. See `spikes/session-context/README.md` (ignored research).
-  Candidate (spiked, not built): stage the fork in the `message.dispatch` hook with one
-  link `~/.claude/projects/+bb-fork-stage-<forkThreadId>` to the source's account
-  project dir. The bridge then finds the source and writes the fork into the account.
-  Remove the link on the fork's identity event, with a TTL sweep on load. Delete when
-  a stock bridge forks with the launch env. Rejected: an account-wide shared
+  For forks on a named account, including side chats, the `message.dispatch` hook links
+  the source's account project dir into Default as
+  `~/.claude/projects/+bb-fork-stage-<forkThreadId>`
+  ([fork-stage.ts](../claude-profiles/src/accounts/fork-stage.ts)). The bridge then finds
+  the source and writes the fork into the account. The link goes when the fork has its
+  session or fails, with a five-minute sweep as a backstop. Delete it when a stock
+  bridge forks with the launch env. Rejected: an account-wide shared
   `projects/` store (cross-account retention sweep, shared memory and listings, lossy
   migration of 10 diverged sessions), a context-seeded side chat (about half the
   session context, a second menu item, 400-600 lines) and Default-only use.

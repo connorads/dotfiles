@@ -6,6 +6,7 @@ import { hostContract, type Profile } from './contracts.ts';
 import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
+import { stageFork, sweepForkStages, unstageFork } from './src/accounts/fork-stage.ts';
 import { adoptSession, isSessionId, locateSession, paneSession } from './src/accounts/import.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
@@ -78,6 +79,13 @@ export default experimental_defineHostEntry({
       await adoptSession(selected.configDir ?? join(homedir(), '.claude'), input.sourceSessionId, input.sessionId);
       return { adopted: true as const };
     },
+    stageFork: async input => {
+      const selected = await profile(input.root, input.profileId);
+      if (!selected.configDir) throw new Error('A fork on Default needs no staging.');
+      return stageFork(join(homedir(), '.claude'), selected.configDir, input.sessionId, input.forkThreadId);
+    },
+    unstageFork: input => unstageFork(join(homedir(), '.claude'), input.forkThreadId, input.forkSessionId),
+    sweepForkStages: async input => ({ removed: await sweepForkStages(join(homedir(), '.claude'), input.maxAgeMs) }),
     ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),

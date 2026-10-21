@@ -27,6 +27,9 @@ export default function plugin(bb: BbPluginApi) {
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
   const guardKey = (id: string) => `guard:${id}`;
+  const stageKey = (id: string) => `stage:${id}`;
+  const stageLifetimeMs = 10 * 60_000;
+  type Stage = { hostId: string; stagedAt: number };
   async function context(threadId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
     if (thread.providerId !== 'claude-code') throw new Error('This thread does not use Claude Code.');
@@ -62,6 +65,45 @@ export default function plugin(bb: BbPluginApi) {
     await bb.storage.kv.set(key(thread.id), { hostId, profile } satisfies Selection);
     bb.realtime.publish('profiles-changed', { threadId: thread.id });
   }
+  async function latestIdentity(threadId: string) {
+    const [event] = await bb.sdk.threads.events.list({ threadId, types: ['thread/identity'], order: 'desc', limit: '1' });
+    return event?.type === 'thread/identity' ? event.data.providerThreadId : null;
+  }
+  // BB forks a Claude session outside the account, so the source is staged where BB looks: src/accounts/fork-stage.ts.
+  async function stageFork(thread: { id: string; originKind: 'fork' | null; sourceThreadId: string | null }, hostId: string | null) {
+    if (thread.originKind !== 'fork' || !thread.sourceThreadId || !hostId) return;
+    const selected = await bb.storage.kv.get<Selection>(key(thread.id));
+    if (!selected?.profile.configDir) return;
+    const sessionId = await latestIdentity(thread.sourceThreadId);
+    if (!sessionId) return;
+    try {
+      await host.call('stageFork', { root: (await settings.get()).profileRoot, profileId: selected.profile.id, sessionId,
+        forkThreadId: thread.id }, { hostId, timeoutMs: 5_000 });
+    } catch (error) {
+      throw new Error(`Could not prepare this fork on the ${selected.profile.label} account: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    await bb.storage.kv.set(stageKey(thread.id), { hostId, stagedAt: Date.now() } satisfies Stage);
+  }
+  async function settleStage(thread: { id: string; status: string }) {
+    const stage = await bb.storage.kv.get<Stage>(stageKey(thread.id));
+    if (!stage) return;
+    const forkSessionId = await latestIdentity(thread.id);
+    if (!forkSessionId && thread.status !== 'error') return;
+    const result = await host.call('unstageFork', { forkThreadId: thread.id, forkSessionId }, { hostId: stage.hostId });
+    await bb.storage.kv.delete(stageKey(thread.id));
+    if (result.forked === false) bb.log.warn(`Fork ${thread.id} did not write its session into its account. BB's fork path may have changed.`);
+  }
+  async function sweepStages() {
+    for (const machine of (await bb.sdk.hosts.list()).filter(value => value.status === 'connected')) {
+      try { await host.call('sweepForkStages', { maxAgeMs: stageLifetimeMs }, { hostId: machine.id }); }
+      catch (error) { bb.log.warn(`Could not sweep fork stages on host ${machine.id}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    for (const entry of await bb.storage.kv.list('stage:')) {
+      const stage = await bb.storage.kv.get<Stage>(entry);
+      if (!stage || Date.now() - stage.stagedAt >= stageLifetimeMs) await bb.storage.kv.delete(entry);
+    }
+  }
+  bb.background.schedule('fork-stage-sweep', '*/5 * * * *', sweepStages);
   async function latestLaunch(threadId: string) {
     const [event] = await bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' });
     return event?.type === 'provider.env-resolved' ? event : undefined;
@@ -96,7 +138,10 @@ export default function plugin(bb: BbPluginApi) {
   bb.experimental_hooks.on('message.dispatch', async input => {
     if (switching.has(input.thread.id)) return { action: 'reject', message: 'Profile switch in progress. Send your message after it finishes.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
-      try { await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null); }
+      try {
+        await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null);
+        await stageFork(input.thread, input.host?.id ?? null);
+      }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
     } else if (input.thread.providerId === 'claude-code') {
       // The env contributor gives nothing on another machine, so Claude would start on that machine's native login.
@@ -112,6 +157,7 @@ export default function plugin(bb: BbPluginApi) {
   });
   bb.events.on('experimental_thread.events', async ({ thread }) => {
     if (thread.providerId !== 'claude-code') return;
+    await settleStage(thread).catch(error => bb.log.warn(`Could not remove the fork stage for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
     await review(thread.id).catch(error => bb.log.warn(`Claude profile review failed for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
   });
   bb.providers.experimental_contributeEnv('claude-code', async input => {
