@@ -82,6 +82,17 @@ Record SDK gaps and workarounds in [SDK frictions](../../src/bb-plugins/docs/sdk
 
 [Handsfree](../../src/bb-plugins/handsfree/README.md) owns Hex voice controls for the focused BB window.
 
+## Global instructions and feedback
+
+The built-in Custom instructions plugin supplies host-wide agent instructions.
+Read them with `bb instructions get`; `bb instructions set` replaces the complete text.
+Preserve existing instructions when adding a rule.
+
+The feedback log is [SDK frictions](../../src/bb-plugins/docs/sdk-frictions.md).
+It covers SDK gaps, app bugs, provider issues and CLI problems.
+Global BB instructions point agents to this log. Search for a matching entry before adding feedback.
+Keep private workspace metadata and security reports out of this public file.
+
 ## Platform operations
 
 Use the supplied `bb-cli` skill for settings and state inspection.

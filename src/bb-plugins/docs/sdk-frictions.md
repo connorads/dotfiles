@@ -27,6 +27,21 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Plugin workflow activity is absent from sidebar counts
+
+- Found: 2026-10-21, built-in Workflows plugin
+- Wanted: Show outstanding workflow activity when its origin agent is idle, across providers.
+- Gap: Core counts native background-task events. Workflows stores runs in plugin-owned SQLite, outside that counting path.
+- Workaround: A manually applied local bundle patch registers a source of queued/running run IDs and invalidates sidebar activity.
+  Scripts and diffs remain in local thread storage. They are not committed or automatically reapplied after BB updates.
+  Historical live testing observed the icon appear and disappear during normal execution. Cancellation and active reload remain unverified live.
+- Ask: Add a core-owned cached activity summary fed by plugin snapshots, with activation fencing, explicit uncertainty and refresh repair.
+  Preserve native counters. Keep execution, cancellation and recovery inside the workflow engine.
+  A successful stop request must not establish settlement because core can suppress interrupt errors.
+- Status: open. Four design alternatives and two anonymous evaluations informed an unimplemented recommendation.
+- Category: sdk-gap
+- Evidence: Core `listActiveBackgroundTaskCountsByThreadIds` and `buildThreadActivityStateByThreadId`; Workflows `workflow_runs` queries.
+
 ### Helper AI completion consumer
 
 - Found: 2026-10-21, git-glance, SDK 0.6.37
