@@ -33,6 +33,7 @@ hms                       # rebuild Linux (home-manager switch)
 [Telemetry controls](docs/telemetry.md) covers persistent CLI and desktop opt-outs.
 
 The Mac mini runs BB independently of desktop login. [Remote access](docs/remote-access.md#bb-service-ownership) describes service ownership and verification.
+Its system daemon uses local mise deployment pins, independent of the shared tool lock.
 
 Claude, Codex and pi run in tmux panes. Each window tab shows a state dot for its agents: ◐ working, ◆ needs you, ● ready, ○ idle.
 

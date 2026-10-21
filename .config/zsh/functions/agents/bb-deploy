@@ -1,0 +1,184 @@
+#!/usr/bin/env zsh
+# bb-deploy: prepare and activate pinned BB releases for the Mini system daemon
+emulate -L zsh
+setopt localtraps pipefail
+umask 077
+
+local action=${1:-status}
+if (($# > 1)); then
+  print -u2 'usage: bb-deploy [prepare|adopt|activate|status]'
+  return 2
+fi
+case $action in
+prepare | adopt | activate | status) ;;
+-h | --help)
+  print 'usage: bb-deploy [prepare|adopt|activate|status]'
+  print 'prepare verifies installed desired versions; adopt records the running release without restarting'
+  print 'activate requires sudo authentication and defers with exit 75 when busy or unknown'
+  return 0
+  ;;
+*)
+  print -u2 'usage: bb-deploy [prepare|adopt|activate|status]'
+  return 2
+  ;;
+esac
+
+local root="$HOME/.config/bb/deployment"
+local api=http://127.0.0.1:38886
+local node_dir bb_dir node_version bb_version running backup
+if [[ $action == status ]]; then
+  local selection
+  for selection in current candidate previous; do
+    print -r -- "$selection:"
+    if [[ -f "$root/$selection/mise.toml" ]]; then
+      cat "$root/$selection/mise.toml"
+    else
+      print '  absent'
+    fi
+  done
+  return 0
+fi
+
+mkdir -p "$root" || return 1
+if ! mkdir "$root/.lock" 2>/dev/null; then
+  print -u2 "bb-deploy: deployment locked at $root/.lock"
+  return 1
+fi
+trap 'rmdir "$root/.lock"' EXIT
+trap 'return 130' INT
+trap 'return 143' TERM
+
+_bb_deploy_api() {
+  curl --fail --silent --show-error --connect-timeout 3 --max-time 10 "$api/api/v1/$1"
+}
+
+_bb_deploy_idle() {
+  running=$(_bb_deploy_api threads/running) || {
+    print -u2 'bb-deploy: task state unavailable; deployment deferred'
+    return 75
+  }
+  if ! print -r -- "$running" | jq -e 'type == "array" and length == 0' >/dev/null; then
+    print -u2 'bb-deploy: tasks running or state invalid; deployment deferred'
+    return 75
+  fi
+}
+
+_bb_deploy_resolve() {
+  local directory=$1
+  [[ -f "$directory/mise.toml" ]] || return 1
+  node_dir=$(mise -C "$directory" where node) || return 1
+  bb_dir=$(mise -C "$directory" where npm:bb-app) || return 1
+  [[ -x "$node_dir/bin/node" && -f "$bb_dir/node_modules/bb-app/package.json" ]] || return 1
+}
+
+_bb_deploy_smoke() {
+  "$node_dir/bin/node" - "$bb_dir/node_modules/bb-app" <<'JS'
+const { createRequire } = require('node:module');
+const { realpathSync } = require('node:fs');
+const requireBB = createRequire(`${realpathSync(process.argv[2])}/package.json`);
+const Database = requireBB('better-sqlite3');
+const db = new Database(':memory:');
+if (db.prepare('SELECT 1 AS ok').get().ok !== 1) process.exit(1);
+db.close();
+for (const name of ['node-pty', '@parcel/watcher', 'fs-native-extensions']) requireBB(name);
+JS
+}
+
+if [[ $action == prepare ]]; then
+  node_version=$(mise -C "$HOME" current node) || return 1
+  bb_version=$(mise -C "$HOME" current npm:bb-app) || return 1
+  if ! jq -en --arg node "$node_version" --arg bb "$bb_version" \
+    '[$node, $bb] | all(test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"))' >/dev/null; then
+    print -u2 'bb-deploy: expected exact Node and BB versions'
+    return 1
+  fi
+  node_dir=$(mise -C "$HOME" where node) || return 1
+  bb_dir=$(mise -C "$HOME" where npm:bb-app) || return 1
+  [[ $("$node_dir/bin/node" --version) == "v$node_version" ]] || return 1
+  jq -e --arg version "$bb_version" '.version == $version' \
+    "$bb_dir/node_modules/bb-app/package.json" >/dev/null || return 1
+  _bb_deploy_smoke || return 1
+  mkdir -p "$root/candidate" || return 1
+  printf '[tools]\nnode = "%s"\n"npm:bb-app" = "%s"\n' \
+    "$node_version" "$bb_version" >"$root/candidate/.mise.toml.next" || return 1
+  mv -f "$root/candidate/.mise.toml.next" "$root/candidate/mise.toml" || return 1
+  mise trust "$root/candidate/mise.toml" || return 1
+  _bb_deploy_resolve "$root/candidate" || return 1
+  print -r -- "bb-deploy: prepared BB $bb_version with Node $node_version"
+  print 'bb-deploy: run bb-deploy activate when idle; use adopt for initial service setup'
+  return 0
+fi
+
+_bb_deploy_resolve "$root/candidate" || {
+  print -u2 'bb-deploy: no installed candidate; run bb-deploy prepare'
+  return 1
+}
+_bb_deploy_smoke || return 1
+bb_version=$(jq -er .version "$bb_dir/node_modules/bb-app/package.json") || return 1
+
+if [[ $action == adopt ]]; then
+  if [[ -e "$root/current/mise.toml" ]]; then
+    print -u2 'bb-deploy: current pins already exist; use activate'
+    return 1
+  fi
+  running=$(_bb_deploy_api system/app-update) || return 1
+  print -r -- "$running" | jq -e --arg version "$bb_version" \
+    '.current.version == $version' >/dev/null || {
+    print -u2 'bb-deploy: candidate differs from running BB; refusing adoption'
+    return 1
+  }
+else
+  [[ -f "$root/current/mise.toml" ]] || {
+    print -u2 'bb-deploy: initialise current pins with bb-deploy adopt first'
+    return 1
+  }
+  if cmp -s "$root/current/mise.toml" "$root/candidate/mise.toml"; then
+    print 'bb-deploy: desired release already deployed'
+    return 0
+  fi
+  _bb_deploy_idle || return $?
+  sudo -n true || {
+    print -u2 'bb-deploy: authenticate with sudo -v, then rerun bb-deploy activate'
+    return 1
+  }
+  local backups="$HOME/.local/state/bb-deploy/backups"
+  mkdir -p "$backups" || return 1
+  backup="$backups/$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
+  curl --fail --silent --show-error --connect-timeout 3 --max-time 300 \
+    --request POST --output "$backup" "$api/api/v1/server/export" || return 1
+  tar -tzf "$backup" >/dev/null || return 1
+  _bb_deploy_idle || return $?
+  mkdir -p "$root/previous" || return 1
+  cp "$root/current/mise.toml" "$root/previous/mise.toml" || return 1
+  mise trust "$root/previous/mise.toml" || return 1
+  _bb_deploy_resolve "$root/previous" || return 1
+fi
+
+mkdir -p "$root/current" || return 1
+cp "$root/candidate/mise.toml" "$root/current/.mise.toml.next" || return 1
+mv -f "$root/current/.mise.toml.next" "$root/current/mise.toml" || return 1
+mise trust "$root/current/mise.toml" || return 1
+_bb_deploy_resolve "$root/current" || return 1
+if [[ $action == adopt ]]; then
+  print 'bb-deploy: current release recorded; no restart performed'
+  return 0
+fi
+
+sudo -n launchctl kickstart -k system/org.nixos.bb-server || return 1
+local deadline=$((SECONDS + 30)) health hosts primary_host
+while ((SECONDS < deadline)); do
+  health=$(curl --fail --silent --max-time 2 "$api/health") &&
+    print -r -- "$health" | jq -e '.ok == true' >/dev/null &&
+    running=$(_bb_deploy_api system/app-update) &&
+    print -r -- "$running" | jq -e --arg version "$bb_version" '.current.version == $version' >/dev/null &&
+    primary_host=$(_bb_deploy_api system/config | jq -er '.primaryHostId | strings | select(length > 0)') &&
+    hosts=$(_bb_deploy_api hosts) &&
+    print -r -- "$hosts" | jq -e --arg id "$primary_host" 'any(.[]; .id == $id and .status == "connected")' >/dev/null && {
+    print -r -- "bb-deploy: BB $bb_version deployed; backup $backup"
+    return 0
+  }
+  sleep 1
+done
+print -u2 "bb-deploy: health verification failed; current pins retained, backup $backup"
+print -u2 'bb-deploy: inspect BB logs before recovery; database migrations can prevent binary rollback'
+return 1

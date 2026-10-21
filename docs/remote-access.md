@@ -93,7 +93,9 @@ For mobile access, connect Tailscale on the phone and open the required BB serve
 [darwin-server.nix](../.config/nix/modules/darwin-server.nix) declares the Mac mini's BB system daemon.
 It runs as `connorads` in the system launchd domain, independently of desktop login.
 [bb-services.nix](../.config/nix/modules/bb-services.nix) declares the other macOS user services.
-mise owns Node and BB installations. Services resolve installed versions at startup without installing packages or enabling BB auto-updates.
+mise owns Node and BB installations. The Mini resolves exact deployed versions from local mise pins.
+Other macOS user services resolve the global mise configuration.
+Server launchers disable BB's in-app updater. Startup never installs packages.
 The desktop app owns its local server when the declarative server service is disabled.
 
 Each service reads `~/.config/bb/services.local.json` at runtime. This file is untracked and must have mode `0600`.
@@ -122,6 +124,66 @@ sudo launchctl kickstart -k system/org.nixos.bb-server
 
 Verify remote BB access and an agent task after logout. Restarting WindowServer ends GUI services and desktop applications.
 It does not test the system daemon until that daemon owns the running BB instance.
+
+### BB deployments on the Mini
+
+`bb-deploy` separates desired versions in the shared mise lock from the Mini's deployed versions.
+The Air keeps its interactive mise workflow.
+Private pins live in `~/.config/bb/deployment/{current,candidate,previous}/mise.toml`, outside Git.
+Mise tracks these configurations and retains their installed BB and Node versions during pruning.
+Keep all three directories until deployment and recovery checks finish. Direct `mise uninstall` bypasses this protection.
+
+```mermaid
+flowchart LR
+  Install[Install desired versions] --> Prepare[Verify candidate]
+  Prepare --> Idle{BB idle?}
+  Idle -->|No or unknown| Defer[Keep current pins]
+  Idle -->|Yes| Backup[Export and validate backup]
+  Backup --> Recheck[Check tasks again]
+  Recheck --> Promote[Promote pins and restart]
+  Promote --> Verify[Verify server version and local daemon]
+```
+
+Initial setup records the running release without restarting:
+
+```bash
+mise install --locked node npm:bb-app
+bb-deploy prepare
+bb-deploy adopt
+```
+
+`adopt` requires the candidate version to match the running BB server. It refuses existing current pins.
+Apply the Nix system configuration only after these pins exist and BB is idle.
+Nix activation can restart the daemon when its launch configuration changes.
+
+For a release update:
+
+1. Install desired versions through `up` or `mise install --locked node npm:bb-app`.
+2. Run `bb-deploy prepare` to verify exact versions and load native modules with the selected Node runtime.
+3. Run `bb-deploy status` to inspect current, candidate and previous pins.
+4. Authenticate with `sudo -v`, then run `bb-deploy activate` when BB is idle.
+
+Activation returns 75 when tasks are running or their state is unavailable.
+Retry activation explicitly. No scheduled process activates pending releases.
+Unchanged pins require no restart.
+The task check covers BB's `starting` and `active` threads, including hidden threads.
+It cannot prevent new work arriving between the final check and restart, or detect every plugin background operation.
+
+Activation exports BB through its server API and validates the archive with `tar` before changing pins.
+The export API requires BB's server-move experiment. An unavailable export blocks activation.
+Backups stay private under `~/.local/state/bb-deploy/backups/`. They can contain credentials and conversation data.
+The command retains backups without deleting them. Review storage usage before each update.
+BB snapshots its databases individually. This is not a demonstrated atomic snapshot across plugin databases and other files.
+
+The health check requires the selected BB version, a healthy HTTP server and its connected primary execution daemon.
+It does not prove provider authentication or task execution. Verify a provider task after activation.
+If verification fails, current pins remain selected and previous pins remain available.
+Inspect `~/Library/Logs/bb-server{,-error}.log` before recovery.
+Never select an older executable against a migrated database without checking compatibility.
+Use BB's supported import procedure with a verified backup when database restoration is necessary.
+
+Deployment commands use an exclusive directory lock. After an interrupted command, confirm no deployment is running before removing its empty `.lock` directory.
+The ownership decision and rejected alternatives are recorded in [ADR 0024](./adr/0024-bb-service-uses-local-mise-deployment-pins.md).
 
 ```mermaid
 flowchart LR

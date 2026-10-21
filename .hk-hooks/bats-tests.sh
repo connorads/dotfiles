@@ -47,6 +47,9 @@ suites=$(
 		"$TESTS_DIR"/*.bats)
 			echo "$f"
 			;;
+		.config/nix/modules/bb-service-launcher.nix | .config/nix/modules/darwin-server.nix)
+			echo "$TESTS_DIR/bb-deploy.bats"
+			;;
 		# A case pattern's `*` crosses `/`, so the .claude arm covers both the
 		# top-level scripts (statusline.sh, subagent-statusline.sh) and hooks/.
 		.config/zsh/functions/* | .config/tmux/scripts/* | .claude/*.sh)

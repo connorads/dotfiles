@@ -119,7 +119,10 @@
 
   launchd.daemons.bb-server.serviceConfig = {
     ProgramArguments = [
-      "${import ./bb-service-launcher.nix { inherit pkgs; }}"
+      "${import ./bb-service-launcher.nix {
+        inherit pkgs;
+        deployedServer = true;
+      }}"
       "server"
     ];
     UserName = "connorads";
