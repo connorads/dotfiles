@@ -135,13 +135,14 @@ test('the rebindable usage command opens the overlay', async () => {
   expect(await slot.findByRole('dialog', { name: 'Agent usage' })).toBeTruthy();
 });
 
-test('reset credits sit in one row and disclose extra expiry dates on demand', async () => {
+test('saved resets remain visible when the API reports none applicable and disclose expiry dates', async () => {
   const app = await load();
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect() } });
   act(() => openUsage());
   const table = await slot.findByRole('table', { name: 'Codex reset credits' });
-  const row = slot.getByRole('row', { name: /^Reset credits: 3 held, 0 usable\. Expires in 2d 0h/ });
-  expect(row.textContent).toContain('0 of 3 usable');
+  const row = slot.getByRole('row', { name: /^Reset credits: 3 saved\. Expires in 2d 0h/ });
+  expect(row.textContent).toContain('3 saved');
+  expect(table.textContent).not.toContain('usable');
   expect(table.textContent).toContain('From CLI login · cli@example.com');
   expect(table.textContent).not.toContain('Read ');
   const toggle = slot.getByRole('button', { name: /Expires in 2d 0h/ });

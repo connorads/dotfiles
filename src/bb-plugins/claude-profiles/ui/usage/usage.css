@@ -126,8 +126,7 @@
 .au-resets { margin-top: 10px; }
 .au-resets-held { display: flex; align-items: center; gap: 8px; color: var(--au-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .au-pips { display: flex; gap: 3px; }
-.au-pips > span { width: 6px; height: 6px; border-radius: 999px; background: var(--au-track); }
-.au-pips > [data-usable] { background: var(--au-fill); }
+.au-pips > span { width: 6px; height: 6px; border-radius: 999px; background: var(--au-fill); }
 .au-resets-toggle { display: inline-flex; align-items: center; gap: 3px; color: inherit; cursor: pointer; border-radius: 4px; }
 .au-resets-toggle[aria-expanded="true"] > .au-resets-chevron { transform: rotate(180deg); }
 .au-resets-toggle:hover { color: var(--foreground); }

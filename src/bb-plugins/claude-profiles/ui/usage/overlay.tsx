@@ -104,15 +104,15 @@ function CreditResets({ reading, now, accountEmail, signedOut }: { reading: Rese
   // One expiry date is already the row's detail; a list only earns space when it adds dates.
   const listed = reading.expiries.length > 1 || (reading.expiries.length > 0 && reading.unknownExpiryCount > 0);
   const source = reading.accountLabel !== null && reading.accountLabel !== accountEmail ? reading.accountLabel : null;
-  const pips = reading.held <= 12 ? Array.from({ length: reading.held }, (_, index) => index < reading.usable) : null;
+  const pips = reading.held <= 12 ? Array.from({ length: reading.held }, (_, index) => index) : null;
   const plural = (count: number) => `${count} ${count === 1 ? 'reset' : 'resets'}`;
   return <div role="table" aria-label="Codex reset credits" className="au-rows au-resets">
-    <div className="au-row" role="row" aria-label={`Reset credits: ${reading.held} held, ${reading.usable} usable.${
+    <div className="au-row" role="row" aria-label={`Reset credits: ${reading.held} saved.${
       next && deadline ? ` ${next}, ${expiryClock(deadline)}.` : ''}`}>
       <span className="au-row-label" role="rowheader">Reset credits</span>
       <span className="au-resets-held" role="cell">
-        {pips && <span className="au-pips" aria-hidden="true">{pips.map((usable, index) => <span key={index} data-usable={usable || undefined} />)}</span>}
-        <span>{reading.usable} of {reading.held} usable</span>
+        {pips && <span className="au-pips" aria-hidden="true">{pips.map(index => <span key={index} />)}</span>}
+        <span>{reading.held} saved</span>
       </span>
       <span role="cell" />
       <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={deadline ? expiryClock(deadline) : undefined}>
