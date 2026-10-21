@@ -25,11 +25,17 @@ export default function plugin(bb: BbPluginApi) {
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
   const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
   const switching = new Set<string>();
-  const connectors = registerConnectors(bb, switching, async threadId => {
-    const { thread } = await context(threadId);
-    requireIdle(thread);
-    await bb.sdk.threads.stop({ threadId });
-    requireIdle(await bb.sdk.threads.get({ threadId }));
+  const connectors = registerConnectors(bb, switching, async (threadId, requestedProfileId) => {
+    const hostId = threadId === null ? await localHostId() : (await context(threadId)).environment.hostId;
+    if (!hostId) throw new Error('No connected machine to configure account connectors.');
+    const selected = threadId === null ? await bb.storage.kv.get<string>(nextKey)
+      : (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id;
+    const profileId = requestedProfileId ?? selected ?? 'default';
+    if (requestedProfileId !== undefined) {
+      const profiles = await host.call('profiles', { root: (await settings.get()).profileRoot }, { hostId });
+      if (!profiles.some(profile => profile.id === profileId)) throw new Error('Profile does not exist.');
+    }
+    return { hostId, profileId };
   });
   const key = (id: string) => `thread:${id}`;
   const nextKey = 'next-thread-profile';
@@ -143,12 +149,12 @@ export default function plugin(bb: BbPluginApi) {
     return guard.notice;
   }
   bb.experimental_hooks.on('message.dispatch', async input => {
-    if (switching.has(input.thread.id)) return { action: 'reject', message: 'Claude session settings are changing. Send your message after they finish.' };
+    if (input.thread.providerId === 'claude-code' && (connectors.changing || switching.has(input.thread.id))) return { action: 'reject', message: 'Claude session settings are changing. Send your message after they finish.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
       try {
         await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null);
         await stageFork(input.thread, input.host?.id ?? null);
-        await connectors.claim(input.thread);
+        await connectors.claim(input.thread, input.parentThreadId);
       }
       catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply the Claude account.' }; }
     } else if (input.thread.providerId === 'claude-code') {
@@ -160,11 +166,14 @@ export default function plugin(bb: BbPluginApi) {
       await review(input.thread.id);
       const notice = await takeNotice(input.thread.id);
       if (notice) return { action: 'reject', message: notice };
+      try { await connectors.beforeDispatch(input.thread.id); }
+      catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply connector settings.' }; }
     }
     return { action: 'proceed' };
   });
   bb.events.on('experimental_thread.events', async ({ thread }) => {
     if (thread.providerId !== 'claude-code') return;
+    await connectors.settle(thread.id).catch(error => bb.log.warn(`Connector restart review failed: ${error instanceof Error ? error.message : String(error)}`));
     await settleStage(thread).catch(error => bb.log.warn(`Could not remove the fork stage for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
     await review(thread.id).catch(error => bb.log.warn(`Claude profile review failed for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
   });
@@ -175,7 +184,7 @@ export default function plugin(bb: BbPluginApi) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const connectorEnv = await Promise.race([
-        connectors.env(input.threadId),
+        connectors.env(input.threadId, input.hostId),
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Connector lookup timed out')), 1000); }),
       ]);
       return [...accountEnv, ...connectorEnv];
@@ -202,7 +211,7 @@ export default function plugin(bb: BbPluginApi) {
     }
   }
   async function select(threadId: string, profileId: string): Promise<Selection> {
-    if (switching.has(threadId)) throw new Error('A profile switch is already running.');
+    if (connectors.changing || switching.has(threadId)) throw new Error('Claude session settings are changing.');
     switching.add(threadId);
     try {
       const { thread, environment, config } = await context(threadId);
@@ -356,14 +365,14 @@ export default function plugin(bb: BbPluginApi) {
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
-    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [on|off]';
+    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off]';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
         if (argv[0] === 'connectors') {
           const [, threadId, value] = argv;
-          if (!threadId || argv.length > 3 || (value !== undefined && value !== 'on' && value !== 'off')) throw new Error(usageText);
-          const result = value === undefined ? await connectors.state(threadId) : await connectors.set(threadId, value === 'on');
+          if (!threadId || argv.length > 3 || (value !== undefined && value !== 'account' && value !== 'off')) throw new Error(usageText);
+          const result = value === undefined ? await connectors.state(threadId) : await connectors.set(threadId, value);
           return { exitCode: 0, stdout: JSON.stringify(result, null, 2) + '\n' };
         }
         if (argv[0] === 'overview' || argv[0] === 'header') {

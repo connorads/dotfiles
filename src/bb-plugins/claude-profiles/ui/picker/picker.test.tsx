@@ -35,8 +35,11 @@ function render(initial = [first, second], error: string | null = null, account?
       scope: programme?.thread ? { kind: 'thread', threadId: 'thread-test' } : account?.queued ? { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queued-test' }
         : account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
     rpc: {
-      'connectors.get': () => ({ enabled: false, launch: 'pending' }),
-      'connectors.set': input => ({ enabled: input.enabled, launch: 'pending' }),
+      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
+      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
+      'connectors.global.set': () => ({ pending: 0 }),
+      'connectors.account.set': () => ({ pending: 0 }),
+      'connectors.restart': () => ({ pending: 0 }),
       'usage.login': () => { throw new Error('Unused'); },
       'favourites.list': () => saved,
       'favourites.add': input => { saved = [...saved, { ...input, id: 'new', slot: 2 }]; return saved; },

@@ -12,8 +12,8 @@ async function setup(launchEntries: { name: string; source: unknown; value: stri
   const { bb, harness } = createFakePluginHost({ sdk: { threads: {
     get: async () => thread,
     stop: async (args: unknown) => { stops.push(args); return thread; },
-    events: { list: async () => [{ type: 'provider.env-resolved', seq: 7, threadId: 't1', data: { entries: launchEntries } }] },
-  } } as never });
+    events: { list: async () => [{ type: 'provider.env-resolved', seq: 7, threadId: 't1', data: { entries: [...launchEntries, { name: 'ENABLE_CLAUDEAI_MCP_SERVERS', value: 'false', source: { plugin: 'claude-profiles' } }] } }] },
+  }, environments: { get: async () => ({ id: 'e1', hostId: 'h1' }) } } as never });
   plugin(bb);
   await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile });
   const hook = harness.inspection.registrations.hooks['message.dispatch'];

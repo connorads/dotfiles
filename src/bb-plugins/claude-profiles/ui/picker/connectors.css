@@ -3,3 +3,9 @@
 .cp-connectors p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 11px; }
 .cp-connectors [role="alert"] { color: var(--destructive); }
 .cp-connectors [role="switch"][aria-checked="true"] { color: var(--primary); }
+
+.cp-account-access { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 14px; font-size: 11px; color: var(--muted-foreground); }
+.cp-account-group { border-bottom: 1px solid var(--border); }
+.cp-account-group .ap-account { width: 100%; }
+.cp-connectors select { background: var(--background); color: var(--foreground); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; font: inherit; }
+.cp-connectors-pending { margin-top: 6px; }

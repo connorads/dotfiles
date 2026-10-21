@@ -77,29 +77,58 @@ reach Codex before a Daybreak favourite can apply.
 
 ### Account connectors
 
-The **Claude account connectors** switch appears in the account picker and
-below the account selector in the model picker. It controls apps connected
-through the selected Claude account, including Slack. Executor keeps its own
-connection switch.
+The account picker (**Alt+A**) controls apps connected through Claude, including
+Slack. Executor keeps its own connection control.
 
-- New threads default off. Enable access after creating the thread.
-- Each thread remembers its choice across account changes. The composer shows
-  **connectors on** beside the account when access is enabled.
-- Forks inherit the source thread's choice. Child threads default off. Forks keep their
-  own copy.
-- Changes require an idle thread with no queued messages or background agents.
-  The switch stops the cached Claude session; the next turn resumes its conversation.
-- The picker distinguishes pending access from the value passed at launch.
-  **On requested at launch** does not override Claude settings or organisation policies.
+| Control | Choices | Scope |
+| --- | --- | --- |
+| Global | Block all / Use account settings | Every Claude account in this BB server |
+| Account | Off / On | One saved profile on one machine |
+| Thread | Use account setting / Off | One conversation |
+
+Accounts start off. Global **Block all** overrides every account and thread.
+A thread can restrict access but cannot enable a blocked account. The model
+picker also offers these controls for the selected account.
+
+```mermaid
+flowchart LR
+  Global{Global allows?} -->|Yes| Account{Account allows?}
+  Account -->|Yes| Thread{Thread allows?}
+  Thread -->|Yes| On[Connectors on]
+  Global -->|No| Off[Connectors off]
+  Account -->|No| Off
+  Thread -->|No| Off
+```
+
+Account changes recalculate access. Forks copy the thread restriction; child
+threads start off. New threads follow account settings. Draft account changes
+configure the saved profile rather than a one-shot new-thread choice.
+
+Policy changes stop affected idle sessions and preserve queued messages.
+Active turns leave a restart pending. **Stop pending sessions now** stops those sessions,
+including active turns. Pending restarts persist across plugin reloads and retry
+when threads become idle. A pending restart must complete before a new turn starts.
+Thread restriction changes require an idle thread with no queued messages or
+background agents. The conversation resumes on the next turn.
+
+The picker shows the requested policy and the last launch separately. The
+composer marks **connectors still on** when an old launch still allows access
+that the current policy blocks. Claude settings and organisation policies can
+also block access requested at launch. Masked launch values remain unknown
+and require a restart before another send.
 
 The [BB-wide default](../../../docs/bb.md#claude-account-connectors) must be
 provisioned on each BB server. It keeps connectors off for new processes even
-if Agent Switcher is unavailable. Existing processes keep their launch access.
-The switch leaves profile, project and plugin MCP servers available.
+if Agent Switcher is unavailable. The switch leaves profile, project and plugin
+MCP servers available.
+
+Existing thread choices migrate when read. Off remains a thread restriction;
+On follows account settings without enabling an account. The legacy decoder
+can be removed after every stored `connectors:` entry has a `mode` field.
 
 ```sh
 bb claude-profiles connectors THREAD
-bb claude-profiles connectors THREAD on
+bb claude-profiles connectors THREAD account
 bb claude-profiles connectors THREAD off
 ```
 

@@ -36,15 +36,16 @@ Claude Code from fetching connectors attached to the selected Claude account.
 It leaves separately configured MCP servers and Executor connections available.
 
 [Agent Switcher](../src/bb-plugins/claude-profiles/README.md#account-connectors)
-owns the per-thread opt-in. Its provider environment contribution overrides the
-global default. If the plugin is unavailable or its contribution fails, a new
+owns the global block, saved-account preferences and thread restrictions. Its
+provider environment contribution applies the combined policy over the machine
+default. Accounts start off. If the plugin is unavailable or its contribution fails, a new
 Claude process uses the global off value.
 
 Provision the default on each BB server:
 
 ```sh
 printf 'false\n' | bb machine env set ENABLE_CLAUDEAI_MCP_SERVERS \
-  --note 'BB default: Claude account connectors off; Agent Switcher owns per-thread opt-in.'
+  --note 'BB default: Claude account connectors off; Agent Switcher owns connector policy.'
 ```
 
 Keep this variable outside the telemetry declaration, which also writes shell

@@ -19,8 +19,11 @@ function renderAccounts(running = false, fail = false) {
     composer: { text: 'Keep my draft', isRunning: running,
       scope: { kind: 'thread', threadId: 'thread-test' }, selection: { providerId: 'claude-code', model: 'opus' } },
     rpc: {
-      'connectors.get': () => ({ enabled: false, launch: 'pending' }),
-      'connectors.set': input => ({ enabled: input.enabled, launch: 'pending' }),
+      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
+      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
+      'connectors.global.set': () => ({ pending: 0 }),
+      'connectors.account.set': () => ({ pending: 0 }),
+      'connectors.restart': () => ({ pending: 0 }),
       'usage.login': () => { throw new Error('Unused'); },
       'usage.amp': () => { throw new Error('Unused'); },
       'usage.header': () => { throw new Error('Unused'); },

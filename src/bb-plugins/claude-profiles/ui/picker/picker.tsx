@@ -322,7 +322,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
         {accounts?.supported && profileError && <small role="alert">{profileError}</small>}
         <button type="button" className="mf-refresh" aria-label="Refresh Claude accounts" title="Refresh Claude accounts" disabled={busy || profilesLoading} onClick={() => { void loadAccounts(); }}><Icon name="ArrowReloadHorizontal" className="mf-refresh-icon" /></button>
       </div>}
-      {claude && accounts?.supported && <AccountConnectors threadId={threadId}
+      {claude && accounts?.supported && <AccountConnectors threadId={threadId} profiles={accounts.profiles}
         disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting} />}
       <div className="mf-footer" aria-hidden="true">
         <span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> move</span>

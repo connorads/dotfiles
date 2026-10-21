@@ -87,9 +87,11 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open. Core-patch experiment discarded; not deployed.
 - For optional Claude account connectors, a BB global machine environment value
   of `ENABLE_CLAUDEAI_MCP_SERVERS=false` supplies the safe default. Agent Switcher
-  contributes the per-thread opt-in. A failed contribution leaves the default
+  contributes the combined global, account and thread policy. A failed contribution leaves the default
   intact. This does not enforce required account credentials or protect a live
-  process that already started with connectors enabled.
+  process that already started with connectors enabled. Machine environment
+  values are masked in launch events, so a fallback cannot prove the off value.
+  Agent Switcher retains unknown status and restarts before another send.
 - Category: sdk-gap
 - Evidence: @thread:thr_a2edzfz5r9, @thread:thr_7m6n8hipb3, commits `083f4c24`, `a42c610`
 

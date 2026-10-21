@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useComposer, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
+import type { ConnectorState } from '../src/accounts/connectors-contract.ts';
 import type { rpcContract, Profile } from '../contracts.ts';
 import { open } from './picker/store.ts';
 import './account-status.css';
@@ -19,14 +20,14 @@ export function AccountStatus() {
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentId, setCurrentId] = useState('default');
-  const [connectors, setConnectors] = useState<boolean | null>(null);
+  const [connectors, setConnectors] = useState<Pick<ConnectorState, 'enabled' | 'launch'> | null>(null);
   const claude = isClaude(composer);
   const load = useCallback(() => {
     if (!claude) { setProfiles([]); return; }
     rpc.call('accounts', { threadId }).then(value => {
       setProfiles(value.supported ? value.profiles : []); setCurrentId(value.currentId);
     }, () => setProfiles([]));
-    rpc.call('connectors.get', { threadId }).then(value => setConnectors(value.enabled), () => setConnectors(null));
+    rpc.call('connectors.get', { threadId }).then(value => setConnectors(value), () => setConnectors(null));
   }, [rpc, threadId, claude]);
   // A thread gains its environment during the first turn, so reload when a turn ends.
   useEffect(load, [load, composer.isRunning]);
@@ -34,9 +35,10 @@ export function AccountStatus() {
   if (!isClaude(composer) || !profiles.length) return null;
   const label = profiles.find(profile => profile.id === currentId)?.label ?? 'Default';
   return <button type="button" className="cp-trigger" onClick={() => openAccount(composer)}
-    aria-label={`Claude account ${label}`} title={`Switch Claude account (Alt+A). Account connectors ${connectors === null ? 'unknown' : connectors ? 'on' : 'off'}.`}>
+    aria-label={`Claude account ${label}`} title={`Switch Claude account (Alt+A). Account connectors ${connectors === null ? 'unknown' : connectors.enabled ? 'allowed' : 'off'}.`}>
     <span className="cp-dot" />
     <span>{label}</span>
-    {connectors && <span> · connectors on</span>}
+    {connectors && (connectors.enabled || connectors.launch === 'on') && <span> · {connectors.enabled
+      ? connectors.launch === 'on' ? 'connectors on' : 'connectors pending' : 'connectors still on'}</span>}
   </button>;
 }

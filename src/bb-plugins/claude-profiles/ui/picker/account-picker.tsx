@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { ChipPopover } from '@bb-plugins/chip';
-import { AccountConnectors } from './connectors.tsx';
+import { AccountConnector, ConnectorControls, useConnectorSettings } from './connectors.tsx';
 import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
@@ -59,6 +59,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   const [error, setError] = useState<string | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const claude = isClaude(composer);
+  const connectors = useConnectorSettings(threadId);
   const blocked = !claude || !supported || busy || composer.isRunning || composer.isSubmitting;
   const load = useCallback(async (refresh = false) => {
     const request = ++generation.current;
@@ -135,20 +136,20 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
       <div className="ap-intro"><span>Compare allowance with time elapsed</span>
         <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
-      {supported && <AccountConnectors threadId={threadId} disabled={blocked} />}
+      {supported && <ConnectorControls controls={connectors} threadId={threadId} disabled={blocked} />}
       {error && <p role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { void load(true); }}>Retry</button></p>}
       {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-list" aria-busy={loading || busy}>
         {loading && <p className="ap-note" role="status">Loading accounts…</p>}
         {!loading && !profiles.length && !error && supported && <p className="ap-note">No Claude accounts found.</p>}
-        {profiles.map((profile, index) => <button type="button" key={profile.id} data-account={profile.id}
+        {profiles.map((profile, index) => <div key={profile.id} className="cp-account-group"><button type="button" data-account={profile.id}
           data-current={profile.id === currentId || undefined} className="ap-account" aria-label={`Switch to ${profile.label}`}
           aria-disabled={blocked || undefined} aria-current={profile.id === currentId || undefined}
           onClick={() => { void choose(profile); }}>
           <span className="ap-account-head"><kbd className="mf-kbd">{index < 9 ? index + 1 : '↵'}</kbd><strong>{profile.label}</strong>
             {profile.id === currentId && <span className="ap-current"><Icon name="Check" className="ap-icon" />Current</span>}</span>
           <Quota usage={quotas[profile.id]} now={now} />
-        </button>)}
+        </button><AccountConnector controls={connectors} profile={profile} /></div>)}
       </div>
       <footer className="mf-footer ap-footer">{supported && <><span><kbd className="mf-kbd">1-9</kbd> switch</span><span><kbd className="mf-kbd">↑↓</kbd> move · <kbd className="mf-kbd">↵</kbd> switch</span></>}
         <span>{busy ? 'Switching…' : supported ? 'Line marks time elapsed' : 'Escape returns to your draft'}</span></footer>
