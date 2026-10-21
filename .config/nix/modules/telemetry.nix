@@ -30,6 +30,9 @@ let
   };
 in
 {
+  home.file.".terraform.d/telemetry.tfrc".text = ''
+    disable_checkpoint_signature = true
+  '';
   xdg.configFile."telemetry/environment.sh".text =
     lib.concatStringsSep "\n" (
       lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") environment

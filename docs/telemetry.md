@@ -150,6 +150,19 @@ distinguishes `off`, `local` and `on`. Local mode collects counters without uplo
 query the installed toolchain directly rather than changing the global version.
 These native settings affect future tool operations without restarting services.
 
+## Terraform Checkpoint signature
+
+The Nix telemetry module owns `~/.terraform.d/telemetry.tfrc` with
+`disable_checkpoint_signature = true`. It does not replace the main CLI configuration.
+Terraform 1.12.2's [loader](https://github.com/hashicorp/terraform/blob/v1.12.2/internal/command/cliconfig/cliconfig.go)
+merges this drop-in and retains credentials and provider settings.
+The [Checkpoint branch](https://github.com/hashicorp/terraform/blob/v1.12.2/checkpoint.go)
+suppresses the signature while retaining version and security checks.
+
+Nonempty `TF_CLI_CONFIG_FILE` or `TERRAFORM_CONFIG` overrides bypass the drop-in directory.
+Those launch contexts need separate review. The file and source checks establish
+configuration and supported behaviour. Effective loading and outbound requests remain unverified.
+
 ## Tailscale client logs
 
 The macOS daemon declaration includes `--no-logs-no-support` in
