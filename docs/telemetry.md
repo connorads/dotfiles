@@ -197,7 +197,7 @@ optional collection controls:
 | --- | --- |
 | Apple application restrictions | `allowDiagnosticSubmission=false`, `allowApplePersonalizedAdvertising=false` |
 | Chrome | `MetricsReportingEnabled=false`, `UrlKeyedAnonymizedDataCollectionEnabled=false` |
-| Brave | `BraveP3AEnabled=false`, `BraveStatsPingEnabled=false`, `MetricsReportingEnabled=false` |
+| Brave | `BraveP3AEnabled=false`, `BraveStatsPingEnabled=false`, `BraveWebDiscoveryEnabled=false`, `MetricsReportingEnabled=false` |
 
 The profile is prepared, XML-validated and uninstalled. Generating or linking it
 does not install restrictions. Installation requires the supported
@@ -213,6 +213,8 @@ uses profiles. Ordinary defaults do not establish mandatory policy enforcement.
 Brave's [P3A policy](https://github.com/brave/brave-core/blob/v1.91.180/components/policy/resources/templates/policy_definitions/BraveSoftware/BraveP3AEnabled.yaml)
 and [stats policy](https://github.com/brave/brave-core/blob/v1.91.180/components/policy/resources/templates/policy_definitions/BraveSoftware/BraveStatsPingEnabled.yaml)
 require mandatory delivery and a normal restart.
+Its [Web Discovery policy](https://github.com/brave/brave-core/blob/v1.91.180/components/policy/resources/templates/policy_definitions/BraveSoftware/BraveWebDiscoveryEnabled.yaml)
+also requires mandatory delivery and a normal restart. An unset policy leaves native consent in control.
 
 After installation and normal startup, verify recognised mandatory values without
 errors in `chrome://policy` and `brave://policy`. Verify Apple's installed

@@ -67,6 +67,8 @@
 			<false/>
 			<key>BraveStatsPingEnabled</key>
 			<false/>
+			<key>BraveWebDiscoveryEnabled</key>
+			<false/>
 			<key>MetricsReportingEnabled</key>
 			<false/>
 		</dict>
