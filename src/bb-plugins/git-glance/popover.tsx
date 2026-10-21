@@ -24,7 +24,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   const state = useRepo(threadId, rpc);
   const dialog = useRef<HTMLDialogElement>(null);
   const [zoomed, setZoomed] = useState(() => localStorage.getItem(zoomKey) === '1');
-  // A click morphs between sizes; the z key switches at once, like opening by shortcut.
+  // A click morphs between sizes; keyboard shortcuts switch at once.
   const [morph, setMorph] = useState(false);
   const zoom = useCallback((via: 'pointer' | 'keyboard') => {
     setMorph(via === 'pointer');
@@ -72,7 +72,11 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     if (event.key === 'ArrowDown' || event.key === 'j') move(1);
     else if (event.key === 'ArrowUp' || event.key === 'k') move(-1);
     else if (event.key === 'r' || event.key === 'R') { event.preventDefault(); void renew(threadId); }
-    else if (event.key === 'z') { event.preventDefault(); zoom('keyboard'); }
+    else if (event.key === '+' || event.key === '_') { event.preventDefault(); if ((event.key === '+') !== zoomed) zoom('keyboard'); }
+    else if (event.key === 'c' && repo && !event.repeat) {
+      event.preventDefault();
+      dialog.current?.querySelector<HTMLButtonElement>('.gg-composer > button[aria-expanded="false"]')?.click();
+    }
     else if (event.key === 'b' && repo) { event.preventDefault(); setPicker('keyboard'); }
     else if (event.key === 'q') { event.preventDefault(); onClose(); }
     // The lazygit plugin listens; without it the key does nothing.

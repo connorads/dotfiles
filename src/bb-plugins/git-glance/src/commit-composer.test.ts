@@ -58,7 +58,15 @@ test('RPC rejection retains the draft and permits another commit submission', as
   const textarea = find(render(), element => element.type === 'textarea');
   (textarea.props.onChange as (event: unknown) => void)({ target: { value: 'Keep this draft' } });
   const submit = () => (find(render(), element => element.type === 'form').props.onSubmit as (event: unknown) => void)({ preventDefault() {} });
-  submit();
+  const keydown = find(render(), element => element.type === 'form').props.onKeyDown as (event: unknown) => void;
+  const key = { key: 'Enter', shiftKey: true, repeat: false, nativeEvent: { isComposing: false }, preventDefault() {}, stopPropagation() {} };
+  keydown(key);
+  assert.equal(attempts, 0, 'Shift+Enter retains newline input');
+  keydown({ ...key, shiftKey: false, repeat: true });
+  assert.equal(attempts, 0, 'Repeated Enter cannot submit');
+  keydown({ ...key, shiftKey: false, nativeEvent: { isComposing: true } });
+  assert.equal(attempts, 0, 'Composition Enter cannot submit');
+  keydown({ ...key, shiftKey: false });
   await Promise.resolve();
   assert.equal(storage.get('git-glance:commit:repo'), 'Keep this draft');
   assert.equal(storage.has('git-glance:commit:repo:pending'), false);

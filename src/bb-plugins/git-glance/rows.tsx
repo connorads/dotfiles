@@ -28,7 +28,7 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
       onFocus={inline || directory ? undefined : onToggle}
       title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
       onKeyDown={event => {
-        if (event.key === 's' && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (event.key === ' ' && source.kind === 'work-tree' && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
           event.preventDefault(); event.stopPropagation();
           event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.gg-index-action')?.click();
           return;

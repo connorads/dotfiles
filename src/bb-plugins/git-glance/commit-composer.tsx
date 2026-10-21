@@ -49,13 +49,14 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
     });
   };
   return <div className="gg-composer">
-    <button type="button" className="gg-ghost" disabled={busy} onClick={() => { setOpen(v => !v); if (!open) refresh(); }}>Commit staged changes</button>
+    <button type="button" className="gg-ghost" aria-expanded={open} title="Commit staged changes (c)" disabled={busy} onClick={() => { setOpen(v => !v); if (!open) refresh(); }}>Commit staged changes</button>
     {open && <form onSubmit={event => { event.preventDefault(); submit(); }} onKeyDown={event => {
       event.stopPropagation();
       if (event.key === 'Escape') { event.preventDefault(); setOpen(false); }
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.repeat && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
+      if (event.key === 'Enter' && !event.shiftKey && !event.repeat && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
     }}>
       <p>{repository} · {branch} · {review ? `${plural(review.count, 'staged file')}` : 'Reading complete index…'}</p>
+      <p>Enter commits. Shift+Enter inserts a newline.</p>
       <p>Commits the complete index, including files staged elsewhere. Unstaged edits stay outside the commit.</p>
       <label>Commit subject and optional body<textarea autoFocus rows={5} maxLength={65536} value={draft} disabled={busy || !review}
         placeholder={'Subject\n\nOptional body'} onChange={event => { const value = event.target.value; setDraft(value); if (draftKey) localStorage.setItem(draftKey, value); }} /></label>

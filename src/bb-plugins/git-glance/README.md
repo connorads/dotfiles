@@ -21,10 +21,10 @@ default checkout. That screen shows no chip.
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, `l` opens
 lazygit, and `q` or `esc` closes. On a file row `d` arms discard and a second `d` confirms; on a
-file row `s` stages or unstages the complete file; on a
+file row `Space` stages or unstages the complete file; on a
 stash row `a` applies and `g` pops.
 
-`z` expands to a large two-pane view, and the size is remembered. The lists sit
+`+` expands to a large two-pane view, `_` restores the pop-up, and the size is remembered. The lists sit
 on the left; the selected file's side-by-side diff, or a stash or commit with
 its files, fills the right, and the selection follows the arrow keys. Rebind `Alt+G`
 in Settings → Keyboard. For anything else, press `l` to open lazygit through its
@@ -117,14 +117,14 @@ Run `pnpm test`, `pnpm typecheck`, and `pnpm build` from this directory.
 ## Staging and commits
 
 Use **Stage** or **Unstage** beside a file or in the expanded detail pane.
-The `s` key applies the same action on a focused file row. Staging uses the
+The `Space` key applies the same action on a focused file row. Staging uses the
 complete working file, including edits outside any existing staged version.
 Unstaging preserves working files. Renames restore both index paths.
 Unborn repositories support staging, unstaging and their first commit.
 Untracked files appear individually. Directory, conflict and submodule index
 actions are refused. Ignored files are never force-added.
 
-**Commit staged changes** opens an inline message field. Its first line must
+`c` or **Commit staged changes** opens an inline message field. Its first line must
 contain a subject; further lines provide the body. The review shows the complete
 staged-file count, including files outside the 400-row display limit.
 The commit includes the complete index, including changes staged elsewhere.
@@ -139,7 +139,7 @@ flowchart LR
   Commit --> Refresh[Refresh status]
 ```
 
-- Primary modifier plus Enter submits. Enter inserts a newline. Escape closes
+- Enter submits. Shift+Enter inserts a newline. Primary modifier plus Enter also submits. Escape closes
   the form and retains the draft.
 - Drafts persist in this browser's local storage, scoped by host and resolved
   worktree Git directory. Closing, failure and cancellation retain them.

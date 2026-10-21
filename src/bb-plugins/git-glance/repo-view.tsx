@@ -84,7 +84,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   };
   const indexAction = (change: Repo['changes'][number]) => change.area === 'conflicted' || change.path.endsWith('/') ? null :
     <button type="button" className="gg-ghost gg-index-action" disabled={op?.status === 'running'}
-      aria-label={`${change.area === 'staged' ? 'Unstage' : 'Stage'} ${change.path}`} title={`${change.area === 'staged' ? 'Unstage' : 'Stage complete file'} ${change.path} (s)`}
+      aria-label={`${change.area === 'staged' ? 'Unstage' : 'Stage'} ${change.path}`} title={`${change.area === 'staged' ? 'Unstage' : 'Stage complete file'} ${change.path} (Space)`}
       onClick={() => {
         pendingFile.current = { path: change.path, staged: change.area !== 'staged', before: repo.changes, focus: document.activeElement?.closest('.gg-change') !== null };
         if (change.area === 'staged') void onRun({ kind: 'unstage', path: change.path });
@@ -106,7 +106,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         {repo.kind === 'dotfiles' && <span className="gg-tag">bare repo</span>}
         <span className="gg-spacer" />
         <button type="button" className="gg-ghost gg-icon-button" onClick={onZoom} aria-pressed={zoomed}
-          aria-label={zoomed ? 'Shrink to pop-up' : 'Expand'} title={zoomed ? 'Shrink to pop-up (z)' : 'Expand (z)'}>
+          aria-label={zoomed ? 'Shrink to pop-up' : 'Expand'} title={zoomed ? 'Shrink to pop-up (_)' : 'Expand (+)'}>
           <span className="gg-swap" data-done={zoomed || undefined} aria-hidden>
             <Icon name="Maximize2" className="size-3.5" /><Icon name="Minimize2" className="size-3.5" />
           </span>
@@ -235,7 +235,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     </div>
 
     <footer className="gg-footer">
-      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>s</kbd> stage/unstage <kbd>d</kbd> discard twice <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>z</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
+      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>Space</kbd> stage/unstage <kbd>c</kbd> commit <kbd>d</kbd> discard twice <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>+</kbd><kbd>_</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
       <span className="gg-live" data-state={state.error || fetchError || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
         title={state.error ?? fetchError ?? 'Watches local files and refs. Fetch checks the remote.'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />
