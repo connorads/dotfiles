@@ -39,6 +39,7 @@ unparseable = "unparseable"
 browseable = "browseable"
 invokable = "invokable"
 # External identifiers: tool/product names and ecosystem symbols.
+thr = "thr"       # BB thread ID prefix
 sherif = "sherif" # JS monorepo linter
 cros = "cros"     # ChromeOS cros-garcon service
 sur = "sur"       # Homebrew :big_sur symbol

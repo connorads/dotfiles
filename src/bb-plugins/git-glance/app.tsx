@@ -6,8 +6,10 @@ import { projectSubject, type rpcContract } from './contracts.ts';
 import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
 import './app.css';
+import { mountCommitLinks, type CommitLink } from './chat-links.ts';
+import { CommitPreview } from './commit-preview.tsx';
 
-type Open = { threadId: string; anchor: Anchor; instant: boolean } | null;
+type Open = { threadId: string; anchor: Anchor; instant: boolean; commit?: string } | null;
 let opened: Open = null;
 const listeners = new Set<() => void>();
 function show(next: Open) { opened = next; listeners.forEach(listener => listener()); }
@@ -31,7 +33,10 @@ function Overlay() {
     if (connection === 'connected' && previous.current !== 'connected') renewAll();
     previous.current = connection;
   }, [connection]);
-  return current ? <GitPopover key={current.threadId} threadId={current.threadId} anchor={current.anchor} instant={current.instant} onClose={close} /> : null;
+  if (!current) return null;
+  if (current.commit) return <CommitPreview key={`${current.threadId}:${current.commit}`} threadId={current.threadId} sha={current.commit}
+    onClose={close} onRepository={() => show({ ...current, commit: undefined })} />;
+  return <GitPopover key={current.threadId} threadId={current.threadId} anchor={current.anchor} instant={current.instant} onClose={close} />;
 }
 
 function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
@@ -75,6 +80,9 @@ function ComposerSubject() {
 }
 
 export default definePluginApp(app => {
+  app.contentScripts.register({ id: 'commit-links', mount: () => mountCommitLinks(document, ({ threadId, sha }: CommitLink) => {
+    show({ threadId, commit: sha, anchor: null, instant: true });
+  }) });
   app.slots.experimental_appOverlay({ id: 'popover', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'status', title: 'Git status', component: Chip });
   app.composer.customize({ id: 'status', scopes: ['new-thread'], actions: [{ id: 'status', component: ComposerSubject }] });

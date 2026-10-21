@@ -30,6 +30,28 @@ its files, fills the right, and the selection follows the arrow keys. Rebind `Al
 in Settings → Keyboard. For anything else, press `l` to open lazygit through its
 own plugin.
 
+## Commit hashes in chat
+
+Click a hash shown as inline code to open its message, author, files and diffs.
+Enter and Space work too. Git Glance uses the message thread's selected repository,
+including the dotfiles fallback. Opening a hash does not fetch or switch branches.
+
+```mermaid
+flowchart LR
+  Hash[Inline hash in chat] --> Repository[Message thread's selected repository]
+  Repository --> Commit[Commit details and file diffs]
+```
+
+- Candidates contain 7-64 hexadecimal characters and at least one letter.
+- Commands, code blocks, existing links and ordinary text retain their normal behaviour.
+- Commits outside the recent history list open if they exist in the local repository.
+- Missing or ambiguous hashes show Git's error. Use a longer hash or open **Git status**
+  to choose another repository, then click the hash again.
+- Repository selection persists per thread. Hash clicks do not infer repositories from nearby paths.
+
+The inline-code decoration uses BB's content-script API. It depends on BB's rendered
+timeline markup and removes its attributes and listeners when the plugin unloads.
+
 ## Live updates
 
 ```mermaid

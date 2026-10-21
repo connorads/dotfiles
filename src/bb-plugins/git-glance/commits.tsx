@@ -50,10 +50,11 @@ export function LaneRails({ lanes, width }: { lanes: number[]; width: number }) 
   </svg>;
 }
 
-export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, stash = false }: {
+export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, stash = false, preview = false }: {
   sha: string; threadId: string; now: number; copied: string | null; onCopy: (sha: string) => void; lanes: number[]; width: number;
   /** A stash is a two-parent commit, but calling it a merge would mislead. */
   stash?: boolean;
+  preview?: boolean;
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const [detail, setDetail] = useState<CommitDetail | { error: string } | null>(null);
@@ -70,8 +71,10 @@ export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, 
     <LaneRails lanes={lanes} width={width} />
     <div className="gg-commit-body">
       {!detail ? <div className="gg-diff-loading" aria-busy><i /><i /><i /></div>
-        : 'error' in detail ? <p className="gg-note gg-danger">{detail.error}</p>
+        : 'error' in detail ? <div role="alert"><p className="gg-note gg-danger">{detail.error}</p>
+          {preview && <p className="gg-note">Could not open this commit here. It may need a longer hash or another repository. Open Git status to choose a repository, then click the hash again.</p>}</div>
         : <>
+          {preview && <strong>{detail.subject}</strong>}
           {detail.body && <p className="gg-message">{detail.body}</p>}
           <div className="gg-commit-meta">
             <span className="gg-avatar" aria-hidden>{initials(detail.author)}</span>

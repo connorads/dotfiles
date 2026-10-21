@@ -384,17 +384,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: @thread:thr_fypszmqyd4, commit `7f1f5c8f`
 
-### Link accessory on chat Markdown links
+### Link accessories and inline commit hashes in chat Markdown
 
 - Found: 2026-10-14, external-links, SDK 0.6.37
 - Wanted: an arrow beside chat web links that opens the system browser, while plain
-  clicks keep the BB browser preference.
-- Gap: no slot or render hook decorates timeline Markdown anchors.
+  clicks keep the BB browser preference. Git Glance also opens inline commit hashes.
+- Gap: no slot or render hook decorates timeline Markdown anchors or inline code.
 - Workaround: a content script and MutationObserver decorate
   `[data-markdown-preview] a`: [links.ts](../external-links/links.ts). BB markup
-  changes can break it.
-- Ask: a non-exclusive link accessory slot, or a link-click policy hook.
-- Status: open. `experimental_timelineRenderer` may cover part of it.
+  changes can break it. Git Glance decorates hash-shaped inline code through
+  [chat-links.ts](../git-glance/chat-links.ts), preserving text nodes and restoring attributes on disposal.
+- Ask: a non-exclusive Markdown decorator for links and inline code, with message thread context.
+- Status: open. `experimental_timelineRenderer` excludes core assistant messages.
 - Category: sdk-gap
 - Evidence: commit `885896da`, `external-links/README.md:15`
 

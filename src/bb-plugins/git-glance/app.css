@@ -1,4 +1,8 @@
 /* Host tokens: BB's theme variables, so light and dark modes follow the app. */
+.gg-chat-commit { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.gg-chat-commit:hover { color: var(--primary); }
+.gg-chat-commit:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
 :root {
   --gg-lane-0: var(--timeline-accent, oklch(72% .09 250));
   --gg-lane-1: var(--pr-merged, oklch(68% .18 295));

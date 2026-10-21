@@ -714,12 +714,18 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.11.9
+      jsdom:
+        specifier: 'catalog:'
+        version: 26.1.0
       react:
         specifier: 'catalog:'
         version: 19.2.4
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
 
   handsfree:
     dependencies:
