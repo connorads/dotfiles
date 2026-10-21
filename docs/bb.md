@@ -84,9 +84,16 @@ Record SDK gaps and workarounds in [SDK frictions](../src/bb-plugins/docs/sdk-fr
 
 ## Global instructions and feedback
 
-The built-in Custom instructions plugin supplies host-wide agent instructions.
-Read them with `bb instructions get`; `bb instructions set` replaces the complete text.
-Preserve existing instructions when adding a rule.
+[Native global instructions](../.bb/AGENTS.md) supply personal rules to provider-backed sessions across projects.
+BB reads `<dataDir>/AGENTS.md` when assembling a session. The local data directory is `~/.bb`.
+Restoring the tracked `.bb/AGENTS.md` through dotfiles installs the instructions at BB's native path.
+No plugin build, settings import or application restart is required for a newly assembled session.
+Existing conversation text can retain earlier instructions.
+
+Keep session-wide preferences in that file and maintenance procedures in this guide.
+The Custom instructions plugin remains empty to avoid duplicate rules.
+`bb instructions get` reads only that plugin's text, not the native file.
+Use `bb guide agent-configuration` to inspect supported instruction locations.
 
 The feedback log is [SDK frictions](../src/bb-plugins/docs/sdk-frictions.md).
 It covers SDK gaps, app bugs, provider issues and CLI problems.

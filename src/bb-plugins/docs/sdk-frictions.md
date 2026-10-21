@@ -818,6 +818,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: CLI and tooling
 
+### Global instruction loading has no XDG configuration path
+
+- Found: 2026-10-21, agent configuration
+- Wanted: Keep global BB instructions in the XDG configuration directory, separate from runtime data.
+- Gap: The installed loader reads `<dataDir>/AGENTS.md` and workspace `.bb/AGENTS.md`.
+  It does not check `$XDG_CONFIG_HOME/bb/AGENTS.md` or its default `~/.config/bb/AGENTS.md`.
+- Workaround: Track the native `.bb/AGENTS.md` directly in dotfiles. Keep maintenance procedures in [the BB guide](../../../docs/bb.md).
+- Ask: Support an XDG global instruction path with documented precedence when the data-directory file also exists.
+- Status: open. This finding concerns instruction loading, not all BB configuration.
+- Category: other
+- Evidence: Installed core `readDataDirAgentInstructions` and `DATA_DIR_AGENT_INSTRUCTIONS_RELATIVE_PATH`; `bb guide agent-configuration`.
+
 ### SDK types lag the runtime
 
 - Found: 2026-10-10, handsfree, tmux spikes, SDK 0.6.15 to 0.6.39

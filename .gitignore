@@ -382,3 +382,7 @@ __pycache__/
 !/src/trash-helper/
 !/src/trash-helper/**
 /src/trash-helper/build/
+
+# BB native agent instructions only; runtime data stays ignored
+!/.bb/
+!/.bb/AGENTS.md

@@ -58,6 +58,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [~/src/codex-recover](../src/codex-recover/README.md) | `agent recover` (Python). Tests: `cd ~/src/codex-recover && uv run --group dev pytest -c pyproject.toml` |
 | [~/src/handoff](../src/handoff/README.md) | `handoff` (Python). Tests: `cd ~/src/handoff && uv run --group dev pytest -c pyproject.toml` |
 | [~/src/bb-plugins](../src/bb-plugins/README.md) | BB plugins: one pnpm workspace, one dir per plugin, installed by `path:` source. Tests: `pnpm -r test` there |
+| [~/.bb/AGENTS.md](../.bb/AGENTS.md) | Native global BB instructions; [loading and maintenance](bb.md#global-instructions-and-feedback) |
 | [~/.config/bb/preferences.json](../.config/bb/preferences.json) | File-managed BB thread shortcuts; [installation and ownership](../src/bb-plugins/preferences/README.md) |
 | [~/.config/bb/plugins.json](../.config/bb/plugins.json) | Desired BB plugin states; apply with `bb-plugins apply`. [Ownership and commands](bb.md#workflows) |
 | [~/.config/bb/plugin-config.json](../.config/bb/plugin-config.json) | Desired BB plugin settings; apply with `bb-plugins apply`. [Ownership and commands](bb.md#plugin-setup) |
