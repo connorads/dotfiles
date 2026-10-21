@@ -120,3 +120,10 @@ test('choosing a named model selects a unique match without asking to choose it 
   await runSpeech(ports, 'Choose Opus 5.5.')
   expect(commands.at(-1)).toMatchObject({ action: 'select', kind: 'model', id: 'opus' })
 })
+
+test('mark unread phrases use a separate action from next unread', () => {
+  for (const phrase of ['Mark unread.', 'Mark this thread unread']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'mark-unread' } })
+  }
+  expect(parseSpeech('Next unread')).toEqual({ command: { action: 'unread' } })
+})

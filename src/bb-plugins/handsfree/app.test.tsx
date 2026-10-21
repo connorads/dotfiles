@@ -869,3 +869,36 @@ test('favourite choices show one stable slot number and choose that slot across 
   expect(await view.command({ action: 'choose', number: 2 })).toMatchObject({ ok: true });
   expect(view.slot.inspection.composer.selection).toMatchObject({ model: 'new-model', reasoningLevel: 'high' });
 });
+
+test('mark unread targets the focused thread without navigating or submitting its draft', async () => {
+  const marked: string[] = [];
+  const view = await render('idle', undefined, undefined, {
+    composer: { scope: { kind: 'thread', threadId: 'focused' } },
+    sidebarSplitLayout: { panes: [
+      { paneId: 'left', threadId: 't1', isFocused: false, rect: { x: 0, y: 0, width: 0.5, height: 1 } },
+      { paneId: 'right', threadId: 'focused', isFocused: true, rect: { x: 0.5, y: 0, width: 0.5, height: 1 } },
+    ] },
+    sdk: { threads: { markUnread: async ({ threadId }) => {
+      marked.push(threadId);
+      return makeThreadResponse({ id: threadId, lastReadAt: null });
+    } } },
+  });
+  expect(await view.command(commandSchema.parse({ action: 'mark-unread' }))).toMatchObject({ ok: true, outcome: 'completed' });
+  expect(marked).toEqual(['focused']);
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+  expect(view.slot.inspection.composer.submits).toEqual([]);
+});
+
+test('mark unread rejects a new thread draft', async () => {
+  const view = await render('idle', undefined, undefined, { composer: { scope: { kind: 'new-thread', projectId: 'p1' } } });
+  expect(await view.command(commandSchema.parse({ action: 'mark-unread' }))).toMatchObject({ ok: false, message: 'Select an existing thread to mark unread.' });
+  expect(view.slot.inspection.sdkCalls.some(call => call.method === 'threads.markUnread')).toBe(false);
+});
+
+test('mark unread reports a failed update', async () => {
+  const view = await render('idle', undefined, undefined, {
+    sdk: { threads: { markUnread: async () => { throw new Error('Unread update failed.'); } } },
+  });
+  expect(await view.command(commandSchema.parse({ action: 'mark-unread' }))).toMatchObject({ ok: false, message: 'Unread update failed.' });
+});

@@ -418,6 +418,11 @@ function VoiceCard() {
         setChoices(null);
         setMonitorOpen(false);
         return { ok: true, outcome: 'requested', message: 'Escape requested to close the top popup.', press: { key: 'escape', modifiers: [] } };
+      case 'mark-unread': {
+        if (!context.threadId) throw new Error('Select an existing thread to mark unread.');
+        await sdk.threads.markUnread({ threadId: context.threadId });
+        return { ok: true, outcome: 'completed', message: 'Thread marked unread.' };
+      }
       case 'unread': {
         if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
         setChoices(null);
@@ -585,6 +590,7 @@ function VoiceCard() {
         <dt>“Pause commands” / “Resume commands”</dt><dd>Pause or resume BB voice actions in this window</dd>
         <dt>“Go to the login thread”</dt><dd>Find a thread by description</dd>
         <dt>“Next thread” / “Previous thread”</dt><dd>Follow BB's navigation order</dd>
+        <dt>“Mark unread” / “Mark this thread unread”</dt><dd>Mark the focused thread unread, then say “next thread” to move on</dd>
         <dt>“Next unread”</dt><dd>Open the oldest unread stopped thread</dd>
         <dt>“Show Git” / “Show usage”</dt><dd>Open Git status or all agent accounts</dd>
         <dt>“Close popup” / “Close voice monitor”</dt><dd>Close voice controls and dismiss the top popup with Escape</dd>

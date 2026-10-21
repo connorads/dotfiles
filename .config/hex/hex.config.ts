@@ -60,6 +60,13 @@ export default defineHexConfig({
         if (reply.ok && reply.press) await hex.press(reply.press)
       },
     },
+    "bb-mark-unread": {
+      phrases: ["mark unread", "mark this thread unread"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Mark the focused BB thread unread",
+      run: async () => { await runBb(bbPorts, { action: "mark-unread" }) },
+    },
     "bb-unread": {
       phrases: ["next unread"],
       when: { application: "bb" },

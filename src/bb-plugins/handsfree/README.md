@@ -58,6 +58,7 @@ not required.
 | --- | --- |
 | `go to the login thread` | Match a thread by title and project |
 | `next thread` / `previous thread` | Use BB's configured navigation shortcuts |
+| `mark unread` / `mark this thread unread` | Mark the focused thread unread; use `next thread` to move on |
 | `next unread` | Open the oldest unread stopped thread, including text questions and errors |
 | `show threads` | Show up to nine recently updated threads as numbered choices |
 | `show git` / `show usage` | Open Git status for the selected thread or usage for all agent accounts |

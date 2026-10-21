@@ -6,6 +6,7 @@ const fixed: Record<string, Command> = {
   'focus chat': { action: 'focus' }, 'focus message': { action: 'focus' }, 'focus composer': { action: 'focus' },
   'next thread': { action: 'next' }, 'next conversation': { action: 'next' },
   'previous thread': { action: 'previous' }, 'previous conversation': { action: 'previous' },
+  'mark unread': { action: 'mark-unread' }, 'mark this thread unread': { action: 'mark-unread' },
   'next unread': { action: 'unread' }, 'who needs me': { action: 'attention' }, 'next waiting': { action: 'attention' },
   'next finished': { action: 'finished' }, 'show git': { action: 'show', view: 'git' },
   'show usage': { action: 'show', view: 'usage' }, 'close popup': { action: 'dismiss' },
