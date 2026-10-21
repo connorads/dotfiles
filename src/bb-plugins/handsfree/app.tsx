@@ -423,14 +423,16 @@ function VoiceCard() {
         await sdk.threads.markUnread({ threadId: context.threadId });
         return { ok: true, outcome: 'completed', message: 'Thread marked unread.' };
       }
+      case 'waiting':
       case 'unread': {
         if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
         setChoices(null);
-        const next = threads.filter(row => row.id !== context.threadId && row.isUnread
-          && (row.runtimeStatus === 'idle' || row.runtimeStatus === 'error')
-          && row.queuedWork !== 'waiting' && Object.values(row.activity).every(count => count === 0))
+        const next = threads.filter(row => row.id !== context.threadId && (command.action === 'waiting'
+          ? row.hasPendingInteraction
+          : row.isUnread && (row.runtimeStatus === 'idle' || row.runtimeStatus === 'error')
+            && row.queuedWork !== 'waiting' && Object.values(row.activity).every(count => count === 0)))
           .sort((a, b) => a.latestAttentionAt - b.latestAttentionAt || a.id.localeCompare(b.id))[0];
-        if (!next) return { ok: true, outcome: 'empty', message: 'No unread stopped threads.' };
+        if (!next) return { ok: true, outcome: 'empty', message: command.action === 'waiting' ? 'No other threads are waiting for your input.' : 'No unread stopped threads.' };
         trackNavigation(next.id);
         navigate.toThread(next.id);
         return { ok: true, outcome: 'requested', message: `Opening ${threadCandidate(next).label}` };

@@ -28,6 +28,7 @@ export const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('next') }).strict(),
   z.object({ action: z.literal('previous') }).strict(),
   z.object({ action: z.literal('attention') }).strict(),
+  z.object({ action: z.literal('waiting') }).strict(),
   z.object({ action: z.literal('finished') }).strict(),
   z.object({ action: z.literal('unread') }).strict(),
   z.object({ action: z.literal('mark-unread') }).strict(),

@@ -68,7 +68,7 @@ export default defineHexConfig({
       run: async () => { await runBb(bbPorts, { action: "mark-unread" }) },
     },
     "bb-unread": {
-      phrases: ["next unread"],
+      phrases: ["next unread", "next unread thread", "next unread conversation"],
       when: { application: "bb" },
       group: "BB",
       description: "Open the oldest unread stopped BB thread",
@@ -106,11 +106,18 @@ export default defineHexConfig({
       run: async () => { await matchBb(bbPorts, "thread", "") },
     },
     "bb-waiting": {
-      phrases: ["who needs me", "next waiting"],
+      phrases: ["who needs me", "what’s waiting for me", "show waiting threads"],
       when: { application: "bb" },
       group: "BB",
       description: "Show BB threads waiting for a reply",
       run: async () => { await runBb(bbPorts, { action: "attention" }) },
+    },
+    "bb-next-waiting": {
+      phrases: ["next waiting", "who needs me next", "next thread that needs me", "next thread with a question"],
+      when: { application: "bb" },
+      group: "BB",
+      description: "Open the oldest other BB thread waiting for input",
+      run: async () => { await runBb(bbPorts, { action: "waiting" }) },
     },
     "bb-finished": {
       phrases: ["next finished"],

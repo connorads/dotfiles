@@ -127,3 +127,17 @@ test('mark unread phrases use a separate action from next unread', () => {
   }
   expect(parseSpeech('Next unread')).toEqual({ command: { action: 'unread' } })
 })
+
+
+test('natural navigation phrases distinguish direct waiting navigation from lists', () => {
+  for (const phrase of ['next waiting', 'who needs me next', 'next thread that needs me', 'next thread with a question']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'waiting' } })
+  }
+  for (const phrase of ['who needs me', 'what’s waiting for me', 'show waiting threads']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'attention' } })
+  }
+  for (const phrase of ['next unread', 'next unread thread', 'next unread conversation']) {
+    expect(parseSpeech(phrase)).toEqual({ command: { action: 'unread' } })
+  }
+  expect(parseSpeech('next question')).toEqual({ command: { action: 'submit-answer' } })
+})

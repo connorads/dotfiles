@@ -902,3 +902,24 @@ test('mark unread reports a failed update', async () => {
   });
   expect(await view.command(commandSchema.parse({ action: 'mark-unread' }))).toMatchObject({ ok: false, message: 'Unread update failed.' });
 });
+
+
+test('next waiting opens the oldest other visible question even with ongoing activity', async () => {
+  const view = await render('idle', undefined, [
+    thread('t1', { hasPendingInteraction: true }),
+    thread('hidden', { hasPendingInteraction: true, isHidden: true }),
+    thread('archived', { hasPendingInteraction: true, isArchived: true }),
+    thread('read', { latestAttentionAt: 1 }),
+    thread('newer', { hasPendingInteraction: true, latestAttentionAt: 20 }),
+    thread('question', { hasPendingInteraction: true, latestAttentionAt: 10, runtimeStatus: 'active' }),
+  ]);
+  expect(await view.command({ action: 'waiting' })).toMatchObject({ ok: true, outcome: 'requested' });
+  expect(view.slot.inspection.navigateCalls).toEqual([{ method: 'toThread', threadId: 'question' }]);
+  expect(view.slot.inspection.composer.text).toBe('Unsent task');
+});
+
+test('next waiting stays put when only the current thread needs input', async () => {
+  const view = await render('idle', undefined, [thread('t1', { hasPendingInteraction: true })]);
+  expect(await view.command({ action: 'waiting' })).toMatchObject({ ok: true, outcome: 'empty' });
+  expect(view.slot.inspection.navigateCalls).toEqual([]);
+});

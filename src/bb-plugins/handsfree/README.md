@@ -63,7 +63,8 @@ not required.
 | `show threads` | Show up to nine recently updated threads as numbered choices |
 | `show git` / `show usage` | Open Git status for the selected thread or usage for all agent accounts |
 | `close popup` / `close pop up` / `close voice monitor` | Close voice controls and send Escape to dismiss the top popup |
-| `who needs me` / `next waiting` | Show threads with pending questions or approvals |
+| `who needs me` / `what's waiting for me` / `show waiting threads` | Show threads with pending questions or approvals |
+| `next waiting` / `who needs me next` / `next thread that needs me` / `next thread with a question` | Open the oldest other visible thread with a pending question or approval |
 | `next finished` | Show unread successful results |
 | `new thread` | Open a draft in the selected project |
 | `focus chat` / `focus message` / `focus composer` | Focus the selected chat input for dictation |
@@ -204,6 +205,11 @@ account selection becomes available. Codex account selection is unavailable.
 See [Agent Switcher](../claude-profiles/README.md#accounts) for account ownership.
 The thread matcher offers the 200 most recently updated visible, unarchived
 threads. Attention lists show up to nine threads.
+
+`next unread thread` and `next unread conversation` also open the next unread thread.
+`next waiting` includes read threads and threads with ongoing activity when they have a pending interaction.
+It skips the current thread and orders pending threads by attention time, oldest first.
+`next question` advances the current question form.
 
 `next unread` skips the selected thread, archived and hidden threads, and ongoing
 work. It uses BB's unread state and orders replies by attention time, oldest first.
