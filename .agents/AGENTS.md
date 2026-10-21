@@ -35,7 +35,7 @@ Do not rely on memory when the answer can be checked quickly.
 Grep the local codebase first for implementation questions.
 When actual behaviour or state is the question, observe the running system - telemetry, logs, live config, state - rather than inferring from code.
 Check online for external facts: docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, solutions.
-Grep `~/git/kb/notes/` alongside the web - my Obsidian vault of compiled notes; `index.md` maps its domains.
+Grep `~/git/kb/notes/` alongside the web. Read `~/git/kb/index.md` for the domain map.
 For dependency behaviour, read installed source such as `node_modules`; if absent, clone the repo into `/tmp`.
 Use subagents for broad research so the main context stays focused.
 Default research subagents to read-only work. Assign non-overlapping paths before parallel edits.
