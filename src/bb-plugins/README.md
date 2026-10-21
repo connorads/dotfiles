@@ -100,6 +100,12 @@ records why it absorbs Model Favourites and Agent Usage.
 [Preferences](preferences/README.md) applies tracked keyboard settings from
 `~/.config/bb/preferences.json`. Its guide covers installation and ownership.
 
+## File navigation
+
+[File History](file-history/README.md) adds Previous file and Next file controls
+to thread file previews. Mouse Back and Forward use file history while the
+pointer is over the file panel.
+
 ## Shortcut reference
 
 [Shortcut Guide](shortcut-guide/README.md) opens with `Alt+/` or the keyboard

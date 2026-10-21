@@ -1,0 +1,27 @@
+{
+  "name": "bb-plugin-file-history",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
+  "bb": {
+    "name": "File History",
+    "description": "Back and Forward within the thread file panel.",
+    "branding": { "icon": "History" },
+    "server": "./server.ts",
+    "app": "./app.ts",
+    "skills": []
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/node": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

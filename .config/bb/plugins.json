@@ -7,6 +7,7 @@
   "diff-viewer": true,
   "executor": true,
   "external-links": true,
+  "file-history": true,
   "git-glance": true,
   "handsfree": true,
   "lazygit": true,

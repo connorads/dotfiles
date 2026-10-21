@@ -27,6 +27,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### File previews have no panel navigation history
+
+- Found: 2026-10-21, file-history, BB desktop 0.46.1, SDK 0.6.49
+- Wanted: Return from a linked Markdown file to its parent without leaving the thread.
+- Gap: File links select native panel tabs without adding browser history entries.
+  Browser Back therefore leaves the thread. The file header has no history controls.
+  `experimental_useAppPanel` selects plugin-owned fixed tabs only; it exposes no native file history or header accessory.
+- Workaround: [File History](../file-history/README.md) records visited native tab buttons and adds header controls through a content script.
+  It intercepts standard mouse Back/Forward events within the visible file panel and preserves app navigation elsewhere.
+- Ask: Add native panel Back/Forward controls and route mouse navigation over file previews through the same history controller.
+- Status: open
+- Category: app-bug
+- Evidence: `usePanelFiles.ts`, `useThreadFileTabs.ts`, `app-route-history.ts`; live Chromium reproduction preserved the URL and history length on file-link clicks.
+
 ### Plugin workflow activity is absent from sidebar counts
 
 - Found: 2026-10-21, built-in Workflows plugin
