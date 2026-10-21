@@ -382,3 +382,7 @@ __pycache__/
 !/.config/bb/preferences.json
 !/.config/bb/plugins.json
 !/.config/bb/plugin-config.json
+
+!/src/trash-helper/
+!/src/trash-helper/**
+/src/trash-helper/build/

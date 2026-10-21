@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+case "${1:-}" in
+check | authorise | empty)
+	if [[ $# != 1 ]]; then
+		echo 'Usage: empty-trash check|authorise|empty' >&2
+		exit 64
+	fi
+	;;
+*)
+	echo 'Usage: empty-trash check|authorise|empty' >&2
+	exit 64
+	;;
+esac
+app=/usr/local/libexec/TrashHelper.app
+if [[ ! -d "$app" ]]; then
+	echo 'Trash Helper is not installed. See src/trash-helper/README.md.' >&2
+	exit 1
+fi
+result_dir=$(/usr/bin/mktemp -d /tmp/empty-trash.XXXXXXXX)
+trap '/bin/rmdir "$result_dir" 2>/dev/null || true' EXIT
+# LaunchServices gives the helper its own permission identity.
+/usr/bin/open -n -g -W -o "$result_dir/result" --stderr "$result_dir/error" \
+	"$app" --args "$1" || true
+for ((attempt = 0; attempt < 120; attempt++)); do
+	if [[ -s "$result_dir/result" ]]; then
+		IFS= read -r status <"$result_dir/result" || true
+		case "$status" in
+		0 | 1 | 64)
+			/usr/bin/tail -n +2 "$result_dir/result"
+			/bin/unlink "$result_dir/result"
+			[[ ! -e "$result_dir/error" ]] || /bin/unlink "$result_dir/error"
+			exit "$status"
+			;;
+		esac
+	fi
+	/bin/sleep 1
+done
+echo "No helper result. Inspect $result_dir before retrying." >&2
+exit 1
