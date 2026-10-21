@@ -760,6 +760,25 @@ backend = "npm:wrangler"
 version = "1.88.0"
 backend = "npm:oxlint"
 
+[[tools.packslip]]
+version = "1.8.0"
+backend = "packslip:packslip.dev"
+
+[tools.packslip."platforms.linux-arm64"]
+checksum = "sha256:4753d412586e8ab3b088f469ffe602923f111a4dcfec78bf8eadf4c5caeb0c58"
+url = "https://packslip.dev/v1.8.0/packslip-v1.8.0-linux-arm64.tar.xz"
+signer = "sigstore-oidc:https://github.com/jdx/packslip/.github/workflows/release.yml"
+
+[tools.packslip."platforms.linux-x64"]
+checksum = "sha256:82a1064adb98517bd2f1a88957b7ca9bcfe071b2725ccec725f2db47a98a24eb"
+url = "https://packslip.dev/v1.8.0/packslip-v1.8.0-linux-x64.tar.xz"
+signer = "sigstore-oidc:https://github.com/jdx/packslip/.github/workflows/release.yml"
+
+[tools.packslip."platforms.macos-arm64"]
+checksum = "sha256:3ab10bef25b7044efdf89ae972feb7123e10fb32747daa54a7bb95ba589135a0"
+url = "https://packslip.dev/v1.8.0/packslip-v1.8.0-darwin-arm64.tar.xz"
+signer = "sigstore-oidc:https://github.com/jdx/packslip/.github/workflows/release.yml"
+
 [[tools.pandoc]]
 version = "3.12.1"
 backend = "github:jgm/pandoc"

@@ -26,6 +26,21 @@ That promise is void whenever GitHub refuses mise's token, and nothing says so. 
 
 **mise lockfile** (enabled): `~/.config/mise/mise.lock` pins exact versions + checksums for `macos-arm64`, `linux-arm64`, `linux-x64` (plus the current platform, always). The shared lock uses format 0, which records tool versions and supported artifact metadata, not native npm/Python dependency graphs. Format migration requires validating dependency declarations and frozen replay on every target. Cross-platform locking needs mise >= 2025.11.11, `lockfile_platforms` >= 2026.4.8. Other-platform hashes may come from registry metadata; provenance verification can also download artifacts during locking. Install-time `github_attestations` + `slsa` still fire on the machine that actually installs. `claude`/`codex`/`vercel` (among others) are `latest`, so their lock entries churn every `up` (no per-tool lock-exclude exists; accepted). The global `locked` setting is unset; `up` resolves new entries before requiring `mise install --locked`.
 
+## Packslip
+
+Packslip's CLI is mise-managed with `packslip = "1"`, the shared lockfile and
+the four-day quarantine. It provides manual release verification and publishing.
+`mise lock --global packslip` refreshes only its lock entry;
+`mise install --locked packslip` installs that entry.
+
+Mise embeds the Packslip verifier independently of the CLI. Registry entries for
+aube, fnox, hk and usage select the `packslip:` backend, which verifies signed
+release manifests and their artefact digests. Nix owns mise itself.
+
+`packslip.exec` and `skills.auto_sync` remain disabled. Skill installation follows
+the [curation guide](../skills/AGENTS.md).
+See [Packslip with mise](https://packslip.dev/docs/mise/) for backend behaviour.
+
 ## Python tooling
 
 **Python tooling** (ruff / pyrefly / ty): `ruff = "0.16"` (registry-backed `aqua:astral-sh/ruff`) is the first-party lint + format gate (`ruff-check` / `ruff-format` hk steps, `mise run py-checks`). `"pipx:pyrefly" = "1"` is the typecheck gate for the first-party script dirs, handoff and codex-recover (`py-typecheck-*` hk steps); pipx backend (no aqua entry, mirrors `pipx:ty`) forwards the quarantine to uv's `--exclude-newer`. `pipx:ty = "0"` is kept for editor/LSP use only - pyrefly owns the gate. Every `pyrefly.toml` sets `preset = "strict"` (implicit-`Any` reporting on unannotated `dict`, untyped lambdas, empty containers) plus `unused-type-ignore` so stale suppressions fail; `all` is avoided because new error kinds land in minor releases at error severity. `py-typecheck.sh` passes `-c pyrefly.toml`: with no config found pyrefly falls back to the `basic` preset, which reports 0 errors on real type errors and exits 0, so a renamed or missing config must be a fatal error rather than a green gate. The mechanical-enforcement skill (`references/python.md`) keeps basedpyright as the default gate for typed projects; pyrefly is the pragmatic choice here because these are stdlib-only script dirs where its speed matters more than the idiom rules it lacks.
