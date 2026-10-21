@@ -98,3 +98,29 @@ manual checks where applications expose no supported declarative control.
 
 Amp and Droid opt-outs remain unverified. Droid's customer-exporter settings
 do not disable its vendor collector.
+
+## Additional CLI collectors
+
+The Nix map declares these product-specific controls. Generic variables do not
+replace them.
+
+| Consumer | Control | Support evidence |
+| --- | --- | --- |
+| Comfy Desktop | `COMFY_DESKTOP_POSTHOG_ENABLED=0` | [PostHog initialisation](https://github.com/Comfy-Org/Comfy-Desktop/blob/main/src/main/lib/telemetry.ts) |
+| Pi | `PI_TELEMETRY=0` | [Pi 1.2.0 resolver](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/telemetry.ts) |
+| PowerShell | `POWERSHELL_TELEMETRY_OPTOUT=1` | [PowerShell 7.6.4 implementation](https://github.com/PowerShell/PowerShell/blob/v7.6.4/src/System.Management.Automation/utils/Telemetry.cs) |
+| Slack CLI | `SLACK_DISABLE_TELEMETRY=1` | [Slack 4.2.0 environment reader](https://github.com/slackapi/slack-cli/blob/v4.2.0/internal/config/dotenv.go) |
+| EAS CLI | `DISABLE_EAS_ANALYTICS=1` | [EAS 24.14.0 analytics](https://github.com/expo/eas-cli/blob/v24.14.0/packages/eas-cli/src/analytics/AnalyticsManager.ts) |
+
+Comfy Desktop's variable disables its PostHog client at startup. Its native
+usage-metrics consent and independent diagnostic paths require separate checks.
+Pi's control suppresses install reporting and default provider attribution.
+Its separate analytics setting and OpenCode session headers have separate paths.
+Slack CLI's control does not configure Slack desktop.
+EAS analytics has a separate collector from Expo CLI.
+These variables require inheritance before startup. Existing processes can retain
+earlier values. Support in older installed copies requires separate verification.
+
+Stored settings and fresh-child environment checks establish configuration only.
+They do not establish absence of outbound collection. Browser policies, account
+training consent, extensions and separately hosted services require separate checks.
