@@ -117,6 +117,59 @@ def test_judged_file_folds_decisions_into_the_score(tmp_path):
     assert (row["status"], row["detail"]) == ("fail", "no run docs")
 
 
+@pytest.mark.parametrize("effective", [False, True], ids=["ineffective", "configured"])
+def test_hook_and_coverage_credit_requires_review(tmp_path, effective):
+    files = {
+        **BASIC,
+        ".githooks/pre-commit": "#!/bin/sh\npnpm lint\n" if effective else "",
+        "pyproject.toml": "[tool.coverage.report]\n"
+        + ("" if effective else "# ")
+        + "fail_under = 80\n",
+    }
+    if effective:
+        files["package.json"] = '{"scripts": {"lint": "ruff check ."}}'
+        files[".github/workflows/ci.yml"] = (
+            "steps:\n- run: uv run pytest --cov=app --cov-fail-under=80\n"
+        )
+    repo = make_repo(tmp_path, files)
+    if effective:
+        (repo / ".githooks/pre-commit").chmod(0o755)
+        git(repo, "config", "core.hooksPath", ".githooks")
+    pending = run(str(repo), "--json")
+    assert pending.returncode == 0, pending.stderr
+    before = json.loads(pending.stdout)
+    evidence = {
+        "pre_commit_hooks": ".githooks/pre-commit",
+        "test_coverage_thresholds": "pyproject.toml",
+    }
+    rows = {row["id"]: row for row in before["results"]}
+    for criterion, path in evidence.items():
+        row = rows[criterion]
+        assert row["status"] == "judge"
+        assert row["method"] == "judge"
+        assert row["needs_approval"] is False
+        assert row["numerator"] == 0
+        assert path in row["evidence"]
+
+    status = "pass" if effective else "fail"
+    detail = "active checks reviewed" if effective else "empty hook and commented coverage limit"
+    judged = tmp_path / "judged.json"
+    judged.write_text(
+        json.dumps({criterion: {"status": status, "detail": detail} for criterion in evidence})
+    )
+    completed = run(str(repo), "--json", "--judged", str(judged))
+    assert completed.returncode == 0, completed.stderr
+    after = json.loads(completed.stdout)
+    rows = {row["id"]: row for row in after["results"]}
+    for criterion, path in evidence.items():
+        row = rows[criterion]
+        assert row["status"] == status
+        assert row["detail"] == detail
+        assert row["numerator"] == int(effective)
+        assert path in row["evidence"]
+    assert after["score"]["pending_judgements"] == before["score"]["pending_judgements"] - 2
+
+
 def test_bad_judged_file_exits_2(tmp_path):
     repo = make_repo(tmp_path, BASIC)
     judged = tmp_path / "judged.json"

@@ -1,7 +1,7 @@
 """Pure-core table tests: each check is a predicate over an in-memory Snapshot.
 
-The tool-agnostic rule is tested directly: every mechanism a criterion's
-examples name must pass it, and near-misses must not.
+Mechanism discovery is tool-agnostic. Hook and coverage candidates stay
+pending until their enforcement is reviewed.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ def kind(v):
     return type(v).__name__
 
 
-# --- the local gate: any mechanism counts ------------------------------------
+# --- local gates: discovered mechanisms need enforcement review --------------
 
 
 @pytest.mark.parametrize(
@@ -31,11 +31,38 @@ def kind(v):
         {".githooks/pre-commit": "#!/bin/sh\nmake lint"},
         {"package.json": '{"simple-git-hooks": {"pre-commit": "pnpm lint"}}'},
         {".claude/settings.json": '{"hooks": {"PostToolUse": [{"command": "pnpm lint"}]}}'},
+        {".husky/pre-commit": ""},
+        {"package.json": '{"devDependencies": {"husky": "9"}}'},
+        {".claude/settings.json": '{"hooks": {}}'},
     ],
-    ids=["husky", "pre-commit", "lefthook", "hk", "githooks", "simple-git-hooks", "agent-hook"],
+    ids=[
+        "husky",
+        "pre-commit",
+        "lefthook",
+        "hk",
+        "githooks",
+        "simple-git-hooks",
+        "agent-hook",
+        "empty-hook",
+        "dependency-only",
+        "empty-agent-hooks",
+    ],
 )
-def test_local_gate_passes_for_any_hook_mechanism(files):
-    assert kind(verdict("pre_commit_hooks", snap(files))) == "Pass"
+def test_local_gate_candidates_need_enforcement_review(files):
+    got = verdict("pre_commit_hooks", snap(files))
+    assert kind(got) == "NeedsJudgement"
+    assert set(got.candidates) == set(files)
+
+
+def test_local_gate_review_preserves_all_candidate_paths():
+    files = {
+        "hk.pkl": 'hooks { ["pre-commit"] {} }',
+        "package.json": '{"devDependencies": {"husky": "9"}}',
+        ".claude/settings.json": '{"hooks": {}}',
+    }
+    got = verdict("pre_commit_hooks", snap(files))
+    assert kind(got) == "NeedsJudgement"
+    assert set(got.candidates) == set(files)
 
 
 def test_ci_only_lint_is_not_a_local_gate():
@@ -46,6 +73,36 @@ def test_ci_only_lint_is_not_a_local_gate():
 def test_agent_settings_without_hooks_are_not_a_local_gate():
     files = {".claude/settings.json": '{"permissions": {"allow": []}}'}
     assert kind(verdict("pre_commit_hooks", snap(files))) == "Fail"
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        {"pyproject.toml": "[tool.coverage.report]\n# fail_under = 80\n"},
+        {"pyproject.toml": "[tool.coverage.report]\nfail_under = 0\n"},
+        {"pyproject.toml": "[tool.coverage.report]\nfail_under = 80\n"},
+        {"vitest.config.ts": "export default {coverage: {thresholds: {lines: 0}}}"},
+        {"vitest.config.ts": "export default {coverage: {thresholds: {lines: 80}}}"},
+        {".github/workflows/ci.yml": "steps:\n- run: uv run pytest --cov=app --cov-fail-under=80"},
+    ],
+    ids=[
+        "commented-floor",
+        "zero-floor",
+        "positive-floor",
+        "zero-vitest",
+        "vitest",
+        "ci-command",
+    ],
+)
+def test_coverage_candidates_need_enforcement_review(files):
+    got = verdict("test_coverage_thresholds", snap(files))
+    assert kind(got) == "NeedsJudgement"
+    assert set(got.candidates) == set(files)
+
+
+@pytest.mark.parametrize("files", [{}, {"README.md": "Set fail_under = 80 to enforce coverage."}])
+def test_coverage_without_a_configuration_candidate_fails(files):
+    assert kind(verdict("test_coverage_thresholds", snap(files))) == "Fail"
 
 
 # --- toolchain_pinned: any version declaration counts ------------------------

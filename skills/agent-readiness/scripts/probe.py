@@ -384,14 +384,19 @@ def c_formatter(s: Snapshot) -> Verdict:
 
 
 def c_pre_commit_hooks(s: Snapshot) -> Verdict:
-    return _first(
-        lambda: _paths(*GIT_HOOKS)(s),
-        lambda: (lambda h: Pass(h) if h else None)(
-            s.grep(("**/package.json",), r'"(simple-git-hooks|husky|lint-staged|pre-commit)"\s*:')
-        ),
-        lambda: (lambda h: Pass(h) if h else None)(s.grep(AGENT_HOOK_CONFIGS, r'"hooks"\s*:')),
-        otherwise=Fail("no local gate: no git hook manager, hook scripts or agent edit hooks (CI-only checks do not count)"),
-    )  # fmt: skip
+    candidates = tuple(sorted(set(
+        s.match(*GIT_HOOKS)
+        + s.grep(("**/package.json",), r'"(simple-git-hooks|husky|lint-staged|pre-commit)"\s*:')
+        + s.grep(AGENT_HOOK_CONFIGS, r'"hooks"\s*:')
+    )))  # fmt: skip
+    if candidates:
+        return NeedsJudgement(
+            "Are these local hooks enabled and configured to run meaningful quality checks on edits or commits?",
+            candidates,
+        )
+    return Fail(
+        "no local gate: no git hook manager, hook scripts or agent edit hooks (CI-only checks do not count)"
+    )
 
 
 BUILD_CMD = (
@@ -854,10 +859,16 @@ def c_monorepo_tooling(s: Snapshot) -> Verdict:
 
 
 def c_test_coverage_thresholds(s: Snapshot) -> Verdict:
-    return any_of(
-        _config(r"thresholds?\s*[:=]|coverageThreshold|--cov-fail-under|fail_under|fail-under|--check-coverage|check-coverage|jacocoTestCoverageVerification|jacoco:check|violationRules|koverVerify|minimum_coverage|coverage.*(target|threshold)|--fail-under"),
-        fail="coverage may be measured but no minimum is enforced",
-    )(s)  # fmt: skip
+    candidates = _mentions(
+        s,
+        r"thresholds?\s*[:=]|coverageThreshold|--cov-fail-under|fail_under|fail-under|--check-coverage|check-coverage|jacocoTestCoverageVerification|jacoco:check|violationRules|koverVerify|minimum_coverage|coverage.*(target|threshold)|--fail-under",
+    )
+    if candidates:
+        return NeedsJudgement(
+            "Does an active test or CI command enforce a positive coverage minimum, rather than a comment or disabled setting?",
+            candidates,
+        )
+    return Fail("coverage may be measured but no minimum is enforced")
 
 
 def c_api_schema_docs(s: Snapshot) -> Verdict:
@@ -1421,8 +1432,8 @@ REGISTRY: tuple[Criterion, ...] = (
       "Git ignores local secrets and generated output for every stack in the repo, so a broad `git add` cannot commit them.",
       (".env", "node_modules/", "__pycache__/", "target/", "build/"), c_gitignore_comprehensive),
     # Level 2
-    C("pre_commit_hooks", "Pre-commit Hooks", "style", 2, "application", "probe", False,
-      "Quality checks run locally before code leaves the machine. Any mechanism counts; checks that only run in CI do not.",
+    C("pre_commit_hooks", "Pre-commit Hooks", "style", 2, "application", "judge", False,
+      "Enabled local hooks run meaningful quality checks on edits or commits. Checks that only run in CI do not count.",
       ("husky", "pre-commit", "lefthook", "hk", ".githooks/ scripts", "agent edit hooks that run lint or tests"), c_pre_commit_hooks),
     C("build_cmd_doc", "Build Command Documentation", "build", 2, "repository", "probe", False,
       "The docs give the command that builds or installs the project, or say plainly that there is no build step.",
@@ -1460,8 +1471,8 @@ REGISTRY: tuple[Criterion, ...] = (
     C("monorepo_tooling", "Monorepo Tooling", "build", 2, "repository", "probe", True,
       "A repo with several packages declares them as a workspace, so boundaries and task order are explicit.",
       ("pnpm workspaces", "Turborepo", "Nx", "go.work", "Cargo workspace", "Gradle multi-project", "Bazel"), c_monorepo_tooling),
-    C("test_coverage_thresholds", "Test Coverage Thresholds", "testing", 2, "application", "probe", False,
-      "A minimum coverage level is enforced, so an agent knows a change that drops coverage will fail.",
+    C("test_coverage_thresholds", "Test Coverage Thresholds", "testing", 2, "application", "judge", False,
+      "An active test or CI command enforces a positive coverage minimum, so a drop below that minimum fails.",
       ("vitest thresholds", "jest coverageThreshold", "--cov-fail-under", "JaCoCo check", "Codecov target"), c_test_coverage_thresholds),
     C("local_services_setup", "Local Services Setup", "dev_env", 2, "repository", "probe", True,
       "Databases, caches and queues the code depends on can be started locally from checked-in config or clear docs.",

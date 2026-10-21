@@ -233,9 +233,9 @@ Examples: CI secrets, SOPS, Vault, cloud secret managers, .env.example with .env
 
 ### `pre_commit_hooks` Pre-commit Hooks
 
-Tags: `application`, `style`, `probe`.
+Tags: `application`, `style`, `judge`.
 
-Quality checks run locally before code leaves the machine. Any mechanism counts; checks that only run in CI do not.
+Enabled local hooks run meaningful quality checks on edits or commits. Checks that only run in CI do not count.
 
 Examples: husky, pre-commit, lefthook, hk, .githooks/ scripts, agent edit hooks that run lint or tests.
 
@@ -281,9 +281,9 @@ Examples: AGENTS.md run section, Playwright harness, curl against a health endpo
 
 ### `test_coverage_thresholds` Test Coverage Thresholds
 
-Tags: `application`, `testing`, `probe`.
+Tags: `application`, `testing`, `judge`.
 
-A minimum coverage level is enforced, so an agent knows a change that drops coverage will fail.
+An active test or CI command enforces a positive coverage minimum, so a drop below that minimum fails.
 
 Examples: vitest thresholds, jest coverageThreshold, --cov-fail-under, JaCoCo check, Codecov target.
 
