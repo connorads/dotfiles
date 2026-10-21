@@ -124,3 +124,23 @@ earlier values. Support in older installed copies requires separate verification
 Stored settings and fresh-child environment checks establish configuration only.
 They do not establish absence of outbound collection. Browser policies, account
 training consent, extensions and separately hosted services require separate checks.
+
+## Native tool consent
+
+Homebrew's native analytics consent is disabled with `brew analytics off`.
+The Nix environment also declares `HOMEBREW_NO_ANALYTICS=1`.
+Check native consent without the masking shell controls:
+
+```sh
+env -u HOMEBREW_NO_ANALYTICS -u HOMEBREW_NO_ANALYTICS_THIS_RUN brew analytics state
+```
+
+A disabled result with inherited exports alone does not establish stored consent.
+[Homebrew documents both controls](https://docs.brew.sh/Analytics).
+
+Go's native telemetry mode is `off`. [Go telemetry](https://go.dev/doc/telemetry)
+distinguishes `off`, `local` and `on`. Local mode collects counters without uploads.
+`go telemetry off` persists consent independently of the shell environment.
+`go telemetry` checks the mode. A mise shim without a selected Go version can fail;
+query the installed toolchain directly rather than changing the global version.
+These native settings affect future tool operations without restarting services.
