@@ -141,18 +141,25 @@ function VoiceCard() {
   }, [rpc]);
 
   useEffect(() => {
+    diagnosticStart.current = Date.now();
+    setFeedback(false);
+    setProblem(false);
+  }, [context.threadId, projectId]);
+
+  useEffect(() => {
     const last = diagnostics.attempts.filter(entry => !entry.unmatched).at(-1);
     const newer = last && last.at >= diagnosticStart.current && last.at > (history.at(-1)?.at ?? 0);
+    const diagnosticFeedback = newer && now - last.at < (last.problem ? 8000 : 4000);
     const state = diagnostics.state;
     const capture = state && now - state.at < 30_000 && (state.state === 'dictating' || state.state === 'transcribing');
     const label = busy ? 'Working…' : capture ? state.state === 'dictating' ? 'Voice · Recording' : 'Voice · Transcribing'
-      : newer && (last.problem || now - last.at < 4000) ? `Voice · ${last.result}` : feedback || problem ? message : 'Voice';
-    publishVoiceHeader({ label, problem: !busy && !capture && (newer ? last.problem : problem), expanded });
+      : diagnosticFeedback ? `Voice · ${last.result}` : feedback ? message : 'Voice';
+    publishVoiceHeader({ label, problem: !busy && !capture && (diagnosticFeedback ? last.problem : feedback && problem), expanded });
   }, [busy, feedback, problem, message, expanded, diagnostics, now, history]);
 
   useEffect(() => {
-    if (!feedback || problem || busy) return;
-    const timer = window.setTimeout(() => setFeedback(false), 4000);
+    if (!feedback || busy) return;
+    const timer = window.setTimeout(() => { setFeedback(false); setProblem(false); }, problem ? 8000 : 4000);
     return () => window.clearTimeout(timer);
   }, [feedback, problem, busy, message]);
 

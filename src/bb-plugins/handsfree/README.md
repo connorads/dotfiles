@@ -1,7 +1,7 @@
 # Handsfree
 
 Hex voice commands control the focused BB window. A Voice header control shows brief
-results and retains failures. Clicking opens activity, command help and numbered matches.
+results and failures. Clicking opens activity, command help and numbered matches.
 New drafts provide the same control beside the composer actions.
 
 ## Command pedal
@@ -109,8 +109,9 @@ Choices take keyboard focus. Enter selects the highlighted match while the card
 has focus. Returning to the composer restores BB's Enter and arrow keys.
 Escape closes
 the card and restores composer focus. Q also closes when the card has focus. Outside the card, BB handles both pedals.
-Routine results appear in the header for four seconds. Failures stay visible
-until another command succeeds. Choices and archive confirmation open temporary prompts. Completing or cancelling
+Routine results appear in the header for four seconds. Failures appear for eight
+seconds. Changing threads or draft projects clears feedback. Activity retains the
+results. Choices and archive confirmation open temporary prompts. Completing or cancelling
 a prompt closes it. A monitor opened explicitly stays open when a prompt completes.
 Requested help opens the command list. Failures remain available in Activity without opening it automatically.
 

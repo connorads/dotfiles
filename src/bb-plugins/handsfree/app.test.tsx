@@ -699,6 +699,49 @@ test('monitor activity exposes failed attempts without opening a disclosure', as
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Failed/);
 });
 
+test('command failures expire after eight seconds and remain in Activity', async () => {
+  const view = await render();
+  vi.useFakeTimers();
+  await view.slot.behavior.emitRealtime('command', { requestId: 'expiry', command: { action: 'submit-answer' } });
+  await act(async () => { await vi.advanceTimersByTimeAsync(7999); });
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*There is no active question/ })).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
+  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active question/);
+});
+
+test.each(['t2', null])('changing the focused destination to %s clears failures and preserves Activity', async threadId => {
+  const layout = { panes: [
+    { paneId: 'main', threadId: 't1' as string | null, isFocused: true, rect: { x: 0, y: 0, width: 1, height: 1 } },
+  ] };
+  const view = await render('idle', undefined, undefined, { sidebarSplitLayout: layout });
+  await view.command({ action: 'submit-answer' });
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*There is no active question/ })).toBeTruthy();
+  layout.panes[0].threadId = threadId;
+  await view.slot.behavior.setComposerScope(threadId
+    ? { kind: 'thread', threadId } : { kind: 'new-thread', projectId: 'p1' });
+  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
+  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active question/);
+});
+
+test('native diagnostic failures expire after eight seconds and remain in Activity', async () => {
+  vi.useFakeTimers();
+  const at = Date.now();
+  const view = await render('idle', undefined, undefined, { diagnostics: () => ({
+    available: true, state: null, transcript: null,
+    attempts: [{ at, kind: 'command', heard: 'next question', command: 'bb-submit-answer',
+      result: 'Native command failed', problem: true, unmatched: false, context: 'bb' }],
+  }) });
+  await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*Native command failed/ })).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(7500); });
+  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
+  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Native command failed/);
+});
+
 
 test('monitor shows actual Hex transcription and details without marking background speech as failure', async () => {
   const now = Date.now();
