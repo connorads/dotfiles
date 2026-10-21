@@ -55,6 +55,26 @@ Cycling skips disabled favourites. A favourite whose provider is unavailable on
 this machine stays visible with a reason. Favourites persist in plugin storage
 and update across open views.
 
+### Daybreak
+
+Search **Daybreak** to find the models that advertise the programme. Each result
+names the model and **Daybreak**. Selecting it sets the model and programme for
+the next turn. Models that require Daybreak off have no Daybreak result.
+
+The **Now** strip shows the thread's Daybreak choice, including a pending choice
+for the next turn. Use **Off / On** to change it. A model that fixes the setting
+shows why it cannot change. Standard model results select Daybreak off.
+
+A favourite saves its Daybreak setting with the model. Standard and Daybreak
+choices for the same model can occupy separate slots. The saved effort belongs
+to each choice. Selecting a favourite checks that its model supports its saved
+programme before changing the thread.
+
+BB's composer SDK cannot read or set session options before thread creation.
+New-thread drafts use BB's native model picker for Daybreak. Save and apply
+Daybreak favourites after starting the thread. A cross-provider handoff must
+reach Codex before a Daybreak favourite can apply.
+
 ### Accounts
 
 Press **Alt+A** or click the account name in the composer to open the account
@@ -384,7 +404,7 @@ design is not a guarantee against account suspension.
 
 ## Development
 
-Requirements: BB 0.46+, Plugin SDK 0.6.37, Node 24+, pnpm, native Claude Code.
+Requirements: BB 0.46+, Plugin SDK 0.6.49, Node 24+, pnpm, native Claude Code.
 Native continuation and quota collection are verified with Claude Code 2.1.293.
 
 ```sh
@@ -404,5 +424,5 @@ build first, copy the plugin to a new `$TMPDIR` directory and build there.
 
 Tests cover transcript copying, return switching, conflicts, symlinks, subagent
 continuation, quota parsing, control requests, cancellation, the new-thread rule,
-favourites with saved effort, the picker and the usage views.
+favourites with saved effort and Daybreak, the picker and the usage views.
 The disposable live proof is documented in [SPIKE.md](./SPIKE.md).

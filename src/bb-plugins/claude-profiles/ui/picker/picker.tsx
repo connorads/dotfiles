@@ -4,7 +4,7 @@ import { useComposer, useComposers, useRpc, useSdk, useRealtime,
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { toast } from 'sonner';
 import type { Profile, rpcContract } from '../../contracts.ts';
-import type { Effort, Favourite } from '../../src/models/contract.ts';
+import { effortSchema, type Effort, type Favourite } from '../../src/models/contract.ts';
 import { availability, capture, matches } from '../../src/models/favourites.ts';
 import { accountUnavailable, isClaude } from '../account-status.tsx';
 import { AccountPicker } from './account-picker.tsx';
@@ -47,6 +47,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const ownController = useController(composer);
   const controller = controllers.get(composer.key) ?? ownController;
   const rpc = useRpc<typeof rpcContract>();
+  const [daybreak, setDaybreak] = useState<boolean | undefined>();
   const [list, setList] = useState<Favourite[]>([]);
   const [catalog, setCatalog] = useState<Awaited<ReturnType<Controller['catalog']>>>([]);
   const [loading, setLoading] = useState(true);
@@ -73,13 +74,13 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     const current = ++generation.current;
     setLoading(true);
     try {
-      const [saved, available] = await Promise.all([rpc.call('favourites.list', {}), controller.catalog()]);
+      const [saved, available, programme] = await Promise.all([rpc.call('favourites.list', {}), controller.catalog(), controller.daybreak()]);
       if (current !== generation.current) return;
-      setList(saved); setCatalog(available);
+      setList(saved); setCatalog(available); setDaybreak(programme);
     } catch (cause) { if (current === generation.current) setError(message(cause)); }
     finally { if (current === generation.current) setLoading(false); }
   }, [rpc, controller]);
-  useEffect(() => { void refresh(); return () => { generation.current++; }; }, [refresh, currentProvider, environmentKey]);
+  useEffect(() => { void refresh(); return () => { generation.current++; }; }, [refresh, currentProvider, environmentKey, composer.selection?.model, composer.isRunning]);
   useRealtime('favourites-changed', () => { void refresh(); });
   const accountGeneration = useRef(0);
   const loadAccounts = useCallback(async () => {
@@ -117,7 +118,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   function toggleFavourite(row: Row) {
     void run(async () => {
       if (row.saved) await rpc.call('favourites.remove', { id: row.favourite.id });
-      else await rpc.call('favourites.add', { name: '', ...capture(row.favourite) });
+      else await rpc.call('favourites.add', { name: '', ...capture(row.favourite, row.favourite.daybreak) });
     }, true);
   }
   function setEffort(favourite: Favourite, effort: Effort | null) {
@@ -125,20 +126,27 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   }
   const providerName = (id: string) => catalog.find(p => p.providerId === id)?.providerName ?? id;
   const modelOf = (id: string, model: string) => catalog.find(p => p.providerId === id)?.models.find(m => m.model === model);
+  const displayName = (f: Favourite) => `${modelOf(f.providerId, f.model)?.displayName ?? f.model}${f.daybreak ? ' · Daybreak' : ''}`;
   const search = query.trim().toLowerCase();
   const visible = (providerId: string, text: string) => (filter === 'all' || filter === 'favourites' || filter === providerId) && text.toLowerCase().includes(search);
-  const favouriteRows: Row[] = list.filter(f => visible(f.providerId, `${modelOf(f.providerId, f.model)?.displayName ?? f.model} ${providerName(f.providerId)} ${f.model}`))
+  const favouriteRows: Row[] = list.filter(f => visible(f.providerId, `${displayName(f)} ${providerName(f.providerId)} ${f.model}`))
     .map(f => {
       const providerCatalog = catalog.find(p => p.providerId === f.providerId);
       return { favourite: f, saved: true, reason: providerCatalog
-        ? availability(f, { available: true, error: providerCatalog.error, models: providerCatalog.models }) : 'Provider unavailable on this machine' };
+        ? controller.scopeReason(f) ?? availability(f, { available: true, error: providerCatalog.error, models: providerCatalog.models }) : 'Provider unavailable on this machine' };
     });
   const providers = catalog.filter(p => p.models.length > 0 || p.error);
   // A failed catalogue only matches searches for its provider's name, so it never clutters model searches.
   const groups = filter === 'favourites' ? [] : providers.filter(p => (filter === 'all' || filter === p.providerId)
     && (!p.error || p.providerName.toLowerCase().includes(search))).map(p => ({ ...p,
-    rows: p.models.filter(m => !list.some(f => f.providerId === p.providerId && f.model === m.model) && visible(p.providerId, `${m.displayName} ${m.model} ${p.providerName}`))
-      .map((m): Row => ({ favourite: { id: `${p.providerId}:${m.model}`, slot: 1, name: '', providerId: p.providerId, model: m.model }, saved: false, reason: null })),
+    rows: p.models.flatMap(m => {
+      const option = m.sessionOptions?.filter(option => option.type === 'boolean').find(option => option.id === 'daybreak');
+      const programmes = option ? (option.fixed ? [option.value === true] : [false, true]) : [false];
+      return programmes.map(programme => ({ id: `${p.providerId}:${m.model}:${programme}`, slot: 1, name: '', providerId: p.providerId, model: m.model,
+        ...(option && (programme || (composer.scope.kind === 'thread' && currentProvider === p.providerId)) ? { daybreak: programme } : {}) }));
+    }).filter(f => !list.some(saved => saved.providerId === f.providerId && saved.model === f.model && (saved.daybreak ?? false) === (f.daybreak ?? false))
+      && visible(p.providerId, `${displayName(f)} ${f.model} ${p.providerName}`))
+      .map((favourite): Row => ({ favourite, saved: false, reason: controller.scopeReason(favourite) })),
   }));
   const rows = [...favouriteRows, ...groups.flatMap(group => group.rows)];
   const currentModel = modelOf(currentProvider ?? '', composer.selection?.model ?? '');
@@ -191,12 +199,13 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     }
   }
   function row({ favourite, saved, reason }: Row) {
-    const selected = matches(favourite, composer.selection);
+    const selected = matches(favourite, composer.selection, daybreak);
     const model = modelOf(favourite.providerId, favourite.model);
-    const name = model?.displayName ?? favourite.model;
+    const name = displayName(favourite);
     const levels = model?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
     const unavailable = Boolean(reason);
-    const starBlocked = !saved && (list.length >= 9 || unavailable);
+    const unknownProgramme = composer.scope.kind !== 'thread' && model?.sessionOptions?.some(option => option.id === 'daybreak');
+    const starBlocked = !saved && (list.length >= 9 || unavailable || Boolean(unknownProgramme));
     return <li className="mf-row" key={favourite.id} data-row={favourite.id} data-selected={selected || undefined} data-unavailable={unavailable || undefined}
       data-enter-target={favourite.id === enterTarget || undefined}>
       <button type="button" data-model className="mf-select" aria-disabled={blocked || unavailable || undefined}
@@ -210,7 +219,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
         levels={levels} disabled={blocked} onChange={effort => setEffort(favourite, effort)} />}
       <span className="mf-check" aria-hidden="true">{selected && <Icon name="Check" className="mf-check-icon" />}</span>
       <button type="button" className="mf-star" data-saved={saved || undefined} aria-label={`${saved ? 'Unfavourite' : 'Favourite'} ${name}`} aria-pressed={saved}
-        title={saved ? 'Remove favourite' : list.length >= 9 ? 'Nine favourites saved. Remove one to make space.' : 'Favourite model'}
+        title={saved ? 'Remove favourite' : unknownProgramme ? 'Save this favourite after starting a thread so its Daybreak setting can be read.' : list.length >= 9 ? 'Nine favourites saved. Remove one to make space.' : 'Favourite model'}
         aria-disabled={blocked || starBlocked || undefined} onClick={() => { if (!blocked && !starBlocked) toggleFavourite({ favourite, saved, reason }); }}>
         <Icon name="Star" className="mf-star-icon" />
       </button>
@@ -237,6 +246,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     observer.observe(strip);
     return () => observer.disconnect();
   }, [measureChips]);
+  const daybreakOption = currentModel?.sessionOptions?.filter(option => option.type === 'boolean').find(option => option.id === 'daybreak');
   const tiers = currentModel?.supportedServiceTiers ?? [];
   const chips = [{ id: 'all', label: 'All' }, { id: 'favourites', label: 'Favourites', count: list.length },
     ...providers.map(p => ({ id: p.providerId, label: p.providerName }))];
@@ -274,10 +284,21 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
       </div>
       <div className="mf-now" role="group" aria-label="Current selection">
         <div className="mf-now-model"><span className="mf-now-label">Now</span>
-          <span className="mf-now-name">{currentModel?.displayName ?? composer.selection?.model ?? 'Choose a model'}</span>
+          <span className="mf-now-name">{currentModel?.displayName ?? composer.selection?.model ?? 'Choose a model'}{daybreak && ' · Daybreak'}</span>
           {currentProvider && <span className="mf-now-provider">{providerName(currentProvider)}</span>}
         </div>
         <div className="mf-now-options">
+          {daybreakOption && <div className="mf-field"><span aria-hidden="true">Daybreak</span>
+            {composer.scope.kind !== 'thread' ? <span>Set in BB’s native model picker before starting a thread.</span>
+              : daybreakOption.fixed ? <span>{daybreakOption.value ? 'Required for this model' : 'Unavailable for this model'}</span>
+              : <Segmented label="Daybreak" disabled={blocked || daybreak === undefined} value={String(daybreak ?? daybreakOption.value)}
+                options={[{ value: 'false', label: 'Off' }, { value: 'true', label: 'On' }]}
+                onChange={value => { if (currentModel && currentProvider) void run(async () => {
+                  await controller.apply({ providerId: currentProvider, model: currentModel.model, reasoningLevel: effortSchema.optional().parse(composer.selection?.reasoningLevel), daybreak: value === 'true' });
+                  setDaybreak(value === 'true');
+                }, true); }} />}
+          </div>}
+
           {currentModel && currentModel.supportedReasoningEfforts.length > 0 && <div className="mf-field"><span aria-hidden="true">Effort</span><Segmented label="Reasoning effort" disabled={blocked}
             value={composer.selection?.reasoningLevel ?? currentModel.defaultReasoningEffort}
             options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: EFFORT_LABEL[e.reasoningEffort] }))}

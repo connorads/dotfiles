@@ -13,3 +13,10 @@ export function open(composer: PluginComposerApi, options: { focus?: Focus } = {
 export function close() { opened = null; notify(); }
 export function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function openedState() { return opened; }
+
+const selectionListeners = new Set<(key: string) => void>();
+export function selectionChanged(key: string) { selectionListeners.forEach(listener => listener(key)); }
+export function subscribeSelection(listener: (key: string) => void) {
+  selectionListeners.add(listener);
+  return () => { selectionListeners.delete(listener); };
+}

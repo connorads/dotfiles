@@ -108,3 +108,15 @@ test('the chevron opens the picker on this composer', async () => {
     expect(openedState()).toEqual({ key: slot.inspection.composer.key, focus: 'search' });
   } finally { slot.lifecycle.unmount(); }
 });
+
+
+test('a Codex draft explains why its unknown Daybreak setting cannot be saved', async () => {
+  const { slot } = render([], { providerId: 'codex', model: 'model-a' });
+  try {
+    const star = await slot.findByRole('button', { name: 'Favourite model-a' });
+    expect(star.getAttribute('aria-disabled')).toBe('true');
+    expect(star.title).toContain('after starting a thread');
+    fireEvent.click(star);
+    expect(slot.inspection.rpcCalls.filter(call => call.method === 'favourites.add')).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});

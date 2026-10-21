@@ -56,3 +56,12 @@ test('a list with the same provider and model twice is refused', async () => {
   const store = createStore({ get: async () => twice, set: async () => {} }, () => 'x', () => {});
   await assert.rejects(store.list(), /only once/);
 });
+
+
+test('standard and Daybreak favourites persist independently for the same model', async () => {
+  const { storage, store } = memory();
+  await store.add({ name: '', ...setup, daybreak: false });
+  await store.add({ name: '', ...setup, daybreak: true });
+  const reopened = createStore(storage, () => '3', () => {});
+  assert.deepEqual((await reopened.list()).map(f => f.daybreak), [false, true]);
+});

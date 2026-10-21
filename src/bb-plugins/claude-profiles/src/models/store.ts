@@ -28,7 +28,7 @@ export function createStore(
     async list() { await queue; return read(); },
     add(input: FavouriteInput) {
       return mutate(list => {
-        if (list.some(f => f.providerId === input.providerId && f.model === input.model)) return list;
+        if (list.some(f => f.providerId === input.providerId && f.model === input.model && (f.daybreak ?? false) === (input.daybreak ?? false))) return list;
         const slot = Array.from({ length: 9 }, (_, i) => i + 1).find(slot => !list.some(f => f.slot === slot));
         if (slot === undefined) throw new Error('All nine favourite slots are full. Remove one before saving.');
         return [...list, { ...input, id: newId(), slot }];

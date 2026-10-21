@@ -49,3 +49,19 @@ test('cycling skips a favourite whose saved effort the model does not support', 
   const all = { ...catalog, models: ['model-a', 'model-b', 'model-c'].map(name => ({ ...model, model: name })) };
   assert.equal(nextFavourite([favourite, unsupported, plain], selection, 1, f => availability(f, all))?.id, 'c');
 });
+
+
+test('Daybreak favourites capture and match the chosen programme separately from the model', () => {
+  const saved = capture(selection, true);
+  assert.equal(saved.daybreak, true);
+  assert.equal(matches(saved, selection, true), true);
+  assert.equal(matches(saved, selection, false), false);
+});
+
+test('Daybreak favourites require a model which advertises that programme', () => {
+  const saved = { ...favourite, daybreak: true };
+  assert.match(availability(saved, catalog) ?? '', /Daybreak/);
+  const supported = { ...model, sessionOptions: [{ id: 'daybreak', type: 'boolean' as const, label: 'Daybreak', value: false }] };
+  assert.equal(availability(saved, { ...catalog, models: [supported] }), null);
+  assert.match(availability(saved, { ...catalog, models: [{ ...supported, sessionOptions: [{ ...supported.sessionOptions[0]!, fixed: true }] }] }) ?? '', /Daybreak/);
+});

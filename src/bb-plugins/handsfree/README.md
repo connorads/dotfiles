@@ -195,7 +195,8 @@ retired workspaces. BB keeps running turns and terminals for a 30-second archive
 Model selection changes the next message. Selecting another provider uses BB's
 handoff flow. BB adds the handoff context to the draft; the next send starts the
 destination thread. Selection does not interrupt a running turn or submit text.
-Favourites apply Agent Switcher's saved model and effort. Their spoken slot
+Favourites apply Agent Switcher's saved model, effort and Daybreak setting.
+Daybreak favourites name the programme in their voice choices. Their spoken slot
 numbers remain stable when another favourite is removed. Numbered list choices
 follow the displayed order; `use favourite two` refers to saved slot two.
 

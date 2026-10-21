@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, expect, test } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/react';
+import { makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
@@ -22,14 +23,16 @@ const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'm
 const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
 type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
 const accountCalls: string[] = [];
-function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> = {}) {
+function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
+  const { programme, ...initialSelection } = selection;
   const providerId = account ? 'claude-code' : 'codex';
   let currentId = 'default';
+  let daybreak = programme?.value ?? false;
   let saved = initial;
   return renderSlot<Record<string, never>, typeof rpcContract>({ component: TestPicker }, {}, {
     composer: { text: 'Do not send this draft', isRunning: account?.running,
-      selection: { providerId, model: 'model-b', reasoningLevel: 'low', environment: { type: 'host', hostId: 'host-test', workspace: { type: 'personal' } }, ...selection },
-      scope: account?.queued ? { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queued-test' }
+      selection: { providerId, model: 'model-b', reasoningLevel: 'low', environment: { type: 'host', hostId: 'host-test', workspace: { type: 'personal' } }, ...initialSelection },
+      scope: programme?.thread ? { kind: 'thread', threadId: 'thread-test' } : account?.queued ? { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queued-test' }
         : account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
     rpc: {
       'usage.login': () => { throw new Error('Unused'); },
@@ -69,7 +72,10 @@ function render(initial = [first, second], error: string | null = null, account?
       'usage.inspection': () => { throw new Error('The picker must not request usage.'); },
     },
     sdk: {
-      threads: { get: async () => ({
+      threads: {
+        timeline: async () => ({ activeBackgroundCommands: [], activePromptMode: null, activeThinking: null, activeWorkflows: [], completedTurnDisplay: 'collapse', contextBoundarySeq: null, goal: null, maxSeq: 0, modelFallback: null, pendingTodos: null, providerCommands: null, rows: [], timelinePage: { historySnapshot: '', olderCursor: null, olderRowsSourceSeqEnd: null, returnedSegmentCount: 0 }, sessionOptions: programme ? [{ id: 'daybreak', label: 'Daybreak', type: 'boolean', value: daybreak, pendingValue: null, category: null, description: null }] : [] }),
+        update: async input => { if (!programme?.refuse && typeof input.sessionOptions?.daybreak === 'boolean') daybreak = input.sessionOptions.daybreak; return makeThreadResponse({ id: 'thread-test' }); },
+        get: async () => ({
         id: 'thread-test', providerId, environmentId: 'environment-test', projectId: 'project-test', status: 'idle',
         runtime: { displayStatus: 'idle' }, activeBackgroundAgentCount: 0, queuedMessageCount: 0,
         archivedAt: null, deletedAt: null, lastReadAt: null, lifecycleOwnerThreadId: null, originKind: null, originPluginId: null,
@@ -84,7 +90,7 @@ function render(initial = [first, second], error: string | null = null, account?
             supportsThreadArchive: false, supportsThreadRename: false },
         }], permissionCeiling: 'auto', selectedOnlyModels: [],
         modelLoadError: error ? { detail: error, code: 'failed', providerId: 'codex' } : null,
-        models: [first, second].map(f => ({ model: f.model, id: f.model, displayName: f.model, description: '', isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
+        models: [first, second].map(f => ({ model: f.model, id: f.model, displayName: f.model, description: '', ...(programme ? { sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean' as const, value: false, ...(programme.fixed && f.model === 'model-a' ? { fixed: true } : {}) }] } : {}), isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
       }) },
     },
   });
@@ -588,5 +594,66 @@ test('a new-thread draft\'s account menu shows quota for this machine', async ()
     await waitFor(() => expect(within(menu).getByRole('option', { name: /^Work/ }).textContent).toBe('Work5h 40%'));
     expect(calls(slot, 'usage')).toEqual([]);
     expect(calls(slot, 'nextThreadQuota').map(call => call.input)).toEqual([{ profileId: 'default' }, { profileId: 'work' }]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+
+test('Daybreak search selects a supported model and programme without sending the draft', async () => {
+  const slot = render([], null, undefined, { programme: { value: false, thread: true, fixed: true } });
+  try {
+    await enabledRow(slot, 'Select model-b');
+    fireEvent.change(slot.getByRole('textbox', { name: 'Search models' }), { target: { value: 'daybreak' } });
+    expect(slot.queryByRole('button', { name: 'Select model-a · Daybreak' })).toBeNull();
+    fireEvent.click(await enabledRow(slot, 'Select model-b · Daybreak'));
+    await waitFor(() => expect(slot.inspection.composer.focusCount).toBeGreaterThan(0));
+    const updates = slot.inspection.sdkCalls.filter(call => call.method === 'threads.update');
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.args[0]).toMatchObject({ sessionOptions: { daybreak: true }, model: 'model-b' });
+    expect(slot.inspection.composer.submits).toEqual([]);
+    expect(slot.inspection.composer.text).toBe('Do not send this draft');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the Daybreak control updates the next turn and shows the confirmed value', async () => {
+  const slot = render([], null, undefined, { programme: { value: false, thread: true } });
+  try {
+    await enabledRow(slot, 'Select model-b');
+    fireEvent.click(within(slot.getByRole('radiogroup', { name: 'Daybreak' })).getByRole('radio', { name: 'On' }));
+    await waitFor(() => expect(within(slot.getByRole('radiogroup', { name: 'Daybreak' })).getByRole('radio', { name: 'On' }).getAttribute('aria-checked')).toBe('true'));
+    fireEvent.click(slot.getByRole('button', { name: 'Favourite model-b · Daybreak' }));
+    await waitFor(() => expect(calls(slot, 'favourites.add')[0]?.input).toMatchObject({ model: 'model-b', daybreak: true }));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a refused Daybreak update stays visible as an error', async () => {
+  const slot = render([], null, undefined, { programme: { value: false, thread: true, refuse: true } });
+  try {
+    fireEvent.click(await enabledRow(slot, 'Select model-b · Daybreak'));
+    await slot.findByRole('alert');
+    expect(slot.inspection.composer.focusCount).toBe(0);
+    expect(slot.inspection.composer.selections).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('new-thread Daybreak choices explain the native picker limit before selection', async () => {
+  const slot = render([], null, undefined, { programme: { value: false } });
+  try {
+    const row = await slot.findByRole('button', { name: 'Select model-b · Daybreak' });
+    expect(disabled(row)).toBe(true);
+    fireEvent.click(row);
+    expect(slot.inspection.composer.selections).toEqual([]);
+    expect(slot.getAllByText('Daybreak favourites are available after starting a thread').length).toBeGreaterThan(0);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+
+test('selecting a standard model turns Daybreak off with the model change', async () => {
+  const slot = render([], null, undefined, { programme: { value: true, thread: true, fixed: true } });
+  try {
+    fireEvent.click(await enabledRow(slot, 'Select model-a'));
+    await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('model-a'));
+    const update = slot.inspection.sdkCalls.find(call => call.method === 'threads.update');
+    expect(update?.args[0]).toMatchObject({ model: 'model-a', sessionOptions: { daybreak: false } });
+    expect(slot.inspection.composer.submits).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });

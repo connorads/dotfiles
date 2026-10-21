@@ -206,7 +206,7 @@ function VoiceCard() {
     if (kind === 'account') return (await agentSwitcher.accounts()).profiles.map(profile => ({ id: profile.id, label: profile.label }));
     if (kind === 'favourite') return (await agentSwitcher.favourites()).sort((a, b) => a.slot - b.slot)
       .map(favourite => ({ id: favourite.id, title: String(favourite.slot),
-        label: `${favourite.name || favourite.model} (${favourite.providerId === 'claude-code' ? 'Claude Code' : favourite.providerId === 'codex' ? 'Codex' : favourite.providerId}, ${favourite.reasoningLevel ?? 'default'} effort)` }));
+        label: `${favourite.name || favourite.model}${favourite.daybreak ? ' · Daybreak' : ''} (${favourite.providerId === 'claude-code' ? 'Claude Code' : favourite.providerId === 'codex' ? 'Codex' : favourite.providerId}, ${favourite.reasoningLevel ?? 'default'} effort)` }));
     return (await agentSwitcher.models()).map(({ id, label, title }) => ({ id, label, title }));
   };
 

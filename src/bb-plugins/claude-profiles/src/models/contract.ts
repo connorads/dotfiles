@@ -7,6 +7,7 @@ export const setupSchema = z.object({
   providerId: z.string().trim().min(1).max(200),
   model: z.string().trim().min(1).max(300),
   reasoningLevel: effortSchema.optional(),
+  daybreak: z.boolean().optional(),
   serviceTier: z.string().trim().min(1).max(80).optional(),
 }).strict();
 export const nameSchema = z.string().trim().max(60);
@@ -15,8 +16,8 @@ export const listSchema = z.array(favouriteSchema).max(9).refine(
   list => new Set(list.map(f => f.id)).size === list.length && new Set(list.map(f => f.slot)).size === list.length,
   'Favourite IDs and shortcut slots must be unique',
 ).refine(
-  list => new Set(list.map(f => JSON.stringify([f.providerId, f.model]))).size === list.length,
-  'A model can be a favourite only once',
+  list => new Set(list.map(f => JSON.stringify([f.providerId, f.model, f.daybreak ?? false]))).size === list.length,
+  'A model and programme can be a favourite only once',
 );
 export type Setup = z.infer<typeof setupSchema>;
 export type Favourite = z.infer<typeof favouriteSchema>;

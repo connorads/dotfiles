@@ -966,3 +966,14 @@ test('next waiting stays put when only the current thread needs input', async ()
   expect(await view.command({ action: 'waiting' })).toMatchObject({ ok: true, outcome: 'empty' });
   expect(view.slot.inspection.navigateCalls).toEqual([]);
 });
+
+
+test('Daybreak favourites identify their programme in voice choices', async () => {
+  const view = await render('idle', undefined, undefined, { sdk: { plugins: {
+    callRpc: async ({ outputSchema }) => outputSchema.parse([
+      { id: 'daybreak', slot: 3, name: '', providerId: 'codex', model: 'new-model', daybreak: true },
+    ]),
+  } } });
+  const list = await view.command({ action: 'list', kind: 'favourite' });
+  expect(list.candidates?.[0]?.label).toBe('new-model · Daybreak (Codex, default effort)');
+});

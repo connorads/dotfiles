@@ -1,5 +1,6 @@
 import type { PluginBrowserBbSdk, PluginComposerApi } from '@get-bb/plugin-sdk/app';
-import type { Favourite, Setup } from '../../src/models/contract.ts';
+import { effortSchema, type Favourite, type Setup } from '../../src/models/contract.ts';
+import { selectionChanged } from './store.ts';
 import { availability, matches, nextFavourite, planSelection } from '../../src/models/favourites.ts';
 
 export function createController(composer: PluginComposerApi, sdk: PluginBrowserBbSdk, rpc: {
@@ -19,12 +20,29 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     if (environment?.type === 'provider' && environment.machine?.type === 'existing') return { hostId: environment.machine.hostId };
     throw new Error('Choose a machine before switching favourites.');
   }
+  async function executionOptions(providerId?: string) {
+    const options = await sdk.system.executionOptions({ ...await scope(), providerId });
+    return { ...options, models: options.models.map(model => ({ ...model,
+      defaultReasoningEffort: effortSchema.parse(model.defaultReasoningEffort),
+      supportedReasoningEfforts: model.supportedReasoningEfforts.map(effort => ({ ...effort, reasoningEffort: effortSchema.parse(effort.reasoningEffort) })),
+    })) };
+  }
+  function scopeReason(favourite: Setup): string | null {
+    if (favourite.daybreak !== undefined && composer.scope.kind !== 'thread') return 'Daybreak favourites are available after starting a thread';
+    if (favourite.daybreak !== undefined && composer.selection?.providerId !== favourite.providerId) return 'Switch to Codex before choosing its Daybreak setting';
+    return null;
+  }
+  async function daybreak(): Promise<boolean | undefined> {
+    if (composer.scope.kind !== 'thread' || composer.selection?.providerId !== 'codex') return undefined;
+    const timeline = await sdk.threads.timeline({ threadId: composer.scope.threadId, segmentLimit: '1', summaryOnly: 'true' });
+    const option = timeline.sessionOptions?.find(option => option.id === 'daybreak');
+    return option?.type === 'boolean' ? option.pendingValue ?? option.value : undefined;
+  }
   async function statuses(list: Favourite[]) {
-    const target = await scope();
     const providers = [...new Set(list.map(f => f.providerId))];
     const catalogs = await Promise.all(providers.map(async providerId => {
       try {
-        const options = await sdk.system.executionOptions({ ...target, providerId });
+        const options = await executionOptions(providerId);
         return { providerId, available: options.providers.some(p => p.id === providerId && p.available),
           error: options.modelLoadError?.detail ?? (options.modelLoadError ? 'Could not load this provider’s models' : null),
           models: options.models,
@@ -35,7 +53,7 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     }));
     return new Map(list.map(favourite => {
       const catalog = catalogs.find(c => c.providerId === favourite.providerId);
-      return [favourite.id, catalog ? availability(favourite, catalog) : 'Could not load models'];
+      return [favourite.id, catalog ? scopeReason(favourite) ?? availability(favourite, catalog) : 'Could not load models'];
     }));
   }
   async function exclusive<T>(work: () => Promise<T>): Promise<T> {
@@ -45,7 +63,9 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
   }
   async function applyChecked(favourite: Setup) {
     if (composer.scope.kind !== 'thread' && composer.scope.kind !== 'new-thread') throw new Error('Use the main chat input to switch models.');
-    const options = await sdk.system.executionOptions({ ...await scope(), providerId: favourite.providerId });
+    const scopeError = scopeReason(favourite);
+    if (scopeError) throw new Error(scopeError);
+    const options = await executionOptions(favourite.providerId);
     const reason = availability(favourite, {
       available: options.providers.some(p => p.id === favourite.providerId && p.available),
       error: options.modelLoadError?.detail ?? null, models: options.models,
@@ -60,22 +80,28 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     const serviceTier = supportsTier ? (currentTier && tiers.some(t => t.id === currentTier) ? currentTier : 'default') : undefined;
     const requested = { ...plan, ...(serviceTier ? { serviceTier } : {}) };
     assertCurrent();
+    const programme = favourite.daybreak ?? (model.sessionOptions?.some(option => option.id === 'daybreak') ? false : undefined);
+    if (programme !== undefined && composer.scope.kind === 'thread' && composer.selection?.providerId === favourite.providerId) {
+      await sdk.threads.update({ threadId: composer.scope.threadId, model: plan.model,
+        reasoningLevel: plan.reasoningLevel, sessionOptions: { daybreak: programme } });
+      if (await daybreak() !== programme) throw new Error('BB could not apply the Daybreak setting. Check the native model picker.');
+    }
     const settled = await composer.setSelection(requested);
     if (!settled || !matches(requested, settled) || settled.reasoningLevel !== plan.reasoningLevel || (serviceTier !== undefined && settled.serviceTier !== serviceTier)) {
       throw new Error('BB could not apply this selection. Check the current model before sending.');
     }
+    selectionChanged(composer.key);
   }
   return {
-    statuses,
+    statuses, scopeReason, daybreak,
     async models(providerId: string) {
-      return (await sdk.system.executionOptions({ ...await scope(), providerId })).models;
+      return (await executionOptions(providerId)).models;
     },
     async catalog() {
-      const target = await scope();
-      const initial = await sdk.system.executionOptions({ ...target, providerId: composer.selection?.providerId });
+      const initial = await executionOptions(composer.selection?.providerId);
       return Promise.all(initial.providers.filter(provider => provider.available).map(async provider => {
         try {
-          const options = provider.id === composer.selection?.providerId ? initial : await sdk.system.executionOptions({ ...target, providerId: provider.id });
+          const options = provider.id === composer.selection?.providerId ? initial : await executionOptions(provider.id);
           return { providerId: provider.id, providerName: provider.displayName, models: options.models,
             error: options.modelLoadError?.detail ?? null };
         } catch (cause) {
@@ -100,7 +126,7 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
         const list = await rpc.call('favourites.list', {});
         if (!list.length) throw new Error('Save a model favourite before cycling.');
         const reasons = await statuses(list);
-        const next = nextFavourite(list, composer.selection, direction, favourite => reasons.get(favourite.id) ?? null);
+        const next = nextFavourite(list, { ...composer.selection, daybreak: await daybreak() }, direction, favourite => reasons.get(favourite.id) ?? null);
         if (!next) throw new Error('No favourites are available on this machine. Open the favourites menu for details.');
         await applyChecked(next);
         composer.focus();

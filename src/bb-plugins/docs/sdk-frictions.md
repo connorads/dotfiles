@@ -900,6 +900,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Ask: provide draft-scoped plugin submission data that all send paths carry.
 - Evidence: `executor/draft.tsx`, `executor/server.ts` and live request inspection.
 
+### Composer selection omits session options
+
+- Wanted: save and apply Daybreak favourites in both existing and new-thread composers.
+- Gap: SDK 0.6.49 exposes model `sessionOptions`, `threads.update` and timeline
+  option values, but `ComposerSelection` and `setSelection` omit session options.
+  A plugin cannot read or update a new-thread draft's native Daybreak choice.
+- Workaround: Agent Switcher updates existing threads through `threads.update`,
+  then checks the timeline's pending or effective value. New-thread drafts use
+  the native picker. Daybreak favourites explain this limit before selection.
+- Ask: include session options in composer selection and its settled result.
+- Evidence: `claude-profiles/ui/picker/controller.ts` and SDK 0.6.49 declarations.
+
 ## Unconfirmed signals
 
 - BB does not restart a running Claude process when provider env changes. (@thread:thr_7m6n8hipb3)
