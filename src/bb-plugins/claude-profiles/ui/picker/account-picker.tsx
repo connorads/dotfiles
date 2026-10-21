@@ -63,14 +63,14 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   const blocked = !claude || !supported || busy || composer.isRunning || composer.isSubmitting;
   const load = useCallback(async (refresh = false) => {
     const request = ++generation.current;
-    setLoading(true); setError(null); setProfiles([]);
-    if (!claude) { setSupported(false); setLoading(false); return; }
+    setLoading(true); setError(null);
+    if (!claude) { setProfiles([]); setSupported(false); setLoading(false); return; }
     try {
       const accounts = await rpc.call('accounts', { threadId });
       if (request !== generation.current) return;
       setSupported(accounts.supported);
-      if (!accounts.supported) return;
-      setProfiles(accounts.profiles); setCurrentId(accounts.currentId); setQuotas({});
+      if (!accounts.supported) { setProfiles([]); return; }
+      setProfiles(accounts.profiles); setCurrentId(accounts.currentId);
       for (const profile of accounts.profiles) {
         const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id })
           : rpc.call('usage', { threadId, profileId: profile.id, refresh });
@@ -90,12 +90,12 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   useEffect(() => {
     if (loading || focused.current || !profiles.length) return;
     focused.current = true;
-    dialog.current?.querySelector<HTMLButtonElement>('[data-current]')?.focus();
+    dialog.current?.querySelector<HTMLButtonElement>('[data-current] [data-account]')?.focus();
   }, [loading, profiles]);
   useEffect(() => {
     const reveal = () => {
       const active = document.activeElement;
-      if (active instanceof HTMLElement && active.hasAttribute('data-account') && dialog.current?.contains(active)) {
+      if (active instanceof HTMLElement && active.closest('[data-profile]') && dialog.current?.contains(active)) {
         active.scrollIntoView?.({ block: 'nearest' });
       }
     };
@@ -115,17 +115,30 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
     if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (/^[1-9]$/.test(event.key)) {
+    if (event.key === 'Escape') { event.preventDefault(); if (!working.current) onClose(); return; }
+    const target = event.target;
+    const group = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-profile]') : null;
+    if (/^[1-9]$/.test(event.key) && (group || target === event.currentTarget)) {
       event.preventDefault(); const profile = profiles[Number(event.key) - 1]; if (profile) void choose(profile);
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      return;
+    }
+    if (!group || !(target instanceof HTMLButtonElement)) return;
+    const onConnector = target.getAttribute('role') === 'switch';
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      const rows = Array.from(dialog.current?.querySelectorAll<HTMLButtonElement>('[data-account]') ?? []);
-      const index = rows.findIndex(row => row === document.activeElement);
-      const next = rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))];
+      const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-profile]') ?? []);
+      const index = rows.indexOf(group);
+      const next = rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]
+        ?.querySelector<HTMLButtonElement>(onConnector ? '[role="switch"]' : '[data-account]');
       next?.focus(); next?.scrollIntoView?.({ block: 'nearest' });
-    } else if (event.key === 'Enter' && event.target instanceof HTMLElement && event.target.hasAttribute('data-account')) {
-      event.preventDefault(); event.target.click();
-    } else if (event.key === 'Escape') { event.preventDefault(); if (!working.current) onClose(); }
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      group.querySelector<HTMLButtonElement>(event.key === 'ArrowRight' ? '[role="switch"]' : '[data-account]')?.focus();
+    } else if (event.key.toLowerCase() === 'c') {
+      event.preventDefault(); group.querySelector<HTMLButtonElement>('[role="switch"]')?.click();
+    } else if (event.key === 'Enter' && target.hasAttribute('data-account')) {
+      event.preventDefault(); target.click();
+    }
   }
   return <ChipPopover ref={dialog} tabIndex={-1} aria-label="Switch Claude account"
     trigger={() => null} anchor={null} width={580} instant panelClassName="ap-panel"
@@ -133,26 +146,31 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
     <div className="mf-picker">
       <header className="ap-head"><span><Icon name="Users" className="ap-icon" /><strong>Claude accounts</strong></span>
         <button className="mf-dismiss" type="button" aria-label="Close account picker" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button></header>
-      <div className="ap-intro"><span>Compare allowance with time elapsed</span>
-        <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
       {supported && <ConnectorControls controls={connectors} threadId={threadId} disabled={blocked} />}
       {error && <p role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { void load(true); }}>Retry</button></p>}
       {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
+      <div className="ap-intro"><span>Accounts <span className="ap-count">{profiles.length || ''}</span></span>
+        <span className="ap-legend"><i /> Time elapsed</span>
+        <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
       <div className="ap-list" aria-busy={loading || busy}>
-        {loading && <p className="ap-note" role="status">Loading accounts…</p>}
+        {loading && !profiles.length && <p className="ap-note" role="status">Loading accounts…</p>}
         {!loading && !profiles.length && !error && supported && <p className="ap-note">No Claude accounts found.</p>}
-        {profiles.map((profile, index) => <div key={profile.id} className="cp-account-group"><button type="button" data-account={profile.id}
-          data-current={profile.id === currentId || undefined} className="ap-account" aria-label={`Switch to ${profile.label}`}
-          aria-disabled={blocked || undefined} aria-current={profile.id === currentId || undefined}
-          onClick={() => { void choose(profile); }}>
-          <span className="ap-account-head"><kbd className="mf-kbd">{index < 9 ? index + 1 : '↵'}</kbd><strong>{profile.label}</strong>
-            {profile.id === currentId && <span className="ap-current"><Icon name="Check" className="ap-icon" />Current</span>}</span>
+        {profiles.map((profile, index) => <section key={profile.id} className="ap-account-group" data-profile={profile.id}
+          data-current={profile.id === currentId || undefined} aria-label={`${profile.label} account`}>
+          <div className="ap-account-head"><button type="button" data-account={profile.id}
+            className="ap-account" aria-label={`Switch to ${profile.label}`}
+            aria-disabled={blocked || undefined} aria-current={profile.id === currentId || undefined}
+            onClick={() => { void choose(profile); }}>
+            <kbd className="mf-kbd">{index < 9 ? index + 1 : '↵'}</kbd><strong>{profile.label}</strong>
+              {profile.id === currentId && <span className="ap-current"><Icon name="Check" className="ap-icon" />Current</span>}
+          </button><AccountConnector controls={connectors} profile={profile} /></div>
           <Quota usage={quotas[profile.id]} now={now} />
-        </button><AccountConnector controls={connectors} profile={profile} /></div>)}
+        </section>)}
       </div>
-      <footer className="mf-footer ap-footer">{supported && <><span><kbd className="mf-kbd">1-9</kbd> switch</span><span><kbd className="mf-kbd">↑↓</kbd> move · <kbd className="mf-kbd">↵</kbd> switch</span></>}
-        <span>{busy ? 'Switching…' : supported ? 'Line marks time elapsed' : 'Escape returns to your draft'}</span></footer>
+      <footer className="mf-footer ap-footer">{supported && <><span><kbd className="mf-kbd">↑↓</kbd> account</span><span><kbd className="mf-kbd">←→</kbd> control</span>
+        <span><kbd className="mf-kbd">C</kbd> connectors</span><span><kbd className="mf-kbd">1-9</kbd> switch</span></>}
+        <span>{busy ? 'Switching…' : <><kbd className="mf-kbd">↵</kbd> select</>}</span></footer>
     </div>
   </ChipPopover>;
 }

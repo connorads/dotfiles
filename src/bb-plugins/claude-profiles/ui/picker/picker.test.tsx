@@ -304,6 +304,19 @@ test('empty focused search selects a saved slot and preserves the draft', async 
     expect(slot.inspection.composer.focusCount).toBeGreaterThan(0);
   } finally { slot.lifecycle.unmount(); }
 });
+test('connector controls keep their native keys without selecting a model favourite', async () => {
+  const slot = render(undefined, null, {});
+  try {
+    const select = await slot.findByRole('combobox', { name: "This thread's connectors" });
+    await waitFor(() => expect(select.hasAttribute('disabled')).toBe(false));
+    select.focus();
+    expect(fireEvent.keyDown(select, { key: '1' })).toBe(true);
+    expect(fireEvent.keyDown(select, { key: 'ArrowDown' })).toBe(true);
+    expect(document.activeElement).toBe(select);
+    expect(slot.inspection.composer.selections).toEqual([]);
+    expect(slot.inspection.composer.focusCount).toBe(0);
+  } finally { slot.lifecycle.unmount(); }
+});
 
 test('empty slots, modified digits and composing input remain search input', async () => {
   const slot = render();

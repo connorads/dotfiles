@@ -47,21 +47,22 @@ export function ConnectorControls({ controls, threadId, disabled }: { controls: 
       : state.launch === 'off' ? 'Off at launch' : 'On requested at launch. Claude settings can still block access.';
   return <div className="cp-connectors">
     <div className="cp-connectors-row">
-      <span id={`${id}-label`}>Claude account connectors</span>
-      <button type="button" className="mf-account-button" role="switch" aria-label="Allow account connectors in BB"
+      <div className="cp-connectors-heading"><strong id={`${id}-label`}>Account connectors</strong><span>Across BB</span></div>
+      <button type="button" className="cp-policy" role="switch" aria-label="Allow account connectors in BB"
         aria-describedby={`${id}-help`} aria-checked={state ? !state.globalBlocked : false}
-        disabled={busy || !state} onClick={() => { if (state) void controls.global(!state.globalBlocked); }}>
+        disabled={!state} aria-disabled={busy || undefined} onClick={() => { if (state && !busy) void controls.global(!state.globalBlocked); }}>
+        <span className="cp-switch-track" aria-hidden="true"><i /></span>
         {state ? state.globalBlocked ? 'Block all' : 'Use account settings' : 'Unknown'}
       </button>
     </div>
-    <p id={`${id}-help`}>Applies across BB. Executor keeps its own connection.</p>
+    <p id={`${id}-help`}>{state?.globalBlocked ? 'Every account is blocked. Saved preferences stay below.' : 'Each account uses its saved preference.'} Executor is separate.</p>
     {threadId !== null && <label className="cp-connectors-row">This thread
       <select aria-label="This thread's connectors" value={state?.mode ?? 'off'} disabled={disabled || busy || !state}
         onChange={event => { void controls.mode(event.target.value === 'account' ? 'account' : 'off'); }}>
         <option value="account">Use account setting</option><option value="off">Off</option>
       </select>
     </label>}
-    <p role="status">{status}{launch && ` · ${launch}`}</p>
+    <p className="cp-launch" role="status"><span className="cp-status-dot" aria-hidden="true" />{status}{launch && ` · ${launch}`}</p>
     {!!state?.pending && <div className="cp-connectors-pending" role="status">
       <p>{state.pending} sessions still need a restart. Active turns keep their launch access until stopped.</p>
       <button type="button" className="mf-account-button" disabled={busy} onClick={() => { void controls.restart(); }}>Stop pending sessions now</button>
@@ -73,16 +74,17 @@ export function ConnectorControls({ controls, threadId, disabled }: { controls: 
 export function AccountConnector({ controls, profile, disabled = false }: { controls: Controls; profile: Profile; disabled?: boolean }) {
   const { state, busy } = controls;
   const enabled = state?.accounts[profile.id] === true;
-  return <div className="cp-account-access"><span>Account connectors</span>
-    <button type="button" className="mf-account-button" role="switch" aria-label={`${profile.label} account connectors`}
-      aria-checked={enabled} disabled={disabled || busy || !state}
-      onClick={() => { void controls.account(profile.id, !enabled); }}>{enabled ? 'On' : 'Off'}</button>
-  </div>;
+  return <button type="button" className="cp-account-access" role="switch" aria-label={`${profile.label} account connectors`}
+    title={`${profile.label} connectors${state?.globalBlocked ? '. Blocked globally; this saves the account preference.' : ''}`}
+    aria-checked={enabled} disabled={disabled || !state} aria-disabled={busy || undefined}
+    onClick={() => { if (!busy) void controls.account(profile.id, !enabled); }}>
+    <span>Connectors</span><span className="cp-switch-track" aria-hidden="true"><i /></span><span className="cp-switch-value">{enabled ? 'On' : 'Off'}</span>
+  </button>;
 }
 
 export function AccountConnectors({ threadId, disabled, profiles }: { threadId: string | null; disabled: boolean; profiles: readonly Profile[] }) {
   const controls = useConnectorSettings(threadId);
   const selected = profiles.find(profile => profile.id === controls.state?.profileId);
   return <><ConnectorControls controls={controls} threadId={threadId} disabled={disabled} />
-    {selected && <AccountConnector controls={controls} profile={selected} />}</>;
+    {selected && <div className="cp-selected-account"><span>{selected.label}</span><AccountConnector controls={controls} profile={selected} disabled={disabled} /></div>}</>;
 }

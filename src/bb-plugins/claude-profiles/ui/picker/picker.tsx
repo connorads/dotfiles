@@ -194,7 +194,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && onRow) {
       const row = rowOf(target);
       if (row?.saved) { event.preventDefault(); if (!blocked) step(row, event.key === 'ArrowRight' ? 1 : -1); }
-    } else if ((!inSearch || query === '') && /^[1-9]$/.test(event.key)) {
+    } else if ((onRow || (inSearch && query === '') || target === event.currentTarget) && /^[1-9]$/.test(event.key)) {
       const favourite = list.find(f => f.slot === Number(event.key));
       if (favourite && !blocked) { event.preventDefault(); choose(favourite); }
     }

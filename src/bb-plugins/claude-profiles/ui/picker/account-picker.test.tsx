@@ -82,3 +82,38 @@ test('running turns allow comparison but refuse keyboard switching', async () =>
     expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
   } finally { slot.lifecycle.unmount(); }
 });
+test('moves between account and connector columns and toggles the focused account with C', async () => {
+  const slot = renderAccounts();
+  try {
+    const current = await slot.findByRole('button', { name: 'Switch to Default' });
+    await waitFor(() => expect(document.activeElement).toBe(current));
+    fireEvent.keyDown(current, { key: 'ArrowRight' });
+    const toggle = slot.getByRole('switch', { name: 'Default account connectors' });
+    expect(document.activeElement).toBe(toggle);
+    fireEvent.keyDown(toggle, { key: 'ArrowDown' });
+    const work = slot.getByRole('switch', { name: 'Work account connectors' });
+    expect(document.activeElement).toBe(work);
+    fireEvent.keyDown(work, { key: 'c' });
+    await waitFor(() => expect(slot.inspection.rpcCalls.filter(call => call.method === 'connectors.account.set').map(call => call.input))
+      .toEqual([{ threadId: 'thread-test', profileId: 'work', enabled: true }]));
+    fireEvent.keyDown(work, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(slot.getByRole('button', { name: 'Switch to Work' }));
+    expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
+  } finally { slot.lifecycle.unmount(); }
+});
+test('leaves native select keys alone and preserves account focus through policy refreshes', async () => {
+  const slot = renderAccounts();
+  try {
+    const work = await slot.findByRole('button', { name: 'Switch to Work' });
+    const select = slot.getByRole('combobox', { name: "This thread's connectors" });
+    select.focus();
+    expect(fireEvent.keyDown(select, { key: 'ArrowDown' })).toBe(true);
+    expect(document.activeElement).toBe(select);
+    fireEvent.keyDown(select, { key: '2' });
+    expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
+    work.focus();
+    await slot.behavior.emitRealtime('profiles-changed', {});
+    await waitFor(() => expect(slot.getByRole('button', { name: 'Switch to Work' })).toBe(work));
+    expect(document.activeElement).toBe(work);
+  } finally { slot.lifecycle.unmount(); }
+});

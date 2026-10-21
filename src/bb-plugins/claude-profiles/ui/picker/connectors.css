@@ -1,11 +1,23 @@
-.cp-connectors { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
-.cp-connectors-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.cp-connectors p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 11px; }
+.cp-connectors { display: grid; gap: 8px; margin: 0 12px; padding: 12px; border-radius: 10px; background: color-mix(in oklch, var(--muted) 45%, transparent); font-size: 12px; }
+.cp-connectors-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.cp-connectors-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.cp-connectors-heading strong { font-weight: 600; }
+.cp-connectors-heading > span { color: var(--muted-foreground); font-size: 11px; }
+.cp-connectors p { margin: 0; color: var(--muted-foreground); font-size: 11px; line-height: 1.5; }
 .cp-connectors [role="alert"] { color: var(--destructive); }
-.cp-connectors [role="switch"][aria-checked="true"] { color: var(--primary); }
-
-.cp-account-access { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 14px; font-size: 11px; color: var(--muted-foreground); }
-.cp-account-group { border-bottom: 1px solid var(--border); }
-.cp-account-group .ap-account { width: 100%; }
-.cp-connectors select { background: var(--background); color: var(--foreground); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; font: inherit; }
-.cp-connectors-pending { margin-top: 6px; }
+.cp-policy, .cp-account-access { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 28px; padding: 4px 8px; border: 0; border-radius: 6px; background: color-mix(in oklch, var(--foreground) 6%, transparent); color: var(--foreground); font: 500 11px/1.4 var(--font-sans); cursor: pointer; }
+.cp-policy:hover, .cp-account-access:hover { background: var(--state-hover, var(--muted)); }
+.mf-picker .cp-policy, .mf-picker .cp-account-access { font: 500 12px/1.4 var(--font-sans); }
+.cp-policy[aria-disabled], .cp-account-access[aria-disabled] { cursor: progress; }
+.cp-policy:disabled, .cp-account-access:disabled { opacity: .5; cursor: default; }
+.cp-switch-track { display: inline-flex; align-items: center; width: 24px; height: 14px; padding: 2px; border-radius: 8px; background: color-mix(in oklch, var(--foreground) 25%, transparent); flex: none; }
+.cp-switch-track i { display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--foreground); }
+[aria-checked="true"] > .cp-switch-track { background: var(--primary); }
+[aria-checked="true"] > .cp-switch-track i { transform: translateX(10px); background: var(--primary-foreground, var(--background)); }
+.cp-switch-value { min-width: 18px; text-align: left; }
+.cp-connectors select { max-width: 100%; min-height: 28px; background: var(--popover, var(--background)); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font: inherit; }
+.cp-launch { display: flex; align-items: baseline; gap: 6px; }
+.cp-status-dot { display: inline-block; width: 5px; height: 5px; flex: none; border-radius: 50%; background: var(--muted-foreground); }
+.cp-connectors-pending { display: grid; justify-items: start; gap: 8px; }
+.cp-selected-account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 24px; font: 600 12px/1.4 var(--font-mono); }
+.mf-picker > .cp-connectors { flex-shrink: 0; }

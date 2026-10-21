@@ -139,6 +139,13 @@ picker. It opens with the current account focused. Press **1-9** to select an
 account, or use **Up / Down** and **Enter**. **Escape** returns to the draft.
 Numbers follow the account list order, not quota rankings.
 
+Each account groups its name, connector switch and usage on one surface.
+**Left / Right** moves between the account and its connector switch.
+**Up / Down** keeps the same control on the adjacent account.
+**C** toggles connectors for the focused account. **Space** toggles a focused switch.
+**Tab / Shift+Tab** reaches the global and thread controls. Account shortcuts
+leave those controls' native keys available. Saving connector preferences keeps focus in place.
+
 Each account shows usage, elapsed time and reset times for its allowance windows.
 The filled bar marks allowance used. The vertical line marks time elapsed.
 Pace compares usage with even spending across the window. Stale readings are
@@ -270,7 +277,7 @@ Inside the picker:
 | --- | --- |
 | Move between models | Up / Down |
 | Select the focused model or first search result | Enter |
-| Select a favourite slot | 1-9 when search is empty, or outside the search field |
+| Select a favourite slot | 1-9 in empty search or on a model row |
 | Step the focused favourite's saved effort | Left / Right |
 | Star or unstar the focused model | ⌘S or Ctrl+S |
 | Close the open effort or account menu | Escape |

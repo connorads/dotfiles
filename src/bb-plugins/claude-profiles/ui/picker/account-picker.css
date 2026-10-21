@@ -1,25 +1,33 @@
-.bbp-popover-panel.ap-panel { max-height: min(720px, 80vh); }
+.bbp-popover-panel.ap-panel { max-height: min(760px, 85vh); }
 .ap-panel .mf-picker { font-family: var(--font-sans); }
 .ap-head, .ap-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ap-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--border-seam, var(--border)); background: radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--attention, var(--primary)) 13%, transparent), transparent 62%); }
-.ap-head > span { display: flex; align-items: center; gap: 9px; font-size: 14px; }
+.ap-head { padding: 16px 20px; background: radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--attention, var(--primary)) 13%, transparent), transparent 62%); }
+.ap-head > span { display: flex; align-items: center; gap: 8px; }
+.ap-head strong { font: 600 16px/1.2 var(--font-mono); }
 .ap-icon { width: 15px; height: 15px; flex-shrink: 0; }
 .ap-head .ap-icon, .ap-note, .ap-intro { color: var(--muted-foreground); }
-.ap-intro { padding: 10px 18px 6px; font-size: 12px; }
-.ap-refresh { display: grid; place-items: center; padding: 5px; border: 0; border-radius: 5px; background: transparent; color: inherit; }
+.ap-intro { padding: 12px 20px 8px; font-size: 12px; }
+.ap-count { margin-left: 4px; font-variant-numeric: tabular-nums; }
+.ap-legend { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; }
+.ap-legend i { width: 2px; height: 10px; background: var(--foreground); border-radius: 1px; }
+.ap-refresh { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .ap-refresh:hover { background: var(--muted); color: var(--foreground); }
-.ap-list { padding: 6px 10px 12px; overflow-y: auto; min-height: 100px; }
-.ap-account { display: block; width: 100%; text-align: left; padding: 13px 12px; margin-top: 6px; border: 0; border-bottom: 1px solid var(--border-seam, var(--border)); border-radius: 0; background: transparent; color: var(--foreground); transition: background-color 120ms ease; }
-.ap-account:hover, .ap-account:focus-visible { background: var(--state-hover, var(--muted)); }
-.ap-account[data-current] { background: var(--state-active, var(--accent)); box-shadow: inset 2px 0 0 var(--timeline-accent, var(--primary)); }
-.ap-account-head { display: flex; gap: 9px; align-items: center; margin-bottom: 12px; }
-.ap-current { margin-left: auto; display: flex; align-items: center; gap: 4px; color: var(--muted-foreground); font-size: 11px; }
-.ap-quotas, .ap-window { display: flex; flex-direction: column; gap: 5px; }
+.ap-list { display: flex; flex-direction: column; gap: 12px; padding: 0 12px 12px; overflow-y: auto; min-height: 0; flex: 1; }
+.ap-account-group { flex: none; padding: 12px; border-radius: 10px; background: color-mix(in oklch, var(--muted) 45%, transparent); }
+.ap-account-group[data-current] { background: var(--state-active, var(--accent)); box-shadow: inset 2px 0 0 var(--timeline-accent, var(--primary)); }
+.ap-account-group:focus-within { outline: 1px solid var(--border); outline-offset: -1px; }
+.ap-account-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.ap-account { display: flex; flex: 1; min-width: 0; align-items: center; gap: 8px; text-align: left; padding: 6px; margin: -6px 0 -6px -6px; border: 0; border-radius: 6px; background: transparent; color: var(--foreground); cursor: pointer; }
+.ap-account > strong { font: 600 14px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.ap-account:hover { background: var(--state-hover, var(--muted)); }
+.ap-current { display: flex; align-items: center; gap: 3px; color: var(--muted-foreground); font-size: 11px; }
+.ap-current .ap-icon { width: 12px; height: 12px; }
+.ap-quotas, .ap-window { display: flex; flex-direction: column; gap: 6px; }
 .ap-quotas { gap: 12px; }
-.ap-window-head { display: flex; align-items: baseline; gap: 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ap-window-head { display: flex; align-items: baseline; gap: 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .ap-window-head > span:first-child { margin-right: auto; font-weight: 500; }
 .ap-elapsed { color: var(--muted-foreground); }
-.ap-meter { position: relative; display: block; height: 6px; border-radius: 3px; background: var(--muted); }
+.ap-meter { position: relative; display: block; height: 5px; border-radius: 3px; background: color-mix(in oklch, var(--foreground) 10%, transparent); }
 .ap-fill { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
 .ap-time { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--foreground); box-shadow: 0 0 0 1px var(--popover, var(--card)); }
 .ap-window[data-tone=warning] .ap-fill { background: var(--warning, #b88728); }
@@ -28,13 +36,15 @@
 .ap-window-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; color: var(--muted-foreground); font-size: 11px; }
 .ap-window[data-tone=critical] .ap-window-meta > span:first-child { color: var(--destructive, #cf6455); }
 .ap-note { display: block; font-size: 11px; }
-.ap-notice { margin: 6px 18px; font-size: 12px; color: var(--muted-foreground); }
+.ap-notice { margin: 8px 20px; font-size: 12px; color: var(--muted-foreground); }
 .ap-footer { flex-wrap: wrap; }
 .ap-footer > span:last-child { margin-left: auto; }
-@media (max-width: 420px) { .ap-window-head { flex-wrap: wrap; gap: 4px 8px; } .ap-elapsed { width: 100%; } }
-
-.ap-account-head > strong { font: 600 14px/1.2 var(--font-mono); }
-.ap-head strong { font: 600 16px/1.2 var(--font-mono); }
-.ap-panel .mf-footer { display: flex; flex-shrink: 0; background: var(--muted); border-top: 1px solid var(--border-seam, var(--border)); }
+.ap-panel .mf-footer { display: flex; flex-shrink: 0; background: color-mix(in oklch, var(--muted) 45%, transparent); border-top: 0; }
 .ap-panel .mf-kbd { font-size: 11px; }
-.ap-list { min-height: 0; flex: 1; }
+.ap-panel button:focus-visible, .cp-connectors button:focus-visible, .cp-connectors select:focus-visible, .cp-account-access:focus-visible { outline: 2px solid var(--ring, var(--primary)); outline-offset: 2px; }
+@media (max-width: 420px) {
+  .ap-window-head { flex-wrap: wrap; gap: 4px 8px; }
+  .ap-elapsed { width: 100%; }
+  .ap-account-head { gap: 12px; }
+  .ap-account { flex-basis: 100%; }
+}
