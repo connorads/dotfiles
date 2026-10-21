@@ -27,6 +27,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Helper AI completion consumer
+
+- Found: 2026-10-21, git-glance, SDK 0.6.37
+- Wanted: Generate an editable commit message from staged changes on demand.
+- Gap: `experimental_aiServices.register` supplies helpers to BB. The public SDK exposes no helper completion consumer.
+- Workaround: Git Glance runs installed `codex exec` in an isolated temporary directory with bounded staged input.
+  See [message drafts](../git-glance/src/message-draft.ts).
+- Ask: Expose a cancellable completion consumer with explicit model and input limits.
+- Status: open
+- Category: sdk-gap
+- Evidence: SDK `PluginAiServices`; [draft generation](../git-glance/src/message-draft.ts).
+
 ### Required provider env that fails closed
 
 - Found: 2026-10-11, claude-profiles, SDK 0.6.15 (rechecked 0.6.37)

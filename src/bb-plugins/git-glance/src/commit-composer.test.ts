@@ -14,9 +14,10 @@ test('RPC rejection retains the draft and permits another commit submission', as
   }).outputText;
   type Element = { type: string; props: Record<string, unknown> & { children?: Element | Element[] } };
   const jsx = (type: string, props: Element['props']): Element => ({ type, props });
+  class Textarea {}
   const exports: { CommitComposer?: (props: unknown) => Element } = {};
   runInNewContext(source, {
-    exports,
+    exports, HTMLTextAreaElement: Textarea,
     require: (name: string) => {
       if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
       if (name === 'react') return {
@@ -59,7 +60,7 @@ test('RPC rejection retains the draft and permits another commit submission', as
   (textarea.props.onChange as (event: unknown) => void)({ target: { value: 'Keep this draft' } });
   const submit = () => (find(render(), element => element.type === 'form').props.onSubmit as (event: unknown) => void)({ preventDefault() {} });
   const keydown = find(render(), element => element.type === 'form').props.onKeyDown as (event: unknown) => void;
-  const key = { key: 'Enter', shiftKey: true, repeat: false, nativeEvent: { isComposing: false }, preventDefault() {}, stopPropagation() {} };
+  const key = { target: new Textarea(), key: 'Enter', shiftKey: true, repeat: false, nativeEvent: { isComposing: false }, preventDefault() {}, stopPropagation() {} };
   keydown(key);
   assert.equal(attempts, 0, 'Shift+Enter retains newline input');
   keydown({ ...key, shiftKey: false, repeat: true });

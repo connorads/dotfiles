@@ -6,6 +6,7 @@ import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
 import { listBranches, switchBranch } from './src/branches.ts';
 import { discard } from './src/discard.ts';
 import { review, editIndex, createCommit } from './src/index-edit.ts';
+import { generateMessage } from './src/message-draft.ts';
 import { realpath } from 'node:fs/promises';
 import { stashAction } from './src/stashes.ts';
 import type { OpOptions, OpResult } from './src/spawn.ts';
@@ -39,6 +40,12 @@ export default experimental_defineHostEntry({
   contract: hostContract,
   experimental_signals: hostSignals,
   handlers: {
+    generateMessage: async ({ root, head, index, draftKey, model, executable }, context) => {
+      const repo = await required(root);
+      if (await realpath(repo.gitDir) !== draftKey) throw new Error('Repository changed. Review the index again.');
+      return generateMessage(repo, { head, index }, { model, executable,
+        signal: AbortSignal.any([context.signal, context.lifecycle.signal]) });
+    },
     folders: ({ root, path }) => browseFolders(root, path),
     select: async ({ root, path }) => ({ root: await selectFolder(root, path) }),
     watch: async ({ root }, context) => {

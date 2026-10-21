@@ -114,7 +114,11 @@ const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
 export const reviewSchema = z.object({ head: z.string().nullable(), index: z.string(), count: z.number(), blocked: z.string().nullable(), draftKey: z.string() });
 export type CommitReview = z.infer<typeof reviewSchema>;
 
+const draftInput = { head: z.string().nullable(), index: z.string(), draftKey: z.string() };
+const draftOutput = z.object({ message: z.string().min(1).max(8192) });
+
 export const hostContract = defineRpcContract({
+  generateMessage: { input: z.object({ root, ...draftInput, model: z.string().min(1).max(200), executable: z.string().min(1).max(4096) }), output: draftOutput },
   folders: { input: z.object({ root, path: z.string() }), output: folderList },
   select: { input: z.object({ root, path: z.string() }), output: z.object({ root }) },
   /** Start watching (idempotent) and return the current snapshot. */
@@ -143,6 +147,8 @@ const thread = { threadId: z.string().min(1) };
 /** Identifies one app window's interest in one thread, for leases. */
 const holder = { ...thread, clientId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
+  generateMessage: { input: z.object({ ...thread, ...draftInput, requestId: z.string().min(1).max(100) }), output: draftOutput },
+  cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
   select: { input: z.object({ ...thread, path: z.string().nullable() }), output: z.object({}) },
   watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable(), fetch: fetchHealthSchema }) },

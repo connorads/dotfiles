@@ -158,3 +158,47 @@ flowchart LR
   stat entries; dotfiles clean-only churn is excluded through filtered diffs.
 - Bulk and hunk actions are unavailable. The display cap cannot define complete
   bulk scope, and the SDK diff viewer provides no staging-selection callback.
+
+## AI message drafts
+
+**Generate message** explicitly sends the complete staged diff and file summary to installed Codex.
+The button replaces the message only after successful generation. Edit it before submitting the commit.
+Generation never stages files or commits. Failure, cancellation and stale responses preserve the draft.
+Edits, close and repository changes cancel generation. Duplicate clicks cannot start another request.
+
+```mermaid
+flowchart LR
+  Generate[Generate message] --> Capture[Check HEAD and capture staged diff]
+  Capture --> Codex[Isolated Codex completion]
+  Codex --> Check[Check HEAD and index again]
+  Check --> Draft[Editable draft]
+  Draft --> Confirm[User submits commit]
+```
+
+Settings → Installed plugins → Git Glance exposes:
+
+- `messageModel` defaults to `gpt-6-luna`. Model availability depends on the host's Codex account.
+- `codexExecutable` defaults to `codex` on the host's PATH. Set an absolute executable path when needed.
+  This value names one executable; it accepts no shell arguments.
+
+Codex must already be installed and signed in on the repository's host.
+The plugin uses Codex authentication without reading credential files itself.
+It passes prompts through stdin and arguments directly, without a shell.
+The process runs outside the repository in `/tmp`, with `--ephemeral`, `--ignore-user-config`,
+`--ignore-rules`, `--strict-config`, `--skip-git-repo-check` and `--sandbox read-only`.
+It disables instruction discovery, user hooks, configured MCP servers, plugins, apps, shell execution,
+agents, skill search, image tools and web search through verified CLI configuration.
+The read-only sandbox remains active. No bypass flags are used.
+
+- Generation refuses staged patches above 64 KiB or summaries above 16 KiB. It never sends a partial patch.
+- Git reads have ten-second limits. Codex has a sixty-second limit and a 256 KiB combined output cap.
+  Cancellation terminates its process group, then kills remaining processes after 500 milliseconds.
+- HEAD and index fingerprints must match the review before capture, before completion and after completion.
+  External writers can still race these checks; a changed fingerprint discards the response.
+- Binary content is omitted by Git's textual patch. Binary file paths and summary remain visible to the model.
+- Codex errors show a retry hint. Authentication and model access must be fixed through Codex itself.
+- CLI flags and configuration were verified with Codex 0.163.0.
+  Unsupported CLI configuration fails rather than enabling user configuration.
+
+`gpt-6-luna` passed a synthetic completion smoke test. This does not establish globally lowest pricing.
+CLI behaviour follows [OpenAI's non-interactive documentation](https://learn.chatgpt.com/docs/non-interactive-mode).

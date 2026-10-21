@@ -166,7 +166,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
 
     <div className="gg-body" data-split={zoomed || undefined}>
       <div className="gg-list">
-      <CommitComposer threadId={threadId} repository={state.root ?? repo.name} branch={branch.head ?? 'Detached HEAD'} op={op} onRun={onRun} onCancel={onCancel} />
+      <CommitComposer key={`${threadId}:${state.root}`} threadId={threadId} repository={state.root ?? repo.name} branch={branch.head ?? 'Detached HEAD'} op={op} onRun={onRun} onCancel={onCancel} />
       {files === 0 ? <div className="gg-clean">
         <span className="gg-clean-mark"><Icon name="Check" className="size-4" /></span>
         <div><strong>Working tree clean</strong><span>Nothing to commit{branch.head ? ` on ${branch.head}` : ''}.</span></div>

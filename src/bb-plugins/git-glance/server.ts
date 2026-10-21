@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { hostContract, hostSignals, rpcContract, subjectProject, type FetchHealth, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
@@ -10,6 +11,12 @@ const leaseTtlMs = 75_000;
 const runTimeoutMs = 10 * 60_000 + 10_000;
 
 export default function plugin(bb: BbPluginApi) {
+  const settings = bb.settings.define({
+    messageModel: { type: 'string', label: 'Commit message model', default: 'gpt-6-luna', experimental_schema: z.string().trim().min(1).max(200) },
+    codexExecutable: { type: 'string', label: 'Codex executable', default: 'codex', experimental_schema: z.string().trim().min(1).max(4096) },
+  });
+  const drafts = new Map<string, { requestId: string; abort: AbortController }>();
+  bb.onDispose(() => { for (const draft of drafts.values()) draft.abort.abort(); });
   const host = bb.hosts.experimental_client({ contract: hostContract, experimental_signals: hostSignals });
   const leases = createLeases(leaseTtlMs);
   const fetches = new Map<string, FetchHealth>();
@@ -80,6 +87,27 @@ export default function plugin(bb: BbPluginApi) {
   bb.onDispose(() => clearInterval(sweep));
 
   bb.rpc.register(rpcContract, {
+    generateMessage: async ({ threadId, requestId, head, index, draftKey }) => {
+      if (drafts.has(threadId)) throw new Error('Message generation is already running.');
+      const abort = new AbortController();
+      drafts.set(threadId, { requestId, abort });
+      try {
+        const target = await required(threadId);
+        const checked = await host.call('review', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000, signal: abort.signal });
+        if (JSON.stringify([target.hostId, checked.draftKey]) !== draftKey) throw new Error('Repository changed. Review the index again.');
+        const { messageModel, codexExecutable } = await settings.get();
+        const result = await host.call('generateMessage', { root: target.root, head, index, draftKey: checked.draftKey,
+          model: messageModel, executable: codexExecutable }, { hostId: target.hostId, timeoutMs: 100_000, signal: abort.signal });
+        const after = await required(threadId);
+        if (checkoutKey(after) !== checkoutKey(target)) throw new Error('Repository changed. Generate again.');
+        return result;
+      } finally { drafts.delete(threadId); }
+    },
+    cancelMessage: ({ threadId, requestId }) => {
+      const draft = drafts.get(threadId);
+      if (draft?.requestId === requestId) draft.abort.abort();
+      return {};
+    },
     folders: async ({ threadId, path }) => {
       const base = await environment(threadId);
       if (!base) throw new Error('This thread has no checkout.');
