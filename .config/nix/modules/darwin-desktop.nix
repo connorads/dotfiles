@@ -291,15 +291,12 @@
   # Merges into the shared home-manager.users.connorads submodule, closing over
   # this module's `pkgs`/`packages` args.
   home-manager.users.connorads =
-    { lib, config, ... }:
+    { lib, ... }:
     {
       home.packages = packages.sharedPackages ++ [
         pkgs.duti
         pkgs.pngpaste
       ];
-
-      home.file."Library/Application Support/Code/User/settings.json".source =
-        config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/vscode/settings.json";
 
       home.activation.linearmouseConfig =
         let

@@ -6,7 +6,6 @@
 {
   # Apps we want to install on Linux but not on macOS
   home.packages = packages.sharedPackages ++ [
-    pkgs.vscode
     pkgs.bind
     pkgs.libnotify
     pkgs.lynis
