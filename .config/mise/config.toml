@@ -205,7 +205,6 @@ age = "1"
 # Sandboxes build.rs for every cargo build via ~/.cargo/config.toml's linker
 # shim. Not in nixpkgs, so mise (cargo backend) keeps it in mise.lock.
 "cargo:build-wrap" = "0.7"
-"cargo:cargo-fframes" = "1"
 # Amp is pinned globally; aube exempts @ampcode/* from the age gate.
 amp = { version = "0.0.1783547350-gd57707", allow_builds = ["@ampcode/cli"] }
 

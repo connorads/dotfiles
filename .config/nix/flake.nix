@@ -67,6 +67,7 @@
               footswitch = prev.callPackage ./packages/footswitch.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
               mise = prev.callPackage ./packages/mise.nix { };
+              cargo-fframes = prev.callPackage ./packages/cargo-fframes.nix { };
 
               # TODO(pipx-check): remove once nixpkgs ships a pipx whose test
               # suite passes against its pinned pytest. pipx 1.14.0's
@@ -205,6 +206,11 @@
           }
         )
       ];
+
+      # fframes video projects: nix develop ~/.config/nix#fframes
+      devShells.aarch64-darwin.fframes =
+        (mkPkgs "aarch64-darwin").callPackage ./packages/fframes-shell.nix
+          { };
 
       # Force-evaluate every configuration to catch typos and broken imports
       # without a full rebuild: nix flake check --flake ~/.config/nix
