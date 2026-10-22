@@ -127,41 +127,6 @@ inputs, never Nix literals or files copied into the Nix store. Background servic
 changes require their own review and verification. Enrolment does not change
 FileVault, login behaviour or reboot policy.
 
-Paste this into an agent thread running on the Mini:
-
-```text
-Set up local encrypted fnox credentials on this Mac Mini.
-Read ~/AGENTS.md and ~/docs/credentials.md first.
-Check existing tools and configuration before changing anything.
-Use the committed mise tool versions. Keep credentials and identities outside Git.
-
-I authorise reading ~/.zshrc.local with a local value-redacting helper and editing
-its credential assignments after successful migration. I authorise checking and
-creating or updating ~/.config/fnox/ credential configuration, encrypted backups,
-and the Mini's private identity. Use SECRETS_OK=1 only for these operations where
-the credential guard requires it. Never print values, private identities or hashes.
-
-Inventory credential names only. Do not source or execute .zshrc.local to discover
-them. Preserve unrelated shell settings and stop on assignments you cannot safely
-parse. Keep native OAuth sessions and SSH credentials unchanged.
-
-Test unattended decryption with dummy data before migrating real credentials.
-Try prompt-free Secure Enclave access from the actual background context first.
-Use a private local age identity if that cannot work unattended. Do not copy the
-Air's private identity or recover its private key from Bitwarden.
-
-Migrate existing Mini command credentials without putting plaintext in temporary
-files, command arguments, logs or chat. Compare delivered values only in memory.
-Remove old assignments only after delivery and consumer checks pass. Do not make
-billable API calls without asking. Explain any missing consumer checks.
-
-Help me make and verify a private recovery backup. Configure a 30-minute idle
-cache. Test repeated fnox launches and report the limits of cache expiry.
-Do not reboot, log out, change FileVault, restart BB or change service configuration.
-Report any background integration needed as a separate next step.
-Commit only relevant non-secret dotfiles changes. Do not push.
-```
-
 ## Recovery and rotation
 
 Back up the encrypted `config.toml` privately after changing credentials.
