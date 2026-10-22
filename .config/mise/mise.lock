@@ -264,6 +264,10 @@ url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-aa
 version = "0.7.0"
 backend = "cargo:build-wrap"
 
+[[tools."cargo:cargo-fframes"]]
+version = "1.2.0"
+backend = "cargo:cargo-fframes"
+
 [[tools.claude]]
 version = "2.1.303"
 backend = "aqua:anthropics/claude-code"
