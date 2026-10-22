@@ -27,6 +27,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Commands and message actions get no SDK client or toast
+
+- Found: 2026-10-22, fork, SDK 0.6.37
+- Wanted: a shortcut and a message button that fork the thread and report failures.
+- Gap: `PluginCommandContext` and `PluginMessageActionContext` carry no `sdk`, unlike
+  `PluginThreadActionItemInput`. `useSdk()` is a hook, so `run` cannot call it. Errors
+  from `run` are only logged, and the SDK has no toast API.
+- Workaround: an `experimental_appOverlay` lends its `useSdk()` client to the callbacks
+  and renders its own progress and error notice: [app.tsx](../fork/app.tsx).
+- Ask: `sdk` on both contexts, and a host toast for `run` failures.
+- Status: open
+- Category: sdk-gap
+- Evidence: [fork.ts](../fork/fork.ts)
+
 ### File previews have no panel navigation history
 
 - Found: 2026-10-21, file-history, BB desktop 0.46.1, SDK 0.6.49

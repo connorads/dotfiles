@@ -131,6 +131,12 @@ submits a typed question answer. Escape stops the running agent. Escape twice
 on an empty composer opens a picker that rewinds or forks from an earlier
 message.
 
+## Fork threads
+
+[Fork](fork/README.md) forks a thread with its whole conversation. `Alt+B` opens
+the fork in a right split. Messages get **Fork from here**, and the thread menu
+offers split, sidebar-only and new-worktree forks.
+
 ## Keep awake
 
 [Caffeine](caffeine/README.md) keeps this Mac awake from BB: indefinitely, for a

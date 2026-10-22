@@ -8,6 +8,7 @@
   "executor": true,
   "external-links": true,
   "file-history": true,
+  "fork": true,
   "git-glance": true,
   "handsfree": true,
   "lazygit": true,

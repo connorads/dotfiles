@@ -1,0 +1,19 @@
+.fork-notice {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 60;
+  max-width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 6px 12px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in oklab, var(--ink, #fff) 18%, transparent);
+  border-radius: 8px;
+  background: var(--canvas, #111);
+  color: var(--ink, #eee);
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+.fork-notice-error {
+  border-color: color-mix(in oklab, #e5484d 60%, transparent);
+}
