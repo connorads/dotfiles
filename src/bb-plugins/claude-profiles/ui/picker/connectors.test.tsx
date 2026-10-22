@@ -45,6 +45,7 @@ test('global block states its precedence while keeping account preferences edita
     fireEvent.click(toggle);
     await slot.findByText(/Blocked globally/);
     expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(toggle.textContent).toBe('AllowOff');
     expect(slot.getByRole('switch', { name: 'Default account connectors' }).hasAttribute('disabled')).toBe(false);
   } finally { slot.lifecycle.unmount(); }
 });

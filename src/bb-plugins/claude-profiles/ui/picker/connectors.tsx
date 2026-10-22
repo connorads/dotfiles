@@ -51,8 +51,8 @@ export function ConnectorControls({ controls, threadId, disabled }: { controls: 
       <button type="button" className="cp-policy" role="switch" aria-label="Allow account connectors in BB"
         aria-describedby={`${id}-help`} aria-checked={state ? !state.globalBlocked : false}
         disabled={!state} aria-disabled={busy || undefined} onClick={() => { if (state && !busy) void controls.global(!state.globalBlocked); }}>
-        <span className="cp-switch-track" aria-hidden="true"><i /></span>
-        {state ? state.globalBlocked ? 'Block all' : 'Use account settings' : 'Unknown'}
+        <span>Allow</span><span className="cp-switch-track" aria-hidden="true"><i /></span>
+        <span className="cp-switch-value">{state ? state.globalBlocked ? 'Off' : 'On' : 'Unknown'}</span>
       </button>
     </div>
     <p id={`${id}-help`}>{state?.globalBlocked ? 'Every account is blocked. Saved preferences stay below.' : 'Each account uses its saved preference.'} Executor is separate.</p>

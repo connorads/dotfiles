@@ -82,11 +82,12 @@ Slack. Executor keeps its own connection control.
 
 | Control | Choices | Scope |
 | --- | --- | --- |
-| Global | Block all / Use account settings | Every Claude account in this BB server |
+| Global | Allow: Off / On | Every Claude account in this BB server |
 | Account | Off / On | One saved profile on one machine |
 | Thread | Use account setting / Off | One conversation |
 
-Accounts start off. Global **Block all** overrides every account and thread.
+Accounts start off. Global **Allow: Off** blocks every account and thread.
+Global **Allow: On** lets each account use its saved preference.
 A thread can restrict access but cannot enable a blocked account. The model
 picker also offers these controls for the selected account.
 
