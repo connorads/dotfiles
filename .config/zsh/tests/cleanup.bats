@@ -189,6 +189,10 @@ EOF
   write_stub uv <<'EOF'
 #!/usr/bin/env bash
 echo "uv $*" >>"$TEST_LOG"
+if [ "$*" = "cache dir" ]; then
+  [ "${TEST_UV_RESOLVE_FAIL:-0}" = 0 ] || exit 1
+  printf '%s\n' "${UV_CACHE_DIR:-$HOME/.cache/uv}"
+fi
 exit 0
 EOF
 
@@ -312,6 +316,34 @@ if [ "${1:-}" = "-q" ] && [ "${2:-}" = "--size" ]; then
 fi
 exit 0
 EOF
+}
+
+@test "uv previews and cleans the same configured cache directory" {
+  export UV_CACHE_DIR="$HOME/custom uv cache"
+  mkdir -p "$UV_CACHE_DIR"
+  dd if=/dev/zero of="$UV_CACHE_DIR/data" bs=1024 count=64 2>/dev/null
+
+  run zsh --no-rcs "$CLEANUP" --target uv --dry-run --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Path: $UV_CACHE_DIR"* ]]
+  [[ "$output" != *'"size_kb":0'* ]]
+  ! grep -F 'uv cache clean' "$TEST_LOG"
+
+  : >"$TEST_LOG"
+  run zsh --no-rcs "$CLEANUP" --target uv --yes --json
+  [ "$status" -eq 0 ]
+  grep -Fx "uv cache clean --cache-dir $UV_CACHE_DIR" "$TEST_LOG"
+  [ "$(grep -Fxc 'uv cache dir' "$TEST_LOG")" -eq 1 ]
+}
+
+@test "uv cache resolution failure prevents cleanup" {
+  export TEST_UV_RESOLVE_FAIL=1
+
+  run zsh --no-rcs "$CLEANUP" --target uv --yes --json
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'"estimate_kind":"probe-failed"'* ]]
+  ! grep -F 'uv cache clean' "$TEST_LOG"
 }
 
 @test "non-interactive cleanup refuses execution without --yes" {

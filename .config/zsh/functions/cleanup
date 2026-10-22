@@ -36,6 +36,7 @@ typeset -g CLEANUP_CLAUDE_TMP_ROOT="${CLEANUP_CLAUDE_TMP_ROOT:-/private/tmp/clau
 typeset -g CLEANUP_CLAUDE_PROFILES_ROOT="${CLEANUP_CLAUDE_PROFILES_ROOT:-$HOME/.claude-profiles}"
 typeset -g CLEANUP_HIBERNATE_DIR="${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}"
 typeset -g CLEANUP_WORKTREE_ROOT="${CLEANUP_WORKTREE_ROOT:-$HOME/.trees}"
+typeset -g CLEANUP_UV_CACHE_DIR=""
 typeset -g CLEANUP_PROBE_FAILED=0
 typeset -ga CLEANUP_PROBE_FAILED_TARGETS=()
 typeset -g CLEANUP_PROGRESS_ENABLED=0
@@ -607,9 +608,11 @@ _cleanup_probe_target() {
     uv)
       command -v uv >/dev/null 2>&1 || applicable=0
       if (( applicable )); then
-        kb=$(_cleanup_kb_sum "$HOME/.cache/uv")
-        detail="Path: $HOME/.cache/uv"
-        command="uv cache clean"
+        CLEANUP_UV_CACHE_DIR=$(uv cache dir) || return 1
+        [[ -n "$CLEANUP_UV_CACHE_DIR" ]] || return 1
+        kb=$(_cleanup_kb_sum "$CLEANUP_UV_CACHE_DIR")
+        detail="Path: $CLEANUP_UV_CACHE_DIR"
+        command="uv cache clean --cache-dir ${(q)CLEANUP_UV_CACHE_DIR}"
       fi
       ;;
     cargo)
@@ -942,7 +945,7 @@ _cleanup_run_target() {
       ;;
     uv)
       command -v uv >/dev/null 2>&1 || return 0
-      uv cache clean
+      uv cache clean --cache-dir "$CLEANUP_UV_CACHE_DIR"
       ;;
     cargo)
       command rm -rf -- "$HOME/.cargo/registry/cache"
