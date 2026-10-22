@@ -107,6 +107,14 @@ cargo update -p fframes-media-dir-macro --precise 1.2.0
 cargo update -p fframes-media --precise 1.2.0
 ```
 
+Then let direnv load the shell, so plain `cargo` works in the project directory, with or
+without the build-script sandbox. nix-direnv keeps the shell's store paths from garbage
+collection, including the x264 library the binary links to:
+
+```bash
+echo 'use flake ~/.config/nix#fframes' > .envrc && direnv allow
+```
+
 Options: `--template single-scene|multi-scene`, `--format landscape|portrait|square|uhd`,
 `--fps`, `--title`, `--backend`, `--dir`. The project depends on the fframes release that
 matches the installed `cargo-fframes`; `--git` uses the repository's `main` branch instead. Always pass `--yes` so nothing waits for input.
