@@ -132,4 +132,4 @@ Use the matching provider or plugin skill for its subsystem.
 Check live command syntax with `bb <group> --help`.
 Verify changes through live settings or behaviour before reporting success.
 
-The Mini's system daemon uses local deployment pins. Follow [BB deployments](../../docs/remote-access.md#bb-deployments-on-the-mini) for preparation, activation and recovery.
+The Mini's system daemon uses local deployment pins. Follow [BB deployments](remote-access.md#bb-deployments-on-the-mini) for preparation, activation and recovery.
