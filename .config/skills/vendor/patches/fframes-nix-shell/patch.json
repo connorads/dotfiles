@@ -1,0 +1,6 @@
+{
+  "reason": "Route installs through the Nix fframes dev shell instead of brew, curl-pipe and cargo install",
+  "files": [
+    ".agents/skills/fframes-video/SKILL.md"
+  ]
+}

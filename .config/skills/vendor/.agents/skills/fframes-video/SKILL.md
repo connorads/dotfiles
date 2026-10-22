@@ -70,11 +70,17 @@ product with only the text changed. If it would, change the idea, not the colors
 
 ## 1. Install
 
-Rust from <https://rustup.rs>, then the system libraries ffmpeg is built with:
+<!-- LOCAL PATCH (connorads dotfiles): Route installs through the Nix fframes dev shell instead of brew, curl-pipe and cargo install -->
+On macOS, run every fframes command inside the Nix dev shell:
+`nix develop ~/.config/nix#fframes`, or `nix develop ~/.config/nix#fframes -c <command>`.
+It provides `cargo-fframes`, x264 and hash-pinned prebuilt FFmpeg and Skia archives. Rust
+comes from rustup. Do not install fframes dependencies with Homebrew or `cargo install`.
+Build scripts run without network, so a missing prebuilt archive fails the build with its
+URL. Stop and report that URL: it must be pinned in `~/.config/nix/packages/fframes-shell.nix`.
+
+Other platforms, from upstream:
 
 ```bash
-# macOS
-brew install pkg-config ffmpeg x264 x265 opus nasm ninja
 # Debian / Ubuntu
 sudo apt-get install -y yasm nasm ffmpeg libx264-dev libx265-dev libopus-dev libclang-dev clang ninja-build libvpx-dev libasound2-dev
 # Arch
@@ -89,10 +95,16 @@ fframes README.
 ## 2. Create a project
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dmtrKovalenko/fframes/main/scripts/new-video.sh | bash -s -- my-video --yes
-# or install the generator once and use it directly:
-cargo install --locked cargo-fframes
-cargo fframes new my-video --format landscape --fps 30 --yes
+nix develop ~/.config/nix#fframes -c cargo fframes new my-video --format landscape --fps 30 --yes
+```
+
+A cargo-fframes 1.2.0 project resolves `fframes-media` 1.3.0 and fails with `mismatched types`
+between two `usvgr` versions. Downgrade both crates, macro first, before the first build:
+
+```bash
+cd my-video && cargo generate-lockfile
+cargo update -p fframes-media-dir-macro --precise 1.2.0
+cargo update -p fframes-media --precise 1.2.0
 ```
 
 Options: `--template single-scene|multi-scene`, `--format landscape|portrait|square|uhd`,
