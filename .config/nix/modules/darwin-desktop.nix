@@ -77,7 +77,6 @@
       "stremio"
       "utm"
       "retroarch"
-      "visual-studio-code"
       "t3-code@nightly"
       "bb"
       "zed"
