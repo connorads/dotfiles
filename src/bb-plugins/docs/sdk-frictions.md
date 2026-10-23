@@ -185,6 +185,21 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: `claude-profiles/ui/badges/rows.ts`
 
+### `openThreadPanel` always declines in an app overlay
+
+- Found: 2026-10-23, fork, bb 0.46.1, SDK 0.6.37
+- Wanted: open a fork in the focused thread's side panel after a keyboard command.
+- Gap: `useBbNavigate().openThreadPanel` reads an opener from a React context that only
+  the thread detail view provides. An `experimental_appOverlay` sits outside it, so the
+  call returns false. Fakes in `renderSlot` accept it, so unit tests pass.
+- Workaround: take `openPanel` from the command, message action or thread menu context.
+  These use the host's focused-thread opener: [app.tsx](../fork/app.tsx).
+- Ask: back `useBbNavigate().openThreadPanel` with the same focused-thread opener
+  everywhere, or document the overlay limit on the hook.
+- Status: open
+- Category: sdk-gap
+- Evidence: isolated bb 0.46.1 server and browser repro, commit `9cca0d22`
+
 ### Workflow worker row accessories
 
 - Found: 2026-10-21, claude-profiles, SDK 0.6.37
