@@ -98,12 +98,35 @@ test.each([
   ]);
 });
 
-test('s forks into the sidebar and opens nothing', async () => {
+// Stock BB's sidebar toggle: `aria-expanded` reports whether the sidebar shows.
+function sidebarTrigger(expanded: boolean) {
+  const trigger = document.createElement('button');
+  trigger.dataset.sidebar = 'trigger';
+  trigger.setAttribute('aria-expanded', String(expanded));
+  let clicks = 0;
+  trigger.addEventListener('click', () => { clicks++; });
+  document.body.append(trigger);
+  return { clicks: () => clicks, remove: () => trigger.remove() };
+}
+
+test('s forks into the sidebar, opens nothing and shows a hidden sidebar', async () => {
   const calls: Call[] = [];
+  const trigger = sidebarTrigger(false);
   const app = await load(fakeSdk(calls));
   await openMenu(app);
   await press('s');
   expect(calls.map(call => call.method)).toEqual(['fork']);
+  expect(trigger.clicks()).toBe(1);
+  trigger.remove();
+});
+
+test('s leaves a shown sidebar open', async () => {
+  const trigger = sidebarTrigger(true);
+  const app = await load(fakeSdk([]));
+  await openMenu(app);
+  await press('s');
+  expect(trigger.clicks()).toBe(0);
+  trigger.remove();
 });
 
 test('a count and w make that many worktree forks', async () => {

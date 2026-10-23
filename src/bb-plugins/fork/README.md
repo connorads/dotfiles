@@ -12,7 +12,7 @@ Side chat takes only quoted text. A fork clones the provider session.
 
 ```text
 ⏎      Switch to fork: the focused pane shows the fork; the original stays in the sidebar
-s      Sidebar only: fork and stay where you are
+s      Sidebar only: fork, stay where you are and show the sidebar
 | →    Split right        ←  Split left
 - ↓    Split down         ↑  Split up
 2–8    Fork count         w  New worktree (toggle)

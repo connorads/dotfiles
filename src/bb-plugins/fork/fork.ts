@@ -1,6 +1,6 @@
 import type { PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
 
-/** Where a fork opens. `switch` shows it in the focused pane; `sidebar` opens nothing. */
+/** Where a fork opens. `switch` shows it in the focused pane; `sidebar` opens nothing but shows the sidebar. */
 export type Placement = 'switch' | 'right' | 'left' | 'down' | 'top' | 'sidebar';
 
 export type ReasoningLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' | 'ultracode';
@@ -109,6 +109,11 @@ function doneMessage(plan: ForkPlan, forks: Forked[]): string | null {
   return `Now in ${title ? `fork ${title}` : 'the fork'}. Original kept in the sidebar.${extra}`;
 }
 
+// The SDK cannot run `sidebar.toggle`, so press stock BB's trigger. `aria-expanded` is false while the sidebar is hidden.
+function showSidebar() {
+  globalThis.document?.querySelector<HTMLButtonElement>('button[data-sidebar="trigger"][aria-expanded="false"]')?.click();
+}
+
 // One fork at a time: a held or repeated shortcut would otherwise clone the session twice.
 export function createForker() {
   let sdk: ForkSdk | null = null;
@@ -138,6 +143,7 @@ export function createForker() {
       show({ kind: 'busy' });
       try {
         const message = doneMessage(plan, await forkThread(client, plan));
+        if (plan.placement === 'sidebar') showSidebar();
         show(message ? { kind: 'info', message } : null);
       } catch (cause) {
         show({ kind: 'error', message: cause instanceof Error ? cause.message : String(cause) });
