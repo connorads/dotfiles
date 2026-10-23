@@ -56,6 +56,14 @@ The originating agent checks the result against the request:
 Claude writes this result. It is not a deterministic callback or an independent content check.
 Source readback does not verify browser appearance or control behaviour.
 
+## Refused update
+
+An update can be refused because the session has not viewed the live version.
+The refusal shows a diff between the live version and the sent source, and marks the live version as viewed.
+Read that diff before resending. Resend only when every difference is a change this request makes.
+If the live version holds edits the source lacks, report them and stop: resending would overwrite them.
+A second identical send can be refused again; a third went through in the recorded run.
+
 ## Completion and interruption
 
 Save the artifact URL and source path before closing a disposable session.

@@ -19,6 +19,14 @@ If either is absent, report the missing binary instead of installing it.
      -- claude "$artifact_prompt"
    ```
 
+The artifact belongs to the Claude account that publishes it.
+When the user names an account other than the default, launch through their account or profile launcher.
+A launcher defined as a shell function needs an interactive shell:
+
+```sh
+-- zsh -i -c '<launcher> <account> "$1"' _ "$artifact_prompt"
+```
+
 Use machine scope when the job needs its own working directory.
 Thread-scoped terminals start in the environment directory and do not accept `--cwd`.
 Do not add `-p`: this recipe needs an interactive Claude session.
@@ -37,6 +45,7 @@ If the job remains active, report its state before extending the window.
 Interactive Claude remains open after a turn, so process exit is not the completion signal.
 
 Inspect trust and permission prompts before responding. Trust only the prepared directory after inspecting its contents.
+The folder trust prompt selects "No, exit" by default. Send Down, then Enter in a separate call, to choose "Yes".
 Do not automatically approve broader access or change permission settings to make the recipe pass.
 
 For a follow-up request, send the text and submit it in separate calls:

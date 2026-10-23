@@ -20,6 +20,23 @@ The explicit-request contrast supports that prompt form for this recipe.
 It does not establish a general rule about the permission classifier.
 The result files are Claude-authored reports. The terminal transcript independently shows publish, update, and read tool events.
 
+## Named account and refused update
+
+Observed 2026-10-22 with Claude Code 2.1.303, from BB's terminal CLI.
+
+| Probe | Observation |
+| --- | --- |
+| Launch through a shell-function profile launcher with `zsh -i -c` | Session used the named account; native `Artifact` tool available |
+| Folder trust prompt | Default selection was "No, exit"; Down then Enter trusted the job directory |
+| Create a single-file HTML deck | Published; readback marker found; publish and read version identifiers matched |
+| Update the same URL from a fresh session | First publish refused: live version not viewed, with a live-versus-source diff |
+| Resend the identical source | Refused again, saying a further identical send would go through |
+| Resend a third time | Updated at the same URL; readback matched the source apart from the service wrapper |
+| Open the hosted page | The user saw an external Google Fonts stylesheet render |
+
+The diff contained only the intended change, so the resend overwrote nothing.
+The font observation is one user's screenshot, not a tested guarantee about the artifact sandbox.
+
 ## Limits
 
 The spike does not test browser appearance, counter clicks, capability declarations, remote hosts, or deterministic callbacks.
