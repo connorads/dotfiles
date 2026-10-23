@@ -34,6 +34,10 @@ flowchart LR
 | Running the handoff inside BB | [references/bb.md](references/bb.md) |
 | Checking the recipe's tested scope or changing its commands | [references/evidence.md](references/evidence.md) |
 
+A deck or presentation goes through Claude Slides, not an HTML page.
+Start the interactive session with `/slides <brief>` as its prompt, and pass slide text and images as job files.
+Publishing an HTML deck gives a web page that cannot be edited, presented, or exported as slides.
+
 For feedback, votes, data, or comments, load `artifact-patterns` before building the page.
 That skill owns interaction design; this skill owns publishing and returning the result.
 For page runtime APIs, the publishing Claude session loads its built-in `artifact-capabilities` skill when needed.

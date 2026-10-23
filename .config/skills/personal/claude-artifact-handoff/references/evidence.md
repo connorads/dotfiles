@@ -37,6 +37,21 @@ Observed 2026-10-22 with Claude Code 2.1.303, from BB's terminal CLI.
 The diff contained only the intended change, so the resend overwrote nothing.
 The font observation is one user's screenshot, not a tested guarantee about the artifact sandbox.
 
+## Claude Slides
+
+Observed 2026-10-23 with Claude Code 2.1.303 on a Team account, from BB's terminal CLI.
+
+| Probe | Observation |
+| --- | --- |
+| Launch with `/slides <brief>` as the prompt argument | Slides template ran; the brief pointed at job files for slide text, a reference deck, and SVGs |
+| Images | Claude uploaded 8 SVGs through native `Artifact` upload before writing slides |
+| Build | One HTML file per slide in the session scratchpad, each republished to one URL, so the deck filled in live |
+| Duration | About 5 minutes for 17 slides |
+| Result file | Written as requested, with the URL |
+| Rendering | Claude did not open the deck; it sized text by estimate and named the tightest slides |
+
+The result is the Claude-written report and the terminal's publish events. Nobody checked the rendered slides against the brief.
+
 ## Limits
 
 The spike does not test browser appearance, counter clicks, capability declarations, remote hosts, or deterministic callbacks.
