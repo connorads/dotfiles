@@ -1,0 +1,6 @@
+{
+  "reason": "the macOS Seatbelt agent sandbox blocks the playwright-cli daemon and multi-process Chromium; a single-process Playwright script still works",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}
