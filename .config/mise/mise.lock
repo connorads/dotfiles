@@ -685,7 +685,7 @@ version = "1.6.10"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
-version = "1.26.5"
+version = "1.26.10"
 backend = "npm:firecrawl-cli"
 
 [[tools."npm:hunkdiff"]]
