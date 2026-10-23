@@ -19,6 +19,14 @@ const levels = new Set<string>(['none', 'low', 'medium', 'high', 'xhigh', 'max',
 const isLevel = (value: string): value is ReasoningLevel => levels.has(value);
 
 /** Keys that pick a placement on the main step. Enter is handled apart so a focused row keeps it. */
+const width = 380;
+// Centred near the top. The focus to return to is often the composer, and the
+// popover would otherwise sit under it at the bottom of the window.
+function centred() {
+  const w = Math.min(width, window.innerWidth - 24);
+  return { width: w, top: Math.round(window.innerHeight * 0.15), left: (window.innerWidth - w) / 2, origin: 'top center' };
+}
+
 const placementKeys: Record<string, Placement> = {
   s: 'sidebar', '|': 'right', ArrowRight: 'right', ArrowLeft: 'left', '-': 'down', ArrowDown: 'down', ArrowUp: 'top',
 };
@@ -174,7 +182,7 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
       break;
   }
 
-  return <ChipPopover ref={dialog} aria-label={heading} trigger={() => returnFocus} anchor={null} width={380} instant
+  return <ChipPopover ref={dialog} aria-label={heading} trigger={() => returnFocus} anchor={null} width={width} place={centred} instant
     panelClassName="fork-menu" onClose={onClose} onKeyDown={keyboard}
     onEscape={step.kind === 'main' ? onClose : () => setStep(step.kind === 'effort' ? { kind: 'model' } : { kind: 'main' })}>
     <header className="fork-menu-heading">

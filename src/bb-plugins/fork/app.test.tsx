@@ -261,3 +261,17 @@ test('a second press while forking does not fork twice', async () => {
   expect(calls.map(call => call.method)).toEqual(['fork', 'open']);
   expect(screen.getByRole('status').textContent).toBe('Now in the fork. Original kept in the sidebar.');
 });
+
+test('the menu opens centred near the top, not under the focused composer', async () => {
+  const composer = document.body.appendChild(document.createElement('textarea'));
+  composer.getBoundingClientRect = () => ({ right: 900, bottom: 700 }) as DOMRect;
+  composer.focus();
+  const app = await load(fakeSdk([]));
+  const dialog = await openMenu(app);
+  expect(dialog.style.top).toBe(`${Math.round(window.innerHeight * 0.15)}px`);
+  expect(dialog.style.left).toBe(`${(window.innerWidth - 380) / 2}px`);
+  await press('Escape');
+  await act(async () => { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); });
+  expect(document.activeElement).toBe(composer);
+  composer.remove();
+});
