@@ -71,7 +71,7 @@ promoted*, not in where they come from:
   wrapped around third-party reference material). A source repository may exist even when
   it does not publish an installable Agent Skill; keep any custom, preview-first refresh
   script with that skill. Refresh individually by re-cloning and re-applying; never run
-  `skills update` for this tier. Examples: `govuk-style`, `ponytail`, `bro`.
+  `skills update` for this tier. Examples: `govuk-style`, `bro`, `deepsec`.
 
 **Promotion unit is the deciding axis for a set.** The strongest reason a group earns set
 status is that a set is the unit you `skl install <set>/` into a repo whose stack matches -
@@ -445,6 +445,12 @@ procedure before replacing vetted content.
   The `rea-managed-cli` and `rea-cli-recovery` patches disable MCP setup,
   package-runner downloads and self-updates. Native analysis requires an existing engine.
 
+- `ponytail` is a set of four skills from `DietrichGebert/ponytail` (MIT): the core
+  mode, `ponytail-review`, `ponytail-audit` and `ponytail-debt`. Upstream's `ponytail-gain`
+  (benchmark scoreboard) and `ponytail-help` (plugin command list) are not vendored, nor
+  are its hooks, MCP server or per-host adapters. The skills read no hook state, so they
+  work alone. `LICENSE` sits at the set root for attribution.
+
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
   dotfiles)` in the file). Two classes: **posture** patches strip upstream directives that
   make agents self-install or refresh skills at task time - which bypasses pin-and-review
@@ -470,7 +476,7 @@ procedure before replacing vetted content.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them, and they are **absent from any `skills-lock.json` by design**.
-  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs`,
+  `govuk-style`, `bro`, `deepsec`, `deepsec-docs`,
   `product-description` and `alchemy` live in the manual bucket at `vendor/manual/<name>/`
   (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
   / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
@@ -487,21 +493,6 @@ procedure before replacing vetted content.
   it (the CLI rewrites the URL to `github.com/fofr/505e…git`, which 404s - gists live on a
   different host). Single `SKILL.md`, no scripts; refresh by re-cloning the gist and
   diffing. GOV.UK / GDS house-style prose skill (plain English, sentence case, no bold).
-
-  `ponytail` - a hand-**distilled** lift from
-  [`DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail) (MIT, pinned at
-  `c4d1925`). The "lazy senior dev" YAGNI/minimalism coding mode. Upstream is one good
-  ruleset wrapped in 16 agent-tool adapters (hooks, an MCP server, per-host plugin
-  manifests, benchmarks); none of that is vendored - only the knowledge. The six upstream
-  `skills/` are merged into one: the core `ponytail` mode as `SKILL.md`, the `review` pass
-  (with a whole-repo `audit` variant folded in) and the `debt` pass as `references/*.md`;
-  upstream's separate `audit` skill is collapsed into `review.md` (it was a near-duplicate);
-  the `gain` (benchmark-marketing) and `help`
-  (plugin-command reference) skills are dropped. The always-on/mode-flag/`PONYTAIL_DEFAULT_MODE`
-  runtime prose is trimmed (no hook engine behind it here). **No lock by design** - it's an
-  adaptation, so `skills update` would clobber the merge; refresh by re-cloning upstream and
-  re-applying the same distillation, diffing against this copy. `LICENSE` (MIT) is kept for
-  attribution.
 
   `bro` - from a **tweet** by Dillon Mulroy
   (`x.com/dillon_mulroy/status/2079257150824620312`), so there's no repo/gist for `skills
