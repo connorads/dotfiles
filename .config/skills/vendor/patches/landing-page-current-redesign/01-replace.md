@@ -1,0 +1,1 @@
+**Existing sites.** Use the installed `design-taste-frontend` skill’s existing-page workflow for before/after browser checks. Keep the current stack and working routes, forms and data. Choose the design direction from the user’s brief.

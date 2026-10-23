@@ -1,6 +1,7 @@
 ---
 name: minimalist-ui
-description: Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows.
+description: "Classic style skill, opt-in: it runs only when called by name. Editorial product UI with a warm monochrome palette, typographic contrast and flat bento grids."
+disable-model-invocation: true
 ---
 
 # Protocol: Premium Utilitarian Minimalism UI Architect

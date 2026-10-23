@@ -15,7 +15,7 @@ This skill has two halves. **Part A** decides what the page says and how it is s
 
 Apply to all web UI work: landing pages, marketing sites, components, dashboards, prototypes, and design reviews. When a rule here conflicts with a framework default, this file wins. When the user's explicit prompt conflicts with a rule, the user wins.
 
-**Companion skill.** For upgrading an *existing* site rather than building a new one, use `redesign-existing-projects` ([github.com/elayadesign/redesign-skill](https://github.com/elayadesign/redesign-skill)). It diagnoses generic patterns and defers to this file for every concrete value.
+**Existing sites.** Use the installed `design-taste-frontend` skill’s existing-page workflow for before/after browser checks. Keep the current stack and working routes, forms and data. Choose the design direction from the user’s brief.
 
 ---
 

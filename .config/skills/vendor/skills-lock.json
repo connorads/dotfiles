@@ -191,10 +191,10 @@
       "computedHash": "d843af038a49245369d9a91b8dda531a0d58882bc06623604b673cb144588edd"
     },
     "minimalist-ui": {
-      "source": "leonxlnx/taste-skill",
+      "source": "Leonxlnx/taste-skill-classics",
       "sourceType": "github",
       "skillPath": "skills/minimalist-skill/SKILL.md",
-      "computedHash": "b201c0763796192405cfed7933b55e3dab6d530ca7f06a5e8095063d476635d7"
+      "computedHash": "1e37c8db6ad1589730a035a0298d125d3bafb4b9207c024d37b7638008aa1874"
     },
     "mutation-testing": {
       "source": "citypaul/.dotfiles",
@@ -237,12 +237,6 @@
       "sourceType": "github",
       "skillPath": ".agents/skills/psychopomp/SKILL.md",
       "computedHash": "66df5333b28ecabb044afd5d2be604cbf4db4f62d595b07de5e6730f6e2bfd61"
-    },
-    "redesign-existing-projects": {
-      "source": "leonxlnx/taste-skill",
-      "sourceType": "github",
-      "skillPath": "skills/redesign-skill/SKILL.md",
-      "computedHash": "52f2ade5449b7005942ebd221e53808a245b3e088ff096c44a374e1e481e9f6b"
     },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",

@@ -1,0 +1,6 @@
+{
+  "reason": "Existing-site guidance uses the retained design-taste-frontend workflow after upstream retires the standalone redesign skill.",
+  "files": [
+    ".agents/skills/landing-page-design/SKILL.md"
+  ]
+}
