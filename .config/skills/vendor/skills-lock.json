@@ -68,7 +68,7 @@
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
-      "computedHash": "a5d2a6d7613d5f6665997cca26d5a3472c46a39857dd34ba3329212945da0dc7"
+      "computedHash": "69021ac7e671c0c0d85d65b570003cef360b1c296323fa28c042884e146478ca"
     },
     "diagram-design": {
       "source": "cathrynlavery/diagram-design",
@@ -128,7 +128,7 @@
       "source": "github/gh-stack",
       "sourceType": "github",
       "skillPath": "skills/gh-stack/SKILL.md",
-      "computedHash": "6a5289601eedbeedc2d79c2d8627277afb9b9a3fbd78b4da3399a46dd788ae0a"
+      "computedHash": "15d9ce292d8b90b097463c8c3232fdc61f93474add776235245326de532fef2e"
     },
     "humanizer": {
       "source": "blader/humanizer",
@@ -248,7 +248,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "fdfb39ef37810d696513590da2a833694825084a15c5e3c34b1b6c55f217e3b3"
+      "computedHash": "92e53378d50fe2309923f2f67b0a120d86619441ae6f12f8c7ee1e503ffd4144"
     },
     "reverse-engineer-anything": {
       "source": "morluto/rea",

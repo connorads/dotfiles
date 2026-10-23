@@ -1,17 +1,23 @@
-// Profiles from runs that were killed before close(): removed once no Chrome holds them (a running
-// Chrome keeps the profile's lockfile open) and they are a few minutes old.
-function sweepProfiles(base) {
-  try {
-    const cutoff = Date.now() - 3 * 60 * 1000;
-    for (const name of readdirSync(base)) {
-      if (!name.startsWith('ad-chrome-')) continue;
-      const p = join(base, name);
-      try {
-        if (statSync(p).mtimeMs > cutoff) continue;
-        const lock = join(p, 'lockfile');
-        if (existsSync(lock)) closeSync(openSync(lock, 'r+')); // throws while a Chrome holds it
-        rmSync(p, { recursive: true, force: true });
-      } catch {}
-    }
-  } catch {}
+// Each profile carries an owner file naming the machine and the two processes that use it (the run and
+// its Chrome). A later run removes a profile left by a killed run only when that file names this machine
+// and neither process is alive. A profile without one (made before 2.1.4, or by another tool) is never touched.
+const OWNER = 'taste-skill-owner.json';
+
+function alive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
+}
+
+export function sweepProfiles(base) {
+  let names;
+  try { names = readdirSync(base); } catch { return; }
+  for (const name of names) {
+    if (!name.startsWith('ad-chrome-')) continue;
+    const p = join(base, name);
+    try {
+      const o = JSON.parse(readFileSync(join(p, OWNER), 'utf8'));
+      if (o.host !== hostname() || !Number.isInteger(o.pid) || alive(o.pid) || alive(o.chrome)) continue;
+      rmSync(p, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    } catch {}
+  }
 }
