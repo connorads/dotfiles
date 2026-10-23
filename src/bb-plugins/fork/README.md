@@ -22,3 +22,20 @@ Commands and message actions get no SDK client. An app overlay lends them its
 One fork runs at a time, so a repeated key press does not fork twice.
 
 Run `pnpm test`, `pnpm typecheck`, and `pnpm build` from this directory.
+
+## Split chat keyboard scrolling
+
+Click conversation text or Tab into a numbered **Conversation** region. PageUp,
+PageDown and arrow keys then scroll that chat. A keyboard focus outline marks
+its viewport. Composer keys retain their editing behaviour.
+
+Fork opens stock BB thread views. A content script adds a named tab stop to
+stock split chat viewports under `[data-split-pane-id][data-focused]` and
+`[data-thread-window]`. It preserves native accessibility attributes and removes
+its additions on disposal or when a viewport leaves the split. This shared
+surface includes ordinary split threads as well as forks. Sidebar-only forks
+use the stock single-pane view, which this workaround leaves unchanged.
+
+The selectors depend on observed BB markup. Unknown layouts receive no decoration.
+The scrollbar stays visible while the conversation is hovered or contains focus.
+Outside those states, stock BB controls its fade.

@@ -44,6 +44,27 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   BB file reads returned `ENOENT` for workspace-relative candidates and succeeded for the absolute worktree destination.
   Checked with a synthetic description here; private file names and workspace paths are omitted.
 
+### Split chat viewport has no keyboard focus target
+
+- Found: 2026-10-23, fork, installed desktop frontend, SDK 0.6.49
+- Wanted: Scroll a split conversation with PageUp, PageDown and arrow keys after clicking chat text or using Tab.
+- Gap: Stock split panes focus a `tabindex="-1"` wrapper when clicking non-focusable chat content.
+  The inner `[data-page-scroll-viewport].thread-scrollbar` has no tab stop, role or accessible name.
+  Native keyboard scrolling then has no scrollable ancestor of the focused wrapper.
+  Fork calls `threads.open({ split })`; its notice overlay does not render conversation content.
+- Workaround: [Fork content script](../fork/chat-scroll.ts) adds absent focus and naming attributes only within observed split conversation panes.
+  Numbered Conversation labels distinguish the split regions and follow pane order.
+  Native browser scrolling handles the keys. Scoped CSS shows the scrollbar on hover or focus.
+  The script preserves composer focus and restores its attributes on disposal.
+  The shared stock surface also covers ordinary split threads. Single-pane views remain unchanged.
+- Ask: Give stock conversation viewports a named keyboard focus target and visible focus, preserve that target through pane pointer handling, and expose the scrollbar on hover or focus.
+- Status: open
+- Category: app-bug
+- Evidence: Live split click focused the pane wrapper; PageDown and both arrows left `scrollTop` unchanged at 1000.
+  Adding `tabindex="0"` made the viewport retain click focus. PageUp/PageDown moved 616 pixels; arrows moved 40 pixels.
+  Installed `SplitWorkspaceRoute`, `page-shell` and `bottom-anchored-scroll-body` frontend bundles confirm the wrapper and viewport contracts.
+  Core CSS makes the scrollbar transparent until `data-scrollbar-scrolling="true"`; selection dragging can reveal it through native scrolling.
+
 ### Commands and message actions get no SDK client or toast
 
 - Found: 2026-10-22, fork, SDK 0.6.37

@@ -1,10 +1,12 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { definePluginApp, experimental_THREAD_ACTION_GROUPS, useSdk } from '@get-bb/plugin-sdk/app';
 import { CHOICES, createForker, planForChoice } from './fork.ts';
+import { mountChatScroll } from './chat-scroll.ts';
 import './app.css';
 
 export default definePluginApp(app => {
   const forker = createForker();
+  app.contentScripts.register({ id: 'chat-scroll', mount: () => mountChatScroll(document) });
 
   // Commands and message actions get no SDK client, and BB only logs their errors.
   // This overlay lends them its client and shows fork progress and failures.

@@ -17,3 +17,16 @@
 .fork-notice-error {
   border-color: color-mix(in oklab, #e5484d 60%, transparent);
 }
+
+[data-fork-chat-scroll]:focus-visible {
+  outline: 2px solid var(--ring, currentColor);
+  outline-offset: -2px;
+}
+
+[data-fork-chat-scroll]:is(:hover, :focus-within) {
+  scrollbar-color: color-mix(in oklab, var(--foreground) 40%, transparent) transparent;
+}
+
+[data-fork-chat-scroll]:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+}
