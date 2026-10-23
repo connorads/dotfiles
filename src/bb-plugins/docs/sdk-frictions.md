@@ -219,6 +219,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: `claude-profiles/ui/badges/workflows.ts`, @thread:thr_m6h4c8ja5e
 
+### Workflow running calls have no live timing
+
+- Found: 2026-10-23, workflow-timers, SDK 0.6.37
+- Wanted: See how long a running workflow agent has run, and whether it has stalled.
+- Gap: Running call rows render no duration. The run header elapsed text renders once and changes only on refresh.
+  `workflowRunView` calls expose `startedAt` but no activity time. `workflow_calls.last_activity_at` is written only at start, retry, result and finish.
+- Workaround: [timers.ts](../workflow-timers/timers.ts) appends a ticking timer to running preview rows.
+  [bridge.tsx](../workflow-timers/bridge.tsx) reads the latest worker thread event through `sdk.threads.events.list` for a quiet label.
+  Rows join to calls by unique label, as in the worker row accessories entry.
+- Ask: Render a live elapsed timer on running call rows and the run header. Add a `lastActivityAt` per call, updated from child thread events.
+- Status: open
+- Category: sdk-gap
+- Evidence: Workflows `app.js` call row renders duration only when `startedAt` and `finishedAt` are set; `server.js` `last_activity_at` writes.
+
 ### Content scripts cannot call plugin RPC or realtime
 
 - Found: 2026-10-18, claude-profiles, SDK 0.6.37

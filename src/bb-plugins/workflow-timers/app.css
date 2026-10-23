@@ -1,0 +1,13 @@
+.wt-live {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.wt-live .wt-elapsed { color: var(--foreground); }
+.wt-quiet {
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--warning-text, var(--warning));
+}
+.wt-quiet:empty { display: none; }
+.wt-live[data-quiet="stall"] .wt-quiet { color: var(--destructive-text, var(--destructive)); }

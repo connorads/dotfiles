@@ -164,6 +164,12 @@ Assistant times represent the message start.
 
 UI decorations use [plugin content scripts](docs/dom-decorations.md) with stock BB.
 
+## Workflow timers
+
+[Workflow Timers](workflow-timers/README.md) shows live elapsed time on running
+workflow agents. A `quiet Nm` label warns when an agent's thread records no
+event for two minutes, and turns red at ten.
+
 ## Run commands from chat
 
 [Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat

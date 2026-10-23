@@ -20,5 +20,6 @@
   "shortcut-guide": true,
   "skill-loader": true,
   "terminal-tweaks": true,
+  "workflow-timers": true,
   "workflows": true
 }
