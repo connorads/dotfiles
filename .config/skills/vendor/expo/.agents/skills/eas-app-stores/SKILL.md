@@ -167,10 +167,7 @@ eas submit:view SUBMISSION_ID --json
 
 Check the CLI version before interpreting a missing command: these submission commands are available in 23.2.0 but not in the tested 18.6.0 installation. A pinned `eas` invocation can use them without changing the global installation. See `references/testflight.md` for live Apple status and retry guidance. Follow the returned log URLs when the JSON result omits the underlying failure. Report the exact build ID/version and the furthest verified release state.
 
-## Submitting Feedback
-If you encounter errors, misleading or outdated information in this skill, report it so Expo can improve:
-```bash
-pnpm dlx submit-expo-feedback@<verified-version> --category skills --subject "eas-app-stores" "<actionable feedback>"
-```
-Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
-<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.
+## Feedback
+
+<!-- LOCAL PATCH (connorads dotfiles): Feedback requires an explicit user request and an installed, reviewed tool; preserve credentials and private task content. -->
+Report errors in the task summary. Send feedback only when the user explicitly requests it through an installed, reviewed feedback tool. Preserve credentials and private task content.

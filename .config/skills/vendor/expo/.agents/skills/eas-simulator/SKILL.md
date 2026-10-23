@@ -234,5 +234,5 @@ Source of truth: Expo docs and the `eas` / `agent-device` CLIs (`eas simulator:*
 
 ## Feedback
 
+<!-- LOCAL PATCH (connorads dotfiles): Feedback requires an explicit user request and an installed, reviewed tool; preserve credentials and private task content. -->
 Report errors in the task summary. Send feedback only when the user explicitly requests it through an installed, reviewed feedback tool. Preserve credentials and private task content.
-<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.

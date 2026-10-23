@@ -422,10 +422,7 @@ export async function GET(request: Request) {
 - Use TypeScript for type safety
 - Log errors server-side for debugging
 
-## Submitting Feedback
-If you encounter errors, misleading or outdated information in this skill, report it so Expo can improve:
-```bash
-pnpm dlx submit-expo-feedback@<verified-version> --category skills --subject "eas-hosting" "<actionable feedback>"
-```
-Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
-<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.
+## Feedback
+
+<!-- LOCAL PATCH (connorads dotfiles): Feedback requires an explicit user request and an installed, reviewed tool; preserve credentials and private task content. -->
+Report errors in the task summary. Send feedback only when the user explicitly requests it through an installed, reviewed feedback tool. Preserve credentials and private task content.

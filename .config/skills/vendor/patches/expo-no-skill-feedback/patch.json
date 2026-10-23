@@ -1,5 +1,5 @@
 {
-  "reason": "upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent.",
+  "reason": "Feedback requires an explicit user request and an installed, reviewed tool; preserve credentials and private task content.",
   "files": [
     "expo/.agents/skills/{{skill}}/SKILL.md"
   ],

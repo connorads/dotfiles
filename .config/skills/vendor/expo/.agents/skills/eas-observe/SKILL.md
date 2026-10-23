@@ -1,7 +1,7 @@
 ---
 name: eas-observe
 description: Use for anything related to EAS Observe - adding `expo-observe` to an Expo project (AppMetricsRoot/ObserveRoot HOC, markInteractive and ObserveInteractiveMarker, the useObserve hook, the Expo Router / React Navigation integrations for per-route metrics, user-defined events via `Observe.logEvent`, error reporting via ObserveErrorBoundary and `Observe.reportError`, native crash reporting, source map upload for symbolicated stack traces, and runtime config such as sampleRate and dispatchInDebug), querying via the EAS CLI (`eas observe:metrics-summary`, `observe:metrics`, `observe:routes`, `observe:events`, `observe:session`, `observe:versions`, `observe:errors`, `observe:event`), interpreting the resulting metrics (cold/warm launch, TTR, TTI, navigation cold/warm TTR, update download, and the TTI frameRate/device/network params for triaging slow startups), or shipping an Observe integration inside a third-party package.
-version: 1.2.0
+version: 1.2.1
 license: MIT
 ---
 
@@ -37,10 +37,7 @@ The four reference files in `./references/` cover what people typically need thi
 - EAS Update download performance: https://docs.expo.dev/eas/observe/eas-update/
 - Troubleshooting: https://docs.expo.dev/eas/observe/reference/troubleshooting/
 
-## Submitting Feedback
-If you encounter errors, misleading or outdated information in this skill, report it so Expo can improve:
-```bash
-npx --yes submit-expo-feedback@latest --category skills --subject "eas-observe" "<actionable feedback>"
-```
-Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
-<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.
+## Feedback
+
+<!-- LOCAL PATCH (connorads dotfiles): Feedback requires an explicit user request and an installed, reviewed tool; preserve credentials and private task content. -->
+Report errors in the task summary. Send feedback only when the user explicitly requests it through an installed, reviewed feedback tool. Preserve credentials and private task content.
