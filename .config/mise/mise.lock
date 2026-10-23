@@ -692,6 +692,13 @@ backend = "npm:firecrawl-cli"
 version = "0.23.0"
 backend = "npm:hunkdiff"
 
+[[tools."npm:hyperframes"]]
+version = "0.8.174"
+backend = "npm:hyperframes"
+
+[tools."npm:hyperframes".options]
+trust_policy_excludes = '["chromium-bidi@157.0.8090-0"]'
+
 [[tools."npm:lavish-axi"]]
 version = "0.1.89"
 backend = "npm:lavish-axi"
