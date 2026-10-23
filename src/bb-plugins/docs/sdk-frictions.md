@@ -27,6 +27,22 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Markdown filename autolinks lack the file's working directory
+
+- Found: 2026-10-23, installed BB desktop frontend
+- Wanted: Open a Markdown file mentioned by an agent working in a separate worktree.
+- Gap: Inline code ending in `.md` or `.markdown` becomes a file link without an existence check.
+  Message-relative links use the thread workspace as both `baseDir` and `rootPath`.
+  A shell command's working directory does not supply that link's base directory.
+- Workaround: Agents emit explicit Markdown links with verified absolute file destinations.
+- Ask: Show the resolved destination on missing-file errors and avoid presenting nonexistent filename autolinks as verified files.
+  Explicit destinations remain necessary when a message does not identify a unique working directory.
+- Status: open. Path lookup contrast verified through BB's file API; UI click replay remains untested.
+- Category: app-bug
+- Evidence: Installed `ThreadTimelineNavigationContext-*.js` message routing and `markdown-preview-*.js` inline-code conversion.
+  BB file reads returned `ENOENT` for workspace-relative candidates and succeeded for the absolute worktree destination.
+  Checked with a synthetic description here; private file names and workspace paths are omitted.
+
 ### Commands and message actions get no SDK client or toast
 
 - Found: 2026-10-22, fork, SDK 0.6.37
