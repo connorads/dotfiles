@@ -67,6 +67,7 @@
       "bitwarden"
       "chatgpt"
       "claude"
+      "amp-app"
       "blender"
       "comfy"
       "gimp"
