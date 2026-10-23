@@ -118,10 +118,8 @@ function doneMessage(plan: ForkPlan, forks: Forked[], openPanel: OpenPanel): str
 }
 
 // One fork at a time: a held or repeated shortcut would otherwise clone the session twice.
-interface ForkClient { sdk: ForkSdk; openPanel: OpenPanel }
-
 export function createForker() {
-  let client: ForkClient | null = null;
+  let attached: ForkSdk | null = null;
   let notice: Notice = null;
   let busy = false;
   const listeners = new Set<() => void>();
@@ -130,9 +128,9 @@ export function createForker() {
     for (const listener of listeners) listener();
   };
   return {
-    attach(next: ForkClient) {
-      client = next;
-      return () => { if (client === next) client = null; };
+    attach(next: ForkSdk) {
+      attached = next;
+      return () => { if (attached === next) attached = null; };
     },
     subscribe: (listener: () => void) => {
       listeners.add(listener);
@@ -141,12 +139,10 @@ export function createForker() {
     notice: () => notice,
     show,
     dismiss: () => show(null),
-    /** `using` replaces parts of the overlay's client, for callers that bring their own. */
-    async run(plan: ForkPlan, using: Partial<ForkClient> = {}): Promise<void> {
+    /** `openPanel` comes from the caller: only BB's action contexts reach the focused thread's side panel. */
+    async run(plan: ForkPlan, openPanel: OpenPanel, sdk = attached): Promise<void> {
       if (busy) return;
-      const sdk = using.sdk ?? client?.sdk;
-      const openPanel = using.openPanel ?? client?.openPanel;
-      if (!sdk || !openPanel) return show({ kind: 'error', message: 'Fork is still loading. Try again.' });
+      if (!sdk) return show({ kind: 'error', message: 'Fork is still loading. Try again.' });
       busy = true;
       show({ kind: 'busy' });
       try {

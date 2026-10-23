@@ -5,6 +5,8 @@ import { loadPluginApp, renderSlot, type CapturedPluginApp, type RenderedSlot } 
 
 let slot: RenderedSlot | undefined;
 let copied: string[] = [];
+let panels: unknown[] = [];
+let panelAccepts = true;
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
@@ -12,6 +14,8 @@ beforeAll(() => {
 beforeEach(() => {
   localStorage.clear();
   copied = [];
+  panels = [];
+  panelAccepts = true;
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: async (text: string) => { copied.push(text); } },
@@ -20,7 +24,10 @@ beforeEach(() => {
 afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; });
 
 interface Call { method: string; args: unknown }
-interface Command { id: string; defaultShortcut?: unknown; run(context: { threadId: string | null }): unknown }
+interface Command { id: string; defaultShortcut?: unknown; run(context: unknown): unknown }
+// A BB action context: its openPanel reaches the focused thread's side panel.
+const context = (extra: object = {}) =>
+  ({ threadId: 'src', projectId: null, openPanel: (options: unknown) => { panels.push(options); return panelAccepts; }, ...extra });
 
 const models = {
   modelLoadError: null,
@@ -48,9 +55,9 @@ function fakeSdk(calls: Call[], fork: (args: unknown) => Promise<{ id: string; t
   };
 }
 
-async function load(sdk: ReturnType<typeof fakeSdk>, openThreadPanel: (options: unknown) => boolean = () => true) {
+async function load(sdk: ReturnType<typeof fakeSdk>) {
   const app = await loadPluginApp(() => import('./app.tsx'));
-  slot = renderSlot(app.appOverlays[0]!, {}, { sdk: sdk as never, openThreadPanel });
+  slot = renderSlot(app.appOverlays[0]!, {}, { sdk: sdk as never, openThreadPanel: () => false });
   return app;
 }
 
@@ -64,7 +71,7 @@ function threadAction(app: CapturedPluginApp, sdk: ReturnType<typeof fakeSdk>, o
 }
 
 async function openMenu(app: CapturedPluginApp) {
-  await act(async () => { await command(app, 'menu').run({ threadId: 'src' }); });
+  await act(async () => { await command(app, 'menu').run(context()); });
   return screen.getByRole('dialog', { name: 'Fork thread' });
 }
 const press = (key: string) => act(async () => { fireEvent.keyDown(document.activeElement ?? document.body, { key }); });
@@ -99,20 +106,19 @@ test.each([
   ]);
 });
 
-const panelOpens = () => slot!.inspection.navigateCalls.filter(call => call.method === 'openThreadPanel').map(call => call.options);
-
 test('s opens the fork in a side panel tab beside this thread', async () => {
   const calls: Call[] = [];
   const app = await load(fakeSdk(calls));
   await openMenu(app);
   await press('s');
   expect(calls.map(call => call.method)).toEqual(['fork']);
-  expect(panelOpens()).toEqual([{ actionId: 'fork', title: '(1) Plan', params: { threadId: 'fork1' } }]);
+  expect(panels).toEqual([{ actionId: 'fork', title: '(1) Plan', params: { threadId: 'fork1' } }]);
   expect(screen.queryByRole('status')).toBeNull();
 });
 
 test('s says where the fork went when BB has no side panel', async () => {
-  const app = await load(fakeSdk([]), () => false);
+  panelAccepts = false;
+  const app = await load(fakeSdk([]));
   await openMenu(app);
   await press('s');
   await waitFor(() => expect(screen.getByRole('status').textContent).toBe('No side panel here. The fork is in the sidebar.'));
@@ -224,7 +230,7 @@ test('Fork from here opens the menu anchored on the message', async () => {
   const calls: Call[] = [];
   const app = await load(fakeSdk(calls));
   const action = app.messageActions.find(a => a.id === 'fork-here')!;
-  await act(async () => { await action.run({ threadId: 'src', message: { sourceSeqEnd: 42 } } as never); });
+  await act(async () => { await action.run(context({ message: { sourceSeqEnd: 42 } }) as never); });
   expect(screen.getByRole('dialog', { name: 'Fork from this message' })).toBeTruthy();
   await press('s');
   expect(calls[0]).toEqual({ method: 'fork', args: { sourceThreadId: 'src', sourceSeqEnd: 42 } });
@@ -234,7 +240,7 @@ test('Alt+Shift+B repeats the last placement, worktree and count but not model o
   const calls: Call[] = [];
   const app = await load(fakeSdk(calls));
   expect(command(app, 'repeat').defaultShortcut).toMatchObject({ key: 'B', alt: true, shift: true });
-  await act(async () => { await command(app, 'repeat').run({ threadId: 'src' }); });
+  await act(async () => { await command(app, 'repeat').run(context()); });
   expect(calls.map(call => call.method)).toEqual(['fork', 'open']);
   expect(calls[1]?.args).toMatchObject({ split: 'replace' });
 
@@ -245,7 +251,7 @@ test('Alt+Shift+B repeats the last placement, worktree and count but not model o
   await press('Enter');
   await press('-');
   calls.length = 0;
-  await act(async () => { await command(app, 'repeat').run({ threadId: 'src' }); });
+  await act(async () => { await command(app, 'repeat').run(context()); });
   expect(calls.map(call => call.method)).toEqual(['fork', 'open', 'fork', 'open']);
   expect(calls[1]?.args).toMatchObject({ split: 'down' });
 });
@@ -281,7 +287,7 @@ test('the worktree choice branches a fresh worktree on the source machine', asyn
 test('a failed fork shows why', async () => {
   const calls: Call[] = [];
   const app = await load(fakeSdk(calls, async () => { throw new Error('provider cannot fork mid-turn'); }));
-  await act(() => command(app, 'repeat').run({ threadId: 'src' }) as Promise<void>);
+  await act(() => command(app, 'repeat').run(context()) as Promise<void>);
   expect(screen.getByRole('alert').textContent).toBe('Fork failed: provider cannot fork mid-turn');
 });
 
@@ -289,9 +295,9 @@ test('a second press while forking does not fork twice', async () => {
   const calls: Call[] = [];
   let finish!: (value: { id: string; title: string | null }) => void;
   const app = await load(fakeSdk(calls, () => new Promise(resolve => { finish = resolve; })));
-  const first = command(app, 'repeat').run({ threadId: 'src' }) as Promise<void>;
+  const first = command(app, 'repeat').run(context()) as Promise<void>;
   await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Forking…'));
-  await command(app, 'repeat').run({ threadId: 'src' });
+  await command(app, 'repeat').run(context());
   await act(async () => { finish({ id: 'fork1', title: null }); await first; });
   expect(calls.map(call => call.method)).toEqual(['fork', 'open']);
   expect(screen.getByRole('status').textContent).toBe('Now in the fork. Original kept in the sidebar.');
