@@ -1,6 +1,6 @@
 import type { PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
 
-/** Where a fork opens. `switch` shows it in the focused pane; `sidebar` opens nothing but shows the sidebar. */
+/** Where a fork opens. `switch` shows it in the focused pane; `sidebar` opens it in the focused thread's side panel. */
 export type Placement = 'switch' | 'right' | 'left' | 'down' | 'top' | 'sidebar';
 
 export type ReasoningLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' | 'ultracode';
@@ -32,7 +32,7 @@ export const CHOICES = [
   { id: 'switch', label: 'Switch to fork', icon: 'Fork' },
   { id: 'right', label: 'Split right', icon: 'Columns2' },
   { id: 'down', label: 'Split down', icon: 'Rows2' },
-  { id: 'sidebar', label: 'Sidebar only', icon: 'Fork' },
+  { id: 'sidebar', label: 'Side panel', icon: 'SideChat' },
   { id: 'worktree', label: 'New worktree, split right', icon: 'GitBranch' },
 ] as const;
 
@@ -51,6 +51,9 @@ export function planForChoice(sourceThreadId: string, choice: string | undefined
 }
 
 export interface Forked { id: string; title: string | null }
+
+/** Shows a fork in a side panel tab; false when BB has no side panel to open. */
+export type OpenPanel = (fork: Forked) => boolean;
 
 export async function forkThread(sdk: ForkSdk, plan: ForkPlan): Promise<Forked[]> {
   const environment = plan.worktree ? await worktreeOnSourceMachine(sdk, plan.sourceThreadId) : undefined;
@@ -102,21 +105,23 @@ export type Notice =
   | { kind: 'error'; message: string }
   | null;
 
-function doneMessage(plan: ForkPlan, forks: Forked[]): string | null {
+function doneMessage(plan: ForkPlan, forks: Forked[], openPanel: OpenPanel): string | null {
+  if (plan.placement === 'sidebar') {
+    // Open every tab before reporting; a decline leaves that fork in the sidebar only.
+    const declined = forks.map(openPanel).filter(opened => !opened).length;
+    if (declined) return `No side panel here. ${declined === 1 ? 'The fork is' : `${declined} forks are`} in the sidebar.`;
+  }
   if (plan.placement !== 'switch') return forks.length > 1 ? `Made ${forks.length} forks.` : null;
   const title = forks[0]?.title;
   const extra = forks.length > 1 ? ` ${forks.length - 1} more in the sidebar.` : '';
   return `Now in ${title ? `fork ${title}` : 'the fork'}. Original kept in the sidebar.${extra}`;
 }
 
-// The SDK cannot run `sidebar.toggle`, so press stock BB's trigger. `aria-expanded` is false while the sidebar is hidden.
-function showSidebar() {
-  globalThis.document?.querySelector<HTMLButtonElement>('button[data-sidebar="trigger"][aria-expanded="false"]')?.click();
-}
-
 // One fork at a time: a held or repeated shortcut would otherwise clone the session twice.
+interface ForkClient { sdk: ForkSdk; openPanel: OpenPanel }
+
 export function createForker() {
-  let sdk: ForkSdk | null = null;
+  let client: ForkClient | null = null;
   let notice: Notice = null;
   let busy = false;
   const listeners = new Set<() => void>();
@@ -125,9 +130,9 @@ export function createForker() {
     for (const listener of listeners) listener();
   };
   return {
-    attach(next: ForkSdk) {
-      sdk = next;
-      return () => { if (sdk === next) sdk = null; };
+    attach(next: ForkClient) {
+      client = next;
+      return () => { if (client === next) client = null; };
     },
     subscribe: (listener: () => void) => {
       listeners.add(listener);
@@ -136,14 +141,16 @@ export function createForker() {
     notice: () => notice,
     show,
     dismiss: () => show(null),
-    async run(plan: ForkPlan, client: ForkSdk | null = sdk): Promise<void> {
+    /** `using` replaces parts of the overlay's client, for callers that bring their own. */
+    async run(plan: ForkPlan, using: Partial<ForkClient> = {}): Promise<void> {
       if (busy) return;
-      if (!client) return show({ kind: 'error', message: 'Fork is still loading. Try again.' });
+      const sdk = using.sdk ?? client?.sdk;
+      const openPanel = using.openPanel ?? client?.openPanel;
+      if (!sdk || !openPanel) return show({ kind: 'error', message: 'Fork is still loading. Try again.' });
       busy = true;
       show({ kind: 'busy' });
       try {
-        const message = doneMessage(plan, await forkThread(client, plan));
-        if (plan.placement === 'sidebar') showSidebar();
+        const message = doneMessage(plan, await forkThread(sdk, plan), openPanel);
         show(message ? { kind: 'info', message } : null);
       } catch (cause) {
         show({ kind: 'error', message: cause instanceof Error ? cause.message : String(cause) });

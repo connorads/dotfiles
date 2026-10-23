@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { definePluginApp, experimental_THREAD_ACTION_GROUPS, useSdk } from '@get-bb/plugin-sdk/app';
-import { CHOICES, MAX_COUNT, createForker, planForChoice, type ForkPlan, type Placement } from './fork.ts';
+import { ThreadChat, definePluginApp, experimental_THREAD_ACTION_GROUPS, useBbNavigate, useSdk, type BbNavigate, type PluginThreadPanelProps } from '@get-bb/plugin-sdk/app';
+import { CHOICES, MAX_COUNT, createForker, planForChoice, type ForkPlan, type OpenPanel, type Placement } from './fork.ts';
 import { ForkMenu, type MenuSource } from './menu.tsx';
 import { mountChatScroll } from './chat-scroll.ts';
 import './app.css';
@@ -24,6 +24,17 @@ function saveRepeat({ placement, worktree, count }: ForkPlan) {
   try { localStorage.setItem(repeatKey, JSON.stringify({ placement, worktree, ...(count ? { count } : {}) })); } catch { /* Not remembered. */ }
 }
 
+const panelId = 'fork';
+// Commands and thread menus open the panel in the focused thread view, like side chat's replies.
+const panelOpener = (navigate: BbNavigate): OpenPanel => fork =>
+  navigate.openThreadPanel({ actionId: panelId, title: fork.title ?? 'Fork', params: { threadId: fork.id } });
+
+function ForkPanel({ params }: PluginThreadPanelProps) {
+  const threadId = params && typeof params === 'object' && !Array.isArray(params) ? params.threadId : null;
+  if (typeof threadId !== 'string') return <p role="alert" className="fork-panel-missing">This fork tab has lost its thread.</p>;
+  return <ThreadChat threadId={threadId} variant="compact" layout="contained" permissionPolicy="editable" className="fork-panel" />;
+}
+
 export default definePluginApp(app => {
   const forker = createForker();
   app.contentScripts.register({ id: 'chat-scroll', mount: () => mountChatScroll(document) });
@@ -36,13 +47,14 @@ export default definePluginApp(app => {
   const openMenu = (source: MenuSource) =>
     setOpened({ source, focus: document.activeElement instanceof HTMLElement ? document.activeElement : null });
 
-  const fork = (plan: ForkPlan) => { saveRepeat(plan); return forker.run(plan); };
+  const fork = (plan: ForkPlan, openPanel?: OpenPanel) => { saveRepeat(plan); return forker.run(plan, openPanel ? { openPanel } : {}); };
 
   // Commands and message actions get no SDK client, and BB only logs their errors.
   // This overlay lends them its client, hosts the menu and shows fork progress and failures.
   function Overlay() {
     const sdk = useSdk();
-    useEffect(() => forker.attach(sdk), [sdk]);
+    const navigate = useBbNavigate();
+    useEffect(() => forker.attach({ sdk, openPanel: panelOpener(navigate) }), [sdk, navigate]);
     const notice = useSyncExternalStore(forker.subscribe, forker.notice);
     const menu = useSyncExternalStore(subscribeMenu, () => opened);
     useEffect(() => {
@@ -91,19 +103,31 @@ export default definePluginApp(app => {
     run: ({ threadId, message }) => openMenu({ threadId, sourceSeqEnd: message.sourceSeqEnd }),
   });
 
+  // The panel launcher's entry forks the panel's thread into a new tab.
+  app.slots.threadPanelAction({
+    id: panelId,
+    title: 'Fork',
+    icon: 'Fork',
+    component: ForkPanel,
+    layout: 'flush',
+    run: context =>
+      fork({ sourceThreadId: context.threadId, placement: 'sidebar', worktree: false },
+        forked => context.openPanel({ title: forked.title ?? 'Fork', params: { threadId: forked.id } })),
+  });
+
   app.slots.experimental_threadAction({
     id: 'fork',
     title: 'Fork',
     icon: 'Fork',
     group: experimental_THREAD_ACTION_GROUPS.open,
     order: 100,
-    item: ({ thread, sdk }) => ({
+    item: ({ thread, sdk, navigate }) => ({
       label: 'Fork',
       icon: 'Fork',
       choices: { items: CHOICES },
       run: ({ value }) => {
         const plan = planForChoice(thread.id, value);
-        return plan ? forker.run(plan, sdk) : undefined;
+        return plan ? forker.run(plan, { sdk, openPanel: panelOpener(navigate) }) : undefined;
       },
     }),
   });

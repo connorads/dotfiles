@@ -140,7 +140,7 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
       body = <>
         <div className="fork-menu-group">
           <Row keys="⏎" label="Switch to fork" onPick={() => run('switch')} />
-          <Row keys="s" label="Sidebar only" detail="stay here" onPick={() => run('sidebar')} />
+          <Row keys="s" label="Side panel" detail="stay here, fork beside" onPick={() => run('sidebar')} />
           <Row keys="| →" label="Split right" onPick={() => run('right')} />
           <Row keys="←" label="Split left" onPick={() => run('left')} />
           <Row keys="- ↓" label="Split down" onPick={() => run('down')} />

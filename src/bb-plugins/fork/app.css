@@ -70,3 +70,6 @@
   color: var(--foreground);
   font: inherit;
 }
+
+.fork-panel { min-height: 0; height: 100%; }
+.fork-panel-missing { margin: 0; padding: 12px; color: var(--muted-foreground); font-size: 13px; }

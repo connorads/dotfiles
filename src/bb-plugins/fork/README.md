@@ -8,11 +8,12 @@ Side chat takes only quoted text. A fork clones the provider session.
 | `Alt+B` | Open the fork menu for the focused thread | Pick a key below |
 | `Alt+Shift+B` | Fork like last time | Last placement, worktree and count; Switch to fork at first |
 | Message bar **Fork from here** | Open the fork menu at that message | Pick a key below |
-| Thread menu **Fork** | Switch to fork, Split right, Split down, Sidebar only, New worktree | As named |
+| Side panel **+** → **Fork** | Fork this thread into a new panel tab | Like side chat |
+| Thread menu **Fork** | Switch to fork, Split right, Split down, Side panel, New worktree | As named |
 
 ```text
 ⏎      Switch to fork: the focused pane shows the fork; the original stays in the sidebar
-s      Sidebar only: fork, stay where you are and show the sidebar
+s      Side panel: stay here; the fork opens in this thread's side panel
 | →    Split right        ←  Split left
 - ↓    Split down         ↑  Split up
 2–8    Fork count         w  New worktree (toggle)
@@ -24,6 +25,10 @@ Count, worktree, model and prompt are options. Set them first, then press a
 placement key. With a count, Switch to fork shows the first fork and leaves the
 rest in the sidebar. Escape leaves a step, then closes the menu. Tab moves
 between rows.
+
+Side panel opens each fork as a tab in the focused thread's side panel, like
+side chat. Unlike a side chat, the fork is a full thread and stays in the sidebar.
+Where BB has no side panel, a notice says the fork is in the sidebar.
 
 A model choice is set on the fork before its first prompt, so the first turn
 uses it. `Alt+Shift+B` does not repeat a model or prompt. Rebind both keys in
@@ -53,8 +58,8 @@ Fork opens stock BB thread views. A content script adds a named tab stop to
 stock split chat viewports under `[data-split-pane-id][data-focused]` and
 `[data-thread-window]`. It preserves native accessibility attributes and removes
 its additions on disposal or when a viewport leaves the split. This shared
-surface includes ordinary split threads as well as forks. Sidebar-only forks
-use the stock single-pane view, which this workaround leaves unchanged.
+surface includes ordinary split threads as well as forks. Side panel forks
+render in a plugin `ThreadChat`, which this workaround leaves unchanged.
 
 The selectors depend on observed BB markup. Unknown layouts receive no decoration.
 The scrollbar stays visible while the conversation is hovered or contains focus.

@@ -185,22 +185,6 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: `claude-profiles/ui/badges/rows.ts`
 
-### Show the sidebar from a plugin
-
-- Found: 2026-10-23, fork, SDK 0.6.37
-- Wanted: show a hidden sidebar after a Sidebar-only fork, so the new thread is visible.
-- Gap: plugins cannot run built-in commands such as `sidebar.toggle`, and no SDK call
-  reads or sets the sidebar's open state. The state is a `bb.sidebar.open` localStorage
-  atom that BB does not reread in the same window.
-- Workaround: [fork.ts](../fork/fork.ts) clicks
-  `button[data-sidebar="trigger"][aria-expanded="false"]`. A markup change makes it a
-  silent no-op.
-- Ask: `app.commands.execute("sidebar.toggle")`, or a `sidebar.open` / `setOpen(open)`
-  navigation call.
-- Status: open
-- Category: sdk-gap
-- Evidence: `fork/fork.ts` `showSidebar`
-
 ### Workflow worker row accessories
 
 - Found: 2026-10-21, claude-profiles, SDK 0.6.37

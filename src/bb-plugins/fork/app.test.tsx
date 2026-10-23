@@ -48,18 +48,19 @@ function fakeSdk(calls: Call[], fork: (args: unknown) => Promise<{ id: string; t
   };
 }
 
-async function load(sdk: ReturnType<typeof fakeSdk>) {
+async function load(sdk: ReturnType<typeof fakeSdk>, openThreadPanel: (options: unknown) => boolean = () => true) {
   const app = await loadPluginApp(() => import('./app.tsx'));
-  slot = renderSlot(app.appOverlays[0]!, {}, { sdk: sdk as never });
+  slot = renderSlot(app.appOverlays[0]!, {}, { sdk: sdk as never, openThreadPanel });
   return app;
 }
 
 const command = (app: CapturedPluginApp, id: string) =>
   (app as unknown as { commandPaletteActions: Command[] }).commandPaletteActions.find(c => c.id === id)!;
 
-function threadAction(app: CapturedPluginApp, sdk: ReturnType<typeof fakeSdk>) {
+function threadAction(app: CapturedPluginApp, sdk: ReturnType<typeof fakeSdk>, opened: unknown[] = []) {
   const registration = app.threadActions.find(action => action.id === 'fork')!;
-  return registration.item({ thread: { id: 'src' } as never, data: undefined, sdk: sdk as never, navigate: {} as never })!;
+  const navigate = { openThreadPanel: (options: unknown) => { opened.push(options); return true; } };
+  return registration.item({ thread: { id: 'src' } as never, data: undefined, sdk: sdk as never, navigate: navigate as never })!;
 }
 
 async function openMenu(app: CapturedPluginApp) {
@@ -98,35 +99,44 @@ test.each([
   ]);
 });
 
-// Stock BB's sidebar toggle: `aria-expanded` reports whether the sidebar shows.
-function sidebarTrigger(expanded: boolean) {
-  const trigger = document.createElement('button');
-  trigger.dataset.sidebar = 'trigger';
-  trigger.setAttribute('aria-expanded', String(expanded));
-  let clicks = 0;
-  trigger.addEventListener('click', () => { clicks++; });
-  document.body.append(trigger);
-  return { clicks: () => clicks, remove: () => trigger.remove() };
-}
+const panelOpens = () => slot!.inspection.navigateCalls.filter(call => call.method === 'openThreadPanel').map(call => call.options);
 
-test('s forks into the sidebar, opens nothing and shows a hidden sidebar', async () => {
+test('s opens the fork in a side panel tab beside this thread', async () => {
   const calls: Call[] = [];
-  const trigger = sidebarTrigger(false);
   const app = await load(fakeSdk(calls));
   await openMenu(app);
   await press('s');
   expect(calls.map(call => call.method)).toEqual(['fork']);
-  expect(trigger.clicks()).toBe(1);
-  trigger.remove();
+  expect(panelOpens()).toEqual([{ actionId: 'fork', title: '(1) Plan', params: { threadId: 'fork1' } }]);
+  expect(screen.queryByRole('status')).toBeNull();
 });
 
-test('s leaves a shown sidebar open', async () => {
-  const trigger = sidebarTrigger(true);
-  const app = await load(fakeSdk([]));
+test('s says where the fork went when BB has no side panel', async () => {
+  const app = await load(fakeSdk([]), () => false);
   await openMenu(app);
   await press('s');
-  expect(trigger.clicks()).toBe(0);
-  trigger.remove();
+  await waitFor(() => expect(screen.getByRole('status').textContent).toBe('No side panel here. The fork is in the sidebar.'));
+});
+
+test('the panel tab shows the fork conversation, and a tab without one says so', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const panel = app.threadPanelActions.find(action => action.id === 'fork')!;
+  const tab = renderSlot(panel, { threadId: 'src', params: { threadId: 'fork1' } });
+  expect(screen.queryByRole('alert')).toBeNull();
+  tab.lifecycle.unmount();
+  const broken = renderSlot(panel, { threadId: 'src', params: null });
+  expect(screen.getByRole('alert').textContent).toBe('This fork tab has lost its thread.');
+  broken.lifecycle.unmount();
+});
+
+test('the panel launcher forks this thread into a new tab', async () => {
+  const calls: Call[] = [];
+  const app = await load(fakeSdk(calls));
+  const opened: unknown[] = [];
+  const panel = app.threadPanelActions.find(action => action.id === 'fork')!;
+  await act(async () => { await panel.run!({ threadId: 'src', openPanel: options => { opened.push(options); return true; } }); });
+  expect(calls.map(call => call.method)).toEqual(['fork']);
+  expect(opened).toEqual([{ title: '(1) Plan', params: { threadId: 'fork1' } }]);
 });
 
 test('a count and w make that many worktree forks', async () => {
@@ -240,14 +250,16 @@ test('Alt+Shift+B repeats the last placement, worktree and count but not model o
   expect(calls[1]?.args).toMatchObject({ split: 'down' });
 });
 
-test('the thread menu offers each placement and Sidebar only opens nothing', async () => {
+test('the thread menu offers each placement and Side panel opens a panel tab', async () => {
   const calls: Call[] = [];
   const sdk = fakeSdk(calls);
   const app = await load(sdk);
-  const action = threadAction(app, sdk);
+  const opened: unknown[] = [];
+  const action = threadAction(app, sdk, opened);
   expect(action.choices?.items.map(item => item.id)).toEqual(['switch', 'right', 'down', 'sidebar', 'worktree']);
   await act(async () => { await action.run({ value: 'sidebar', requestRename: () => {} }); });
   expect(calls.map(call => call.method)).toEqual(['fork']);
+  expect(opened).toEqual([{ actionId: 'fork', title: '(1) Plan', params: { threadId: 'fork1' } }]);
 });
 
 test('the worktree choice branches a fresh worktree on the source machine', async () => {
