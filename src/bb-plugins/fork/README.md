@@ -5,20 +5,40 @@ Side chat takes only quoted text. A fork clones the provider session.
 
 | Surface | Action | Result |
 | --- | --- | --- |
-| `Alt+B` | Fork the focused pane's thread | New thread at the tip, split right |
-| Message bar **Fork from here** | Fork at that message | Split right |
-| Thread menu **Fork** | Split right, Split down, Sidebar only, New worktree | As named |
+| `Alt+B` | Open the fork menu for the focused thread | Pick a key below |
+| `Alt+Shift+B` | Fork like last time | Last placement, worktree and count; Switch to fork at first |
+| Message bar **Fork from here** | Open the fork menu at that message | Pick a key below |
+| Thread menu **Fork** | Switch to fork, Split right, Split down, Sidebar only, New worktree | As named |
+
+```text
+⏎      Switch to fork: the focused pane shows the fork; the original stays in the sidebar
+s      Sidebar only: fork and stay where you are
+| →    Split right        ←  Split left
+- ↓    Split down         ↑  Split up
+2–8    Fork count         w  New worktree (toggle)
+m      Model and effort   p  First prompt
+c      Copy fork command  y  Copy thread id
+```
+
+Count, worktree, model and prompt are options. Set them first, then press a
+placement key. With a count, Switch to fork shows the first fork and leaves the
+rest in the sidebar. Escape leaves a step, then closes the menu. Tab moves
+between rows.
+
+A model choice is set on the fork before its first prompt, so the first turn
+uses it. `Alt+Shift+B` does not repeat a model or prompt. Rebind both keys in
+Settings → Keyboard (`plugin:fork/menu`, `plugin:fork/repeat`).
 
 An assistant message keeps its turn in the fork. A user message branches before
-it, like editing that prompt. Rebind `Alt+B` in Settings → Keyboard
-(`plugin:fork/split`).
+it, like editing that prompt.
 
 A fork reuses the source environment, so both threads edit the same files. Pick
 **New worktree** for parallel edits. BB requires a fork to stay on the source
 machine, so the worktree is created there. The project must be a Git repository.
 
 Commands and message actions get no SDK client. An app overlay lends them its
-`useSdk()` client and shows "Forking…" and failures, which BB would only log.
+`useSdk()` client, hosts the menu, and shows progress and failures, which BB
+would only log. The menu uses the shared [Chip](../chip/README.md) popover.
 One fork runs at a time, so a repeated key press does not fork twice.
 
 Run `pnpm test`, `pnpm typecheck`, and `pnpm build` from this directory.

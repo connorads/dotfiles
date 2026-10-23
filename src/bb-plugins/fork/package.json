@@ -18,6 +18,7 @@
     "build": "bb plugin build",
     "dev": "bb plugin dev"
   },
+  "dependencies": { "@bb-plugins/chip": "workspace:*" },
   "devDependencies": {
     "@get-bb/plugin-sdk": "catalog:",
     "@testing-library/react": "catalog:",

@@ -30,3 +30,43 @@
 [data-fork-chat-scroll]:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
   background-color: color-mix(in oklab, var(--foreground) 40%, transparent);
 }
+
+.bbp-popover-panel.fork-menu { padding: 6px; font: 13px/1.4 var(--font-sans); }
+.fork-menu-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px 6px;
+  font-weight: 600;
+}
+.fork-menu-group { display: grid; padding: 4px 0; }
+.fork-menu-group + .fork-menu-group { border-top: 1px solid var(--border); }
+.fork-menu-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fork-menu-row:is(:hover, :focus-visible) { background: var(--accent); outline: none; }
+.fork-menu-row kbd { font: 12px var(--font-mono); color: var(--muted-foreground); }
+.fork-menu-detail { color: var(--muted-foreground); font-weight: 400; }
+.fork-menu-note { margin: 0; padding: 8px; color: var(--muted-foreground); }
+.fork-menu-prompt { display: grid; gap: 6px; padding: 4px 8px 8px; color: var(--muted-foreground); }
+.fork-menu-prompt textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+}

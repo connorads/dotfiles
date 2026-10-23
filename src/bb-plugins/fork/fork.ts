@@ -1,6 +1,15 @@
 import type { PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
 
-export type Placement = 'right' | 'down' | 'sidebar';
+/** Where a fork opens. `switch` shows it in the focused pane; `sidebar` opens nothing. */
+export type Placement = 'switch' | 'right' | 'left' | 'down' | 'top' | 'sidebar';
+
+export type ReasoningLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' | 'ultracode';
+
+export interface ModelChoice {
+  model: string;
+  label: string;
+  reasoningLevel?: ReasoningLevel;
+}
 
 export interface ForkPlan {
   sourceThreadId: string;
@@ -8,11 +17,19 @@ export interface ForkPlan {
   sourceSeqEnd?: number;
   placement: Placement;
   worktree: boolean;
+  /** Forks to make, 1 to 8. Omitted makes one. */
+  count?: number;
+  model?: ModelChoice;
+  /** First prompt, sent after any model change so the first turn uses it. */
+  prompt?: string;
 }
 
 type ForkSdk = Pick<PluginBrowserBbSdk, 'environments' | 'threads'>;
 
+export const MAX_COUNT = 8;
+
 export const CHOICES = [
+  { id: 'switch', label: 'Switch to fork', icon: 'Fork' },
   { id: 'right', label: 'Split right', icon: 'Columns2' },
   { id: 'down', label: 'Split down', icon: 'Rows2' },
   { id: 'sidebar', label: 'Sidebar only', icon: 'Fork' },
@@ -21,6 +38,7 @@ export const CHOICES = [
 
 export function planForChoice(sourceThreadId: string, choice: string | undefined): ForkPlan | null {
   switch (choice) {
+    case 'switch':
     case 'right':
     case 'down':
     case 'sidebar':
@@ -32,15 +50,33 @@ export function planForChoice(sourceThreadId: string, choice: string | undefined
   }
 }
 
-export async function forkThread(sdk: ForkSdk, plan: ForkPlan): Promise<string> {
+export interface Forked { id: string; title: string | null }
+
+export async function forkThread(sdk: ForkSdk, plan: ForkPlan): Promise<Forked[]> {
   const environment = plan.worktree ? await worktreeOnSourceMachine(sdk, plan.sourceThreadId) : undefined;
-  const forked = await sdk.threads.fork({
-    sourceThreadId: plan.sourceThreadId,
-    ...(plan.sourceSeqEnd === undefined ? {} : { sourceSeqEnd: plan.sourceSeqEnd }),
-    ...(environment ? { environment } : {}),
-  });
-  if (plan.placement !== 'sidebar') await sdk.threads.open({ threadId: forked.id, split: plan.placement, file: null });
-  return forked.id;
+  const forks: Forked[] = [];
+  for (let index = 0; index < (plan.count ?? 1); index++) {
+    const forked = await sdk.threads.fork({
+      sourceThreadId: plan.sourceThreadId,
+      ...(plan.sourceSeqEnd === undefined ? {} : { sourceSeqEnd: plan.sourceSeqEnd }),
+      ...(environment ? { environment } : {}),
+    });
+    if (plan.model) {
+      await sdk.threads.update({
+        threadId: forked.id,
+        model: plan.model.model,
+        ...(plan.model.reasoningLevel ? { reasoningLevel: plan.model.reasoningLevel } : {}),
+      });
+    }
+    if (plan.prompt) {
+      await sdk.threads.send({ threadId: forked.id, mode: 'start', input: [{ type: 'text', text: plan.prompt, mentions: [] }] });
+    }
+    // One pane can show one thread, so further switch forks stay in the sidebar.
+    const split = plan.placement === 'switch' ? (index === 0 ? 'replace' : null) : plan.placement === 'sidebar' ? null : plan.placement;
+    if (split) await sdk.threads.open({ threadId: forked.id, split, file: null });
+    forks.push({ id: forked.id, title: forked.title });
+  }
+  return forks;
 }
 
 // The provider session lives on the source machine, so BB rejects a fork onto any other.
@@ -51,7 +87,27 @@ async function worktreeOnSourceMachine(sdk: ForkSdk, threadId: string) {
   return { type: 'host', hostId, workspace: { type: 'managed-worktree', baseBranch: { kind: 'default' } } } as const;
 }
 
-export type Notice = { kind: 'busy' } | { kind: 'error'; message: string } | null;
+/** The `bb thread fork` command for a plan, for running the fork elsewhere. */
+export function forkCommand(plan: Pick<ForkPlan, 'sourceThreadId' | 'sourceSeqEnd' | 'worktree'>): string {
+  return [
+    'bb thread fork', plan.sourceThreadId,
+    ...(plan.sourceSeqEnd === undefined ? [] : [`--source-seq-end ${plan.sourceSeqEnd}`]),
+    ...(plan.worktree ? ['--new-environment worktree'] : []),
+  ].join(' ');
+}
+
+export type Notice =
+  | { kind: 'busy' }
+  | { kind: 'info'; message: string }
+  | { kind: 'error'; message: string }
+  | null;
+
+function doneMessage(plan: ForkPlan, forks: Forked[]): string | null {
+  if (plan.placement !== 'switch') return forks.length > 1 ? `Made ${forks.length} forks.` : null;
+  const title = forks[0]?.title;
+  const extra = forks.length > 1 ? ` ${forks.length - 1} more in the sidebar.` : '';
+  return `Now in ${title ? `fork ${title}` : 'the fork'}. Original kept in the sidebar.${extra}`;
+}
 
 // One fork at a time: a held or repeated shortcut would otherwise clone the session twice.
 export function createForker() {
@@ -73,6 +129,7 @@ export function createForker() {
       return () => { listeners.delete(listener); };
     },
     notice: () => notice,
+    show,
     dismiss: () => show(null),
     async run(plan: ForkPlan, client: ForkSdk | null = sdk): Promise<void> {
       if (busy) return;
@@ -80,8 +137,8 @@ export function createForker() {
       busy = true;
       show({ kind: 'busy' });
       try {
-        await forkThread(client, plan);
-        show(null);
+        const message = doneMessage(plan, await forkThread(client, plan));
+        show(message ? { kind: 'info', message } : null);
       } catch (cause) {
         show({ kind: 'error', message: cause instanceof Error ? cause.message : String(cause) });
       } finally {

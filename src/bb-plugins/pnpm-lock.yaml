@@ -691,6 +691,10 @@ importers:
         version: 5.8.3
 
   fork:
+    dependencies:
+      '@bb-plugins/chip':
+        specifier: workspace:*
+        version: link:../chip
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
