@@ -1,0 +1,4 @@
+
+```bash
+hyperframes lambda destroy
+```

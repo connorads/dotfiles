@@ -1,0 +1,8 @@
+{
+  "reason": "HyperFrames type guides use the managed installed CLI without remote package bootstrap.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/references/types/data.md",
+    "hyperframes/.agents/skills/hyperframes/references/types/launch.md",
+    "hyperframes/.agents/skills/hyperframes/references/types/music.md"
+  ]
+}

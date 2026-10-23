@@ -1,0 +1,6 @@
+{
+  "reason": "Preserve managed tools, reviewed skill maintenance, scoped credentials and explicit telemetry/publication consent.",
+  "files": [
+    "hyperframes/.agents/skills/media-use/scripts/transcribe.mjs"
+  ]
+}

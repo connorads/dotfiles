@@ -34,7 +34,7 @@ hyperframes cloudrun render ./template \
   --wait
 ```
 
-Use exactly one of `--variables` and `--variables-file`. Read [`variables-and-media.md`](../../hyperframes-core/references/variables-and-media.md#variables) for the composition-side contract.
+Use exactly one of `--variables` and `--variables-file`. Read [Variables](../../hyperframes/references/format.md#variables) for the composition-side contract.
 
 ## JSONL batches
 

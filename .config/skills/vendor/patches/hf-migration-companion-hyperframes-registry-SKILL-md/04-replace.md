@@ -1,0 +1,4 @@
+- Take the largest unit that fits, then edit it. Keep an installed item's ids prefixed as they are, so two items can't collide.
+- An item keeps its own variables; set them for one mount with `data-variable-values` on its host (`add --vars '{"title":"…"}'` writes that), and point its colour and font variables at your brand's.
+- Beat-synced blocks take hit times from `hyperframes beats --json`: the beat times minus the mount's `data-start`.
+- Install paths come from `hyperframes.json` (`references/install-locations.md`).

@@ -13,9 +13,8 @@
 # Requirements:
 #   - ffmpeg, ffprobe, python3 on PATH
 #   - node 22 (for the HF CLI)
-#   - npm (for Remotion installs)
-#   - HF CLI built at packages/cli/dist/cli.js (run `bun run --filter @hyperframes/cli build`
-#     in the repo root if missing)
+#   - pnpm and pre-installed Remotion project dependencies
+#   - managed hyperframes CLI on PATH
 #
 # Output:
 #   <fixture>/diff/summary.json   per-fixture SSIM summary
@@ -23,15 +22,14 @@
 #   ./run-report.json             aggregate report
 
 set -euo pipefail
+export HYPERFRAMES_SKIP_SKILLS=1 HYPERFRAMES_NO_UPDATE_CHECK=1 HYPERFRAMES_NO_TELEMETRY=1
 
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$THIS_DIR/../.." && pwd)"
-REPO_ROOT="$(cd "$SKILL_DIR/../.." && pwd)"
 
 LINT="$SKILL_DIR/scripts/lint_source.py"
 DIFF="$SKILL_DIR/scripts/render_diff.sh"
 STRIP="$SKILL_DIR/scripts/frame_strip.sh"
-HF_CLI="$REPO_ROOT/packages/cli/dist/cli.js"
 REPORT="$THIS_DIR/run-report.json"
 
 # Per-fixture results land here as one JSON file each, then the aggregator
@@ -44,9 +42,9 @@ trap 'rm -rf "$RESULTS_DIR"' EXIT
 # toolchain checks until run_render_tier() actually runs, so
 # `./run.sh tier-4-escape-hatch` works on a clean checkout.
 require_render_tier_tools() {
-  if [[ ! -f "$HF_CLI" ]]; then
-    echo "error: HF CLI not built at $HF_CLI" >&2
-    echo "       Run 'bun run --filter @hyperframes/cli build' in $REPO_ROOT" >&2
+  if ! command -v hyperframes >/dev/null 2>&1; then
+    echo "error: managed hyperframes CLI not on PATH" >&2
+    echo "       Provision it through the local tool workflow." >&2
     return 2
   fi
   if ! command -v ffmpeg >/dev/null 2>&1; then
@@ -126,13 +124,14 @@ run_render_tier() {
   fi
 
   if [[ ! -d "$fixture_dir/remotion-src/node_modules" ]]; then
-    echo "    ⏳ npm install (first run)"
-    (cd "$fixture_dir/remotion-src" && npm install --silent --no-progress >/dev/null 2>&1)
+    echo "    error: Remotion dependencies missing; provision them through the local tool workflow" >&2
+    write_result "$fixture_name" "fail" stage "missing-dependencies"
+    return 0
   fi
 
   echo "    ⏳ render Remotion baseline"
   if ! (cd "$fixture_dir/remotion-src" && \
-        npx --no-install remotion render "$composition_id" out/baseline.mp4 >/dev/null 2>&1); then
+        pnpm exec remotion render "$composition_id" out/baseline.mp4 >/dev/null 2>&1); then
     echo "    ✗ Remotion render failed"
     write_result "$fixture_name" "fail" stage "remotion-render"
     return 0
@@ -140,7 +139,7 @@ run_render_tier() {
 
   echo "    ⏳ render HF translation"
   if ! (cd "$fixture_dir" && \
-        node "$HF_CLI" render hf-src/ --output hf.mp4 --quiet >/dev/null 2>&1); then
+        hyperframes render hf-src/ --output hf.mp4 --quiet >/dev/null 2>&1); then
     echo "    ✗ HF render failed"
     write_result "$fixture_name" "fail" stage "hf-render"
     return 0

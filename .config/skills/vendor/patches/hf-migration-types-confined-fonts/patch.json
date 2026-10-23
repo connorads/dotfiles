@@ -1,0 +1,6 @@
+{
+  "reason": "Manual font copying preserves the source and destination confinement and symlink rejection enforced by the retired captured-fonts helper.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/assets/frame-presets/code-editorial/FRAME.md"
+  ]
+}

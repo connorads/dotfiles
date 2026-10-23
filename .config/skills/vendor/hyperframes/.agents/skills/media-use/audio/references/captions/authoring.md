@@ -2,7 +2,7 @@
 
 <!-- registry-items: allow=max-width,data-composition-src,hyperframes-registry,blend-mode,caption-style,font-family -->
 
-**The live search is the source of truth for what the registry has.** The table(s) below are a hand-maintained sample and under-cover by design: run `hyperframes catalog --query "<what you want>" --json` — it needs nothing installed — before concluding the registry lacks something. Item names here are checked against `registry/registry.json` by `bun run lint:skills`.
+**The live search is the source of truth for what the registry has.** The table(s) below are a hand-maintained sample and under-cover by design: run `hyperframes catalog --query "<what you want>" --json` — it needs nothing installed — before concluding the registry lacks something. Item names here are checked against `registry/registry.json` by `pnpm lint:skills`.
 
 Before authoring: confirm the transcript came from the right Whisper model. CLI default `small.en` silently translates non-English audio — see [`../transcribe.md`](../transcribe.md) → "Language Rule" and [`transcript-handling.md`](transcript-handling.md) for the mandatory quality check.
 
@@ -40,7 +40,7 @@ Scan for words deserving distinct treatment:
 - **Numbers/statistics** — bold weight, accent color
 - **Emotional keywords** — exaggerated animation (overshoot, bounce)
 - **Call-to-action** — highlight, underline, color pop
-- **Marker highlight** — for beyond-color emphasis (highlight sweep, circle, burst, scribble, sketchout), see `hyperframes-animation/rules/css-marker-patterns.md`.
+- **Marker highlight** — for beyond-color emphasis (highlight sweep, circle, burst, scribble, sketchout), search the registry (`/hyperframes-registry`).
 
 ## Script-to-Style Mapping
 
@@ -152,7 +152,6 @@ Caption components ship with transparent backgrounds — they're pure overlays. 
 
 - [`motion.md`](motion.md) — karaoke, marker effects, audio-reactive modulation, scatter exits.
 - [`transcript-handling.md`](transcript-handling.md) — input formats, quality checks, cleaning, external API fallback.
-- `hyperframes-animation/rules/css-marker-patterns.md` — marker highlighting (deterministic, fully seekable).
 
 ## Constraints
 

@@ -103,7 +103,7 @@ Starts a Step Functions execution. Returns immediately with a `renderId` unless 
 
 **`--width` / `--height` footgun.** Setting `--width 3840 --height 2160` against a composition whose `data-width="1920"` silently produces 1080p — the runtime lays out the page at the composition's authored dimensions and the CLI flags are ignored for layout. To actually output at 4K, use `--output-resolution 4k` (supersamples via `deviceScaleFactor`). The CLI now prints a warning when CLI dimensions disagree with the composition's `data-width` / `data-height` and `--output-resolution` is not set; the warning is suppressed when `--json` is on or `index.html` isn't on disk (`--site-id` flows).
 
-For variable-driven templates, declare the schema in the composition and pass either `--variables` or `--variables-file`, never both. `--strict-variables` checks local project input before any render starts. Also read [`variables-and-media.md`](../../hyperframes-core/references/variables-and-media.md#variables).
+For variable-driven templates, declare the schema in the composition and pass either `--variables` or `--variables-file`, never both. `--strict-variables` checks local project input before any render starts. Also read [Variables](../../hyperframes/references/format.md#variables).
 
 ## Render a JSONL batch
 

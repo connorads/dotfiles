@@ -1,0 +1,6 @@
+{
+  "reason": "Check installed skill scripts without requiring an upstream monorepo packages checkout.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/scripts/lib/main-module.test.mjs"
+  ]
+}

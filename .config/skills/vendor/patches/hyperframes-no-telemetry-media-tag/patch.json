@@ -1,6 +1,0 @@
-{
-  "reason": "Provider provenance stays in the local manifest; agents do not add telemetry-only HTML attributes.",
-  "files": [
-    "hyperframes/.agents/skills/media-use/references/resolve.md"
-  ]
-}

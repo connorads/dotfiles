@@ -1,6 +1,0 @@
-{
-  "reason": "Transcription uses the installed CLI and never downloads executables.",
-  "files": [
-    "hyperframes/.agents/skills/media-use/scripts/lib/npx-sync.mjs"
-  ]
-}

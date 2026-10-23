@@ -1,6 +1,0 @@
-{
-  "reason": "Harness usage probes read unrelated agent credentials and are not authorised by video work.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes/SKILL.md"
-  ]
-}

@@ -48,14 +48,14 @@ globalThis.fetch = async (url, options) => {
 `,
       );
       writeFileSync(
-        join(bin, "npx"),
+        join(bin, "hyperframes"),
         `#!${process.execPath}
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
-assert.deepEqual(args.slice(0, 3), ['hyperframes', 'transcribe', '${voicePath}']);
-assert.ok(fs.existsSync(args[2]));
+assert.deepEqual(args.slice(0, 2), ['transcribe', '${voicePath}']);
+assert.ok(fs.existsSync(args[1]));
 assert.equal(args[args.indexOf('--model')+1], 'small.en');
 fs.writeFileSync(path.join(args[args.indexOf('--dir')+1], 'transcript.json'), JSON.stringify([
  {text:'Hello',start:0.1,end:0.4}, {text:'there.',start:0.5,end:0.9}

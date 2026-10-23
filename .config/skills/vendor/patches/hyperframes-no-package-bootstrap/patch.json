@@ -1,7 +1,0 @@
-{
-  "reason": "Missing helper dependencies require reviewed project installation rather than automatic temporary bootstrap.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes-creative/scripts/package-loader.mjs",
-    "hyperframes/.agents/skills/hyperframes-animation/scripts/package-loader.mjs"
-  ]
-}

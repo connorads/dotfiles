@@ -1,0 +1,6 @@
+{
+  "reason": "Launch only the managed installed CLI and reject skill refreshes, upgrades and credential probes.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/scripts/plugin-cli.mjs"
+  ]
+}

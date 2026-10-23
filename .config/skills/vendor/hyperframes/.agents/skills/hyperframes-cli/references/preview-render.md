@@ -99,7 +99,7 @@ Validation runs before any server boots, so an invalid value exits cleanly witho
 
 ## render
 
-> Render only after the user has reviewed in `preview` and approved. Don't auto-render when the checks pass.
+> Render after the user has reviewed in `preview` and approved, or when they asked for the file or to work without stopping. Passing checks alone is not a reason to render.
 
 ```bash
 hyperframes render                                # standard MP4 from cwd
@@ -146,7 +146,7 @@ hyperframes render --docker                       # byte-identical
 
 **Read the summary's second line.** After the output path and size, `render` prints the capture path, GPU mode, and per-stage timings, e.g. `beginframe capture · software gpu · compile 0.7s · setup 1.1s · capture 8.1s · encode 5.8s`. `capture` is the frame loop and `setup` is calibration plus session init; the capture path reads `a|b` when parallel workers diverged, and `encode (during capture)` means the streaming encoder overlapped the loop, so do not add it to the wall time. Local GPU `auto` (the default) requests BeginFrame. If the line still says `screenshot capture` with `software gpu` on Linux, a hint under it says BeginFrame did not run (needs chrome-headless-shell, no `--resolution` upscale). It only appears when the GPU was auto-probed, never under `--docker` or `--no-browser-gpu`, where software GL is the point. Heavy compositions can stall on software GL. Do not reach for `--debug` just to learn which path ran.
 
-**Parametrized renders:** the composition declares its variables on the `<html>` root with **`data-composition-variables`** — a JSON **array of declarations** (`{id, type, label, default}` per entry) that defines the schema. Scripts inside read the resolved values via `window.__hyperframes.getVariables()`. The CLI `--variables '{"title":"Q4 Report"}'` is a JSON **object keyed by id** that overrides those declared defaults for one render; missing keys fall through, so the same composition runs unchanged in dev preview and in production. Sub-comp hosts can also override per-instance with `data-variable-values`. See the `hyperframes-core` skill for the full pattern.
+**Parametrized renders:** the composition declares its variables on the `<html>` root with **`data-composition-variables`** — a JSON **array of declarations** (`{id, type, label, default}` per entry) that defines the schema. Scripts inside read the resolved values via `window.__hyperframes.getVariables()`. The CLI `--variables '{"title":"Q4 Report"}'` is a JSON **object keyed by id** that overrides those declared defaults for one render; missing keys fall through, so the same composition runs unchanged in dev preview and in production. Sub-comp hosts can also override per-instance with `data-variable-values`. See `../../hyperframes/references/format.md` for the full pattern.
 
 ### feedback (report after rendering)
 
@@ -191,3 +191,9 @@ hyperframes publish --yes        # skip the confirmation prompt (scripts/CI)
 ```
 
 Uploads the project's source (HTML + assets) and returns a stable hosted URL that renders in the browser. A fresh publish is private by default and requires authentication plus access to view. Use `--public` to allow anyone with the URL to view the claimed project. Updating a project in place keeps its existing visibility: re-publishing without `--public` never turns a public project private. `--yes` only skips the confirmation prompt; it does not change visibility. A signed-out publish returns an authentication-required claim URL rather than a public playback URL. Lint findings are surfaced before upload but do not block.
+
+## Where to render, and skill attribution
+
+Use cloud rendering when the user wants hosted rendering without local Chrome, FFmpeg, or AWS. Use Lambda only when AWS ownership is a requirement. Use Cloud Run only when GCP ownership is a requirement. Read the matching reference before running any cloud path.
+
+Skill attribution is automatic — the examples above need no `--skill`. A project scaffolded with `hyperframes init --skill=<slug>` records its owning skill in `hyperframes.json`, and every later render inherits it on anonymous telemetry: re-renders, `pnpm render`, and `--batch` alike. Pass `--skill=<slug>` explicitly only to stamp a project that was not scaffolded with one (its first render then persists it).

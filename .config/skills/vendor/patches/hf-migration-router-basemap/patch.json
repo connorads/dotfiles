@@ -1,0 +1,6 @@
+{
+  "reason": "Use installed browser prerequisites, keep the browser sandbox and confine map artifact filenames.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/scripts/bake-basemap.mjs"
+  ]
+}

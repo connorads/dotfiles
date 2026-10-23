@@ -1,9 +1,22 @@
-# Running the local vendored skills
+# Running reviewed HyperFrames skills
 
-Use the installed `hyperframes` executable on PATH from the user's project directory. The local Node launcher at `hyperframes/scripts/plugin-cli.mjs` also dispatches that executable. It suppresses automatic skill installation and CLI update checks. It does not download tools, read plugin manifests, or select a plugin release.
+These skills are vendored locally and use the managed installed HyperFrames CLI.
+Run commands in the user's project, never in the read-only installed skill tree.
+Use `hyperframes <command> <args...>` without a remote package runner.
 
-If the CLI is missing, report the prerequisite. Provision tools through the local reviewed tool workflow. Resolve companion skills from this vendored bucket. Do not download missing skills or refresh them during video work.
+The compatibility launcher at `../scripts/plugin-cli.mjs` runs that installed
+CLI and disables telemetry, update checks and automatic skill installation.
+For a reviewed bundled helper, call the launcher with
+`--script <absolute-script-path> <args...>` from the project directory.
 
-For bundled Node helpers, the launcher accepts `--script <absolute-script-path> <args...>`. Helpers resolve installed project dependencies. Missing dependencies require reviewed pinned versions installed with pnpm and local quarantine and install-script protections. A skill revision does not freeze provider services or registry assets.
+Report a missing CLI or helper dependency. Do not fetch a plugin-selected CLI,
+bootstrap helper packages or rewrite dependency files without user authorisation.
+A plugin version does not freeze external services, registry downloads or project
+dependencies. Surface runtime incompatibility before changing them.
 
-Treat the vendor directory as read-only during video work. Put outputs in the project or a temporary directory. Refresh skills through the update-vendored-skills workflow.
+Read skill references from this vendored bundle. Report a missing sibling instead
+of downloading another release. Skills refresh only through the dotfiles
+`update-vendored-skills` review flow. Do not update a plugin during video work.
+
+Write outputs and temporary work inside the project or a run-owned temporary
+directory. Pass these ownership and launcher rules to any delegated agent.

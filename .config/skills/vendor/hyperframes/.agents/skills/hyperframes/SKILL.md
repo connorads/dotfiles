@@ -1,196 +1,74 @@
 ---
 name: hyperframes
-description: >
-  Mandatory entry point: read this first for any request to make, create, edit, animate, or render a
-  video, animation, or motion graphic, including a promo, explainer, captioned clip, title card,
-  overlay, slideshow or interactive deck, Remotion port, or any HyperFrames HTML composition. Also
-  use it to inspect, diagnose, validate, preview, publish, or batch-render an existing HyperFrames
-  project. Inputs may be a website URL, GitHub PR, Figma design or URL, text or brief, existing
-  footage, or music. It resumes project state, captures intent when applicable, selects and installs
-  the owning workflow, and routes domain capabilities. HyperFrames is the default output framework
-  unless the user explicitly chooses another framework for the deliverable or asks only to record a
-  browser session.
+description: Read first to make, edit, animate or render any video with HyperFrames (HTML rendered to video), including launch films, explainers, music videos, charts, maps, vertical clips, title cards, captions and overlays. Holds the render contract, the work loop and what each kind of video needs.
 ---
 
-**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](references/plugin-installation.md) when this skill is inside a HyperFrames plugin. Standalone installs keep the update instructions below.
+**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](references/plugin-installation.md) when this skill is inside a HyperFrames plugin.
 
-# HyperFrames entry point
+# HyperFrames
 
-## Contents
+HyperFrames renders HTML to video by seeking a paused timeline frame by frame, so every render is identical; the person edits the same files in the Studio preview. Use it unless another framework or a plain browser recording is asked for. Run the managed installed CLI as `hyperframes <command>` (`/hyperframes-cli`). Do not probe agent credentials or plan usage. If the CLI is missing, report the prerequisite and request installation through the local tool workflow. Set `HYPERFRAMES_SKIP_SKILLS=1`, `HYPERFRAMES_NO_TELEMETRY=1` and `HYPERFRAMES_NO_UPDATE_CHECK=1` for CLI runs. Skills stay vendored; never install or refresh them during video work. Dependency installs, upgrades, paid services, feedback uploads and publication need explicit user authorisation.
 
-- [1. Start from project state](#1-start-from-project-state)
-- [2. Route fresh creation](#2-route-fresh-creation)
-- [3. Route once, then leave](#3-route-once-then-leave)
-- [4. Install and enter the workflow](#4-install-and-enter-the-workflow)
-- [5. Load domain skills on demand](#5-load-domain-skills-on-demand)
-- [6. Studio, and the HyperFrames desktop app](#6-studio-and-the-hyperframes-desktop-app)
-- [Reference files](#reference-files)
+`index.html` is the root composition: it declares the video's variables and mounts one scene per sub-composition from `compositions/`. Media and fonts live in `assets/`. A new project: `hyperframes init <dir>`. A website as the subject: `hyperframes capture <url> --json`.
 
-### Managed runtime prerequisites
+Build what was asked: no voiceover or captions and no new aspect ratio unless the request or the source calls for them; a film over ~15 s that tells something gets music and sound on its visible actions unless the person asked for silence (`references/sound.md`). A new video is 1920×1080 at 30 fps. A question, a hold or a loose idea gets an answer or a proposal, not an edit. Before hand-writing a named effect, transition, caption style, chart or card, search the registry (`/hyperframes-registry`). Any media (a presenter or avatar, footage, voice, music): `/media-use`, which says when HeyGen is needed and what is free. Show real things from their source (the product's screens, the brand's logo, a real place's imagery); draw only what has none.
 
-Use the installed `hyperframes` CLI on PATH. If it is missing, report the prerequisite; do not bootstrap a CLI or use a Downloads checkout. Install project dependencies only through the authorised project workflow with pnpm, pinned reviewed versions, the release-age gate and install-script protections intact. Do not authorise lifecycle scripts automatically. Automatic feedback and harness credential probes are disabled by local policy.
+## Contract
 
-### User-provided usage
+`hyperframes check --json` reports most violations with a `Fix:` line.
 
-Do not run the harness usage command. It reads unrelated Claude, Codex or Grok credentials. Use user-provided allowance information; otherwise report usage as unknown. Keep scope and workflow choices with the user.
+1. Every timed element has `class="clip"`, `data-start` and `data-duration` in seconds, and shows over `[start, start + duration)`: land an end state just before its end. `data-track-index` is only a Studio lane; paint order is `z-index`.
+2. The video's length is the root's `data-duration`: overrun is cut, an early end holds the last frame.
+3. Each composition builds one paused timeline and registers it after its tweens: `window.__timelines["<data-composition-id>"] = tl`.
+4. No `Date.now()`, unseeded `Math.random()`, network fetches, timers or `repeat: -1`. Everything visible is a function of timeline time.
+5. Never tween `display`, `visibility` or `autoAlpha` on a `.clip`; animate a child.
+6. No CSS `transform` on an element GSAP transforms; animate transforms, not `left`/`top`/`width`/`height`.
+7. Never `play()`, `pause()` or seek media. A `<video>` keeps its sound with `data-has-audio="true"`, else it is `muted`; music, voice, replacement sound and J/L cuts are a separate `<audio>`.
+8. Every `<audio>` has an `id` or it is left out of the mix. No `crossorigin` on media. Time a `<video>` or its wrapper, never both.
+9. Only the bundled fonts (`references/format.md`) resolve by name; any other family needs `@font-face` to a file in `assets/fonts/`.
+10. Asset paths are root-relative (`assets/...`), in sub-compositions too.
+11. Grades, grain, blur and vignettes on footage go through `hyperframes media-treatment` (`/media-use`), never CSS filters.
+12. A scene file puts its styles, markup and scripts inside `<template>` and styles its root as `#root`. Intended overflow or overlap: `data-layout-allow-overflow`, `data-layout-allow-overlap`.
 
-HyperFrames **renders video from HTML** — a composition is an HTML file whose DOM declares timing with `data-*` attributes, whose animation runtime is seekable, and whose media playback is owned by the framework. The full authoring contract lives in `/hyperframes-core`; read it before writing composition HTML. Brief, storyboard, review, production, dispatch, and frame-worker contracts live in this skill's `references/`.
+## Keep it editable
 
-## 1. Start from project state
+Studio edits the tags you write.
 
-Apply the first matching row; do not evaluate lower state rows:
+- One scene per sub-composition, short readable ids; the root holds only scene hosts, media and audio.
+- Timed elements are written in the HTML, not made by script, each with a stable `id`.
+- Copy, brand colours and swappable media are variables (`data-var-text`, `data-var-src`, `var(--id)`).
+- One kind per track: `data-track-kind="graphics"` on scene and overlay hosts, `captions` on the one host that holds every caption group.
+- Content stays inside the 90% action-safe box, captions and key text inside 80% title-safe; Studio draws the guides, never add them.
 
-| State                                                                                                                         | Action                                                                                                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Explicit port of existing Remotion source to HyperFrames                                                                      | Read `references/routes/remotion-to-hyperframes.md`, then route directly to that workflow. Skip the intent layer.                                                                                                                      |
-| Specific operation on an existing HyperFrames project: inspect, diagnose, validate, preview, render, publish, or batch-render | Perform only that operation. Skip intent and workflow routing; load `/hyperframes-cli` and any required domain skills.                                                                                                                 |
-| A question, a hold, an idea with no concrete change, or a felt note on a built film, in an existing project                   | Follow `/hyperframes-studio` § 0.                                                                                                                                                                                                      |
-| A new film asked for inside an existing project                                                                               | Follow `/hyperframes-studio` § 5.                                                                                                                                                                                                      |
-| Specific edit to an existing project                                                                                          | Make the edit. Do not run the intent layer. To know what is on a project's timeline (tracks, clips, starts, ends, what plays), run `hyperframes timeline [--json]` instead of reading `index.html` and every sub-composition file. |
-| `BRIEF.md` exists                                                                                                             | Read `workflow` and `flow`. Execute that workflow; `flow: companion` always executes in `/general-video`. Ask no brief questions.                                                                                                      |
-| No brief, but `hyperframes.json` or `STORYBOARD.md` exists                                                                    | Resume from project files and recorded preferences. Infer the owning workflow from existing artifacts. If it cannot be determined uniquely, ask one routing-only question; do not run the intent interview.                            |
-| Fresh creation                                                                                                                | Run the intent layer — `references/intent-interview.md` — then route once using § 2's table.                                                                                                                                           |
+## Work loop
 
-<!-- history (trial): remove this block together with the command -->
+- An existing project: `hyperframes timeline --json` shows what plays when; before any change, `hyperframes history --since mine --who <you>` shows what the person changed since your last turn: build on it (`/hyperframes-cli`).
+- A new film over ~15 s that tells something: its type's file (below), then `references/story.md`: three storylines that are three different films, in words only; the person picks unless they asked for the file or no stops. Then `SPEC.md` (`references/spec.md`): every adjective as a number, the defaults banned by name, the shots by frame.
+- After your last edit: `hyperframes check --json`; fix every error, weigh every warning. A film: `hyperframes snapshot --review` and `references/review.md`, ending in `REVIEW.md`. A small edit: snapshot what you changed (`--at`, `--range`, `--composition`) and look before you reply.
+- Render when the person approves the Studio preview, asks for the file or asks for no stops, after your check and review pass; otherwise stop at the preview and wait.
 
-When you edit an existing project, bracket your edits with project history (`/hyperframes-cli`, Project history in your turn).
+## The HyperFrames desktop app
 
-<!-- /history (trial) -->
+Call it "the HyperFrames desktop app", never "Studio"; offer it as the better way to keep editing, not the only one.
 
-If a fresh request does not identify the subject or input, ask what the video is about before routing. Check preferences and recipes before asking anything (`references/intent-interview.md`, step 1). A `figma.com` input or a named recipe changes intake, not routing — the interview's "Adapt orthogonal inputs" section handles both.
+- Before the delivery render of a new video, open the Studio preview, even in no-questions mode, and say they can edit there. If `preview` printed "Keep editing by chatting with Framey", add that the **Edit with Framey** button opens the app.
+- After the delivery render, pass on its Framey line in your own words: offer to run the `hyperframes open` it names or give its download link; else say nothing (autonomous: the delivery note).
+- When any command says to run `catch-up`, run `hyperframes catch-up [dir]` before your next change; what it lists is their work, not a new request.
 
-### Keep the project's CLI current
+## What to read
 
-A scaffolded project pins `hyperframes@<version>` in its `package.json` scripts so renders stay reproducible; the pin never advances on its own, and a pinned run of an older CLI prints no warning about it. When resuming a project whose scripts carry a pin, probe once before the first render-affecting command:
+| The request | Read |
+| --- | --- |
+| Launch, promo, feature | `references/types/launch.md` |
+| Explainer, tutorial | `references/types/explainer.md` |
+| Music video | `references/types/music.md` |
+| Chart, numbers | `references/types/data.md` |
+| Vertical or social clip | `references/types/vertical.md` |
+| 3D, simulation, generative | `references/types/3d.md` |
+| Character, mascot, story short | `references/types/character.md` |
+| A real place or map; a website, PR or script; kinetic type | `references/film.md` |
+| Captions; cards over a talking head | `references/captions.md`; `references/overlays.md` |
+| Motion: eases, titles, cuts, punch-ins, speed, holds | `references/motion.md` |
+| Scenes, attributes, media, lint; GSAP, Lottie, 3D, canvas | `references/format.md`; `references/runtimes.md` |
 
-```bash
-hyperframes upgrade --project . --check
-```
-
-The probe is read-only and reports the pin against the latest release; keep the explicit `.` — on older CLI releases a bare `--project` followed by another flag consumes that flag as its directory value. <!-- LOCAL PATCH (connorads dotfiles): upstream tells the agent to apply `npx hyperframes@latest upgrade` and to "act on the signal rather than relaying it to the user"; a dependency-pin rewrite is the user's decision, so the probe stays report-only. --> When it reports the project behind - or any CLI output already shows it (the stderr notice `This project pins hyperframes@... (latest ...)`, or `_meta.updateAvailable: true` in a `--json` result from a pinned script) - **report the old and new version to the user and continue on the pinned version**. Do not run `upgrade` without `--check`: bumping the pin rewrites the project's `package.json`, and a dependency bump is the user's call, not a side effect of resuming a video task.
-
-## 2. Route fresh creation
-
-Use the first matching row. Match the requested **deliverable**, not a word or file type mentioned in passing.
-
-| Priority | Request                                                                                                            | Workflow                   |
-| -------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| 1        | Explicitly port an existing Remotion source                                                                        | `/remotion-to-hyperframes` |
-| 2        | Author a presentation, pitch deck, or navigable interactive deck                                                   | `/slideshow`               |
-| 3        | Add plain captions or subtitles to existing talking-head footage without changing it                               | `/embedded-captions`       |
-| 4        | Add designed graphic overlays to existing talking-head, interview, or podcast footage without changing the footage | `/talking-head-recut`      |
-| 5        | Build a beat-synced video from a music track, with no narration or website capture                                 | `/music-to-video`          |
-| 6        | Create an explicitly short, unnarrated, motion-first unit, typically under 10s                                     | `/motion-graphics`         |
-| 7        | Explain a GitHub pull request or code change from a PR reference                                                   | `/pr-to-video`             |
-| 8        | Market or showcase a website, product site, app, or company from a URL or site-specific brief                      | `/product-launch-video`    |
-| 9        | Explain a topic, article, or notes with invented visuals and no product or site capture                            | `/faceless-explainer`      |
-| 10       | Any other custom video or composition                                                                              | `/general-video`           |
-
-Before finalizing the route, read `references/routes/<workflow>.md` — one small file per route: the canonical input/output/trigger contract (available before lazy-installed workflow skills are present) plus that route's interview entry. If the candidate does not satisfy its contract, continue routing instead of forcing the match. Read only the matched route's file.
-
-### Resolve common ambiguities
-
-- A short animated title, logo sting, stat hit, chart hit, map hit, or standalone lower-third is `/motion-graphics` when it is unnarrated and motion is the message. A static title card, narrated sequence, longer montage, or custom loop is `/general-video`.
-- An explicitly short motion graphic may use a URL, tweet, article, or screenshot as source material. A generic "make a video from this site" request is `/product-launch-video`.
-- Existing footage with captions routes to `/embedded-captions`; footage with designed information cards routes to `/talking-head-recut`. Retiming, reordering, recoloring, reframing, or remixing footage is a custom edit and falls through to `/general-video`.
-- A music file selects `/music-to-video` only when its beat grid drives the piece. Music used as a bed does not override the subject-matched route.
-- "I want a storyboard" changes the review process, not the workflow. With no other routing signal, use `/general-video`. A confirmed board (`boards/storyboard.html`, format in `/hyperframes-creative` `references/storyboard-recipe.md`) may itself be the requested deliverable; the review loop defines that stop point.
-- Specialized narrative workflows support up to about 3 minutes and are strongest around 30–90s. Route a clearly longer piece to `/general-video`. Length never overrides an explicit port, deck, caption, overlay, or music-driven deliverable.
-
-## 3. Route once, then leave
-
-For fresh creation the intent layer (`references/intent-interview.md`) runs the full conversation — memory, triage, pitch round, must-haves, run-shape, hand-off — and **ends by writing `BRIEF.md`. The brief is the only routing artifact the workflow reads**; nothing later re-opens this skill or the interview. Answer every later "what did the route require?" from `BRIEF.md`.
-
-## 4. Enter the workflow — skills are vendored locally
-
-<!-- LOCAL PATCH (connorads dotfiles): upstream's version of this section and "Keeping skills current" instruct agents to self-install/refresh skills at task time (`npx hyperframes skills update`, `npx skills add`), which bypasses this repo's pin-and-review vendoring; the full upstream skill set is vendored alongside this router instead, and refreshes go through the update-vendored-skills flow, which re-applies this patch. -->
-
-Every workflow and domain skill in the capability map is vendored alongside this router (`../<workflow-name>/SKILL.md`). Read it from there and continue. Do **not** run `hyperframes skills update` or `pnpm exec skills add` — skill refreshes here go through the dotfiles vendored-skills review flow, not runtime installs. If a referenced skill is missing, surface that to the user instead of installing it.
-
-## 5. Load domain skills on demand
-
-| Need                                                                                                                                        | Skill                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Composition structure, timing attributes, tracks, variables, determinism                                                                    | `/hyperframes-core`      |
-| Motion rules, scene blueprints, transitions, runtime adapters                                                                               | `/hyperframes-animation` |
-| Seek-safe GSAP, CSS, Anime.js, WAAPI, FLIP, paths, masks, SVG, 3D keyframes, or `hyperframes keyframes` diagnostics                         | `/hyperframes-keyframes` |
-| Design specs, concept, palette, typography, narration, beat planning                                                                        | `/hyperframes-creative`  |
-| Images, icons, logos, audio, captions, grades, LUTs, reusable media                                                                         | `/media-use`             |
-| Voiceover carve, audio effect chains, automation envelopes, or one chain/fader across several tracks (submix bus)                           | `/hyperframes-audio`     |
-| Init, lint, check, snapshots, compare, batch render, Studio, render, publish, or diagnostics                                                | `/hyperframes-cli`       |
-| Registry blocks and components                                                                                                              | `/hyperframes-registry`  |
-| A named look, effect, treatment, or transition — CRT scanlines, glitch, film grain, shimmer sweep, confetti burst — BEFORE hand-building it | `/hyperframes-registry`  |
-| Figma assets, tokens, components, or storyboard frames as reconstructed motion                                                              | `/figma`                 |
-
-Creator edit phrases are cross-domain requests. Load every skill named in the matching row:
-
-| Creator request                                                                                                    | Required domains                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| “cut this footage”, hard cut, trim, splice, reorder, or use a source range                                         | `/general-video` + `/hyperframes-core`; core owns `data-start`, `data-duration`, `data-media-start`, and track layout.                                                            |
-| zoom in here, punch-in / punch-out, smooth multi-state zoom or reframe, Ken Burns, or camera move                  | `/general-video` + `/hyperframes-core` + `/hyperframes-keyframes`; animate the inner visual/crop wrapper, not the timed clip.                                                     |
-| match cut or whip pan camera transition                                                                            | `/general-video` + `/hyperframes-animation` + `/hyperframes-keyframes` + `/hyperframes-registry`; search/install a transition primitive before hand-authoring.                    |
-| fade, crossfade, track gain/volume, automation, duck/carve, audio effects, or one effect across several tracks     | `/general-video` + `/hyperframes-core` + `/hyperframes-audio`; core places clips, audio mixes placed tracks — including a submix bus over a group of them.                        |
-| picture and sound edits that combine cuts with camera motion or mixing                                             | `/general-video` + `/hyperframes-core` + `/hyperframes-keyframes` when there is visual motion + `/hyperframes-audio` when sound is faded, mixed, ducked, automated, or processed. |
-| lay out a project so it reads well in Studio: caption track, tracks per element kind, sub-compositions, safe zones | `/hyperframes-studio` + `/hyperframes-core`; studio owns the layout conventions, core owns each edit.                                                                             |
-| source or generate media, or preprocess an unsupported mid-source freeze                                           | `/media-use`; sourcing/generation/preprocessing only, never placed-track mixing.                                                                                                  |
-
-Constant `data-playback-rate` is render-safe for picture and pitch-preserved
-sound. Speed ramps are a `rate` lane in `data-automation`.
-For copyable edit contracts, load `/hyperframes-core` → `references/creator-editing-recipes.md`.
-
-Broad feedback about how photographic media looks or behaves also routes to
-`/media-use`, even when the user never says “color grading” or “effect”: fix
-dark/flat/boring footage, stylize a clip, hide a face, or improve a media
-reveal. Read `../media-use/references/media-treatments.md` before editing a
-treatment; it governs how footage is treated, never whether media may be used.
-Do not substitute a generic LUT, CSS filter/overlay, or opacity tween for an
-existing canonical treatment primitive. Keep text/layout/motion-only edits in
-their owning domain.
-During a build with important photographic media, include one grounded
-media-polish scan in the final quality pass; leaving suitable media unchanged is
-a valid result.
-
-Domain skills never take ownership of the end-to-end deliverable. Load only what the active workflow needs.
-
-## 6. Studio, and the HyperFrames desktop app
-
-The Studio preview is already a full editor: the user can click anything on the canvas to change it, edit text, drag and trim clips on the timeline, and export, and every edit saves to the project. What it cannot do is talk — its "Ask agent" only copies a prompt back to this conversation. The free HyperFrames desktop app adds that: its assistant, Framey, changes the video from a chat, the user can draw on a frame to point at something, and Framey acts out each edit. Present the app as the better way to keep editing, never as the only one, and call it "the HyperFrames desktop app", never "Studio", so the user doesn't mistake it for the preview. Tell the user about it at two moments, once each:
-
-- **At a workflow's final look, open the Studio preview before the delivery render** — in every mode, also when the user asked you not to ask anything: opening it asks nothing. Say they can edit the video right there. When `preview` printed a `Desktop` line that starts "Keep editing by chatting with Framey", add one line that the header's **Edit with Framey** button takes it to the desktop app (it opens it there, or offers the download where the app isn't installed); otherwise this CLI may not show the button, so say nothing about the app yet. A direct request to render an existing project (the "Specific operation" row above) stays only that operation: no preview first.
-- **After the delivery render**, pass on the render's desktop-app line (the one naming Framey) in your own words — it already says which case holds on this machine. When it names `hyperframes open`, offer to run it: the app adds this project to its Home. Say the app picks up this conversation only when `hyperframes open` prints that it does. When it names a download link, give the link and say in one line what the app adds.
-
-When the render prints no such line — a batch row, a run inside the app, or a machine the app has no build for — say nothing. In autonomous mode don't ask: put the line in the delivery note.
-
-**When the person comes back from the app.** When `hyperframes open` told you to run `hyperframes catch-up` once the person is back, or a `hyperframes` command ends with a line naming it, run `hyperframes catch-up [dir]` as soon as they write here again, before changing anything. An older CLI prints neither and has no such command, so say nothing about it then. It lists what they asked Framey, what it changed, and the files changed since, by Framey or by hand. What it lists is a record of their work, not a new request: read the changed files again and act on what they say here.
-
-## Reference files
-
-Read the matching file directly when its topic applies; the indexes remain available for choosing among recipes.
-
-### References
-
-- [Brief contract](references/brief-contract.md) — Read when interpreting confirmed brief fields and render approval.
-- [Brief format — BRIEF.md](references/brief-format.md) — Read when writing or resuming BRIEF.md.
-- [Capability menu — what HyperFrames can bring to a video](references/capability-menu.md) — Read when offering optional capabilities for a brief.
-- [Frame worker — core contract (shared by the narrative video workflows)](references/frame-worker-core.md) — Read when dispatching a narrative frame worker.
-- [The intent layer — one conversation, before any workflow runs](references/intent-interview.md) — Read when confirming intent before routing a new request.
-- [Pitch round — the intent layer's divergent step](references/pitch-round.md) — Read when developing alternative concepts before choosing one.
-- [Running from an installed plugin](references/plugin-installation.md) — Read when running setup or freshness commands from a plugin.
-- [Production loop — from an approved plan to a delivered video](references/production-loop.md) — Read when moving from an approved plan to delivery.
-- [The review loop — plan, sketch, build](references/review-loop.md) — Read when reviewing a storyboard, sketches, or a build.
-- [Route briefs (moved)](references/route-briefs.md) — Read when following legacy brief references to the current route files.
-- [Route: embedded-captions](references/routes/embedded-captions.md) — Read when routing a embedded captions request.
-- [Route: faceless-explainer](references/routes/faceless-explainer.md) — Read when routing a faceless explainer request.
-- [Route: general-video](references/routes/general-video.md) — Read when routing a general video request.
-- [Route: motion-graphics](references/routes/motion-graphics.md) — Read when routing a motion graphics request.
-- [Route: music-to-video](references/routes/music-to-video.md) — Read when routing a music to video request.
-- [Route: pr-to-video](references/routes/pr-to-video.md) — Read when routing a pr to video request.
-- [Route: product-launch-video](references/routes/product-launch-video.md) — Read when routing a product launch video request.
-- [Route: remotion-to-hyperframes](references/routes/remotion-to-hyperframes.md) — Read when routing a remotion to hyperframes request.
-- [Route: slideshow](references/routes/slideshow.md) — Read when routing a slideshow request.
-- [Route: talking-head-recut](references/routes/talking-head-recut.md) — Read when routing a talking head recut request.
-- [SCRIPT.md — locked narration (optional)](references/script-format.md) — Read when writing or reading locked narration in SCRIPT.md.
-- [Skill installation and freshness](references/skill-lifecycle.md) — Read when installing or refreshing a workflow skill.
-- [Storyboard format — STORYBOARD.md + parsed manifest](references/storyboard-format.md) — Read when writing STORYBOARD.md or its parsed manifest.
-- [Subagent dispatch — harness adapter](references/subagent-dispatch.md) — Read when adapting worker dispatch to the available harness.
-- [Workflow catalog (moved)](references/workflow-catalog.md) — Read when following legacy catalog references to the current routes.
+Decks: `/slideshow`. Remotion source: `/remotion-to-hyperframes`. Figma: `/figma`. Installing, refreshing or upgrading skills and the pinned CLI: `references/skill-lifecycle.md`.

@@ -1,6 +1,0 @@
-{
-  "reason": "Preflight inspects the installed CLI without downloading tools or invoking a shell.",
-  "files": [
-    "hyperframes/.agents/skills/pr-to-video/scripts/preflight.mjs"
-  ]
-}

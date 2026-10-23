@@ -1,6 +1,0 @@
-{
-  "reason": "Standalone media resolution launches the managed installed CLI without checkout or remote bootstrap assumptions.",
-  "files": [
-    "hyperframes/.agents/skills/media-use/scripts/resolve.mjs"
-  ]
-}

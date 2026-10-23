@@ -1,0 +1,3 @@
+- **Narrated**: the voice is the clock. Time each beat's start to its anchor word; text lands on the word that says it.
+- **Music only**: the music is the clock. Land the payoff and the mark on its strong beats (`npx hyperframes beats`, then `film.md` "On music"); cuts follow the motion, not the drums.
+- Let the sound act out the story when it fits: the old way sits near silence, the music opens when the product appears; the music holds back until the payoff.

@@ -1,6 +1,0 @@
-{
-  "reason": "upstream's cross-workflow borrowing rule tells agents to install the other workflow at task time; every workflow is vendored here, so refreshes go through the update-vendored-skills review flow, not runtime installs.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes/references/capability-menu.md"
-  ]
-}

@@ -1,39 +1,27 @@
-# Skill installation and freshness
+# Reviewed skill and CLI maintenance
 
-<!-- LOCAL PATCH (connorads dotfiles): upstream's skill-lifecycle reference is a set of task-time self-install/refresh commands; skills are vendored here and refreshed through the update-vendored-skills review flow. -->
+The seven published HyperFrames skills are vendored together in this repository:
+`hyperframes`, `hyperframes-cli`, `hyperframes-registry`, `media-use`, `figma`,
+`slideshow` and `remotion-to-hyperframes`.
 
-Every HyperFrames skill is vendored in this repo and refreshed through the dotfiles `update-vendored-skills` review flow. Do **not** run any `hyperframes skills …` or `pnpm exec skills add` command from this file: nothing below installs or updates a skill here. Read the rest only to understand upstream's lifecycle, and surface a missing or stale skill to the user instead of installing it.
+Read the installed sibling skill. Report a missing or stale skill instead of
+installing it. Refresh skills through the dotfiles `update-vendored-skills`
+review flow. Do not run `hyperframes skills` or a remote skills installer.
 
-For a plugin installation, follow [plugin execution rules](plugin-installation.md); the plugin manager owns updates and all workflows are bundled. The commands below apply only to standalone skills.
+Run the managed installed `hyperframes` CLI in the project. Set
+`HYPERFRAMES_SKIP_SKILLS=1`, `HYPERFRAMES_NO_TELEMETRY=1` and
+`HYPERFRAMES_NO_UPDATE_CHECK=1`, including during `init`, so project work does
+not refresh skills or contact update services. The `--skip-skills` flag alone
+is insufficient on affected upstream releases.
 
-HyperFrames installs the core set eagerly and workflow skills lazily.
+If the CLI or helper dependencies are missing, report the exact prerequisite.
+Install reviewed pinned dependencies with pnpm only after user authorisation.
+Retain quarantine, install-script protections and existing project lockfiles.
+Do not download a temporary CLI or silently change a project's pinned version.
 
-- **Core set:** `/hyperframes`, the `hyperframes-*` domain skills, and `/media-use`.
-- **Workflow skills:** installed when routing selects them through `hyperframes skills update <workflow-name>`.
-
-## What `init` does
-
-`hyperframes init` checks GitHub and refreshes the core set plus other skills already installed. It does not install workflows that have never been used. A current install is a no-op. Offline or rate-limited checks degrade gracefully and do not fail project scaffolding.
-
-The `--skip-skills` CLI flag is temporarily ignored. CI and tests may opt out with `HYPERFRAMES_SKIP_SKILLS=1`.
-
-`HYPERFRAMES_SKIP_SKILLS=1` also makes `skills update` (bare or named) and bare `skills` exit 0 without installing or pruning, so an install pinned to one commit stays pinned.
-
-## Diagnose and update
-
-```bash
-hyperframes skills check
-hyperframes skills check --json
-hyperframes skills update
-hyperframes skills update <workflow-name>
-hyperframes skills
-```
-
-- `skills check` exits non-zero when an installed skill is stale or the core set is incomplete. Workflows available on demand but not installed are not failures.
-- Bare `skills update` refreshes the core set and everything already installed, prunes unpublished skills, and does not expand the workflow set.
-- Named `skills update <name...>` also installs those named workflows or domain skills.
-- Bare `skills` installs the full published set explicitly.
-
-If the HyperFrames CLI is unavailable, use `pnpm exec skills add heygen-com/hyperframes --skill <workflow-name>` for one workflow or `pnpm exec skills add heygen-com/hyperframes --all` for the full published set.
-
-The CLI may print a one-line stale-skill reminder during `render`, `lint`, or `check`. Treat a failed update as a visible tool failure; do not continue from a remembered workflow contract.
+When a version mismatch appears, report the installed and required versions.
+A CLI or project-pin upgrade requires explicit user authorisation through the
+local tool workflow. After an authorised bump, run `hyperframes check` and
+review rendered frames. A passing composition check does not prove identical
+rendered output. Revert a failing project-pin change and report the retained
+version and failure.

@@ -1,6 +1,0 @@
-{
-  "reason": "Helper instructions match managed installed dependencies and forbid automatic bootstrap.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes-creative/SKILL.md"
-  ]
-}

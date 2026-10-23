@@ -1,0 +1,3 @@
+- A clip nested inside another timed element counts its `data-start` from the composition, not from that element, and shows only while that element shows. `timeline` lists it under its parent and warns `never visible` when the windows miss (`lint`: `nested_clip_never_visible`).
+- `npx hyperframes timeline --json` lists every clip by kind with `absStart`, `absEnd`, `file`, `src`, `playbackRate`, `nested`, `host` and `durationSource`: read it instead of opening every file. It reads one level of nesting (a deeper scene shows `children=unread`); `laneError` means a `data-automation` or `data-fx-chain` that doesn't parse.
+

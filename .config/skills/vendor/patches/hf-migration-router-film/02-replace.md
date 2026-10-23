@@ -1,0 +1,3 @@
+- Show 2–4 hunks of 4–12 lines; counts like +N/−M go on a stat card, not into the voiceover.
+- The `code-*` registry blocks (`hyperframes catalog --query code --json`) are 1920×1080 scenes driven by `window.__TOKENS` (Shiki tokens, `github-dark`; `fontStyle` bit 1 italic, bit 2 bold) and `window.__BLOCK` (`{id, effect, seq, line?, duration}`). `code-diff` and `code-morph` need at least two states; `code-highlight` counts lines from 0 and `code-scroll` from 1; `code-typing` types at a fixed speed, so check characters × speed against the scene's duration. They reserve no caption band: inset the panel when captions are on.
+

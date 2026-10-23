@@ -1,0 +1,6 @@
+{
+  "reason": "Verify the local managed launcher contract instead of the removed remote package bootstrap.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/scripts/plugin-cli.test.mjs"
+  ]
+}

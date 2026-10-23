@@ -1,0 +1,4 @@
+    "am_michael",
+  ]);
+  assert.equal(resolved.opts.shell, undefined);
+});

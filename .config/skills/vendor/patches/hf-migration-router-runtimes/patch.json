@@ -1,0 +1,6 @@
+{
+  "reason": "Use reviewed installed tools and preserve consent, telemetry and vendored skill ownership.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/references/runtimes.md"
+  ]
+}

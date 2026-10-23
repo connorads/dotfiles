@@ -4,7 +4,7 @@
 `--provider` or `--words` flag. For HeyGen audio plus word timestamps, use the
 bundled `heygen-tts.mjs` script below.
 
-> **Run the Preflight first — no credential is not a green light to silently use the local voice.** Before generating a voiceover, complete the sign-in **Preflight** (see `../../SKILL.md` → Preflight): run `hyperframes auth status`, recommend signing in, and **STOP for the user's choice** (sign in for HeyGen voices, or continue offline with local Kokoro). This applies to a one-off "generate a voiceover" request just as much as inside a full workflow.
+> Choose the provider with the user before generating. Use the host media tool when available, otherwise the managed installed provider. Missing credentials do not authorise a sign-in, model download or local generation.
 
 ## Narrating a HyperFrames docs video
 
@@ -175,9 +175,6 @@ not native TTS timestamps. Do not distribute words evenly across a clip.
 - **Timing:** This adapter requests no native word timestamps. It uses the
   existing transcription pass. `lang` selects transcription language; Gemini
   infers speech language from the text.
-- **Workflow adapters:** Product-launch, faceless-explainer, and PR-video audio
-  scripts accept `--provider gemini --voice Kore --tts-model gemini-3.8-flash-tts
---style "Warm and clear"`.
 
 An API error is reported as a failed line; an explicitly chosen Gemini voice
 never silently falls back to another provider. Check the engine's anomalies

@@ -1,0 +1,3 @@
+- Library music, HeyGen's included, comes as 15–30 s loops: loop the bed to the film with a 0.4 s fade-in and a 1.5 s fade-out. A track whose opening is a quiet build drains a short film: start from a stronger later section.
+- Trust beat times only on rhythmic stretches; on calm music the tracker invents a metronome, often at double tempo (`hyperframes beats` reports `bpmConfidence`). Cut there on phrase and energy changes; `hyperframes audio --only sections,onsets,moments --json` finds them.
+- A move that must land on a hit starts 40–190 ms early; a reaction starts 0–45 ms after. The hit itself is a 0 ms `tl.set`: easing a hit kills it. Scenes tile the track with no gaps.

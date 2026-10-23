@@ -1,6 +1,0 @@
-{
-  "reason": "Catalog-map feedback sends require an explicit user request and respect for opt-outs.",
-  "files": [
-    "hyperframes/.agents/skills/motion-graphics/catalog-map.md"
-  ]
-}

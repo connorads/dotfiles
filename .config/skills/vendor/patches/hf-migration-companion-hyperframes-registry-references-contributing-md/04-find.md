@@ -1,0 +1,8 @@
+- [ ] `hyperframes lint` → 0 errors
+- [ ] `hyperframes check` → 0 console errors
+- [ ] `npx oxfmt --check` passes
+- [ ] `registry/registry.json` updated with new entry
+- [ ] `scripts/generate-catalog-pages.ts` run (docs page generated)
+- [ ] `npx hyperframes publish` run (claim your project URL)
+- [ ] Preview MP4 attached to PR (external) or catalog PNG uploaded (internal)
+- [ ] All IDs unique and prefixed

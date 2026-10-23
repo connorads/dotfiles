@@ -1,6 +1,0 @@
-{
-  "reason": "Launch the managed installed CLI without remote bootstrap or unrelated credential probes.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes/scripts/plugin-cli.mjs"
-  ]
-}

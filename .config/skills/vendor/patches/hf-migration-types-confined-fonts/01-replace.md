@@ -1,0 +1,1 @@
+Stage fonts explicitly. Keep source font paths inside this preset and destination font paths inside the project. Reject symlinked font directories, files and path components below the skill and project roots.

@@ -1,6 +1,0 @@
-{
-  "reason": "Catalog-gap reports require an explicit user request and respect for opt-outs.",
-  "files": [
-    "hyperframes/.agents/skills/hyperframes-registry/SKILL.md"
-  ]
-}

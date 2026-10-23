@@ -1,0 +1,14 @@
+## Grade and style footage and images
+
+- Measure, then correct: `hyperframes media-treatment --selector '#hero' --analyze --json`, then `--grading '<json>' --apply`. `--dry-run` previews; `--clear` removes the treatment.
+- `--file` defaults to `index.html`: for media inside a scene, pass `--file compositions/<scene>.html`.
+- Grain, blur, vignette, presets, palettes: `hyperframes media-treatment --capabilities --json`, then `--capability <id>` for one family's controls and ranges.
+- The result is a `data-color-grading` attribute on the media element. It treats the whole element in SDR, so it can't blur one region such as a face.
+- To animate it, set the start value in the element's inline `style` and tween these custom properties with finite `tl.to()` on the composition's timeline: `--hf-color-grading-` followed by `intensity`, `lut-intensity`, `blur`, `kuwahara`, `pixelate`, `ascii` or `dither` (each 0–1), `exposure` (−2 to 2) or `bloom` (0–3).
+- Compare candidate grades on one frame: `hyperframes grade-compare --for frame.png --grades grades.json --json`, or `--luts a.cube,b.cube`.
+
+## Cutouts
+
+- `hyperframes remove-background <in> -o cutout.webm` (`.png` for an image; `--quality best` for a closer colour match over its source). `--background-output plate.webm` also writes the background with the subject cut out.
+- A cutout over its own source: both clips `data-start="0"` and `data-media-start="0"`, so they decode in sync.
+- The runtime forces `opacity: 1` on a timed clip. To fade a cutout, wrap it in an untimed `<div>` and animate the wrapper.

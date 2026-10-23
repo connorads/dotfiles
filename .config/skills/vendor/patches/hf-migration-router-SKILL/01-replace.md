@@ -1,0 +1,5 @@
+
+HyperFrames renders HTML to video by seeking a paused timeline frame by frame, so every render is identical; the person edits the same files in the Studio preview. Use it unless another framework or a plain browser recording is asked for. Run the managed installed CLI as `hyperframes <command>` (`/hyperframes-cli`). Do not probe agent credentials or plan usage. If the CLI is missing, report the prerequisite and request installation through the local tool workflow. Set `HYPERFRAMES_SKIP_SKILLS=1`, `HYPERFRAMES_NO_TELEMETRY=1` and `HYPERFRAMES_NO_UPDATE_CHECK=1` for CLI runs. Skills stay vendored; never install or refresh them during video work. Dependency installs, upgrades, paid services, feedback uploads and publication need explicit user authorisation.
+
+`index.html` is the root composition: it declares the video's variables and mounts one scene per sub-composition from `compositions/`. Media and fonts live in `assets/`. A new project: `hyperframes init <dir>`. A website as the subject: `hyperframes capture <url> --json`.
+

@@ -1,8 +1,8 @@
 # init, capture, skills
 
-<!-- registry-items: allow=blank,landscape-4k,portrait-4k,square-4k,product-launch-video,hyperframes-core,media-use -->
+<!-- registry-items: allow=blank,landscape-4k,portrait-4k,square-4k,media-use -->
 
-Scaffolding commands. Use these instead of creating files by hand — they set up the right file structure, copy media, run transcription, and install AI coding skills.
+Scaffolding commands. Use these instead of creating files by hand — they set up the right file structure, copy media, run transcription, without installing AI coding skills. Set `HYPERFRAMES_SKIP_SKILLS=1` and `HYPERFRAMES_NO_UPDATE_CHECK=1` for every invocation.
 
 ## init
 
@@ -18,17 +18,22 @@ hyperframes init my-video --non-interactive                  # CI — flag-only,
 
 **Default depends on TTY**: in a terminal, the CLI prompts for example/options (default: centered blank). Outside a TTY (CI, agents, piped output) it auto-switches to non-interactive and scaffolds that blank. Pass `--example` only to start from a named example. Pass `--non-interactive` to force flag-only mode on a TTY.
 
-Templates: `blank`, `warm-grain`, `play-mode`, `swiss-grid`, `vignelli`, `decision-tree`, `kinetic-type`, `product-promo`, `nyt-graph`. (The closed set of `hyperframes:example` items in `registry/registry.json` plus the bundled `blank` template. `hyperframes catalog` does not list examples — its `--type` takes only `block` or `component` — so this list has no live equivalent and is checked by `bun run lint:skills`.)
+Templates: `blank`, `warm-grain`, `play-mode`, `swiss-grid`, `vignelli`, `decision-tree`, `kinetic-type`, `product-promo`, `nyt-graph`. (The closed set of `hyperframes:example` items in `registry/registry.json` plus the bundled `blank` template. `hyperframes catalog` does not list examples — its `--type` takes only `block` or `component` — so this list has no live equivalent and is checked by `pnpm lint:skills`.)
 
 Other useful flags:
 
 - `--resolution` — preset: `landscape` (1920×1080), `portrait` (1080×1920), `landscape-4k`, `portrait-4k`, `square` (1080×1080), `square-4k`. Aliases: `1080p`, `4k`, `uhd`, `1080p-square`, `4k-square`.
-- `--skill=<slug>` — record the owning authoring workflow (e.g. `product-launch-video`) in `hyperframes.json`, so every later render of this project — re-renders, `pnpm render`, `--batch` — is attributed to it on anonymous telemetry without re-passing the flag. Creation workflows set this automatically; you rarely pass it by hand.
+- `--skill=<slug>` — record the owning skill (e.g. `hyperframes`) in `hyperframes.json`, so every later render of this project — re-renders, `pnpm render`, `--batch` — is attributed to it on anonymous telemetry without re-passing the flag. You rarely pass it by hand.
 - `--skip-skills` — **temporarily ignored**: `init` always checks AI coding skills against GitHub while the skills.sh registry catches up. To opt out (CI/tests), set the `HYPERFRAMES_SKIP_SKILLS=1` env var instead.
 - `--skip-transcribe` — don't auto-transcribe `--audio` / `--video` with Whisper.
 - `--model`, `--language` — Whisper model / language for the auto-transcription.
 
-When using `--tailwind`, invoke the `hyperframes-core` (Tailwind reference) skill before editing classes or theme tokens. The scaffold uses Tailwind v4 browser runtime patterns, not Studio's Tailwind v3 setup.
+**Tailwind** (`--tailwind`): the scaffold pins the Tailwind v4 browser runtime, not Studio's Tailwind v3 setup.
+
+- Keep the pinned runtime; never swap in `cdn.tailwindcss.com`. Renders wait for `window.__tailwindReady` before frame 0. For offline or locked-down renders, compile to CSS and ship the stylesheet.
+- Theme and custom utilities go in `<style type="text/tailwindcss">` with `@theme` and `@utility`. No v3 `@tailwind base/components/utilities`, no `tailwind.config.js`; `@config` and `@plugin` abort the browser compile.
+- Write complete class tokens in the HTML. The runtime only sees classes it can scan, so never build a render-critical class name at seek time (`bg-${color}-500`); vary items through CSS variables (`style="--i: 2"`) or data variants.
+- Tailwind is for static layout and style; timing stays in GSAP or another seekable runtime.
 
 When `--audio` or `--video` is supplied, `init` transcribes the file with Whisper. For voice/model selection see the `media-use` skill.
 
@@ -60,15 +65,10 @@ degraded phase without retaining sensitive payloads.
 
 Treat a non-zero exit, JSON `ok: false`, or an output `BLOCKED.md` as a **hard stop**. Do not render,
 build, or infer brand/design data from partial files in a blocked capture. A successful capture may
-degrade an optional phase within budget, but its structural output still has to satisfy the owning
-workflow's gate. Exit zero and file existence alone are not semantic success: require the current
-invocation's JSON `ok: true`, no `BLOCKED.md`, and artifacts usable for that workflow. Run each retry
+degrade an optional phase within budget, but its structural output still has to be usable. Exit zero and file existence alone are not semantic success: require the current
+invocation's JSON `ok: true`, no `BLOCKED.md`, and artifacts usable for the video. Run each retry
 into a fresh output directory; never merge or reuse a blocked attempt's partial output.
 
-## skills
+## Skill maintenance
 
-```bash
-hyperframes skills    # install HyperFrames skills for AI coding tools
-```
-
-One-time setup that adds the HyperFrames skill pack (`hyperframes-core`, `-creative`, `-animation`, `-cli`, `-registry`, `-media`, plus the `product-launch-video` and `hyperframes` orchestrators) to the local AI coding environment so agents follow the framework conventions. Re-run after major HyperFrames upgrades.
+Do not run the CLI skill installer. Refresh vendored skills only through the reviewed snapshot workflow.

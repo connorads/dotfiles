@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-// The stub stands in for `npx hyperframes transcribe <in> --dir <dir> ...`: it records its args,
+// The stub stands in for `hyperframes transcribe <in> --dir <dir> ...`: it records its args,
 // writes the CLI's flat array and prints the CLI's --json line naming `cliEngine`.
 function runScript(engine, cliEngine) {
   const root = mkdtempSync(join(tmpdir(), "media-use-transcribe-"));
@@ -14,12 +14,12 @@ function runScript(engine, cliEngine) {
     const bin = join(root, "bin");
     mkdirSync(bin);
     writeFileSync(
-      join(bin, "npx"),
+      join(bin, "hyperframes"),
       `#!/bin/sh\necho "$@" > "${root}/args"\nwhile [ "$1" != "--dir" ]; do shift; done\n` +
         `echo '[{"text":"a","start":0,"end":1},{"text":"b","start":1,"end":2}]' > "$2/transcript.json"\n` +
         `echo '{"ok":true,"engine":"${cliEngine}"}'\n`,
     );
-    chmodSync(join(bin, "npx"), 0o755);
+    chmodSync(join(bin, "hyperframes"), 0o755);
     const input = join(root, "in.wav");
     writeFileSync(input, "");
     const script = fileURLToPath(new URL("./transcribe.mjs", import.meta.url));
@@ -81,10 +81,10 @@ test(
       const reason =
         "Parakeet is not installed. Install it with: hyperframes models install parakeet";
       writeFileSync(
-        join(bin, "npx"),
+        join(bin, "hyperframes"),
         `#!/bin/sh\necho '{"ok":false,"error":"${reason}"}'\nexit 1\n`,
       );
-      chmodSync(join(bin, "npx"), 0o755);
+      chmodSync(join(bin, "hyperframes"), 0o755);
       const input = join(root, "in.wav");
       writeFileSync(input, "");
       const script = fileURLToPath(new URL("./transcribe.mjs", import.meta.url));

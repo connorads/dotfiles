@@ -1,0 +1,6 @@
+{
+  "reason": "Read installed fonts directly instead of a shared temporary file; require consent before image upload.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/scripts/locate.mjs"
+  ]
+}

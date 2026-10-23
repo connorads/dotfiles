@@ -9,11 +9,7 @@ import {
   _resetNpxResolutionWarnForTests,
 } from "./tts.mjs";
 
-// Regression: on Windows, npx resolves to npx.cmd, which spawn() cannot exec
-// without shell:true — it fails ENOENT, silently swallowed as ok:false by the
-// caller. spawnP takes injectable platform/spawnFn params so this doesn't
-// need to touch the real process.platform or mock node:child_process (whose
-// ESM exports are non-configurable).
+// Exercise managed CLI launches with injected platforms and child processes.
 function fakeSpawn(captured) {
   return (cmd, args, opts) => {
     captured.push({ cmd, args, opts });
@@ -43,7 +39,7 @@ test("resolveNpxCliPath finds npx-cli beside node when npm_execpath is unset", (
   );
 });
 
-test("resolveSpawnCommand routes npx through node+npx-cli on win32 without shell:true", () => {
+test("resolveSpawnCommand uses the managed CLI on win32 without a shell", () => {
   const resolved = resolveSpawnCommand(
     "npx",
     ["hyperframes", "tts", "C:\\Users\\Test User\\line.txt", "--voice", "am_michael"],
@@ -53,16 +49,14 @@ test("resolveSpawnCommand routes npx through node+npx-cli on win32 without shell
     pathExists,
   );
   assert.ok(resolved);
-  assert.equal(resolved.cmd, envWithNpxCli.npm_node_execpath);
+  assert.equal(resolved.cmd, "hyperframes");
   assert.deepEqual(resolved.args, [
-    npxCliPath,
-    "hyperframes",
     "tts",
     "C:\\Users\\Test User\\line.txt",
     "--voice",
     "am_michael",
   ]);
-  assert.equal(resolved.opts.shell, undefined);
+  assert.equal(resolved.opts.shell, false);
 });
 
 test("resolveSpawnCommand preserves Windows npx shell metacharacters as argv data", () => {
@@ -75,10 +69,10 @@ test("resolveSpawnCommand preserves Windows npx shell metacharacters as argv dat
     pathExists,
   );
   assert.ok(resolved);
-  assert.deepEqual(resolved.args, [npxCliPath, "hyperframes", "tts", "hello & calc"]);
+  assert.deepEqual(resolved.args, ["tts", "hello & calc"]);
 });
 
-test("spawnP uses the resolved node+npx-cli command for npx on win32", async () => {
+test("spawnP uses the managed CLI for legacy npx requests on win32", async () => {
   const captured = [];
   await spawnP(
     "npx",
@@ -90,17 +84,17 @@ test("spawnP uses the resolved node+npx-cli command for npx on win32", async () 
     pathExists,
   );
   assert.equal(captured.length, 1);
-  assert.equal(captured[0].cmd, envWithNpxCli.npm_node_execpath);
-  assert.deepEqual(captured[0].args, [npxCliPath, "hyperframes", "tts"]);
-  assert.equal(captured[0].opts.shell, undefined);
+  assert.equal(captured[0].cmd, "hyperframes");
+  assert.deepEqual(captured[0].args, ["tts"]);
+  assert.equal(captured[0].opts.shell, false);
 });
 
 test("spawnP does not enable shell for npx on darwin/linux", async () => {
   const captured = [];
   await spawnP("npx", ["hyperframes", "tts"], {}, "darwin", fakeSpawn(captured));
-  assert.equal(captured[0].cmd, "npx");
-  assert.deepEqual(captured[0].args, ["hyperframes", "tts"]);
-  assert.equal(captured[0].opts.shell, undefined);
+  assert.equal(captured[0].cmd, "hyperframes");
+  assert.deepEqual(captured[0].args, ["tts"]);
+  assert.equal(captured[0].opts.shell, false);
 });
 
 test("spawnP does not enable shell for non-npx commands even on win32", async () => {
@@ -111,7 +105,7 @@ test("spawnP does not enable shell for non-npx commands even on win32", async ()
   assert.equal(captured[0].opts.shell, undefined);
 });
 
-test("spawnP resolves npx beside node when npm_execpath is unset on win32", async () => {
+test("spawnP uses the managed CLI without npm on win32", async () => {
   _resetNpxResolutionWarnForTests();
   const captured = [];
   const node = "C:/Program Files/nodejs/node.exe";
@@ -127,32 +121,17 @@ test("spawnP resolves npx beside node when npm_execpath is unset on win32", asyn
   );
   assert.equal(result.status, 0);
   assert.equal(captured.length, 1);
-  assert.equal(captured[0].cmd, node);
-  assert.deepEqual(captured[0].args, [npxCli, "hyperframes", "tts"]);
+  assert.equal(captured[0].cmd, "hyperframes");
+  assert.deepEqual(captured[0].args, ["tts"]);
 });
 
-test("spawnP warns once with an accurate diagnostic when neither npx path exists", async () => {
-  _resetNpxResolutionWarnForTests();
-  const errors = [];
-  const originalError = console.error;
-  console.error = (message) => errors.push(String(message));
-  try {
-    const env = { npm_execpath: "C:/missing/npm-cli.js", npm_node_execpath: "C:/node/node.exe" };
-    const missing = () => false;
-    assert.equal(
-      (await spawnP("npx", ["hyperframes", "tts"], {}, "win32", fakeSpawn([]), env, missing))
-        .status,
-      -1,
-    );
-    assert.equal(
-      (await spawnP("npx", ["hyperframes", "tts"], {}, "win32", fakeSpawn([]), env, missing))
-        .status,
-      -1,
-    );
-  } finally {
-    console.error = originalError;
-  }
-  assert.equal(errors.length, 1);
-  assert.match(errors[0], /npm_execpath \(C:\/missing\/npm-cli\.js\)/);
-  assert.doesNotMatch(errors[0], /npm_execpath is not set/);
+test("non-HyperFrames npx bootstrap is rejected before spawn", () => {
+  assert.throws(() => resolveSpawnCommand("npx", ["unmanaged-tool"]), /bootstrap is disabled/);
+});
+
+test("managed launches preserve shell metacharacters as literal arguments", () => {
+  const result = resolveSpawnCommand("npx", ["hyperframes", "tts", "hello; touch ignored"], { shell: true });
+  assert.equal(result.cmd, "hyperframes");
+  assert.deepEqual(result.args, ["tts", "hello; touch ignored"]);
+  assert.equal(result.opts.shell, false);
 });
