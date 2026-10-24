@@ -411,3 +411,18 @@ test('login rejects stale profiles, another host, and unrelated usage sources be
   ]) await assert.rejects(harness.behavior.callRpc('usage.login', { hostId, accountId }));
   assert.equal(created.length, 0);
 });
+
+test('the next CLI reads and sets the account new threads start on', async () => {
+  const { bb, harness, firstSend, binding } = await newThreadSetup();
+  const read = await harness.behavior.runCli(['next']);
+  assert.equal(read.exitCode, 0);
+  assert.deepEqual(JSON.parse(read.stdout), { currentId: 'personal', profiles: ['default', 'work', 'personal'] });
+  assert.deepEqual(JSON.parse((await harness.behavior.runCli(['next', 'work'])).stdout).currentId, 'work');
+  assert.equal(await bb.storage.kv.get('next-thread-profile'), 'work');
+  await firstSend();
+  assert.equal((await binding())?.profile.id, 'work');
+  const missing = await harness.behavior.runCli(['next', 'nobody']);
+  assert.equal(missing.exitCode, 1);
+  assert.match(missing.stderr ?? '', /Profile does not exist/);
+  assert.equal(await bb.storage.kv.get('next-thread-profile'), 'work');
+});

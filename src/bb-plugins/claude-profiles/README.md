@@ -396,9 +396,14 @@ bb claude-profiles usage THREAD_ID work
 bb claude-profiles overview [--refresh]
 bb claude-profiles header THREAD_ID
 bb claude-profiles import SESSION_ID|TMUX_PANE
+bb claude-profiles next [PROFILE]
 ```
 
 `overview` and `header` print the usage overlay and header data as JSON.
+`next` prints the remembered new-thread account and the profiles on the
+connected machine. With `PROFILE`, it first sets that account, as Alt+A does
+in a new-thread composer. Agents use it before a workflow run whose origin
+cannot pass on an account.
 
 ### Import
 

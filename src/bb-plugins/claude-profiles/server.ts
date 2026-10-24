@@ -283,6 +283,11 @@ export default function plugin(bb: BbPluginApi) {
     if (!hostId) return null;
     return host.call('profiles', { root: (await settings.get()).profileRoot }, { hostId });
   }
+  async function chooseNext(profileId: string) {
+    if (!(await localProfiles())?.some(profile => profile.id === profileId)) throw new Error('Profile does not exist.');
+    await bb.storage.kv.set(nextKey, profileId);
+    bb.realtime.publish('profiles-changed', { threadId: null });
+  }
   // A thread without an environment has no host to list profiles on yet.
   async function threadAccount(threadId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
@@ -330,9 +335,7 @@ export default function plugin(bb: BbPluginApi) {
     },
     choose: async ({ threadId, profileId }) => {
       if (threadId !== null) return { currentId: (await select(threadId, profileId)).profile.id };
-      if (!(await localProfiles())?.some(profile => profile.id === profileId)) throw new Error('Profile does not exist.');
-      await bb.storage.kv.set(nextKey, profileId);
-      bb.realtime.publish('profiles-changed', { threadId: null });
+      await chooseNext(profileId);
       return { currentId: profileId };
     },
     usage: input => usage(input.threadId, input.profileId, input.refresh),
@@ -367,7 +370,7 @@ export default function plugin(bb: BbPluginApi) {
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
-    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off]';
+    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off] | next [PROFILE]';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
@@ -381,6 +384,14 @@ export default function plugin(bb: BbPluginApi) {
           const valid = argv[0] === 'overview' ? argv.length === 1 || (argv.length === 2 && argv[1] === '--refresh') : argv.length === 2;
           if (!valid) throw new Error(usageText);
           const value = argv[0] === 'overview' ? await usageReader.overview(argv.length === 2) : await usageReader.header(argv[1]!);
+          return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };
+        }
+        if (argv[0] === 'next') {
+          if (argv.length > 2) throw new Error(usageText);
+          if (argv[1]) await chooseNext(argv[1]);
+          const profiles = await localProfiles();
+          if (!profiles) throw new Error('No connected machine to list Claude profiles on.');
+          const value = { currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default', profiles: profiles.map(profile => profile.id) };
           return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };
         }
         if (argv[0] === 'import') {
