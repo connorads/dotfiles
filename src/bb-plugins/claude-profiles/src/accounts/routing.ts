@@ -9,19 +9,28 @@ export type NewThreadAccount =
   | { kind: 'composer'; profileId: string }
   | { kind: 'default' };
 
-/** The thread whose account a new thread inherits: its parent, else the source of a fork. */
-export function startingThreadId(thread: { originKind: 'fork' | null; sourceThreadId: string | null }, parentThreadId: string | null) {
-  return parentThreadId ?? (thread.originKind === 'fork' ? thread.sourceThreadId : null);
+type StartedThread = { originKind: 'fork' | null; sourceThreadId: string | null; originPluginId: string | null; lifecycleOwnerThreadId: string | null };
+
+/**
+ * The thread whose account a new thread inherits: its parent, else the source of a fork, else the origin of a workflow run.
+ * Workflow workers have no parent; the run's origin thread owns their lifecycle.
+ */
+export function startingThread(thread: StartedThread, parentThreadId: string | null) {
+  if (parentThreadId) return { id: parentThreadId, workflow: false };
+  if (thread.originKind === 'fork' && thread.sourceThreadId) return { id: thread.sourceThreadId, workflow: false };
+  if (thread.originPluginId === 'workflows' && thread.lifecycleOwnerThreadId) return { id: thread.lifecycleOwnerThreadId, workflow: true };
+  return null;
 }
 
 /**
  * Any binding passes on, Default included, so a child of a thread on Default and its own children stay on Default.
- * A fork of an unbound thread stays on Default: BB writes the forked session under the default config directory.
+ * `defaultWhenUnbound` keeps a new thread on Default when its starting thread has no binding: a fork, because BB writes
+ * the forked session under the default config directory, and a worker of a Claude workflow origin, which runs on Default.
  */
-export function newThreadAccount(startingBinding: Selection | null, composerProfileId: string | null, fork = false): NewThreadAccount {
+export function newThreadAccount(startingBinding: Selection | null, composerProfileId: string | null, defaultWhenUnbound = false): NewThreadAccount {
   if (startingBinding) {
     return { kind: 'inherit', profileId: startingBinding.profile.id, label: startingBinding.profile.label };
   }
-  if (fork || !composerProfileId || composerProfileId === 'default') return { kind: 'default' };
+  if (defaultWhenUnbound || !composerProfileId || composerProfileId === 'default') return { kind: 'default' };
   return { kind: 'composer', profileId: composerProfileId };
 }

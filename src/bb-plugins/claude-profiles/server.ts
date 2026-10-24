@@ -5,7 +5,7 @@ import { providerEnv } from './src/accounts/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { createQuotaCache } from './src/accounts/quota-cache.ts';
-import { newThreadAccount, startingThreadId } from './src/accounts/routing.ts';
+import { newThreadAccount, startingThread } from './src/accounts/routing.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
 import { createLogin } from './src/accounts/usage/login.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
@@ -59,12 +59,14 @@ export default function plugin(bb: BbPluginApi) {
     return (await bb.sdk.hosts.list()).find(machine => machine.status === 'connected')?.id ?? null;
   }
   // The first send reaches this hook before the provider env is resolved, so the claimed selection applies to the first launch.
-  async function claimBinding(thread: { id: string; originKind: 'fork' | null; sourceThreadId: string | null },
+  async function claimBinding(thread: Parameters<typeof startingThread>[0] & { id: string },
     parentThreadId: string | null, hostId: string | null) {
     if (await bb.storage.kv.get<Selection>(key(thread.id))) return;
-    const startingId = startingThreadId(thread, parentThreadId);
-    const account = newThreadAccount(startingId ? await bb.storage.kv.get<Selection>(key(startingId)) ?? null : null,
-      await bb.storage.kv.get<string>(nextKey) ?? null, !parentThreadId && thread.originKind === 'fork');
+    const starting = startingThread(thread, parentThreadId);
+    const startingBinding = starting ? await bb.storage.kv.get<Selection>(key(starting.id)) ?? null : null;
+    const defaultWhenUnbound = (!parentThreadId && thread.originKind === 'fork') || (!!starting?.workflow && !startingBinding
+      && (await bb.sdk.threads.get({ threadId: starting.id })).providerId === 'claude-code');
+    const account = newThreadAccount(startingBinding, await bb.storage.kv.get<string>(nextKey) ?? null, defaultWhenUnbound);
     if (account.kind === 'default' || (account.profileId === 'default' && !hostId)) return;
     if (!hostId) throw new Error('Choose a machine before starting a thread on another Claude account.');
     const config = await settings.get();

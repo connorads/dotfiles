@@ -112,7 +112,8 @@ test('the header CLI prints a thread\'s usage', async () => {
 
 const work = { id: 'work', label: 'Work', configDir: '/profiles/work' };
 const personal = { id: 'personal', label: 'Personal', configDir: '/profiles/personal' };
-type ThreadFields = { parentThreadId?: string | null; originKind?: 'fork' | null; sourceThreadId?: string | null; lifecycleOwnerThreadId?: string | null };
+type ThreadFields = { parentThreadId?: string | null; originKind?: 'fork' | null; sourceThreadId?: string | null; lifecycleOwnerThreadId?: string | null;
+  originPluginId?: string | null };
 
 async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default', configDir: null }, work, personal],
   stage: (input: unknown) => unknown = () => ({ link: '/link', target: '/target' })) {
@@ -120,7 +121,8 @@ async function newThreadSetup(hostProfiles = [{ id: 'default', label: 'Default',
   const identities: Record<string, string> = { source: 'session-source' };
   const { bb, harness } = createFakePluginHost({
     sdk: {
-      threads: { events: { list: async ({ threadId, types }: { threadId: string; types: string[] }) =>
+      threads: { get: async ({ threadId }: { threadId: string }) => ({ id: threadId, providerId: threadId.startsWith('codex') ? 'codex' : 'claude-code' }),
+        events: { list: async ({ threadId, types }: { threadId: string; types: string[] }) =>
         types.includes('thread/identity') && identities[threadId]
           ? [{ type: 'thread/identity', seq: 1, threadId, data: { providerThreadId: identities[threadId] } }] : [] } },
       hosts: { list: async () => [{ id: 'h1', status: 'connected' }, { id: 'h2', status: 'disconnected' }] },
@@ -215,6 +217,25 @@ test('a lifecycle owner alone is not a parent', async () => {
   const { bb, firstSend, binding } = await newThreadSetup();
   await bb.storage.kv.set('thread:owner', { hostId: 'h1', profile: work });
   await firstSend({ lifecycleOwnerThreadId: 'owner' });
+  assert.equal((await binding())?.profile.id, 'personal');
+});
+
+test('a workflow worker starts on its origin thread\'s account, not the composer account', async () => {
+  const { bb, firstSend, binding } = await newThreadSetup();
+  await bb.storage.kv.set('thread:owner', { hostId: 'h1', profile: work });
+  assert.deepEqual(await firstSend({ lifecycleOwnerThreadId: 'owner', originPluginId: 'workflows' }), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'work');
+});
+
+test('a workflow worker of an unbound Claude thread starts on Default, not the composer account', async () => {
+  const { firstSend, binding } = await newThreadSetup();
+  assert.deepEqual(await firstSend({ lifecycleOwnerThreadId: 'owner', originPluginId: 'workflows' }), { action: 'proceed' });
+  assert.equal(await binding(), undefined);
+});
+
+test('a workflow worker of a non-Claude thread uses the composer account', async () => {
+  const { firstSend, binding } = await newThreadSetup();
+  assert.deepEqual(await firstSend({ lifecycleOwnerThreadId: 'codex-owner', originPluginId: 'workflows' }), { action: 'proceed' });
   assert.equal((await binding())?.profile.id, 'personal');
 });
 

@@ -293,8 +293,12 @@ included:
   `parentThreadId` takes its parent's account.
 - A fork takes its source thread's account. A fork of a thread with no
   account chosen stays on Default, where BB writes the forked session.
-- A parent that never had an account chosen, a non-Claude parent and a
-  `bb thread spawn` without a parent use the remembered composer choice.
+- A workflow worker takes the account of the run's origin thread. A worker
+  of a Claude origin with no account chosen stays on Default, where the
+  origin runs.
+- A parent that never had an account chosen, a non-Claude parent or workflow
+  origin and a `bb thread spawn` without a parent use the remembered composer
+  choice.
 
 If the inherited account does not exist on the new thread's machine, the first
 send is refused. The plugin never falls back to another account.
