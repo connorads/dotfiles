@@ -172,6 +172,9 @@ above) are curation calls.
   private                  → symlink (gitignored) to a standalone clone with its OWN git
                              history - commit in the resolved repo, not via dotfiles; its
                              root AGENTS.md documents the wiring · skl source 'private'
+  (no entry)               skl source 'voice' roots directly at ~/git/voice/plugins/voice/skills,
+                           a private repo that is also a Claude Code marketplace; its
+                           AGENTS.md documents the wiring
   personal/<name>/         authored, personal (public-in-dotfiles, not showcased) · skl source 'personal'
   vendor/                  single third-party (VENDORED) root · skl sources: one per set, plus 'vendor'/'manual'
     <set>/                 vendored SET = one skills-CLI project dir per cohesive group · skl source '<set>'
@@ -208,6 +211,7 @@ one `vendor/` root, so the shape is:
 ```json
 { "paths": [
   { "path": "~/.config/skills/private",                      "name": "private" },
+  { "path": "~/git/voice/plugins/voice/skills",              "name": "voice" },
   { "path": "~/.config/skills/personal",                     "name": "personal" },
   { "path": "~/.config/skills/public",                       "name": "public" },
   { "path": "~/.config/skills/vendor/<set>/.agents/skills",  "name": "<set>" },

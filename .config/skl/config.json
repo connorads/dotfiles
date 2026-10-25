@@ -2,6 +2,7 @@
   "exclude": ["**/agents/*.yaml"],
   "paths": [
     { "path": "~/.config/skills/private", "name": "private" },
+    { "path": "~/git/voice/plugins/voice/skills", "name": "voice" },
     { "path": "~/.config/skills/personal", "name": "personal" },
     { "path": "~/.config/skills/public", "name": "public" },
     { "path": "~/.config/skills/vendor/elevenlabs/.agents/skills", "name": "elevenlabs" },

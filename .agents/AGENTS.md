@@ -43,6 +43,8 @@ The coordinating agent owns integration and commits. Workers must not commit unl
 
 ## Communication
 
+For prose that goes out under my name (posts, LinkedIn, slides, emails, Slack or WhatsApp messages, PR descriptions), load the `voice` skill at `~/git/voice/plugins/voice/skills/voice/SKILL.md`. It logs my corrections; keep its rules in that repo, never here.
+
 When asked to explain, research or compare options, present the findings before asking the user to choose. Ask upfront only for information needed to make the investigation useful. If a preference depends on unseen results, show concrete comparisons, measurements or examples first. An unresolved preference need not block exploration, and a comparison need not end with a decision.
 
 Use British English: analyse, favourite, realise, colour.
