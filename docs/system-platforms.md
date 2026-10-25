@@ -23,6 +23,26 @@ The rpi5 uses a hybrid setup - two repos, two rebuilds:
 
 The `up` function runs both on NixOS. An agent on rpi5 can modify the system config (rpi5 repo) without touching dotfiles.
 
+## Darwin rebuilds over SSH
+
+`drs` submits `darwin-rebuild switch` to a system launchd job after sudo authentication.
+The job runs independently of the calling terminal. Restarting Tailscale can disconnect SSH without stopping activation.
+
+```mermaid
+flowchart LR
+  Shell[drs] --> Job[System launchd job]
+  Job --> Rebuild[Darwin rebuild]
+  Rebuild --> Tailscale[Tailscale reload]
+  Job --> Log[Persistent output and exit status]
+```
+
+`drs` streams output and returns the rebuild's exit status while the terminal stays connected.
+Each run prints its log path under `~/.local/state/drs/run.*/output.log`.
+After reconnecting, read that log and the adjacent `result` file. A result of `0` means success.
+A missing result means completion is unconfirmed. Inspect `launcher.log` if the rebuild log is empty.
+Logs remain available after completion. Do not start another rebuild until the running job finishes.
+`drsr` runs its rollback directly in the calling terminal; use a local terminal or tmux for remote rollbacks.
+
 ## Xcode
 
 Nix does not install Xcode. MAS serves latest only, so a `masApps` entry is a

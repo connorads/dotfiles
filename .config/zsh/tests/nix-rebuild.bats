@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
-# The rebuild wrappers are pure argv dispatch, so every host can run these -
-# darwin-rebuild/home-manager/nixos-rebuild are stubbed, not required on PATH.
+# Rebuild commands are stubbed. Only the disconnect test requires macOS launchd.
 #
 # Regression: drs/hms took no "$@", so `drsr` (then `drs --rollback`) discarded
 # the flag and performed a plain switch, exiting 0. A rollback that silently
@@ -17,7 +16,22 @@ setup() {
   # sudo: transparent, so the wrapper's real argv reaches the stub below.
   write_stub sudo <<'EOF'
 #!/usr/bin/env bash
+if [ "$1" = -v ]; then exit "${SUDO_FAIL:-0}"; fi
+if [ "$1" = -n ]; then shift; fi
 exec "$@"
+EOF
+
+  write_stub launchctl <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  submit)
+    shift
+    while [ "$1" != -- ]; do shift; done
+    shift
+    exec "$@"
+    ;;
+  remove) exit 0 ;;
+esac
 EOF
 
   for cmd in darwin-rebuild home-manager nixos-rebuild; do
@@ -79,4 +93,88 @@ assert_invocation() {
 @test "nrs honours NIXOS_FLAKE" {
   NIXOS_FLAKE=/etc/nixos assert_invocation nrs \
     "nixos-rebuild switch --flake /etc/nixos"
+}
+
+@test "drs retains output and the failing rebuild exit status" {
+  write_stub darwin-rebuild <<'EOF'
+#!/usr/bin/env bash
+printf 'build output\n'
+printf 'activation failed\n' >&2
+exit 23
+EOF
+  run_zsh_function "$FUNCTIONS_DIR/nix/drs"
+  [ "$status" -eq 23 ]
+  [[ "$output" == *"build output"* ]]
+  [[ "$output" == *"activation failed"* ]]
+  [[ "$output" == *"Rebuild log:"* ]]
+}
+
+@test "drs does not submit a rebuild when authentication fails" {
+  export SUDO_FAIL=1
+  run_zsh_function "$FUNCTIONS_DIR/nix/drs"
+  [ "$status" -ne 0 ]
+  [ ! -s "$TEST_LOG" ]
+}
+
+@test "drs rebuild survives loss of the calling process group" {
+  [ -x /bin/launchctl ] || skip "requires macOS launchd"
+  write_stub launchctl <<'STUB'
+#!/bin/sh
+exec /bin/launchctl "$@"
+STUB
+  write_stub darwin-rebuild <<'STUB'
+#!/bin/sh
+root=${0%/*}
+touch "$root/started"
+while [ ! -f "$root/release" ]; do sleep 0.05; done
+printf 'activation completed\n'
+STUB
+
+  # Real launchd runs a harmless rebuild under the current user, without sudo.
+  run python3 - "$FUNCTIONS_DIR/nix/drs" <<'PY'
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+root = Path(os.environ['TEST_BIN'])
+with (root / 'client.log').open('w') as output:
+    client = subprocess.Popen(['zsh', '-f', sys.argv[1]], stdout=output,
+                              stderr=output, start_new_session=True)
+    try:
+        deadline = time.monotonic() + 10
+        while not (root / 'started').exists():
+            if client.poll() is not None or time.monotonic() > deadline:
+                raise RuntimeError((root / 'client.log').read_text())
+            time.sleep(0.05)
+        os.killpg(client.pid, signal.SIGTERM)
+        client.wait(timeout=5)
+    finally:
+        (root / 'release').touch()
+        if client.poll() is None:
+            os.killpg(client.pid, signal.SIGTERM)
+            client.wait(timeout=5)
+PY
+  local client_status=$status
+  local run_dir
+  run_dir=$(find "$TEST_HOME/.local/state/drs" -type d -name 'run.*' | head -1)
+  export DRS_RESULT="$run_dir/result"
+  wait_until -t 10 '[ -s "$DRS_RESULT" ]'
+  /bin/launchctl remove "org.nixos.drs.${run_dir##*/}"
+  [ "$client_status" -eq 0 ]
+  [ "$(cat "$DRS_RESULT")" = 0 ]
+  grep -q 'activation completed' "$run_dir/output.log"
+}
+
+@test "drs preserves argument boundaries and the working directory" {
+  write_stub darwin-rebuild <<'STUB'
+#!/bin/sh
+printf '%s\n' "$PWD" "$@"
+STUB
+  run_zsh_function "$FUNCTIONS_DIR/nix/drs" --argstr example 'two words'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$PWD"* ]]
+  [[ "$output" == *$'--argstr\nexample\ntwo words'* ]]
 }

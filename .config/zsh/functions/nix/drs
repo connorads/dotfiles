@@ -1,5 +1,41 @@
 #!/usr/bin/env zsh
-# drs: darwin-rebuild switch using ~/.config/nix flake
+# drs: switch the Nix Darwin system independently of the calling terminal
 emulate -L zsh
 
-sudo darwin-rebuild switch --flake ~/.config/nix "$@"
+local rebuild run_dir label log_fd result
+rebuild=$(whence -p darwin-rebuild) || return 127
+zmodload zsh/system || return 1
+sudo -v || return $?
+mkdir -p "$HOME/.local/state/drs" || return 1
+run_dir=$(mktemp -d "$HOME/.local/state/drs/run.XXXXXXXX") || return 1
+label="org.nixos.drs.${run_dir:t}"
+: > "$run_dir/output.log"
+cat > "$run_dir/run.zsh" <<'RUNNER' || return 1
+emulate -L zsh
+local run_dir=$1 work_dir=$2
+shift 2
+(cd "$work_dir" && "$@") > "$run_dir/output.log" 2>&1 < /dev/null
+local result=$?
+printf '%s\n' "$result" > "$run_dir/result.next"
+mv "$run_dir/result.next" "$run_dir/result"
+# launchctl submit retries failed jobs. The result file carries the build status.
+exit 0
+RUNNER
+
+print -r -- "Rebuild log: $run_dir/output.log"
+sudo launchctl submit -l "$label" \
+  -o "$run_dir/launcher.log" -e "$run_dir/launcher.log" -- \
+  /usr/bin/env "PATH=$PATH" "SUDO_USER=${SUDO_USER:-$USER}" \
+  /bin/zsh -f "$run_dir/run.zsh" "$run_dir" "$PWD" \
+  "$rebuild" switch --flake "$HOME/.config/nix" "$@" || return $?
+
+exec {log_fd}< "$run_dir/output.log" || return 1
+while [[ ! -f "$run_dir/result" ]]; do
+  while sysread -i "$log_fd" -o 1 -s 65536; do :; done
+  sleep 0.2
+done
+while sysread -i "$log_fd" -o 1 -s 65536; do :; done
+exec {log_fd}<&-
+result=$(< "$run_dir/result")
+sudo -n launchctl remove "$label" >/dev/null 2>&1 || true
+return "$result"
