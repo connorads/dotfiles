@@ -35,6 +35,11 @@ restore, a 6G photo library is gone forever.
 3. Then probe `~/Library/Caches` as well as the large home directories.
    Individual tools use different cache roots - for example, a browser cache
    can live there while `cleanup` checks only `~/.cache`.
+   Inspect large app profiles under `~/Library/Application Support` for nested
+   HTTP caches and `Service Worker/CacheStorage`, including Electron partitions.
+   Size these separately from databases, `WebStorage`, `File System` and VM disks.
+   Prefer app storage controls. Treat offline copies as re-downloadable data
+   requiring approval, even when their path contains "Cache".
 4. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home - background
    it, or use `dust`. A glob over a directory holding tens of thousands of
    entries dies with `argument list too long`; `du -d1 -xh <dir>` walks it
@@ -115,6 +120,13 @@ again. Attribute the growth since the last cleanup first:
 Report the cause beside the reclaim. `worktree-build` treats a symptom: every
 built worktree regrows its `node_modules`, so the lasting fix is fewer
 worktrees.
+
+## Software use
+
+When recommending app removal, inspect usage evidence rather than bundle age.
+Updates change modification times. Null Spotlight last-used fields mean unknown
+usage, not an unused app. An absent desktop bundle does not prove its CLI or
+server is unused. Report a size shortlist when usage cannot be established.
 
 ## What may be deleted
 
