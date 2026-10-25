@@ -1,0 +1,618 @@
+diff --git a/plugins/workflows/skills/workflows/references/authoring.md b/plugins/workflows/skills/workflows/references/authoring.md
+index 30ba12d..9fbdd62 100644
+--- a/plugins/workflows/skills/workflows/references/authoring.md
++++ b/plugins/workflows/skills/workflows/references/authoring.md
+@@ -118,6 +118,18 @@ await agent("Inspect the implementation", {
+ });
+ ```
+ 
++Use `sessionOptions` for provider-declared choices such as Daybreak. BB checks
++the choices against the selected model when it creates the worker:
++
++```js
++await agent("Review security", {
++  provider: "codex",
++  model: "gpt-6-sol",
++  reasoningLevel: "low",
++  sessionOptions: { daybreak: true },
++});
++```
++
+ BB validates the tuple against the live provider/model catalog immediately
+ before spawning the worker. A provider disappearing between authoring and
+ execution fails the call instead of silently substituting another model.
+diff --git a/plugins/workflows/src/app.test.tsx b/plugins/workflows/src/app.test.tsx
+index 0fad11c..b1c96dd 100644
+--- a/plugins/workflows/src/app.test.tsx
++++ b/plugins/workflows/src/app.test.tsx
+@@ -38,6 +38,7 @@ const run: WorkflowRunView = {
+           provider: "codex",
+           model: "gpt-5.6",
+           reasoningLevel: "medium",
++          sessionOptionLabels: ["Daybreak"],
+           cached: false,
+           childThreadId: "thr_worker_1",
+           providerRetryAttempts: 0,
+@@ -62,6 +63,7 @@ const run: WorkflowRunView = {
+           provider: "claude",
+           model: "claude-opus-4-6",
+           reasoningLevel: "high",
++          sessionOptionLabels: [],
+           cached: false,
+           childThreadId: "thr_worker_2",
+           providerRetryAttempts: 0,
+@@ -470,8 +472,10 @@ describe("workflow-preview directive", () => {
+ 
+     await slot.findByText("Review the release");
+     expect(slot.getByText("Discover")).toBeTruthy();
++    fireEvent.click(slot.getByRole("button", { name: /Discover/ }));
+     expect(slot.getAllByText("Review")).toHaveLength(1);
+     expect(slot.getByText("Adversarial review")).toBeTruthy();
++    expect(slot.getByText("codex · gpt-5.6 · medium · Daybreak")).toBeTruthy();
+     expect(slot.getByText("claude · opus-4-6 · high")).toBeTruthy();
+     expect(slot.queryByText("Running")).toBeNull();
+     expect(
+diff --git a/plugins/workflows/src/app.tsx b/plugins/workflows/src/app.tsx
+index c4d128a..cfeed6d 100644
+--- a/plugins/workflows/src/app.tsx
++++ b/plugins/workflows/src/app.tsx
+@@ -330,7 +330,12 @@ function buildSharedWorkflowView(run: WorkflowRunView): SharedWorkflowView {
+       call.startedAt !== null && call.finishedAt !== null
+         ? Math.max(0, call.finishedAt - call.startedAt)
+         : undefined,
+-    metadata: [call.provider, shortModelName(call.model), call.reasoningLevel],
++    metadata: [
++      call.provider,
++      shortModelName(call.model),
++      call.reasoningLevel,
++      ...call.sessionOptionLabels,
++    ],
+   }));
+   return {
+     callsById,
+diff --git a/plugins/workflows/src/cache.test.ts b/plugins/workflows/src/cache.test.ts
+index ca613c3..a9c77f5 100644
+--- a/plugins/workflows/src/cache.test.ts
++++ b/plugins/workflows/src/cache.test.ts
+@@ -98,6 +98,16 @@ describe("workflow call cache identity", () => {
+         selection: { ...input.selection, permissionMode: "auto" },
+       }),
+     ],
++    [
++      "session options",
++      (input: WorkflowCallCacheInput) => ({
++        ...input,
++        selection: {
++          ...input.selection,
++          sessionOptions: { daybreak: true },
++        },
++      }),
++    ],
+     [
+       "schema",
+       (input: WorkflowCallCacheInput) => ({
+diff --git a/plugins/workflows/src/cache.ts b/plugins/workflows/src/cache.ts
+index 40046a0..c1c6e55 100644
+--- a/plugins/workflows/src/cache.ts
++++ b/plugins/workflows/src/cache.ts
+@@ -9,6 +9,7 @@ export interface ResolvedWorkflowExecutionSelection {
+   model: string;
+   reasoningLevel: string;
+   permissionMode: string;
++  sessionOptions?: Record<string, string | boolean>;
+ }
+ 
+ interface WorkflowCallExecutionSemantics {
+@@ -179,6 +180,9 @@ export function computeWorkflowCallCacheKey(
+       model: input.selection.model,
+       reasoningLevel: input.selection.reasoningLevel,
+       permissionMode: input.selection.permissionMode,
++      ...(input.selection.sessionOptions === undefined
++        ? {}
++        : { sessionOptions: input.selection.sessionOptions }),
+     },
+     outputSchema: input.outputSchema,
+     executionSemantics: {
+diff --git a/plugins/workflows/src/runtime.test.ts b/plugins/workflows/src/runtime.test.ts
+index 72ed77e..5558d3d 100644
+--- a/plugins/workflows/src/runtime.test.ts
++++ b/plugins/workflows/src/runtime.test.ts
+@@ -28,8 +28,8 @@ describe("workflow QuickJS runtime", () => {
+     });
+ 
+     expect(calls).toEqual([
+-      'first:{"selection":null,"outputSchema":null,"title":"A","phase":null}',
+-      'second:{"selection":null,"outputSchema":null,"title":"B","phase":null}',
++      'first:{"selection":null,"sessionOptions":null,"outputSchema":null,"title":"A","phase":null}',
++      'second:{"selection":null,"sessionOptions":null,"outputSchema":null,"title":"B","phase":null}',
+     ]);
+     expect(result).toEqual({
+       values: [{ prompt: "first" }, { prompt: "second" }],
+diff --git a/plugins/workflows/src/server-harness.test.ts b/plugins/workflows/src/server-harness.test.ts
+index 71fca1c..643d4f6 100644
+--- a/plugins/workflows/src/server-harness.test.ts
++++ b/plugins/workflows/src/server-harness.test.ts
+@@ -998,7 +998,7 @@ describe("workflow resume cache integration", () => {
+     expect(test.childCount()).toBe(2);
+     expect(getCall(test.db, displayOnly.id, 0)).toMatchObject({
+       optionsJson:
+-        '{"selection":null,"outputSchema":null,"title":"Renamed first","phase":"Display A"}',
++        '{"selection":null,"sessionOptions":null,"outputSchema":null,"title":"Renamed first","phase":"Display A","sessionOptionLabels":[]}',
+       replaySource: "resumed-run",
+       replayedFromCallId: getCall(test.db, base.id, 0)?.id,
+       resolvedProvider: "codex",
+diff --git a/plugins/workflows/src/service-policy.test.ts b/plugins/workflows/src/service-policy.test.ts
+index a42d313..980a864 100644
+--- a/plugins/workflows/src/service-policy.test.ts
++++ b/plugins/workflows/src/service-policy.test.ts
+@@ -272,6 +272,90 @@ describe("workflow service policy integration", () => {
+     harnesses.length = 0;
+   });
+ 
++  it("passes model-declared session options to the direct worker", async () => {
++    const test = setup();
++    harnesses.push(test.harness);
++    test.harness.sdk.stub("providers.models", (async () => ({
++      providers: [],
++      models: [
++        {
++          ...model(),
++          sessionOptions: [
++            {
++              id: "daybreak",
++              label: "Daybreak",
++              type: "boolean",
++              value: false,
++            },
++          ],
++        },
++      ],
++      selectedOnlyModels: [],
++      modelLoadError: null,
++    })) as never);
++    const run = await test.start(
++      source(`return await agent("Review", {
++      provider: "codex", model: "gpt-test", reasoningLevel: "medium",
++      sessionOptions: { daybreak: true }
++    });`),
++    );
++    const controller = new AbortController();
++    const worker = test.service.runWorker(controller.signal);
++    await eventually(() => expect(test.childCount()).toBe(1));
++    expect(test.harness.sdk.callsTo("threads.spawn")).toHaveLength(1);
++    expect(test.harness.sdk.callsTo("threads.spawn")[0]?.[0]).toMatchObject({
++      sessionOptions: { daybreak: true },
++      visibility: "hidden",
++    });
++    expect(
++      test.service.inspect(run.id)?.calls[0]?.options.sessionOptionLabels,
++    ).toEqual(["Daybreak"]);
++    await test.service.stop(run.id);
++    controller.abort();
++    await worker;
++  });
++
++  it("rejects Daybreak when the selected model fixes it off", async () => {
++    const test = setup();
++    harnesses.push(test.harness);
++    test.harness.sdk.stub("providers.models", (async () => ({
++      providers: [],
++      models: [
++        {
++          ...model(),
++          sessionOptions: [
++            {
++              id: "daybreak",
++              label: "Daybreak",
++              type: "boolean",
++              value: false,
++              fixed: true,
++            },
++          ],
++        },
++      ],
++      selectedOnlyModels: [],
++      modelLoadError: null,
++    })) as never);
++    const run = await test.start(
++      source(`return await agent("Review", {
++      provider: "codex", model: "gpt-test", reasoningLevel: "medium",
++      sessionOptions: { daybreak: true }
++    });`),
++    );
++    const controller = new AbortController();
++    const worker = test.service.runWorker(controller.signal);
++    await eventually(() =>
++      expect(getRunRequired(test.db, run.id).status).toBe("failed"),
++    );
++    expect(test.harness.sdk.callsTo("threads.spawn")).toHaveLength(0);
++    expect(getRunRequired(test.db, run.id).error).toContain(
++      "Daybreak is fixed off",
++    );
++    controller.abort();
++    await worker;
++  });
++
+   it("applies live settings to future run snapshots without mutating existing runs", async () => {
+     const initial = {
+       maxActiveRuns: 1,
+diff --git a/plugins/workflows/src/service.ts b/plugins/workflows/src/service.ts
+index d9b8552..b48a22f 100644
+--- a/plugins/workflows/src/service.ts
++++ b/plugins/workflows/src/service.ts
+@@ -54,6 +54,7 @@ import {
+   type WorkflowRunRow,
+ } from "./data.js";
+ import { parseWorkflowSource } from "./parser.js";
++import { resolveSessionOptions } from "./session-options.js";
+ import { WORKFLOW_RUNS_REALTIME_CHANNEL } from "./realtime-channel.js";
+ import { executeWorkflowScript } from "./runtime.js";
+ import {
+@@ -85,6 +86,10 @@ const selectedExecutionSchema = z.object({
+   model: z.string().min(1),
+   reasoningLevel: executionValuesSchema.shape.reasoningLevel,
+   permissionMode: executionValuesSchema.shape.permissionMode,
++  sessionOptions: z
++    .record(z.string(), z.union([z.string(), z.boolean()]))
++    .optional(),
++  sessionOptionLabels: z.array(z.string()).optional(),
+ });
+ type ResolvedSelection = z.infer<typeof selectedExecutionSchema>;
+ 
+@@ -784,11 +789,16 @@ export function createWorkflowService(
+         `Permission mode ${JSON.stringify(run.originPermissionMode)} is not supported by provider ${requested.provider}`,
+       );
+     }
++    const sessionOptions = resolveSessionOptions(model, options.sessionOptions);
+     return selectedExecutionSchema.parse({
+       providerId: requested.provider,
+       model: model.model,
+       reasoningLevel: requested.reasoningLevel,
+       permissionMode,
++      ...(sessionOptions.selections === undefined
++        ? {}
++        : { sessionOptions: sessionOptions.selections }),
++      sessionOptionLabels: sessionOptions.labels,
+     });
+   }
+ 
+@@ -865,6 +875,10 @@ export function createWorkflowService(
+       const resolvedIdentity = await identity;
+       const cacheKey = resolvedIdentity.cacheKey;
+       selection = resolvedIdentity.selection;
++      const storedOptions = {
++        ...options,
++        sessionOptionLabels: selection.sessionOptionLabels ?? [],
++      };
+       const sameRunCall = getCall(db, run.id, callIndex);
+       if (replay.prefix) {
+         if (sameRunCall !== null) {
+@@ -912,7 +926,7 @@ export function createWorkflowService(
+                 callIndex,
+                 cacheKey,
+                 prompt,
+-                options,
++                options: storedOptions,
+                 selection,
+                 replay: { callId: candidate.id, result: reuse.result },
+               });
+@@ -929,7 +943,7 @@ export function createWorkflowService(
+         callIndex,
+         cacheKey,
+         prompt,
+-        options,
++        options: storedOptions,
+         selection,
+         replay: null,
+       });
+@@ -961,6 +975,9 @@ export function createWorkflowService(
+           providerId: selection.providerId,
+           model: selection.model,
+           reasoningLevel: selection.reasoningLevel,
++          ...(selection.sessionOptions === undefined
++            ? {}
++            : { sessionOptions: selection.sessionOptions }),
+           permissionMode: selection.permissionMode,
+           visibility: "hidden",
+         });
+diff --git a/plugins/workflows/src/session-options.test.ts b/plugins/workflows/src/session-options.test.ts
+new file mode 100644
+index 0000000..fb90d1c
+--- /dev/null
++++ b/plugins/workflows/src/session-options.test.ts
+@@ -0,0 +1,73 @@
++import { describe, expect, it } from "vitest";
++import { resolveSessionOptions } from "./session-options.js";
++
++const model = {
++  sessionOptions: [
++    {
++      id: "daybreak",
++      label: "Daybreak",
++      type: "boolean" as const,
++      value: false,
++    },
++    {
++      id: "mode",
++      label: "Mode",
++      type: "select" as const,
++      value: "build",
++      values: [
++        { id: "build", label: "Build" },
++        { id: "plan", label: "Plan" },
++      ],
++    },
++  ],
++};
++
++describe("workflow session options", () => {
++  it("uses the model's discriminated descriptors for labels and selections", () => {
++    expect(
++      resolveSessionOptions(model, { daybreak: true, mode: "plan" }),
++    ).toEqual({
++      selections: { daybreak: true, mode: "plan" },
++      labels: ["Daybreak", "Mode: Plan"],
++    });
++    expect(resolveSessionOptions(model, null)).toEqual({
++      selections: undefined,
++      labels: [],
++    });
++  });
++
++  it("rejects unknown keys and values of the wrong variant", () => {
++    expect(() => resolveSessionOptions(model, { unknown: true })).toThrow(
++      "not available",
++    );
++    expect(() => resolveSessionOptions(model, { daybreak: "true" })).toThrow(
++      "true or false",
++    );
++    expect(() => resolveSessionOptions(model, { mode: true })).toThrow(
++      "requires a selection",
++    );
++    expect(() => resolveSessionOptions(model, { mode: "ask" })).toThrow(
++      "has no value",
++    );
++  });
++
++  it("rejects a value fixed by the chosen model", () => {
++    const fixed = {
++      sessionOptions: [
++        {
++          id: "daybreak",
++          label: "Daybreak",
++          type: "boolean" as const,
++          value: false,
++          fixed: true,
++        },
++      ],
++    };
++    expect(() => resolveSessionOptions(fixed, { daybreak: true })).toThrow(
++      "fixed off",
++    );
++    expect(resolveSessionOptions(fixed, { daybreak: false }).labels).toEqual([
++      "Daybreak off",
++    ]);
++  });
++});
+diff --git a/plugins/workflows/src/session-options.ts b/plugins/workflows/src/session-options.ts
+new file mode 100644
+index 0000000..a4f040f
+--- /dev/null
++++ b/plugins/workflows/src/session-options.ts
+@@ -0,0 +1,55 @@
++import type { BbPluginApi } from "@get-bb/plugin-sdk";
++
++type CatalogModel = Awaited<
++  ReturnType<BbPluginApi["sdk"]["providers"]["models"]>
++>["models"][number];
++
++type Selections = Record<string, string | boolean>;
++
++export function resolveSessionOptions(
++  model: Pick<CatalogModel, "sessionOptions">,
++  requested: Selections | null | undefined,
++): { selections: Selections | undefined; labels: string[] } {
++  if (requested == null) return { selections: undefined, labels: [] };
++
++  const labels: string[] = [];
++  for (const [id, value] of Object.entries(requested)) {
++    const option = model.sessionOptions?.find(
++      (candidate) => candidate.id === id,
++    );
++    if (option === undefined) {
++      throw new Error(
++        `Session option ${JSON.stringify(id)} is not available for this model`,
++      );
++    }
++    if (option.type === "boolean") {
++      if (typeof value !== "boolean") {
++        throw new Error(
++          `Session option ${JSON.stringify(id)} requires true or false`,
++        );
++      }
++      if (option.fixed === true && value !== option.value) {
++        throw new Error(
++          `${option.label} is fixed ${option.value ? "on" : "off"} for this model`,
++        );
++      }
++      labels.push(value ? option.label : `${option.label} off`);
++    } else {
++      if (typeof value !== "string") {
++        throw new Error(
++          `Session option ${JSON.stringify(id)} requires a selection`,
++        );
++      }
++      const selected = option.values.find(
++        (candidate) => candidate.id === value,
++      );
++      if (selected === undefined) {
++        throw new Error(
++          `Session option ${JSON.stringify(id)} has no value ${JSON.stringify(value)}`,
++        );
++      }
++      labels.push(`${option.label}: ${selected.label}`);
++    }
++  }
++  return { selections: requested, labels };
++}
+diff --git a/plugins/workflows/src/types.ts b/plugins/workflows/src/types.ts
+index cd1aa09..4f64587 100644
+--- a/plugins/workflows/src/types.ts
++++ b/plugins/workflows/src/types.ts
+@@ -15,6 +15,8 @@ interface ExplicitModelSelection {
+ 
+ export interface WorkflowAgentOptions {
+   selection: ExplicitModelSelection | null;
++  sessionOptions?: Record<string, string | boolean> | null;
++  sessionOptionLabels?: string[];
+   outputSchema: JsonSchema | null;
+   title: string | null;
+   phase: string | null;
+diff --git a/plugins/workflows/src/ui-contract.ts b/plugins/workflows/src/ui-contract.ts
+index 9dab823..6de6f18 100644
+--- a/plugins/workflows/src/ui-contract.ts
++++ b/plugins/workflows/src/ui-contract.ts
+@@ -19,6 +19,7 @@ const workflowCallViewSchema = z
+     provider: z.string(),
+     model: z.string(),
+     reasoningLevel: z.string(),
++    sessionOptionLabels: z.array(z.string()),
+     cached: z.boolean(),
+     childThreadId: z.string().nullable(),
+     providerRetryAttempts: z.number().int().nonnegative(),
+diff --git a/plugins/workflows/src/ui-view.test.ts b/plugins/workflows/src/ui-view.test.ts
+index 7c356b8..35cfe46 100644
+--- a/plugins/workflows/src/ui-view.test.ts
++++ b/plugins/workflows/src/ui-view.test.ts
+@@ -31,6 +31,7 @@ function call(index: number, phase: string | null): WorkflowCallInspection {
+     finishedAt: index + 1,
+     options: {
+       selection: null,
++      sessionOptions: null,
+       outputSchema: null,
+       title: `Agent ${index}`,
+       phase,
+@@ -115,4 +116,14 @@ describe("workflow UI view", () => {
+ 
+     expect(view.unphasedCalls[0]?.label).toBe(`${"调".repeat(39)}…`);
+   });
++
++  it("shows persisted provider option labels in the call view", () => {
++    const workflowCall = call(0, null);
++    workflowCall.options.sessionOptions = { daybreak: true };
++    workflowCall.options.sessionOptionLabels = ["Daybreak"];
++    expect(
++      buildWorkflowRunView(run([workflowCall])).unphasedCalls[0]
++        ?.sessionOptionLabels,
++    ).toEqual(["Daybreak"]);
++  });
+ });
+diff --git a/plugins/workflows/src/ui-view.ts b/plugins/workflows/src/ui-view.ts
+index 548053b..ca63269 100644
+--- a/plugins/workflows/src/ui-view.ts
++++ b/plugins/workflows/src/ui-view.ts
+@@ -29,6 +29,7 @@ function callView(
+     provider: call.execution.provider,
+     model: call.execution.model,
+     reasoningLevel: call.execution.reasoningLevel,
++    sessionOptionLabels: call.options.sessionOptionLabels ?? [],
+     cached: call.source === "cached",
+     childThreadId: call.childThreadId,
+     providerRetryAttempts: call.providerRetryAttempts,
+diff --git a/plugins/workflows/src/validation.test.ts b/plugins/workflows/src/validation.test.ts
+index 0fd42f2..f6f6916 100644
+--- a/plugins/workflows/src/validation.test.ts
++++ b/plugins/workflows/src/validation.test.ts
+@@ -126,6 +126,7 @@ describe("workflow agent option validation", () => {
+       }),
+     ).toEqual({
+       selection: null,
++      sessionOptions: null,
+       outputSchema: { type: "object" },
+       title: "Correctness review",
+       phase: "Review",
+@@ -163,6 +164,9 @@ describe("workflow agent option validation", () => {
+     expect(() => parseAgentOptions({ label: null })).toThrow(
+       "label must be a non-empty string",
+     );
++    expect(() =>
++      parseAgentOptions({ sessionOptions: { daybreak: 1 } }),
++    ).toThrow();
+     expect(() =>
+       parseAgentOptions({
+         outputSchema: { type: "string" },
+@@ -174,6 +178,12 @@ describe("workflow agent option validation", () => {
+     ).toThrow("must be structurally identical");
+   });
+ 
++  it("accepts provider session choices", () => {
++    expect(
++      parseAgentOptions({ sessionOptions: { daybreak: true, mode: "build" } }),
++    ).toMatchObject({ sessionOptions: { daybreak: true, mode: "build" } });
++  });
++
+   it("accepts legacy stored options but never accepts unresolved aliases", () => {
+     expect(
+       parseStoredAgentOptions({
+@@ -183,6 +193,7 @@ describe("workflow agent option validation", () => {
+       }),
+     ).toEqual({
+       selection: null,
++      sessionOptions: null,
+       outputSchema: null,
+       title: "Worker",
+       phase: null,
+diff --git a/plugins/workflows/src/validation.ts b/plugins/workflows/src/validation.ts
+index 31cc45c..0a1eeef 100644
+--- a/plugins/workflows/src/validation.ts
++++ b/plugins/workflows/src/validation.ts
+@@ -13,6 +13,7 @@ export const AGENT_OPTION_KEYS = new Set([
+   "provider",
+   "model",
+   "reasoningLevel",
++  "sessionOptions",
+   "outputSchema",
+   "schema",
+   "title",
+@@ -127,6 +128,11 @@ const storedAgentOptionsSchema = z
+       .strict()
+       .nullable(),
+     outputSchema: jsonSchemaValueSchema.nullable(),
++    sessionOptions: z
++      .record(z.string().min(1), z.union([z.string(), z.boolean()]))
++      .nullable()
++      .default(null),
++    sessionOptionLabels: z.array(z.string().min(1)).optional(),
+     title: z.string().min(1).nullable(),
+     phase: z.string().min(1).nullable().default(null),
+   })
+@@ -357,6 +363,7 @@ export function parseAgentOptions(
+   if (value === undefined) {
+     return {
+       selection: null,
++      sessionOptions: null,
+       outputSchema: null,
+       title: null,
+       phase: null,
+@@ -402,6 +409,13 @@ export function parseAgentOptions(
+   }
+   const outputSchema = hasOutputSchema ? outputSchemaAlias : schemaAlias;
+ 
++  const sessionOptions =
++    value.sessionOptions === undefined
++      ? null
++      : z
++          .record(z.string().min(1), z.union([z.string(), z.boolean()]))
++          .parse(value.sessionOptions);
++
+   const title = optionalNonEmptyString(value, "title");
+   const label = optionalNonEmptyString(value, "label");
+   if (title !== null && label !== null && title !== label) {
+@@ -415,6 +429,7 @@ export function parseAgentOptions(
+       provider !== null && model !== null && reasoningLevel !== null
+         ? { provider, model, reasoningLevel }
+         : null,
++    sessionOptions,
+     outputSchema,
+     title: title ?? label,
+     phase: optionalNonEmptyString(value, "phase"),
