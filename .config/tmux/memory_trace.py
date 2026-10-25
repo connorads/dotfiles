@@ -43,7 +43,8 @@ class Probe(TypedDict):
 BROWSER = re.compile(r"chrome|chromium|webkit|safari|electron", re.IGNORECASE)
 GRAPHICS = re.compile(r"WindowServer|kernel_task|Wallpaper|VTDecoder")
 PS_ARGS = ("/bin/ps", "-axo", "pid=,ppid=,rss=,lstart=,comm=")
-INTERVAL = 15
+INTERVAL = 5
+PROCESS_INTERVAL = 60
 SEGMENT_BYTES = 16 * 1024 * 1024
 BACKUPS = 7
 SYSCTL_KEYS = (
@@ -201,7 +202,16 @@ def process_readings(
     return result
 
 
-def sample(run: Callable[..., str] = command) -> dict[str, object]:
+def empty_probe(status: str, error: str | None = None) -> Probe:
+    now = utc_now()
+    return Probe(
+        status=status, started_at=now, finished_at=now, duration_ms=0, value=None, error=error
+    )
+
+
+def sample(
+    run: Callable[..., str] = command, *, process_snapshot: bool = True
+) -> dict[str, object]:
     # Identity brackets the footprint probe; numeric PIDs alone cannot join samples.
     before: dict[int, Process] = {}
     after: dict[int, Process] = {}
@@ -220,10 +230,31 @@ def sample(run: Callable[..., str] = command) -> dict[str, object]:
         return {"count": len(memory)}
 
     started = time.monotonic()
+    before_probe = (
+        probe(run, PS_ARGS, read_before) if process_snapshot else empty_probe("not_scheduled")
+    )
+    targets = {row["pid"] for row in browser_tree(before)}
+    targets.update(pid for pid, row in before.items() if GRAPHICS.search(row["executable"]))
+    top_args = (
+        "/usr/bin/top",
+        "-l",
+        "1",
+        "-stats",
+        "pid,mem",
+        *(arg for pid in sorted(targets) for arg in ("-pid", str(pid))),
+    )
     probes = {
-        "processes": probe(run, PS_ARGS, read_before),
-        "footprints": probe(run, ("/usr/bin/top", "-l", "1", "-stats", "pid,mem"), read_memory),
-        "identity_check": probe(run, PS_ARGS, read_after),
+        "processes": before_probe,
+        "footprints": (
+            probe(run, top_args, read_memory)
+            if targets
+            else empty_probe("unavailable", "no_selected_processes")
+        )
+        if process_snapshot
+        else empty_probe("not_scheduled"),
+        "identity_check": probe(run, PS_ARGS, read_after)
+        if process_snapshot
+        else empty_probe("not_scheduled"),
         "vm_stat": probe(run, ("/usr/bin/vm_stat",), vm_reading),
         "sysctl": probe(
             run,
@@ -233,6 +264,7 @@ def sample(run: Callable[..., str] = command) -> dict[str, object]:
     }
     return {
         "schema_version": 2,
+        "process_snapshot": process_snapshot,
         "timestamp": utc_now(),
         "hostname": socket.gethostname(),
         "duration_ms": round((time.monotonic() - started) * 1000, 3),
@@ -371,10 +403,10 @@ def summary(directory: Path) -> dict[str, object]:
                 first = first or timestamp
                 last = timestamp
                 runs.add(record.get("run_id", "unknown"))
-                gap = record.get("start_gap_seconds")
+                gap = record.get("wall_start_gap_seconds", record.get("start_gap_seconds"))
                 delayed += int(isinstance(gap, (int, float)) and gap > INTERVAL * 2)
                 unavailable += sum(
-                    p.get("status") != "ok" for p in record.get("probes", {}).values()
+                    p.get("status") == "unavailable" for p in record.get("probes", {}).values()
                 )
                 for row in record.get("processes", []):
                     value = row.get("footprint_bytes")
@@ -414,9 +446,13 @@ def summary(directory: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--once", action="store_true", help="Print one read-only sample")
-    parser.add_argument("--summary", action="store_true", help="Summarise retained v2 history")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--once", action="store_true", help="Print one read-only sample")
+    modes.add_argument("--summary", action="store_true", help="Summarise retained v2 history")
+    modes.add_argument("--samples", type=int, help="Record this many samples, then exit")
     args = parser.parse_args()
+    if args.samples is not None and args.samples < 1:
+        parser.error("--samples must be positive")
     directory = Path.home() / "Library/Logs/memory-trace-v2"
     if args.summary:
         print(json.dumps(summary(directory), indent=2))
@@ -430,12 +466,13 @@ def main() -> None:
     with History(directory) as history:
         while True:
             started, wall_started = time.monotonic(), time.time()
-            record = sample()
+            record = sample(process_snapshot=sequence % (PROCESS_INTERVAL // INTERVAL) == 0)
             record.update(
                 collector_revision=revision,
                 run_id=run_id,
                 sequence=sequence,
                 interval_seconds=INTERVAL,
+                process_snapshot_interval_seconds=PROCESS_INTERVAL,
                 start_gap_seconds=None if previous is None else round(started - previous, 3),
                 wall_start_gap_seconds=None
                 if previous_wall is None
@@ -444,6 +481,8 @@ def main() -> None:
             history.append(record)
             previous, previous_wall = started, wall_started
             sequence += 1
+            if args.samples is not None and sequence >= args.samples:
+                return
             time.sleep(max(1, INTERVAL - (time.monotonic() - started)))
 
 

@@ -182,3 +182,29 @@ def test_unreadable_identity_does_not_assign_footprint():
     readings = trace.process_readings(rows, {}, {20: 100})
     assert all(row["footprint_bytes"] is None for row in readings)
     assert all(row["footprint_status"] == "identity_changed" for row in readings)
+
+
+def test_system_only_sample_does_not_poll_processes():
+    def run(*args):
+        assert args[0] not in ("/bin/ps", "/usr/bin/top")
+        if args[0] == "/usr/sbin/sysctl":
+            return "hw.memsize: 17179869184\n"
+        return "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages wired down: 7.\n"
+
+    record = trace.sample(run, process_snapshot=False)
+    assert record["probes"]["footprints"]["status"] == "not_scheduled"
+    assert record["probes"]["vm_stat"]["status"] == "ok"
+    assert record["processes"] == []
+
+
+def test_summary_marks_wall_clock_gap_when_monotonic_excludes_sleep(tmp_path):
+    with trace.History(tmp_path) as history:
+        history.append(
+            {
+                "schema_version": 2,
+                "timestamp": "2026-01-01T00:00:00Z",
+                "start_gap_seconds": 5,
+                "wall_start_gap_seconds": 3605,
+            }
+        )
+    assert trace.summary(tmp_path)["delayed_samples"] == 1

@@ -132,29 +132,68 @@ Keep the gauge legend in [`help.md`](../help.md) in sync with the lib.
 
 ## Browser and graphics history
 
-On the Mac mini, `org.nixos.memory-trace` records a sample every 15 seconds.
-It runs outside the desktop session and starts at boot after FileVault unlock.
-The logger never terminates processes.
+Both Macs declare `org.nixos.memory-trace`. It records system counters every five seconds and process footprints every minute outside
+BB and the desktop session. The service starts at boot after FileVault unlock.
+The recorder never signals applications. Nix activation installs or restarts the service.
+A running Python process retains its loaded code until restart.
+After updating the Mini, restart its existing recorder explicitly:
+`sudo launchctl kickstart -k system/org.nixos.memory-trace`.
+Nix may leave an unchanged service declaration running when only Python source changes.
 
 ```mermaid
 flowchart LR
-    P[Browser processes and parents] --> L[Memory logger]
-    G[Graphics footprints and compressor counters] --> L
-    L --> J[Rotating JSONL files]
+    P[Browser trees and graphics processes] --> R[Private recorder]
+    C[Compressor and wired memory] --> R
+    R --> J[Versioned JSONL ring]
+    J --> S[Agent inspection and summary]
 ```
 
-Logs live in `~/Library/Logs/memory-trace/samples.jsonl`, with seven rotated files.
-Each file holds up to 10 MB. Files are private to the user.
-Samples include browser PIDs, executable paths, parent processes, RSS, `top` footprints,
-WindowServer, compressor counters, swap, `vm_stat` and the console user.
-Arguments, URLs and environment variables are excluded.
-A missing footprint is recorded as `unavailable` when a process exits during sampling.
+Version 2 writes to `~/Library/Logs/memory-trace-v2/samples.jsonl`.
+The old `~/Library/Logs/memory-trace/` directory remains intact.
+There is no data migration or reader compatibility requirement.
+One writer holds a lock. Files have mode `0600`; the directory requires `0700`.
+The recorder rejects symlink files and unsafe ownership or permissions.
 
-Read the latest sample with `tail -1 ~/Library/Logs/memory-trace/samples.jsonl | jq`.
-Check persistence with `sudo launchctl print system/org.nixos.memory-trace`.
-Run one read-only sample with `uv run --python 3.13 python ~/.config/tmux/memory_trace.py --once`.
+The ring holds eight files of at most 16 MiB each. Retention depends on sample size,
+not a guaranteed number of days. Records above 1 MiB fail instead of growing storage.
+Each append flushes and calls `fsync`. A storage error ends the recorder;
+launchd retries it. This does not guarantee survival of panic-time writes or renames.
+Restart removes an incomplete final record before appending complete records.
+The sequence and run ID expose collector restarts. UTC timestamps and separate
+wall-clock and monotonic gaps expose timing discontinuities; they do not diagnose them.
 
-Compare browser starts with compressor growth across several sessions.
-Browser correlation alone does not establish which process retains graphics allocations.
-Capture a privileged `footprint --all --vmObjectDirty --swapped --wired` report during growth
-for allocation attribution. The logger does not require root.
+Samples record the host, collector source hash, probe windows and failures,
+boot time, RAM size, raw compressor counters, swap, wired bytes and process footprints.
+Browser matches include descendants. Graphics selection includes WindowServer,
+kernel_task, Wallpaper and VTDecoder names. Identity checks bracket footprint collection
+using PID, second-resolution UTC process start and executable basename.
+A missing or changed process has a null footprint, distinct from measured zero.
+Each failed command affects only its probe. Missing sysctl keys remain null.
+
+Footprints use bytes. Shared pages can contribute to multiple process footprints.
+The recorder excludes arguments, executable directories, environments, URLs, window titles
+and console usernames. It does not collect window counts or assign graphics allocations
+to a client application. Process enumeration remains a sequence of observations,
+not an atomic snapshot. PID reuse within one start-time second remains ambiguous.
+
+Use the Nix Python interpreter or an installed Python 3.11+:
+
+```sh
+python3 ~/.config/tmux/memory_trace.py --once
+python3 ~/.config/tmux/memory_trace.py --summary
+python3 ~/.config/tmux/memory_trace.py --samples 13
+sudo launchctl print system/org.nixos.memory-trace
+```
+
+`--once` prints one read-only sample without writing history.
+`--samples 13` records a one-minute trial and exits.
+Unscheduled process probes have status `not_scheduled`; they are not failed readings.
+`--summary` reports retained time bounds, delayed samples, failed probes and per-process
+first, last and peak footprints. It ignores incomplete final lines and reports their count.
+It separates process starts and hosts. It does not establish continuous coverage,
+unique RAM ownership, an initiating fault or prevented crashes.
+The service stderr is `~/Library/Logs/memory-trace-error.log`.
+
+Compare repeated WindowServer growth with browser process activity during ordinary use.
+An early-warning or automatic intervention policy requires separate validation.
+The existing memwatch policy remains independent of this recording-only service.
