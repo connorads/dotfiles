@@ -13,6 +13,7 @@ Do not rely on bare filenames or relative paths becoming links.
 Keep relative links inside repository documentation relative.
 
 Before changing local BB configuration or plugins, read `~/docs/bb.md` for maintenance procedures and ownership.
+Do not rebuild or fork BB, including bundled plugins, without a new, explicit user decision. Check existing local plugins and pinned bundle patches first.
 Use BB's supplied skills and `bb guide` for platform commands.
 
 For BB SDK gaps, app bugs, provider issues and CLI problems, read `~/src/bb-plugins/docs/sdk-frictions.md`.

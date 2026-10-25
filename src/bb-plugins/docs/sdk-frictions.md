@@ -33,15 +33,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Wanted: Run a workflow worker with Daybreak and see that choice beside its model.
 - Gap: `agent()` accepts provider, model and reasoning level but no session options.
   Its worker spawn omits `sessionOptions`; its call view carries no effective option values.
-- Workaround: A workflow agent launches a thread with `bb thread spawn --option daybreak=true`,
-  waits for it, and checks the resulting thread option. The workflow row still names the launcher.
+- Workaround: The [pinned Workflows bundle patch](../workflows-patch/README.md) accepts
+  provider session options, passes them to a direct worker, and shows their labels.
+  It requires the existing local activity patch and refuses unknown BB bundle hashes.
 - Ask: Accept provider-neutral `sessionOptions` in `agent()`; validate against the selected
   model, pass them to `threads.spawn`, persist the effective values, and show enabled options
   beside the worker model in both progress views.
 - Status: open
 - Category: sdk-gap
-- Evidence: `plugins/workflows/src/validation.ts`, `service.ts`, `ui-view.ts` and `app.tsx`
-  in the local BB source snapshot; live Codex model catalogue and `bb thread options`.
+- Evidence: Stock Workflows source and installed bundle; pinned patch script and
+  plugin harness. A live direct worker reported Daybreak enabled, and run history
+  recorded the choice and its label.
 
 ### Markdown filename autolinks lack the file's working directory
 

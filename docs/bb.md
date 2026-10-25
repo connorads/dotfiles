@@ -89,13 +89,24 @@ The command manages enablement and settings only; install missing plugins separa
 BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
 Its enabled state is managed by [plugins.json](../.config/bb/plugins.json).
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
+For local Workflows bundle changes, use the [pinned patch](../src/bb-plugins/workflows-patch/README.md).
 
 ## Local plugins
 
-Use stock BB with plugins. Do not build, install or switch to a patched BB core
-without explicit user authorisation. The discarded account-routing spike at
-`src/bb-plugins/spikes/bb-patched/` is ignored historical research, not the
-running installation or an approved delivery route.
+Use stock BB and local plugins by default. For a missing SDK capability, check
+the installed implementation, [SDK frictions](../src/bb-plugins/docs/sdk-frictions.md)
+and existing local patch records before choosing a delivery method. The pinned
+Workflows patch shows how to edit an installed bundle with exact byte checks,
+a backup, a disposable test and a rollback. The earlier workflow activity patch
+is archived locally at `~/.local/share/bb-bundle-patches/work-activity-0.46.1`.
+
+Do not build BB from source, recompile a bundled plugin, replace its server,
+or maintain a BB fork without a new, explicit user decision. A request to fix
+a BB bug does not authorise those routes. Build independent local plugins as
+their guides require; patch bundled code by pinned bytes when that is the
+chosen delivery route.
+The discarded account-routing spike at `src/bb-plugins/spikes/bb-patched/` is
+ignored historical research, not the running installation or an approved route.
 Plugin content scripts may decorate BB's DOM without modifying its core.
 Use the [DOM decoration method](../src/bb-plugins/docs/dom-decorations.md)
 for additions like account badges, message times and link icons.

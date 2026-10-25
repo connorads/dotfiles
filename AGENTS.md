@@ -150,6 +150,9 @@ The agents-root decision is recorded in [ADR 0002](./docs/adr/0002-agents-root.m
 Before changing BB settings, shortcuts, plugins or agent orchestration, read
 [the BB guide](./docs/bb.md).
 
+Do not rebuild or fork BB, including bundled plugins, without a new, explicit
+user decision. Check existing local plugins and pinned bundle patches first.
+
 Check local ownership before changing live settings. File-managed preferences
 override UI and CLI edits.
 
