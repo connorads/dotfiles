@@ -27,6 +27,22 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Workflow agents cannot select or show session options
+
+- Found: 2026-10-25, built-in Workflows plugin
+- Wanted: Run a workflow worker with Daybreak and see that choice beside its model.
+- Gap: `agent()` accepts provider, model and reasoning level but no session options.
+  Its worker spawn omits `sessionOptions`; its call view carries no effective option values.
+- Workaround: A workflow agent launches a thread with `bb thread spawn --option daybreak=true`,
+  waits for it, and checks the resulting thread option. The workflow row still names the launcher.
+- Ask: Accept provider-neutral `sessionOptions` in `agent()`; validate against the selected
+  model, pass them to `threads.spawn`, persist the effective values, and show enabled options
+  beside the worker model in both progress views.
+- Status: open
+- Category: sdk-gap
+- Evidence: `plugins/workflows/src/validation.ts`, `service.ts`, `ui-view.ts` and `app.tsx`
+  in the local BB source snapshot; live Codex model catalogue and `bb thread options`.
+
 ### Markdown filename autolinks lack the file's working directory
 
 - Found: 2026-10-23, installed BB desktop frontend
