@@ -18,20 +18,49 @@ setup() {
 #!/usr/bin/env bash
 if [ "$1" = -v ]; then exit "${SUDO_FAIL:-0}"; fi
 if [ "$1" = -n ]; then shift; fi
+if [ "$1" = chown ]; then exit 0; fi
 exec "$@"
 EOF
 
+  write_stub plutil <<'EOF'
+#!/usr/bin/env python3
+import json
+import plistlib
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+path = Path(args[-1])
+if args[0] == '-create':
+    data = {}
+else:
+    data = plistlib.loads(path.read_bytes())
+    key, kind, value = args[1:4]
+    if kind == '-json':
+        value = json.loads(value)
+    elif kind == '-bool':
+        value = value == 'YES'
+    if '.' in key:
+        parent, index = key.split('.')
+        data[parent].insert(int(index), value)
+    else:
+        data[key] = value
+path.write_bytes(plistlib.dumps(data))
+EOF
+
   write_stub launchctl <<'EOF'
-#!/usr/bin/env bash
-case "$1" in
-  submit)
-    shift
-    while [ "$1" != -- ]; do shift; done
-    shift
-    exec "$@"
-    ;;
-  remove) exit 0 ;;
-esac
+#!/usr/bin/env python3
+import os
+import plistlib
+import sys
+from pathlib import Path
+
+if sys.argv[1] == 'bootstrap':
+    assert sys.argv[2] == 'system'
+    data = plistlib.loads(Path(sys.argv[3]).read_bytes())
+    assert data['UserName'] == 'root'
+    os.execv(data['ProgramArguments'][0], data['ProgramArguments'])
+assert sys.argv[1] == 'bootout'
 EOF
 
   for cmd in darwin-rebuild home-manager nixos-rebuild; do
@@ -119,8 +148,21 @@ EOF
 @test "drs rebuild survives loss of the calling process group" {
   [ -x /bin/launchctl ] || skip "requires macOS launchd"
   write_stub launchctl <<'STUB'
-#!/bin/sh
-exec /bin/launchctl "$@"
+#!/usr/bin/env python3
+import os
+import plistlib
+import sys
+from pathlib import Path
+
+# Exercise real launchd without requiring root in the test runner.
+if sys.argv[1] == 'bootstrap':
+    path = Path(sys.argv[3])
+    data = plistlib.loads(path.read_bytes())
+    assert sys.argv[2] == 'system'
+    assert data.pop('UserName') == 'root'
+    path.write_bytes(plistlib.dumps(data))
+    os.execv('/bin/launchctl', ['launchctl', 'bootstrap', f'gui/{os.getuid()}', str(path)])
+os.execv('/bin/launchctl', ['launchctl', 'bootout', sys.argv[2].replace('system/', f'gui/{os.getuid()}/')])
 STUB
   write_stub darwin-rebuild <<'STUB'
 #!/bin/sh
@@ -130,7 +172,7 @@ while [ ! -f "$root/release" ]; do sleep 0.05; done
 printf 'activation completed\n'
 STUB
 
-  # Real launchd runs a harmless rebuild under the current user, without sudo.
+  # Real launchd runs a harmless rebuild in the test user domain.
   run python3 - "$FUNCTIONS_DIR/nix/drs" <<'PY'
 import os
 from pathlib import Path
@@ -162,7 +204,7 @@ PY
   run_dir=$(find "$TEST_HOME/.local/state/drs" -type d -name 'run.*' | head -1)
   export DRS_RESULT="$run_dir/result"
   wait_until -t 10 '[ -s "$DRS_RESULT" ]'
-  /bin/launchctl remove "org.nixos.drs.${run_dir##*/}"
+  /bin/launchctl bootout "gui/$(id -u)/org.nixos.drs.${run_dir##*/}"
   [ "$client_status" -eq 0 ]
   [ "$(cat "$DRS_RESULT")" = 0 ]
   grep -q 'activation completed' "$run_dir/output.log"

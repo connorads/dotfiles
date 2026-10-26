@@ -2,7 +2,7 @@
 # drs: switch the Nix Darwin system independently of the calling terminal
 emulate -L zsh
 
-local rebuild run_dir label log_fd result
+local rebuild run_dir label log_fd result arg arg_index
 rebuild=$(whence -p darwin-rebuild) || return 127
 zmodload zsh/system || return 1
 sudo -v || return $?
@@ -18,16 +18,27 @@ shift 2
 local result=$?
 printf '%s\n' "$result" > "$run_dir/result.next"
 mv "$run_dir/result.next" "$run_dir/result"
-# launchctl submit retries failed jobs. The result file carries the build status.
+# The result file carries the build status.
 exit 0
 RUNNER
 
 print -r -- "Rebuild log: $run_dir/output.log"
-sudo launchctl submit -l "$label" \
-  -o "$run_dir/launcher.log" -e "$run_dir/launcher.log" -- \
-  /usr/bin/env "PATH=$PATH" "SUDO_USER=${SUDO_USER:-$USER}" \
+plutil -create xml1 "$run_dir/job.plist" || return $?
+plutil -insert Label -string "$label" "$run_dir/job.plist" || return $?
+plutil -insert UserName -string root "$run_dir/job.plist" || return $?
+plutil -insert RunAtLoad -bool YES "$run_dir/job.plist" || return $?
+plutil -insert StandardOutPath -string "$run_dir/launcher.log" "$run_dir/job.plist" || return $?
+plutil -insert StandardErrorPath -string "$run_dir/launcher.log" "$run_dir/job.plist" || return $?
+plutil -insert ProgramArguments -json '[]' "$run_dir/job.plist" || return $?
+arg_index=0
+for arg in /usr/bin/env "PATH=$PATH" "SUDO_USER=${SUDO_USER:-$USER}" \
   /bin/zsh -f "$run_dir/run.zsh" "$run_dir" "$PWD" \
-  "$rebuild" switch --flake "$HOME/.config/nix" "$@" || return $?
+  "$rebuild" switch --flake "$HOME/.config/nix" "$@"; do
+  plutil -insert "ProgramArguments.$arg_index" -string "$arg" "$run_dir/job.plist" || return $?
+  ((arg_index++))
+done
+sudo chown root:wheel "$run_dir/job.plist" || return $?
+sudo launchctl bootstrap system "$run_dir/job.plist" || return $?
 
 exec {log_fd}< "$run_dir/output.log" || return 1
 while [[ ! -f "$run_dir/result" ]]; do
@@ -37,5 +48,5 @@ done
 while sysread -i "$log_fd" -o 1 -s 65536; do :; done
 exec {log_fd}<&-
 result=$(< "$run_dir/result")
-sudo -n launchctl remove "$label" >/dev/null 2>&1 || true
+sudo -n launchctl bootout "system/$label" >/dev/null 2>&1 || true
 return "$result"
