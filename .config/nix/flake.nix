@@ -63,9 +63,7 @@
             # See ./patches/README.md for lineage and bump procedure.
             (_final: prev: {
               redress = prev.callPackage ./packages/redress.nix { };
-              rift = prev.callPackage ./packages/rift.nix { };
               footswitch = prev.callPackage ./packages/footswitch.nix { };
-              terminal-control = prev.callPackage ./packages/terminal-control.nix { };
               mise = prev.callPackage ./packages/mise.nix { };
               cargo-fframes = prev.callPackage ./packages/cargo-fframes.nix { };
 
@@ -153,7 +151,6 @@
           # Overlay packages: nix-darwin's own `pkgs` has no overlay, so
           # `pkgs.footswitch` in a module would be nixpkgs' Linux-only one.
           home-manager.users.connorads.home.packages = with (mkPkgs "aarch64-darwin"); [
-            rift
             footswitch # PCsensor foot pedal flasher, driven by `pedal-flash`
           ];
         }

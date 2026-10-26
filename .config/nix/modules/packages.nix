@@ -20,9 +20,6 @@ let
   };
 
   linuxCorePackages = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.trash-cli ];
-  # termctrl: drive/inspect/test terminal apps in a real PTY. Darwin only: its
-  # ghostty `zig build` fetches deps at build time, which the Linux sandbox blocks.
-  darwinCorePackages = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.terminal-control ];
 
   # ---------------------------------------------------------------------------
   # Tier 1: Minimal — ephemeral environments (codespaces, containers)
@@ -68,7 +65,7 @@ let
     mise
   ];
 
-  corePackages = baseCorePackages ++ linuxCorePackages ++ darwinCorePackages;
+  corePackages = baseCorePackages ++ linuxCorePackages;
 
   # ---------------------------------------------------------------------------
   # Tier 2 extras: Server/headless — "feels like home" over SSH

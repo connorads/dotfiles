@@ -24,7 +24,6 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | --- | --- |
 | [flake.nix](../.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager) |
 | [modules/imagepaste.nix](../.config/nix/modules/imagepaste.nix) | Builds `imagepaste`, which keeps clipboard GIF bytes for `shotpath` |
-| [packages/terminal-control.nix](../.config/nix/packages/terminal-control.nix) | Builds `termctrl` (drive and render terminal apps in a real PTY); pairs with the `terminal-control` skill |
 | [packages/footswitch.nix](../.config/nix/packages/footswitch.nix) | Builds `footswitch` for the foot pedal, driven by `pedal-flash`; desktop macOS only |
 | [config.toml](../.config/mise/config.toml) | mise tools; maintenance: [.config/mise/AGENTS.md](../.config/mise/AGENTS.md) |
 | [.config/srt/base.json](../.config/srt/base.json) | `agent-sandbox` (`asb`) OS sandbox policies; docs: [.config/srt/AGENTS.md](../.config/srt/AGENTS.md) |

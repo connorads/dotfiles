@@ -60,8 +60,7 @@ The Command Line Tools stay installed as the baseline: `xcode-select -p` points
 at `/Library/Developer/CommandLineTools` until something moves it. Two
 derivations compile against whatever `xcrun --show-sdk-path` returns -
 [imagepaste.nix](../.config/nix/modules/imagepaste.nix),
-[voxtap.nix](../.config/nix/modules/voxtap.nix), plus the shim in
-[terminal-control.nix](../.config/nix/packages/terminal-control.nix) - so
+[voxtap.nix](../.config/nix/modules/voxtap.nix) - so
 selecting an Xcode changes their SDK on the next `drs`. Each falls back to the
 CLT SDK path when `xcrun` fails, which is why the CLT must not be removed.
 
