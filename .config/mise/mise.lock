@@ -61,23 +61,23 @@ url = "https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip"
 url_api = "https://api.github.com/repos/XcodesOrg/xcodes/releases/assets/563562943"
 
 [[tools."aqua:anomalyco/opencode"]]
-version = "1.19.3"
+version = "1.19.4"
 backend = "aqua:anomalyco/opencode"
 
 [tools."aqua:anomalyco/opencode"."platforms.linux-arm64"]
-checksum = "sha256:7900818a6a98881edbbadab4b7525940eff3b9750040c200481f9f56cacee405"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209228"
+checksum = "sha256:8568230ccd847dc93e95b9f6894379077d3e014a16b48040743573e77c23e85f"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665821079"
 
 [tools."aqua:anomalyco/opencode"."platforms.linux-x64"]
-checksum = "sha256:13a8fb2978302071b86f9d7e00da9c8895f9cd846978379c3bdc6a5333536c9b"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209173"
+checksum = "sha256:849bd6b3d959a1d2ef200ed1634a51c79a45ca236aa26665d75debd694805cce"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665821750"
 
 [tools."aqua:anomalyco/opencode"."platforms.macos-arm64"]
-checksum = "sha256:c2d0fecd27acf6e08be02c1f5d384614d07495587766bcc4a6bff3971749bb64"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647222664"
+checksum = "sha256:c400a2f8c8ab7e99478a7f4dd1a466b57bf33888e520d85c55780a5464c4b689"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665836811"
 
 [[tools."aqua:google/osv-scanner"]]
 version = "2.7.0"
@@ -645,7 +645,7 @@ version = "0.39.1"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
-version = "0.21.30"
+version = "0.21.31"
 backend = "npm:agent-device"
 
 [[tools."npm:apify-cli"]]
@@ -685,7 +685,7 @@ version = "1.6.10"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
-version = "1.26.18"
+version = "1.26.20"
 backend = "npm:firecrawl-cli"
 
 [[tools."npm:hunkdiff"]]
@@ -760,7 +760,7 @@ version = "0.6.0"
 backend = "npm:vgpu"
 
 [[tools."npm:wrangler"]]
-version = "4.151.3"
+version = "4.152.0"
 backend = "npm:wrangler"
 
 [[tools.oxlint]]
@@ -809,7 +809,7 @@ url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/620377370"
 provenance = "github-attestations"
 
 [[tools."pipx:docling"]]
-version = "2.141.0"
+version = "2.142.0"
 backend = "pipx:docling"
 
 [[tools."pipx:markitdown"]]
