@@ -35,13 +35,13 @@ setup_file() {
   # Ordered escalation: later tests assume earlier ones ran first.
   export BATS_NO_PARALLELIZE_WITHIN_FILE=true
   export SMOKE_SKIP=""
-  TMUX_BIN="$(command -v tmux || true)"
+  TMUX_BIN="${TMUX_BIN:-$(command -v tmux || true)}"
   [ -n "$TMUX_BIN" ] || {
     export SMOKE_SKIP="tmux not installed"
     return 0
   }
-  command -v script >/dev/null 2>&1 || {
-    export SMOKE_SKIP="script (pty) unavailable"
+  command -v python3 >/dev/null 2>&1 || {
+    export SMOKE_SKIP="python3 (pty) unavailable"
     return 0
   }
   [ -r "$HOME/.config/tmux/tmux.conf" ] || {
@@ -68,64 +68,25 @@ setup() {
   ensure_alive
 }
 
-# The session's base pane runs sleep, never a shell: `script` forwards its
-# stdin EOF into the pty as ^D, and a shell reading that ^D exits and takes a
-# one-pane session (and the server) with it - the exact failure mode this file
-# guards against would then be self-inflicted. sleep ignores stdin.
+# Keep pane processes alive independently of terminal input.
 start_server() {
   AGENT_JOURNAL_DISABLE=1 "$TMUX_BIN" -L "$SOCK" -f "$HOME/.config/tmux/tmux.conf" \
     new-session -d -s SMOKE -x 80 -y 24 -- sh -c 'exec sleep 2147483647'
 }
 
-# (Re)attach a pty client recording to ${1:-$LOG}. Pids go to
-# $BATS_FILE_TMPDIR/*.pid, not variables: a mid-file revive would leave
-# exported pid vars stale in later tests, but the pidfiles always name the
-# current client/holder. `script` needs immediate flush (-F BSD / -f
-# util-linux) or the log stays empty until the client exits - and a clean
-# detach then wipes the composited screen with the alternate-screen teardown,
-# so anything reading $LOG must snapshot it while the client is still attached.
+# Reuse the shared PTY driver so attachment works without a parent terminal.
+# Snapshot logs before detaching: terminal teardown clears the screen.
 start_client() {
-  local log="${1:-$LOG}"
+  local log="${1:-$LOG}" result=0
   : >"$log"
-  if script --help 2>&1 | grep -q 'illegal option'; then # BSD
-    TERM=${TERM:-xterm-256color} script -qF "$log" "$TMUX_BIN" -L "$SOCK" attach -t SMOKE \
-      </dev/null >/dev/null 2>&1 3>&- &
-  else # util-linux
-    TERM=${TERM:-xterm-256color} script -qfc "$TMUX_BIN -L $SOCK attach -t SMOKE" "$log" \
-      </dev/null >/dev/null 2>&1 3>&- &
-  fi
-  echo $! >"$BATS_FILE_TMPDIR/client.pid"
-  wait_for_client || return 1
-  # Proven risk: the client must persist past its stdin EOF. If this tmux/script
-  # combination drops the client on EOF, hold the pty open from a FIFO instead.
-  # ast-grep-ignore: no-hard-wait - probing whether this tmux/script pair drops the client on EOF
-  sleep 1
-  [ -n "$(tx list-clients 2>/dev/null)" ] && return 0
-  reap_client
-  local fifo="$BATS_FILE_TMPDIR/stdin.fifo"
-  rm -f "$fifo"
-  mkfifo "$fifo"
-  tail -f /dev/null >"$fifo" &
-  echo $! >"$BATS_FILE_TMPDIR/holder.pid"
-  if script --help 2>&1 | grep -q 'illegal option'; then
-    TERM=${TERM:-xterm-256color} script -qF "$log" "$TMUX_BIN" -L "$SOCK" attach -t SMOKE \
-      <"$fifo" >/dev/null 2>&1 3>&- &
-  else
-    TERM=${TERM:-xterm-256color} script -qfc "$TMUX_BIN -L $SOCK attach -t SMOKE" "$log" \
-      <"$fifo" >/dev/null 2>&1 3>&- &
-  fi
-  echo $! >"$BATS_FILE_TMPDIR/client.pid"
-  wait_for_client
-}
-
-wait_for_client() {
-  local i
-  wait_until -i 0.2 '[ -n "$(tx list-clients -F "#{client_name}" 2>/dev/null)" ]'
+  TERM=xterm-256color attach_pty_client SMOKE "$log" || result=$?
+  echo "$ATTACH_PID" >"$BATS_FILE_TMPDIR/client.pid"
+  return "$result"
 }
 
 reap_client() {
   local f
-  for f in "$BATS_FILE_TMPDIR/client.pid" "$BATS_FILE_TMPDIR/holder.pid"; do
+  for f in "$BATS_FILE_TMPDIR/client.pid"; do
     [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null
     rm -f "$f"
   done
@@ -214,6 +175,49 @@ reset_panes() {
     sleep 0.1
   done
   tx kill-pane -t "$p2"
+  assert_alive
+}
+
+@test "inactive consecutive colours cannot collide with the dimmed output cache" {
+  command -v uv >/dev/null 2>&1 || skip "uv unavailable"
+  reset_panes
+  base=$(tx display-message -p '#{pane_id}')
+  tx set-window-option window-style 'fg=#ffffff,bg=#18181f'
+  tx respawn-pane -k -t "$base" -- sh -c 'printf "\033[38;2;200;200;200;48;2;200;200;200mCACHEA\033[38;2;138;138;140;48;2;138;138;140mCACHEB"; exec sleep 300'
+  tx split-window -h -- sh -c 'exec sleep 300'
+  reap_client
+  cache_log="$BATS_FILE_TMPDIR/cache.log"
+  start_client "$cache_log"
+  wait_until -i 0.1 'grep -q CACHEB "$cache_log"'
+  cp "$cache_log" "$BATS_FILE_TMPDIR/cache.snap"
+  size=$(tx display-message -p '#{client_width} #{client_height}')
+  # A dims to #8a8a8c, exactly B's original colour. B must dim again.
+  run -0 uv run --with pyte python - "$BATS_FILE_TMPDIR/cache.snap" $size <<'PYTE'
+import sys
+import pyte
+
+class Terminal(pyte.Screen):
+    def report_device_status(self, mode, **kwargs):
+        if not kwargs.get("private"):
+            super().report_device_status(mode)
+
+
+screen = Terminal(int(sys.argv[2]), int(sys.argv[3]))
+pyte.Stream(screen).feed(open(sys.argv[1], "rb").read().decode("utf-8", "replace"))
+for y, line in enumerate(screen.display):
+    if "CACHEACACHEB" in line:
+        x = line.index("CACHEACACHEB")
+        for offset, expected in ((0, "8a8a8c"), (6, "626265")):
+            cell = screen.buffer[y][x + offset]
+            assert (cell.fg, cell.bg) == (expected, expected), (offset, cell)
+        break
+else:
+    raise AssertionError("collision fixture missing from terminal screen")
+PYTE
+  tx set-window-option -u window-style
+  reset_panes
+  reap_client
+  start_client
   assert_alive
 }
 

@@ -1,9 +1,79 @@
+--- a/screen-write.c
++++ b/screen-write.c
+@@ -171,6 +171,13 @@
+ 
+ 	if (status_at_line(c) == 0)
+ 		ttyctx->yoff += status_line_size(c);
++
++	/*
++	 * Local patch: flag the client tty so subsequent tty_attributes() calls
++	 * dim cells when the pane is not the active pane in its window.
++	 * tty_write() clears this after the per-command call returns.
++	 */
++	c->tty.dim_inactive = (wp != wp->window->active);
+ 
+ 	return (1);
+ }
+--- a/tty.c
++++ b/tty.c
+@@ -1665,6 +1665,8 @@
+ 			if (state == 0)
+ 				continue;
+ 			cmdfn(&c->tty, ctx);
++			/* Local patch: clear inactive-dim state set by the cb. */
++			c->tty.dim_inactive = 0;
+ 		}
+ 	}
+ }
+@@ -2679,7 +2681,8 @@
+ 	}
+ 
+ 	/* Ignore cell if it is the same as the last one. */
+-	if (gc2.attr == tty->last_cell.attr &&
++	if (!tty->dim_inactive &&
++	    gc2.attr == tty->last_cell.attr &&
+ 	    gc2.fg == tty->last_cell.fg &&
+ 	    gc2.bg == tty->last_cell.bg &&
+ 	    gc2.us == tty->last_cell.us &&
+@@ -2705,6 +2708,30 @@
+ 	tty_check_fg(tty, palette, &gc2);
+ 	tty_check_bg(tty, palette, &gc2);
+ 	tty_check_us(tty, palette, &gc2);
++
++	/*
++	 * Local patch: if the cell belongs to an inactive pane, blend its colors
++	 * toward the pane's default bg. This dims arbitrary ANSI-colored content
++	 * (e.g. lazygit, syntax highlighting) — window-style alone only affects
++	 * cells using the terminal default colors.
++	 */
++	if (tty->dim_inactive) {
++		int target = style_ctx->defaults->bg;
++		if (target == 8 || target == -1)
++			target = tty->bg;
++		gc2.fg = colour_dim_inactive(gc2.fg, target);
++		gc2.bg = colour_dim_inactive(gc2.bg, target);
++		if (gc2.us != 0 && gc2.us != 8)
++			gc2.us = colour_dim_inactive(gc2.us, target);
++
++		/* Compare the fixed-up, dimmed cell with the cached output. */
++		if (gc2.attr == tty->last_cell.attr &&
++		    gc2.fg == tty->last_cell.fg &&
++		    gc2.bg == tty->last_cell.bg &&
++		    gc2.us == tty->last_cell.us &&
++			gc2.link == tty->last_cell.link)
++			return;
++	}
+ 
+ 	/*
+ 	 * If any bits are being cleared or the underline colour is now default,
 --- a/colour.c
 +++ b/colour.c
-@@ -120,6 +120,51 @@
- 	return (-1);
- }
- 
+@@ -219,6 +219,51 @@
+ 	g = (g * (100 - dim)) / 100;
+ 	b = (b * (100 - dim)) / 100;
+ 	return (colour_join_rgb(r, g, b));
++}
++
 +/*
 + * Local patch: produce a dimmed version of a colour for inactive-pane content.
 + * Two-stage algorithm:
@@ -17,7 +87,7 @@
 + * input is returned unchanged.
 + */
 +int
-+colour_dim(int c, int target)
++colour_dim_inactive(int c, int target)
 +{
 +	u_char	r, g, b, tr, tg, tb;
 +	int	rgb, trgb;
@@ -47,56 +117,12 @@
 +	sb = (sb * 65 + tb * 35) / 100;
 +
 +	return (colour_join_rgb((u_char)sr, (u_char)sg, (u_char)sb));
-+}
-+
- /* Convert colour to a string. */
- const char *
- colour_tostring(int c)
---- a/screen-redraw.c
-+++ b/screen-redraw.c
-@@ -1343,6 +1343,14 @@
- 		woy = ctx->statuslines;
- 	else
- 		woy = 0;
-+
-+	/*
-+	 * Local patch: full-redraw path. tty_attributes() will dim cells while
-+	 * this flag is set; clear it after drawing this pane so subsequent
-+	 * borders/status lines render at full brightness.
-+	 */
-+	tty->dim_inactive = (wp != w->active);
-+
- 	for (j = 0; j < wp->sy; j++) {
- 		if (wp->yoff + (int)j < (int)ctx->oy ||
- 		    wp->yoff + (int)j >= (int)ctx->oy + (int)ctx->sy)
-@@ -1391,6 +1399,8 @@
- 		}
- 	}
- 
-+	tty->dim_inactive = 0;
-+
- #ifdef ENABLE_SIXEL
- 	tty_draw_images(c, wp, s);
- #endif
---- a/screen-write.c
-+++ b/screen-write.c
-@@ -171,6 +171,13 @@
- 	if (status_at_line(c) == 0)
- 		ttyctx->yoff += status_line_size(c);
- 
-+	/*
-+	 * Local patch: flag the client tty so subsequent tty_attributes() calls
-+	 * dim cells when the pane is not the active pane in its window.
-+	 * tty_write() clears this after the per-command call returns.
-+	 */
-+	c->tty.dim_inactive = (wp != wp->window->active);
-+
- 	return (1);
  }
  
+ /* Convert colour to a string. */
 --- a/tmux.h
 +++ b/tmux.h
-@@ -1732,6 +1732,15 @@
+@@ -1844,6 +1844,15 @@
  
  	struct event	 key_timer;
  	struct tty_key	*key_tree;
@@ -112,45 +138,23 @@
  };
  
  /* Terminal command context. */
-@@ -3189,6 +3198,7 @@
- int	 colour_join_rgb(u_char, u_char, u_char);
+@@ -3465,6 +3474,7 @@
  void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
  int	 colour_force_rgb(int);
-+int	 colour_dim(int, int);
+ int	 colour_dim(int, u_int);
++int	 colour_dim_inactive(int, int);
  const char *colour_tostring(int);
+ const char *colour_toescape(struct client *, int, int);
  enum client_theme colour_totheme(int);
- int	 colour_fromstring(const char *);
---- a/tty.c
-+++ b/tty.c
-@@ -1639,6 +1639,8 @@
- 			if (state == 0)
- 				continue;
- 			cmdfn(&c->tty, ctx);
-+			/* Local patch: clear inactive-dim state set by the cb. */
-+			c->tty.dim_inactive = 0;
- 		}
- 	}
- }
-@@ -2651,6 +2653,22 @@
- 	tty_check_fg(tty, palette, &gc2);
- 	tty_check_bg(tty, palette, &gc2);
- 	tty_check_us(tty, palette, &gc2);
-+
-+	/*
-+	 * Local patch: if the cell belongs to an inactive pane, blend its colors
-+	 * toward the pane's default bg. This dims arbitrary ANSI-colored content
-+	 * (e.g. lazygit, syntax highlighting) — window-style alone only affects
-+	 * cells using the terminal default colors.
-+	 */
-+	if (tty->dim_inactive) {
-+		int target = defaults->bg;
-+		if (target == 8 || target == -1)
-+			target = tty->bg;
-+		gc2.fg = colour_dim(gc2.fg, target);
-+		gc2.bg = colour_dim(gc2.bg, target);
-+		if (gc2.us != 0 && gc2.us != 8)
-+			gc2.us = colour_dim(gc2.us, target);
-+	}
+--- a/screen-redraw.c
++++ b/screen-redraw.c
+@@ -1124,7 +1124,9 @@
  
- 	/*
- 	 * If any bits are being cleared or the underline colour is now default,
+ 	px = span->data.p.px + (x - span->x);
+ 	py = span->data.p.py;
++	tty->dim_inactive = (wp != wp->window->active);
+ 	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
++	tty->dim_inactive = 0;
+ }
+ 
+ /* Get default border style for spans without a pane. */

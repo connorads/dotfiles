@@ -17,7 +17,7 @@ default-fg text never dims. Keep both halves in sync.
 
 | File | Required | What it does |
 | ---- | -------- | ------------ |
-| `dim-inactive-panes.patch` | yes | Adds `colour_dim()` (Rec. 601 luma desat 30% + blend 35% toward target bg), hooks `tty_attributes` to apply it to every cell in inactive panes. Touches `colour.c`, `screen-redraw.c`, `screen-write.c`, `tmux.h`, `tty.c`. |
+| `dim-inactive-panes.patch` | yes | Adds `colour_dim_inactive()` (Rec. 601 luma desat 30% + blend 35% toward target bg), hooks `tty_attributes` to apply it to every cell in inactive panes. Touches `colour.c`, `screen-redraw.c`, `screen-write.c`, `tmux.h`, `tty.c`. |
 | `force-redraw-on-focus-change.patch` | **yes** | Marks both incoming and outgoing panes `PANE_REDRAW` in `window_redraw_active_switch`. Without it the dim/undim transition stalls until the next keypress in the affected pane - i.e. it looks broken. Tiny patch, easy to drop accidentally; do not. |
 | `split-status-top-bottom.patch` | optional/local | Private split-status experiment gated by `@connorads-split-status on`: only for `status 2`, maps `status-format[0]` to terminal top and `status-format[1]` to terminal bottom. Keeps upstream behaviour when the option is unset. |
 
@@ -31,41 +31,48 @@ Pulled from [`higorhgon/arch-script`](https://github.com/higorhgon/arch-script/t
 on 2026-05-27, originally targeting tmux 3.6_a. Algorithm matches the
 "synchronised inactive pane dimming" pattern (Rec. 601 weights, 30%/35%
 blends) - likely shared lineage with other forks of the same idea.
-Verified applying cleanly against tmux 3.7b (2026-07; running binary carries
-`_colour_dim`).
 
 ## Bump procedure
 
-When nixpkgs bumps tmux past 3.6a and the patch hunks rot:
-
-1. Build will fail at `applying patch ...` - the error names the file and
-   hunk that didn't apply.
-2. Most likely the surrounding context in `tty_attributes` or
-   `screen_redraw_draw_pane` shifted; re-anchor by hand. The actual inserts
-   are small (~20-30 lines each).
-3. Rebuild patched tmux only:
+1. Copy the new tmux source to a fresh writable temporary directory.
+2. Rebase each patch in overlay order. Require `patch --fuzz=0 -p1` to apply
+   every hunk without offsets or rejects on another pristine copy.
+3. Build only the overlay's tmux from the existing flake:
 
    ```sh
-   nix build --no-link --print-out-paths \
-     ~/.config/nix#darwinConfigurations.Connors-MacBook-Air.pkgs.tmux
+   nix build --impure --no-link --print-out-paths --expr '
+     let f = builtins.getFlake (builtins.getEnv "HOME" + "/.config/nix");
+     in builtins.head (builtins.filter (p: (p.pname or "") == "tmux")
+       f.darwinConfigurations.Connors-MacBook-Air.config.home-manager.users.connorads.home.packages)
+   '
    ```
 
-   (Note: that derivation path goes through nix-darwin's own pkgs import,
-   which doesn't include this overlay - to actually test the *patched*
-   tmux, use `darwin-rebuild build --flake ~/.config/nix` and inspect
-   `result/sw/bin/tmux`'s store path, or compare `nm | grep _colour_dim`.)
-4. Verify:
+   The `pkgs.tmux` and `programs.tmux.package` attributes bypass this overlay.
+   Select tmux from `home.packages` to build the customised package.
+4. Run both Bats suites below with the built package's `bin` first on `PATH`.
+   Check `colour_dim_inactive` and `status_split_top_bottom` in the binary.
+5. Run any further checks on a unique explicit `-L` socket. Clean only that
+   socket. Server replacement is a separate activation step.
 
-   ```sh
-   nm /nix/store/<hash>-tmux-<ver>/bin/tmux | grep _colour_dim
-   # → 000000010002290c T _colour_dim
-   ```
+## tmux 3.8 render integration
 
-5. Bounce the server (`tmux kill-server`) so the new binary is in use.
+These patches target tmux 3.8.
+
+The local dimmer is `colour_dim_inactive(int, int)`. Upstream's separate
+`colour_dim(int, u_int)` implements percentage dimming. The local algorithm
+retains the same integer arithmetic and fallback background.
+Inactive cells compare against `last_cell` after colour fixups and dimming,
+matching the cached output. Active cells retain the early cache check.
+
+Full redraws set and clear inactive dimming around `redraw_draw_pane_span`.
+Scene coordinates exclude status rows. Drawing spans adds `status_top_lines`,
+and status output maps each logical row through `status_line_y`.
+The prompt cursor uses `status_prompt_screen_line`. Display-panes uses the
+scene renderer and requires no separate command-file offset patch.
 
 ## Tuning
 
-The two blend ratios live in `dim-inactive-panes.patch` in the `colour_dim`
+The two blend ratios live in `dim-inactive-panes.patch` in the `colour_dim_inactive`
 function:
 
 - Step 1 (desaturate toward perceptual luma): `70/30` split - increase the
@@ -73,34 +80,18 @@ function:
 - Step 2 (blend toward target bg): `65/35` split - increase the `35` to dim
   harder, decrease for subtler.
 
-Edit, `drs`, `tmux kill-server`. There's no runtime knob.
-
-## Verified redraw-path facts
-
-How the patched render path composes with tmux 3.7 features (established by
-code reading plus the automated gauntlet below; useful when triaging a redraw
-bug or rebasing the patches):
-
-- **Floating panes draw as ordinary panes** through `screen_redraw_draw_pane` -
-  the patches do not special-case them, so a float-only bug points at upstream,
-  not the patches.
-- **Occlusion is visible-range clipping**: tiled panes under a float are drawn
-  with their covered cells clipped out, not overdrawn.
-- **The dim flag is set/cleared per pane and reapplied per tty command**, so a
-  pane's dim state cannot leak into another pane's cells.
-- **All vertical offsets go through `status_toplines`/`status_line_y`**, which
-  is why floats, popups, display-panes and message rows all land correctly
-  under split-status without the patch touching each of those paths.
+Rebuild and verify on a private socket. There is no runtime knob.
 
 ## Automated smoke coverage
 
 Two BATS files guard this render path (run via `mise run zsh-tests`):
 
 - [`tmux-patch-symbols.bats`](../../zsh/tests/tmux-patch-symbols.bats) - fast
-  guard that the installed binary carries `_colour_dim` and
+  guard that the installed binary carries `_colour_dim_inactive` and
   `_status_split_top_bottom` (catches a rebuild silently dropping a patch).
 - [`tmux-render-smoke.bats`](../../zsh/tests/tmux-render-smoke.bats) - drives
-  the REAL config + patches through a live pty client: floats (create,
+  the REAL config + patches through the shared Python PTY driver, including
+  consecutive colours that collide with a preceding dimmed cache entry: floats (create,
   full-size, copy-mode, churn under heavy output), focus dim transitions,
   copy-mode scrolling, display-panes, popups, splits/resizes, window resize,
   message/prompt rows, `pane-scrollbars on`/`modal`, plus a pyte-composited
@@ -137,5 +128,5 @@ row, `prefix :` prompt appears on the bottom row, mouse window switching works,
 panes resize, popups/display-panes/copy-mode render sensibly, and inactive pane
 dimming still changes on focus switch.
 
-Rollback: remove/unset `@connorads-split-status` for config-only fallback, or
-remove the patch from `flake.nix`, rebuild, then `tmux kill-server`.
+Rollback: unset `@connorads-split-status` for config-only fallback. Removing
+the compiled patch requires a rebuild and separately authorised server replacement.

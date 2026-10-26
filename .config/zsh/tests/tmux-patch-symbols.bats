@@ -15,8 +15,8 @@ setup() {
   command -v nm >/dev/null 2>&1 || skip "nm unavailable"
 }
 
-@test "tmux binary carries the dim-inactive-panes patch (colour_dim)" {
-  nm "$TMUX_BIN" | grep -q '_colour_dim'
+@test "tmux binary carries the dim-inactive-panes patch (colour_dim_inactive)" {
+  nm "$TMUX_BIN" | grep -Eq '[[:space:]]_?colour_dim_inactive$'
 }
 
 @test "tmux binary carries the split-status patch (status_split_top_bottom)" {
