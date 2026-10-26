@@ -4,6 +4,7 @@ import {
   type ExperimentalSidebarFooterDisclosureProps, type PluginRpcClient,
 } from '@get-bb/plugin-sdk/app';
 import type { FocusView, rpcContract } from './contracts.ts';
+import { mountFooter } from './src/footer.ts';
 import './app.css';
 
 // One module store: commands run outside React, and the footer panel mounts
@@ -68,7 +69,13 @@ const report = (cause: unknown) => console.error(`focus: ${message(cause)}`);
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'connection', component: Connection });
-  const panel = app.experimental_sidebarFooter.register({ kind: 'disclosure', id: 'focus', label: 'Focus view', icon: 'EyeOff', component: Panel });
+  const panel = app.experimental_sidebarFooter.register({ kind: 'disclosure', id: 'focus', label: 'Toggle focus · Right-click to choose projects', icon: 'EyeOff', component: Panel });
+  app.contentScripts.register({ id: 'focus-footer', mount: () => mountFooter(document, {
+    toggle: () => { panel.close(); void rpc().call('toggle', { projectId: null }).then(receive, report); },
+    choose: () => panel.open(),
+    active: () => view?.active ?? false,
+    subscribe,
+  }) });
   app.commands.register({
     id: 'toggle', title: 'Focus: turn the focus view on or off',
     defaultShortcut: { key: 'f', mod: true, shift: true },

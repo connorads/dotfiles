@@ -514,8 +514,11 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   `experimental_threadList`. Same root cause as the row decoration entry.
 - Workaround: non-focused projects move into "More" through `hiddenGroups`. Pinned
   threads stay visible: [focus/README.md](../focus/README.md).
-- Ask: a group filter that includes Pinned, a `projectHeaderMenu` slot, and `active` on
-  footer actions.
+- Footer gap: disclosures expose no right-click callback or persistent active state.
+  Focus captures click and context-menu events on its footer button, retains the SDK
+  disclosure for project selection, and decorates the active state through a content script.
+- Ask: a group filter that includes Pinned, a `projectHeaderMenu` slot, and `active` and
+  `onContextMenu` on footer items.
 - Status: open
 - Category: sdk-gap
 - Evidence: @thread:thr_cn53dfhu4k, commit `0e99be89`

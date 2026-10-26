@@ -17,3 +17,6 @@
 .fx-row:hover .fx-pin, .fx-pin:focus-visible, .fx-pin[aria-pressed="true"] { opacity: 1; }
 .fx-pin[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
 .fx-note { margin: 0; padding: 0 4px; font-size: 11px; color: var(--muted-foreground); }
+
+button.fx-active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+button.fx-active [data-icon-root] { opacity: 1; }

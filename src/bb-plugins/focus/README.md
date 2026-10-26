@@ -7,10 +7,13 @@ the rest into **More**. Turning the view off puts the sidebar back as it was.
 
 | Action | How |
 | --- | --- |
-| Turn the view on or off | `⌘⇧F`, `Turn on`/`Turn off` in the footer panel, or the palette: "Focus: turn the focus view on or off" |
-| Add or remove projects | Footer eye button, then tick projects. Ticking with the view off turns it on |
+| Turn the view on or off | Click the footer eye button, `⌘⇧F`, `Turn on`/`Turn off` in the footer panel, or the palette: "Focus: turn the focus view on or off" |
+| Add or remove projects | Right-click the footer eye button, then tick projects. Ticking with the view off turns it on |
 | Always show a project in every view | `pin` on its row in the footer panel, or the palette: "Focus: always show this project (toggle)" |
 | Add the current project | Palette: "Focus: add this project to the focus view" |
+
+The eye button stays highlighted while the view is on. The palette command
+"Focus: choose projects" also opens the picker.
 
 Ticked projects stay ticked while the view is off, so turning it back on
 restores the same view. With nothing ticked, `⌘⇧F` ticks the current project.
