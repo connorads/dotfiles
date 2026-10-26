@@ -148,10 +148,6 @@
       ];
     };
     CustomUserPreferences = {
-      "com.raspberrypi.Raspberry Pi Imager" = {
-        telemetry = false;
-      };
-
       "org.mozilla.firefox" = {
         EnterprisePoliciesEnabled = true;
         DisableTelemetry = true;
@@ -193,6 +189,7 @@
   # lib.mkBefore (priority 500) sorts this ahead of shared's MagicDNS resolver,
   # reproducing today's Spotlight-then-MagicDNS postActivation order.
   system.activationScripts.postActivation.text = lib.mkBefore ''
+    sudo -u ${config.system.primaryUser} -H /usr/bin/defaults write 'com.raspberrypi.Raspberry Pi Imager' telemetry -bool false
     sudo -u ${config.system.primaryUser} -H /usr/bin/defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
   '';
 
