@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""Patch the pinned BB 0.46.1 Workflows bundles without a source build."""
+"""Patch the pinned BB 0.47.1 Workflows bundles without a source build."""
 
 import argparse
 import hashlib
 import os
-import shutil
+import tempfile
 from pathlib import Path
 
 APP = Path("/Applications/bb.app")
 DIST = Path("Contents/Resources/app.asar.unpacked/node_modules/bb-app/server/dist")
-OUTPUT = Path.home() / ".local/share/bb-bundle-patches/workflows-daybreak-0.46.1"
+OUTPUT = Path.home() / ".local/share/bb-bundle-patches/workflows-daybreak-0.47.1"
 EXPECTED = {
-    "start-server.js": "35ea7bee417290df8792f65d1f3e0be0742994bb957b909587fa1eb8fd2413e0",
-    "builtin-plugins/workflows/dist/server.js": "e3f7b35cb2d74d1ce831b24a9cfabdf6e6e7f0a1832afc18fb982a3377fe27c8",
-    "builtin-plugins/workflows/dist/app.js": "9f5a6b7142c8c5ac068878d0828b033fe6c71c1bb42fda5a936ffc0c30bdcaf0",
+    "start-server.js": "7107e7dc8f5ddc377a3fc74d669d7899b3b41bc53d516edb185acc007d2ff77b",
+    "builtin-plugins/workflows/dist/server.js": "892f1b1433359b69b4fc99f6fb9e3cdf38a95f80c0e947815af8220add92da42",
+    "builtin-plugins/workflows/dist/app.js": "0b4e87e02da60c24a4c59e043cecbe5271016211ea6143eff20a7646d93bc155",
     "builtin-plugins/workflows/skills/workflows/references/authoring.md": "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3",
 }
 PATCHED = {
-    "builtin-plugins/workflows/dist/server.js": "69281ed271313ee82dd4d7fd73957503513fd8b795c66ac3598acf2c3c45476f",
-    "builtin-plugins/workflows/dist/app.js": "88334a1b49579190f67340456013d17662390299cade70b0ea451cb8e12367eb",
+    "builtin-plugins/workflows/dist/server.js": "f9fa912244f79d7cfce44f90088c1a0918757a978fd5ecfcee827de7b434add0",
+    "builtin-plugins/workflows/dist/app.js": "439e02b9301ccb738e653d871f0cf432195cd73db1cc2da48a57dfd1a0c582b4",
     "builtin-plugins/workflows/skills/workflows/references/authoring.md": "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e",
 }
 
@@ -47,8 +47,8 @@ def patch_server(source: str) -> str:
     )
     source = once(
         source,
-        "outputSchema:wE.nullable(),title:O0.string().min(1).nullable()",
-        "outputSchema:wE.nullable(),sessionOptions:O0.record(O0.string().min(1),O0.union([O0.string(),O0.boolean()])).nullable().default(null),sessionOptionLabels:O0.array(O0.string().min(1)).optional(),title:O0.string().min(1).nullable()",
+        "outputSchema:_E.nullable(),title:B0.string().min(1).nullable()",
+        "outputSchema:_E.nullable(),sessionOptions:B0.record(B0.string().min(1),B0.union([B0.string(),B0.boolean()])).nullable().default(null),sessionOptionLabels:B0.array(B0.string().min(1)).optional(),title:B0.string().min(1).nullable()",
     )
     source = once(
         source,
@@ -58,7 +58,7 @@ def patch_server(source: str) -> str:
     source = once(
         source,
         'let f=i?s:o,v=R8(x,"title")',
-        'let f=i?s:o,bbSessionOptions=x.sessionOptions===void 0?null:O0.record(O0.string().min(1),O0.union([O0.string(),O0.boolean()])).parse(x.sessionOptions),v=R8(x,"title")',
+        'let f=i?s:o,bbSessionOptions=x.sessionOptions===void 0?null:B0.record(B0.string().min(1),B0.union([B0.string(),B0.boolean()])).parse(x.sessionOptions),v=R8(x,"title")',
     )
     source = once(
         source,
@@ -93,8 +93,8 @@ def patch_server(source: str) -> str:
     source = once(source, "async function ur(u,p,j){", resolver + "async function ur(u,p,j){")
     source = once(
         source,
-        "return mp.parse({providerId:k.provider,model:Q.model,reasoningLevel:k.reasoningLevel,permissionMode:N})",
-        "let bbOptions=bbResolveSessionOptions(Q,p.sessionOptions);return mp.parse({providerId:k.provider,model:Q.model,reasoningLevel:k.reasoningLevel,permissionMode:N,...(bbOptions.selections===void 0?{}:{sessionOptions:bbOptions.selections}),sessionOptionLabels:bbOptions.labels})",
+        "return kp.parse({providerId:k.provider,model:Q.model,reasoningLevel:k.reasoningLevel,permissionMode:N})",
+        "let bbOptions=bbResolveSessionOptions(Q,p.sessionOptions);return kp.parse({providerId:k.provider,model:Q.model,reasoningLevel:k.reasoningLevel,permissionMode:N,...(bbOptions.selections===void 0?{}:{sessionOptions:bbOptions.selections}),sessionOptionLabels:bbOptions.labels})",
     )
     source = once(
         source,
@@ -121,11 +121,6 @@ def patch_server(source: str) -> str:
         'reasoningLevel:x.execution.reasoningLevel,cached:x.source==="cached"',
         'reasoningLevel:x.execution.reasoningLevel,sessionOptionLabels:x.options.sessionOptionLabels??[],cached:x.source==="cached"',
     )
-    if (
-        "x.experimental_work.registerSource({listForThread(threadId)" not in source
-        or "x.experimental_work.changed(u)" not in source
-    ):
-        raise ValueError("Existing workflow activity patch is missing")
     return source
 
 
@@ -174,7 +169,7 @@ def main() -> None:
     names = (server, app, authoring)
     patchers = {server: patch_server, app: patch_app, authoring: patch_authoring}
     if digest(contents[core]) != EXPECTED[core]:
-        raise SystemExit("Refusing: BB core activity patch differs from pinned version")
+        raise SystemExit("Refusing: BB core differs from pinned 0.47.1 version")
     states = {}
     candidate = {}
     for name in names:
@@ -189,64 +184,90 @@ def main() -> None:
             candidate[name] = contents[name]
         else:
             raise SystemExit(f"Refusing: {name} differs from both pinned versions")
-    output = args.output or OUTPUT
+    output = (args.output or OUTPUT).resolve()
     backup = output / "backup"
     if args.action == "check":
         for name in names:
             print(name, states[name], digest(contents[name]))
         return
+    # Preparation and backup paths must never alias the installation.
+    for name in names:
+        for path in (output / name, backup / name):
+            if path.resolve().is_relative_to(args.app.resolve()):
+                raise SystemExit("Refusing: output overlaps the app installation")
+            if path.exists() and digest(path.read_bytes()) not in {
+                PATCHED[name] if path == output / name else EXPECTED[name]
+            }:
+                raise SystemExit(f"Refusing to overwrite unexpected output: {path}")
+    saved = {}
+    if args.action in {"apply", "restore"}:
+        for name in names:
+            path = backup / name
+            if path.exists():
+                saved[name] = path.read_bytes()
+                if digest(saved[name]) != EXPECTED[name]:
+                    raise SystemExit(f"Refusing: backup differs from pinned {name}")
+            elif states[name] == "patched":
+                raise SystemExit(f"Missing verified backup for patched {name}")
+            else:
+                saved[name] = contents[name]
     if args.action == "restore":
-        for name in names:
-            if states[name] == "base":
-                continue
-            saved = (backup / name).read_bytes()
-            if digest(saved) != EXPECTED[name]:
-                raise SystemExit(f"Refusing: backup differs from pinned {name}")
-        for name in names:
-            if states[name] == "patched":
-                temp = targets[name].with_name(targets[name].name + ".daybreak.tmp")
-                temp.write_bytes((backup / name).read_bytes())
-                os.replace(temp, targets[name])
-        print("Restored prior Workflows files; reload Workflows and the desktop window")
+        install(targets, contents, saved, names)
+        print("Restored stock Workflows files; reload only after active workflows finish")
         return
     for name in names:
         target = output / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(candidate[name])
-        if digest(target.read_bytes()) != digest(candidate[name]):
-            raise SystemExit(f"Prepared bundle write failed: {name}")
+        atomic_write(target, candidate[name])
         print(name, digest(candidate[name]))
     if args.action == "prepare":
         return
     for name in names:
         target = backup / name
         target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            with target.open("xb") as handle:
+                handle.write(saved[name])
+        if digest(target.read_bytes()) != EXPECTED[name]:
+            raise SystemExit(f"Refusing: backup differs from pinned {name}")
+    install(targets, contents, candidate, names)
+    print("Applied Workflows patch; reload only after active workflows finish")
+
+
+def atomic_write(target: Path, data: bytes) -> None:
+    with tempfile.NamedTemporaryFile(
+        dir=target.parent, prefix=".workflows-", delete=False
+    ) as handle:
+        temp = Path(handle.name)
+        handle.write(data)
+    try:
         if target.exists():
-            if digest(target.read_bytes()) != EXPECTED[name]:
-                raise SystemExit(f"Refusing to overwrite unexpected backup: {target}")
-        elif states[name] == "base":
-            shutil.copy2(targets[name], target)
-        else:
-            raise SystemExit(f"Missing verified backup for patched {name}")
+            temp.chmod(target.stat().st_mode)
+        os.replace(temp, target)
+        if target.read_bytes() != data:
+            raise RuntimeError(f"Write verification failed: {target}")
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def install(targets, before, after, names) -> None:
     written = []
     try:
         for name in names:
-            if states[name] == "patched":
-                continue
-            if targets[name].read_bytes() != contents[name]:
+            if targets[name].read_bytes() != before[name]:
                 raise RuntimeError(f"Bundle changed during installation: {name}")
-            temp = targets[name].with_name(targets[name].name + ".daybreak.tmp")
-            temp.write_bytes(candidate[name])
-            os.replace(temp, targets[name])
+        for name in names:
+            if before[name] == after[name]:
+                continue
+            if targets[name].read_bytes() != before[name]:
+                raise RuntimeError(f"Bundle changed during installation: {name}")
             written.append(name)
-            if digest(targets[name].read_bytes()) != PATCHED[name]:
-                raise RuntimeError(f"Bundle verification failed: {name}")
+            atomic_write(targets[name], after[name])
     except Exception:
-        for name in written:
-            if digest(targets[name].read_bytes()) == PATCHED[name]:
-                targets[name].write_bytes((backup / name).read_bytes())
+        for name in reversed(written):
+            if targets[name].read_bytes() == after[name]:
+                atomic_write(targets[name], before[name])
         raise
-    print("Applied Daybreak patch; reload Workflows and the desktop window")
 
 
 if __name__ == "__main__":
