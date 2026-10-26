@@ -6,7 +6,7 @@
   "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
   "bb": {
     "name": "Terminal Tweaks",
-    "description": "Kitty-like terminal: Option as Meta, steady cursor, kitty keyboard protocol, OSC 52 and copy on select.",
+    "description": "Kitty-like terminal: Option as Meta, steady cursor, kitty keyboard protocol, OSC 52.",
     "branding": { "icon": "SquareTerminal" },
     "server": "./server.ts",
     "app": "./app.ts"

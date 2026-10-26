@@ -9,8 +9,6 @@ export interface XTerm {
   readonly element: HTMLElement | undefined;
   options: { macOptionIsMeta?: boolean; cursorBlink?: boolean; vtExtensions?: Record<string, unknown> };
   readonly parser: { registerOscHandler(ident: number, handler: (data: string) => boolean): Disposable };
-  hasSelection(): boolean;
-  getSelection(): string;
 }
 
 interface Hook { memoizedState: unknown; next: Hook | null }
@@ -64,11 +62,8 @@ export function tweak(term: XTerm, writeClipboard: (text: string) => void): () =
     if (text !== null) writeClipboard(text);
     return true;
   });
-  const copyOnSelect = () => { if (term.hasSelection()) writeClipboard(term.getSelection()); };
-  term.element?.addEventListener('mouseup', copyOnSelect);
 
   return () => {
-    term.element?.removeEventListener('mouseup', copyOnSelect);
     osc52.dispose();
     term.options.macOptionIsMeta = original.macOptionIsMeta;
     term.options.cursorBlink = original.cursorBlink;

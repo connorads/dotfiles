@@ -6,17 +6,13 @@ const hooks = (...states: unknown[]) =>
   states.reduceRight<unknown>((next, memoizedState) => ({ memoizedState, next }), null);
 
 function fakeTerminal() {
-  const element = { listeners: new Map<string, () => void>(),
-    addEventListener(type: string, fn: () => void) { this.listeners.set(type, fn); },
-    removeEventListener(type: string) { this.listeners.delete(type); } };
+  const element = {};
   const osc = new Map<number, (data: string) => boolean>();
-  let selection = '';
   const term = {
     element, options: { macOptionIsMeta: false, cursorBlink: true, vtExtensions: { win32InputMode: false } },
     parser: { registerOscHandler(id: number, fn: (data: string) => boolean) { osc.set(id, fn); return { dispose: () => osc.delete(id) }; } },
-    hasSelection: () => selection !== '', getSelection: () => selection,
   };
-  return { term: term as unknown as XTerm, element, osc, select: (text: string) => { selection = text; } };
+  return { term: term as unknown as XTerm, osc };
 }
 
 test('findTerminal reads the terminal from a ref in an ancestor component', () => {
@@ -59,16 +55,12 @@ test('tweak sets Kitty-like options and restores the originals', () => {
   assert.deepEqual(term.options, { macOptionIsMeta: false, cursorBlink: true, vtExtensions: { win32InputMode: false } });
 });
 
-test('tweak copies OSC 52 writes and selections until restored', () => {
-  const { term, element, osc, select } = fakeTerminal();
+test('tweak copies OSC 52 writes until restored', () => {
+  const { term, osc } = fakeTerminal();
   const copied: string[] = [];
   const restore = tweak(term, text => copied.push(text));
   osc.get(52)?.('c;' + Buffer.from('from nvim').toString('base64'));
-  element.listeners.get('mouseup')?.();
-  select('selected');
-  element.listeners.get('mouseup')?.();
-  assert.deepEqual(copied, ['from nvim', 'selected']);
+  assert.deepEqual(copied, ['from nvim']);
   restore();
   assert.equal(osc.has(52), false);
-  assert.equal(element.listeners.has('mouseup'), false);
 });

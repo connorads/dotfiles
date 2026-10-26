@@ -8,11 +8,12 @@ Kitty-like behaviour for BB's built-in terminal.
 | Cursor | Blinks | Steady |
 | Kitty keyboard protocol | Off | On for programs that request it, so Shift+Enter is distinct |
 | OSC 52 clipboard writes | Ignored | Copied to the system clipboard; reads are refused |
-| Selection | Copy by hand | Copied on mouse-up |
 
-BB creates its xterm.js terminals with fixed options and exposes no setting
-or SDK hook for them. A content script finds each `.xterm` element, reads the
-Terminal instance from a ref in the owning React component's fiber, then
+BB's native copy-on-select preference controls selection copying.
+
+BB exposes no setting or SDK hook for the terminal options changed here.
+A content script finds each `.xterm` element and reads the Terminal instance
+from a ref in the owning React component's fiber. It then
 changes options at runtime. xterm.js reads these options on every key or
 escape sequence, so runtime changes take effect. Unloading the plugin restores
 BB's values.
