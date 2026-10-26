@@ -119,3 +119,59 @@ test('thread work: a thread with an overlapping second provider reports work if 
   assert.deepEqual(threadWork(trees, table, ['thr_idle', 'thr_gone']), [{ threadId: 'thr_idle', work: { command: 'git commit -m wip', processes: 4 } }]);
   assert.deepEqual(threadWork([...trees].reverse(), table, ['thr_idle'])[0]!.work?.command, 'git commit -m wip');
 });
+
+for (const command of [
+  'codex app-server',
+  '/opt/bb/bin/bb /opt/bb/bb-provider-bridge-worker.mjs /opt/bb/provider/host.mjs',
+  '/opt/tools/codex app-server --listen unix:// --managed-daemon',
+  '/opt/tools/codex app-server daemon pid-update-loop',
+]) {
+  test(`unattributed provider root and descendants refuse End: ${command}`, () => {
+    // Deliberately unsorted, with a root lacking a footprint and no thread mapping.
+    const table: Proc[] = [
+      { pid: 203, ppid: 202, command: 'node /opt/tools/mcp.js' },
+      { pid: 202, ppid: 201, command: '/bin/sh -c task' },
+      { pid: 201, ppid: 1, command },
+      { pid: 204, ppid: 1, command: '/opt/tools/editor' },
+    ];
+    const trees = providerTrees(table, new Map());
+    assert.deepEqual(trees, []);
+    const rootResult = triage(table, trees, new Map([[201, 50]]));
+    assert.equal(rootResult.apps[0]!.processes[0]!.owner, 'bb');
+    const result = triage(table, trees, new Map([[202, 20], [203, 30], [204, 40]]));
+    const owners = new Map(result.apps.flatMap(app => app.processes.map(proc => [proc.pid, proc.owner])));
+    assert.equal(owners.get(202), 'bb');
+    assert.equal(owners.get(203), 'bb');
+    assert.equal(owners.get(204), null);
+    for (const proc of table.slice(0, 3)) {
+      assert.ok(terminateRefusal(proc, { procs: table, trees }, []));
+    }
+    assert.equal(terminateRefusal(table[3]!, { procs: table, trees }, []), null);
+  });
+}
+
+test('provider names in unrelated commands do not claim ownership', () => {
+  const commands = [
+    'codex exec task', 'codex app-server-helper', '/opt/codex-helper app-server',
+    'echo codex app-server', 'node app-server.js', 'editor /tmp/codex app-server',
+  ];
+  const table = commands.map((command, i) => ({ pid: 300 + i, ppid: 1, command }));
+  const result = triage(table, [], new Map(table.map(proc => [proc.pid, 10])));
+  assert.ok(result.apps.every(app => app.processes.every(proc => proc.owner === null)));
+  for (const proc of table) assert.equal(terminateRefusal(proc, { procs: table, trees: [] }, []), null);
+});
+
+test('provider protection uses the current ancestry and preserves PID identity checks', () => {
+  const root = { pid: 401, ppid: 1, command: 'codex app-server' };
+  const child = { pid: 402, ppid: 401, command: 'node task.js' };
+  const current = { procs: [root, child], trees: [] };
+  assert.match(terminateRefusal({ ...child, command: 'old command' }, current, [])!, /different process/);
+  assert.match(terminateRefusal({ pid: 499, command: root.command }, current, [])!, /already exited/);
+  assert.match(terminateRefusal(root, current, [401])!, /cannot be ended/);
+  assert.match(terminateRefusal({ pid: 1, command: root.command }, current, [])!, /cannot be ended/);
+  // A reused parent PID is no longer a provider root.
+  const reused = { procs: [{ ...root, command: 'editor' }, child], trees: [] };
+  assert.equal(terminateRefusal(child, reused, []), null);
+  const attributed = providerTrees([procs[1]!, { ...root, ppid: 20 }, child], new Map([[401, 'thr_synthetic']]));
+  assert.match(terminateRefusal(root, { procs: [root, child], trees: attributed }, [])!, /Stop the thread/);
+});

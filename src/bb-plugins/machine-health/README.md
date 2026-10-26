@@ -41,7 +41,8 @@ NixOS it compares the booted kernel, initrd and modules with
 3. bb threads on this machine, ranked by the footprint of each provider process
    tree. Tick idle threads and hibernate them.
 4. Top apps by summed footprint. Expand an app to end one process with SIGTERM.
-   Processes in a thread's provider tree and bb's own processes offer no End.
+   Processes in a thread's provider tree, bb's own processes, recognised Codex
+   app-server roots and bridge-worker descendants offer no End.
 
 Memory, threads and apps need macOS. A Linux machine shows vitals only. Press `r`
 to refresh and `Esc` to close. `Q` also closes outside text fields.
@@ -98,10 +99,11 @@ has yet seen it end an idle thread's `claude` process. Run this test once:
    running` that persists after a minute means a stop does not free it.
 5. Send the thread a message. The session resumes with its transcript.
 
-Codex threads are not listed. bb runs one shared `codex app-server` per bridge
-worker, with no per-thread environment, so the plugin cannot attribute it. A
-read of the daemon bundle shows bb ends a provider process only when it holds no
-threads. Stopping one Codex thread may free nothing.
+Codex threads without a `BB_THREAD_ID` mapping are not listed. A process command
+cannot establish which thread owns it. Recognised `codex app-server` roots,
+including absolute executable paths and daemon commands, and their descendants
+refuse End even without a thread mapping. Bridge workers and their descendants
+have the same protection. Thread attribution takes priority when available.
 
 ## Design
 
@@ -137,7 +139,8 @@ flowchart LR
   variable but hang off the daemon and survive a stop, so they are not counted.
 - **End process.** The host signals a pid only if it still runs the command
   shown. It refuses provider-tree processes, bb's own processes, pid 1 and
-  itself.
+  itself. Protection uses the current process table and ancestry, including
+  provider roots with no footprint reading or thread mapping.
 - **Tools.** The host runs tools with `LC_ALL=C` and a `PATH` of the system
   dirs, then `/run/current-system/sw/bin` (NixOS keeps `ss` there on the rpi5),
   then the inherited `PATH`. Tools never see the worker's other variables.
@@ -170,8 +173,6 @@ Keyboard. The hostname mode is stored per window.
   Work that starts in that gap without a new turn dies with the stop.
 - The host can only send signals, so it cannot quit an app gracefully as
   `pclose` does.
-- End is offered on a shared `codex app-server`, which serves every Codex
-  thread on its bridge worker. Only the End? confirmation guards it.
 - Archived threads whose provider process still runs are refused, so their
   memory stays held until bb ends the process.
 - Not yet verified live: a remote machine and the Linux and NixOS branches

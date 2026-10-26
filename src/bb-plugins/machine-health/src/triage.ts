@@ -17,7 +17,7 @@ export interface ProviderTree { threadId: string; rootPid: number; pids: number[
 export interface Work { command: string; processes: number }
 /**
  * Who keeps the process from an End: `thread` is part of a bb thread's provider
- * tree, freed by hibernating that thread; `bb` is bb itself. Null may be ended.
+ * tree; `bb` is bb itself or recognised provider infrastructure. Null may be ended.
  */
 export type Owner = 'thread' | 'bb' | null;
 export interface AppProcess { pid: number; mb: number; command: string; owner: Owner }
@@ -94,8 +94,19 @@ export function threadWork(trees: ProviderTree[], procs: Proc[], threadIds: stri
   return [...work].map(([threadId, found]) => ({ threadId, work: found }));
 }
 
-const ownerOf = (proc: Proc, threadPids: Set<number>): Owner =>
-  threadPids.has(proc.pid) ? 'thread' : proc.command.includes(bbBundle) ? 'bb' : null;
+/** Codex servers can outlive thread attribution, including the managed daemon. */
+const codexServer = /^(?:\S*\/)?codex\s+app-server(?:\s|$)/;
+
+function infrastructurePids(procs: Proc[]): Set<number> {
+  const kids = children(procs);
+  return new Set(procs
+    .filter(proc => proc.command.includes(bridgeWorker) || codexServer.test(proc.command))
+    .flatMap(proc => descendants(proc.pid, kids)));
+}
+
+const ownerOf = (proc: Proc, threadPids: Set<number>, infrastructure: Set<number>): Owner =>
+  threadPids.has(proc.pid) ? 'thread'
+    : infrastructure.has(proc.pid) || proc.command.includes(bbBundle) ? 'bb' : null;
 
 /**
  * Apps grouped by bundle and ranked by summed footprint; threads ranked by
@@ -105,6 +116,7 @@ const ownerOf = (proc: Proc, threadPids: Set<number>): Owner =>
 export function triage(procs: Proc[], trees: ProviderTree[], footprints: Map<number, number>): Triage {
   const groups = new Map<string, AppGroup>();
   const threadPids = new Set(trees.flatMap(tree => tree.pids));
+  const infrastructure = infrastructurePids(procs);
   for (const proc of procs) {
     const mb = footprints.get(proc.pid) ?? 0;
     if (mb <= 0) continue;
@@ -112,7 +124,7 @@ export function triage(procs: Proc[], trees: ProviderTree[], footprints: Map<num
     const group = groups.get(app) ?? { app, mb: 0, count: 0, processes: [] };
     group.mb += mb;
     group.count += 1;
-    group.processes.push({ pid: proc.pid, mb, command: proc.command.slice(0, commandCap), owner: ownerOf(proc, threadPids) });
+    group.processes.push({ pid: proc.pid, mb, command: proc.command.slice(0, commandCap), owner: ownerOf(proc, threadPids, infrastructure) });
     groups.set(app, group);
   }
   const apps = [...groups.values()].sort((a, b) => b.mb - a.mb).slice(0, appLimit);
@@ -135,8 +147,8 @@ export function terminateRefusal({ pid, command: expectedCommand }: { pid: numbe
   const current = procs.find(proc => proc.pid === pid);
   if (!current) return 'The process has already exited.';
   if (current.command.slice(0, commandCap) !== expectedCommand) return 'The pid now belongs to a different process. Refresh and try again.';
-  const owner = ownerOf(current, new Set(trees.flatMap(tree => tree.pids)));
+  const owner = ownerOf(current, new Set(trees.flatMap(tree => tree.pids)), infrastructurePids(procs));
   if (owner === 'thread') return 'This process belongs to a bb thread. Stop the thread instead.';
-  if (owner === 'bb') return 'This process is part of bb.';
+  if (owner === 'bb') return 'This process is part of bb or its provider infrastructure.';
   return null;
 }
