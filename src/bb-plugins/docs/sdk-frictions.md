@@ -789,6 +789,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: app-bug
 - Evidence: @thread:thr_k8h8gbmkid, `spikes/tmux/critique-review/SPIKE.md:83`
 
+### Option+G reaches the new-thread composer as ©
+
+- Found: 2026-10-25, git-glance, BB 0.45.0
+- Wanted: the registered Alt+G command opens Git Glance from the new-thread composer.
+- Gap: macOS inserts © in the composer. The command does not prevent the key event.
+- Workaround: Git Glance captures physical `KeyG` with Option held while a new-thread project is selected, opens its popover and prevents text insertion.
+- Verification: works in the browser. The desktop app still fails after reloading its window.
+- Ask: dispatch registered plugin shortcuts before the composer inserts Option-modified characters.
+- Status: open
+- Category: app-bug
+- Evidence: @thread:thr_iyn8wb83iz, `git-glance/composer-shortcut.ts`
+
 ### Plugin shortcuts do not fire while a terminal has focus
 
 - Found: 2026-10-14, git-glance, vox, caffeine, BB 0.46.0

@@ -7,6 +7,7 @@ import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
 import './app.css';
 import { mountCommitLinks, type CommitLink } from './chat-links.ts';
+import { mountComposerShortcut } from './composer-shortcut.ts';
 import { CommitPreview } from './commit-preview.tsx';
 
 type Open = { threadId: string; anchor: Anchor; instant: boolean; commit?: string } | null;
@@ -80,6 +81,7 @@ function ComposerSubject() {
 }
 
 export default definePluginApp(app => {
+  app.contentScripts.register({ id: 'composer-shortcut', mount: () => mountComposerShortcut(window, () => composerSubject, subject => toggle(subject, 'keyboard')) });
   app.contentScripts.register({ id: 'commit-links', mount: () => mountCommitLinks(document, ({ threadId, sha }: CommitLink) => {
     show({ threadId, commit: sha, anchor: null, instant: true });
   }) });
