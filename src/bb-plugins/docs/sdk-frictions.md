@@ -35,7 +35,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   Its worker spawn omits `sessionOptions`; its call view carries no effective option values.
 - Workaround: The [pinned Workflows bundle patch](../workflows-patch/README.md) accepts
   provider session options, passes them to a direct worker, and shows their labels.
-  It requires the existing local activity patch and refuses unknown BB bundle hashes.
+  Session options are independent of activity. The registry pins independent and combined sets and refuses unknown bundle tuples.
 - Ask: Accept provider-neutral `sessionOptions` in `agent()`; validate against the selected
   model, pass them to `threads.spawn`, persist the effective values, and show enabled options
   beside the worker model in both progress views.

@@ -100,3 +100,14 @@ Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable cache `~/.c
 ## Version-coupled tool pairs
 
 **Version-coupled tool pairs**: `oxlint` and `npm:oxlint-tsgolint` are pinned separately, `up` bumps them separately, and tsgolint's version line tracks typescript-go rather than oxlint - oxlint 1.80.0 peers `oxlint-tsgolint >= 7.0.2001`, so the two majors will never agree and neither range constrains the other. A skew there does not fail loudly; it turns the type-aware rules off. `pin-audit` is the counterweight for the range-drift half of this, but the peer relationship itself is not machine-checked - check it by hand after either tool crosses a major.
+
+## Desktop BB patch reconciliation
+
+`up` inspects `/Applications/bb.app` after standalone Homebrew and applicable
+macOS activation paths, including failures and frozen activation. Inspection
+requires `session-options-plus-activity`. Its warnings preserve required-phase
+status and exit behaviour. It never prepares, installs, reloads or restarts BB.
+Native updates outside `up` require explicit inspection. Mise's separate
+`bb-app` package does not identify the desktop installation.
+The [bundle registry guide](../../src/bb-plugins/workflows-patch/README.md)
+owns preparation, verification, recovery and retirement.

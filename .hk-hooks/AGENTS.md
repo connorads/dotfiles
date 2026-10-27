@@ -307,3 +307,13 @@ discard commits never integrated locally. The rejection reads `[rejected] ...
 (stale info)`. Integrate first (`git pull --rebase`) and the same push goes
 through; fast-forwards, merges and rebased-branch force pushes are unaffected.
 Plain `git push --force` or `--no-force-if-includes` is the typed escape hatch.
+
+## BB bundle patch checks
+
+The `workflows-patch` step runs standard-library registry, planning, transaction
+and legacy compatibility tests for `src/bb-plugins/workflows-patch/**`.
+Independent synthetic fixtures run without a desktop installation. The suite
+validates tracked adapter and harness fingerprints. Copied-release behaviour
+tests explicitly skip unless `BB_PATCH_RELEASE_APP` names a verified disposable
+release copy. They also need Node with SQLite and installed workspace dependencies.
+The [registry guide](../src/bb-plugins/workflows-patch/README.md) owns the full procedure.

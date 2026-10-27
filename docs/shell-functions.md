@@ -69,3 +69,11 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 - Test shell scripts by public behaviour: args, exit status, stdout/stderr, and filesystem effects; use `test_helper.bash` for isolated `HOME`/`PATH`.
 - oh-my-zsh git plugin defines ~200 `g*` aliases (e.g. `gcl`, `gco`, `gca`). Run `alias <name>` before creating new `g*` functions/aliases to avoid conflicts.
 - Separate a multi-field shell record with US (`0x1f`), never a tab: tab is IFS whitespace, so `IFS=$'\t' read` collapses runs of tabs and every interior empty field shifts the rest left, silently. US is not whitespace, so a plain `read` keeps empty fields in place. Spell it `$'\037'` in bash and zsh, and `_US=$(printf '\037')` in a `#!/bin/sh` file, where `$'...'` is literal; never type the raw byte, which can make git call the file binary. `.config/tmux` is migrated and gated (`hk` step `tsv-separator-lint`); `.config/zsh/functions/**` still holds fourteen unaudited tab-valued `IFS` sites, so there the rule is convention and `"${(@ps:\t:)rec}"` remains the safe zsh split. Mechanism, measurements and the rejected alternatives: `mechanical-enforcement` skill, `references/shell-quality.md`, `## zsh`.
+
+## BB bundle patch inspection
+
+`bb-patch` is a dual-mode wrapper for the
+[bundle registry manager](../src/bb-plugins/workflows-patch/README.md).
+It forwards arguments and exit status to Python. New installation commands
+require an absolute `--app` path. Inspection is read-only; apply and restore
+admit only manager-bound disposable temporary installations.
