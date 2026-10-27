@@ -434,6 +434,28 @@ _up_commit_lock() {
   esac
 }
 
+_up_bb_reconcile() {
+  local name=$1 rc=0 started=$SECONDS state=REPORTED
+  local detail="read-only disk inspection; activation and runtime unknown"
+  print "=> $name"
+  printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$name" >>"$up_log"
+  if command -v bb-patch &>/dev/null; then
+    bb-patch inspect --app /Applications/bb.app --require-set session-options-plus-activity --json \
+      > >(tee -a "$up_log") 2> >(tee -a "$up_log" >&2) || rc=$?
+  else
+    print -u2 "up: BB patch inspection unavailable; install the bb-patch wrapper"
+    rc=2
+  fi
+  if ((rc)); then
+    state=WARN
+    detail="$detail; inspect exit $rc"
+    print -u2 "up: BB patch requirement unverified or missing; inspect the desktop installation before explicit scratch preparation"
+    _up_next "bb-patch inspect --app /Applications/bb.app --require-set session-options-plus-activity --json"
+  fi
+  _up_record "$name" "$state" $((SECONDS - started)) "$detail"
+  return 0
+}
+
 _up_reapply_patches() {
   local rc=0 patch
   local -a patches=(
@@ -618,6 +640,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
       _up_next "rerun up"
       _up_brew_advisory "brew doctor" "diagnostics" doctor
     fi
+    _up_bb_reconcile "BB after Homebrew"
   else
     _up_not_run brew
   fi
@@ -677,6 +700,10 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   else
     _up_run required rebuild "home-manager" hms
   fi
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  _up_bb_reconcile "BB after activation"
 fi
 
 # A flake lock lands only after both its update and every applicable rebuild.

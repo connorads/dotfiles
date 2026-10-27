@@ -51,6 +51,13 @@ setup() {
   setup_test_home
   export PATH="$PATH:$jq_dir"
 
+  write_stub bb-patch <<'EOF'
+#!/usr/bin/env bash
+echo "bb-patch $*" >>"$TEST_LOG"
+printf '%s\n' '{"classification":"stock","missingPatches":["session-options","activity"],"activationStatus":"unknown","runtimeVerificationStatus":"unknown"}'
+exit "${BB_INSPECT_EXIT:-0}"
+EOF
+
   mkdir -p "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"
   : >"$TEST_HOME/.config/mise/mise.lock" # committed lock exists, empty
   : >"$TEST_HOME/.config/nix/flake.lock" # committed lock exists, empty
@@ -1074,4 +1081,61 @@ EOF2
   grep -qE '^  pins .*2 flagged' <<<"$output"
   [[ "$output" != *"degraded"* ]] || false
   [[ "$output" != *"Next"* ]] || false
+}
+
+@test "up inspects desktop after Homebrew and activation without changing success" {
+  export BB_INSPECT_EXIT=1
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^bb-patch inspect --app /Applications/bb.app --require-set session-options-plus-activity --json$' "$TEST_LOG")" -eq 2 ]
+  local brew_line inspect_line rebuild_line last_inspect
+  brew_line=$(grep -n '^brew upgrade ' "$TEST_LOG" | head -1 | cut -d: -f1)
+  inspect_line=$(grep -n '^bb-patch ' "$TEST_LOG" | head -1 | cut -d: -f1)
+  rebuild_line=$(grep -n '^drs ' "$TEST_LOG" | head -1 | cut -d: -f1)
+  last_inspect=$(grep -n '^bb-patch ' "$TEST_LOG" | tail -1 | cut -d: -f1)
+  [ "$brew_line" -lt "$inspect_line" ]
+  [ "$inspect_line" -lt "$rebuild_line" ]
+  [ "$rebuild_line" -lt "$last_inspect" ]
+  [[ "$output" == *'missingPatches'* ]]
+  ! grep -qE '^bb-patch (apply|prepare|restore)|^bb .*reload|^bb .*restart|^bb .*update' "$TEST_LOG"
+}
+
+@test "up inspects after failed and partial Homebrew without masking failure" {
+  export BREW_FAIL=1 BB_INSPECT_EXIT=2
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  [ "$(grep -c '^bb-patch inspect ' "$TEST_LOG")" -eq 2 ]
+  [[ "$output" == *'BB patch requirement unverified or missing'* ]]
+}
+
+@test "up frozen activation failure still inspects desktop" {
+  export DRS_FAIL=1 BB_INSPECT_EXIT=2
+  run zsh --no-rcs "$UP" --frozen --no-audit
+  [ "$status" -eq 1 ]
+  [ "$(grep -c '^bb-patch inspect ' "$TEST_LOG")" -eq 1 ]
+  ! grep -q '^brew upgrade ' "$TEST_LOG"
+}
+
+@test "up earlier required failure cannot suppress desktop advisory" {
+  export NFU_FAIL=1
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -q '^bb-patch inspect ' "$TEST_LOG"
+}
+
+@test "up inspects after partial Homebrew replacement and preserves partial status" {
+  export BREW_PARTIAL=1 BB_INSPECT_EXIT=1
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  [ "$(grep -c '^bb-patch inspect ' "$TEST_LOG")" -eq 2 ]
+  [[ "$output" == *'brew'*'1 no longer outdated; remaining after upgrade: formula/podman'* ]]
+  ! grep -qE '^bb-patch (apply|prepare|restore)|^bb .*reload|^bb .*restart|^bb .*update' "$TEST_LOG"
+}
+
+@test "up reports unavailable patch inspection without changing required success" {
+  rm "$TEST_BIN/bb-patch"
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'BB patch inspection unavailable'* ]]
+  [[ "$output" == *'BB after activation'*'inspect exit 2'* ]]
 }
