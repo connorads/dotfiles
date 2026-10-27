@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+# bb-patch: inspect and prepare pinned desktop bundles; transact disposable copies
+emulate -L zsh
+command python3 -B "$HOME/src/bb-plugins/workflows-patch/scripts/bb_patch.py" "$@"

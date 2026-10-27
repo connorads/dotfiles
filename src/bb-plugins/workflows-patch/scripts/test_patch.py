@@ -1,6 +1,7 @@
 """Exercise the patch CLI only against disposable copies of pinned bundles."""
 
 import importlib.util
+import os
 import subprocess
 import tempfile
 import unittest
@@ -17,11 +18,19 @@ spec.loader.exec_module(patch)
 
 class PatchCliTests(unittest.TestCase):
     def setUp(self):
-        self.root = Path(tempfile.mkdtemp(prefix="workflows-patch-"))
+        fixture = os.environ.get("BB_PATCH_RELEASE_APP")
+        if not fixture:
+            self.skipTest(
+                "Set BB_PATCH_RELEASE_APP to an explicit verified disposable release copy"
+            )
+        fixture = Path(fixture).resolve()
+        if not fixture.is_relative_to(Path(tempfile.gettempdir()).resolve()):
+            self.fail("Release fixture must be a disposable temporary copy")
+        self.root = Path(tempfile.mkdtemp(prefix="workflows-patch-")).resolve()
         self.app = self.root / "bb.app"
         self.output = self.root / "prepared"
         for name, expected in patch.EXPECTED.items():
-            data = (patch.APP / patch.DIST / name).read_bytes()
+            data = (fixture / patch.DIST / name).read_bytes()
             assert patch.digest(data) == expected
             target = self.app / patch.DIST / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -47,6 +56,24 @@ class PatchCliTests(unittest.TestCase):
     def assert_state(self, hashes):
         for name, expected in hashes.items():
             assert patch.digest((self.app / patch.DIST / name).read_bytes()) == expected
+
+    def test_manager_profiles_reproduce_and_execute_copied_release(self):
+        import shutil
+
+        import bb_patch as manager
+
+        fixture = Path(os.environ["BB_PATCH_RELEASE_APP"])
+        for name in ("Contents/Info.plist", "Contents/MacOS/bb"):
+            target = self.app / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(fixture / name, target)
+        before = manager.observe(self.app)
+        for profile in manager.SETS:
+            plan = manager.prepare(
+                self.app, profile, self.root / profile, state=self.root / "state"
+            )
+            manager.verify(plan)
+        assert before == manager.observe(self.app)
 
     def test_round_trip_and_idempotence(self):
         self.run_cli("check")

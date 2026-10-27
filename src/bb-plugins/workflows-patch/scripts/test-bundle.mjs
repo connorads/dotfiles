@@ -22,6 +22,8 @@ assert.throws(() => Ws({sessionOptions:{turbo:3}}));
 assert.throws(() => Ws({unknown:true}));
 const input = {version:2, previousCacheKey:null, prompt:'Synthetic review', selection:{providerId:'example',model:'example',reasoningLevel:'high',permissionMode:'auto'}, outputSchema:null, executionSemantics:{workerPromptVersion:'v1',resultProtocolVersion:'v1',maxRepairAttempts:1}};
 const base = Os(input);
+assert.equal(base, 'b2a8e61058ee86ac73b6aa36b2c6c0dc2fb4000e901ec1bd3ccddda24e7125f3');
+assert.notEqual(base, Os({...input, selection:{...input.selection,sessionOptions:{}}}));
 assert.notEqual(base, Os({...input, selection:{...input.selection,sessionOptions:{turbo:true}}}));
 assert.notEqual(Os({...input, selection:{...input.selection,sessionOptions:{turbo:false}}}), Os({...input, selection:{...input.selection,sessionOptions:{turbo:true}}}));
 assert.equal(Os({...input,selection:{...input.selection,sessionOptions:{a:true,b:'x'}}}),Os({...input,selection:{...input.selection,sessionOptions:{b:'x',a:true}}}));

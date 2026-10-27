@@ -1317,6 +1317,29 @@ local fast_steps = new Mapping<String, Step> {
     // one gated at commit time rather than only from `mise run py-checks`: it
     // decides which file `prefix + u` opens, and it is pure, so the suite
     // needs nothing but uv. Missing uv warns and passes.
+    ["workflows-patch"] {
+        glob = List("src/bb-plugins/workflows-patch/**")
+        check = "python3 -B -m unittest discover -s src/bb-plugins/workflows-patch/scripts -p 'test_*.py'"
+        tests {
+            ["bundle changes select the offline suite"] {
+                tmpdir = true
+                run = "check"
+                env { ["BB_PATCH_RELEASE_APP"] = "" }
+                before = "mkdir -p src/bb-plugins && cp -R {{root}}/src/bb-plugins/workflows-patch src/bb-plugins/"
+                files = List("src/bb-plugins/workflows-patch/scripts/bb_patch.py", "src/bb-plugins/workflows-patch/scripts/adapters/bb_0_47_1.py", "src/bb-plugins/workflows-patch/manifests/desktop-0.47.1-activity.json")
+                expect { code = 0 }
+            }
+            ["a changed manifest fingerprint fails the offline suite"] {
+                tmpdir = true
+                run = "check"
+                env { ["BB_PATCH_RELEASE_APP"] = "" }
+                before = "mkdir -p src/bb-plugins && cp -R {{root}}/src/bb-plugins/workflows-patch src/bb-plugins/ && printf '{}' > src/bb-plugins/workflows-patch/manifests/desktop-0.47.1-activity.json"
+                files = List("src/bb-plugins/workflows-patch/manifests/desktop-0.47.1-activity.json")
+                expect { code = 1 }
+            }
+        }
+    }
+
     ["py-tests-tmux"] {
         glob = List(
             ".config/tmux/fzf_link_paths.py",

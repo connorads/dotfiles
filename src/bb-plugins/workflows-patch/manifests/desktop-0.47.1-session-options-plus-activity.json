@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "session-options-plus-activity",
+  "status": "approved-offline",
+  "installation": {
+    "kind": "desktop",
+    "platform": "darwin",
+    "arch": "arm64",
+    "version": "0.47.1"
+  },
+  "dist": "Contents/Resources/app.asar.unpacked/node_modules/bb-app/server/dist",
+  "patches": [
+    "session-options",
+    "activity"
+  ],
+  "adapter": {
+    "path": "scripts/adapters/bb_0_47_1.py",
+    "sha256": "3a757016bbe32019e00011f18479bd221635f54da20b1d7268ba2a231aad3a1a"
+  },
+  "files": [
+    {
+      "path": "start-server.js",
+      "pristine": "7107e7dc8f5ddc377a3fc74d669d7899b3b41bc53d516edb185acc007d2ff77b",
+      "intermediate": [
+        "7107e7dc8f5ddc377a3fc74d669d7899b3b41bc53d516edb185acc007d2ff77b",
+        "bfcef8f96829f46ddcb51496d0c0c64466077afddd27aed01823d9cfc1501e97"
+      ],
+      "final": "bfcef8f96829f46ddcb51496d0c0c64466077afddd27aed01823d9cfc1501e97"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/server.js",
+      "pristine": "892f1b1433359b69b4fc99f6fb9e3cdf38a95f80c0e947815af8220add92da42",
+      "intermediate": [
+        "f9fa912244f79d7cfce44f90088c1a0918757a978fd5ecfcee827de7b434add0",
+        "e91fc37d227a771c3b59a40747781d2e0d08ea2b598abf8791cb4a3b033f46d7"
+      ],
+      "final": "e91fc37d227a771c3b59a40747781d2e0d08ea2b598abf8791cb4a3b033f46d7"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/app.js",
+      "pristine": "0b4e87e02da60c24a4c59e043cecbe5271016211ea6143eff20a7646d93bc155",
+      "intermediate": [
+        "439e02b9301ccb738e653d871f0cf432195cd73db1cc2da48a57dfd1a0c582b4",
+        "439e02b9301ccb738e653d871f0cf432195cd73db1cc2da48a57dfd1a0c582b4"
+      ],
+      "final": "439e02b9301ccb738e653d871f0cf432195cd73db1cc2da48a57dfd1a0c582b4"
+    },
+    {
+      "path": "builtin-plugins/workflows/skills/workflows/references/authoring.md",
+      "pristine": "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3",
+      "intermediate": [
+        "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e",
+        "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e"
+      ],
+      "final": "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e"
+    }
+  ],
+  "verification": {
+    "profiles": [
+      "session-options",
+      "activity"
+    ],
+    "harnesses": {
+      "scripts/test-bundle.mjs": "7c272f0fcb6066d8907a038bebe5a4fe12ca85b268da357a447e3c97e8b825d3",
+      "scripts/test-activity.mjs": "854b84e206513577595b9c6fae2633b71197e80cf73b5e2e636b950a6492546d"
+    }
+  },
+  "activation": "full-server-activation",
+  "installerWritesDatabase": false,
+  "runtimeRecordCompatibility": "Reads stock and historical session-options records; stock readers cannot preview every patched record.",
+  "integrityPolicy": "unresolved; disposable copies only",
+  "retireWhen": "Pristine upstream passes both independent session-options and activity acceptance suites."
+}
