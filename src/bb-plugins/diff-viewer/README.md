@@ -28,6 +28,7 @@ picks the wrong base, run `git remote set-head origin --auto`.
 - Click a header to collapse or expand that file. The toolbar collapses or
   expands every file.
 - The toolbar switches between unified and split views. The choice persists.
+- Toolbar controls wrap in narrow panels. Touch toolbar controls have 44px targets.
 - The scroll continues one panel height past the last file. A jump to the
   last file therefore puts its header at the top, even before its diff loads.
 

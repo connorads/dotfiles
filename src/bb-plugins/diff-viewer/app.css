@@ -10,7 +10,7 @@
 }
 
 /* Toolbar: fixed above the scroll, so file headers can stick to the scroll's top. */
-.dv-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px 6px; }
+.dv-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px 6px; }
 .dv-spacer { flex: 1; }
 .dv-scopes { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--muted); }
 .dv-scopes button {
@@ -98,3 +98,8 @@
 .dv-diff { display: block; }
 .dv-notice { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 10px 12px; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .dv-link { padding: 0; border: 0; background: none; color: var(--foreground); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+@media (pointer: coarse) {
+  .dv-scopes button { min-height: 44px; }
+  .dv-icon-button { width: 44px; height: 44px; flex: none; }
+}
