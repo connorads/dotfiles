@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import type { rpcContract } from '../../contracts.ts';
 import { effortSchema, type Favourite } from '../../src/models/contract.ts';
 import { capture, matches } from '../../src/models/favourites.ts';
-import { EFFORT_LABEL } from './controls.tsx';
+import { effortLabel } from './controls.tsx';
 import { useController } from './picker.tsx';
 import { open, subscribeSelection } from './store.ts';
 
@@ -45,7 +45,7 @@ export function Trigger() {
     : unknownProgramme ? 'Save this favourite after starting a thread so its Daybreak setting can be read.'
     : saved ? `Remove ${name} from favourites`
     : full ? `Nine favourites saved. Remove one to add ${name}.`
-    : `Add ${name}${effort.success ? ` · ${EFFORT_LABEL[effort.data]}` : ''} to favourites`;
+    : `Add ${name}${effort.success ? ` · ${effortLabel(effort.data)}` : ''} to favourites`;
   async function toggle() {
     if (working.current || !providerId || !model || full || !list || unknownProgramme) return;
     working.current = true;

@@ -10,7 +10,7 @@ import { accountUnavailable, isClaude } from '../account-status.tsx';
 import { AccountPicker } from './account-picker.tsx';
 import { AccountMenu } from './account-menu.tsx';
 import { AccountConnectors } from './connectors.tsx';
-import { EFFORT_LABEL, EffortPill, Segmented } from './controls.tsx';
+import { effortLabel, EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
 import { close, open, openedState, subscribe } from './store.ts';
@@ -302,7 +302,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
 
           {currentModel && currentModel.supportedReasoningEfforts.length > 0 && <div className="mf-field"><span aria-hidden="true">Effort</span><Segmented label="Reasoning effort" disabled={blocked}
             value={composer.selection?.reasoningLevel ?? currentModel.defaultReasoningEffort}
-            options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: EFFORT_LABEL[e.reasoningEffort] }))}
+            options={currentModel.supportedReasoningEfforts.map(e => ({ value: e.reasoningEffort, label: effortLabel(e.reasoningEffort) }))}
             onChange={value => { void run(() => changeOption('reasoningLevel', value)); }} /></div>}
           {tiers.length > 0 && <div className="mf-field"><span aria-hidden="true">Tier</span><Segmented label="Service tier" disabled={blocked} value={composer.selection?.serviceTier ?? 'default'}
             options={[{ value: 'default', label: 'Default' }, ...tiers.filter(t => t.id !== 'default').map(t => ({ value: t.id, label: t.label ?? t.id }))]}

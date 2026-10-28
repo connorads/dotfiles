@@ -1,7 +1,7 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 
-export const effortSchema = z.enum(['none', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra', 'ultracode']);
+export const effortSchema = z.string().min(1);
 export type Effort = z.infer<typeof effortSchema>;
 export const setupSchema = z.object({
   providerId: z.string().trim().min(1).max(200),

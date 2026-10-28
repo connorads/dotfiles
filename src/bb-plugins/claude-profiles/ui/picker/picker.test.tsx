@@ -23,8 +23,8 @@ const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'm
 const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
 type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
 const accountCalls: string[] = [];
-function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
-  const { programme, ...initialSelection } = selection;
+function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { catalogueDefault?: boolean; programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
+  const { programme, catalogueDefault, ...initialSelection } = selection;
   const providerId = account ? 'claude-code' : 'codex';
   let currentId = 'default';
   let daybreak = programme?.value ?? false;
@@ -95,7 +95,7 @@ function render(initial = [first, second], error: string | null = null, account?
             supportsThreadArchive: false, supportsThreadRename: false },
         }], permissionCeiling: 'auto', selectedOnlyModels: [],
         modelLoadError: error ? { detail: error, code: 'failed', providerId: 'codex' } : null,
-        models: [first, second].map(f => ({ model: f.model, id: f.model, displayName: f.model, description: '', ...(programme ? { sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean' as const, value: false, ...(programme.fixed && f.model === 'model-a' ? { fixed: true } : {}) }] } : {}), isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
+        models: [first, second].map(f => ({ model: f.model, id: f.model, displayName: f.model, description: '', ...(programme ? { sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean' as const, value: false, ...(programme.fixed && f.model === 'model-a' ? { fixed: true } : {}) }] } : {}), isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }, ...(catalogueDefault ? ['default', 'minimal', 'thinking'].map(reasoningEffort => ({ reasoningEffort, description: '' })) : [])], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
       }) },
     },
   });
@@ -672,6 +672,21 @@ test('selecting a standard model turns Daybreak off with the model change', asyn
     await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('model-a'));
     const update = slot.inspection.sdkCalls.find(call => call.method === 'threads.update');
     expect(update?.args[0]).toMatchObject({ model: 'model-a', sessionOptions: { daybreak: false } });
+    expect(slot.inspection.composer.submits).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('provider default effort does not disable favourites and can be saved and applied', async () => {
+  const slot = render([first], null, undefined, { catalogueDefault: true });
+  try {
+    await enabledRow(slot, 'Select model-a');
+    const menu = effortMenu(slot, 'model-a');
+    expect(within(menu).getByRole('option', { name: 'minimal' })).toBeTruthy();
+    expect(within(menu).getByRole('option', { name: 'thinking' })).toBeTruthy();
+    fireEvent.click(within(menu).getByRole('option', { name: 'Provider default' }));
+    await waitFor(() => expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'default' }]));
+    fireEvent.click(await enabledRow(slot, 'Select model-a'));
+    await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('default'));
     expect(slot.inspection.composer.submits).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
