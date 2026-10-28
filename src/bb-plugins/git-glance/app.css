@@ -26,6 +26,7 @@
 /* Zoom: a large centred view with room for side-by-side diffs. A click morphs
    between sizes; the z key switches at once. */
 /* Lets height transition to and from auto: expanding sections and the zoom. */
+.gg-panel { container: git-glance / inline-size; }
 .gg-dialog { interpolate-size: allow-keywords; }
 .gg-dialog[data-morph] { transition: top .24s var(--gg-ease), left .24s var(--gg-ease), width .24s var(--gg-ease); }
 .gg-dialog[data-morph] .gg-panel { transition: height .24s var(--gg-ease), max-height .24s var(--gg-ease); }
@@ -142,7 +143,7 @@
 .gg-banner span, .gg-failure-body { text-wrap: pretty; }
 
 /* Sync: pull, push, fetch */
-.gg-sync-bar { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+.gg-sync-bar { display: inline-flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: 4px; margin-right: 4px; }
 .gg-sync {
   --gg-sync: var(--muted-foreground);
   display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 7px;
@@ -439,3 +440,12 @@
 .gg-commit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gg-commit-submit { border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; color: var(--primary-foreground); background: var(--primary); font: inherit; }
 .gg-commit-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+@container git-glance (max-width: 600px) {
+  .gg-sync-bar { width: 100%; }
+  .gg-fetched { flex-basis: 100%; overflow-wrap: anywhere; }
+  .gg-title { flex-wrap: wrap; }
+  .gg-upstream { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .gg-body[data-split] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(120px, 40%) minmax(0, 1fr); }
+  .gg-body[data-split] > .gg-list { border-right: 0; border-bottom: 1px solid var(--border); }
+}

@@ -27,7 +27,9 @@ stash row `a` applies and `g` pops.
 `+` expands to a large two-pane view, `_` restores the pop-up, and the size is remembered. The lists sit
 on the left; the selected file's side-by-side diff, or a stash or commit with
 its files, fills the right, and the selection follows the arrow keys. Rebind `Alt+G`
-in Settings → Keyboard. For anything else, press `l` to open lazygit through its
+in Settings → Keyboard. Narrow panels stack the lists above the selected detail.
+Sync controls wrap, with remote-check status below them.
+For anything else, press `l` to open lazygit through its
 own plugin.
 
 ## Commit hashes in chat
