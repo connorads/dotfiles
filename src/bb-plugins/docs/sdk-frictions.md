@@ -27,6 +27,25 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Plugins cannot retain and restore native split groups
+
+- Found: 2026-10-28, installed BB desktop 0.47.1
+- Wanted: Switch between thread arrangements and retain their panes, split ratios and focus.
+- Gap: `useSidebarSplitLayout()` exposes pane rectangles and thread IDs, but omits complete tree topology and non-thread content identity.
+  It returns null for single-pane layouts and compact views. The inspected contract has no complete native layout restore operation.
+  `toThread()` and `threads.open()` open threads within the current arrangement; they cannot restore a saved tree.
+  No host-wide thread-opening policy hook was found to coordinate sidebar, search, mentions and external opens with group selection.
+- Workaround: None for native integration. A plugin-owned workspace can compose `ThreadChat`, but embedded links use host navigation.
+  Embedded chat also excludes global plugin message actions and lacks native thread-panel actions on plugin pages.
+  DOM and storage interception cannot provide a supported atomic layout restoration contract.
+- Ask: Expose a versioned layout snapshot and subscription, including complete pane content, topology, ratios, focus and maximisation.
+  Restore it atomically with the route and command context. Provide group-aware native navigation or a shared thread-opening policy hook.
+- Status: open. Installed code and SDK contracts checked; interactive restoration and component-state retention remain untested.
+- Category: sdk-gap
+- Evidence: Installed `index-PAhC7tf5.js` layout persistence, route reconciliation and thread-open handlers;
+  `SplitWorkspaceRoute-Dn1W5MjE.js` route effect; `app-contract.ts` embedded in the server source map;
+  `PluginThreadChat-BDAhBsN7.js` embedded-chat navigation and action configuration.
+
 ### Workflow agents cannot select or show session options
 
 - Found: 2026-10-25, built-in Workflows plugin
