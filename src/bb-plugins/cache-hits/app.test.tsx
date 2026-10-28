@@ -97,6 +97,14 @@ test('Claude: a click opens the countdown, rebuild cost, per-request chart and r
     expect(dialog.querySelectorAll('.ch-bars > li')).toHaveLength(3);
     expect(dialog.querySelector('.ch-bars > li[data-miss="expired"]')?.getAttribute('title')).toMatch(/miss: 90k re-sent, expired after 1h 5m idle$/);
     expect(dialog.querySelector('.ch-misses li')?.textContent).toMatch(/90kexpired after 1h 5m idle$/);
+    const picker = slot.getByRole('combobox', { name: 'Request details' });
+    expect(picker.querySelectorAll('option')).toHaveLength(3);
+    expect(slot.getByRole('status').textContent).toContain('read 181k');
+    fireEvent.change(picker, { target: { value: '1' } });
+    expect(slot.getByRole('status').textContent).toContain('miss: 90k re-sent, expired after 1h 5m idle');
+    fireEvent.change(picker, { target: { value: '0' } });
+    expect(slot.getByRole('status').textContent).toContain('90k prompt');
+    expect(slot.getByRole('status').textContent).not.toContain('miss:');
     fireEvent.click(chip);
     expect(slot.queryByRole('dialog')).toBe(null);
   } finally { slot.lifecycle.unmount(); }

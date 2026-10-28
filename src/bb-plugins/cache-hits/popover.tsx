@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { DotTone } from '@bb-plugins/chip';
 import { expiresAt, hitRatio, type CacheState, type HistoryEntry } from './src/cache.ts';
@@ -74,8 +74,11 @@ function describeEntry(entry: HistoryEntry) {
 
 /** One column per request: cached reads at the base, fresh writes above, red when the write re-sent a lost cache. */
 function Chart({ history }: { history: HistoryEntry[] }) {
+  const [selected, setSelected] = useState<number | null>(null);
   if (history.length === 0) return <p className="ch-empty">The chart fills in as this thread sends requests.</p>;
-  const max = Math.max(...history.map(entry => entry.prompt));
+  const selectedIndex = Math.min(selected ?? history.length - 1, history.length - 1);
+  const selectedEntry = history[selectedIndex]!;
+  const max = Math.max(1, ...history.map(entry => entry.prompt));
   const first = history[0]!;
   const last = history.at(-1)!;
   return <figure className="ch-chart">
@@ -101,6 +104,14 @@ function Chart({ history }: { history: HistoryEntry[] }) {
       </ol>
     </div>
     <div className="ch-axis-x" aria-hidden="true"><span>{timeOfDay(first.at)}</span><span>{timeOfDay(last.at)}</span></div>
+    <label className="ch-request-picker">Request details
+      <select value={selectedIndex} onChange={event => setSelected(Number(event.target.value))}>
+        {history.map((entry, index) => <option key={`${entry.at}-${index}`} value={index}>
+          Request {index + 1} - {timeOfDay(entry.at)}
+        </option>)}
+      </select>
+    </label>
+    <p className="ch-request-detail" role="status">{describeEntry(selectedEntry)}</p>
   </figure>;
 }
 

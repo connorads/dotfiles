@@ -22,7 +22,7 @@ Click the chip for the detail popover:
   prices vary by model, so the popover does not quote them.
 - Thread, last-request and miss totals.
 - One bar per request for the last 48: cached, written, and re-sent on a miss.
-  Hover a bar for its tokens and miss cause. A gap before a bar marks
+  Use Request details to select its tokens and miss cause with touch or keyboard. A gap before a bar marks
   compaction.
 - The four most recent misses with their cause.
 

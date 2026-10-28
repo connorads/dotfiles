@@ -58,3 +58,7 @@
 .ch-misses ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .ch-misses li { display: grid; grid-template-columns: 44px 44px 1fr; gap: 8px; font-size: var(--text-xs, 12px); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .ch-misses b { color: var(--ch-miss); font-weight: 500; text-align: right; }
+
+.ch-request-picker { display: grid; gap: 4px; font-size: 12px; }
+.ch-request-picker select { min-height: 44px; width: 100%; color: var(--foreground); background: var(--popover); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.ch-request-detail { margin: 0; white-space: pre-line; font-size: 12px; }
