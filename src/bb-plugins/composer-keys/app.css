@@ -73,3 +73,8 @@
   margin: 0 12px 8px;
   color: #e5484d;
 }
+
+.ck-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+.ck-actions button { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.ck-actions button:disabled { opacity: .5; }
+@media (pointer: coarse) { .ck-actions button, .ck-picker li { min-height: 44px; } }

@@ -13,6 +13,9 @@ focus in the composer. With no run and an empty composer, Escape twice within
 
 ## Rewind picker
 
+The composer + menu offers Rewind. Select a message to edit it. Buttons offer
+Fork, Rewind, Back and Close without a keyboard.
+
 ```text
 Esc Esc -> list of your messages -> Enter -> edit -> Enter -> thread rewinds
                                  -> f     -> fork from before it, opens it

@@ -134,3 +134,15 @@ test('a thread with no prompts says so instead of Loading', async () => {
   await openPicker(editor, 'No messages to rewind yet.');
   expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('Loading…');
 });
+
+
+test('touch controls rewind the tapped prompt rather than the previous selection', async () => {
+  const { calls, editor } = await render();
+  await openPicker(editor);
+  fireEvent.click(document.querySelector('[role="option"]')!);
+  const box = document.querySelector('textarea')!;
+  fireEvent.change(box, { target: { value: 'Changed prompt' } });
+  fireEvent.click(Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Rewind')!);
+  await waitFor(() => expect(calls.some(call => call.method === 'editMessage')).toBe(true));
+  expect(calls.find(call => call.method === 'editMessage')?.args).toMatchObject({ expectedRequestSequence: 4, input: [{ type: 'text', text: 'Changed prompt' }] });
+});

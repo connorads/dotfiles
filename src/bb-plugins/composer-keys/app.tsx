@@ -144,6 +144,7 @@ function RewindPicker() {
       if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
       const move = event.key === 'ArrowUp' || event.key === 'k' ? -1 : event.key === 'ArrowDown' || event.key === 'j' ? 1
         : event.key === 'Home' ? -count : event.key === 'End' ? count : 0;
+      if (event.target instanceof HTMLElement && event.target.closest('button')) return;
       if (move === 0 && !['Enter', 'Escape', 'f'].includes(event.key)) return;
       event.preventDefault(); event.stopImmediatePropagation();
       if (busy) return;
@@ -170,7 +171,7 @@ function RewindPicker() {
           if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); close(); }
         }}>
           {prompts?.map((p, i) => <li key={p.seq} role="option" aria-selected={i === index}
-            onMouseEnter={() => setIndex(i)} onClick={() => setView({ kind: 'edit', draft: p.text })}>
+            onMouseEnter={() => setIndex(i)} onClick={() => { setIndex(i); setView({ kind: 'edit', draft: p.text }); }}>
             <span className="ck-num">{i + 1}</span><span className="ck-text">{firstLine(p.text)}</span>
           </li>)}
           {!error && (prompts === null ? <li className="ck-empty">Loading…</li>
@@ -186,6 +187,16 @@ function RewindPicker() {
             else if (e.key === 'Enter' && e.altKey) { e.preventDefault(); document.execCommand('insertText', false, '\n'); }
           }} />}
       {error && <p className="ck-error" role="alert">{error}</p>}
+      <div className="ck-actions">
+        {view.kind === 'list' ? <>
+          <button type="button" disabled={busy || !prompt} onClick={() => prompt && setView({ kind: 'edit', draft: prompt.text })}>Edit and rewind</button>
+          <button type="button" disabled={busy || !prompt} onClick={fork}>Fork</button>
+        </> : <>
+          <button type="button" disabled={busy || view.draft.trim() === ''} onClick={() => rewind(view.draft)}>Rewind</button>
+          <button type="button" disabled={busy} onClick={() => setView({ kind: 'list' })}>Back</button>
+        </>}
+        <button type="button" disabled={busy} onClick={close}>Close</button>
+      </div>
       <footer>{view.kind === 'list'
         ? '↑↓/jk move · Home/End ends · Enter edit and rewind · f fork from here · Q/Esc close'
         : busy ? 'Rewinding…' : 'Enter rewind · Alt/Shift+Enter newline · Esc back'}</footer>
@@ -206,5 +217,6 @@ function ComposerKeys() {
 }
 
 export default definePluginApp(app => {
+  app.composer.customize({ id: 'rewind', plusMenu: [{ id: 'open', label: 'Rewind…', icon: 'History', run: () => { window.dispatchEvent(new Event(REWIND_EVENT)); } }] });
   app.slots.experimental_appOverlay({ id: 'composer-keys', component: ComposerKeys });
 });
