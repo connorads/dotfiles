@@ -21,3 +21,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+@media (pointer: coarse) {
+  .bb-external-link { min-width: 44px; min-height: 44px; margin-inline: 4px; vertical-align: middle; }
+}
