@@ -1,0 +1,14 @@
+{
+  "reason": "Refer to upstream harness documentation without requiring plugin installation.",
+  "files": [
+    "elephant-goldfish-model/.agents/skills/{{skill}}/SKILL.md"
+  ],
+  "vars": {
+    "skill": [
+      "egm-bootstrap",
+      "egm-brainstorm",
+      "egm-review",
+      "egm-review-loop"
+    ]
+  }
+}

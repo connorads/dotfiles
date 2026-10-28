@@ -1,0 +1,6 @@
+{
+  "reason": "Use the project package runner in design verification examples.",
+  "files": [
+    "elephant-goldfish-model/.agents/skills/egm-draft/references/design_doc.md"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "reason": "Keep the bundled resource index portable without upstream repository siblings.",
+  "files": [
+    "elephant-goldfish-model/.agents/skills/{{skill}}/references/egm/resources/README.md"
+  ],
+  "vars": {
+    "skill": [
+      "egm-bootstrap",
+      "egm-brainstorm",
+      "egm-draft",
+      "egm-drift-report",
+      "egm-resolve",
+      "egm-review",
+      "egm-review-loop"
+    ]
+  }
+}

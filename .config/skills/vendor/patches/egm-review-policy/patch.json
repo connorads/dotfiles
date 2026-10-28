@@ -1,0 +1,6 @@
+{
+  "reason": "Respect user decisions, package-runner policy and host concurrency limits.",
+  "files": [
+    "elephant-goldfish-model/.agents/skills/egm-review/SKILL.md"
+  ]
+}
