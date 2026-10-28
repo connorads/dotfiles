@@ -566,6 +566,22 @@ export function layout() {
   const layerOf = (el) => { for (let p = el; p && p !== B; p = p.parentElement) { const pos = getComputedStyle(p).position; if (pos === 'fixed') return 'fixed'; if (pos === 'sticky') return 'sticky'; } return null; };
   const sel = (el) => (el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '')).slice(0, 60);
   const boxes = [];
+  // A range is layout geometry: an ellipsised or scrolled line reaches past what the reader sees. Clip
+  // each text box to the window its element's overflow allows (its own box and every clipping ancestor).
+  const clipMemo = new Map();
+  const clipBox = (el) => {
+    if (!el || el === B || el === document.documentElement) return null;
+    if (clipMemo.has(el)) return clipMemo.get(el);
+    const cs = getComputedStyle(el);
+    let box = cs.position === 'fixed' ? null : clipBox(el.parentElement);
+    if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+      const r = el.getBoundingClientRect();
+      const own = { l: cs.overflowX !== 'visible' ? r.left : -Infinity, r: cs.overflowX !== 'visible' ? r.right : Infinity, t: cs.overflowY !== 'visible' ? r.top : -Infinity, b: cs.overflowY !== 'visible' ? r.bottom : Infinity };
+      box = box ? { l: Math.max(box.l, own.l), r: Math.min(box.r, own.r), t: Math.max(box.t, own.t), b: Math.min(box.b, own.b) } : own;
+    }
+    clipMemo.set(el, box);
+    return box;
+  };
   // text, one box per text node (its line boxes merged)
   const walker = document.createTreeWalker(B, NodeFilter.SHOW_TEXT); const rg = document.createRange();
   for (let n = walker.nextNode(); n && boxes.length < 6000; n = walker.nextNode()) {
@@ -573,8 +589,12 @@ export function layout() {
     const el = n.parentElement; if (!el || /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|OPTION)$/.test(el.tagName) || el.closest('svg')) continue;
     rg.selectNodeContents(n); const r = rg.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
     if (!shown(el)) continue;
+    const c = clipBox(el);
+    const l = c ? Math.max(r.left, c.l) : r.left, rr = c ? Math.min(r.right, c.r) : r.right;
+    const tp = c ? Math.max(r.top, c.t) : r.top, bt = c ? Math.min(r.bottom, c.b) : r.bottom;
+    if (rr - l < 2 || bt - tp < 2) continue;
     const cs = getComputedStyle(el);
-    boxes.push({ kind: 'text', el, l: r.left, r: r.right, t: r.top + SY, b: r.bottom + SY, chars: t.length, text: t.slice(0, 50), size: parseFloat(cs.fontSize), align: cs.textAlign, layer: layerOf(el), tag: el.tagName });
+    boxes.push({ kind: 'text', el, l, r: rr, t: tp + SY, b: bt + SY, chars: t.length, text: t.slice(0, 50), size: parseFloat(cs.fontSize), align: cs.textAlign, layer: layerOf(el), tag: el.tagName });
   }
   // pictures, drawings and controls
   for (const el of B.querySelectorAll('img, video, canvas, picture, iframe, svg, input, select, textarea, button, [role="button"], a, div, section, figure, span, li')) {

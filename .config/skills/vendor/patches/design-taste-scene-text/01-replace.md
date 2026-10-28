@@ -1,1 +1,0 @@
-      el.innerHTML = el.textContent.trim().split(/\s+/).map((w) => `<span aria-hidden="true" style="display:inline-block">${w.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</span>`).join(' ');

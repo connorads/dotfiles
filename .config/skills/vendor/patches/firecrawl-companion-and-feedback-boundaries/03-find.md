@@ -1,4 +1,3 @@
-
 `search` discovers web results and tools, `list` reveals a selected tool's contract, and `scrape <provider/capability> --options '<JSON>'` executes it. Inspect only the contracts needed for the task.
 
 A client context/output error does not prove the provider failed. Keep the request/scrape ID and inspect saved output or use `scrape firecrawl/bash` against the retained result before repeating the request. See [large-result recovery](../firecrawl-scrape/references/large-results.md). Do not assume the client can signal an overflow back to the tool, or that Bash supports search IDs or every provider's retained data.
@@ -9,6 +8,7 @@ A client context/output error does not prove the provider failed. Keep the reque
 - **Finding research papers (biomedical, clinical, or scientific literature; PubMed, bioRxiv, medRxiv, arXiv)** -> [firecrawl-research-index](../firecrawl-research-index/SKILL.md). Use the paper index instead of scraping PubMed or Google Scholar by hand; `search --categories research` is a website filter, not the paper index.
 - **Answering a library, API, error, or known-bug question from issues, merged PRs, READMEs, or docs** -> [firecrawl-developer-index](../firecrawl-developer-index/SKILL.md)
 - **Scraping a known URL** -> [firecrawl-scrape](../firecrawl-scrape/SKILL.md)
+- **Scraping a list of known URLs as one job (batch scrape) or extracting JSON with a schema** -> [firecrawl-scrape](../firecrawl-scrape/SKILL.md)
 - **Finding URLs on a known site** -> [firecrawl-map](../firecrawl-map/SKILL.md)
 - **Bulk extraction from a docs section or site** -> [firecrawl-crawl](../firecrawl-crawl/SKILL.md)
 - **AI-powered structured extraction from complex sites** -> [firecrawl-agent](../firecrawl-agent/SKILL.md)

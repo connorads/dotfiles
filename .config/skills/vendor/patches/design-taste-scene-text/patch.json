@@ -1,6 +1,0 @@
-{
-  "reason": "Keep split heading words as literal text so fallback animation cannot turn existing text into executable markup.",
-  "files": [
-    ".agents/skills/design-taste-frontend/assets/scenes/stage.js"
-  ]
-}

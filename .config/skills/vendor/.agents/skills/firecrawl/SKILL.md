@@ -38,6 +38,7 @@ Follow this escalation pattern:
 | Answer a coding question    | `developer`           | Issues, merged PRs, READMEs, and docs — not a general web page  |
 | Find US law or regulation   | `gov`                 | US statutes, regulations, codes, and court opinions             |
 | Get a page's content        | `scrape`              | Have a URL, page is static or JS-rendered                       |
+| Scrape a list of known URLs | `batch-scrape`        | Many URLs, non-markdown formats, JSON extraction, or a webhook  |
 | Find URLs within a site     | `map`                 | Need to locate a specific subpage                               |
 | Bulk extract a site section | `crawl`               | Need many pages (e.g., all /docs/)                              |
 | AI-powered data extraction  | `agent`               | Need structured data from complex sites                         |
@@ -48,7 +49,7 @@ Follow this escalation pattern:
 
 For detailed command reference, run `firecrawl <command> --help`.
 
-For US legal or regulatory source discovery, start with `firecrawl gov "<question, jurisdiction, and date>" --limit 10`. If the user supplies a source URL, read it directly with `scrape`. Results are excerpts, not a guarantee of official-only sources or current governing law: verify the issuer, jurisdiction, enacted/effective status, and version before citing a controlling section and supporting passage. Ask for a missing jurisdiction before identifying the governing rule. Use general search for non-US questions or missing coverage; no hits does not establish that no applicable law exists.
+For US legal or regulatory source discovery, start with `firecrawl gov "<question, jurisdiction, and date>" --limit 10`. To narrow, add `--jurisdiction`, `--court`, `--court-type`, `--cites`, or `--domain`; filters keep only pages the index has labeled, so a filtered search can leave out relevant pages. If the user supplies a source URL, read it directly with `scrape`. Results are excerpts, not a guarantee of official-only sources or current governing law: verify the issuer, jurisdiction, enacted/effective status, and version before citing a controlling section and supporting passage. Ask for a missing jurisdiction before identifying the governing rule. Use general search for non-US questions or missing coverage; no hits does not establish that no applicable law exists.
 
 **Done when:** the narrowest suitable command has completed the request, its output was inspected, and the answer cites the saved source files.
 
@@ -67,6 +68,7 @@ For US legal or regulatory source discovery, start with `firecrawl gov "<questio
 
 ## Large results and Alexandria
 
+
 `search` discovers web results and tools, `list` reveals a selected tool's contract, and `scrape <provider/capability> --options '<JSON>'` executes it. Inspect only the contracts needed for the task.
 
 A client context/output error does not prove the provider failed. Keep the request/scrape ID and inspect saved output or use `scrape firecrawl/bash` against the retained result before repeating the request. Use the installed CLI help and retained-result contract; load `firecrawl-scrape` recovery guidance only if that companion is installed. Do not assume the client can signal an overflow back to the tool, or that Bash supports search IDs or every provider's retained data.
@@ -81,6 +83,7 @@ Load a named companion only if it is already installed. Otherwise use the instal
 - **Finding research papers (biomedical, clinical, or scientific literature; PubMed, bioRxiv, medRxiv, arXiv)** -> `firecrawl-research-index`. Use the paper index instead of scraping PubMed or Google Scholar by hand; `search --categories research` is a website filter, not the paper index.
 - **Answering a library, API, error, or known-bug question from issues, merged PRs, READMEs, or docs** -> `firecrawl-developer-index`
 - **Scraping a known URL** -> `firecrawl-scrape`
+- **Scraping a list of known URLs as one job (batch scrape) or extracting JSON with a schema** -> `firecrawl-scrape`
 - **Finding URLs on a known site** -> `firecrawl-map`
 - **Bulk extraction from a docs section or site** -> `firecrawl-crawl`
 - **AI-powered structured extraction from complex sites** -> `firecrawl-agent`

@@ -1,6 +1,0 @@
-{
-  "reason": "Treat chart labels and formatter output as text so user data cannot create HTML elements or event handlers.",
-  "files": [
-    ".agents/skills/design-taste-frontend/assets/charts.js"
-  ]
-}

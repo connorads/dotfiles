@@ -13,6 +13,7 @@ Load a named companion only if it is already installed. Otherwise use the instal
 - **Finding research papers (biomedical, clinical, or scientific literature; PubMed, bioRxiv, medRxiv, arXiv)** -> `firecrawl-research-index`. Use the paper index instead of scraping PubMed or Google Scholar by hand; `search --categories research` is a website filter, not the paper index.
 - **Answering a library, API, error, or known-bug question from issues, merged PRs, READMEs, or docs** -> `firecrawl-developer-index`
 - **Scraping a known URL** -> `firecrawl-scrape`
+- **Scraping a list of known URLs as one job (batch scrape) or extracting JSON with a schema** -> `firecrawl-scrape`
 - **Finding URLs on a known site** -> `firecrawl-map`
 - **Bulk extraction from a docs section or site** -> `firecrawl-crawl`
 - **AI-powered structured extraction from complex sites** -> `firecrawl-agent`

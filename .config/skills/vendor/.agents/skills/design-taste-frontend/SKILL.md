@@ -141,8 +141,9 @@ The command prints a **direction sheet**. It is the art direction for this build
 - **Adopt it.** Do not blend it with the layout you would have made anyway. If it feels unfamiliar,
   good: the familiar layout is the one this skill exists to prevent.
 - Redraw one slot (`--redraw hero | type | palette | photos | scenes | section:<role> | direction`) only for a
-  reason you can state: it contradicts a stated brand constraint, or needs an asset that does not
-  exist. Never redraw to get something more comfortable. Record every redraw in your report.
+  reason you can state: it contradicts a stated brand constraint, needs an asset that does not exist,
+  or is a section that cannot hold the real content (next point). Never redraw to get something more
+  comfortable. Record every redraw in your report.
 - When a dealt section cannot hold the real content (it compares three plans and there is one price;
   it wants five quotations and there are none), do not bend the content to fit. List the others with
   `--alternatives <role>`, pick the one whose assumptions match the content, and take it with
@@ -296,7 +297,9 @@ not finished. Order of work:
    wrong ("no clear title", "random empty space", "everything is pushed to one side"), and the
    inspector measures each of them.
 9. **States and semantics.** Real links and buttons, visible focus, alt text, a phone layout that is
-   its own composition.
+   its own composition. Every control, the live thing included, works from the keyboard alone in
+   reading order and has an accessible name: its visible label, or `aria-label` when it shows only an
+   icon.
 
 Read `references/type.md`, `references/colour.md` and `references/layout.md` when you need the detail
 behind a decision; the laws below are the short form.
@@ -321,6 +324,11 @@ saves screenshots to `.taste-skill/inspect/`. Fix every `FAIL`. Treat each `WARN
 designer in one sentence. Re-run until there are no `FAIL`s. Do not argue with the meter and do not
 hide things from it. The inspector serves local files over a throwaway local server; if the page must
 also open straight from the file system, open `index.html` that way once before you finish.
+
+Inspect what the visitor receives. With a build step, run the last gate on the production build
+(`vite build && vite preview`, `next build && next start`, or the built `index.html`), not only on the
+dev server: minifiers and bundlers change what ships (one dropped a `backdrop-filter` that the dev
+server showed). The inspector warns when it is looking at a dev server.
 
 ### 8. Look
 
@@ -458,6 +466,11 @@ Short form. Numbers are from the study unless marked as house style.
   square, 23% pill; the 9–16px "soft" radius is the weak-site default). Most strong heroes have no
   button at all, or one.
 - Navigation: wordmark, three to five plain links, one action. No bar chrome.
+- A control explains how to use it by its form, its label and its place. When it seems to need a
+  sentence on how to operate it, redesign the control instead of adding the sentence. What a field
+  accepts is different. First remove the limit where you can: a date picker, or a parser that takes
+  any common format. A limit that remains, such as password rules or file type and size, stays visible
+  beside the field and is tied to it with `aria-describedby`.
 - The footer is a designed close, not a sitemap: on most strong sites the name returns at full width.
 
 ## Special cases

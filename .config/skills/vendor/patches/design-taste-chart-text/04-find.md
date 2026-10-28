@@ -1,1 +1,0 @@
-      top.innerHTML = `<span>${r.label}</span><span><b style="font-weight:500">${format(r.spent)}</b> <span style="color:var(--muted,#5f6368)">of ${format(r.planned)} · </span><span style="color:${over ? 'var(--negative,#c4242a)' : 'var(--muted,#5f6368)'}">${note(r)}</span></span>`;
