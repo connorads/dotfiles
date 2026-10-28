@@ -48,6 +48,11 @@ the response. Check that the order stays cancelled and the payment reaches the
 required outcome, such as a refund. Test the reverse order too. A timeout does
 not prove the provider stopped. Use the test clock to check any promised deadline.
 
+For resumable work, interrupt the worker after an external action succeeds but
+before completion is saved. Restart it. Check the business effect happens once
+and the workflow finishes. The request may repeat; a payment must not charge
+the customer twice. Test this through the runtime that owns recovery.
+
 ## What To Cover
 
 - Every command: the happy path, each rejection, each authorisation case
