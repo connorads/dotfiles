@@ -4,7 +4,7 @@
 @media (pointer: coarse) {
   .skl-actions button { min-height: 44px; }
   #skl-rows [role="option"] { min-height: 44px; align-items: center; }
-  #skl-rows input[type="checkbox"] { width: 28px; height: 28px; flex: none; margin: 8px; }
+  #skl-rows input[type="checkbox"] { width: 44px; height: 44px; flex: none; margin: 0; }
 }
 @media (max-width: 600px) {
   .skl-body { flex-direction: column; height: min(384px, 45vh); }

@@ -127,5 +127,6 @@ Run from this directory:
   skip when it is missing.
 - `pnpm typecheck`
 - `pnpm build`
+- With BB open in a disposable Playwright session, `playwright-cli -s=<session> run-code --filename=touch.test.js` checks checkbox corner taps at four touch widths and desktop. It marks and unmarks skills without loading or installing.
 
 Install with `bb plugin install path:~/src/bb-plugins/skill-loader`.
