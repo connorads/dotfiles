@@ -35,6 +35,11 @@ message headers rather than carried on a call stack; the
 `event-driven-architecture` skill's "Reaching Out" covers async tracing (W3C Trace
 Context, OTel messaging conventions).
 
+Before treating missing events as evidence, send a known event through the
+collection path and check it arrives. State what sampling, queue loss and
+shutdown can omit. Use a durable audit record when losing an event would break
+a business requirement.
+
 Log structure, wide events, and per-language mechanics are the
 `logging-best-practices` skill's territory; this file owns only the
 design-the-boundary rule.

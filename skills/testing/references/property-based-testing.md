@@ -27,6 +27,11 @@ On failure, every mainstream framework automatically reduces the counterexample 
 
 For stateful systems (caches, state machines, data structures, APIs), generate a **sequence of operations**, run them against a simple in-memory **model**, and assert the real system agrees with the model after each step. Shrinking then minimises the failing *operation sequence*. Supported by gopter's `commands`, rapid's state-machine support, and Rust's [`proptest-stateful`](https://github.com/readysettech/proptest-stateful).
 
+Check which operations actually run. Preconditions can skip every withdrawal
+and leave a banking test exercising only reads. Check important transitions too.
+Keep the model simpler than the implementation rather than copying its logic.
+Preserve the framework's complete replay data, not just its random seed.
+
 ## Per-ecosystem tooling
 
 | Ecosystem | Framework | Notes |

@@ -231,6 +231,10 @@ collaboration.
 - Module mocking (`vi.mock`, `jest.mock`) means the code has no seam. Add one -
   a parameter, a port, an Effect `Layer` - and pass the fake through it.
 
+An in-memory store cannot prove database locking works. When locking protects a
+business rule, test competing writes against the database with the relevant
+isolation settings. Choose real-system checks for the behaviour the fake omits.
+
 **The mirror-test trap:** a test that mocks the very collaborator whose
 behaviour it claims to verify proves *wiring*, not behaviour - and stays green
 when the real behaviour breaks. A handler test that stubs `validateBooking` to
@@ -331,6 +335,10 @@ Two senses, both about proving a boundary without a full end-to-end stack:
   catching cross-service breaks cheaply. Pitfalls: broker/tooling overhead and
   false confidence if contracts drift from real usage. For HTTP, schema/OpenAPI
   contract testing is lighter when one side owns the spec.
+
+Message agreement alone does not prove a payment was taken or a record was
+persisted. Test those effects separately. An adapter contract can check effects
+when it runs the real operations.
 
 ## Refactoring Existing Code
 

@@ -19,9 +19,9 @@ not say what it converges to.
 Use a plain call or a single database transaction for simple single-boundary
 operations. Reach for a saga or durable workflow when the process needs retries,
 compensation, idempotency, resumability, timers, human approval, or coordination
-across services and multiple transaction boundaries. Both buy ACD, not ACID - you
-get atomicity, consistency, and durability (plus resumability and compensation),
-but not isolation, so intermediate states stay visible; design the
+across services and multiple transaction boundaries. Neither makes the whole
+process one database transaction. Intermediate states stay visible, and recovery
+depends on durable progress records and safe retries. Design the
 countermeasures the `event-driven-architecture` skill's `topology.md` lists
 (semantic locks, a `pending` status, re-reads). And compensation posts a new
 fact rather than undoing one, so anything a reader, customer or downstream
@@ -40,6 +40,12 @@ idempotency half. No broker's "exactly-once" reaches your side effects: it
 covers that broker's own writes, so every external call carries its own key
 (see `event-driven-architecture` for outbox/inbox mechanics and idempotent
 consumers). Do not rely on "probably safe" repeated side effects.
+
+Choose which layer retries: retries at several layers multiply attempts. Define
+the request deadline, per-attempt timeout and maximum attempts. For long-running
+workflows, distinguish those limits from the business completion deadline.
+Bound admitted work and define what happens when capacity or time runs out.
+The `typescript` skill owns retry, cancellation and concurrency mechanics.
 
 Derive each idempotency key from its cause rather than minting a fresh one: a
 policy's command id from the event that triggered it, a process step's from

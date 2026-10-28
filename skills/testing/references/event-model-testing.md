@@ -19,26 +19,34 @@ For a state-stored aggregate, build "given" by sending earlier commands
 through the public decision, not by writing a state literal. Commands survive a
 change to the state's shape; a literal breaks on every refactor.
 
-Test one aggregate through its pure `decide` function: no harness, no I/O.
+Test an aggregate through a stable public pure function when it has one.
+Otherwise use its public command interface. Do not expose internals just for tests.
 Test policies, processes and read models through an in-memory composition of
 the whole model, with owned stores in memory and external systems faked.
 
 ## Make The Harness Strict
 
-A strict harness turns "nothing went wrong that I checked" into "every outcome
-is accounted for". Build or choose one that:
+Choose a harness that checks business outcomes in the story's named aggregates.
+For example, expecting `PaymentDeclined` must also catch an unexpected
+`OrderShipped`. Exclude logs and internal steps. Build or choose one that:
 
-- fails on any rejection the test does not assert;
+- fails on unexpected business events, unasserted rejections and process defects;
 - treats a "then" with no events as "nothing new was recorded";
 - lets "given" events reach read models but never trigger policies, so setup
   has no side effects;
 - runs every policy, process and projection after "when" until the model
   settles;
 - keeps each external call pending until the test answers it, fails on a call
-  left unanswered, and requires a tag to answer one of several pending calls.
+  left unanswered unless the test asserts that it remains pending, and requires
+  a tag to answer one of several pending calls.
   The test then chooses the order and the failures;
 - owns the clock: commands take its time, and moving it fires due scheduled
   commands and process timers. Test a deadline one tick before it and at it.
+
+For a payment race, hold the provider response, cancel the order, then release
+the response. Check that the order stays cancelled and the payment reaches the
+required outcome, such as a refund. Test the reverse order too. A timeout does
+not prove the provider stopped. Use the test clock to check any promised deadline.
 
 ## What To Cover
 
@@ -59,7 +67,9 @@ reordering that leaves the outcome intact.
 
 ## Layers Above
 
-Stories carry the behaviour; the layers above prove wiring only.
+Keep business-rule combinations in cheap tests. Test behaviour introduced by
+outer boundaries through those boundaries, including authentication and
+authorisation. Avoid repeating the whole rule matrix.
 
 - **API**: host the model in memory with the real authentication middleware,
   and drive it through the API client. This checks authentication, read
