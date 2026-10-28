@@ -44,4 +44,5 @@ What is specific to HyperFrames, or was measured on shipped films, when one vide
 
 - Kinetic type takes 3–7 English words or 4–12 Chinese characters per scene. A count-up runs 1.2–1.6 s, then holds, landing on a downbeat or a hard stop.
 - A highlighter that wraps across lines: tween a custom property on a `background-size` band with `box-decoration-break: clone`. `getTotalLength()` can return 0 before layout; give line draw-ons a fallback.
+- Hide a round-capped line with a gap longer than the path (`stroke-dasharray="100 120"`, `stroke-dashoffset="110"` on `pathLength="100"`), not dash = gap = offset: that leaves a dot at the end on some curves.
 - A point in an image guessed directly misses by 16–24% of the frame. `scripts/locate.mjs` narrows it with a numbered 9×9 grid, then 6×6 on the crop, then a check render (about 2% error).

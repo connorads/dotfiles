@@ -8,4 +8,5 @@ hyperframes capture https://example.com --skip-vision   # skip optional AI capti
 hyperframes capture https://example.com --max-screenshots 12
 hyperframes capture https://example.com --timeout 60000 # page-load timeout in ms
 hyperframes capture https://example.com --capture-budget 90000 # post-navigation budget
+HYPERFRAMES_CAPTURE_PROXY=http://127.0.0.1:3128 hyperframes capture https://example.com # behind an egress proxy
 ```

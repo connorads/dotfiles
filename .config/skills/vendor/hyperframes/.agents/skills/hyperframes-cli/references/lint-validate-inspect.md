@@ -44,14 +44,14 @@ hyperframes check --strict           # exit non-zero on warnings too (default: o
 One command, one Chrome boot. `check` runs the linter first and skips the browser entirely when lint reports errors. When the browser never ran (lint errors, a linter crash, or a browser launch failure), `browserSkipped` is `true` and the `layout`, `motion` and `contrast` sections are empty, not clean. Otherwise it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
 
 - **Runtime**: JavaScript console errors, unhandled exceptions, failed network requests (media-file `ERR_ABORTED` filtered out), HTTP 4xx/5xx.
-- **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), children escaping clipping containers. Text under a transparent `<video>` (a `remove-background` cutout) is measured per word against the frame's alpha: partial cover is info with the share hidden, a word 80% hidden or two neighbouring words each half hidden is an error, and a frame that cannot be read falls back to opaque with a `video_alpha_unread` note.
+- **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), an opaque element covering the canvas above every other clip for most of the film (`canvas_covered`, naming it), children escaping clipping containers. Text under a transparent `<video>` (a `remove-background` cutout) is measured per word against the frame's alpha: partial cover is info with the share hidden, a word 80% hidden or two neighbouring words each half hidden is an error, and a frame that cannot be read falls back to opaque with a `video_alpha_unread` note.
 - **Motion**: `*.motion.json` sidecar assertions against the same seeked timeline (see below).
 - **Contrast**: WCAG AA on visible text, sampled at 5 grid points. Failures are **errors** and each finding carries the sampled fg/bg colors, measured vs required ratio, and a suggested compliant color in the same palette direction, so most contrast fixes need no screenshot at all.
 - **Craft**: warnings only, even under `--strict` (a film may break one on purpose), measured on an 8 fps sweep of the whole film and skipped under `--range`. Each message names the fix and the reference to read.
   - `line_unread`: a reading-size line (≥ 30 px tall at 1080) on screen under its floor: 0.4 s for 1–2 words, otherwise ¾ of 0.5 s + 0.3 s a word (3 words 1.05 s, 6 words 1.73 s); the film's last line needs 2 s. Edges are re-measured to ~0.01 s. Captions-track text and `data-layout-ignore` are exempt.
   - `dead_stretch`: more than 3 s where the `keepsMoving` classifier sees nothing change. The final 3 s and any time a `data-hold` element is on screen are exempt; it stays quiet when `sweep_static` fires or a whole-composition `keepsMoving` assertion sets the limit.
   - `text_below_floor`: text under 2.6% of the frame's short side (28 px on 1080) held 0.5 s or more, one finding per file listing every element.
-  - `first_frame_empty`: frame 0 paints nothing but the background (no text, image, video, canvas or svg); it is the thumbnail on social players.
+  - `first_frame_empty`: frame 0 paints nothing but the background (no text, image, video, canvas or svg), or an opaque element covers every other clip and the message names it; it is the thumbnail on social players.
   - `film_silent`: a film over 15 s with no unmuted `<audio>` or audible `<video>`.
 
 Every finding carries a selector, the element's `data-*` identity, the composition source file, a bbox, and the sample time: jump straight from the JSON to the HTML you must edit and re-run.
@@ -111,7 +111,7 @@ Drop a `*.motion.json` sidecar next to the composition (matching the html basena
 hyperframes snapshot                       # 5 key frames as PNG
 hyperframes snapshot ./my-project          # specific project
 hyperframes snapshot --frames 10           # evenly-spaced N frames
-hyperframes snapshot --range 3:5 --frames 8 # 8 frames within root-timeline seconds 3–5
+hyperframes snapshot --range 3,5 --frames 8 # 8 frames within root-timeline seconds 3–5
 hyperframes snapshot --composition intro --frames 8 # 8 frames within this data-composition-id
 hyperframes snapshot --review              # beat sheet, seam strips, phone sheet
 hyperframes snapshot --review --json       # same, with paths and times as JSON
@@ -119,7 +119,7 @@ hyperframes snapshot --review --json       # same, with paths and times as JSON
 
 Still PNGs. Each run writes `.hyperframes/artifacts/snapshots/<id>/` unless `--output` is set. `snapshot` is the standalone capture; `check --snapshots` is the gate.
 
-One of `--at`, `--range START:END` (seconds), or `--composition <data-composition-id>` (not a CSS selector). `--frames` defaults to 5. Range and composition sample just before the end and add no extra end frame; `--at` adds one unless `--no-end`.
+One of `--at`, `--range START,END` (seconds), or `--composition <data-composition-id>` (not a CSS selector). `--frames` defaults to 5. Range and composition sample just before the end and add no extra end frame; `--at` adds one unless `--no-end`.
 
 `--review` picks the frames that show a film over time. Scenes are the composition's top-level timed clips and sub-composition hosts, as `timeline` lists them (captions and audio excluded); `--composition` scopes to one. It writes `review-beats.jpg` (each scene at its start + 0.3 s and at its middle, and each timed `data-beat="name"` element at its start + 0.3 s, labelled with time and id), `review-seam-NN.jpg` (frames at −0.2, −0.1, 0, +0.1, +0.2 s around every cut) and `review-phone.jpg` (the beat frames 360 px wide, to judge legibility at phone size), beside the `beat-*.png` and `seam-*.png` stills. With fewer than two scenes the beats spread evenly. `--json` prints `{ok, outputDir, frames[{path,time,role,label}], contactSheets, review{window, scenes, beats, seams[{time,from,to,times,paths,sheet}], sheets, notes}}`.
 

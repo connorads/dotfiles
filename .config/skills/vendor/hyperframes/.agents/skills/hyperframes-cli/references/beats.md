@@ -8,6 +8,8 @@ hyperframes beats ./my-video
 hyperframes beats ./my-video --json
 ```
 
+`beats` takes the project folder, never a media file. For the beats of one audio or video file, run `hyperframes audio <file> --only beats --json`.
+
 The project must contain a local music `<audio>` source. Mark it with `data-timeline-role="music"`; an id containing `music`, `bgm`, or `soundtrack` is also recognized. The command decodes that file with ffmpeg, tracks its beats, and writes `beats/<audio-relative-path>.json`.
 
 If the track has no steady beat, the command fails and writes nothing. If ffmpeg is missing, run `hyperframes doctor`.

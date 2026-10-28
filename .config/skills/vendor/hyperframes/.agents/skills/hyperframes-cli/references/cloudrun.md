@@ -22,7 +22,7 @@ hyperframes cloudrun destroy --project <gcp-project>
 
 `sites create` uploads a content-addressed project archive for reuse by `render-batch`; pass its `--site-id` to that command to skip the batch upload. Single `cloudrun render` currently resolves the project from its directory and does not consume `--site-id`. Both render commands require `--width` and `--height`; supported output formats are `mp4`, `mov`, `png-sequence`, and `webm`. Use `--output-resolution 4k` to supersample an authored composition without changing its layout dimensions.
 
-Common render flags are `--fps 24|30|60`, `--quality draft|standard|high`, `--codec h264|h265` for MP4, `--chunk-size`, `--max-parallel-chunks`, `--target-chunk-frames`, `--render-id`, `--output-key`, `--wait`, and `--wait-interval-ms`. Use `--json` for machine-readable output.
+Common render flags are `--fps 24|25|30|60`, `--quality draft|standard|high`, `--codec h264|h265` for MP4, `--chunk-size`, `--max-parallel-chunks`, `--target-chunk-frames`, `--render-id`, `--output-key`, `--wait`, and `--wait-interval-ms`. Use `--json` for machine-readable output.
 
 For a variable-driven single render:
 

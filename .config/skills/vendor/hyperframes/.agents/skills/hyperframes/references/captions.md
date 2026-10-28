@@ -3,7 +3,7 @@
 ## Words and timings
 
 - `hyperframes transcribe <file> --json` and a HeyGen voiceover (`/media-use`) give every word's start and end. Work from those as `[{ "id": "w0", "text": "Hello", "start": 0.0, "end": 0.5 }, …]`.
-- Local transcription defaults to `small.en`, which **translates** non-English speech into English. Pass the model: `hyperframes transcribe <file> --model small.en` for English, `--model small --language <code>` otherwise, `--model medium.en` for speech over music. It writes `assets/transcript.json` (its JSON names the path) and overwrites it on the next run; `--to srt` or `--to vtt` writes a sidecar.
+- `hyperframes transcribe` defaults to the `small.en` whisper model, which **translates** non-English speech into English. Pass the model: `hyperframes transcribe <file> --model small.en` for English, `--model small --language <code>` otherwise, `--model medium.en` for speech over music. It writes `assets/transcript.json` (its JSON names the path) and overwrites it on the next run; `--to srt` or `--to vtt` writes a sidecar.
 - For Chinese, Japanese and other unspaced scripts, local transcription returns a whole sentence as one "word", sometimes in the other script (Traditional for Simplified speech). Split each segment's text into short phrases and spread its time across them by character count; check the characters against what is said.
 - Whisper invents "Thank you." over silence and repeats lines over a silent tail: drop words that start inside a final silence (`silencedetect=noise=-35dB:d=0.6`; real speech sits around −16 to −26 dB).
 - Never put two words in one timed entry, and match transcript words to caption words by position, not text, or a repeated word takes the wrong time.

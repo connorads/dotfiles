@@ -1,0 +1,7 @@
+{
+  "reason": "Use the managed HyperFrames CLI instead of downloading a task-time executable",
+  "files": [
+    "hyperframes/.agents/skills/media-use/audio/references/transcribe.md",
+    "hyperframes/.agents/skills/media-use/references/audio.md"
+  ]
+}

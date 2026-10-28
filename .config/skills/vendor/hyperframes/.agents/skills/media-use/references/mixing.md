@@ -24,6 +24,7 @@ A crossfade is two clips on different tracks that overlap, each with a fade.
 
 - `target` is `volume`, `rate` (a speed ramp, 0.1–10, overrides `data-playback-rate`) or `fx.<nodeId>.<param>`.
 - `t` is seconds from the start of the clip, not of the composition. `v` is in the parameter's unit: 0..1 for volume, dB for a gain, Hz for a frequency.
+- A `volume` lane multiplies `data-volume` in preview and render, so write the level in one of them: `data-volume="0.5"` under a lane at `0.5` plays at `0.25`.
 - A lane holds its first value back to the clip's start and its last value to its end, so a bed that starts before the voice needs an explicit full-level point at `t: 0`.
 - `curve` (-1..1) bends the segment leaving a point. 512 points per lane at most.
 - Don't also tween `volume` with GSAP on a track that has a volume lane or a `data-volume`; lint flags both.
@@ -72,7 +73,7 @@ Duck the bed with a `volume` lane on the music: full level before the voice, dow
 
 ## Group buses and carve safety
 
-Give clips the same `data-audio-group="<id>"` to treat them as one group. An `<hf-audio-group id="<id>">` element with that id makes the group a submix bus with one `data-fx-chain`, one volume and one automation clock for every member. Keep one role per group: `voiceover`, `music`, `sfx`.
+Give clips the same `data-audio-group="<id>"` to treat them as one group. An `<hf-audio-group id="<id>"></hf-audio-group>` element with that id (closed like that: `/>` does not close it) makes the group a submix bus with one `data-fx-chain`, one volume and one automation clock for every member. Keep one role per group: `voiceover`, `music`, `sfx`.
 
 Group narration before carving and keep the bed, music and SFX outside the voice group. A later analysis expands every group member. The helper refuses an unsafe group and reports the offending member. Carve the bed clip, never a voice or a bus. Re-carving replaces only nodes marked `fromCarve` and their automation; preserve hand-authored effects and lanes. Read the generated node ids before wiring further automation.
 

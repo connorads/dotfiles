@@ -22,5 +22,5 @@ Other useful flags:
 
 - `--resolution` — preset: `landscape` (1920×1080), `portrait` (1080×1920), `landscape-4k`, `portrait-4k`, `square` (1080×1080), `square-4k`. Aliases: `1080p`, `4k`, `uhd`, `1080p-square`, `4k-square`.
 - `--skill=<slug>` — record the owning skill (e.g. `hyperframes`) in `hyperframes.json`, so every later render of this project — re-renders, `npm run render`, `--batch` — is attributed to it on anonymous telemetry without re-passing the flag. You rarely pass it by hand.
-- `--skip-skills` — **temporarily ignored**: `init` always checks AI coding skills against GitHub while the skills.sh registry catches up. To opt out (CI/tests), set the `HYPERFRAMES_SKIP_SKILLS=1` env var instead.
+- `--skip-skills` — leave AI coding skills alone: `init` does not install the core set. `HYPERFRAMES_SKIP_SKILLS=1` does the same.
 - `--skip-transcribe` — don't auto-transcribe `--audio` / `--video` with Whisper.

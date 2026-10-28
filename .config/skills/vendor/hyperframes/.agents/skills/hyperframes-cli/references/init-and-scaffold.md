@@ -24,7 +24,7 @@ Other useful flags:
 
 - `--resolution` — preset: `landscape` (1920×1080), `portrait` (1080×1920), `landscape-4k`, `portrait-4k`, `square` (1080×1080), `square-4k`. Aliases: `1080p`, `4k`, `uhd`, `1080p-square`, `4k-square`.
 - `--skill=<slug>` — record the owning skill (e.g. `hyperframes`) in `hyperframes.json`, so every later render of this project — re-renders, `pnpm render`, `--batch` — is attributed to it on anonymous telemetry without re-passing the flag. You rarely pass it by hand.
-- `--skip-skills` — **temporarily ignored**: `init` always checks AI coding skills against GitHub while the skills.sh registry catches up. To opt out (CI/tests), set the `HYPERFRAMES_SKIP_SKILLS=1` env var instead.
+- `--skip-skills` — leave AI coding skills alone: `init` does not install the core set. `HYPERFRAMES_SKIP_SKILLS=1` does the same.
 - `--skip-transcribe` — don't auto-transcribe `--audio` / `--video` with Whisper.
 - `--model`, `--language` — Whisper model / language for the auto-transcription.
 
@@ -48,6 +48,7 @@ hyperframes capture https://example.com --skip-vision   # skip optional AI capti
 hyperframes capture https://example.com --max-screenshots 12
 hyperframes capture https://example.com --timeout 60000 # page-load timeout in ms
 hyperframes capture https://example.com --capture-budget 90000 # post-navigation budget
+HYPERFRAMES_CAPTURE_PROXY=http://127.0.0.1:3128 hyperframes capture https://example.com # behind an egress proxy
 ```
 
 Captures a live URL as an editable HyperFrames project: screenshots become layered scenes, assets are downloaded locally, and the result is a normal project you can `lint` / `preview` / `render`. Use this when the user supplies a URL as the starting point for a video.

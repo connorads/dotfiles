@@ -94,6 +94,7 @@ The detail behind the contract in `SKILL.md`. Full references: `hyperframes docs
 ## Fonts
 
 - Bundled, so they resolve by name: Inter, Montserrat, Outfit, Nunito, Oswald, League Gothic, Archivo Black, Space Mono, IBM Plex Mono, JetBrains Mono, EB Garamond, Playfair Display, Source Code Pro, Noto Sans JP, Roboto, Open Sans, Lato, Poppins. Common system fonts (Helvetica, Arial, Times, Menlo and the like) are swapped for the nearest of these.
+- The bundle only has Latin text at a few weights per family (Inter: 400, 700, 900). The compiler still fetches each of these families from Google Fonts for the other weights and scripts, and caches the result in `~/.cache/hyperframes/fonts`.
 - Any other family needs `@font-face` in the file that uses it, or lint fails `font_family_without_font_face`: `src: url('assets/fonts/x.woff2')` for a file in the project (a capture's own fonts, or one you download there), or `local('Exact Name')` for a font installed on this machine.
 
 ## Timing and the timeline
@@ -149,6 +150,7 @@ Studio's Detach audio writes a muted `<video>` and an `<audio>` of the same file
 | `media_missing_id`, `media_crossorigin_breaks_preview` | Give every `<audio>` an `id`; drop `crossorigin`                                                       |
 | `gsap_timeline_registered_before_async_build`          | Register the timeline at the end of the async callback                                                 |
 | `standalone_composition_wrapped_in_template`           | Only scene files use `<template>`                                                                      |
+| `subcomposition_linked_style_names_root_id`            | A linked sheet cannot style a scene's root by id: use an inline `<style>`, or select a child           |
 | `subcomposition_root_styled_by_class`                  | Style a scene's root as `#root`                                                                        |
 | `subcomposition_blanks_before_host`                    | Make the scene's slot span the time it should show                                                     |
 | `clip_ends_past_root_duration`                         | Raise the root's `data-duration`                                                                       |

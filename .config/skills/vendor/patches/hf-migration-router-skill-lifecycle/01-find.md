@@ -9,11 +9,15 @@ For a plugin installation, follow [plugin execution rules](plugin-installation.m
 
 ## What `init` does
 
-`npx hyperframes init` checks GitHub and refreshes the core set plus other skills already installed. A current install is a no-op. Offline or rate-limited checks degrade gracefully and do not fail project scaffolding.
+`npx hyperframes init` installs the core set when it is missing and leaves every skill that is already installed as it is: it never refreshes, replaces or removes one. Updating is `npx hyperframes skills update`, run by you. Offline or rate-limited checks degrade gracefully and do not fail project scaffolding.
 
-The `--skip-skills` CLI flag is temporarily ignored. CI and tests may opt out with `HYPERFRAMES_SKIP_SKILLS=1`.
+`--skip-skills` makes `init` leave skills alone. `HYPERFRAMES_SKIP_SKILLS=1` does the same for CI and tests.
 
-`HYPERFRAMES_SKIP_SKILLS=1` also makes `skills update` (bare or named) and bare `skills` exit 0 without installing or pruning, so an install pinned to one commit stays pinned.
+`HYPERFRAMES_SKIP_SKILLS=1` also makes `skills update` (bare or named) and bare `skills` exit 0 without installing, so an install pinned to one commit stays pinned.
+
+## Stale-skills notice
+
+After `render`, `lint` and `validate`, the CLI prints `N HyperFrames skills out of date or missing` to stderr when the cached check finds stale skills, so an agent run without a terminal sees it too. It is off in CI, in dev, with `HYPERFRAMES_NO_UPDATE_CHECK=1` and with `HYPERFRAMES_SKIP_SKILLS=1`, and runs with `--json` too, since it only writes stderr and leaves `--json` stdout untouched.
 
 ## Diagnose and update
 
@@ -26,7 +30,7 @@ npx hyperframes skills
 ```
 
 - `skills check` exits non-zero when an installed skill is stale or the core set is incomplete. Skills available on demand but not installed are not failures.
-- Bare `skills update` refreshes the core set and everything already installed, and removes skills that are no longer published.
+- Bare `skills update` refreshes the core set and the HyperFrames skills already installed. It never removes a skill, and it leaves a skill the install record attributes to another publisher alone, even when the name matches one of ours.
 - Named `skills update <name...>` also installs those named skills.
 - Bare `skills` installs the full published set explicitly.
 
