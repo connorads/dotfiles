@@ -36,3 +36,21 @@
   .bbp-chip { transition: none; }
   .bbp-chip:active { transform: none; }
 }
+
+/* Keep host-owned slots in flow when a pane cannot fit the action row. */
+header:has(> div > div > div > [data-bb-plugin-root] .bbp-chip) { height: auto; }
+@container page-header (max-width: 600px) {
+  header > div:has(> div > div > [data-bb-plugin-root] .bbp-chip) {
+    height: auto; min-height: var(--bb-app-chrome-row-height); flex-wrap: wrap; padding-block: 4px;
+  }
+  header > div > div:has(> div > [data-bb-plugin-root] .bbp-chip) {
+    width: 100%; min-width: 0; flex-wrap: wrap;
+  }
+  header > div > div > div:has(> [data-bb-plugin-root] .bbp-chip) {
+    min-width: 0; flex-wrap: wrap;
+  }
+}
+@media (pointer: coarse) {
+  .bbp-chip { min-width: 44px; height: 44px; justify-content: center; }
+  [data-bb-plugin-root] > [role="group"]:has(.bbp-chip) { max-height: none; }
+}

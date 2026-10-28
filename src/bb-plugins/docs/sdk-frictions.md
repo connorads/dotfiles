@@ -403,7 +403,10 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   are pushed off-screen.
 - Workaround: the shared chip package with an `@container` collapse rule
   ([ADR 0002](./adr/0002-shared-header-chip-package.md)). Popovers find the visible
-  chip by DOM selector. Vox shows a pill in every pane.
+  chip by DOM selector. Vox shows a pill in every pane. Narrow headers wrap
+  the action rows through scoped host selectors; coarse-pointer slots allow 44 px chips.
+  This avoids clipped controls without moving React-owned nodes. Host markup changes
+  can invalidate these selectors.
 - Ask: an app-level status or toolbar slot, `order` on registrations, and host overflow
   into a "more" menu.
 - Status: open

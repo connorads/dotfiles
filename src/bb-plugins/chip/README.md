@@ -24,6 +24,9 @@ chip shows only its icon and dot. The header is BB's `page-header` container, so
 this follows pane width, not the viewport. Give each chip a `title` and
 `aria-label` that carry the full value. Text outside `ChipValue` stays visible.
 
+At pane widths up to 600 px, header actions wrap onto extra rows. Coarse-pointer
+chips have separate 44 px targets, and host slots allow that height.
+
 ## ChipPopover
 
 A chip that opens a pop-up renders it with `ChipPopover`. The reasons are in
