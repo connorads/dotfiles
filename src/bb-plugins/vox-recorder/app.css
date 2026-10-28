@@ -90,3 +90,24 @@
 .vx-notice[data-tone="error"] { border-color: color-mix(in oklch, var(--vx-empty) 50%, var(--border)); }
 .vx-notice[data-tone="success"] { border-color: color-mix(in oklch, var(--vx-ready) 50%, var(--border)); }
 .vx-notice button { border: 0; background: transparent; color: var(--muted-foreground); cursor: pointer; padding: 2px; }
+
+.vx-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; }
+.vx-actions details { position: relative; }
+.vx-actions summary { cursor: pointer; padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px; }
+.vx-action-menu { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
+.vx-list-back { display: none !important; }
+@media (pointer: coarse) {
+  .vx-panel button, .vx-library button, .vx-actions summary { min-height: 44px; }
+  .vx-row { min-height: 44px; }
+}
+@media (max-width: 600px) {
+  .vx-body { grid-template-columns: minmax(0, 1fr); min-height: 0; flex: 1; overflow: auto; }
+  .vx-body[data-detail="false"] .vx-preview { display: none; }
+  .vx-body[data-detail="true"] .vx-list { display: none; }
+  .vx-list-back { display: inline-flex !important; }
+  .vx-head .vx-hint { display: none; }
+  .vx-confirm { flex-wrap: wrap; }
+  .vx-confirm span { flex-basis: 100%; }
+  .vx-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .vx-row .vx-when, .vx-row .vx-size { grid-row: 2; }
+}

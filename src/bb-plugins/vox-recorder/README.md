@@ -111,6 +111,11 @@ Opening the library marks everything seen, which clears `!` and `✓`.
 
 ### Library
 
+Select a recording, then press Insert transcript to attach it. Recording
+actions offers Copy, Open, Rename, Reveal, Retranscribe, Delete and Delete
+audio. Rename has Save name and Cancel rename controls. Compact screens show
+either the list or selected transcript. Recordings returns to the list.
+
 Focus starts in the filter. `↓` moves to the list and keeps the selected row.
 In the list:
 

@@ -27,6 +27,7 @@ function NameDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'name' }> }) {
     <form className="vx-panel vx-name-panel" onSubmit={event => { event.preventDefault(); answer(title); }}>
       <label htmlFor="vx-title"><span className="vx-live-dot" aria-hidden />{dialog.purpose === 'start' ? 'Recording. Name it (optional)' : `Rename ${dialog.name}`}</label>
       <input id="vx-title" autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. alpha kickoff" />
+      <div className="vx-actions"><button type="submit">{dialog.purpose === 'start' ? 'Keep recording' : 'Save name'}</button><button type="button" onClick={() => answer(null)}>{dialog.purpose === 'start' ? 'Cancel' : 'Keep name'}</button></div>
       <span className="vx-hint">↵ {dialog.purpose === 'start' ? 'keep' : 'rename'} · esc {dialog.purpose === 'start' ? `discard in the first ${DISCARD_GRACE_MS / 1000} s, then keep` : 'leave the name'}</span>
     </form>
   </dialog>;

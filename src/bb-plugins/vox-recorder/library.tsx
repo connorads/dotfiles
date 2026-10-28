@@ -34,6 +34,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewDto | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [detail, setDetail] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const recording = status?.state === 'recording' ? status.recording : null;
   const now = useNow(1000, recording !== null);
@@ -123,6 +124,18 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
     }
   }
 
+  const saveName = () => {
+    if (!current || renaming === null) return;
+    const name = current.name;
+    const title = renaming;
+    setRenaming(null);
+    void act(async () => {
+      const renamed = await rpc().call('rename', { name, title });
+      if (!renamed.ok) throw new Error(renamed.reason);
+      setSelected(renamed.path.split('/').at(-1) ?? null);
+    }, 'Renamed');
+  };
+
   const livePill = status ? pill(status, now / 1000) : null;
   return <ChipPopover panelClassName="vx-library" aria-label="Vox recordings" onKeyDown={keyboard} trigger={chip} anchor={anchor} width={820}
     onClose={onClose} onEscape={() => { if (confirm) setConfirm(null); else if (renaming !== null) setRenaming(null); else onClose(); }}>
@@ -148,37 +161,33 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
       <button type="button" className="vx-danger" onClick={() => { void runConfirmed(); }}>Yes (y)</button>
       <button type="button" onClick={() => setConfirm(null)}>No (n)</button>
     </div>}
-    <div className="vx-body">
+    <div className="vx-actions">
+      <button type="button" className="vx-list-back" onClick={() => setDetail(false)}>Recordings</button>
+      <button type="button" disabled={!current || !readable(current)} onClick={() => current && insert(current)}>Insert transcript</button>
+      <details><summary>Recording actions</summary><div className="vx-action-menu">
+        {(['copy', 'open', 'rename', 'reveal', 'retranscribe', 'delete', 'reclaim'] as const).map(action => <button type="button" key={action} disabled={!current} onClick={() => current && letter(action, current)}>{({ copy: 'Copy transcript', open: 'Open transcript', rename: 'Rename', reveal: 'Reveal files', retranscribe: 'Retranscribe', delete: 'Delete recording', reclaim: 'Delete audio' })[action]}</button>)}
+      </div></details>
+      <button type="button" onClick={onClose}>Close</button>
+    </div>
+    {renaming !== null && <form className="vx-actions" onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); } }} onSubmit={event => { event.preventDefault(); saveName(); }}>
+      <input className="vx-rename" autoFocus aria-label="New title" value={renaming} onChange={event => setRenaming(event.target.value)} />
+      <button type="submit">Save name</button><button type="button" onClick={() => setRenaming(null)}>Cancel rename</button>
+    </form>}
+    <div className="vx-body" data-detail={detail}>
       <ul ref={list} tabIndex={0} className="vx-list" role="listbox" aria-label="Recordings">
         {error && <li className="vx-blank vx-error">{error}</li>}
         {!error && recordings === null && <li className="vx-blank">Reading recordings…</li>}
         {recordings !== null && visible.length === 0 && <li className="vx-blank">{recordings.length ? 'Nothing matches.' : 'No recordings yet. ⌥V starts one.'}</li>}
         {visible.map(r => <li key={r.name} role="option" aria-selected={r === current} className="vx-row" data-selected={r === current}
-          onClick={() => { setSelected(r.name); list.current?.focus(); }} onDoubleClick={() => insert(r)}>
-          {renaming !== null && r === current
-            ? <input className="vx-rename" autoFocus value={renaming} aria-label="New title" onChange={event => setRenaming(event.target.value)}
-              onKeyDown={event => {
-                event.stopPropagation();
-                if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); list.current?.focus(); }
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  const title = renaming;
-                  setRenaming(null);
-                  list.current?.focus();
-                  void act(async () => {
-                    const renamed = await rpc().call('rename', { name: r.name, title });
-                    if (!renamed.ok) throw new Error(renamed.reason);
-                    setSelected(renamed.path.split('/').at(-1) ?? null);
-                  }, 'Renamed');
-                }
-              }} />
-            : <span className="vx-title">{r.title}</span>}
+          onClick={() => { setSelected(r.name); setDetail(true); list.current?.focus(); }} onDoubleClick={() => insert(r)}>
+          <span className="vx-title">{r.title}</span>
           <span className="vx-kind" data-kind={r.kind}>{r.kind}</span>
           <span className="vx-muted vx-when">{when(r.name)}</span>
           <span className="vx-muted vx-size">{formatBytes(r.bytes)}</span>
         </li>)}
       </ul>
       <div className="vx-preview" aria-live="polite">
+        {current && <strong>{current.title}</strong>}
         {!preview ? null
           : preview.kind === 'transcript' ? <pre>{preview.text}{preview.truncated ? '\n…' : ''}</pre>
           : preview.kind === 'empty' ? <><strong>Transcribed to nothing: no speech recognised.</strong><pre>{preview.log}</pre></>
