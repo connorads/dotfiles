@@ -37,17 +37,18 @@
   .bbp-chip:active { transform: none; }
 }
 
-/* Keep host-owned slots in flow when a pane cannot fit the action row. */
+/* Keep narrow toolbars to one scrollable action row below the title. */
 header:has(> div > div > div > [data-bb-plugin-root] .bbp-chip) { height: auto; }
 @container page-header (max-width: 600px) {
   header > div:has(> div > div > [data-bb-plugin-root] .bbp-chip) {
     height: auto; min-height: var(--bb-app-chrome-row-height); flex-wrap: wrap; padding-block: 4px;
   }
   header > div > div:has(> div > [data-bb-plugin-root] .bbp-chip) {
-    width: 100%; min-width: 0; flex-wrap: wrap;
+    width: 100%; min-width: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    overscroll-behavior-x: contain; padding-block: 3px;
   }
   header > div > div > div:has(> [data-bb-plugin-root] .bbp-chip) {
-    min-width: 0; flex-wrap: wrap;
+    flex: none; flex-wrap: nowrap;
   }
 }
 @media (pointer: coarse) {
