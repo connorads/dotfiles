@@ -86,13 +86,8 @@
 !/.config/opencode/themes/catppuccin-mocha.json
 !/.config/opencode/command/
 !/.config/opencode/command/**
-!/.config/opencode/plugin/
-!/.config/opencode/plugin/**
-!/.config/opencode/plugins-v1/
-!/.config/opencode/plugins-v1/**
 !/.config/opencode/plugins-v2/
 !/.config/opencode/plugins-v2/**
-!/.config/opencode/opencode2.json
 !/.config/opencode/package.json
 !/.config/opencode/tsconfig.json
 !/.config/opencode/bun.lock

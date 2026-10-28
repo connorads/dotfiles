@@ -3,11 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test ../../src/opencode-plugins/tests/v2-adapters.test.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@opencode-ai/plugin": "^1",
-    "@opencode-ai/sdk": "^1",
     "@types/node": "^26.0.0"
   }
 }

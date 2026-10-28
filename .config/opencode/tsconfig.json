@@ -19,8 +19,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "plugin/**/*.ts",
-    "plugins-v1/**/*.ts",
     "plugins-v2/**/*.ts"
   ]
 }

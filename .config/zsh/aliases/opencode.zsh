@@ -1,3 +1,3 @@
-# https://github.com/sst/opencode
+# https://github.com/anomalyco/opencode
 alias oc='opencode'
-alias ocy='OPENCODE_CONFIG_CONTENT="{\"permission\":{\"bash\":{\"*\":\"allow\"},\"external_directory\":\"allow\"}}" opencode'
+alias ocy='opencode --auto'

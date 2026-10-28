@@ -14,6 +14,15 @@ commit-note check ([docs/adr/0016](../../docs/adr/0016-claude-patches-stay-only-
 is **not** patched, and the reasoning is
 [docs/adr/0011](../../docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
 
+## OpenCode
+
+`http:opencode` installs the released OpenCode 2 native binary from `@opencode/cli-*` tarballs.
+The exact version and SHA-512 digests cover macOS ARM64, Linux ARM64 and Linux x64.
+Check registry publication dates against the four-day quarantine before updating the pin.
+The installed mise predates the V2 registry change in mise 2026.10.9.
+Its `aqua:anomalyco/opencode` backend selects V1 releases.
+The native tarballs need no package install scripts.
+
 ## Quarantine, lockfile and ranges
 
 Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`) - only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled; `locked_verify_provenance = true` re-verifies provenance at install time even when the lockfile already has a checksum (otherwise skipped on lockfile hits).

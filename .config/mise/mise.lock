@@ -60,25 +60,6 @@ checksum = "sha256:f1519afe934a513e85dd9b32fc872394becbbb6a41db15d9ac3926a09a891
 url = "https://github.com/XcodesOrg/xcodes/releases/download/2.1.0/xcodes.zip"
 url_api = "https://api.github.com/repos/XcodesOrg/xcodes/releases/assets/563562943"
 
-[[tools."aqua:anomalyco/opencode"]]
-version = "1.19.4"
-backend = "aqua:anomalyco/opencode"
-
-[tools."aqua:anomalyco/opencode"."platforms.linux-arm64"]
-checksum = "sha256:8568230ccd847dc93e95b9f6894379077d3e014a16b48040743573e77c23e85f"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665821079"
-
-[tools."aqua:anomalyco/opencode"."platforms.linux-x64"]
-checksum = "sha256:849bd6b3d959a1d2ef200ed1634a51c79a45ca236aa26665d75debd694805cce"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665821750"
-
-[tools."aqua:anomalyco/opencode"."platforms.macos-arm64"]
-checksum = "sha256:c400a2f8c8ab7e99478a7f4dd1a466b57bf33888e520d85c55780a5464c4b689"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665836811"
-
 [[tools."aqua:google/osv-scanner"]]
 version = "2.7.0"
 backend = "aqua:google/osv-scanner"
@@ -549,24 +530,24 @@ url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-li
 checksum = "sha256:c5bb22ba029d5909da9c6db82aa037278a66d1cf8a5572f433879f7dcd866c31"
 url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-darwin-arm64.tar.gz"
 
-[[tools."http:opencode2"]]
-version = "0.0.0-beta-18684"
-backend = "http:opencode2"
+[[tools."http:opencode"]]
+version = "2.1.4"
+backend = "http:opencode"
 
-[tools."http:opencode2".options]
+[tools."http:opencode".options]
 strip_components = "1"
 
-[tools."http:opencode2"."platforms.linux-arm64"]
-checksum = "sha512:4ccb3e68bacb8f732c439e34ec8a7d5fb07d3bd0c29f0c2530f1aef54eba38b3a58fca67dc51aff46068e3ebd0663c52f0e61b5d314bf25f526199e094c0f7ba"
-url = "https://registry.npmjs.org/@opencode-ai/cli-linux-arm64/-/cli-linux-arm64-0.0.0-beta-18684.tgz"
+[tools."http:opencode"."platforms.linux-arm64"]
+checksum = "sha512:76bc342d6306d2789a13de1e3d79b587baa314165945c4990f781a72dde1c773983d77aca7bc6b3add1b9f7b2271835437a7e88c446b0ca47a8d8ad79995feac"
+url = "https://registry.npmjs.org/@opencode/cli-linux-arm64/-/cli-linux-arm64-2.1.4.tgz"
 
-[tools."http:opencode2"."platforms.linux-x64"]
-checksum = "sha512:43fba747b40805e8927186b58899628575429733e6bbba235022b51a85da17f1d4f4a94d8615f4d857938f7111a01526d00268c39caac68762b04f8ac5b419db"
-url = "https://registry.npmjs.org/@opencode-ai/cli-linux-x64/-/cli-linux-x64-0.0.0-beta-18684.tgz"
+[tools."http:opencode"."platforms.linux-x64"]
+checksum = "sha512:a3c109d19b13e1dcc328dfb49a91b610a6cd1b3272a7e175fbe02fdbc51179155f884bfe377e1e6449cdfee9e488ca1eaca1da77a5ba222ee4e2e9139cf36635"
+url = "https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.1.4.tgz"
 
-[tools."http:opencode2"."platforms.macos-arm64"]
-checksum = "sha512:1b775858f797205e88cc34400cf6436c5257ced1b32a0b90f77e84f0757ddde4d648128b22a369002f92870e1e1645742d51d71946a379da15f68b26e444b127"
-url = "https://registry.npmjs.org/@opencode-ai/cli-darwin-arm64/-/cli-darwin-arm64-0.0.0-beta-18684.tgz"
+[tools."http:opencode"."platforms.macos-arm64"]
+checksum = "sha512:4308f2be8bd3753d20162e6bc54c8f56561e3c87b710b76e47da25bbe28959ed3cf575480ce4cc871ca505efd9188a6fa171d8a3a6e9d8db24222a82140117b3"
+url = "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.1.4.tgz"
 
 [[tools.lychee]]
 version = "0.24.2"

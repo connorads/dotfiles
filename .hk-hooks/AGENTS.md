@@ -154,19 +154,11 @@ root `package.json` selects every package. A package is a top-level dir with a
 `package.json`, so `spikes/` stays out. Both `ts-typecheck-bb-plugins` and
 `ts-tests-scoped` use it.
 
-`.config/opencode` is a **typecheck-only bun project**, and the one whose
-manifest is also an interface: opencode's docs say to author a `package.json` in
-the config dir and that opencode runs `bun install` on it at startup, so the file
-is taken over rather than replaced (ADR 0006). Every `@opencode-ai/*` import
-across all six plugins is `import type`, so the deps are devDependencies and no
-plugin needs a package to run. It declares no `test` script, which is why
-`ts-tests.sh` skips it. Two SDK event surfaces matter when editing the plugins:
-the root `@opencode-ai/sdk` export is v1 and has no `permission.asked`,
-`question.*` or `global.disposed`, while `@opencode-ai/sdk/v2/types` has all of
-them. `plugin/*` deliberately handles names from both so it survives either
-opencode version, so its event parameters are typed as the union - narrowing to
-v1 alone turns every v2 case into a "no overlap" error, and deleting those cases
-breaks the plugin.
+`.config/opencode` is a bun project for the OpenCode 2 local plugins.
+Its `test` script runs the V2 adapter suite in `src/opencode-plugins/tests`.
+The suite checks permission decisions, async event delivery and plugin cleanup.
+The `ts-tests-scoped` and `ts-typecheck-opencode` steps cover plugin changes.
+The adapters declare the small API contracts they use and need no runtime SDK dependency.
 
 Type-aware oxlint is configured in **`~/.oxlintrc.json`**, the tree's only
 oxlint config, which therefore governs every oxlint run in the work-tree

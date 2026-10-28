@@ -68,13 +68,6 @@ suites=$(
 		.config/vale/* | .vale.ini)
 			echo "$TESTS_DIR/vale-style.bats"
 			;;
-		# .config/opencode declares no `test` script, so ts-tests-scoped skips
-		# it silently and only tsc runs at commit. Its agent-tracking plugin's
-		# contract is a bats suite driving the real plugin against a throwaway
-		# tmux server.
-		.config/opencode/*)
-			echo "$TESTS_DIR/opencode-agent-plugin.bats"
-			;;
 		# pin-audit's implementation is TypeScript under ~/src; the bats suite
 		# is still its CLI contract, so staged sources have to run it.
 		src/pin-audit/*)

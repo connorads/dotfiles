@@ -12,7 +12,7 @@ Hard-coupled, staying put:
 | `.config/nix/{voxtap,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
 | `.hk-hooks` | `core.hooksPath` is set to `.hk-hooks` |
 | `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
-| `.config/opencode/{plugin,plugins-v1,plugins-v2}` | `opencode.json`'s `plugin` array names each file by `file://` absolute path, so a moved file stops loading with no error. `.config/opencode/tsconfig.json` follows the code rather than the reverse: its `include` covers all three dirs |
+| `.config/opencode/plugins-v2` | `opencode.json`'s `plugins` array names this directory by `file://` absolute path. Its `index.ts` loads the local policy and notifications. `.config/opencode/tsconfig.json` checks the directory |
 
 Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS` (Python: `py-typecheck-*`, the `py-tests-scoped` glob *and* `py-tests.sh`'s `ROOTS`), the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
 
@@ -30,7 +30,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [.vale.ini](../.vale.ini) | Vale config for the house prose rules; applies to markdown and code comments |
 | [.config/vale/styles/Connorads/](../.config/vale/styles/Connorads/) | The house style rules; tests: [vale-style.bats](../.config/zsh/tests/vale-style.bats) |
 | [.oxlintrc.json](../.oxlintrc.json) | The tree's only oxlint config, type-aware rules on |
-| [.config/opencode/package.json](../.config/opencode/package.json) | opencode plugin deps; opencode runs `bun install` on it, so the path is the interface |
+| [.config/opencode/package.json](../.config/opencode/package.json) | OpenCode plugin development checks; `test` runs the V2 adapter suite from `src/opencode-plugins` |
 | [.config/hex/hex.config.ts](../.config/hex/hex.config.ts) | HEX voice commands; HEX loads this path and reloads on save. `.hex-sdk` is HEX-managed and untracked; docs: [.config/hex/AGENTS.md](../.config/hex/AGENTS.md) |
 | [.npmrc](../.npmrc), [.config/pnpm/config.yaml](../.config/pnpm/config.yaml), [.bunfig.toml](../.bunfig.toml), [.config/pip/pip.conf](../.config/pip/pip.conf), [.yarnrc.yml](../.yarnrc.yml) | Per-manager quarantine and install-script block; see [docs/supply-chain.md](../docs/supply-chain.md) |
 | [.config/aube/config.toml](../.config/aube/config.toml) | aube, mise's npm backend: quarantine, trust policy, typosquat gates |

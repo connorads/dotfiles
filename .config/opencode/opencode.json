@@ -691,11 +691,6 @@
     "edit": "allow",
     "external_directory": "ask"
   },
-  "plugin": [
-    "file://{env:HOME}/.config/opencode/plugin/agent-state.ts",
-    "file://{env:HOME}/.config/opencode/plugin/bell-notifications.ts",
-    "file://{env:HOME}/.config/opencode/plugins-v1/security-policy.ts"
-  ],
   "lsp": {
     "pyright": {
       "disabled": true
@@ -1505,5 +1500,8 @@
         }
       }
     }
-  }
+  },
+  "plugins": [
+    "file://{env:HOME}/.config/opencode/plugins-v2"
+  ]
 }
