@@ -44,6 +44,8 @@ NixOS it compares the booted kernel, initrd and modules with
    Processes in a thread's provider tree, bb's own processes, recognised Codex
    app-server roots and bridge-worker descendants offer no End.
 
+Narrow dialogs stack memory metrics and place thread reasons below their names.
+
 Memory, threads and apps need macOS. A Linux machine shows vitals only. Press `r`
 to refresh and `Esc` to close. `Q` also closes outside text fields.
 

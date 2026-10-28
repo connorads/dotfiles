@@ -33,7 +33,7 @@
 .mh-machine-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 /* Pop-up shell from @bb-plugins/chip; this panel scrolls as a whole. */
-.bbp-popover-panel.mh-panel { gap: 14px; overflow: auto; padding: 14px 16px; }
+.bbp-popover-panel.mh-panel { container: machine-health / inline-size; gap: 14px; overflow: auto; padding: 14px 16px; }
 .mh-panel h3 { margin: 0 0 6px; font-size: var(--text-sm, 13px); font-weight: 600; }
 .mh-panel small, .mh-empty, .mh-gloss, .mh-why, .mh-count { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .mh-panel button { font: inherit; color: inherit; }
@@ -91,3 +91,19 @@
 
 .mh-machines { display: flex; flex-direction: column; gap: 6px; padding: 8px; font-size: var(--text-xs, 12px); }
 .mh-machine .mh-rows { padding: 6px 8px; font-size: var(--text-xs, 12px); }
+
+@container machine-health (max-width: 560px) {
+  .mh-arm { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+  .mh-arm-label { grid-column: 1; }
+  .mh-arm-pct { grid-column: 2; grid-row: 1; }
+  .mh-bar { grid-column: 1 / -1; grid-row: 2; }
+  .mh-arm-gap { grid-column: 1; }
+  .mh-arm-size { grid-column: 2; }
+  .mh-gloss { grid-column: 1 / -1; }
+  .mh-thread { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .mh-thread .mh-why { grid-column: 2 / -1; white-space: normal; overflow-wrap: anywhere; }
+  .mh-app { grid-template-columns: minmax(0, 1fr) 64px 36px; }
+  .mh-app .mh-mini { grid-column: 1 / -1; grid-row: 2; }
+  .mh-state, .mh-actions, .mh-confirm { flex-wrap: wrap; }
+  .mh-rows dd { min-width: 0; overflow-wrap: anywhere; }
+}
