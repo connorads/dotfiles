@@ -35,3 +35,28 @@ test('visible recording actions rename, cancel and confirm the selected recordin
   expect(slot.queryByRole('alertdialog')).toBeNull();
   expect(renamed).toHaveLength(1);
 });
+
+for (const change of ['selection', 'filter'] as const) {
+  test(`rename keeps its original recording after changing ${change}`, async () => {
+    function Surface() { setClient(useRpc<typeof rpcContract>()); return <Library anchor={null} onClose={() => {}} />; }
+    const app = await loadPluginApp(async () => definePluginApp(app => { app.slots.experimental_appOverlay({ id: 'rename-target-test', component: Surface }); }));
+    const renamed: unknown[] = [];
+    slot = renderSlot(app.appOverlays[0]!, {}, { rpc: {
+      list: () => [
+        { name: '2026-01-01-alpha', title: 'Alpha', startedAt: 0, bytes: 100, kind: 'solo' },
+        { name: '2026-01-02-beta', title: 'Beta', startedAt: 0, bytes: 100, kind: 'solo' },
+      ],
+      markSeen: () => ({}), preview: () => ({ kind: 'transcript', text: 'Synthetic transcript', truncated: false }),
+      rename: (input: unknown) => { renamed.push(input); return { ok: true, path: '/recordings/2026-01-01-alpha-revised' }; },
+    } });
+    await slot.findByRole('option', { name: /Alpha/ });
+    fireEvent.click(slot.getByText('Recording actions'));
+    fireEvent.click(slot.getByRole('button', { name: /^Rename$/ }));
+    fireEvent.change(slot.getByRole('textbox', { name: 'New title' }), { target: { value: 'Alpha revised' } });
+    if (change === 'selection') fireEvent.click(slot.getByRole('option', { name: /Beta/ }));
+    else fireEvent.change(slot.getByRole('textbox', { name: 'Filter recordings' }), { target: { value: 'Beta' } });
+    fireEvent.click(slot.getByRole('button', { name: 'Save name' }));
+    await waitFor(() => expect(renamed).toEqual([{ name: '2026-01-01-alpha', title: 'Alpha revised' }]));
+    expect(slot.queryByRole('textbox', { name: 'New title' })).toBeNull();
+  });
+}

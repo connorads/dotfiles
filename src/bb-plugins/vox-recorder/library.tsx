@@ -33,7 +33,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewDto | null>(null);
-  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ name: string; title: string } | null>(null);
   const [detail, setDetail] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const recording = status?.state === 'recording' ? status.recording : null;
@@ -115,7 +115,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
     switch (action) {
       case 'copy': void copy(r.name); return;
       case 'open': void openFile(r.name); return;
-      case 'rename': setRenaming(r.title === 'untitled' ? '' : r.title); return;
+      case 'rename': setRenaming({ name: r.name, title: r.title === 'untitled' ? '' : r.title }); return;
       case 'reveal': void act(() => rpc().call('reveal', { name: r.name })); return;
       case 'retranscribe': void act(() => rpc().call('transcribe', { names: [r.name] }), `Retranscribing ${r.name}…`); return;
       case 'delete': setConfirm({ action: 'delete', name: r.name, label: `Delete ${r.name}, transcript included?` }); return;
@@ -125,9 +125,8 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
   }
 
   const saveName = () => {
-    if (!current || renaming === null) return;
-    const name = current.name;
-    const title = renaming;
+    if (renaming === null) return;
+    const { name, title } = renaming;
     setRenaming(null);
     void act(async () => {
       const renamed = await rpc().call('rename', { name, title });
@@ -170,7 +169,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
       <button type="button" onClick={onClose}>Close</button>
     </div>
     {renaming !== null && <form className="vx-actions" onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); } }} onSubmit={event => { event.preventDefault(); saveName(); }}>
-      <input className="vx-rename" autoFocus aria-label="New title" value={renaming} onChange={event => setRenaming(event.target.value)} />
+      <input className="vx-rename" autoFocus aria-label="New title" value={renaming.title} onChange={event => setRenaming({ ...renaming, title: event.target.value })} />
       <button type="submit">Save name</button><button type="button" onClick={() => setRenaming(null)}>Cancel rename</button>
     </form>}
     <div className="vx-body" data-detail={detail}>
