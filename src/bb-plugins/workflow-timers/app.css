@@ -11,3 +11,10 @@
 }
 .wt-quiet:empty { display: none; }
 .wt-live[data-quiet="stall"] .wt-quiet { color: var(--destructive-text, var(--destructive)); }
+
+.wt-details { color: var(--muted-foreground); font-size: 11px; padding-inline: 8px; }
+.wt-details summary { cursor: pointer; padding-block: 4px; }
+.wt-details p { margin: 0 0 8px; overflow-wrap: anywhere; }
+@media (pointer: coarse) {
+  .wt-details summary { min-height: 44px; display: flex; align-items: center; }
+}

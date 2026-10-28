@@ -7,7 +7,8 @@ finished agents, so a stalled agent looks the same as a slow one.
 Each running row gets a live elapsed timer in the slot where the finished
 duration appears. When the worker thread records no event for two minutes, an
 amber `quiet Nm` label appears before the timer. It turns red at ten minutes.
-Hover the timer for the start time and the time of the last thread event.
+Open **Timing details** below a running row for its exact start and latest event times.
+The disclosure supports touch and keyboard. Hovering the timer shows the same times.
 A long silent command, such as a test suite, also reads as quiet.
 
 ```mermaid

@@ -59,3 +59,16 @@ test('removes the timer when the row finishes and on disposal', async () => {
   dispose!(); dispose = undefined;
   expect(timers()).toEqual([]);
 });
+
+
+test('provides native keyboard and touch disclosure outside the workflow row button', async () => {
+  document.body.innerHTML = preview(row('P6'));
+  mount([call('P6')], { thr_P6: NOW - 20_000 });
+  await settle();
+  const details = document.querySelector('details');
+  expect(details?.querySelector('summary')?.textContent).toBe('Timing details for P6');
+  expect(details?.textContent).toMatch(/Started .+ · last thread event .+/);
+  expect(details?.closest('button')).toBeNull();
+  dispose!(); dispose = undefined;
+  expect(document.querySelector('details')).toBeNull();
+});

@@ -34,7 +34,7 @@ export function formatElapsed(ms: number) {
 export function quietLevel(ms: number): 'warn' | 'stall' | null {
   return ms >= QUIET_STALL_MS ? 'stall' : ms >= QUIET_WARN_MS ? 'warn' : null;
 }
-const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const clock = (ms: number) => new Date(ms).toLocaleString();
 
 function setText(el: HTMLElement, text: string) { if (el.textContent !== text) el.textContent = text; }
 function setAttr(el: HTMLElement, name: string, value: string | null) {
@@ -50,6 +50,7 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
   const runs = new Map<string, Entry<Call[]>>();
   const activity = new Map<string, Entry<number | null>>();
   const added = new Set<HTMLElement>();
+  const disclosures = new Map<HTMLElement, HTMLDetailsElement>();
 
   function refresh<T>(map: Map<string, Entry<T>>, key: string, initial: T, load: (s: Source) => Promise<T>) {
     if (!source) return;
@@ -109,14 +110,28 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
         setText(live.querySelector<HTMLElement>('.wt-elapsed')!, formatElapsed(at - call.startedAt));
         setText(live.querySelector<HTMLElement>('.wt-quiet')!, level && lastAt !== null ? `quiet ${Math.floor((at - lastAt) / 60_000)}m` : '');
         setAttr(live, 'data-quiet', level);
-        setAttr(live, 'title', `Started ${clock(call.startedAt)}${lastAt === null ? '' : ` · last thread event ${clock(lastAt)}`}`);
+        const timing = `Started ${clock(call.startedAt)}${lastAt === null ? '' : ` · last thread event ${clock(lastAt)}`}`;
+        setAttr(live, 'title', timing);
+        let details = disclosures.get(live);
+        if (!details) {
+          details = doc.createElement('details');
+          details.className = 'wt-details';
+          const summary = doc.createElement('summary');
+          summary.textContent = `Timing details for ${label}`;
+          const description = doc.createElement('p');
+          details.append(summary, description);
+          row.after(details);
+          disclosures.set(live, details);
+        }
+        if (details.previousElementSibling !== row) row.after(details);
+        setText(details.querySelector('p')!, timing);
         wanted.add(live);
         added.add(live);
       }
     }
     for (const key of runs.keys()) if (!seenRuns.has(key)) runs.delete(key);
     for (const key of activity.keys()) if (!seenThreads.has(key)) activity.delete(key);
-    for (const live of added) if (!wanted.has(live)) { live.remove(); added.delete(live); }
+    for (const live of added) if (!wanted.has(live)) { live.remove(); disclosures.get(live)?.remove(); disclosures.delete(live); added.delete(live); }
   }
 
   const observer = new MutationObserver(sync);
@@ -139,6 +154,8 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
     observer.disconnect();
     listeners.delete(sync);
     for (const live of added) live.remove();
+    for (const details of disclosures.values()) details.remove();
+    disclosures.clear();
     added.clear();
   };
 }
