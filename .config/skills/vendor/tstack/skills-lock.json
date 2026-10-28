@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "babysit-pr": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/babysit-pr/SKILL.md",
+      "computedHash": "ba004a14dde8e9997f2f69c1ca52152349473bd82cfa0801eb5af81879200cf8"
+    },
+    "council": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/council/SKILL.md",
+      "computedHash": "0becf128f106f35c06e713c571789e547102026d1acd6f50622e6dc69e97f78f"
+    },
+    "file-pr": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/file-pr/SKILL.md",
+      "computedHash": "7a073ff704743ba9ca6be75a173bb1de892e58c6e46105515bbdcc386ba6a266"
+    },
+    "full-send": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/full-send/SKILL.md",
+      "computedHash": "f5e7297f9eeb6a4f83312d22a81186db11233d647c854d75addf756e099dfb47"
+    },
+    "full-stop": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/full-stop/SKILL.md",
+      "computedHash": "81dc01710afe6a54337a18f0a90d17ccf2776220acd1e84512fdbd9b89e19054"
+    },
+    "leaving-pr-comments": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/leaving-pr-comments/SKILL.md",
+      "computedHash": "d64a0d8e7bb6e5b9129a9f0017f98f1e5851c2f317d2300c4eef3aaeec649149"
+    },
+    "modernize": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/modernize/SKILL.md",
+      "computedHash": "ef60debce4f34f309c6f15375cde504f6c59eefd2f8763f3118ff9f4a22466e2"
+    },
+    "sol-loop": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/sol-loop/SKILL.md",
+      "computedHash": "0b039bc755d387a522ce2c050b6f000c3dee08ec7477171037131ad57c2935ec"
+    },
+    "takeover": {
+      "source": "t3dotgg/tstack",
+      "sourceType": "github",
+      "skillPath": "skills/takeover/SKILL.md",
+      "computedHash": "eafabb14624dfaa7bf8b1fb30e3f9a026023f82234b6f78443d2dc37930004f6"
+    }
+  }
+}
