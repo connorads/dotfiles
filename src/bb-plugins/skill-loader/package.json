@@ -14,7 +14,7 @@
     "skills": []
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "test": "node --experimental-strip-types --test src/*.test.ts && vitest run app.test.tsx",
     "typecheck": "tsc --noEmit",
     "build": "bb plugin build",
     "dev": "bb plugin dev"
@@ -26,6 +26,11 @@
     "@types/react": "catalog:",
     "hono": "catalog:",
     "react": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "vitest": "catalog:"
   }
 }

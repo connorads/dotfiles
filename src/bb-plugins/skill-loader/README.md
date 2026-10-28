@@ -19,6 +19,10 @@ Q closes the focused pop-up outside text fields. Esc also dismisses it.
 - Type `@` and part of a skill name to pick from the **Skills (skl)** mention
   menu. A bare `@` lists no skills, because file mentions share it.
 
+Use row checkboxes to mark skills. The footer offers Load, Copy, Install,
+Preview and Close. Group installation has explicit Install group and Cancel
+buttons. Compact previews stack below the list.
+
 Picker keys follow the tmux `skl-pick` fzf binds:
 
 | Key | Effect |
@@ -105,7 +109,7 @@ flowchart TD
 - **No toasts.** Copy closes silently. Errors and install output show inline.
 - **Clipboard.** `ctrl-y` writes through `experimental_copyToClipboard`. It
   closes the popup only when the write succeeds.
-- **Tests cover the pure core and the host entry.** The popup has no UI tests.
+- **Tests cover the pure core, host entry and visible picker actions.**
 
 Seen in a running bb (web UI, bb 0.46): `Alt+S` and the + menu open the
 popup with focus in the filter, pills and group pills with the Layers icon,
@@ -119,7 +123,7 @@ Alt+I in the desktop app. These are checked only against bb's source in
 
 Run from this directory:
 
-- `pnpm test` runs the `node:test` suites. Two tests use the real `skl` and
+- `pnpm test` runs the `node:test` suites and the Vitest picker test. Two tests use the real `skl` and
   skip when it is missing.
 - `pnpm typecheck`
 - `pnpm build`

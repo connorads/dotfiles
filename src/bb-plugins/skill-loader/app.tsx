@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { definePluginApp, experimental_copyToClipboard, experimental_Icon as Icon, useComposer, useRpc } from '@get-bb/plugin-sdk/app';
+import './app.css';
 import type { rpcContract } from './contracts.ts';
 import { pillParts } from './src/mention.ts';
 import { chosenRefs, cursorRow, initialState, onKey, setQuery, type Action } from './src/picker.ts';
@@ -143,7 +144,8 @@ function SklPopup() {
       </div>
       {confirming ? (
         <div role="alert" className="border-b border-border px-3 py-2 text-xs text-foreground">
-          Install whole group{groupRefs(confirming).length > 1 ? 's' : ''} {groupRefs(confirming).join(' ')} into this thread's project? y / N
+          Install whole group{groupRefs(confirming).length > 1 ? 's' : ''} {groupRefs(confirming).join(' ')} into this thread's project?
+          <div className="skl-actions"><button type="button" onClick={() => void install(confirming)}>Install group</button><button type="button" onClick={() => setConfirming(null)}>Cancel</button></div>
         </div>
       ) : null}
       {notice ? (
@@ -152,7 +154,7 @@ function SklPopup() {
           {notice.text}
         </div>
       ) : null}
-      <div className="flex h-96 min-h-0">
+      <div className="skl-body flex h-96 min-h-0">
         <div id="skl-rows" ref={listRef} role="listbox" aria-multiselectable="true" aria-label="Skills"
           className={`min-h-0 overflow-y-auto p-1 ${state.preview ? 'w-2/5 shrink-0 border-r border-border' : 'flex-1'}`}>
           {visible.map((row, index) => {
@@ -164,7 +166,7 @@ function SklPopup() {
                 onMouseDown={event => event.preventDefault()}
                 onClick={() => setState(previous => ({ ...previous, cursor: index }))}
                 onDoubleClick={() => void run('load', [row.ref])}>
-                <span className="w-3 shrink-0 text-xs text-foreground">{marked.has(row.ref) ? '●' : ''}</span>
+                <input type="checkbox" aria-label={`Mark ${row.ref}`} checked={marked.has(row.ref)} onClick={event => event.stopPropagation()} onChange={() => setState(previous => ({ ...previous, marked: marked.has(row.ref) ? previous.marked.filter(ref => ref !== row.ref) : [...previous.marked, row.ref] }))} />
                 {row.kind === 'folder' ? (
                   <span className="min-w-0 truncate font-medium text-foreground">{row.ref} <span className="text-xs text-muted-foreground">({row.count})</span></span>
                 ) : (
@@ -183,6 +185,13 @@ function SklPopup() {
             {preview && current && preview.ref === current.ref ? preview.text : 'Loading preview…'}
           </pre>
         ) : null}
+      </div>
+      <div className="skl-actions">
+        <button type="button" disabled={busy || chosen.length === 0} onClick={() => void run('load', chosen)}>Load{chosen.length > 1 ? ` ${chosen.length}` : ''}</button>
+        <button type="button" disabled={busy || chosen.length === 0} onClick={() => void run('copy', chosen)}>Copy</button>
+        <button type="button" disabled={busy || chosen.length === 0 || !catalogue?.canInstall} onClick={() => void run('install', chosen)}>Install</button>
+        <button type="button" aria-pressed={state.preview} onClick={() => setState(previous => ({ ...previous, preview: !previous.preview }))}>Preview</button>
+        <button type="button" onClick={() => composer.experimental_closePopup()}>Close</button>
       </div>
       <div className="border-t border-border px-3 py-1 text-2xs text-muted-foreground">
         tab mark · enter load{chosen.length > 1 ? ` ${chosen.length}` : ''} (folder = whole group) · ctrl-y copy · alt-i install · ctrl-/ preview · esc close

@@ -1,0 +1,13 @@
+.skl-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+.skl-actions button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--foreground); }
+.skl-actions button:disabled { opacity: .5; }
+@media (pointer: coarse) {
+  .skl-actions button { min-height: 44px; }
+  #skl-rows [role="option"] { min-height: 44px; align-items: center; }
+  #skl-rows input[type="checkbox"] { width: 28px; height: 28px; flex: none; margin: 8px; }
+}
+@media (max-width: 600px) {
+  .skl-body { flex-direction: column; height: min(384px, 45vh); }
+  .skl-body #skl-rows { width: 100%; flex: 1; min-height: 80px; }
+  .skl-body pre { flex: 1; min-height: 80px; }
+}
