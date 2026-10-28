@@ -42,6 +42,13 @@ export function createLogin(ports: LoginPorts) {
       throw new Error('Account machine is offline. Connect it before signing in.');
   }
   return async function login(hostId: string, accountId: string, method: LoginMethod = 'device'): Promise<{ terminalId: string }> {
+    if (accountId.startsWith('provider-opencode:')) {
+      const [accountHost] = z.tuple([z.string(), z.literal('opencode')])
+        .parse(JSON.parse(accountId.slice('provider-opencode:'.length)));
+      if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
+      await connected(hostId);
+      return open(JSON.stringify([hostId, 'opencode']), 'OpenCode sign-in', hostId, ['opencode', 'auth', 'login']);
+    }
     if (accountId.startsWith('provider-codex:')) {
       const [accountHost] = z.tuple([z.string(), z.literal('codex')])
         .parse(JSON.parse(accountId.slice('provider-codex:'.length)));
@@ -62,7 +69,7 @@ export function createLogin(ports: LoginPorts) {
         .parse(JSON.parse(accountId.slice('provider-claude-code:'.length)));
       if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
       profileId = 'default';
-    } else throw new Error('Sign-in is available for Claude and Codex accounts only.');
+    } else throw new Error('Sign-in is available for Claude, Codex and OpenCode accounts only.');
     await connected(hostId);
     const profile = (await ports.profiles(hostId, config.profileRoot)).find(value => value.id === profileId);
     if (!profile) throw new Error('Profile no longer exists. Refresh usage before signing in.');

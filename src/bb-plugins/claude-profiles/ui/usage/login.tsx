@@ -15,7 +15,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
   const [attempt, setAttempt] = useState(0);
   const [terminalId, setTerminalId] = useState<string | null>(null);
   const codex = isCodex(subPath);
-  const name = codex ? 'Codex' : 'Claude';
+  const name = codex ? 'Codex' : decodeURIComponent(subPath ?? '').includes('"provider-opencode:') ? 'OpenCode' : 'Claude';
   const [method, setMethod] = useState<LoginMethod>('device');
   const [message, setMessage] = useState(`Opening ${name} sign-in…`);
   const [error, setError] = useState<string | null>(null);

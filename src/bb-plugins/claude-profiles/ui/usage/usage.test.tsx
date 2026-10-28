@@ -333,6 +333,38 @@ test.each(['expired', 'unauthenticated'] as const)('%s Claude login shows one ac
   await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
 });
 
+test.each(['expired', 'unauthenticated'] as const)('%s OpenCode account opens sign-in from Agent usage', async status => {
+  const app = await load();
+  const accountId = 'provider-opencode:["host-one","opencode"]';
+  const account = { ...snapshot.machines[0]!.providers[0]!, id: accountId,
+    providerId: 'opencode', displayName: 'OpenCode', accountLabel: null, usage: { status } };
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect({
+    machines: [{ ...snapshot.machines[0]!, providers: [account] }],
+  }) } });
+  act(() => openUsage());
+  fireEvent.click(await slot.findByRole('button', { name: 'Sign in again to OpenCode' }));
+  expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login',
+    options: { subPath: JSON.stringify({ hostId: 'host-one', accountId }) } });
+});
+
+test('OpenCode sign-in opens its terminal and refreshes usage after success', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const target = { hostId: 'host-one', accountId: 'provider-opencode:["host-one","opencode"]' };
+  const calls: unknown[] = [];
+  const slot = renderSlot(page, { subPath: encodeURIComponent(JSON.stringify(target)) }, {
+    rpc: { 'usage.login': async input => { calls.push(input); return { terminalId: 'login-terminal' }; },
+      'usage.inspection': async () => inspect() },
+    sdk: { terminals: { get: async () => terminal(0) } }, openTerminal: () => true,
+  });
+  await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'));
+  expect(calls).toEqual([target]);
+  expect(slot.queryByRole('button', { name: 'Use browser instead' })).toBeNull();
+  expect(slot.inspection.navigateCalls).toContainEqual({ method: 'experimental_openTerminal',
+    options: { terminalId: 'login-terminal' } });
+});
+
 const loginTarget = encodeURIComponent(JSON.stringify({ hostId: 'host-one', accountId: 'provider-claude-code:["host-one","claude-code"]' }));
 const terminal = (exitCode: number) => ({ id: 'login-terminal', status: 'exited' as const, exitCode,
   hostId: 'host-one', environmentId: null, threadId: null, initialCwd: '/home/user', title: 'Claude sign-in',

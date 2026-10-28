@@ -389,6 +389,17 @@ test('Codex login defaults to a device code on the account host and reuses an ac
   assert.deepEqual(closed, []);
 });
 
+test('OpenCode login opens on the account host and reuses its active terminal', async t => {
+  const { harness, created } = loginFixture();
+  t.after(() => harness.lifecycle.dispose());
+  const input = { hostId: 'remote', accountId: 'provider-opencode:["remote","opencode"]' };
+  await harness.behavior.callRpc('usage.login', input);
+  await harness.behavior.callRpc('usage.login', input);
+  assert.equal(created.length, 1);
+  assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
+  assert.deepEqual(created[0]?.start?.argv, ['opencode', 'auth', 'login']);
+});
+
 test('switching Codex sign-in method closes the running login before starting the other', async t => {
   const { harness, created, closed } = loginFixture();
   t.after(() => harness.lifecycle.dispose());
@@ -407,6 +418,8 @@ test('login rejects stale profiles, another host, and unrelated usage sources be
     ['remote', 'claude-profiles:["other","~/.claude-profiles/code","work"]'],
     ['remote', 'claude-profiles:["remote","/old-root","work"]'],
     ['remote', 'provider-codex:["other","codex"]'], ['offline', 'provider-codex:["offline","codex"]'],
+    ['remote', 'provider-opencode:["other","opencode"]'], ['offline', 'provider-opencode:["offline","opencode"]'],
+    ['remote', 'provider-opencode:["remote","codex"]'],
     ['remote', 'provider-grok:["remote","grok"]'],
   ]) await assert.rejects(harness.behavior.callRpc('usage.login', { hostId, accountId }));
   assert.equal(created.length, 0);

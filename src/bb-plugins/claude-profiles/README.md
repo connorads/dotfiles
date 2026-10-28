@@ -234,9 +234,9 @@ Amber marks 1.2× pace or 70% used. Red marks 1.4× pace, 90% used or a full
 window. A reading becomes stale after 4% of its shortest window, with a
 15-minute minimum. Stale bars use stripes and omit projections.
 
-Expired or signed-out Claude and Codex accounts show **Sign in again**. The button
+Expired or signed-out Claude, Codex and OpenCode accounts show **Sign in again**. The button
 opens **Agent sign-in**, a BB page with a terminal on that account's machine. Claude
-runs `claude auth login`. Claude Default uses the machine's native configuration;
+runs `claude auth login`. OpenCode runs `opencode auth login`; choose the provider in the terminal. Claude Default uses the machine's native configuration;
 named accounts use their profile directory. Codex uses the machine's one CLI login
 and starts `codex login --device-auth`: open the printed link on any device and
 enter the code. Device codes need device code sign-in turned on in ChatGPT security
