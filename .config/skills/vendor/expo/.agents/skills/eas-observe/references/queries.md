@@ -35,6 +35,33 @@ Default time range is the last 60 days when none of `--days`, `--start`, `--end`
 
 **Plan gating.** Observe is a paid feature, and the server rejects queries the account's plan does not include (`EAS_OBSERVE_PLAN_UPGRADE_REQUIRED` or `EAS_OBSERVE_FEATURE_NOT_AVAILABLE_IN_FREE_TIER`). The CLI surfaces the server's upgrade message, which links to the account's billing page. Session timelines in particular are checked before the interactive picker runs. A plan-gate failure is not a bug in the command or its flags.
 
+## Expo MCP Server tools
+
+> Source: https://docs.expo.dev/eas/observe/mcp/
+
+The Expo MCP Server has read-only tools that return the same data as the CLI. When the `observe_*` tools are available, use them instead of the CLI: they use the Expo account that the MCP client signed in with, so they need no EAS CLI install and no access token. The queries, metric names, and workflows in this file apply to both.
+
+| Tool | CLI equivalent |
+|---|---|
+| `observe_versions` | `eas observe:versions` |
+| `observe_metrics_summary` | `eas observe:metrics-summary` |
+| `observe_metrics` | `eas observe:metrics` |
+| `observe_routes` | `eas observe:routes` |
+| `observe_event_names` | `eas observe:events` (name summary) |
+| `observe_events` | `eas observe:events <name>`, or `--all-events` without `eventName` |
+| `observe_session` | `eas observe:session` |
+
+Differences from the CLI:
+
+- **No error-group tools.** For error groups and stack traces, use `eas observe:errors` and `eas observe:event`. `observe_session` includes the errors of one session. An empty result from the other MCP tools does not mean that the app has no errors.
+- **Project:** pass `appId` or `appFullName` (such as `@owner/my-app`). In a project directory, read the project ID from the app config.
+- **Platform:** `platform` takes `ANDROID`, `IOS`, `IPADOS`, `MACOS`, or `TVOS`. There is no `apple` value. As in the CLI, `observe_versions`, `observe_metrics_summary`, and `observe_routes` return separate Android and iOS results without `platform`, and `observe_metrics`, `observe_event_names`, and `observe_events` return results from all platforms.
+- **Environment:** only `observe_event_names` and `observe_events` take `environment`. `observe_versions`, `observe_metrics_summary`, `observe_metrics`, and `observe_routes` have no environment input, unlike the CLI's `--environment` flag.
+- **Time range:** `days` (up to 365), or `start` and `end`. The default is the last 60 days. `start` and `end` must be ISO 8601 date-times with a timezone, such as `2026-10-01T00:00:00Z`. A date-only value fails. Unlike the CLI, `end` does not need `start`. `observe_session` takes no time range.
+- **Pagination:** pass `pageInfo.endCursor` from a response back as `nextCursor`. For `observe_metrics`, `observe_events`, and `observe_routes`, also pass the returned `startTime` and `endTime` as `start` and `end`, and keep the other inputs the same. Routes paginate per platform. Session timelines paginate metrics and logs separately.
+- **Plan gating and usage:** plan limits are the same as for the CLI. Each tool call counts toward the account's Expo MCP Server usage.
+- **Defaults and limits:** `observe_metrics` sorts `newest` first by default. The CLI's `--sort` defaults to `oldest`. `observe_routes` takes a `limit` of up to 100, and the CLI takes up to 200. `observe_events` takes `sort`, and the CLI's `observe:events` has no `--sort`.
+
 ## Supported Metrics
 
 ### App-startup metrics
