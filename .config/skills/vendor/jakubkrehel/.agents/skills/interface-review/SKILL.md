@@ -18,9 +18,7 @@ The author is asking "did I make this worse?". Report what the change caused and
 
 Read the whole diff before forming an opinion of it. A skimmed diff produces findings about code the next hunk already fixed.
 
-## Core principles
-
-### 1. Resolve the change scope first
+## 1. Resolve the change scope first
 
 The whole invocation is the target, so `/interface-review pr 482` reviews pull request 482. [Scope resolution](scope-resolution.md) holds the accepted targets and how each resolves.
 
@@ -34,7 +32,7 @@ Record the base commit of the resolved range as `$BASE` and name it in the scope
 
 Exclude lockfiles, snapshots, generated output, vendored code and binaries per [Excluded paths](scope-resolution.md#excluded-paths), and name what you excluded. If nothing survives the exclusions, treat it as no change.
 
-### 2. With no change, ask rather than invent one
+## 2. With no change, ask rather than invent one
 
 A clean tree with nothing ahead of the merge base means there is no change to review. Never fall back to `HEAD~1..HEAD` on your own. The last commit is whatever happened to land, often a merge or someone else's work.
 
@@ -47,7 +45,7 @@ Gather the facts in [Nothing to review](scope-resolution.md#nothing-to-review), 
 
 Where exclusions emptied the scope, name the excluded files in the offer. Never report a review of nothing as `Approve`.
 
-### 3. A diff is not a surface
+## 3. A diff is not a surface
 
 A changed file is evidence, not the review subject. Its **blast radius** is the set of surfaces it renders in; review those.
 
@@ -55,13 +53,13 @@ Expand one hop by default, to the direct importers and callers. Expand a second 
 
 Review at most five consumers in total across both hops, ordered by [the rule in Scope resolution](scope-resolution.md#expanding-to-consumers). State how many you did not expand, since an unstated cutoff reads as completeness.
 
-### 4. Read the removed lines
+## 4. Read the removed lines
 
 Regressions are invisible in the post-change state. Read the `-` side of every hunk against [Removed signals](removed-signals.md).
 
 A signal is a lead, not a finding. A removal is a regression only when nothing in the change replaces it, and the domain skill owns that judgement. Route each unmatched removal to its owner, report only what that skill confirms and status it `Regression`.
 
-### 5. Classify every finding
+## 5. Classify every finding
 
 Give every finding one status:
 
@@ -79,7 +77,7 @@ git blame -L <line>,<line> "$BASE"..<head-ref> -- path/to/file
 
 For uncommitted work, drop the range. A line marked `Not Committed Yet` or blamed on a commit inside `$BASE..HEAD` belongs to the change.
 
-### 6. Hold the change to its stated intent
+## 6. Hold the change to its stated intent
 
 Read the pull request title and body, the linked issue and the commit messages, then review whether the interface delivers what they claim.
 
@@ -92,13 +90,13 @@ This is how you find the **incomplete** change, which a surface review misses be
 
 Do not report scope creep. Whether a change does too much is a process question, not an interface one.
 
-### 7. Hand the review to `better-interface`
+## 7. Hand the review to `better-interface`
 
 Hand `better-interface` the scope block, the affected surfaces and a status on every finding, and report in the format below.
 
 If `better-interface` is unavailable, report the resolved scope and the file inventory, name it as the missing skill and stop. Do not invent a severity scale, a cap or a verdict.
 
-### 8. Never mutate the working tree
+## Never mutate the working tree
 
 A change review is read-only, including the checkout. `git fetch` writes only to `.git` and is permitted. `gh pr checkout`, `git checkout`, `git switch` and `git stash` rewrite the files the author has open, so they are never permitted. Fetch pull request refs and read them in place.
 

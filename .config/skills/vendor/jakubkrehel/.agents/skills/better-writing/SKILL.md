@@ -1,6 +1,6 @@
 ---
 name: better-writing
-description: Writes and reviews your interface copy, from labels and errors to empty states and confirmations, so it matches your product's voice and tells people what to do next.
+description: Writes and reviews interface copy, from labels and errors to empty states and confirmations, so it matches the product's voice and tells people what to do next.
 ---
 
 # Writing
