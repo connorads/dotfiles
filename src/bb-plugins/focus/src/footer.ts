@@ -19,7 +19,7 @@ export function mountFooter(document: Document, actions: {
     if (!(event.target instanceof Element) || !event.target.closest(selector)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (event.type === 'contextmenu') actions.choose();
+    if (event.type === 'contextmenu' || document.defaultView?.matchMedia('(pointer: coarse)').matches) actions.choose();
     else actions.toggle();
   };
   document.addEventListener('click', handle, true);

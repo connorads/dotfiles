@@ -69,7 +69,7 @@ const report = (cause: unknown) => console.error(`focus: ${message(cause)}`);
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'connection', component: Connection });
-  const panel = app.experimental_sidebarFooter.register({ kind: 'disclosure', id: 'focus', label: 'Toggle focus · Right-click to choose projects', icon: 'EyeOff', component: Panel });
+  const panel = app.experimental_sidebarFooter.register({ kind: 'disclosure', id: 'focus', label: 'Focus view · Tap or right-click to choose projects', icon: 'EyeOff', component: Panel });
   app.contentScripts.register({ id: 'focus-footer', mount: () => mountFooter(document, {
     toggle: () => { panel.close(); void rpc().call('toggle', { projectId: null }).then(receive, report); },
     choose: () => panel.open(),

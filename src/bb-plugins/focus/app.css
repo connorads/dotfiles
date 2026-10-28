@@ -20,3 +20,8 @@
 
 button.fx-active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
 button.fx-active [data-icon-root] { opacity: 1; }
+
+@media (pointer: coarse) {
+  .fx-pin { opacity: 1; min-width: 44px; min-height: 44px; }
+  .fx-pick, .fx-button { min-height: 44px; }
+}
