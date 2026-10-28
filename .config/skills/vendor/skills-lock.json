@@ -100,6 +100,13 @@
       "skillPath": ".agents/skills/explainer-motion/SKILL.md",
       "computedHash": "13aec70f73f9f65fe3d64645956f47c8429c4a04f295a035dde05da16928774b"
     },
+    "feynman": {
+      "source": "leostera/feynman",
+      "ref": "v0.8.0",
+      "sourceType": "github",
+      "skillPath": "skills/feynman/SKILL.md",
+      "computedHash": "c7e8a2bef9d4473b91c78501ad92b8078e5a44e076c49172276d4dc7172f945c"
+    },
     "fframes-video": {
       "source": "dmtrKovalenko/fframes",
       "sourceType": "github",

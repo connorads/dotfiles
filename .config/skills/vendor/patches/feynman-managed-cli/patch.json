@@ -1,0 +1,6 @@
+{
+  "reason": "Use the repository package manager and an installed Feynman CLI; prevent task-time package-runner downloads.",
+  "files": [
+    ".agents/skills/feynman/SKILL.md"
+  ]
+}
