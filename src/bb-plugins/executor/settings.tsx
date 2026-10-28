@@ -53,8 +53,8 @@ function ConnectionRow({ connection, signIn, error, run }: {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const id = { id: connection.id };
   return <li className="rounded-md px-2 py-2 hover:bg-accent/50">
-    <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1">
+    <div className="ex-connection">
+      <div className="ex-connection-name min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <span className="truncate">{connection.name}</span>
           {connection.isDefault && <span className="ex-badge">Default</span>}

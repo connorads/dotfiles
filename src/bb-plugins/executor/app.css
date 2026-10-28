@@ -68,3 +68,9 @@
 @media (prefers-reduced-motion: reduce) {
   .ex-row { transition: none; }
 }
+
+.ex-connection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ex-connection-name { flex-basis: 180px; }
+@media (pointer: coarse) {
+  .ex-connection button { min-height: 44px; }
+}
