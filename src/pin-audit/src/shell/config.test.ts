@@ -15,12 +15,10 @@ describe("parseMiseConfig", () => {
 [tools]
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu" }
-"github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
 `);
     expect(cfg.tools).toEqual({
-      "npm:@anthropic-ai/sandbox-runtime": { version: "0.0.62", prerelease: false },
-      "pipx:rembg": { version: "2.0.69", prerelease: false },
-      "github:CosineAI/cli": { version: "2", prerelease: true },
+      "npm:@anthropic-ai/sandbox-runtime": { version: "0.0.62" },
+      "pipx:rembg": { version: "2.0.69" },
     });
   });
 
@@ -31,8 +29,8 @@ describe("parseMiseConfig", () => {
   });
 
   test("a table without a version key is a tool with no pin", () => {
-    const cfg = parsed(`[tools]\n"github:CosineAI/cli" = { prerelease = true }\n`);
-    expect(cfg.tools["github:CosineAI/cli"]).toEqual({ version: null, prerelease: true });
+    const cfg = parsed(`[tools]\n"pipx:rembg" = { extras = "cli,cpu" }\n`);
+    expect(cfg.tools["pipx:rembg"]).toEqual({ version: null });
   });
 
   test("keys outside [tools] are not tools", () => {

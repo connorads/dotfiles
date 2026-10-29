@@ -13,7 +13,7 @@
 # Verdicts: OK   condition still holds, keep the pin
 #           FLAG condition cleared, loosen/remove the pin
 #           INFO not mechanically checkable, guard restated for manual recheck
-#           SKIP probe failed (offline / gh auth), or the audit could not run
+#           SKIP probe failed (offline), or the audit could not run
 #
 # Which pins are audited, and which are deliberately not, live with the checks:
 # ~/src/pin-audit/src/core/checks.ts.

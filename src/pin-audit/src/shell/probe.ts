@@ -48,29 +48,6 @@ const npmLatest = async (pkg: string): Promise<Probe> => {
   return { kind: "latestVersion", version: version === "" ? null : version };
 };
 
-/** Versioned tags only - the rolling `latest`/`nightly` tags are not releases. */
-const STABLE_TAG_JQ = '[.[].tagName | select(test("^v?[0-9]"))] | first // empty';
-
-const ghStableRelease = async (repo: string): Promise<Probe> => {
-  const ran = await run([
-    "gh",
-    "release",
-    "list",
-    "--repo",
-    repo,
-    "--exclude-pre-releases",
-    "--limit",
-    "20",
-    "--json",
-    "tagName",
-    "--jq",
-    STABLE_TAG_JQ,
-  ]);
-  if (!ran.ok) return { kind: "unavailable", why: "gh release list failed" };
-  const tag = ran.stdout.trim();
-  return { kind: "stableRelease", tag: tag === "" ? null : tag };
-};
-
 /** A `mise outdated --bump --json` value, before it is trusted as a DriftRow. */
 const isRow = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -155,7 +132,6 @@ const handoffVersions = async (): Promise<Probe> => {
 export const probes: Probes = {
   miseLatest,
   npmLatest,
-  ghStableRelease,
   miseOutdatedBump,
   hkVersions,
   handoffVersions,

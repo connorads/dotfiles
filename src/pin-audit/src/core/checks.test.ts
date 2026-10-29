@@ -7,13 +7,12 @@ const CFG_PATH = "/home/u/.config/mise/config.toml";
 
 const config = (tools: Record<string, ToolEntry>): MiseConfig => ({ path: CFG_PATH, tools });
 
-const entry = (version: string | null, prerelease = false): ToolEntry => ({ version, prerelease });
+const entry = (version: string | null): ToolEntry => ({ version });
 
 /** Probes that fail the test if called - each case opts into what it needs. */
 const noProbes: Probes = {
   miseLatest: () => Promise.reject(new Error("miseLatest not stubbed")),
   npmLatest: () => Promise.reject(new Error("npmLatest not stubbed")),
-  ghStableRelease: () => Promise.reject(new Error("ghStableRelease not stubbed")),
   miseOutdatedBump: () => Promise.reject(new Error("miseOutdatedBump not stubbed")),
   hkVersions: () => Promise.reject(new Error("hkVersions not stubbed")),
   handoffVersions: () => Promise.reject(new Error("handoffVersions not stubbed")),
@@ -147,47 +146,6 @@ describe("sandbox-runtime", () => {
   });
 });
 
-describe("CosineAI/cli", () => {
-  const flagged = config({ "github:CosineAI/cli": entry("2", true) });
-
-  test("reads prerelease=true as the escape hatch, ignoring the version", () => {
-    expect(checkById("CosineAI/cli").readPin(flagged)).toEqual({ kind: "flagSet" });
-  });
-
-  test("a version pin without prerelease=true is not the escape hatch", () => {
-    const cfg = config({ "github:CosineAI/cli": entry("2") });
-    expect(checkById("CosineAI/cli").readPin(cfg)).toEqual({ kind: "gone" });
-  });
-
-  test("reports the check as droppable once prerelease=true is gone", () => {
-    const v = verdict("CosineAI/cli", config({}), unavailable);
-    expect(render(v)).toBe(
-      `pin-audit: OK   CosineAI/cli - prerelease=true gone from ${CFG_PATH}; drop this check`,
-    );
-  });
-
-  test("keeps the flag while every versioned release is still pre-release", () => {
-    const v = verdict("CosineAI/cli", flagged, { kind: "stableRelease", tag: null });
-    expect(render(v)).toBe(
-      "pin-audit: OK   CosineAI/cli - all versioned releases still pre-release; keep prerelease=true",
-    );
-  });
-
-  test("flags once a stable release exists", () => {
-    const v = verdict("CosineAI/cli", flagged, { kind: "stableRelease", tag: "v2.1.0" });
-    expect(render(v)).toBe(
-      `pin-audit: FLAG CosineAI/cli - stable release v2.1.0 exists; drop prerelease=true (${CFG_PATH} [tools])`,
-    );
-  });
-
-  test("a failed probe degrades to SKIP", () => {
-    const v = verdict("CosineAI/cli", flagged, unavailable);
-    expect(render(v)).toBe(
-      "pin-audit: SKIP CosineAI/cli prerelease=true - gh probe failed (gh auth/offline?)",
-    );
-  });
-});
-
 describe("hk-pin", () => {
   const anyCfg = config({});
 
@@ -307,27 +265,24 @@ describe("audit", () => {
   const full = config({
     "pipx:rembg": entry("2.0.69"),
     "npm:@anthropic-ai/sandbox-runtime": entry("0.0.62"),
-    "github:CosineAI/cli": entry("2", true),
   });
 
   test("returns verdicts in declaration order", async () => {
     const probes: Probes = {
       miseLatest: async () => ({ kind: "latestVersion", version: "2.0.76" }),
       npmLatest: async () => ({ kind: "latestVersion", version: "0.0.66" }),
-      ghStableRelease: async () => ({ kind: "stableRelease", tag: null }),
       miseOutdatedBump: async () => noDrift,
       hkVersions: async () => hkMatch,
       handoffVersions: async () => handoffMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "ok"]);
   });
 
   test("flattens drift's per-tool verdicts in with the conditional ones", async () => {
     const probes: Probes = {
       miseLatest: async () => ({ kind: "latestVersion", version: "2.0.76" }),
       npmLatest: async () => ({ kind: "latestVersion", version: "0.0.66" }),
-      ghStableRelease: async () => ({ kind: "stableRelease", tag: null }),
       miseOutdatedBump: async () => ({
         kind: "outdated",
         rows: [row("uv", "0.11", "0.12", "0.12.4"), row("gcloud", "573", "580", "580.0.0")],
@@ -336,7 +291,7 @@ describe("audit", () => {
       handoffVersions: async () => handoffMatch,
     };
     const got = await audit(full, buildChecks(probes));
-    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "ok", "flag", "flag"]);
+    expect(got.map((v) => v.kind)).toEqual(["info", "ok", "ok", "ok", "ok", "flag", "flag"]);
   });
 
   test("probes overlap rather than running one after another", async () => {
@@ -353,7 +308,6 @@ describe("audit", () => {
     const probes: Probes = {
       miseLatest: held("mise"),
       npmLatest: held("npm"),
-      ghStableRelease: held("gh"),
       hkVersions: held("hk"),
       handoffVersions: held("handoff"),
       miseOutdatedBump: held("outdated"),
@@ -361,12 +315,11 @@ describe("audit", () => {
 
     const running = audit(full, buildChecks(probes));
     await Promise.resolve();
-    // All six are blocked on the same gate, so none can have finished first.
-    expect(started).toEqual(["mise", "npm", "gh", "hk", "handoff", "outdated"]);
+    // All five are blocked on the same gate, so none can have finished first.
+    expect(started).toEqual(["mise", "npm", "hk", "handoff", "outdated"]);
     release();
     expect((await running).map((v) => v.kind)).toEqual([
       "info",
-      "skip",
       "skip",
       "skip",
       "skip",
@@ -375,8 +328,8 @@ describe("audit", () => {
   });
 
   test("skips the probe entirely when the pin is already gone", async () => {
-    // drift, hk-pin and handoff-drift are unconditional, so only the three conditional probes stay unstubbed.
+    // drift, hk-pin and handoff-drift are unconditional, so only the two conditional probes stay unstubbed.
     const got = await audit(config({}), buildChecks(quietDrift));
-    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok", "ok", "ok", "ok"]);
+    expect(got.map((v) => v.kind)).toEqual(["ok", "ok", "ok", "ok", "ok", "ok"]);
   });
 });

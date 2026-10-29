@@ -12,7 +12,6 @@ write_configs() {
   mkdir -p "$TEST_HOME/.config/mise"
   cat >"$TEST_HOME/.config/mise/config.toml" <<'EOF'
 [tools]
-"github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu" }
 EOF
@@ -28,8 +27,8 @@ EOF
 }
 
 # Probe stubs keyed by env vars so each test picks its scenario:
-#   SRT_LATEST, COS_JSON, OUTDATED_JSON, HK_VERSION; unset any of
-#   MISE_OK/GH_OK/NPM_OK to simulate that probe failing (offline).
+#   SRT_LATEST, OUTDATED_JSON, HK_VERSION; unset any of
+#   MISE_OK/NPM_OK to simulate that probe failing (offline).
 write_probe_stubs() {
   # `mise` answers two probes: `ls-remote <tool>` (rembg) and the drift sweep
   # `outdated --bump --json`. The latter defaults to an empty object - no tool
@@ -42,13 +41,6 @@ case "$1" in
 esac
 case "$2" in
   pipx:rembg) echo "${REMBG_LATEST:-2.0.76}" ;;
-esac
-EOF
-  write_stub gh <<'EOF'
-#!/usr/bin/env bash
-[ -n "${GH_OK:-}" ] || exit 1
-case "$2" in
-  list) echo "${COS_STABLE:-}" ;;
 esac
 EOF
   write_stub npm <<'EOF'
@@ -74,7 +66,7 @@ setup() {
   [ -n "$bun_bin" ] || skip "bun absent (mise install bun)"
 
   setup_test_home
-  # Just bun, not its whole directory: the mise/gh/npm/hk stubs stay the only
+  # Just bun, not its whole directory: the mise/npm/hk stubs stay the only
   # spelling of those commands.
   ln -s "$bun_bin" "$TEST_BIN/bun"
   # The wrapper resolves its implementation as ~/src/pin-audit, so the isolated
@@ -83,7 +75,7 @@ setup() {
   ln -s "$REAL_HOME/src/pin-audit" "$TEST_HOME/src/pin-audit"
   write_configs
   write_probe_stubs
-  export MISE_OK=1 GH_OK=1 NPM_OK=1
+  export MISE_OK=1 NPM_OK=1
 }
 
 @test "all conditions holding reports OK/INFO and exits 0" {
@@ -91,23 +83,20 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"INFO rembg pinned 2.0.69"* ]]
   [[ "$output" == *"OK   sandbox-runtime 0.0.62 - latest 0.0.66 still pre-1.0"* ]]
-  [[ "$output" == *"OK   CosineAI/cli - all versioned releases still pre-release"* ]]
   [[ "$output" != *"FLAG"* ]]
 }
 
 @test "cleared conditions FLAG each pin but still exit 0" {
-  SRT_LATEST=1.0.0 COS_STABLE=v2.1.0 run_zsh_function "$AUDIT"
+  SRT_LATEST=1.0.0 run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"FLAG sandbox-runtime 0.0.62 - 1.0.0 landed"* ]]
-  [[ "$output" == *"FLAG CosineAI/cli - stable release v2.1.0 exists"* ]]
 }
 
 @test "failed probes degrade to SKIP and exit 0" {
-  unset MISE_OK GH_OK NPM_OK
+  unset MISE_OK NPM_OK
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"SKIP sandbox-runtime 0.0.62 - npm probe failed"* ]]
-  [[ "$output" == *"SKIP CosineAI/cli prerelease=true - gh probe failed"* ]]
   [[ "$output" != *"FLAG"* ]]
 }
 
@@ -163,7 +152,6 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK   rembg - exact pin gone"* ]]
   [[ "$output" == *"OK   sandbox-runtime - exact pin gone"* ]]
-  [[ "$output" == *"OK   CosineAI/cli - prerelease=true gone"* ]]
 }
 
 # hk builtin steps fail when hk.pkl's package pin and the binary disagree, and

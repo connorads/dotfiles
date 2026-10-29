@@ -10,8 +10,6 @@
 export interface ToolEntry {
   /** null when the entry carries no version key. */
   readonly version: string | null;
-  /** `prerelease = true`; absent means false. */
-  readonly prerelease: boolean;
 }
 
 /** The subset of a mise config this audit reads, plus where it came from. */
@@ -27,8 +25,6 @@ export type PinState =
   | { readonly kind: "gone" }
   /** An exact version pin. */
   | { readonly kind: "pinned"; readonly version: string }
-  /** A boolean escape hatch, e.g. `prerelease = true`. */
-  | { readonly kind: "flagSet" }
   /**
    * The check reads no pin from config and so is always active. `mise
    * outdated` reports each tool's requested range itself, so the drift check
@@ -58,8 +54,6 @@ export type Probe =
   | { readonly kind: "unavailable"; readonly why: string }
   /** Newest version upstream publishes; null when the listing was empty. */
   | { readonly kind: "latestVersion"; readonly version: string | null }
-  /** Newest versioned non-prerelease tag; null when none exists yet. */
-  | { readonly kind: "stableRelease"; readonly tag: string | null }
   /** Every tool mise resolved, drifted or not; the check filters. */
   | { readonly kind: "outdated"; readonly rows: readonly DriftRow[] }
   /** hk.pkl's pkl package pin and the hk binary's version; null when unreadable. */

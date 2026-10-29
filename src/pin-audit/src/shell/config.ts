@@ -19,13 +19,10 @@ const isTable = (value: unknown): value is Record<string, unknown> =>
 
 /** mise accepts a bare version string or a table; both normalise to ToolEntry. */
 const toolEntry = (value: unknown): ToolEntry | null => {
-  if (typeof value === "string") return { version: value, prerelease: false };
+  if (typeof value === "string") return { version: value };
   if (!isTable(value)) return null;
   const version = value["version"];
-  return {
-    version: typeof version === "string" ? version : null,
-    prerelease: value["prerelease"] === true,
-  };
+  return { version: typeof version === "string" ? version : null };
 };
 
 const firstLine = (message: string): string => message.split("\n")[0] ?? message;

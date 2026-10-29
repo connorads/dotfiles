@@ -22,8 +22,6 @@ export interface Probes {
   readonly miseLatest: (tool: string) => Promise<Probe>;
   /** `npm view <pkg> version`. */
   readonly npmLatest: (pkg: string) => Promise<Probe>;
-  /** Newest versioned non-prerelease release tag on a GitHub repo. */
-  readonly ghStableRelease: (repo: string) => Promise<Probe>;
   /** Every tool's requested range vs newest release (`mise outdated --bump`). */
   readonly miseOutdatedBump: () => Promise<Probe>;
   /** hk.pkl's `amends` package version and `hk --version`. */
@@ -53,8 +51,6 @@ const latestOf = (probe: Probe): string | null =>
 const REMBG_TOOL = "pipx:rembg";
 const SRT_PACKAGE = "@anthropic-ai/sandbox-runtime";
 const SRT_TOOL = `npm:${SRT_PACKAGE}`;
-const COSINE_REPO = "CosineAI/cli";
-const COSINE_TOOL = `github:${COSINE_REPO}`;
 
 /**
  * Guard: rembg 2.0.70+ hard-pins numpy>=2.3, which the numba/llvmlite chain
@@ -106,40 +102,6 @@ const sandboxRuntime = (probes: Probes): Check => ({
     return {
       kind: "flag",
       detail: `sandbox-runtime ${pin.version} - ${latest} landed (1.0+); revisit the exact pin (${cfgPath} [tools])`,
-    };
-  },
-});
-
-/**
- * Guard: every versioned CosineAI/cli release is flagged pre-release, so the
- * resolver needs prerelease=true. Drop it once a versioned stable release
- * exists. The rolling `latest`/`nightly` tags are not version releases and are
- * ignored.
- */
-const cosineCli = (probes: Probes): Check => ({
-  id: "CosineAI/cli",
-  readPin: (cfg) => (cfg.tools[COSINE_TOOL]?.prerelease ? { kind: "flagSet" } : { kind: "gone" }),
-  probe: (pin) =>
-    pin.kind === "flagSet" ? probes.ghStableRelease(COSINE_REPO) : Promise.resolve(notProbed),
-  judge: (pin, probe, cfgPath) => {
-    if (pin.kind !== "flagSet") {
-      return { kind: "ok", detail: `CosineAI/cli - prerelease=true gone from ${cfgPath}; drop this check` };
-    }
-    if (probe.kind !== "stableRelease") {
-      return {
-        kind: "skip",
-        detail: `CosineAI/cli prerelease=true - gh probe failed (gh auth/offline?)`,
-      };
-    }
-    if (probe.tag !== null) {
-      return {
-        kind: "flag",
-        detail: `CosineAI/cli - stable release ${probe.tag} exists; drop prerelease=true (${cfgPath} [tools])`,
-      };
-    }
-    return {
-      kind: "ok",
-      detail: `CosineAI/cli - all versioned releases still pre-release; keep prerelease=true`,
     };
   },
 });
@@ -263,7 +225,6 @@ const drift = (probes: Probes): Check => ({
 export const buildChecks = (probes: Probes): readonly Check[] => [
   rembg(probes),
   sandboxRuntime(probes),
-  cosineCli(probes),
   hkPin(probes),
   handoffDrift(probes),
   drift(probes),
