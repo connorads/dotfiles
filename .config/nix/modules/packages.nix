@@ -126,7 +126,6 @@ let
   # ---------------------------------------------------------------------------
   workstationExtras = with pkgs; [
     # Dev tools
-    pipx
     miller
     usql
     duckdb
@@ -155,7 +154,7 @@ let
     android-tools # adb — needed by scrcpy
     scrcpy
     qrencode
-    (yt-dlp.override { javascriptSupport = false; }) # deno (Rust) is slow to build; yt-dlp finds deno on PATH (mise) at runtime
+    yt-dlp
     ffmpeg
     imagemagick
     libwebp
