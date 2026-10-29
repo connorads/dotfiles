@@ -12,8 +12,9 @@ export interface HistoryRecord {
   readonly ts: string;
   readonly source: string;
   readonly name: string;
-  readonly mode: "inject" | "copy" | "install";
-  /** tmux pane (inject), null (copy), or the project root (install). */
+  /** `bb` is `skl load --print`, whose only caller is the BB skill-loader plugin. */
+  readonly mode: "inject" | "copy" | "install" | "bb";
+  /** tmux pane (inject), null (copy, bb), or the project root (install). */
   readonly target: string | null;
   readonly submit: boolean;
 }
@@ -84,4 +85,23 @@ export const renderHistory = (rows: readonly HistorySummaryRow[]): string[] => {
     const suffix = date.length > 0 ? `  last ${date}` : "";
     return `${String(r.count).padStart(width)}  ${r.ref}${suffix}`;
   });
+};
+
+const STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Warning text when the newest record is more than 7 days older than `now`,
+ * else null. A quiet log usually means a load path stopped recording, not
+ * that no skills were loaded.
+ */
+export const staleHistoryWarning = (
+  rows: readonly HistorySummaryRow[],
+  now: string,
+): string | null => {
+  const newest = rows.reduce((max, r) => (r.last > max ? r.last : max), "");
+  if (newest === "") return null;
+  const age = Date.parse(now) - Date.parse(newest);
+  if (!(age > STALE_AFTER_MS)) return null;
+  const days = Math.floor(age / (24 * 60 * 60 * 1000));
+  return `skl: newest history record is ${days} days old (${newest.slice(0, 10)}); recent loads may not be recording`;
 };

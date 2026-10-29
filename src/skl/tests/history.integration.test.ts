@@ -52,6 +52,73 @@ describe("skl history (seeded file)", () => {
   });
 });
 
+describe("skl history staleness warning", () => {
+  const dir = mkdtempSync(join(tmpdir(), "skl-history-stale-"));
+  const rec = (ts: string): string =>
+    JSON.stringify({ schema_version: 1, ts, source: "repo", name: "alpha", mode: "inject", target: "%1", submit: false });
+
+  test("newest record older than 7 days → warning on stderr, counts still on stdout", async () => {
+    const file = join(dir, "old.jsonl");
+    await Bun.write(file, `${rec("2020-01-01T00:00:00.000Z")}\n`);
+    const out = runHistory(file);
+    expect(out.exitCode).toBe(0);
+    expect(out.stdout.toString()).toContain("1  repo/alpha  last 2020-01-01");
+    expect(out.stderr.toString()).toContain("newest history record is");
+    expect(out.stderr.toString()).toContain("(2020-01-01)");
+  });
+
+  test("fresh record → no warning", async () => {
+    const file = join(dir, "fresh.jsonl");
+    await Bun.write(file, `${rec(new Date().toISOString())}\n`);
+    const out = runHistory(file);
+    expect(out.exitCode).toBe(0);
+    expect(out.stderr.toString()).toBe("");
+  });
+});
+
+// The BB skill-loader path: pointers go to stdout (no tmux, no clipboard), and
+// each printed skill appends one record with mode "bb".
+describe("skl load --stdin --print", () => {
+  test("prints joined pointers and records one bb line per skill", async () => {
+    const file = join(mkdtempSync(join(tmpdir(), "skl-history-print-")), "history.jsonl");
+    const load = Bun.spawnSync(
+      [process.execPath, CLI, "load", "--stdin", "--print", "--path", REPO],
+      {
+        stdin: new TextEncoder().encode("repo/alpha\nrepo/noname\n"),
+        env: { ...process.env, SKL_HISTORY_FILE: file },
+      },
+    );
+    expect(load.exitCode).toBe(0);
+    expect(load.stderr.toString()).toBe("");
+
+    const preview = (ref: string): string => {
+      const out = Bun.spawnSync([process.execPath, CLI, "preview", ref, "--path", REPO]).stdout.toString();
+      const [name, ...rest] = out.trimEnd().split("\n\n");
+      return `${name} ${rest.join("\n\n")}`;
+    };
+    expect(load.stdout.toString()).toBe(`${preview("repo/alpha")}\n\n${preview("repo/noname")}\n`);
+
+    const lines = (await Bun.file(file).text()).trimEnd().split("\n").map((l) => JSON.parse(l));
+    expect(lines.length).toBe(2);
+    expect(lines[0]).toMatchObject({ schema_version: 1, source: "repo", name: "alpha", mode: "bb", target: null, submit: false });
+    expect(lines[1]).toMatchObject({ source: "repo", name: "noname", mode: "bb", target: null });
+  });
+
+  test("an unknown ref fails the batch and records nothing", async () => {
+    const file = join(mkdtempSync(join(tmpdir(), "skl-history-print-")), "history.jsonl");
+    const load = Bun.spawnSync(
+      [process.execPath, CLI, "load", "--stdin", "--print", "--path", REPO],
+      {
+        stdin: new TextEncoder().encode("repo/alpha\nrepo/gone\n"),
+        env: { ...process.env, SKL_HISTORY_FILE: file },
+      },
+    );
+    expect(load.exitCode).toBe(1);
+    expect(load.stdout.toString()).toBe("");
+    expect(await Bun.file(file).exists()).toBe(false);
+  });
+});
+
 const tmuxAvailable = (): boolean => {
   try {
     return Bun.spawnSync(["tmux", "start-server"]).exitCode === 0;

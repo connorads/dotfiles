@@ -100,6 +100,7 @@ describe("parseArgs", () => {
         paths: ["/a", "/b"],
         submit: true,
         copy: false,
+        print: false,
         all: false,
         folders: false,
         global: false,
@@ -121,6 +122,12 @@ describe("parseArgs", () => {
     const r = parseArgs(["--stdin", "--copy"]);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { copy: true, all: false } });
+  });
+
+  test("--print composes with --stdin (the BB skill-loader path)", () => {
+    const r = parseArgs(["load", "--stdin", "--print"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { print: true, copy: false } });
   });
 
   test("install subcommand carries the ref", () => {

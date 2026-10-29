@@ -5,6 +5,7 @@
 //   skl <ref>                → load <ref>          (`load` verb optional)
 //   skl load <ref>           → load <ref>
 //   skl load --stdin         → load refs read from stdin (one per line)
+//   skl load --stdin --print → print joined pointers to stdout (the BB skill-loader)
 //   skl install <ref>        → install <ref> into the project (copy vetted bytes)
 //   skl install --stdin      → install refs read from stdin (the picker's ctrl-i)
 //   skl list                 → list   (fed to fzf in the pipeline)
@@ -14,7 +15,7 @@
 //   skl --help | -h          → help
 // Verbs shadow bare skill names (a skill named "history" needs `skl load
 // history` or a qualified ref) - same precedence as list/preview/inline.
-// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy,
+// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy, --print,
 // --all, --folders (list: folder rows lead each source block), --global (install
 // into autoload dir), --yes (skip install confirmation).
 
@@ -29,6 +30,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   let submit = false;
   let stdin = false;
   let copy = false;
+  let print = false;
   let all = false;
   let folders = false;
   let global = false;
@@ -49,6 +51,10 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     }
     if (arg === "--copy") {
       copy = true;
+      continue;
+    }
+    if (arg === "--print") {
+      print = true;
       continue;
     }
     if (arg === "--all") {
@@ -79,7 +85,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     positionals.push(arg);
   }
 
-  const options: Options = { target, paths, submit, copy, all, folders, global, yes };
+  const options: Options = { target, paths, submit, copy, print, all, folders, global, yes };
 
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });

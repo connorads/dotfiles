@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { historyLine, summariseHistory, renderHistory } from "./history.ts";
+import { historyLine, summariseHistory, renderHistory, staleHistoryWarning } from "./history.ts";
 import type { DiscoveredSkill } from "./types.ts";
 
 const skill = (source: string, name: string): DiscoveredSkill => ({
@@ -37,6 +37,11 @@ describe("historyLine", () => {
   test("install mode records the project root as target", () => {
     const line = historyLine(skill("expo", "expo-router"), { mode: "install", target: "/repo", submit: false }, "2026-07-16T10:00:00.000Z");
     expect(JSON.parse(line)).toMatchObject({ mode: "install", target: "/repo" });
+  });
+
+  test("bb mode (skl load --print) carries a null target", () => {
+    const line = historyLine(skill("repo", "alpha"), { mode: "bb", target: null, submit: false }, "2026-07-16T10:00:00.000Z");
+    expect(JSON.parse(line)).toMatchObject({ mode: "bb", target: null, submit: false });
   });
 });
 
@@ -99,5 +104,34 @@ describe("renderHistory", () => {
 
   test("omits the last-date suffix when no record carried a ts", () => {
     expect(renderHistory([{ ref: "repo/alpha", count: 1, last: "" }])).toEqual(["1  repo/alpha"]);
+  });
+});
+
+describe("staleHistoryWarning", () => {
+  const rows = (last: string) => [
+    { ref: "repo/alpha", count: 2, last },
+    { ref: "repo/beta", count: 1, last: "2026-07-01T00:00:00.000Z" },
+  ];
+
+  test("newest record within 7 days → no warning", () => {
+    expect(staleHistoryWarning(rows("2026-07-10T00:00:00.000Z"), "2026-07-17T00:00:00.000Z")).toBeNull();
+  });
+
+  test("newest record more than 7 days old → warning naming its age and date", () => {
+    expect(staleHistoryWarning(rows("2026-07-10T00:00:00.000Z"), "2026-07-17T00:00:01.000Z")).toBe(
+      "skl: newest history record is 7 days old (2026-07-10); recent loads may not be recording",
+    );
+  });
+
+  test("uses the newest record across all rows, not the first row", () => {
+    const text = [
+      { ref: "repo/alpha", count: 5, last: "2026-01-01T00:00:00.000Z" },
+      { ref: "repo/beta", count: 1, last: "2026-07-16T00:00:00.000Z" },
+    ];
+    expect(staleHistoryWarning(text, "2026-07-17T00:00:00.000Z")).toBeNull();
+  });
+
+  test("no timestamps at all → no warning", () => {
+    expect(staleHistoryWarning([{ ref: "repo/alpha", count: 1, last: "" }], "2026-07-17T00:00:00.000Z")).toBeNull();
   });
 });

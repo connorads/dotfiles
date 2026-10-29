@@ -113,13 +113,16 @@ loads/copies, stdin loads, and inline bundles; it does not change source discove
 
 ### History record
 
-One JSONL line appended per **successful** load (inject or copy) or install to the
+One JSONL line appended per **successful** load (inject, copy or print) or install to the
 machine-local usage log at `${XDG_STATE_HOME:-~/.local/state}/skl/history.jsonl`:
 `schema_version`, ISO-8601 UTC `ts`, `source`, `name`, `mode`
-(`inject`/`copy`/`install`), `target` (pane id for inject, null for copy, project root
-for install), `submit`. Best-effort - a failed write warns on stderr and never fails the
+(`inject`/`copy`/`install`/`bb`), `target` (pane id for inject, null for copy and bb,
+project root for install), `submit`. `bb` is `skl load --print`, whose only caller is
+the BB skill-loader plugin. Best-effort - a failed write warns on stderr and never fails the
 load. `skl history` summarises the file into `count  source/name  last <date>` rows
-(mode-agnostic). `SKL_HISTORY_FILE` overrides the path (test seam). See ADR-0007.
+(mode-agnostic), and warns on stderr when the newest record is over 7 days old - a
+quiet log usually means a load path stopped recording. `SKL_HISTORY_FILE` overrides the
+path (test seam). See ADR-0007.
 
 ## Resolved decisions
 
@@ -158,6 +161,10 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   batch is one joined clipboard write (a second write would clobber the first). The
   named tmux buffer remains as a fallback (choose-buffer / prefix + =; named buffers
   sit outside the automatic stack, so prefix + ] won't see them).
+- **Print to stdout**: `skl load --stdin --print` writes the same joined pointer text
+  to stdout, with no status lines, and records each skill. The BB skill-loader uses
+  it for pills, so BB loads reach the history log; `skl preview` stays unrecorded
+  because it also renders the picker's preview pane.
 - **Command + location**: command is `skl`; Bun project root at `~/src/skl/`
   (`src/`, `tests/`, `bin/`, `package.json`, this `CONTEXT.md` and `docs/adr/`).
   Config lives at `~/.config/skl/config.json`. `~/.local/bin/skl` is a thin

@@ -16,7 +16,13 @@ import {
   renderSourcePreview,
   linesToRefs,
 } from "./core/display.ts";
-import { historyLine, summariseHistory, renderHistory } from "./core/history.ts";
+import {
+  type HistoryRecord,
+  historyLine,
+  summariseHistory,
+  renderHistory,
+  staleHistoryWarning,
+} from "./core/history.ts";
 import type {
   ArgError,
   Config,
@@ -56,7 +62,8 @@ Usage:
   skl preview <ref>         render a skill's pointer (the fzf preview)
   skl inline <ref>          print the full content bundle (SKILL.md + retained
                             text files) for pasting where there is no filesystem
-  skl history               show usage counts per skill (most-loaded first)
+  skl history               show usage counts per skill (most-loaded first);
+                            warns when the newest record is over 7 days old
   skl --help                show this help
 
 Options:
@@ -64,6 +71,8 @@ Options:
   --path <dir>              override config sources entirely (repeatable)
   --submit                  press Enter after injecting (default: never)
   --copy                    copy pointer(s) to the system clipboard, no injection
+  --print                   print pointer(s) to stdout, no injection; history
+                            records mode "bb" (the BB skill-loader's path)
   --all                     include files excluded from normal payloads in trees/bundles
   --folders                 list: lead each source block with a "source/  (count)" folder row
   --global                  install: into the global autoload dir, not the project
@@ -170,7 +179,7 @@ const buildConfig = async (
 // The load itself succeeded, and curation data is not worth failing it for.
 const recordLoad = async (
   skill: DiscoveredSkill,
-  mode: "inject" | "copy" | "install",
+  mode: HistoryRecord["mode"],
   target: string | null,
   submit: boolean,
 ): Promise<void> => {
@@ -196,14 +205,25 @@ const loadRefs = async (
     return 1;
   }
 
-  if (options.copy) {
-    // One clipboard write for the whole batch (a second write would clobber the
-    // first), same name-then-bulk shape the injection path produces.
-    const text = resolved.value
+  // The name-then-bulk shape the injection path produces, one blank line
+  // between skills: the single clipboard write for --copy (a second write
+  // would clobber the first) and the whole of stdout for --print.
+  const joined = (): string =>
+    resolved.value
       .map((skill) => renderPointer(skill))
       .map((p) => `${p.skillName} ${p.bulk}`)
       .join("\n\n");
-    const copied = await copyToClipboard(text);
+
+  if (options.print) {
+    // stdout carries only the pointer text (no status lines): the BB
+    // skill-loader uses it verbatim as the pill's agent context.
+    env.stdout(`${joined()}\n`);
+    for (const skill of resolved.value) await recordLoad(skill, "bb", null, options.submit);
+    return 0;
+  }
+
+  if (options.copy) {
+    const copied = await copyToClipboard(joined());
     if (!copied.ok) {
       env.stderr(`skl: ${copied.error.stderr || copied.error.command}\n`);
       return 1;
@@ -320,6 +340,8 @@ const main = async (argv: readonly string[]): Promise<number> => {
       return 0;
     }
     for (const line of renderHistory(rows)) env.stdout(`${line}\n`);
+    const stale = staleHistoryWarning(rows, env.now());
+    if (stale !== null) env.stderr(`${stale}\n`);
     return 0;
   }
 

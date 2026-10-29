@@ -88,6 +88,8 @@ export interface Options {
   readonly submit: boolean;
   /** Copy pointer(s) to the system clipboard instead of injecting into a pane. */
   readonly copy: boolean;
+  /** Print pointer(s) to stdout instead of injecting (the BB skill-loader's path). */
+  readonly print: boolean;
   /** Disable payload excludes for this invocation. */
   readonly all: boolean;
   /** `list` only: emit a folder row before each source block (the picker's grouped view). */
