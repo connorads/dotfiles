@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { createRunner, defaultPathPrefix } from './run.ts';
 import { createSkl } from './skl.ts';
@@ -52,7 +53,12 @@ const hasSkl = (() => {
 })();
 
 test('the real skl listing parses and a real pointer names its SKILL.md', { skip: !hasSkl && 'skl not installed' }, async () => {
+  // Keep the test's load out of the user's real usage history. The runner
+  // copies process.env when created, so set it first.
+  const history = join(mkdtempSync(join(tmpdir(), 'skill-loader-history-')), 'history.jsonl');
+  process.env.SKL_HISTORY_FILE = history;
   const skl = createSkl(createRunner({ command: 'skl', timeoutMs: 15_000, pathPrefix: defaultPathPrefix() }));
+  delete process.env.SKL_HISTORY_FILE;
   const rows = await skl.list();
   const folder = rows.find(row => row.kind === 'folder');
   assert.ok(folder && folder.kind === 'folder');
@@ -60,4 +66,6 @@ test('the real skl listing parses and a real pointer names its SKILL.md', { skip
   const first = rows.find(row => row.kind === 'skill');
   assert.ok(first);
   assert.match(await skl.pointers([first.ref]), /^\S+ \(skl: .+\)[\s\S]*Read SKILL\.md at \/.+\/SKILL\.md and follow it\.$/);
+  const records = readFileSync(history, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(records.map(r => [`${r.source}/${r.name}`, r.mode]), [[first.ref, 'bb']]);
 });

@@ -79,29 +79,6 @@ function subsequenceSpan(needle: string, haystack: string): number | null {
   return best;
 }
 
-/**
- * Expand folder refs to their member skill refs, dropping duplicates. A ref
- * that matches nothing lands in `missing`: skl fails a whole batch on one bad
- * ref, and so does the caller.
- */
-export function expandRefs(refs: readonly string[], rows: readonly Row[]): { refs: string[]; missing: string[] } {
-  const out: string[] = [];
-  const missing: string[] = [];
-  const seen = new Set<string>();
-  for (const ref of refs) {
-    const members = ref.endsWith('/')
-      ? rows.filter(row => row.kind === 'skill' && row.source === ref.slice(0, -1)).map(row => row.ref)
-      : rows.some(row => row.kind === 'skill' && row.ref === ref) ? [ref] : [];
-    if (members.length === 0) missing.push(ref);
-    for (const member of members) {
-      if (seen.has(member)) continue;
-      seen.add(member);
-      out.push(member);
-    }
-  }
-  return { refs: out, missing };
-}
-
 /** Folder refs in a selection: installing one copies a whole group, so it needs confirming. */
 export function groupRefs(refs: readonly string[]): string[] {
   return refs.filter(ref => ref.endsWith('/'));

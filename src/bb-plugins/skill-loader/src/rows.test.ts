@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { expandRefs, filterRows, groupRefs, parseListLines } from './rows.ts';
+import { filterRows, groupRefs, parseListLines } from './rows.ts';
 
 const listing = [
   'mine/  (2)',
@@ -61,18 +61,6 @@ test('every term must match', () => {
   const rows = parseListLines(listing);
   assert.deepEqual(filterRows(rows, 'mine type').map(row => row.ref), ['mine/typescript']);
   assert.equal(filterRows(rows, '  ').length, rows.length);
-});
-
-test('a folder ref expands to its members without duplicates', () => {
-  const rows = parseListLines(listing);
-  assert.deepEqual(expandRefs(['mine/tdd', 'mine/', 'expo/'], rows), {
-    refs: ['mine/tdd', 'mine/typescript', 'expo/expo-router'], missing: [],
-  });
-});
-
-test('unknown refs are reported, not silently dropped', () => {
-  const rows = parseListLines(listing);
-  assert.deepEqual(expandRefs(['mine/gone', 'nope/'], rows), { refs: [], missing: ['mine/gone', 'nope/'] });
 });
 
 test('group refs are the ones that need an install confirmation', () => {

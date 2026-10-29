@@ -12,6 +12,12 @@ function fakeSkl(options: { installCode?: number } = {}) {
     if (verb === 'list') return { code: 0, stdout: 'mine/  (2)\nmine/tdd  T\nmine/ts\nexpo/  (1)\nexpo/router\n', stderr: '' };
     if (verb === 'preview' && ref && skills[ref]) return { code: 0, stdout: `${skills[ref]}\n\n(skl: ${ref})\n`, stderr: '' };
     if (verb === 'preview') return { code: 1, stdout: '', stderr: `skl: no skill named "${ref}"\n` };
+    if (verb === 'load') {
+      const refs = (stdin ?? '').split('\n').filter(Boolean).flatMap(r => r.endsWith('/') ? Object.keys(skills).filter(k => k.startsWith(r)) : [r]);
+      const gone = refs.find(r => !skills[r]);
+      if (gone) return { code: 1, stdout: '', stderr: `skl: no skill named "${gone}"\n` };
+      return { code: 0, stdout: `${refs.map(r => `${skills[r]} (skl: ${r})`).join('\n\n')}\n`, stderr: '' };
+    }
     if (verb === 'install') return { code: options.installCode ?? 0, stdout: 'skl: installed mine/tdd → /repo\n', stderr: options.installCode ? 'skl: not inside a git work-tree\n' : '' };
     return { code: 2, stdout: '', stderr: 'usage' };
   };
@@ -24,15 +30,15 @@ test('list reads the folder listing', async () => {
   assert.deepEqual(calls[0]?.argv, ['list', '--folders']);
 });
 
-test('pointers expand a folder and join pointers like skl load --copy', async () => {
-  const { skl } = fakeSkl();
+test('pointers run one recorded skl load --stdin --print per send', async () => {
+  const { skl, calls } = fakeSkl();
   assert.equal(await skl.pointers(['expo/', 'mine/']), 'router (skl: expo/router)\n\ntdd (skl: mine/tdd)\n\nts (skl: mine/ts)');
+  assert.deepEqual(calls, [{ argv: ['load', '--stdin', '--print'], cwd: undefined, stdin: 'expo/\nmine/\n' }]);
 });
 
-test('one unknown ref fails the whole batch before any preview', async () => {
-  const { skl, calls } = fakeSkl();
-  await assert.rejects(skl.pointers(['mine/tdd', 'mine/gone']), /No skill matches mine\/gone/);
-  assert.equal(calls.filter(call => call.argv[0] === 'preview').length, 0);
+test('one unknown ref fails the whole batch with skl\'s error', async () => {
+  const { skl } = fakeSkl();
+  await assert.rejects(skl.pointers(['mine/tdd', 'mine/gone']), /no skill named "mine\/gone"/);
 });
 
 test('a failing skl surfaces its stderr', async () => {

@@ -2,7 +2,7 @@
 
 Load skills from the `skl` catalogue into the composer. A chosen skill becomes
 an `@` pill. At send time the pill resolves to the pointer that `skl load`
-pastes in tmux. The agent gets the pointer as hidden context, and the message
+pastes in tmux, and skl records the load in its usage history. The agent gets the pointer as hidden context, and the message
 shows `mine/tdd` instead of a pasted block.
 
 skl is the source of truth. The plugin runs `skl` on the thread's machine for
@@ -30,7 +30,7 @@ Picker keys follow the tmux `skl-pick` fzf binds:
 | `tab` / `shift-tab` | Mark the row and move down / up. |
 | `↑` `↓`, `ctrl-n` `ctrl-p`, `ctrl-j` `ctrl-k` | Move. |
 | `enter` | Insert one pill per marked row, or for the cursor row, then close. A folder row gives one group pill. |
-| `ctrl-y` | Copy the joined pointers, as `skl load --copy` does. |
+| `ctrl-y` | Copy the joined pointers, as `skl load --copy` does. skl records them as BB loads. |
 | `alt-i` | Install into the thread's checkout with `skl install --stdin`. A folder row asks `y / N` first. |
 | `ctrl-/` | Toggle the preview pane (`skl preview`). |
 | `esc` | Close. |
@@ -48,8 +48,11 @@ flowchart TD
   Host[host.ts on the thread's machine] -- argv and stdin --> Skl[skl CLI]
 ```
 
-- **Pills, not pasted text.** A pill resolves once per send. A group pill
-  expands at send time, so it always matches the current group. The agent
+- **Pills, not pasted text.** A pill resolves once per send with one
+  `skl load --stdin --print`. skl prints the joined pointers and appends one
+  `mode: "bb"` record per skill to `~/.local/state/skl/history.jsonl`. A group
+  pill expands at send time, so it always matches the current group. The
+  picker's preview pane uses `skl preview`, which records nothing. The agent
   receives an agent-only input that starts `Context for @<label>`.
 - **The pill id carries the host.** bb calls `resolve(itemId)` with no thread
   context, so ids are `<hostId>|<ref>`.
@@ -74,9 +77,8 @@ flowchart TD
 
 | File | Role |
 | --- | --- |
-| `src/rows.ts` | Parse `skl list --folders`, filter and rank, expand folder refs, find group refs. |
+| `src/rows.ts` | Parse `skl list --folders`, filter and rank, find group refs. |
 | `src/picker.ts` | Keyboard reducer. Letters match on `KeyboardEvent.code`, because macOS Alt+I gives `ˆ`. |
-| `src/pointer.ts` | `skl preview` output to the `name bulk` pointer. |
 | `src/mention.ts` | Pill id encode and decode, pill parts, mention menu rows. |
 | `src/skl.ts` | skl CLI adapter over a `Run` port. One unknown ref fails the batch. |
 | `src/run.ts` | `spawn` runner: stdin, cwd, timeout, clean env, ENOENT as 127. |
@@ -84,12 +86,6 @@ flowchart TD
 
 ## Limits
 
-- **No skl usage history.** `skl preview` does not append to
-  `~/.local/state/skl/history.jsonl`. Only `load` and `install` record, and
-  `load` needs a tmux pane or the tmux clipboard. Installs from the picker do
-  record. Loads need a skl verb that prints joined pointers for `--stdin` refs
-  and records them, for example `skl load --stdin --print`. `pointers` would
-  then call it once instead of one `skl preview` per member.
 - **A pill keeps its host.** A pill copied to a thread on another machine still
   resolves against the first host. A pill made in a new-thread composer names
   the primary host, even if the thread then starts elsewhere.
@@ -100,10 +96,9 @@ flowchart TD
   "Failed to load suggestions" for the whole `@` menu and hides the plugin
   rows. `Alt+S` still works there.
 - **Resolve has 10 s per pill; the plugin uses 9 s.** A failure blocks the
-  send. bb resolves pills one after another, and each pill runs `skl list`
-  plus one `skl preview` per member. The largest group, `vendor/` with 51
-  skills, takes 3.5-5.5 s on this Mac. A slower host or a bigger group can
-  hit the limit.
+  send. bb resolves pills one after another, and each pill runs one
+  `skl load --stdin --print`. A slower host or a bigger group can hit the
+  limit.
 - **The pointer is hidden from the user** and cannot be edited per message.
 - **No pane target.** Pills reach bb composers only. `ctrl-y` covers the rest.
 - **No toasts.** Copy closes silently. Errors and install output show inline.
