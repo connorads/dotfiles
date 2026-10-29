@@ -60,12 +60,15 @@ cancels pending recovery. See [task recovery](../src/codex-recover/README.md).
 ### ccp account config inheritance
 
 `CLAUDE_CONFIG_DIR` fully relocates the user scope, so a `ccp` account would
-otherwise read none of the shared `~/.claude` config. Each launch (and resurrect
-restore) runs [`claude-profile-materialise`](../.config/zsh/functions/claude-profile-materialise),
+otherwise read none of the shared `~/.claude` config. Each launch (resurrect
+restore and BB [Agent Switcher](../src/bb-plugins/claude-profiles/README.md#design)
+threads too) runs [`claude-profile-materialise`](../.config/zsh/functions/claude-profile-materialise),
 which merges the shared `settings.json` (statusline, hooks, env, permissions)
 over the profile's own - base winning, `model` stripped - and symlinks
-`CLAUDE.md` at the shared memory. So isolated accounts inherit the shared user
-config while keeping their own auth/session and per-account `model`/`theme`.
+`CLAUDE.md` at the shared memory. It also symlinks each shared skill (except
+`synced`) and `commands` into the profile, but never over a real directory the
+profile owns. So isolated accounts inherit the shared user config while keeping
+their own auth/session, synced skills and per-account `model`/`theme`.
 `settings.local.json` (the local permissions/sandbox scope) stays per-account.
 
 ### GitHub CLI auth

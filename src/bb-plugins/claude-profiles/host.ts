@@ -7,6 +7,7 @@ import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
 import { transferSession } from './src/accounts/handover.ts';
 import { stageFork, sweepForkStages, unstageFork } from './src/accounts/fork-stage.ts';
+import { materialise } from './src/accounts/materialise.ts';
 import { adoptSession, isSessionId, locateSession, paneSession } from './src/accounts/import.ts';
 import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
@@ -62,6 +63,12 @@ export default experimental_defineHostEntry({
       }
       catch (error) { return { status: 'error', windows: [], observedAt: null,
         message: error instanceof Error ? error.message : 'Claude quota request failed.' }; }
+    },
+    materialise: async (input, context) => {
+      const selected = await profile(input.root, input.profileId);
+      if (!selected.configDir) return { materialised: false };
+      const script = join(homedir(), '.config', 'zsh', 'functions', 'claude-profile-materialise');
+      return { materialised: await materialise(script, selected.configDir, context.signal) };
     },
     transfer: async input => {
       const selected = await profile(input.root, input.profileId);

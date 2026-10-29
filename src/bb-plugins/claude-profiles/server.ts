@@ -182,18 +182,24 @@ export default function plugin(bb: BbPluginApi) {
   bb.providers.experimental_contributeEnv('claude-code', async input => {
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
     const accountEnv = selected?.hostId === input.hostId ? providerEnv(selected.profile.configDir) : [];
+    // A ccp launch materialises the profile from ~/.claude; BB launches skip ccp, so the same step runs here.
+    // It shares BB's five-second contribution budget, and a failure leaves the profile as it was.
+    const materialised = selected && accountEnv.length > 0
+      ? host.call('materialise', { root: (await settings.get()).profileRoot, profileId: selected.profile.id },
+        { hostId: input.hostId, timeoutMs: 3500 })
+        .catch(error => bb.log.warn(`Could not materialise the ${selected.profile.label} profile: ${error instanceof Error ? error.message : String(error)}`))
+      : undefined;
     // Connector lookup must finish within BB's five-second contribution budget so account routing survives a failure.
     let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const connectorEnv = await Promise.race([
-        connectors.env(input.threadId, input.hostId),
-        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Connector lookup timed out')), 1000); }),
-      ]);
-      return [...accountEnv, ...connectorEnv];
-    } catch (error) {
+    const connectorEnv = Promise.race([
+      connectors.env(input.threadId, input.hostId),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Connector lookup timed out')), 1000); }),
+    ]).catch(error => {
       bb.log.warn(`Account connectors use the BB default: ${error instanceof Error ? error.message : String(error)}`);
-      return accountEnv;
-    } finally { clearTimeout(timer); }
+      return [];
+    }).finally(() => clearTimeout(timer));
+    const [connectorEntries] = await Promise.all([connectorEnv, materialised]);
+    return [...accountEnv, ...connectorEntries];
   });
   const hostUsage = createQuotaCache((hostId, config, profileId) => host.call('usage',
     { root: config.profileRoot, executable: config.executable, profileId }, { hostId, timeoutMs: 30000 }));

@@ -341,6 +341,14 @@ profile. Default and unselected threads receive no environment contribution:
 Claude resolves an empty `CLAUDE_CONFIG_DIR` against the working directory.
 `HOME` stays unchanged.
 
+`CLAUDE_CONFIG_DIR` hides the shared `~/.claude` config. So before each launch
+on a named profile, the host runs the dotfiles
+[`claude-profile-materialise`](../../../.config/zsh/functions/claude-profile-materialise)
+on the profile directory, as `ccp` does. The profile gets the shared settings,
+memory, skills and commands. A host without the materialiser skips this step.
+A failure or a run over 3.5 seconds is logged, and Claude starts on the profile
+as it is.
+
 BB starts Claude anyway when an env contributor throws, times out or is not
 loaded, so a thread on a named profile could run on the native login. Each
 launch records a `provider.env-resolved` event. The plugin reviews it on thread
