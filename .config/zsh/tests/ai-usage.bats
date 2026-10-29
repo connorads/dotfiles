@@ -13,7 +13,7 @@ setup() {
 
 write_provider_stubs() {
   local provider
-  for provider in claude codex cosine; do
+  for provider in claude codex; do
     write_stub "$provider-usage" <<EOF
 #!/usr/bin/env sh
 printf '%s:%s\\n' '$provider' "\$*" >>"\$TEST_LOG"
@@ -60,43 +60,6 @@ def iso(delta):
         },
     }],
     "rate_limit_reset_credits": {"available_count": 0},
-}))
-(home / ".cache/cosine-usage.json").write_text(json.dumps({
-    "usedTokens": 420,
-    "totalAvailableTokens": 1000,
-    "billingPeriodStartsAt": iso(timedelta(days=-40)),
-    "billingPeriodResetsAt": iso(timedelta(days=20)),
-}))
-PY
-}
-
-write_cosine_cache() {
-  local used="$1"
-  local total="$2"
-  local start_days="$3"
-  local reset_days="$4"
-
-  python3 - "$HOME" "$used" "$total" "$start_days" "$reset_days" <<'PY'
-import json
-import sys
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-
-home = Path(sys.argv[1])
-used = int(sys.argv[2])
-total = int(sys.argv[3])
-start_days = float(sys.argv[4])
-reset_days = float(sys.argv[5])
-now = datetime.now(timezone.utc)
-
-def iso(delta):
-    return (now + delta).isoformat().replace("+00:00", "Z")
-
-(home / ".cache/cosine-usage.json").write_text(json.dumps({
-    "usedTokens": used,
-    "totalAvailableTokens": total,
-    "billingPeriodStartsAt": iso(timedelta(days=start_days)),
-    "billingPeriodResetsAt": iso(timedelta(days=reset_days)),
 }))
 PY
 }
@@ -177,7 +140,6 @@ PY
   [[ "$output" == *"Claude"*"68%"* ]]
   [[ "$output" == *"7d·F"*"4%"* ]]
   [[ "$output" == *"Spark"*"0%"* ]]
-  [[ "$output" == *"Cosine"*"mo"*"42%"* ]]
   [[ "$output" == *"Bottleneck"*"Claude 7d 68%"* ]]
   [[ "$output" == *"Headroom"*"Spark 5h has 100% free"* ]]
   [[ "$output" != *"Claude cache"* ]]
@@ -220,7 +182,6 @@ EOF
   [ -z "$output" ]
   grep -q '^claude:--all$' "$TEST_LOG"
   grep -q '^codex:$' "$TEST_LOG"
-  grep -q '^cosine:$' "$TEST_LOG"
 }
 
 @test "refresh-only waits for a provider lock owned by another process" {
@@ -433,69 +394,8 @@ EOF
   [[ "$output" != *"claude/cys"* ]]
 }
 
-@test "cosine monthly pool shows billing-period pace and participates in insights" {
-  write_cosine_cache 950 1000 -20 10
-
-  run_zsh_function "$AI_USAGE" --fancy
-
-  [ "$status" -eq 0 ]
-  cosine_row=$(printf '%s\n' "$output" | grep 'Cosine.*mo.*95%' | head -n1)
-  [[ "$cosine_row" == *"Cosine"*"mo"*"95%"* ]]
-  [[ "$cosine_row" == *"┃"* ]]
-  [[ "$cosine_row" == *"pace -"* ]]
-  [[ "$output" == *"Bottleneck"*"Cosine mo 95%"*"credits critical"* ]]
-  [[ "$output" == *"Headroom"*"Cosine mo has 5% free"* ]]
-}
-
-@test "cosine monthly pool can be bottleneck by billing-period pace" {
-  write_cosine_cache 400 1000 -1 29
-  cat >"$HOME/.cache/claude-usage.json" <<'EOF'
-{"five_hour":{"utilization":65,"resets_at":"2099-01-01T01:00:00Z"}}
-EOF
-
-  run_zsh_function "$AI_USAGE" --fancy
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"Bottleneck"*"Cosine mo 40%"*"projects empty in"* ]]
-}
-
-@test "cosine monthly pool without billing-period start omits pace" {
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":420,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
-EOF
-
-  run_zsh_function "$AI_USAGE" --fancy
-
-  [ "$status" -eq 0 ]
-  cosine_row=$(printf '%s\n' "$output" | grep 'Cosine.*mo.*42%' | head -n1)
-  [[ "$cosine_row" == *"Cosine"*"mo"*"42%"* ]]
-  [[ "$cosine_row" != *"pace"* ]]
-  [[ "$cosine_row" != *"┃"* ]]
-}
-
-@test "an elapsed Cosine billing period drops the row and states the fact" {
+@test "the alert slice drops a yellow alert before a later red one" {
   write_usage_caches
-  # A dead subscription: the period ended five weeks ago. The liveness flags all
-  # still read healthy, which is why the elapsed period is the only evidence.
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":170,"totalAvailableTokens":1000,"billingPeriodStartsAt":"2026-06-30T00:00:00Z","billingPeriodResetsAt":"2026-07-30T00:00:00Z","canInference":true,"trialExhausted":false,"tokenBillingEnabled":true}
-EOF
-
-  TZ=UTC run_zsh_function "$AI_USAGE" --fancy
-
-  [ "$status" -eq 0 ]
-  # No pool row at all, so no phantom "↻ 0m".
-  [ -z "$(printf '%s\n' "$output" | grep -a 'Cosine.*mo.*%')" ]
-  [[ "$output" == *"Cosine"*"billing period ended 2026-07-30"* ]]
-  # And a dead 17% pool can no longer win Headroom.
-  [[ "$output" == *"Headroom"*"Spark 5h has 100% free"* ]]
-}
-
-@test "the alert slice drops a muted alert before a red one" {
-  write_usage_caches
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":170,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2026-07-30T00:00:00Z"}
-EOF
   jq -n '{last_error:"auth_expired"}' >"$HOME/.cache/claude-usage.meta.json"
   python3 - "$HOME" <<'PY'
 import json
@@ -506,28 +406,22 @@ path = Path(sys.argv[1]) / ".cache/codex-usage.json"
 cache = json.loads(path.read_text())
 cache["rate_limit"]["limit_reached"] = True
 path.write_text(json.dumps(cache))
+
+path = Path(sys.argv[1]) / ".cache/claude-usage.json"
+cache = json.loads(path.read_text())
+cache["extra_usage"] = {"is_enabled": True, "monthly_limit": 5000, "used_credits": 1200}
+path.write_text(json.dumps(cache))
 PY
   set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
 
   TZ=UTC run_zsh_function "$AI_USAGE" --fancy
 
   [ "$status" -eq 0 ]
+  # Collected as Auth, Extra, Stale (yellow) then Limit (red); only three fit.
   [[ "$output" == *"Limit"*"Codex limit reached"* ]]
   [[ "$output" == *"Auth"*"Claude expired"* ]]
-  [[ "$output" == *"Stale"*"Claude cache"* ]]
-  [[ "$output" != *"billing period ended"* ]]
-}
-
-@test "fancy dashboard alerts when Cosine cache is stale" {
-  write_usage_caches
-  set_cache_age_hours "$HOME/.cache/cosine-usage.json" 1
-
-  run_zsh_function "$AI_USAGE" --fancy
-
-  [ "$status" -eq 0 ]
-  cosine_row=$(printf '%s\n' "$output" | grep 'Cosine.*mo.*42%' | head -n1)
-  [[ "$cosine_row" == *"▒"* ]]
-  [[ "$output" == *"Stale"*"Cosine cache"* ]]
+  [[ "$output" == *"Extra"*"Claude"*"enabled"* ]]
+  [[ "$output" != *"Claude cache"* ]]
 }
 
 @test "fancy dashboard alerts when Claude auth is paused" {
@@ -663,7 +557,6 @@ path.write_text(json.dumps(cache))
 PY
   set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
   set_cache_age_hours "$HOME/.cache/codex-usage.json" 9
-  set_cache_age_hours "$HOME/.cache/cosine-usage.json" 9
 
   run_zsh_function "$AI_USAGE" --fancy
 

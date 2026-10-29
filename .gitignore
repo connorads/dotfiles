@@ -227,7 +227,6 @@
 !/.pi/agent/
 /.pi/agent/**
 !/.pi/agent/AGENTS.md
-!/.pi/agent/models.json
 !/.pi/agent/settings.json
 !/.pi/agent/keybindings.json
 !/.pi/agent/extensions/

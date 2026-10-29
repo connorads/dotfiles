@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# ai-usage: combined Claude + Codex + Cosine API usage
+# ai-usage: combined Claude + Codex API usage
 # alias: aiu
 emulate -L zsh
 
@@ -24,8 +24,8 @@ case "${1:-}" in
     cat <<'EOF'
 Usage: ai-usage [--plain|--fancy|--cache-only|--refresh-only]
 
-Show combined Claude + Codex + Cosine usage.
-  --plain   Original text output from claude-usage/codex-usage/cosine-usage
+Show combined Claude + Codex usage.
+  --plain   Original text output from claude-usage/codex-usage
   --fancy   Dashboard with usage bars and recent agent-run totals
   --cache-only    Render the dashboard without contacting providers
   --refresh-only  Refresh provider caches without rendering output
@@ -102,8 +102,7 @@ _usage_locks_present() {
   local lock
   for lock in "$HOME/.cache/claude-usage.lock" \
     "$HOME/.cache/claude-usage-"*.lock \
-    "$HOME/.cache/codex-usage.lock" \
-    "$HOME/.cache/cosine-usage.lock"; do
+    "$HOME/.cache/codex-usage.lock"; do
     [[ -d "$lock" ]] && return 0
   done
   return 1
@@ -116,8 +115,6 @@ _refresh_all_quiet() {
   _refresh_claude_all &
   refresh_pids+=($!)
   _refresh_tool_quiet "codex-usage" "$HOME/.config/zsh/functions/codex-usage" &
-  refresh_pids+=($!)
-  _refresh_tool_quiet "cosine-usage" "$HOME/.config/zsh/functions/cosine-usage" &
   refresh_pids+=($!)
 
   trap 'refresh_interrupted=1; kill $refresh_pids 2>/dev/null' INT TERM
@@ -173,7 +170,6 @@ PALETTE = {
     "red": "\033[38;5;210m",
     "claude": "\033[38;5;215m",
     "codex": "\033[38;5;117m",
-    "cosine": "\033[38;5;120m",
     "sonnet": "\033[38;5;183m",
     "accent": "\033[38;5;141m",
 }
@@ -319,40 +315,7 @@ def usage_colour(pct, remaining, window_secs, stale):
     return "green"
 
 
-def pool_colour(pct, stale, pace=None):
-    if stale:
-        return "muted"
-    if pct >= 90 or (pace is not None and pace >= 1.4):
-        return "red"
-    if pct >= 70 or (pace is not None and pace >= 1.2):
-        return "yellow"
-    return "green"
-
-
-def pool_note(row):
-    if row.get("stale"):
-        return "cache stale", "yellow"
-    pct = float(row.get("pct") or 0)
-    if pct >= 100:
-        return "pool exhausted", "red"
-    if pct >= 90:
-        return "credits critical", "red"
-    if pct >= 70:
-        return "credits warm", "yellow"
-    pace = row.get("pace_ratio")
-    projected = row.get("projected_exhaustion")
-    remaining = remaining_secs(row)
-    if pace is not None and pace >= 1.2:
-        colour_name = "red" if pace >= 1.4 else "yellow"
-        if projected is not None and remaining is not None and projected < remaining:
-            return f"projects empty in ~{fmt_duration(projected)}", colour_name
-        return "critical pace" if pace >= 1.4 else "warm pace", colour_name
-    return "credits OK", "green"
-
-
 def burn_note(row):
-    if row.get("kind") == "pool":
-        return pool_note(row)
     if row.get("stale"):
         return "cache stale", "yellow"
     pct = float(row.get("pct") or 0)
@@ -380,10 +343,7 @@ def severity_rank(colour_name):
 
 
 def attach_row_metadata(row):
-    if row.get("kind") == "pool":
-        row["colour"] = pool_colour(row["pct"], row["stale"], row.get("pace_ratio"))
-    else:
-        row["colour"] = usage_colour(row["pct"], remaining_secs(row), row["window_secs"], row["stale"])
+    row["colour"] = usage_colour(row["pct"], remaining_secs(row), row["window_secs"], row["stale"])
     note, note_colour = burn_note(row)
     row["note"] = note
     row["note_colour"] = note_colour
@@ -401,7 +361,6 @@ def make_window_row(provider, window, pct, reset_ts, window_secs, stale, provide
     remaining = None if reset_ts is None else reset_ts - NOW_TS
     ideal = ideal_pct(remaining, window_secs, stale)
     row = {
-        "kind": "window",
         "provider": provider,
         "window": window,
         "pct": pct,
@@ -411,43 +370,6 @@ def make_window_row(provider, window, pct, reset_ts, window_secs, stale, provide
         "ideal_pct": ideal,
         "pace_delta": ideal - pct if ideal is not None else None,
         "pace_ratio": pace_ratio(pct, remaining, window_secs, stale),
-        "note": "",
-        "provider_colour": provider_colour,
-        "source": source,
-    }
-    return attach_row_metadata(row)
-
-
-def make_pool_row(provider, window, pct, stale, provider_colour, source, start_ts=None, reset_ts=None):
-    ideal = None
-    delta = None
-    ratio = None
-    projected = None
-    period_secs = None
-    elapsed_secs = None
-    if not stale and start_ts is not None and reset_ts is not None:
-        period_secs = reset_ts - start_ts
-        elapsed_secs = NOW_TS - start_ts
-        if period_secs > 0 and elapsed_secs >= 0:
-            ideal = max(0, min(100, elapsed_secs * 100 / period_secs))
-            delta = ideal - pct
-            if pct > 0 and ideal > 0:
-                ratio = pct / ideal
-            if pct > 0 and elapsed_secs > 0:
-                projected = (100 - pct) / (pct / elapsed_secs)
-    row = {
-        "kind": "pool",
-        "provider": provider,
-        "window": window,
-        "pct": pct,
-        "reset_ts": reset_ts,
-        "window_secs": period_secs or 0,
-        "stale": stale,
-        "ideal_pct": ideal,
-        "pace_delta": delta,
-        "pace_ratio": ratio,
-        "projected_exhaustion": projected,
-        "elapsed_secs": elapsed_secs,
         "note": "",
         "provider_colour": provider_colour,
         "source": source,
@@ -764,40 +686,6 @@ def collect_windows():
     elif not codex_path.exists():
         alerts.append(("Missing", "Codex usage cache", "yellow"))
 
-    cosine_path = HOME / ".cache/cosine-usage.json"
-    cosine = load_json(cosine_path)
-    cosine_mt = mtime(cosine_path)
-    cosine_age = NOW_TS - cosine_mt if cosine_mt else None
-    if cosine:
-        used = as_pct(cosine.get("usedTokens"))
-        total = as_pct(cosine.get("totalAvailableTokens"))
-        start = iso_ts(cosine.get("billingPeriodStartsAt"))
-        reset = iso_ts(cosine.get("billingPeriodResetsAt"))
-        # An elapsed billing period is a representable state now, so say it
-        # rather than rendering a pool whose countdown reads 0m. The payload's
-        # canInference / trialExhausted / tokenBillingEnabled flags all still
-        # read healthy on a dead subscription, so the elapsed period is the only
-        # honest evidence.
-        if reset and reset <= NOW_TS:
-            ended = datetime.fromtimestamp(reset).date().isoformat()
-            alerts.append(("Cosine", f"billing period ended {ended}", "muted"))
-        elif used is not None and total is not None and total > 0:
-            pct = used * 100 / total
-            rows.append(make_pool_row(
-                "Cosine",
-                "mo",
-                pct,
-                cosine_age is not None and cosine_age >= 900,
-                "cosine",
-                "cosine",
-                start,
-                reset,
-            ))
-        if cosine_age is not None and cosine_age >= 900:
-            alerts.append(("Stale", f"Cosine cache {fmt_age(cosine_path)}", "yellow"))
-    elif not cosine_path.exists():
-        alerts.append(("Missing", "Cosine usage cache", "yellow"))
-
     return rows, alerts, standing
 
 
@@ -869,8 +757,8 @@ def collect_insights(rows):
     if not rows:
         return []
     # Stale rows still count: an hours-old 7d reading is more likely the real
-    # bottleneck than a fresh-but-idle 5h one. Pace can now make a lower absolute
-    # pool usage more urgent, so severity ranks first, then absolute usage.
+    # bottleneck than a fresh-but-idle 5h one. Pace can make a lower absolute
+    # usage more urgent, so severity ranks first, then absolute usage.
     bottleneck = max(rows, key=lambda r: (
         int(r.get("risk_rank") or 0),
         float(r.get("pct") or 0),
@@ -962,7 +850,7 @@ def render():
             content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'], ideal)} {pct_text}{pace_part}  {c('muted', '↻')} {reset_part}"
             emit(c("border", "│ ") + pad(content, inner) + c("border", " │"))
     else:
-        emit(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage, codex-usage, or cosine-usage."), inner) + c("border", " │"))
+        emit(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
 
     if insights:
         emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
@@ -1008,7 +896,6 @@ if [[ "$mode" == "fancy" ]]; then
     print -u2 "ai-usage: fancy renderer failed; falling back to plain output"
     _run_tool "Claude" "34" "claude-usage" "$HOME/.config/zsh/functions/claude-usage"
     _run_tool "Codex" "32" "codex-usage" "$HOME/.config/zsh/functions/codex-usage"
-    _run_tool "Cosine" "32" "cosine-usage" "$HOME/.config/zsh/functions/cosine-usage"
     (( has_output )) || { print -u2 "no usage tools available"; return 1; }
   }
   return 0
@@ -1016,6 +903,5 @@ fi
 
 _run_tool "Claude" "34" "claude-usage" "$HOME/.config/zsh/functions/claude-usage"
 _run_tool "Codex" "32" "codex-usage" "$HOME/.config/zsh/functions/codex-usage"
-_run_tool "Cosine" "32" "cosine-usage" "$HOME/.config/zsh/functions/cosine-usage"
 
 (( has_output )) || { print -u2 "no usage tools available"; return 1; }

@@ -308,7 +308,7 @@ EOF
 
 @test "status hides pi model picker churn and missing final newline" {
   printf '%s' '{
-  "defaultProvider": "cosine",
+  "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-8",
   "defaultThinkingLevel": "xhigh",
   "theme": "dark"
@@ -324,7 +324,7 @@ EOF
 @test "status leaves real pi settings edits unstaged" {
   cat >"$HOME/.pi/agent/settings.json" <<'EOF'
 {
-  "defaultProvider": "cosine",
+  "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-8",
   "defaultThinkingLevel": "xhigh",
   "theme": "light"

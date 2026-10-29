@@ -1,6 +1,6 @@
 # AI usage tracker (custom subsystem)
 
-The AI usage surfaces track three providers:
+The AI usage surfaces track two providers:
 
 - Claude: [`../zsh/functions/claude-usage`](../../zsh/functions/claude-usage)
   reads Claude OAuth credentials and caches `~/.cache/claude-usage.json`.
@@ -15,9 +15,6 @@ The AI usage surfaces track three providers:
   launched with `ccp`.
 - Codex: [`../zsh/functions/codex-usage`](../../zsh/functions/codex-usage)
   reads Codex auth and caches `~/.cache/codex-usage.json`.
-- Cosine: [`../zsh/functions/cosine-usage`](../../zsh/functions/cosine-usage)
-  reads `${COSINE_CONFIG_FILE:-~/.cosine/auth.json}` for `team_id`, gets a
-  bearer via `cosine-bearer`, and caches `~/.cache/cosine-usage.json`.
 
 Each provider shares [`../zsh/functions/usage-cache-lib`](../../zsh/functions/usage-cache-lib):
 `*.meta.json` stores backoff state and `*.lock` prevents concurrent fetches. Do
@@ -60,18 +57,14 @@ duration rule inline (low-stakes, not the failure mode), not the shared jq.
 Every dashboard row stores `reset_ts`, the absolute epoch the provider itself
 supplies - Claude's `resets_at`, Codex's `reset_at` (falling back to
 `reset_after_seconds` read against the cache file's mtime, which is when that
-countdown was true), Cosine's `billingPeriodResetsAt`. `remaining_secs(row)` is
+countdown was true). `remaining_secs(row)` is
 the only derivation, and clamping happens at each display edge rather than in the
 model. So one fact drives three readings: the countdown (`↻ 4h 42m`), the
 width-gated wall clock beside it (`· 21:40`, or `· Tue 09:40` on a different local
 day), and "this window already ended".
 
 That last one is a state, not a defect to gate around. A clamped duration
-collapses "reset five weeks ago" into "resets imminently", which is why an
-elapsed Cosine billing period suppresses the pool row and states
-`Cosine  billing period ended <date>` instead. The payload's `canInference`,
-`trialExhausted` and `tokenBillingEnabled` flags all read healthy on a dead
-subscription, so the elapsed period is the only honest evidence.
+collapses "reset five weeks ago" into "resets imminently".
 
 The clock is gated on the bar width it would leave, not on a bare width
 threshold: the box floors at inner 64, so a ~70-col popup keeps its full bar and
@@ -114,7 +107,6 @@ Tests: [`../zsh/tests/codex-windows.bats`](../../zsh/tests/codex-windows.bats)
 (the classifier's combinatorial matrix),
 [`../zsh/tests/claude-usage.bats`](../../zsh/tests/claude-usage.bats),
 [`../zsh/tests/codex-usage.bats`](../../zsh/tests/codex-usage.bats),
-[`../zsh/tests/cosine-usage.bats`](../../zsh/tests/cosine-usage.bats),
 [`../zsh/tests/ai-usage.bats`](../../zsh/tests/ai-usage.bats),
 [`../zsh/tests/ai-usage-popup.bats`](../../zsh/tests/ai-usage-popup.bats),
 [`../zsh/tests/usage-debug.bats`](../../zsh/tests/usage-debug.bats).

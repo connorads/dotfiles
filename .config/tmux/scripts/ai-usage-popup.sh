@@ -9,8 +9,7 @@ old_tty_state=""
 snapshot_usage_cache() {
 	for cache_file in \
 		"$HOME/.cache/claude-usage"*.json \
-		"$HOME/.cache/codex-usage"*.json \
-		"$HOME/.cache/cosine-usage"*.json; do
+		"$HOME/.cache/codex-usage"*.json; do
 		[ -f "$cache_file" ] || continue
 		stat -f '%N:%m:%z' "$cache_file" 2>/dev/null ||
 			stat -c '%n:%Y:%s' "$cache_file" 2>/dev/null || true

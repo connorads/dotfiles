@@ -106,10 +106,7 @@ EOF
 {"rate_limit":{"primary_window":{"used_percent":10,"reset_after_seconds":10800},
  "secondary_window":{"used_percent":86,"reset_after_seconds":216000}}}
 EOF
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":400,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
-EOF
-  touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json" "$HOME/.cache/cosine-usage.json"
+  touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
 }
 
 @test "wide status shows both cpu and the ram percentage pill" {
