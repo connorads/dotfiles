@@ -180,3 +180,70 @@ EOF
   [ ! -f "$PROFILE_DIR/settings.json" ]
   assert_symlink_target "$PROFILE_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 }
+
+# Seed shared skills the way the tracked ~/.claude/skills holds them: relative
+# symlinks into a skills tree, plus the account-synced `synced` dir.
+seed_shared_skills() {
+  mkdir -p "$HOME/skills/architecture" "$HOME/skills/testing" "$HOME/.claude/skills/synced/remote"
+  ln -sfn ../../skills/architecture "$HOME/.claude/skills/architecture"
+  ln -sfn ../../skills/testing "$HOME/.claude/skills/testing"
+}
+
+@test "materialise links shared skills and leaves a profile-owned skill dir untouched" {
+  seed_shared_config
+  seed_shared_skills
+  mkdir -p "$PROFILE_DIR/skills/testing" "$PROFILE_DIR/skills/synced"
+  printf 'own\n' >"$PROFILE_DIR/skills/testing/SKILL.md"
+
+  run_zsh_function "$MATERIALISE" "$PROFILE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_symlink_target "$PROFILE_DIR/skills/architecture" "$HOME/.claude/skills/architecture"
+  [ -d "$PROFILE_DIR/skills/architecture/" ]
+  [ ! -L "$PROFILE_DIR/skills/testing" ]
+  [ "$(cat "$PROFILE_DIR/skills/testing/SKILL.md")" = "own" ]
+  # The profile's own synced dir is account state, never the shared one.
+  [ ! -L "$PROFILE_DIR/skills/synced" ]
+  [ ! -e "$PROFILE_DIR/skills/synced/remote" ]
+}
+
+@test "materialise skips the shared synced dir when the profile has none" {
+  seed_shared_config
+  seed_shared_skills
+
+  run_zsh_function "$MATERIALISE" "$PROFILE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$PROFILE_DIR/skills/synced" ]
+  assert_symlink_target "$PROFILE_DIR/skills/testing" "$HOME/.claude/skills/testing"
+}
+
+@test "materialise repoints a stale skill symlink" {
+  seed_shared_config
+  seed_shared_skills
+  mkdir -p "$PROFILE_DIR/skills"
+  ln -sfn /nonexistent "$PROFILE_DIR/skills/architecture"
+
+  run_zsh_function "$MATERIALISE" "$PROFILE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_symlink_target "$PROFILE_DIR/skills/architecture" "$HOME/.claude/skills/architecture"
+}
+
+@test "materialise links shared commands unless the profile owns a commands dir" {
+  seed_shared_config
+  mkdir -p "$HOME/.claude/commands"
+
+  run_zsh_function "$MATERIALISE" "$PROFILE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_symlink_target "$PROFILE_DIR/commands" "$HOME/.claude/commands"
+
+  local acct=own
+  local owned="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$owned/commands"
+  run_zsh_function "$MATERIALISE" "$owned"
+
+  [ "$status" -eq 0 ]
+  [ ! -L "$owned/commands" ]
+}

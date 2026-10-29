@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # claude-profile-materialise: derive an isolated ccp profile's user config from
-# the shared ~/.claude config so statusLine, hooks, env and permissions apply to
-# every account.
+# the shared ~/.claude config so statusLine, hooks, env, permissions, memory,
+# skills and commands apply to every account.
 #
 # CLAUDE_CONFIG_DIR fully relocates the user scope, so an isolated profile never
 # reads shared ~/.claude config. base = shared settings with machine-local
@@ -37,4 +37,17 @@ fi
 
 # Share user memory (~/.claude/CLAUDE.md -> .agents/AGENTS.md) with the profile.
 [[ -e "$HOME/.claude/CLAUDE.md" ]] && ln -sfn "$HOME/.claude/CLAUDE.md" "$profile_dir/CLAUDE.md"
+
+# Share skills and commands. Link only over an absent path or an existing
+# symlink: a real dir there is profile-owned and stays. `synced` holds the
+# account's own synced skills, so the shared one is never linked across.
+_cpm_link() { [[ -e "$2" && ! -L "$2" ]] || ln -sfn "$1" "$2"; }
+local skill
+for skill in "$shared_dir"/skills/*(N); do
+    [[ "${skill:t}" == synced ]] && continue
+    mkdir -p "$profile_dir/skills"
+    _cpm_link "$skill" "$profile_dir/skills/${skill:t}"
+done
+[[ -d "$shared_dir/commands" ]] && _cpm_link "$shared_dir/commands" "$profile_dir/commands"
+unfunction _cpm_link
 return 0
