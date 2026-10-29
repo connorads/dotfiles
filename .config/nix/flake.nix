@@ -94,12 +94,16 @@
 
       mkDarwin =
         extraModules:
+        let
+          pkgs = mkPkgs "aarch64-darwin";
+        in
         nix-darwin.lib.darwinSystem {
           specialArgs = {
             inherit self;
-            packages = mkPackages (mkPkgs "aarch64-darwin");
+            packages = mkPackages pkgs;
           };
           modules = [
+            { nixpkgs.pkgs = pkgs; }
             ./modules/darwin-shared.nix
             ./modules/darwin-ui.nix
             home-manager.darwinModules.home-manager
@@ -146,14 +150,7 @@
       # Air = desktop workstation; mini = headless Tailscale-only dev server.
       darwinConfigurations."Connors-MacBook-Air" = mkDarwin [
         ./modules/darwin-desktop.nix
-        {
-          homebrew.casks = [ "logitech-camera-settings" ];
-          # Overlay packages: nix-darwin's own `pkgs` has no overlay, so
-          # `pkgs.footswitch` in a module would be nixpkgs' Linux-only one.
-          home-manager.users.connorads.home.packages = with (mkPkgs "aarch64-darwin"); [
-            footswitch # PCsensor foot pedal flasher, driven by `pedal-flash`
-          ];
-        }
+        { homebrew.casks = [ "logitech-camera-settings" ]; }
       ];
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
         ./modules/darwin-server.nix

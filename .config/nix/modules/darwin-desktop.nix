@@ -293,6 +293,7 @@
     {
       home.packages = packages.sharedPackages ++ [
         pkgs.duti
+        pkgs.footswitch # PCsensor foot pedal flasher, driven by `pedal-flash`
         pkgs.pngpaste
       ];
 
