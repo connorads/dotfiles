@@ -135,8 +135,9 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Found: 2026-10-21, built-in Workflows plugin
 - Wanted: Show outstanding workflow activity when its origin agent is idle, across providers.
 - Gap: Core counts native background-task events. Workflows stores runs in plugin-owned SQLite, outside that counting path.
-- Workaround: A manually applied local bundle patch registers a source of queued/running run IDs and invalidates sidebar activity.
-  Scripts and diffs remain in local thread storage. They are not committed or automatically reapplied after BB updates.
+- Workaround: The [bundle patcher](../workflows-patch/README.md) registers queued/running run IDs and invalidates sidebar activity.
+  Private server-package preparation tries each feature independently and verifies copied behaviour before retaining its changes.
+  Deployed user servers prepare candidates through `up`; activation remains explicit.
   Historical live testing observed the icon appear and disappear during normal execution. Cancellation and active reload remain unverified live.
 - Ask: Add a core-owned cached activity summary fed by plugin snapshots, with activation fencing, explicit uncertainty and refresh repair.
   Preserve native counters. Keep execution, cancellation and recovery inside the workflow engine.
@@ -144,6 +145,19 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open. Four design alternatives and two anonymous evaluations informed an unimplemented recommendation.
 - Category: sdk-gap
 - Evidence: Core `listActiveBackgroundTaskCountsByThreadIds` and `buildThreadActivityStateByThreadId`; Workflows `workflow_runs` queries.
+
+### Packaged desktop updater has no external-management switch
+
+- Found: 2026-10-30, desktop 0.48.0
+- Wanted: Let an external package manager own server updates without replacing patched server files.
+- Gap: `shouldEnableDesktopAutoUpdate` enables packaged builds regardless of `BB_DESKTOP_AUTO_UPDATE=0`.
+  The server's `--no-in-app-updates` flag does not control the desktop updater.
+- Workaround: A mise-owned server uses that flag; the stock desktop connects through a saved custom server URL.
+  Desktop client updates remain independent. Editing the desktop updater crosses signed archive integrity controls.
+- Ask: Expose a persistent desktop updater off switch and document externally managed server attachment.
+- Status: open. Isolated attachment, reconnect and unavailable-target checks pass; live handover remains separate.
+- Category: sdk-gap
+- Evidence: Desktop `shouldEnableDesktopAutoUpdate`, `resolveDesktopUpdateSupport`, `applyServerTarget` and `ElectronAsarIntegrity`.
 
 ### Helper AI completion consumer
 

@@ -90,8 +90,11 @@ BB's built-in Workflows plugin supports provider-independent workflows, includin
 Its enabled state is managed by [plugins.json](../.config/bb/plugins.json).
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
 For local bundle changes, use the [patch registry and manager](../src/bb-plugins/workflows-patch/README.md).
-Inspect the explicit desktop installation after native updates. `up` performs read-only reconciliation after Homebrew and macOS activation.
-Manager transactions admit disposable copies only. Activation and live maintenance remain separate.
+For desktop-owned servers, inspect the explicit installation after native updates.
+`up` performs read-only desktop reconciliation after Homebrew and macOS activation.
+For a deployed user server, `up` prepares a private patched or stock package and leaves the desktop client untouched.
+Follow [user-server deployments](remote-access.md#bb-user-server-deployments) for preparation and handover.
+Desktop manager transactions admit disposable copies only. Server activation remains explicit.
 
 ## Local plugins
 

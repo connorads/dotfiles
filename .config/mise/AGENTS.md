@@ -112,7 +112,7 @@ Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable cache `~/.c
 
 ## Desktop BB patch reconciliation
 
-`up` inspects `/Applications/bb.app` after standalone Homebrew and applicable
+For desktop-owned servers, `up` inspects `/Applications/bb.app` after standalone Homebrew and applicable
 macOS activation paths, including failures and frozen activation. Inspection
 requires `session-options-plus-activity`. Its warnings preserve required-phase
 status and exit behaviour. It never prepares, installs, reloads or restarts BB.
@@ -120,3 +120,10 @@ Native updates outside `up` require explicit inspection. Mise's separate
 `bb-app` package does not identify the desktop installation.
 The [bundle registry guide](../../src/bb-plugins/workflows-patch/README.md)
 owns preparation, verification, recovery and retirement.
+
+For deployed user servers, `up` runs `bb-deploy prepare` after tool installation.
+Preparation preserves user deployment mode and attempts patches on a private package copy.
+Patch incompatibility warns and retains stock feature files. Preparation does not activate the candidate.
+Desktop inspection is skipped because the stock desktop is a separate client.
+The [user-server deployment guide](../../docs/remote-access.md#bb-user-server-deployments)
+owns initial handover, activation and recovery.

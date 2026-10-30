@@ -42,6 +42,15 @@ EOF
   ! grep -q '^bb-deploy ' "$TEST_LOG"
 }
 
+@test "up checks managed server candidates instead of patching the stock desktop client" {
+  stub_bb_deployment
+  export BB_DEPLOY_SERVICE=user
+  run zsh --no-rcs "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qFx 'bb-deploy prepare' "$TEST_LOG"
+  ! grep -q '^bb-patch inspect ' "$TEST_LOG"
+}
+
 setup() {
   # Darwin-gate for determinism: the dispatch we assert is the macOS branch
   # (mise + brew + flake + drs). Linux paths (apt/nrs/hms) differ.
@@ -146,6 +155,10 @@ EOF
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
+if [[ "$*" == 'config get --file '*env.BB_DEPLOY_SERVICE ]]; then
+  echo "${BB_DEPLOY_SERVICE:-system}"
+  exit 0
+fi
 echo "mise-cwd=$PWD" >>"$TEST_LOG"
 [ -n "${MISE_DELAY:-}" ] && sleep "$MISE_DELAY"
 if [ "$*" = "lock --global --bump" ]; then
