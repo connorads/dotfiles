@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, rpcContract } from './contracts.ts';
+import { subjectProject } from './contracts.ts';
 import { fetchRequestFailed, renew, useRepo } from './repo-store.ts';
 import { FolderPicker } from './folder-picker.tsx';
 import { RepoView } from './repo-view.tsx';
@@ -80,7 +81,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (event.key === 'b' && repo) { event.preventDefault(); setPicker('keyboard'); }
     else if (event.key === 'q') { event.preventDefault(); onClose(); }
     // The lazygit plugin listens; without it the key does nothing.
-    else if (event.key === 'l' && !state.selected) { event.preventDefault(); onClose(); window.dispatchEvent(new CustomEvent('lazygit:open', { detail: { threadId } })); }
+    else if (event.key === 'l' && state.root && repo && !subjectProject(threadId)) { event.preventDefault(); onClose(); window.dispatchEvent(new CustomEvent('lazygit:open', { detail: { threadId, cwd: state.root } })); }
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();

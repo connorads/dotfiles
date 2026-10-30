@@ -1,6 +1,17 @@
 import { access, realpath, readdir } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
-import { resolveRepo } from './repo.ts';
+import { git, resolveRepo, type Repo } from './repo.ts';
+
+async function worktrees(repo: Repo) {
+  const output = await git(repo, ['worktree', 'list', '--porcelain', '-z']);
+  return output.split('\0\0').flatMap(record => {
+    const fields = record.split('\0');
+    const path = fields.find(field => field.startsWith('worktree '))?.slice(9);
+    if (!path || fields.includes('bare') || fields.some(field => field === 'prunable' || field.startsWith('prunable '))) return [];
+    const branch = fields.find(field => field.startsWith('branch refs/heads/'))?.slice(18) ?? null;
+    return [{ path, branch }];
+  });
+}
 
 async function folder(base: string, path: string) {
   const root = await realpath(base);
@@ -10,10 +21,18 @@ async function folder(base: string, path: string) {
   return { root, target, path: rel || '.' };
 }
 
-export async function selectFolder(base: string, path: string) {
+export async function selectFolder(base: string, path: string, worktree?: string) {
   const { root, target } = await folder(base, path);
   const repo = await resolveRepo(target);
   if (!repo) throw new Error('Folder is not a git repository.');
+  if (worktree !== undefined) {
+    if (!(await worktrees(repo)).some(tree => tree.path === worktree)) throw new Error('Choose a registered worktree of this repository.');
+    const targetRepo = await resolveRepo(worktree);
+    if (!targetRepo || await realpath(targetRepo.commonDir) !== await realpath(repo.commonDir)) {
+      throw new Error('The registered worktree is missing or belongs to another repository.');
+    }
+    return targetRepo.cwd;
+  }
   // An enclosing repository can sit above a thread's checkout; selecting it must
   // not widen the folder browser's boundary.
   const rel = relative(root, repo.cwd);
@@ -34,5 +53,6 @@ export async function browseFolders(base: string, path: string) {
     folders.push({ name: entry.name, repository: repo?.cwd === child });
   }
   const repo = await resolveRepo(target);
-  return { root: target, path: rel, repository: repo?.cwd === target, folders };
+  return { root: target, path: rel, repository: repo?.cwd === target, folders,
+    worktrees: repo?.cwd === target && repo.kind === 'repo' ? await worktrees(repo) : [] };
 }

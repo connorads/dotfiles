@@ -124,12 +124,20 @@ The repository name in Git status opens the same browser.
 - The selected path appears above the branch. Selection waits for running Git
   operations to finish. Stale actions fail instead of targeting another repo.
 - Browsing stays inside the checkout and omits symlink directories and `.git`.
-- The `l` shortcut opens lazygit only for the thread's default repository.
+- Browse a repository with its row's arrow to list its registered checkouts and worktrees.
+  Each entry shows its branch and full path. Detached worktrees show **Detached HEAD**.
+- Worktree selection can reach outside the thread checkout. Git must register the
+  path with the browsed repository, and both must share the same Git common directory.
+  Missing, prunable and unrelated worktrees cannot be selected.
+- The `l` shortcut opens lazygit for the selected checkout, with a separate terminal
+  for each path. The New thread screen has no lazygit action.
 
 ```mermaid
 flowchart LR
   Chip[Choose repo or repository name] --> Browser[Browse and filter subfolders]
-  Browser --> Selected[Selected repository's Git status]
+  Browser --> Worktrees[Repository's registered worktrees]
+  Worktrees --> Selected[Selected checkout's Git status]
+  Browser --> Selected
   Selected --> Browser
 ```
 

@@ -423,6 +423,7 @@
 .gg-folder-search { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: transparent; color: var(--foreground); font: inherit; }
 .gg-folder-search:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 .gg-folder-path { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; margin: 0; }
+.gg-worktree-path { display: block; }
 .gg-folder-list { max-height: 340px; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
 .gg-folder-list li { display: flex; }
 .gg-folder-list button { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 5px; text-align: left; }

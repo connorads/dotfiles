@@ -13,13 +13,13 @@ export default definePluginApp(app => {
     const rpc = useRpc<typeof rpcContract>();
     const navigate = useBbNavigate();
     const [error, setError] = useState<string | null>(null);
-    const open = useCallback(async (threadId: string) => {
+    const open = useCallback(async (threadId: string, cwd?: string) => {
       setError(null);
       try {
         if (!('experimental_openTerminal' in navigate) || typeof navigate.experimental_openTerminal !== 'function') {
           throw new Error('Open lazygit requires BB 0.46 or later.');
         }
-        const { terminalId } = await rpc.call('open', { threadId });
+        const { terminalId } = await rpc.call('open', { threadId, ...cwd === undefined ? {} : { cwd } });
         if (!await navigate.experimental_openTerminal({ terminalId })) {
           throw new Error('BB could not show the lazygit terminal.');
         }
@@ -30,8 +30,8 @@ export default definePluginApp(app => {
     useEffect(() => {
       opener = open;
       const onOpen = (event: Event) => {
-        const threadId = (event as CustomEvent<{ threadId?: unknown }>).detail?.threadId;
-        if (typeof threadId === 'string') void open(threadId);
+        const detail = (event as CustomEvent<{ threadId?: unknown; cwd?: unknown }>).detail;
+        if (typeof detail?.threadId === 'string' && (detail.cwd === undefined || typeof detail.cwd === 'string')) void open(detail.threadId, detail.cwd);
       };
       window.addEventListener(openEvent, onOpen);
       return () => { window.removeEventListener(openEvent, onOpen); if (opener === open) opener = null; };

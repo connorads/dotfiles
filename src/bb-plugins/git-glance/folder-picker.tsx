@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
-import type { rpcContract } from './contracts.ts';
+import type { FolderList, rpcContract } from './contracts.ts';
 import { message } from './ui.tsx';
-
-type Listing = { root: string; path: string; repository: boolean; folders: { name: string; repository: boolean }[] };
 
 export function FolderPicker({ threadId, onSelected, onClose }: {
   threadId: string; onSelected: () => void; onClose: () => void;
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const [path, setPath] = useState('.');
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<FolderList | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,9 +18,9 @@ export function FolderPicker({ threadId, onSelected, onClose }: {
     rpc.call('folders', { threadId, path }).then(result => { if (live) setListing(result); }, cause => { if (live) setError(message(cause)); });
     return () => { live = false; };
   }, [rpc, threadId, path]);
-  const select = async (next: string | null) => {
+  const select = async (next: string | null, worktree?: string) => {
     setBusy(true); setError(null);
-    try { await rpc.call('select', { threadId, path: next }); onSelected(); }
+    try { await rpc.call('select', { threadId, path: next, ...worktree === undefined ? {} : { worktree } }); onSelected(); }
     catch (cause) { setError(message(cause)); }
     finally { setBusy(false); }
   };
@@ -35,12 +33,22 @@ export function FolderPicker({ threadId, onSelected, onClose }: {
       {parts.map((part, index) => <span key={index}> / <button type="button" disabled={busy}
         onClick={() => setPath(parts.slice(0, index + 1).join('/'))}>{part}</button></span>)}
     </nav>
-    <input autoFocus className="gg-folder-search" aria-label="Find a folder" placeholder="Find a folder…"
+    <input autoFocus className="gg-folder-search" aria-label="Find a folder or worktree" placeholder="Find a folder or worktree…"
       value={query} onChange={event => setQuery(event.target.value)} />
     {error && <p className="gg-note gg-danger" role="alert">{error}</p>}
     {listing ? <>
       <p className="gg-folder-path">{listing.root}</p>
       {listing.repository && <button type="button" className="gg-ghost" disabled={busy} onClick={() => void select(path)}>Use this repository</button>}
+      {listing.worktrees.length > 0 && <>
+        <h3 className="gg-eyebrow">Checkouts and worktrees</h3>
+        <ul className="gg-folder-list" aria-label="Checkouts and worktrees">
+          {listing.worktrees.filter(tree => `${tree.branch ?? ''} ${tree.path}`.toLowerCase().includes(query.toLowerCase())).map(tree => <li key={tree.path}>
+            <button type="button" data-row disabled={busy} title={tree.path} onClick={() => void select(path, tree.path)}>
+              <Icon name="GitBranch" className="size-4" /><span><strong>{tree.branch ?? 'Detached HEAD'}</strong><span className="gg-folder-path gg-worktree-path">{tree.path}</span></span>
+            </button>
+          </li>)}
+        </ul>
+      </>}
       <ul className="gg-folder-list" aria-label="Subfolders">
         {listing.folders.filter(folder => folder.name.toLowerCase().includes(query.toLowerCase())).map(folder => {
           const next = path === '.' ? folder.name : `${path}/${folder.name}`;
@@ -49,13 +57,15 @@ export function FolderPicker({ threadId, onSelected, onClose }: {
               <Icon name={folder.repository ? 'FolderGit' : 'Folder'} className="size-4" /><span>{folder.name}</span>
               <span className="gg-spacer" />{folder.repository ? <span className="gg-tag">Git</span> : <Icon name="ChevronRight" className="size-3" />}
             </button>
-            {folder.repository && <button type="button" disabled={busy} aria-label={`Browse ${folder.name}`} onClick={() => setPath(next)}><Icon name="ChevronRight" className="size-3" /></button>}
+            {folder.repository && <button type="button" disabled={busy} aria-label={`Browse ${folder.name} and worktrees`} title="Browse folders and worktrees" onClick={() => setPath(next)}><Icon name="ChevronRight" className="size-3" /></button>}
           </li>;
         })}
       </ul>
-      {!listing.folders.some(folder => folder.name.toLowerCase().includes(query.toLowerCase())) && <p className="gg-note">{query ? 'No matching folders.' : 'No subfolders.'}</p>}
+      {!listing.folders.some(folder => folder.name.toLowerCase().includes(query.toLowerCase()))
+        && !listing.worktrees.some(tree => `${tree.branch ?? ''} ${tree.path}`.toLowerCase().includes(query.toLowerCase()))
+        && <p className="gg-note">{query ? 'No matching folders or worktrees.' : 'No subfolders or worktrees.'}</p>}
     </> : !error && <p className="gg-note" role="status">Reading folders…</p>}
     <footer><button type="button" className="gg-ghost" disabled={busy} onClick={() => void select(null)}>Use thread checkout</button>
-      <span className="gg-note">Selection applies to this Git panel.</span></footer>
+      <span className="gg-note">Browse a repository for its worktrees. The thread folder stays unchanged.</span></footer>
   </section>;
 }

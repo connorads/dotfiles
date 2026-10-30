@@ -1,4 +1,4 @@
-import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,4 +28,33 @@ test('browsing and selection reject paths outside the checkout, including symlin
   await assert.rejects(browseFolders(base, 'escape'), /outside/);
   await assert.rejects(selectFolder(base, 'escape'), /outside/);
   assert.deepEqual((await browseFolders(base, '.')).folders, []);
+});
+
+test('repository browsing lists external worktrees and selection verifies membership', async () => {
+  const base = tempDir();
+  const repo = join(base, 'app');
+  mkdirSync(repo); fixtureGit(repo, 'init', '-q');
+  fixtureGit(repo, 'commit', '--allow-empty', '-qm', 'Initial');
+  const outside = tempDir();
+  const linked = join(outside, 'review tree');
+  const detached = join(outside, 'detached');
+  fixtureGit(repo, 'worktree', 'add', '-qb', 'review', linked);
+  fixtureGit(repo, 'worktree', 'add', '-q', '--detach', detached);
+  assert.deepEqual((await browseFolders(base, 'app')).worktrees, [
+    { path: repo, branch: 'main' },
+    { path: detached, branch: null },
+    { path: linked, branch: 'review' },
+  ]);
+  assert.equal(await selectFolder(base, 'app', linked), linked);
+  assert.equal(await selectFolder(base, 'app', detached), detached);
+  const unrelated = join(outside, 'other');
+  mkdirSync(unrelated); fixtureGit(unrelated, 'init', '-q');
+  await assert.rejects(selectFolder(base, 'app', unrelated), /registered worktree/);
+  await assert.rejects(selectFolder(base, 'app', join(linked, 'missing')), /registered worktree/);
+  await assert.rejects(selectFolder(base, linked), /outside/);
+  renameSync(detached, join(outside, 'moved'));
+  assert.equal((await browseFolders(base, 'app')).worktrees.some(tree => tree.path === detached), false);
+  await assert.rejects(selectFolder(base, 'app', detached), /registered worktree/);
+  mkdirSync(detached); fixtureGit(detached, 'init', '-q');
+  await assert.rejects(selectFolder(base, 'app', detached), /another repository/);
 });

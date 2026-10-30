@@ -47,7 +47,7 @@ export default experimental_defineHostEntry({
         signal: AbortSignal.any([context.signal, context.lifecycle.signal]) });
     },
     folders: ({ root, path }) => browseFolders(root, path),
-    select: async ({ root, path }) => ({ root: await selectFolder(root, path) }),
+    select: async ({ root, path, worktree }) => ({ root: await selectFolder(root, path, worktree) }),
     watch: async ({ root }, context) => {
       let monitor = monitors.get(root);
       if (!monitor) {

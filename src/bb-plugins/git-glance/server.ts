@@ -113,7 +113,7 @@ export default function plugin(bb: BbPluginApi) {
       if (!base) throw new Error('This thread has no checkout.');
       return host.call('folders', { root: base.root, path }, { hostId: base.hostId, timeoutMs: 30_000 });
     },
-    select: async ({ threadId, path }) => {
+    select: async ({ threadId, path, worktree }) => {
       if (selecting.has(threadId)) throw new Error('Repository selection is already running.');
       selecting.add(threadId);
       try {
@@ -121,7 +121,7 @@ export default function plugin(bb: BbPluginApi) {
         if (!base) throw new Error('This thread has no checkout.');
         const previous = await required(threadId);
         if (ops.get(checkoutKey(previous))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
-        const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path }, { hostId: base.hostId })) };
+        const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path, ...worktree === undefined ? {} : { worktree } }, { hostId: base.hostId })) };
         await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
         for (const emptied of leases.move(threadId, target)) {
           await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });

@@ -5,7 +5,7 @@ import { makeOpenLazygit } from './open.ts';
 export default function plugin(bb: BbPluginApi) {
   const open = makeOpenLazygit(bb.sdk.terminals);
   bb.rpc.register(rpcContract, {
-    open: async ({ threadId }) => ({ terminalId: await open(threadId) }),
+    open: async ({ threadId, cwd }) => ({ terminalId: await open(threadId, cwd) }),
   });
   bb.cli.register({
     name: 'lazygit',

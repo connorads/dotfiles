@@ -56,3 +56,35 @@ test('a failed launch can be retried', async () => {
   await assert.rejects(open('thread'), /host unavailable/);
   assert.equal(await open('thread'), 'new');
 });
+
+test('selected checkouts launch separately and pass paths as literal argv', async () => {
+  const created: Parameters<Terminals['create']>[0][] = [];
+  const root = "/trees/review ' $(touch nope)";
+  const open = makeOpenLazygit({
+    list: async () => ({ sessions: [session('default')] }),
+    create: async args => { created.push(args); return { ...session('selected'), title: args.title ?? '' }; },
+  });
+  assert.equal(await open('thread', root), 'selected');
+  assert.equal(created[0]?.title, `Lazygit: ${root}`);
+  assert.deepEqual(created[0]?.start, {
+    mode: 'argv', argv: ['zsh', '-ic', 'cd -- "$1" && if [[ "$PWD" == "$HOME" ]]; then lgdf; else lazygit; fi', 'lazygit', root],
+  });
+  assert.deepEqual(created[0]?.scope, { kind: 'thread', threadId: 'thread' });
+});
+
+test('reopening a selected checkout reuses only its own terminal', async () => {
+  const root = '/trees/review';
+  const open = makeOpenLazygit({
+    list: async () => ({ sessions: [session('default'), { ...session('selected'), title: `Lazygit: ${root}` }] }),
+    create: async () => { throw new Error('must reuse'); },
+  });
+  assert.equal(await open('thread', root), 'selected');
+});
+
+test('simultaneous opens for different checkouts do not share a launch', async () => {
+  const open = makeOpenLazygit({
+    list: async () => ({ sessions: [] }),
+    create: async args => session(args.title ?? ''),
+  });
+  assert.deepEqual(await Promise.all([open('thread', '/a'), open('thread', '/b')]), ['Lazygit: /a', 'Lazygit: /b']);
+});
