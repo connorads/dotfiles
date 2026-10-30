@@ -1,0 +1,6 @@
+{
+  "reason": "Keep local workflows on loopback unless the user explicitly authorises a different listener",
+  "files": [
+    ".agents/skills/portless/SKILL.md"
+  ]
+}

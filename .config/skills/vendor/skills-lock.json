@@ -231,7 +231,7 @@
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "6d093ed2d9357c66401b1c415b75f40709d17dacbf89104c0882e7a4090e8e30"
+      "computedHash": "dfb37a9e9459a122341983977d57bc9ead19c260b21e03ca3faf6ef45dc423f0"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
