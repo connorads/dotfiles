@@ -151,6 +151,7 @@ const thread = { threadId: z.string().min(1) };
 /** Identifies one app window's interest in one thread, for leases. */
 const holder = { ...thread, clientId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
+  reviewTarget: { input: z.object({ ...thread, root }), output: checkoutTargetSchema },
   openCheckout: { input: checkoutTargetSchema.extend(thread), output: z.object({}) },
   generateMessage: { input: z.object({ ...thread, ...draftInput, requestId: z.string().min(1).max(100) }), output: draftOutput },
   cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },

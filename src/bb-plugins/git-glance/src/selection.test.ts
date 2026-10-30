@@ -112,3 +112,14 @@ test('a running operation prevents selection until it finishes', async () => {
     assert.equal(rpcContract.watch.output.parse(await watch()).root, '/work/app');
   } finally { finish({ ok: true, summary: 'Done' }); await harness.lifecycle.dispose(); }
 });
+
+
+test('review target identifies the selected checkout and rejects stale selections', async () => {
+  const { harness, watch } = setup();
+  try {
+    await watch();
+    await harness.behavior.callRpc('select', { threadId: 't', path: 'app' });
+    assert.deepEqual(await harness.behavior.callRpc('reviewTarget', { threadId: 't', root: '/work/app' }), { hostId: 'remote', path: '/work/app' });
+    await assert.rejects(harness.behavior.callRpc('reviewTarget', { threadId: 't', root: '/work' }), /selection changed/);
+  } finally { await harness.lifecycle.dispose(); }
+});

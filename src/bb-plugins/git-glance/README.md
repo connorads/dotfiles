@@ -14,6 +14,9 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - the last 30 commits with a lane graph; filled nodes are not on any remote.
   Click a commit for its message, author and changed files, each with a diff.
 - diffs use BB's own viewer, which is built on Pierre diffs
+- **Open in Diff Viewer** in the header opens every uncommitted change in one
+  continuous panel, using the selected checkout. The local Diff Viewer plugin
+  must be enabled and the source thread focused.
 
 On the New thread screen, `Alt+G` opens the pop-up for the picked project's
 default checkout. That screen shows no chip.

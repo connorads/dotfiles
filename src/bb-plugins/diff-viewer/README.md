@@ -123,3 +123,27 @@ for this plugin.
   full file sides (`experimental_fullFileContents`), which the plugin does not
   load.
 - Binary images show no preview.
+
+## Explicit Checkouts
+
+Git Glance's **Open in Diff Viewer** button opens its selected checkout in this
+panel. The panel stores the host, checkout path and comparison in its tab
+parameters. It leaves the agent's working directory and Git branches unchanged.
+The header shows the explicit checkout path.
+
+Agents can emit a clickable inline-code review reference:
+`git-review://host_example/work/project?scope=uncommitted`.
+Use `scope=unpushed` for cumulative unpushed commits, or `scope=branch` for the
+branch comparison described above. URI-encode reserved characters in path
+segments. The reference requires the message thread to be focused, a host
+matching that thread, and an existing Git checkout root. Enter and Space also
+open the reference. Diff Viewer contributes this format to agent instructions.
+
+An unapplied patch has no working-tree diff. Apply it to a dedicated worktree
+at the patch's recorded base, then link that checkout with `scope=uncommitted`.
+The ordinary shortcut still opens the thread's checkout.
+
+Other frontend plugins can dispatch a cancelable `diff-viewer:open` CustomEvent
+on `window`, with `{ threadId, target: { hostId, path }, scope }` as its detail.
+`scope` follows `scopeSchema` in `contracts.ts`. The listener prevents default
+when it opens the panel. An uncancelled event means the viewer did not open.

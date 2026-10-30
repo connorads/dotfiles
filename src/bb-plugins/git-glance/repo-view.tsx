@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { experimental_copyToClipboard, experimental_Icon as Icon, useRealtimeConnectionState } from '@get-bb/plugin-sdk/app';
-import type { OpRequest, Repo } from './contracts.ts';
+import { experimental_copyToClipboard, experimental_Icon as Icon, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
+import { rpcContract, type OpRequest, type Repo } from './contracts.ts';
 import { CommitComposer } from './commit-composer.tsx';
 import { BranchPicker } from './branch-picker.tsx';
 import { CommitList, CommitPanel } from './commits.tsx';
@@ -98,13 +98,26 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const success = op?.status === 'succeeded' && op.origin === 'user' && now - op.finishedAt < 6000 ? op : null;
   const fresh = useFresh(repo);
 
+  const rpc = useRpc<typeof rpcContract>();
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const openReview = async () => {
+    if (!state.root) return;
+    try {
+      const target = await rpc.call('reviewTarget', { threadId, root: state.root });
+      const unhandled = window.dispatchEvent(new CustomEvent('diff-viewer:open', { cancelable: true, detail: { threadId, target, scope: { kind: 'uncommitted' } } }));
+      if (unhandled) throw new Error('Diff Viewer is unavailable. Enable it and focus this thread.');
+      onClose();
+    } catch (cause) { setReviewError(cause instanceof Error ? cause.message : String(cause)); }
+  };
   return <>
+    {reviewError && <p role="alert">{reviewError}</p>}
     <header className="gg-header" data-tone={tone}>
       <div className="gg-eyebrow">
         <Icon name={repo.kind === 'dotfiles' ? 'Home' : 'FolderGit'} className="size-3.5" />
         <button type="button" className="gg-ghost" disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository">{repo.name}<Icon name="ChevronDown" className="size-3" /></button>
         {repo.kind === 'dotfiles' && <span className="gg-tag">bare repo</span>}
         <span className="gg-spacer" />
+        <button type="button" className="gg-ghost gg-icon-button" onClick={() => void openReview()} disabled={!state.root || threadId.startsWith('project:')} aria-label="Open in Diff Viewer" title="Open in Diff Viewer"><Icon name="FileDiff" className="size-3.5" /></button>
         <button type="button" className="gg-ghost gg-icon-button" onClick={onZoom} aria-pressed={zoomed}
           aria-label={zoomed ? 'Shrink to pop-up' : 'Expand'} title={zoomed ? 'Shrink to pop-up (_)' : 'Expand (+)'}>
           <span className="gg-swap" data-done={zoomed || undefined} aria-hidden>

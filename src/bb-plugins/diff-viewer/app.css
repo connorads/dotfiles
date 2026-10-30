@@ -103,3 +103,7 @@
   .dv-scopes button { min-height: 44px; }
   .dv-icon-button { width: 44px; height: 44px; flex: none; }
 }
+
+.dv-chat-review { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+.dv-chat-review:focus-visible { outline: 2px solid var(--primary); }
+.dv-open-error { position: fixed; bottom: 24px; right: 24px; z-index: 1000; padding: 12px; background: var(--background); color: var(--foreground); border: 1px solid var(--border); }

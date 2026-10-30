@@ -97,6 +97,11 @@ export default function plugin(bb: BbPluginApi) {
   bb.onDispose(() => clearInterval(sweep));
 
   bb.rpc.register(rpcContract, {
+    reviewTarget: async ({ threadId, root }) => {
+      const target = await required(threadId);
+      if (target.root !== root) throw new Error('Repository selection changed. Reopen Git Glance and try again.');
+      return { hostId: target.hostId, path: target.root };
+    },
     openCheckout: async ({ threadId, hostId, path }) => {
       if (selecting.has(threadId)) throw new Error('Repository selection is already running.');
       selecting.add(threadId);

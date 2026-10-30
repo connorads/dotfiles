@@ -259,6 +259,8 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   call returns false. Fakes in `renderSlot` accept it, so unit tests pass.
 - Workaround: take `openPanel` from the command, message action or thread menu context.
   These use the host's focused-thread opener: [app.tsx](../fork/app.tsx).
+- Diff Viewer uses an invisible per-thread header opener for review links and
+  Git Glance events. The app-overlay opener returned false in a live browser test.
 - Ask: back `useBbNavigate().openThreadPanel` with the same focused-thread opener
   everywhere, or document the overlay limit on the hook.
 - Status: open

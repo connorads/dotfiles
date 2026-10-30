@@ -1,8 +1,11 @@
+import { z } from 'zod';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { definePluginApp, experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_Icon as Icon, useRpc, useBbNavigate } from '@get-bb/plugin-sdk/app';
 import type { DiffViewMode, PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { PluginThreadPanelProps } from '@get-bb/plugin-sdk';
-import type { Commit, FileDiff, LoadResult, Scope, ScopeKind, rpcContract } from './contracts.ts';
+import type { PluginThreadPanelProps, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
+import type { Commit, FileDiff, LoadResult, Review, Scope, ScopeKind, rpcContract } from './contracts.ts';
+import { reviewSchema } from './contracts.ts';
+import { mountReviewLinks, openReviewEvent } from './review-links.ts';
 import { Counts, FileCard, FilePath, type Fetched } from './file-card.tsx';
 import { age, currentFile, defaultCollapsed, neighbour, statusLetter, totals } from './src/view.ts';
 import './app.css';
@@ -53,10 +56,11 @@ function FileIndex({ files, onJump }: { files: FileDiff[]; onJump: (path: string
   </nav>;
 }
 
-function DiffPanel({ threadId }: PluginThreadPanelProps) {
+function DiffPanelContent({ threadId, review }: PluginThreadPanelProps & { review: Review | null }) {
   const rpc: Rpc = useRpc<typeof rpcContract>();
-  const [kind, setKind] = useState<ScopeKind>(() => lastScope.get(threadId) ?? 'uncommitted');
-  const [commit, setCommit] = useState<string | null>(null);
+  const target = useMemo(() => review ? { target: review.target } : {}, [review]);
+  const [kind, setKind] = useState<ScopeKind>(() => review?.scope.kind ?? lastScope.get(threadId) ?? 'uncommitted');
+  const [commit, setCommit] = useState<string | null>(review?.scope.kind === 'unpushed' ? review.scope.commit : null);
   const [result, setResult] = useState<LoadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,9 +83,9 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
     setLoading(true);
     try {
       // Taken before the load, so a change during the load shows at the next check.
-      const print = await rpc.call('fingerprint', { threadId });
+      const print = await rpc.call('fingerprint', { threadId, ...target });
       if (request === latest.current) printed.current = print;
-      const next = await rpc.call('load', { threadId, scope });
+      const next = await rpc.call('load', { threadId, ...target, scope });
       if (request !== latest.current) return;
       setResult(next);
       setError(null);
@@ -92,7 +96,7 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
     } finally {
       if (request === latest.current) { setLoading(false); settled.current = request; }
     }
-  }, [rpc, threadId, scope]);
+  }, [rpc, threadId, target, scope]);
 
   useEffect(() => { lastScope.set(threadId, kind); }, [threadId, kind]);
   useEffect(() => { setResult(null); void reload(); }, [reload]);
@@ -103,7 +107,7 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
       checking.current = true;
       const request = latest.current;
       try {
-        const print = await rpc.call('fingerprint', { threadId });
+        const print = await rpc.call('fingerprint', { threadId, ...target });
         if (request === latest.current && print !== printed.current) void reload();
       } catch { /* the next check tries again */ } finally { checking.current = false; }
     };
@@ -116,7 +120,7 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [rpc, threadId, reload]);
+  }, [rpc, threadId, target, reload]);
   useEffect(() => {
     // Opened by shortcut: take focus so j/k work at once, unless the reader is typing elsewhere.
     if (document.activeElement === document.body) rootRef.current?.focus({ preventScroll: true });
@@ -141,9 +145,9 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
     if (!spec) return;
     const settle = (value: Fetched) => { if (specRef.current === spec) setFetched(map => new Map(map).set(file.path, value)); };
     settle('loading');
-    rpc.call('file', { threadId, spec, path: file.path, oldPath: file.oldPath, untracked: file.untracked })
+    rpc.call('file', { threadId, ...target, spec, path: file.path, oldPath: file.oldPath, untracked: file.untracked })
       .then(settle, cause => settle({ error: message(cause) }));
-  }, [rpc, threadId, spec]);
+  }, [rpc, threadId, target, spec]);
   const askFull = useCallback((path: string) => setWantFull(set => new Set(set).add(path)), []);
 
   const sections = (): HTMLElement[] => scrollRef.current ? Array.from(scrollRef.current.querySelectorAll<HTMLElement>('.dv-file')) : [];
@@ -205,7 +209,7 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
       </button>
     </div>
     {repo && <div className="dv-context">
-      <span className="dv-repo">{repo.name}{repo.branch && <span className="dv-muted"> · {repo.branch}</span>}</span>
+      <span className="dv-repo">{review?.target.path ?? repo.name}{repo.branch && <span className="dv-muted"> · {repo.branch}</span>}</span>
       {repo.view.ok && <span className="dv-muted dv-label" title={repo.view.label}>{repo.view.label}</span>}
     </div>}
     {repo?.view.ok && repo.view.note && <p className="dv-note">{repo.view.note}</p>}
@@ -236,7 +240,37 @@ function DiffPanel({ threadId }: PluginThreadPanelProps) {
   </div>;
 }
 
+function DiffPanel(props: PluginThreadPanelProps) {
+  const review = useMemo(() => {
+    const parsed = reviewSchema.safeParse(props.params);
+    return parsed.success ? parsed.data : null;
+  }, [props.params]);
+  if (props.params !== null && review === null) return <p role="alert">Invalid review target.</p>;
+  return <DiffPanelContent key={`${props.threadId}:${JSON.stringify(props.params)}`} {...props} review={review} />;
+}
+
+function ReviewOpener({ threadId }: PluginThreadHeaderActionProps) {
+  const navigate = useBbNavigate();
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const open = (event: Event) => {
+      const detail: unknown = (event as CustomEvent<unknown>).detail;
+      const parsed = reviewSchema.extend({ threadId: z.string() }).safeParse(detail);
+      if (!parsed.success) return;
+      if (parsed.data.threadId !== threadId) return;
+      const opened = navigate.openThreadPanel({ actionId: 'diff', title: 'Diff viewer', params: { target: parsed.data.target, scope: parsed.data.scope } });
+      if (opened) event.preventDefault();
+      setError(opened ? null : 'Open a thread to review this checkout.');
+    };
+    window.addEventListener(openReviewEvent, open);
+    return () => window.removeEventListener(openReviewEvent, open);
+  }, [navigate, threadId]);
+  return error ? <div className="dv-open-error" role="alert">{error} <button onClick={() => setError(null)}>Dismiss</button></div> : null;
+}
+
 export default definePluginApp(app => {
+  app.contentScripts.register({ id: 'review-links', mount: () => mountReviewLinks(document, detail => { window.dispatchEvent(new CustomEvent(openReviewEvent, { detail })); }) });
+  app.slots.experimental_threadHeaderAction({ id: 'review-opener', title: 'Open review', component: ReviewOpener });
   app.slots.threadPanelAction({ id: 'diff', title: 'Diff viewer', icon: 'FileDiff', layout: 'flush', component: DiffPanel });
   app.commands.register({
     id: 'open', title: 'Open diff viewer', defaultShortcut: { key: 'd', mod: true, shift: true },

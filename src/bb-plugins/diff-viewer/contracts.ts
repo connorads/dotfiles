@@ -67,17 +67,20 @@ export const loadResultSchema = z.discriminatedUnion('kind', [
 export type LoadResult = z.infer<typeof loadResultSchema>;
 
 const root = z.string().min(1);
+const targetSchema = z.object({ hostId: z.string().min(1), path: z.string().startsWith('/') });
+export const reviewSchema = z.object({ target: targetSchema, scope: scopeSchema });
+export type Review = z.infer<typeof reviewSchema>;
 const fileInput = { spec: specSchema, path: z.string().min(1), oldPath: z.string().nullable(), untracked: z.boolean() };
 
 export const hostContract = defineRpcContract({
-  load: { input: z.object({ root, scope: scopeSchema }), output: loadResultSchema },
+  load: { input: z.object({ root, exact: z.boolean().optional(), scope: scopeSchema }), output: loadResultSchema },
   /** One file's whole patch (to the expanded cap), for "show all" and deferred files. */
-  file: { input: z.object({ root, ...fileInput }), output: bodySchema },
+  file: { input: z.object({ root, exact: z.boolean().optional(), ...fileInput }), output: bodySchema },
   /** Cheap: changes whenever a load could differ. Null when the checkout is not a git work tree. */
-  fingerprint: { input: z.object({ root }), output: z.string().nullable() },
+  fingerprint: { input: z.object({ root, exact: z.boolean().optional() }), output: z.string().nullable() },
 });
 
-const thread = { threadId: z.string().min(1) };
+const thread = { threadId: z.string().min(1), target: targetSchema.optional() };
 export const rpcContract = defineRpcContract({
   load: { input: z.object({ ...thread, scope: scopeSchema }), output: loadResultSchema },
   file: { input: z.object({ ...thread, ...fileInput }), output: bodySchema },

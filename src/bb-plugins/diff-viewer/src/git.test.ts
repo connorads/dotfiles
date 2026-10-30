@@ -282,3 +282,15 @@ test('hook variables never redirect git to another repository', async () => {
   }
   assert.deepEqual(readFileSync(join(decoy, '.git', 'index')), decoyIndex, 'the decoy index is untouched');
 });
+
+test('explicit review targets reject subdirectories and missing checkouts', async () => {
+  const root = tempDir();
+  git(root, 'init', '-q');
+  mkdirSync(join(root, 'nested'));
+  const harness = experimental_createHostEntryHarness(entry);
+  try {
+    await harness.experimental_call('load', { root, exact: true, scope: { kind: 'uncommitted' } });
+    await assert.rejects(harness.experimental_call('load', { root: join(root, 'nested'), exact: true, scope: { kind: 'uncommitted' } }), /checkout root/);
+    await assert.rejects(harness.experimental_call('fingerprint', { root: tempDir(), exact: true }), /checkout root/);
+  } finally { await harness.experimental_dispose(); }
+});
