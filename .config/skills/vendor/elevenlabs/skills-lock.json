@@ -5,7 +5,7 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "agents/SKILL.md",
-      "computedHash": "9dc8ec9445b35b61c7750a3dfb41c2300b872d4a588d4c72e3c43c20f8195bb7"
+      "computedHash": "db3c76b5389670073b4a7c3d44ab5d99e7620805599e646dff79b8dad9e14b55"
     },
     "music": {
       "source": "elevenlabs/skills",
@@ -29,7 +29,7 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "text-to-speech/SKILL.md",
-      "computedHash": "451b0b1444cb9890107ec36ebc948868d12ae3bdcb42cc513c5461f8d15e3de0"
+      "computedHash": "21391cae9c77ac1f843c2001e489f84091bfc8bd2e1199e7f63786a5609d5904"
     }
   }
 }
