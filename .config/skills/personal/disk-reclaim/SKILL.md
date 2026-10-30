@@ -29,6 +29,9 @@ restore, a 6G photo library is gone forever.
    bare non-interactive shell without mise shims or `/opt/homebrew/bin` reports
    those as `not available on this host` and silently drops them from the
    total.
+   If the agent PATH omits installed tools, resolve their existing paths with
+   `mise ls --current --json`. Avoid `mise exec` for discovery; it can try to
+   install missing configured tools.
    A failed, timed-out or interrupted probe leaves its target **unknown**, even
    if the wrapper prints zero. Keep completed measurements; do not turn missing
    evidence into a zero-sized candidate.
@@ -106,6 +109,20 @@ and a Claude Desktop VM per profile at
 `~/.claude-profiles/desktop/<profile>/vm_bundles` (9.4G). Check no process
 holds a release or VM before removing it.
 
+Agent test artefacts also accumulate under `~/.bb/thread-storage`. Inspect
+isolated test runs and downloaded runtimes separately from source, reports,
+conversation records and real application state. Database files are not caches
+merely because a test created their directory. Verify that retained harnesses
+create disposable fixtures, then check live ownership before proposing removal.
+An idle, unarchived thread can resume; preserve its source and reports.
+
+Project-local `.pnpm-store` directories are outside the global store prune.
+Read `storeDir` from `node_modules/.modules.yaml` where available, then use
+`pnpm --dir <outside-project> --store-dir <exact-store> store prune`.
+Validate the exact path first. Native pruning preserves referenced packages;
+its reported removal size still needs a before/after `df` measurement.
+Temporary-directory rules still apply to stores under `/private/tmp`.
+
 ## When the space comes back
 
 A second "disk full" within days means something writes faster than cleanup
@@ -175,12 +192,11 @@ audio manifest or deleting files.
 
 ## Gotchas
 
-- **`rm -rf` is denied by settings.** Reach for the idiomatic cleaner instead:
-  `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
-  prune`. `rm -f` on named files is allowed. Bundling several removals into one
-  command gets the whole command denied, so keep them separate.
-  After a deletion rejection, follow its required route. Do not evade it with
-  another deletion API or by moving the target through a temporary directory.
+- **Follow a deletion rejection's required route.** Prefer an idiomatic cleaner
+  before requesting manual deletion. If a rejected permanent deletion requires
+  Trash, move the exact target with `trash`. Do not retry through another
+  permanent-deletion command, API or temporary directory. Leave agent-created
+  temporary data for system cleanup unless the user approves named targets.
 - **Hibernated agents still own their scratch state.** Conversation persistence
   does not prove that scratch files are disposable. `cleanup --target
   claude-temp` fails closed if any live-agent query or hibernation record is
@@ -201,29 +217,26 @@ audio manifest or deleting files.
   Report candidate size, observed interval change and current free space
   separately. Other agents, downloads and user actions can change the same
   volume; a whole-session increase is not attributable cleanup savings.
-- **Trashing frees nothing until the Trash is emptied, on a GUI Mac too.** The
-  bytes leave `du ~` and never reach `df`, so a session that trashes its way to
-  a result cannot show the result. An agent can neither read `~/.Trash` (TCC)
-  nor safely empty it - it may hold the user's own items. So for unambiguously
-  rebuildable targets prefer real deletion, via an idiomatic cleaner,
-  `git worktree remove` or `wt-remove`, precisely so `df` moves inside the
-  session. Where `trash` is right, close by reporting how much is pending in it
-  and that emptying is the user's action.
+- **Trashing frees nothing until Trash is emptied.** Emptying deletes all current
+  contents, including unrelated items and mounted-volume Trash. Obtain explicit
+  approval to empty all Trash. When the installed helper is available, run
+  `/usr/local/bin/empty-trash check`, then `/usr/local/bin/empty-trash empty`.
+  Use the full path to avoid a shell alias and never run the helper with sudo.
+  It needs prior Finder permission and a logged-in desktop session. Verify the
+  helper result and `df`; target sizes alone do not prove recovery. Without
+  approval or a working helper, report the trashed files as pending.
 - **`trash` duration is unpredictable.** One run on a many-file tree outlived
   tool timeouts and was killed mid-move, leaving some args done and some
   untouched; another moved 90 paths holding 19G of `node_modules` in seconds.
   Background it with `trash -v`, and verify per-path afterwards with `ls -d`
   rather than trusting one exit code for the whole list.
-- **Over SSH, trashing is close to one-way, and frees nothing.** A headless
-  session can neither read `~/.Trash` (that needs Full Disk Access) nor drive
-  Finder (Automation consent cannot be prompted with no GUI), so
-  `osascript -e 'tell application "Finder" to empty trash'` times out with
-  AppleEvent `-1712`. That code means missing consent, not a wedged Finder:
-  `killall Finder` changes nothing, and polling `df` for it wastes the whole
-  timeout. Recovery hangs on knowing the exact names, so run `trash -v` and
-  keep its `Moved "<src>" to "/Users/<you>/.Trash/<name>"` lines for recovery.
-  Report trashed bytes as pending; leave emptying to the user. Prefer a
-  supported cleaner when permitted, without bypassing a deletion rejection.
+- **SSH and BB need the Trash helper's permission identity.** The installed
+  helper launches through LaunchServices; it does not need Full Disk Access on
+  the caller. A sandbox can block that launch. Use the execution tool's approval
+  mechanism when needed for an authorised request. A helper timeout leaves the
+  outcome unknown; inspect Finder before retrying. Direct `osascript` can time
+  out without Automation consent, and restarting Finder does not grant consent.
+  Keep `trash -v` movement receipts for recovery.
 - **`~/Library/Containers` stalls every `du` and is never the answer.** It is
   hundreds of `com.apple.*` sandboxes (600 on this machine, all Apple, largest
   44K). It is the one directory where a stall means TCC-protected paths, not

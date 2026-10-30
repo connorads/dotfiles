@@ -11,6 +11,7 @@ when the task needs them.
 | --- | --- |
 | Find a config, add a project or move source | [Repository layout](./docs/repository-layout.md) |
 | Find a command or inspect agent account/history wiring | [Command reference](./docs/commands.md) |
+| Reclaim local disk space | [Disk reclaim](./.config/skills/personal/disk-reclaim/SKILL.md) |
 | Change a shell function or its PATH entry | [Shell functions](./docs/shell-functions.md) |
 | Write or run shell tests | [.config/zsh/tests/AGENTS.md](./.config/zsh/tests/AGENTS.md) |
 | Change Nix targets, Xcode or package ownership | [System platforms](./docs/system-platforms.md) |
