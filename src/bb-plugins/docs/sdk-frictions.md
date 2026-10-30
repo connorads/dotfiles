@@ -994,6 +994,19 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: CLI and tooling
 
+### Global and workspace instruction paths can load the same file twice
+
+- Found: 2026-10-30, agent configuration
+- Wanted: Include each instruction file once when the workspace `.bb` directory is also the server data directory.
+- Gap: Runtime configuration appends data-directory and workspace instructions independently, without checking file identity.
+  A home-directory workspace with the default data directory loads the same `.bb/AGENTS.md` under both headings.
+- Workaround: Keep the global file intact. A workspace with a distinct `.bb` directory avoids this path collision.
+- Ask: Deduplicate instruction sources by canonical path and owning host before assembly. Preserve distinct workspace files.
+- Status: open
+- Category: app-bug
+- Evidence: Installed `readDataDirAgentInstructions` and `thread-runtime-config.ts` assembly in `server/dist/start-server.js`.
+  Running the extracted assembly block with synthetic identical inputs produces two copies. Filesystem identity confirms the path collision.
+
 ### Global instruction loading has no XDG configuration path
 
 - Found: 2026-10-21, agent configuration
