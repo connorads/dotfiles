@@ -93,8 +93,8 @@ For mobile access, connect Tailscale on the phone and open the required BB serve
 [darwin-server.nix](../.config/nix/modules/darwin-server.nix) declares the Mac mini's BB system daemon.
 It runs as `connorads` in the system launchd domain, independently of desktop login.
 [bb-services.nix](../.config/nix/modules/bb-services.nix) declares the other macOS user services.
-mise owns Node and BB installations. The Mini resolves exact deployed versions from local mise pins.
-Other macOS user services resolve the global mise configuration.
+mise owns Node and BB server installations. Servers resolve exact deployed versions from local mise pins.
+Worker services resolve the global mise configuration.
 Server launchers disable BB's in-app updater. Startup never installs packages.
 The desktop app owns its local server when the declarative server service is disabled.
 
@@ -184,6 +184,50 @@ Use BB's supported import procedure with a verified backup when database restora
 
 Deployment commands use an exclusive directory lock. After an interrupted command, confirm no deployment is running before removing its empty `.lock` directory.
 The ownership decision and rejected alternatives are recorded in [ADR 0024](./adr/0024-bb-service-uses-local-mise-deployment-pins.md).
+
+### BB user-server deployments
+
+A deployed user server uses mise for its runtime and the stock desktop as a client.
+The user service is `gui/<uid>/org.nix-community.home.bb-server`.
+Its deployed configuration stores `BB_DEPLOY_SERVICE = "user"` and an absolute `BB_DEPLOY_PACKAGE` under `[env]`.
+The package path names a private release prepared by [the patcher](../src/bb-plugins/workflows-patch/README.md#private-server-packages).
+Configurations without these keys retain the Mini's system-service deployment behaviour.
+
+```mermaid
+flowchart LR
+  Update[up installs mise tools] --> Prepare[Prepare private package]
+  Prepare --> Candidate[Patched or stock candidate]
+  Candidate --> Activate[Explicit idle activation]
+  Activate --> Server[User server with in-app updates off]
+  Desktop[Stock desktop with saved server URL] --> Server
+```
+
+For initial preparation, run `bb-deploy prepare --user`.
+It checks installed native modules, attempts each requested patch and records exact runtime pins.
+Patch incompatibility warns and retains stock files. Failed package copying or native checks blocks preparation.
+Preparation never switches the running server.
+
+Initial handover requires a maintenance window:
+
+1. Install a quarantined BB version compatible with the existing data. Never select an older executable without compatibility evidence.
+2. Run `bb-deploy prepare --user`, then `bb-deploy adopt`. Adoption requires the running version to match the candidate.
+3. In the desktop Server menu, save `http://127.0.0.1:38886` as a custom server target.
+4. Export and validate a backup, then stop the desktop-owned server when no work is running.
+5. Enable `server.enabled` in the private service configuration and activate the Nix user-service configuration.
+6. Open the desktop and verify the saved target, provider task execution and native features.
+
+Never run two servers against the same data directory.
+The saved custom target avoids starting a desktop-owned replacement when the managed server is unavailable.
+The desktop shows a connection error instead. Desktop client updates remain independent of server updates.
+Folder selection, browser controls and plugin windows require live checks during handover.
+
+For later updates, `up` prepares a candidate from installed mise tools and preserves user deployment mode.
+Review its patch warnings, then run `bb-deploy activate` when idle.
+Activation uses the user launch agent without sudo. It retains the existing backup and health checks.
+It refuses an older candidate or a service-owner change. Changing service owners requires a separate explicit handover.
+An unchanged candidate requires no restart. Failed health checks retain the selected pins for inspection.
+Retained release packages and mise pins support investigation; they do not establish database rollback compatibility.
+The design and rejected alternatives are recorded in [ADR 0025](./adr/0025-bb-server-patches-use-private-candidates.md).
 
 ```mermaid
 flowchart LR

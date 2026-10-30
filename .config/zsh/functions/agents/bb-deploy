@@ -1,31 +1,34 @@
 #!/usr/bin/env zsh
-# bb-deploy: prepare and activate pinned BB releases for the Mini system daemon
+# bb-deploy: prepare checked BB candidates and activate pinned server releases
 emulate -L zsh
 setopt localtraps pipefail
 umask 077
 
-local action=${1:-status}
-if (($# > 1)); then
-  print -u2 'usage: bb-deploy [prepare|adopt|activate|status]'
+local action=${1:-status} user_requested=0
+if (($# == 2)) && [[ $action == prepare && $2 == --user ]]; then
+  user_requested=1
+elif (($# > 1)); then
+  print -u2 'usage: bb-deploy [prepare [--user]|adopt|activate|status]'
   return 2
 fi
 case $action in
 prepare | adopt | activate | status) ;;
 -h | --help)
-  print 'usage: bb-deploy [prepare|adopt|activate|status]'
+  print 'usage: bb-deploy [prepare [--user]|adopt|activate|status]'
   print 'prepare verifies installed desired versions; adopt records the running release without restarting'
-  print 'activate requires sudo authentication and defers with exit 75 when busy or unknown'
+  print 'prepare --user selects a patched package and the user launch agent'
+  print 'activate defers with exit 75 when busy or unknown; system deployment requires sudo'
   return 0
   ;;
 *)
-  print -u2 'usage: bb-deploy [prepare|adopt|activate|status]'
+  print -u2 'usage: bb-deploy [prepare [--user]|adopt|activate|status]'
   return 2
   ;;
 esac
 
 local root="$HOME/.config/bb/deployment"
 local api=http://127.0.0.1:38886
-local node_dir bb_dir node_version bb_version running backup
+local node_dir bb_dir node_version bb_version running backup package_root deployment_service=system
 if [[ $action == status ]]; then
   local selection
   for selection in current candidate previous; do
@@ -69,10 +72,20 @@ _bb_deploy_resolve() {
   node_dir=$(mise -C "$directory" where node) || return 1
   bb_dir=$(mise -C "$directory" where npm:bb-app) || return 1
   [[ -x "$node_dir/bin/node" && -f "$bb_dir/node_modules/bb-app/package.json" ]] || return 1
+  deployment_service=$(mise config get --file "$directory/mise.toml" env.BB_DEPLOY_SERVICE 2>/dev/null) || deployment_service=system
+  package_root="$bb_dir/node_modules/bb-app"
+  case $deployment_service in
+  user)
+    package_root=$(mise config get --file "$directory/mise.toml" env.BB_DEPLOY_PACKAGE) || return 1
+    [[ $package_root == /* && -f "$package_root/dist/bb-app.js" ]] || return 1
+    ;;
+  system) ;;
+  *) print -u2 'bb-deploy: invalid deployed service'; return 1 ;;
+  esac
 }
 
 _bb_deploy_smoke() {
-  "$node_dir/bin/node" - "$bb_dir/node_modules/bb-app" <<'JS'
+  "$node_dir/bin/node" - "$package_root" <<'JS'
 const { createRequire } = require('node:module');
 const { realpathSync } = require('node:fs');
 const requireBB = createRequire(`${realpathSync(process.argv[2])}/package.json`);
@@ -94,13 +107,40 @@ if [[ $action == prepare ]]; then
   fi
   node_dir=$(mise -C "$HOME" where node) || return 1
   bb_dir=$(mise -C "$HOME" where npm:bb-app) || return 1
+  package_root="$bb_dir/node_modules/bb-app"
   [[ $("$node_dir/bin/node" --version) == "v$node_version" ]] || return 1
   jq -e --arg version "$bb_version" '.version == $version' \
     "$bb_dir/node_modules/bb-app/package.json" >/dev/null || return 1
   _bb_deploy_smoke || return 1
+  if ((user_requested)); then
+    deployment_service=user
+  elif [[ -f "$root/current/mise.toml" ]]; then
+    deployment_service=$(mise config get --file "$root/current/mise.toml" env.BB_DEPLOY_SERVICE 2>/dev/null) || deployment_service=system
+  fi
+  case $deployment_service in
+  user)
+    local report patch_status package_value
+    report=$(bb-patch prepare-package --package "${package_root:A}" \
+      --output "$HOME/.local/share/bb-deploy/releases" --node "$node_dir/bin/node" \
+      --set session-options-plus-activity) || return 1
+    package_root=$(print -r -- "$report" | jq -er --arg version "$bb_version" \
+      'select(.version == $version and (.status == "patched" or .status == "partial" or .status == "stock")) | .package | select(startswith("/"))') || return 1
+    patch_status=$(print -r -- "$report" | jq -r .status) || return 1
+    print -r -- "bb-deploy: package patches $patch_status"
+    print -r -- "$report" | jq -r '.warning // empty' >&2
+    _bb_deploy_smoke || return 1
+    package_value=$(jq -Rn --arg value "$package_root" '$value') || return 1
+    ;;
+  system) ;;
+  *) print -u2 'bb-deploy: invalid deployed service'; return 1 ;;
+  esac
   mkdir -p "$root/candidate" || return 1
-  printf '[tools]\nnode = "%s"\n"npm:bb-app" = "%s"\n' \
-    "$node_version" "$bb_version" >"$root/candidate/.mise.toml.next" || return 1
+  {
+    printf '[tools]\nnode = "%s"\n"npm:bb-app" = "%s"\n' "$node_version" "$bb_version"
+    if [[ $deployment_service == user ]]; then
+      printf '\n[env]\nBB_DEPLOY_SERVICE = "user"\nBB_DEPLOY_PACKAGE = %s\n' "$package_value"
+    fi
+  } >"$root/candidate/.mise.toml.next" || return 1
   mv -f "$root/candidate/.mise.toml.next" "$root/candidate/mise.toml" || return 1
   mise trust "$root/candidate/mise.toml" || return 1
   _bb_deploy_resolve "$root/candidate" || return 1
@@ -132,15 +172,46 @@ else
     print -u2 'bb-deploy: initialise current pins with bb-deploy adopt first'
     return 1
   }
+  local deployed_service
+  deployed_service=$(mise config get --file "$root/current/mise.toml" env.BB_DEPLOY_SERVICE 2>/dev/null) || deployed_service=system
+  if [[ $deployed_service != $deployment_service ]]; then
+    print -u2 'bb-deploy: service migration requires an explicit handover; deployed pins retained'
+    return 1
+  fi
   if cmp -s "$root/current/mise.toml" "$root/candidate/mise.toml"; then
     print 'bb-deploy: desired release already deployed'
     return 0
   fi
   _bb_deploy_idle || return $?
-  sudo -n true || {
-    print -u2 'bb-deploy: authenticate with sudo -v, then rerun bb-deploy activate'
-    return 1
-  }
+  if [[ $deployment_service == user ]]; then
+    local running_version
+    running=$(_bb_deploy_api system/app-update) || return 1
+    running_version=$(print -r -- "$running" | jq -er '.current.version | strings') || return 1
+    "$node_dir/bin/node" - "$running_version" "$bb_version" <<'JS'
+const [running, candidate] = process.argv.slice(2);
+if (running === candidate) process.exit(0);
+function parts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  if (!match) process.exit(1);
+  return match.slice(1).map(Number);
+}
+const current = parts(running), desired = parts(candidate);
+for (let index = 0; index < 3; index++) {
+  if (desired[index] !== current[index]) process.exit(desired[index] > current[index] ? 0 : 1);
+}
+process.exit(1);
+JS
+    if (($?)); then
+      print -u2 'bb-deploy: older or unverified candidate refused; deployed pins retained'
+      return 1
+    fi
+  fi
+  if [[ $deployment_service == system ]]; then
+    sudo -n true || {
+      print -u2 'bb-deploy: authenticate with sudo -v, then rerun bb-deploy activate'
+      return 1
+    }
+  fi
   local backups="$HOME/.local/state/bb-deploy/backups"
   mkdir -p "$backups" || return 1
   backup="$backups/$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
@@ -164,7 +235,11 @@ if [[ $action == adopt ]]; then
   return 0
 fi
 
-sudo -n launchctl kickstart -k system/org.nixos.bb-server || return 1
+if [[ $deployment_service == user ]]; then
+  launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.bb-server" || return 1
+else
+  sudo -n launchctl kickstart -k system/org.nixos.bb-server || return 1
+fi
 local deadline=$((SECONDS + 30)) health hosts primary_host
 while ((SECONDS < deadline)); do
   health=$(curl --fail --silent --max-time 2 "$api/health") &&

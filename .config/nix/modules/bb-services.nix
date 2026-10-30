@@ -5,7 +5,10 @@
   ...
 }:
 let
-  launcher = import ./bb-service-launcher.nix { inherit pkgs; };
+  launcher = import ./bb-service-launcher.nix {
+    inherit pkgs;
+    deployedServer = true;
+  };
   agent = role: {
     enable = true;
     config = {

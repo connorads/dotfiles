@@ -8,6 +8,8 @@ DEPLOY="$FUNCTIONS_DIR/agents/bb-deploy"
 setup() {
   local jq_dir
   jq_dir="$(dirname "$(command -v jq)")"
+  export BB_REAL_NODE
+  BB_REAL_NODE=$(node -p process.execPath)
   setup_test_home
   export PATH="$PATH:$jq_dir"
   export DEPLOY_ROOT="$HOME/.config/bb/deployment"
@@ -18,6 +20,8 @@ setup() {
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
 case "$*" in
+  'config get --file '*env.BB_DEPLOY_SERVICE) value=$(grep '^BB_DEPLOY_SERVICE = ' "$4") || exit 1; printf '%s\n' "$value" | cut -d '"' -f2 ;;
+  'config get --file '*env.BB_DEPLOY_PACKAGE) value=$(grep '^BB_DEPLOY_PACKAGE = ' "$4") || exit 1; printf '%s\n' "$value" | cut -d '"' -f2 ;;
   *'current node') echo 24.22.0 ;;
   *'current npm:bb-app') echo 0.46.1 ;;
   *'where node') [ "${MISSING_NODE:-0}" = 0 ] || exit 1; echo "$NODE_DIR" ;;
@@ -27,6 +31,8 @@ EOF
   cat >"$NODE_DIR/bin/node" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = --version ]; then echo v24.22.0; exit 0; fi
+if [ "${1:-}" = - ] && [ "$#" = 3 ]; then exec "$BB_REAL_NODE" "$@"; fi
+echo "node $*" >>"$TEST_LOG"
 cat >/dev/null
 exit "${NATIVE_EXIT:-0}"
 EOF
@@ -36,6 +42,20 @@ EOF
 echo "bb-app $*" >>"$TEST_LOG"
 EOF
   chmod +x "$BB_DIR/node_modules/.bin/bb-app"
+  write_stub bb-patch <<'EOF'
+#!/usr/bin/env bash
+echo "bb-patch $*" >>"$TEST_LOG"
+[ "${PATCH_PREPARE_EXIT:-0}" = 0 ] || exit "$PATCH_PREPARE_EXIT"
+package="$HOME/.local/share/bb-deploy/releases/${PATCH_ID:-example}/package"
+mkdir -p "$package/dist"
+cp "$BB_DIR/node_modules/bb-app/package.json" "$package/package.json"
+: >"$package/dist/bb-app.js"
+printf '{"package":"%s","version":"0.46.1","status":"%s","warning":"example missing patch"}\n' "$package" "${PATCH_STATUS:-patched}"
+EOF
+  write_stub launchctl <<'EOF'
+#!/usr/bin/env bash
+echo "launchctl $*" >>"$TEST_LOG"
+EOF
   write_stub curl <<'EOF'
 #!/usr/bin/env bash
 echo "curl $*" >>"$TEST_LOG"
@@ -130,6 +150,80 @@ render_launcher() {
   grep -q '0.46.1' "$DEPLOY_ROOT/candidate/mise.toml"
   [ ! -e "$DEPLOY_ROOT/current/mise.toml" ]
   ! grep -q '^sudo ' "$TEST_LOG"
+}
+
+@test "user preparation pins the checked package and service without restarting" {
+  run zsh --no-rcs "$DEPLOY" prepare --user
+  [ "$status" -eq 0 ]
+  grep -q '^BB_DEPLOY_SERVICE = "user"' "$DEPLOY_ROOT/candidate/mise.toml"
+  grep -q '^BB_DEPLOY_PACKAGE = "/' "$DEPLOY_ROOT/candidate/mise.toml"
+  grep -q '^bb-patch prepare-package ' "$TEST_LOG"
+  ! grep -q '^launchctl\|^sudo ' "$TEST_LOG"
+}
+
+@test "patch failure still prepares a stock user candidate" {
+  export PATCH_STATUS=stock
+  run zsh --no-rcs "$DEPLOY" prepare --user
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'example missing patch'* ]]
+  [ -f "$DEPLOY_ROOT/candidate/mise.toml" ]
+}
+
+@test "failed package preparation preserves the previous candidate" {
+  prepare
+  cp "$DEPLOY_ROOT/candidate/mise.toml" "$HOME/expected-candidate"
+  export PATCH_PREPARE_EXIT=2
+  run zsh --no-rcs "$DEPLOY" prepare --user
+  [ "$status" -ne 0 ]
+  cmp "$HOME/expected-candidate" "$DEPLOY_ROOT/candidate/mise.toml"
+}
+
+@test "user activation restarts the user service and keeps its mode on later prepares" {
+  zsh --no-rcs "$DEPLOY" prepare --user
+  zsh --no-rcs "$DEPLOY" adopt
+  export PATCH_ID=updated
+  run prepare
+  [ "$status" -eq 0 ]
+  grep -q '^BB_DEPLOY_SERVICE = "user"' "$DEPLOY_ROOT/candidate/mise.toml"
+  run zsh --no-rcs "$DEPLOY" activate
+  [ "$status" -eq 0 ]
+  grep -q '^launchctl kickstart -k gui/[0-9]*/org.nix-community.home.bb-server$' "$TEST_LOG"
+  ! grep -q '^sudo ' "$TEST_LOG"
+}
+
+@test "user launcher runs only the package named by the deployed pins" {
+  zsh --no-rcs "$DEPLOY" prepare --user
+  zsh --no-rcs "$DEPLOY" adopt
+  render_launcher
+  : >"$TEST_LOG"
+  run "$BASH5" "$HOME/launcher" server
+  [ "$status" -eq 0 ]
+  grep -q 'node .*/releases/example/package/dist/bb-app.js --server-bind-host 127.0.0.1 --no-in-app-updates' "$TEST_LOG"
+  ! grep -q '^bb-app ' "$TEST_LOG"
+}
+
+@test "activation refuses a service migration before changing pins or restarting" {
+  adopt
+  cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
+  zsh --no-rcs "$DEPLOY" prepare --user
+  run zsh --no-rcs "$DEPLOY" activate
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'service migration'* ]]
+  cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
+  ! grep -q '^launchctl\|^sudo ' "$TEST_LOG"
+}
+
+@test "user activation refuses older candidates against newer running data" {
+  zsh --no-rcs "$DEPLOY" prepare --user
+  zsh --no-rcs "$DEPLOY" adopt
+  cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
+  export PATCH_ID=updated LIVE_VERSION=0.48.0
+  prepare
+  run zsh --no-rcs "$DEPLOY" activate
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'older or unverified candidate'* ]]
+  cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
+  ! grep -q '^launchctl\|^sudo ' "$TEST_LOG"
 }
 
 @test "missing desired installation leaves deployed pins unchanged" {
