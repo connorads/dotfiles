@@ -212,7 +212,9 @@ audio manifest or deleting files.
   overstatement from hardlinks and sparse files. Never pass a cleaner's own
   number to the user. After any delete/clean, re-check `df` for physical free
   space. Target `du` confirms that files left the target, not that physical
-  blocks were freed. Record free space
+  blocks were freed. Verify every measured cache root after a native cleaner
+  succeeds. Its active cache directory can differ from an older platform path.
+  Record free space
   immediately before and after each cleanup, running cleanups sequentially.
   Report candidate size, observed interval change and current free space
   separately. Other agents, downloads and user actions can change the same
