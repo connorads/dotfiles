@@ -27,6 +27,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Native chat components cannot select an independent server
+
+- Found: 2026-10-30, SDK 0.6.49, packaged desktop 0.48.0
+- Wanted: Show native chats from independent BB servers in one plugin workspace.
+- Gap: `ThreadChatProps` has no server, client or transport option. `useSdk()` uses the app origin.
+  The packaged chat uses shared thread, timeline, environment and provider queries.
+- Workaround: A separate-origin frame can load the owning server's native app.
+  A full app frame retains its surrounding navigation; a chrome-free plugin page is not a verified SDK surface.
+  Frame loading alone does not verify chat submission, streaming or pending interactions.
+- Ask: Expose an independent-server chat context covering API calls, realtime, navigation and attachments.
+- Status: open. Component binding inspected; no native remote-client context found.
+- Category: sdk-gap
+- Evidence: SDK `ThreadChatProps` and `useSdk` declarations; packaged `PluginThreadChat-Bl_ZSBh6.js` and `plugin-sdk-hooks-CIAMiPB3.js`.
+
 ### Plugins cannot retain and restore native split groups
 
 - Found: 2026-10-28, installed BB desktop 0.47.1
