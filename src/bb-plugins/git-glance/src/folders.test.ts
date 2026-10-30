@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixtureGit, tempDir } from './test-git.ts';
-import { browseFolders, selectFolder } from './folders.ts';
+import { browseFolders, resolveCheckout, selectFolder } from './folders.ts';
 
 test('browsing marks repository roots and supports nested folders', async () => {
   const base = tempDir();
@@ -18,6 +18,10 @@ test('browsing marks repository roots and supports nested folders', async () => 
   assert.equal((await browseFolders(base, 'app/src')).repository, false);
   assert.equal(await selectFolder(base, 'app/src'), repo);
   await assert.rejects(selectFolder(base, 'group'), /not a git repository/);
+  assert.equal(await resolveCheckout(repo), repo);
+  await assert.rejects(resolveCheckout(join(repo, 'src')), /checkout root/);
+  await assert.rejects(resolveCheckout('app'), /absolute/);
+  await assert.rejects(resolveCheckout(join(base, 'group')), /checkout root/);
 });
 
 test('browsing and selection reject paths outside the checkout, including symlinks', async () => {
@@ -46,6 +50,7 @@ test('repository browsing lists external worktrees and selection verifies member
     { path: linked, branch: 'review' },
   ]);
   assert.equal(await selectFolder(base, 'app', linked), linked);
+  assert.equal(await resolveCheckout(linked), linked);
   assert.equal(await selectFolder(base, 'app', detached), detached);
   const unrelated = join(outside, 'other');
   mkdirSync(unrelated); fixtureGit(unrelated, 'init', '-q');

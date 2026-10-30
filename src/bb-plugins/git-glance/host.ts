@@ -1,6 +1,6 @@
 import { experimental_defineHostEntry } from '@get-bb/plugin-sdk';
 import { hostContract, hostSignals, type OpRequest } from './contracts.ts';
-import { browseFolders, selectFolder } from './src/folders.ts';
+import { browseFolders, resolveCheckout, selectFolder } from './src/folders.ts';
 import { createMonitor, type Monitor } from './src/monitor.ts';
 import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
 import { listBranches, switchBranch } from './src/branches.ts';
@@ -40,6 +40,7 @@ export default experimental_defineHostEntry({
   contract: hostContract,
   experimental_signals: hostSignals,
   handlers: {
+    checkout: async ({ root }) => ({ root: await resolveCheckout(root) }),
     generateMessage: async ({ root, head, index, draftKey, model, executable }, context) => {
       const repo = await required(root);
       if (await realpath(repo.gitDir) !== draftKey) throw new Error('Repository changed. Review the index again.');

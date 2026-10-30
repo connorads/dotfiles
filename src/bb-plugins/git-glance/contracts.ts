@@ -107,6 +107,7 @@ export const commitDetailSchema = z.object({
 export type CommitDetail = z.infer<typeof commitDetailSchema>;
 const diffOutput = z.object({ patch: z.string(), truncated: z.boolean() });
 const root = z.string().min(1);
+export const checkoutTargetSchema = z.object({ hostId: z.string().min(1), path: root });
 
 const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
   folders: z.array(z.object({ name: z.string(), repository: z.boolean() })),
@@ -120,6 +121,7 @@ const draftInput = { head: z.string().nullable(), index: z.string(), draftKey: z
 const draftOutput = z.object({ message: z.string().min(1).max(8192) });
 
 export const hostContract = defineRpcContract({
+  checkout: { input: z.object({ root }), output: z.object({ root }) },
   generateMessage: { input: z.object({ root, ...draftInput, model: z.string().min(1).max(200), executable: z.string().min(1).max(4096) }), output: draftOutput },
   folders: { input: z.object({ root, path: z.string() }), output: folderList },
   select: { input: z.object({ root, path: z.string(), worktree: root.optional() }), output: z.object({ root }) },
@@ -149,6 +151,7 @@ const thread = { threadId: z.string().min(1) };
 /** Identifies one app window's interest in one thread, for leases. */
 const holder = { ...thread, clientId: z.string().min(1) };
 export const rpcContract = defineRpcContract({
+  openCheckout: { input: checkoutTargetSchema.extend(thread), output: z.object({}) },
   generateMessage: { input: z.object({ ...thread, ...draftInput, requestId: z.string().min(1).max(100) }), output: draftOutput },
   cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },

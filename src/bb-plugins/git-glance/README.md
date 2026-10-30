@@ -234,3 +234,37 @@ The read-only sandbox remains active. No bypass flags are used.
 
 `gpt-6-luna` passed a synthetic completion smoke test. This does not establish globally lowest pricing.
 CLI behaviour follows [OpenAI's non-interactive documentation](https://learn.chatgpt.com/docs/non-interactive-mode).
+
+## Checkout references in chat
+
+Write an exact checkout reference as inline code:
+
+`git-checkout://host_example/trees/example/review`
+
+Click it, or focus it and press Enter or Space, to select that checkout and open
+Git status. The path and branch appear in the panel. The action changes neither
+the thread workspace nor the checkout's branch. Changes inside unapplied patch
+files remain separate from checkout status.
+
+```mermaid
+flowchart LR
+  Reference[Chat checkout reference] --> Adapter[Parse host and absolute path]
+  Adapter --> Action[Open checkout action]
+  Action --> Validate[Validate host and Git checkout root]
+  Validate --> Panel[Select checkout and open Git status]
+```
+
+- Use the checkout's host ID and absolute root path. Encode spaces as `%20`,
+  `#` as `%23`, `?` as `%3F` and `%` as `%25` within path segments.
+- References inside commands, fenced blocks and existing links remain ordinary text.
+- Modified clicks and text selection keep their normal behaviour.
+- Missing paths, non-root folders and hosts different from the thread's host show
+  an error. Failed validation preserves the previous repository selection.
+- The plugin contributes the reference convention to agent instructions. Existing
+  provider sessions can need an explicit prompt before they know the convention.
+
+The Git action is independent of the chat format. Other UI integrations dispatch
+`git-glance:open-checkout` on `window`, with a `CustomEvent` detail object containing
+`threadId`, `hostId` and `path`. Git Glance validates the request, selects the
+checkout and opens the panel. Backend callers use RPC `openCheckout` with those
+same fields to select a checkout; the backend RPC does not open a window.

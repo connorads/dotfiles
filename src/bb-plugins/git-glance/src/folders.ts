@@ -21,6 +21,14 @@ async function folder(base: string, path: string) {
   return { root, target, path: rel || '.' };
 }
 
+export async function resolveCheckout(path: string) {
+  if (!isAbsolute(path)) throw new Error('Use an absolute checkout path.');
+  const root = await realpath(path);
+  const repo = await resolveRepo(root);
+  if (!repo || repo.cwd !== root) throw new Error('The path is not a Git checkout root.');
+  return root;
+}
+
 export async function selectFolder(base: string, path: string, worktree?: string) {
   const { root, target } = await folder(base, path);
   const repo = await resolveRepo(target);

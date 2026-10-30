@@ -11,6 +11,7 @@ const leaseTtlMs = 75_000;
 const runTimeoutMs = 10 * 60_000 + 10_000;
 
 export default function plugin(bb: BbPluginApi) {
+  bb.agents.contributeInstructions(() => 'When pointing the user to a Git checkout for review, emit an inline-code reference: git-checkout://HOST_ID/absolute/checkout/path. Replace HOST_ID with the checkout host ID. URI-encode spaces, #, ? and % in path segments. Verify the exact checkout root and host; do not infer it from a branch name. Git Glance opens that checkout without moving the thread or switching branches. Say whether the proposed changes are working files, commits or an unapplied patch. An unapplied patch is not visible in checkout status.');
   const settings = bb.settings.define({
     messageModel: { type: 'string', label: 'Commit message model', default: 'gpt-6-luna', experimental_schema: z.string().trim().min(1).max(200) },
     codexExecutable: { type: 'string', label: 'Codex executable', default: 'codex', experimental_schema: z.string().trim().min(1).max(4096) },
@@ -65,6 +66,15 @@ export default function plugin(bb: BbPluginApi) {
     if (threadIds.length) bb.realtime.publish('op', { threadIds, root: target.root, op: state, fetch: fetchHealth(target) } satisfies OpMessage);
   }
   const watch = (target: Checkout) => host.call('watch', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000 });
+  async function remember(threadId: string, base: Checkout, target: Checkout) {
+    await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
+    for (const emptied of leases.move(threadId, target)) {
+      await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
+    }
+    await watch(target);
+    bb.realtime.publish('repository', { threadId });
+    return {};
+  }
 
   host.experimental_onSignal('snapshot', ({ hostId, payload }) => publishSnapshot({ hostId, root: payload.root }, payload.snapshot));
   host.experimental_onSignal('progress', ({ hostId, payload }) => {
@@ -87,6 +97,19 @@ export default function plugin(bb: BbPluginApi) {
   bb.onDispose(() => clearInterval(sweep));
 
   bb.rpc.register(rpcContract, {
+    openCheckout: async ({ threadId, hostId, path }) => {
+      if (selecting.has(threadId)) throw new Error('Repository selection is already running.');
+      selecting.add(threadId);
+      try {
+        const base = await required(threadId);
+        if (base.hostId !== hostId) throw new Error('The checkout host differs from this thread host. Open it in a thread on that host.');
+        if (ops.get(checkoutKey(base))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
+        const target = { hostId, ...(await host.call('checkout', { root: path }, { hostId })) };
+        const environmentBase = await environment(threadId);
+        if (!environmentBase) throw new Error('This thread has no checkout.');
+        return await remember(threadId, environmentBase, target);
+      } finally { selecting.delete(threadId); }
+    },
     generateMessage: async ({ threadId, requestId, head, index, draftKey }) => {
       if (drafts.has(threadId)) throw new Error('Message generation is already running.');
       const abort = new AbortController();
@@ -122,13 +145,7 @@ export default function plugin(bb: BbPluginApi) {
         const previous = await required(threadId);
         if (ops.get(checkoutKey(previous))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
         const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path, ...worktree === undefined ? {} : { worktree } }, { hostId: base.hostId })) };
-        await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
-        for (const emptied of leases.move(threadId, target)) {
-          await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
-        }
-        await watch(target);
-        bb.realtime.publish('repository', { threadId });
-        return {};
+        return await remember(threadId, base, target);
       } finally { selecting.delete(threadId); }
     },
     watch: async ({ threadId, clientId }) => {

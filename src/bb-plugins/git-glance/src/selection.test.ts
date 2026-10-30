@@ -15,6 +15,10 @@ function setup(run: () => Promise<unknown> = async () => ({ ok: true, summary: '
       assert.equal(hostId, 'remote');
       const args = input as { root: string; path?: string; worktree?: string };
       if (method === 'select') return { root: args.worktree ?? `${args.root}/${args.path}` };
+      if (method === 'checkout') {
+        if (args.root === '/missing') throw new Error('Checkout missing');
+        return { root: args.root };
+      }
       if (method === 'watch') return { kind: 'none' };
       if (method === 'diff') return { patch: args.root, truncated: false };
       if (method === 'run') return run();
@@ -58,6 +62,21 @@ test('stale actions fail and a new checkout ignores its previous selection', asy
   } finally { await harness.lifecycle.dispose(); }
 });
 
+test('opening an exact checkout validates its host and keeps other threads unchanged', async () => {
+  const { harness, watch } = setup();
+  try {
+    await watch(); await watch('other');
+    await assert.rejects(harness.behavior.callRpc('openCheckout', { threadId: 't', hostId: 'wrong', path: '/trees/review' }), /host/);
+    assert.equal(harness.experimental_hostRpcCalls.filter(call => call.method === 'checkout').length, 0);
+    await harness.behavior.callRpc('openCheckout', { threadId: 't', hostId: 'remote', path: '/trees/review' });
+    await assert.rejects(harness.behavior.callRpc('openCheckout', { threadId: 't', hostId: 'remote', path: '/missing' }), /missing/);
+    assert.equal(rpcContract.watch.output.parse(await watch()).root, '/trees/review');
+    assert.equal(rpcContract.watch.output.parse(await watch('other')).root, '/work');
+    assert.equal(harness.inspection.sdk.callsTo('threads.update').length, 0);
+    await assert.rejects(harness.behavior.callRpc('run', { threadId: 't', root: '/work', request: { kind: 'push' }, origin: 'user' }), /Repository changed/);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
 test('external worktree selection routes reads and actions without moving the thread', async () => {
   const { harness, watch } = setup();
   try {
@@ -85,6 +104,7 @@ test('a running operation prevents selection until it finishes', async () => {
     await watch();
     await harness.behavior.callRpc('run', { threadId: 't', root: '/work', request: { kind: 'push' }, origin: 'user' });
     await assert.rejects(harness.behavior.callRpc('select', { threadId: 't', path: 'app' }), /running Git operation/);
+    await assert.rejects(harness.behavior.callRpc('openCheckout', { threadId: 't', hostId: 'remote', path: '/trees/review' }), /running Git operation/);
     assert.equal(rpcContract.watch.output.parse(await watch()).root, '/work');
     finish({ ok: true, summary: 'Done' });
     await new Promise(resolve => setImmediate(resolve));

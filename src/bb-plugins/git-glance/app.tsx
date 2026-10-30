@@ -2,15 +2,17 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useComposer, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
-import { projectSubject, type rpcContract } from './contracts.ts';
+import { projectSubject, rpcContract } from './contracts.ts';
 import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
 import './app.css';
 import { mountCommitLinks, type CommitLink } from './chat-links.ts';
 import { mountComposerShortcut } from './composer-shortcut.ts';
 import { CommitPreview } from './commit-preview.tsx';
+import { CheckoutPreview } from './checkout-preview.tsx';
+import { mountCheckoutLinks, openCheckoutEvent, type CheckoutLink } from './checkout-links.ts';
 
-type Open = { threadId: string; anchor: Anchor; instant: boolean; commit?: string } | null;
+type Open = { threadId: string; anchor: Anchor; instant: boolean; commit?: string; checkout?: CheckoutLink } | null;
 let opened: Open = null;
 const listeners = new Set<() => void>();
 function show(next: Open) { opened = next; listeners.forEach(listener => listener()); }
@@ -27,6 +29,14 @@ function Overlay() {
   useRealtime('snapshot', receiveSnapshot);
   useRealtime('op', receiveOp);
   useRealtime('repository', payload => { void renew((payload as { threadId: string }).threadId); });
+  useEffect(() => {
+    const open = (event: Event) => {
+      const request = rpcContract.openCheckout.input.safeParse((event as CustomEvent<unknown>).detail);
+      if (request.success) show({ threadId: request.data.threadId, anchor: null, instant: true, checkout: request.data });
+    };
+    window.addEventListener(openCheckoutEvent, open);
+    return () => window.removeEventListener(openCheckoutEvent, open);
+  }, []);
   // Realtime messages are not replayed, so resynchronise after a reconnect.
   const connection = useRealtimeConnectionState();
   const previous = useRef(connection);
@@ -35,6 +45,8 @@ function Overlay() {
     previous.current = connection;
   }, [connection]);
   if (!current) return null;
+  if (current.checkout) return <CheckoutPreview key={JSON.stringify(current.checkout)} target={current.checkout}
+    onOpened={() => show({ threadId: current.threadId, anchor: null, instant: true })} onClose={close} />;
   if (current.commit) return <CommitPreview key={`${current.threadId}:${current.commit}`} threadId={current.threadId} sha={current.commit}
     onClose={close} onRepository={() => show({ ...current, commit: undefined })} />;
   return <GitPopover key={current.threadId} threadId={current.threadId} anchor={current.anchor} instant={current.instant} onClose={close} />;
@@ -81,6 +93,9 @@ function ComposerSubject() {
 }
 
 export default definePluginApp(app => {
+  app.contentScripts.register({ id: 'checkout-links', mount: () => mountCheckoutLinks(document, target => {
+    window.dispatchEvent(new CustomEvent(openCheckoutEvent, { detail: target }));
+  }) });
   app.contentScripts.register({ id: 'composer-shortcut', mount: () => mountComposerShortcut(window, () => composerSubject, subject => toggle(subject, 'keyboard')) });
   app.contentScripts.register({ id: 'commit-links', mount: () => mountCommitLinks(document, ({ threadId, sha }: CommitLink) => {
     show({ threadId, commit: sha, anchor: null, instant: true });
