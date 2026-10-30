@@ -100,6 +100,12 @@ records why it absorbs Model Favourites and Agent Usage.
 [Preferences](preferences/README.md) applies tracked keyboard settings from
 `~/.config/bb/preferences.json`. Its guide covers installation and ownership.
 
+## Clone repositories
+
+[Clone Repository](clone-repository/README.md) opens from the palette or the
+new-chat composer. It clones into an editable folder and switches the draft
+to the repository's BB project.
+
 ## File navigation
 
 [File History](file-history/README.md) adds Previous file and Next file controls

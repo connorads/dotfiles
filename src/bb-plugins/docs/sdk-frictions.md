@@ -970,7 +970,11 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Wanted: variables exported in the login shell reach agent processes.
 - Gap: `host-daemon/src/runtime-shell-env.ts:304` starts an interactive login shell but
   keeps only `PATH`.
-- Workaround: explicit injection per tool.
+- Workaround: explicit injection per tool. Clone Repository resolves the current
+  macOS login-session SSH agent through `launchctl getenv SSH_AUTH_SOCK`. A live
+  host-worker clone failed with public-key authentication before this correction;
+  the same Git command succeeded from the terminal. The worker receives the
+  daemon environment and imports only the login shell's PATH.
 - Ask: a documented env allow-list setting.
 - Status: open. This may be intended.
 - Category: app-bug
@@ -1011,10 +1015,12 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   `experimental_threadAction`. `experimental_useSidebarThreadActions` left the 0.6.37 types
   but still runs. Published 0.6.39 lacks the runtime question-choice hook. Duplicate zod
   copies break `callRpc` types. The harness needs undeclared `better-sqlite3` and `cron-parser`.
+  Its `CapturedPluginApp` declaration omits the runtime `commandPaletteActions`
+  collection. Clone Repository tests use a narrow cast to inspect registered commands.
 - Workaround: casts, feature detection, a local SDK build, a pnpm catalog pin for zod and
   declared peers.
 - Ask: publish the SDK with each BB release, make zod a peer, declare harness peers, and
-  document removals.
+  document removals and include collected commands in the frontend harness types.
 - Status: open (maybe partly fixed since 0.6.40)
 - Category: cli
 - Evidence: @thread:thr_iumjki3tqm, commits `c146447c`, `ac5b2a71`, `4d553f6b`
@@ -1041,7 +1047,10 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   server entry and branding for a frontend-only plugin. The Tailwind scanner honours a
   `*` `.gitignore`, so no classes are emitted. An invalid icon name shows a lightning
   bolt without a warning.
-- Workaround: stub server entries and manual testing.
+- Workaround: stub server entries and manual testing. In a pnpm workspace, replace
+  the generated dependencies with workspace catalogue pins and run `pnpm install`.
+  The scaffold install can fail when its latest SDK pin is inside the release-age
+  quarantine. Keep the quarantine and use the workspace's reviewed SDK pin.
 - Ask: a package-manager option, an optional server entry, and an icon-name type.
 - Status: open
 - Category: cli
@@ -1083,6 +1092,23 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   the native picker. Daybreak favourites explain this limit before selection.
 - Ask: include session options in composer selection and its settled result.
 - Evidence: `claude-profiles/ui/picker/controller.ts` and SDK 0.6.49 declarations.
+
+### New project selection can resolve before the project list refreshes
+
+- Found: 2026-10-30, clone-repository, SDK 0.6.37
+- Wanted: register a cloned checkout, then switch the current new-chat draft to it.
+- Gap: `setSelection({ projectId })` can return Personal after creating a project
+  through plugin RPC. The requested project changes before the composer's
+  sidebar-bootstrap query contains it. A live clone registered successfully but
+  the first draft switch returned another project. A later attempt succeeded.
+- Workaround: wait for the project in `experimental_useSidebarThreads().projects`
+  before switching. Preserve the draft and report an error if the list stays stale.
+- Ask: await project visibility before resolving `setSelection`, or expose an
+  awaited project-cache refresh operation.
+- Status: open
+- Category: app-bug
+- Evidence: installed `NewThreadComposer` project membership and effective-project
+  calculation; Clone Repository live check and delayed-project-list test.
 
 ## Unconfirmed signals
 

@@ -3,6 +3,7 @@
   "caffeine": true,
   "chat-timestamps": true,
   "claude-profiles": true,
+  "clone-repository": true,
   "composer-keys": true,
   "diff-viewer": true,
   "executor": true,
