@@ -6,7 +6,7 @@ description: Inspect the Clone Repository BB plugin and explain its palette and 
 # Clone Repository
 
 Open **Clone repository…** from BB's palette or the new-chat composer's `+` menu.
-The default shortcut is `Cmd+Option+Shift+C` on macOS.
+The default shortcut is `Option+C` on macOS.
 Select a repository or paste a GitHub URL or `owner/repo`, then check the destination.
 The default destination is `~/git/<repo>`.
 

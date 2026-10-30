@@ -244,7 +244,7 @@ function Overlay() {
 }
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'clone-repository', component: Overlay });
-  app.commands.register({ id: 'open', title: 'Clone repository…', defaultShortcut: { key: 'c', mod: true, alt: true, shift: true }, run: ({ projectId, threadId }) => launch({ projectId, threadId }) });
+  app.commands.register({ id: 'open', title: 'Clone repository…', defaultShortcut: { key: 'c', alt: true }, run: ({ projectId, threadId }) => launch({ projectId, threadId }) });
   app.composer.customize({ id: 'clone-repository', scopes: ['new-thread'], plusMenu: [{
     id: 'open', label: 'Clone repository…', icon: 'GitFork',
     run: ({ composer }) => launch({ composer, projectId: composer.scope.kind === 'new-thread' ? composer.scope.projectId : null, threadId: null }),

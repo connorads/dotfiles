@@ -4,7 +4,7 @@ Clone a GitHub repository and open its BB project. The new-chat composer keeps
 its prompt, mentions and attachments when its project changes.
 
 Open **Clone repository…** from the command palette, the new-chat composer's
-`+` menu, or `Cmd+Option+Shift+C`. Shortcuts can be rebound in BB settings.
+`+` menu, or `Option+C`. Shortcuts can be rebound in BB settings.
 
 1. Select a repository or paste a GitHub URL or `owner/repo`.
 2. Check the destination. The default is `~/git/<repo>`; subfolders are allowed.
