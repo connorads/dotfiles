@@ -121,6 +121,16 @@ direct Builds API call when `cf` fails; see `troubleshooting.md`):
 - Do not read or print the local Cloudflare CLI OAuth session token.
 - Distinguish this API token from the build token UUID stored on a trigger.
 
+### CLI OAuth Device Login
+
+For an expired CLI session, run `cf auth login --no-browser`. Present the
+returned verification URL and code immediately. Device codes expire after
+five minutes in cf 0.15.0. Wait for approval before continuing account setup.
+A timed-out request needs a new code; do not resend the old code.
+
+Confirm success with `cf auth whoami`. CLI OAuth authorises account setup.
+The stored build token separately authorises Cloudflare's deployment jobs.
+
 ## Read Checks
 
 ```bash
@@ -165,7 +175,8 @@ cf builds list --external-script-id <worker-tag>
 The Worker must already exist for either path. The dashboard deep link 404s
 until it does. See
 [Create A Worker Project](#create-a-worker-project-without-local-deployment).
-Pick by context; do not offer both as an equal menu.
+Honour an explicit CLI preference even when a browser is available. Otherwise,
+pick by context; do not offer both as an equal menu.
 
 Before picking, probe whether the browser step is needed at all: if the account
 has ever used Workers Builds (`cf builds tokens list` is non-empty), the Git
@@ -236,6 +247,17 @@ create` is gone, and `cf schema --list` shows only GET on
     --data '{"name":"<worker-name>"}' | jq '{success, id: .result.id}'
   ```
 
+- CLI OAuth fallback, verified with cf 0.15.0: the installed CLI exposes an
+  authenticated API client and a generic request helper in its bundled modules.
+  A temporary script can call the documented Worker-create endpoint through
+  those helpers without reading the OAuth session JSON or extracting its token.
+  Inspect the installed source and exports before using this fallback. The
+  bundle filenames and export aliases are private and version-specific; do not
+  hard-code them in reusable instructions. Validate the method, endpoint and
+  body before sending. Return only Worker name and ID. Creating an empty Worker
+  through this endpoint lets Workers Builds perform the first app deployment.
+  Prefer a supported CLI command when the installed version provides one.
+
 - Bootstrap: run `wrangler deploy` once from a logged-in wrangler. It creates
   the Worker and a first live version. Workers Builds owns every deploy after
   that. If the repo forbids local deploys, ask first and record this one
@@ -264,6 +286,9 @@ cannot fix it. `cf user tokens permission-groups list` still works. Pick one:
 
 - Reuse: take a `build_token_uuid` from `cf builds tokens list`. The token is
   shared, so revoking it breaks every Worker that uses it.
+  With a known `cloudflare_token_id`, `cf user tokens get <token-id>` returns
+  token status and permission policies under OAuth in cf 0.15.0. Check those
+  before reuse. This metadata call does not return the secret token value.
 - Dedicated, least privilege: the user mints a custom API token in the
   dashboard (My Profile > API Tokens > Create Token > Custom token). For a
   Worker with no bindings and no routes, `Workers Scripts Write` +
@@ -500,6 +525,21 @@ cf builds triggers cache purge <trigger-uuid> --force
 
 Temporarily disabling build cache is useful for diagnosis. Re-enable it after a
 clean build unless the user wants cache disabled.
+
+### Preview Verification Branches
+
+Before creating a disposable branch, inspect its effective GitHub rules:
+
+```bash
+gh api repos/<owner>/<repo>/rules/branches/<candidate-branch>
+```
+
+A `deletion` rule can prevent cleanup after successful preview verification.
+Prefer an existing authorised non-production branch when available. Otherwise,
+state that the test branch will remain before creating it. Do not weaken the
+repository rules for cleanup. Record removal only after deletion succeeds.
+A manual preview build verifies deployment, but does not verify GitHub push
+triggering. Use an actual push when claiming that webhook behaviour works.
 
 ## Verify Deployment
 

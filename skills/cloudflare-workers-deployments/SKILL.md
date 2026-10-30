@@ -38,7 +38,9 @@ deploy`.
   bodies. Use redacted summaries unless the user explicitly asks for raw output.
 - For Workers Builds REST calls, use an explicit user-scoped `CF_API_TOKEN` with
   the required Builds permissions. Do not read local Cloudflare CLI OAuth session
-  JSON in reusable snippets.
+  JSON in reusable snippets. A version-specific fallback may use the CLI's
+  authenticated API client without extracting credentials. See the Worker-create
+  reference before using that fallback.
 - Distinguish deployment paths:
   - `wrangler deploy` publishes from the current machine.
   - Workers Builds runs build/deploy commands inside Cloudflare from Git.
@@ -71,6 +73,8 @@ Read only the reference needed for the task:
 ## Standard Workflow
 
 1. Establish intent.
+   - Honour the user's chosen CLI or dashboard path. An expired CLI login
+     calls for reauthentication, not a switch to the dashboard.
    - Ask only if needed: local deploy vs Workers Builds, production branch,
      hostname, preview branches, and whether Access should protect the hostname.
    - If the user says not to deploy locally, do not run `wrangler deploy`.
@@ -101,7 +105,7 @@ Read only the reference needed for the task:
 4. Configure Workers Builds.
    - cf v0.15.0 cannot create a Worker. For a missing Worker, use the REST
      API or one bootstrap `wrangler deploy`. See `references/workers-builds.md`.
-   - Pick the setup path by context: interactive with a browser -> hand the user
+   - When no path is specified, choose by context: interactive with a browser -> hand the user
      the dashboard deep link (it authorises GitHub and creates the build token);
      headless, scripted, or reproducible -> `cf builds workers create`. See
      `references/workers-builds.md` (Choose A Setup Path).
