@@ -14,6 +14,7 @@
   "handsfree": true,
   "lazygit": true,
   "machine-health": true,
+  "message-drafts": true,
   "mobile-home-spacing": true,
   "preferences": true,
   "repo-tasks": true,

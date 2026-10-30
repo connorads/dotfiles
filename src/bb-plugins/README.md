@@ -192,3 +192,8 @@ connection it uses, so no agent needs its own MCP config.
 
 [Mobile Home Spacing](mobile-home-spacing/README.md) places recent threads below
 the compact toolbar and fills the space above the pinned composer.
+
+## Message drafts
+
+[Message Drafts](message-drafts/README.md) keeps an editable message beside each conversation.
+The user edits directly, asks the agent for revisions and copies the finished text.
