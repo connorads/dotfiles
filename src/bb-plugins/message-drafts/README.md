@@ -27,6 +27,8 @@ Drafts stay in local BB state and outside Git. Copying does not send a message.
 - `draft_read {}` returns this thread's text and revision.
 - `draft_write { text, revision }` saves only when the revision matches. It returns the new revision or a conflict.
 
+After saving a draft, emit `::message-draft` on its own line in an assistant reply. It renders a button that opens the current conversation's draft panel without changing its text.
+
 Tool definitions and a short usage instruction enter agent context. Draft text enters context only through explicit tool reads and writes.
 New tool registrations take effect when BB next constructs the provider session.
 

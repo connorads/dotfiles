@@ -27,6 +27,6 @@ export default function plugin(bb: BbPluginApi) {
   bb.agents.registerTool({ name: 'draft_read', description: 'Read this thread’s saved message draft and revision before editing it.',
     parameters: z.object({}), execute: (_input, { threadId }) => read(threadId).then(JSON.stringify) });
   bb.agents.registerTool({ name: 'draft_write', description: 'Create or replace this thread’s message draft. Pass its current revision from draft_read; use 0 for an empty draft. Returns a conflict if newer edits exist. Maximum 16000 characters.',
-    instructions: 'Use draft_read and draft_write for messages the user wants in the Message Drafts side panel. Read before revising. Keep only the message in the draft. The user opens it through Open message draft in the command palette or the thread side-panel menu. Never send it externally.',
+    instructions: 'Use draft_read and draft_write for messages the user wants in the Message Drafts side panel. Read before revising. Keep only the message in the draft. After saving, emit ::message-draft on its own line to show an Open message draft button. Never send it externally.',
     parameters: writeSchema, execute: ({ text, revision }, { threadId }) => write(threadId, text, revision).then(JSON.stringify) });
 }

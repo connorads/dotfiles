@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { definePluginApp, experimental_copyToClipboard, useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp, experimental_copyToClipboard, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import { z } from 'zod';
 import { draftSchema, type Draft, type rpcContract } from './contracts.ts';
 import './app.css';
@@ -88,6 +88,12 @@ export function DraftEditor({ threadId, seed }: { threadId: string; seed?: strin
 }
 
 export default definePluginApp(app => {
+  app.slots.messageDirective({ id: 'message-draft', component: () => {
+    const navigate = useBbNavigate();
+    const [error, setError] = useState(false);
+    return <div className="message-drafts-link"><button onClick={() => setError(!navigate.openThreadPanel({ actionId: 'draft' }))}>Open message draft</button>
+      {error && <small role="alert">Open this conversation, then try again.</small>}</div>;
+  } });
   app.slots.threadPanelAction({ id: 'draft', title: 'Message draft', icon: 'Pencil', layout: 'flush',
     component: ({ threadId, params }) => { const parsed = seedSchema.safeParse(params); return <DraftEditor key={threadId} threadId={threadId} seed={parsed.success ? parsed.data.text : undefined} />; } });
   app.commands.register({ id: 'open', title: 'Open message draft', isAvailable: ({ threadId }) => threadId !== null,
