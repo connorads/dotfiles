@@ -1,6 +1,6 @@
 # BB bundle patch registry
 
-The registry prepares exact BB 0.47.1 desktop bundles without compiling BB or a bundled plugin.
+The desktop registry prepares exact BB 0.47.1 bundles without compiling BB or a bundled plugin.
 The manager inspects explicit installations and verifies copied candidates.
 Its apply and restore commands admit only disposable copies beneath the operating system's canonical user temporary directory.
 They never reload plugins, restart servers or invoke an updater.
@@ -66,6 +66,36 @@ The combined set satisfies either constituent requirement. Requiring the combine
 JSON reports observation, complete-tuple classification, observed and required sets, missing patches and pending transactions.
 Activation and runtime verification remain `unknown`. Offline verification cannot establish either.
 Known per-file mixtures remain unhealthy. Legacy session-options mixtures and journal-backed mixtures remain distinct.
+
+## Private server packages
+
+`prepare-package` prepares a mise-backed server package without changing its installation.
+It accepts an absolute package directory and Node executable. The output is a private release store.
+
+```sh
+bb-patch prepare-package --package /absolute/mise/node_modules/bb-app \
+  --node /absolute/node/bin/node --output /absolute/private/bb-releases \
+  --set session-options-plus-activity
+```
+
+Package preparation tries the exact transformations on unfamiliar versions.
+Each feature must pass syntax checks and its existing offline behaviour harness before publication.
+An incompatible feature retains its original files. Other requested features still run.
+Missing patch targets also retain stock files. Missing runtime layout or failed copying blocks preparation.
+Checks have a 60-second timeout. A timeout retains the stock feature.
+
+The JSON result reports `patched`, `partial` or `stock`, applied features, failures and before/after hashes.
+Its identity includes complete source and result trees, dependency location, Node version, recipe and harness digests.
+Repeated preparation reruns checks and refuses changed runtime files in an existing release.
+The source package remains unchanged. Preparation never starts a server or activates a release.
+
+Each release contains a copied package and a dependency link to its installed source.
+Deployment retains the source's mise pins so pruning preserves those dependencies.
+The store retains releases for explicit recovery. It does not delete them automatically.
+The [deployment guide](../../../docs/remote-access.md) owns selection and activation.
+
+Desktop `inspect`, `prepare`, `verify`, `apply` and `restore` retain their exact-release admission rules.
+Package preparation does not grant live desktop mutation authority or change application signatures.
 
 ## Offline checks
 

@@ -75,5 +75,7 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 `bb-patch` is a dual-mode wrapper for the
 [bundle registry manager](../src/bb-plugins/workflows-patch/README.md).
 It forwards arguments and exit status to Python. New installation commands
-require an absolute `--app` path. Inspection is read-only; apply and restore
+require an absolute `--app` path. `prepare-package` instead accepts an absolute
+`--package`, `--node` and private release-store `--output`.
+Inspection is read-only; desktop apply and restore
 admit only manager-bound disposable temporary installations.

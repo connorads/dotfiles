@@ -865,6 +865,11 @@ def main():
             command.add_argument("--transaction", required=True)
     command = commands.add_parser("verify")
     command.add_argument("--plan", required=True, type=Path)
+    command = commands.add_parser("prepare-package")
+    command.add_argument("--package", required=True, type=Path)
+    command.add_argument("--output", required=True, type=Path)
+    command.add_argument("--node", required=True, type=Path)
+    command.add_argument("--set", required=True, choices=SETS)
     args = parser.parse_args()
     try:
         if args.action == "inspect":
@@ -875,7 +880,15 @@ def main():
                 else f"{report['classification']}: missing={report['missingPatches']}; activation=unknown; runtime=unknown"
             )
             return code
-        if args.action == "prepare":
+        if args.action == "prepare-package":
+            from package_candidate import prepare_package
+
+            print(
+                canonical(prepare_package(args.package, args.output, args.node, args.set))
+                .decode()
+                .strip()
+            )
+        elif args.action == "prepare":
             print(prepare(args.app, args.set, args.output))
         elif args.action == "verify":
             print(verify(args.plan)["candidateId"])
