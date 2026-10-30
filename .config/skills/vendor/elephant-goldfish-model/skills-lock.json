@@ -35,7 +35,7 @@
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-review/SKILL.md",
-      "computedHash": "57b560df174e8cee869944a3941ddff3f8a110e7f7b5ed0e130120413569b0c4"
+      "computedHash": "7527be03913be9c168826243982a1aa55a6952cb5ff2a5a3e2b841facfb5c6f2"
     },
     "egm-review-loop": {
       "source": "google/elephant-goldfish-model",
