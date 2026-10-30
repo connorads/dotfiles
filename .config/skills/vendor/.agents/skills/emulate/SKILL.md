@@ -78,6 +78,8 @@ The port can also be set via `EMULATE_PORT` or `PORT` environment variables.
 <!-- LOCAL PATCH (connorads dotfiles): Keep emulator servers on loopback and use authorised service exposure -->
 For authorised remote access, run the project-installed CLI with `pnpm exec emulate start --host 127.0.0.1`. Expose its loopback port through the configured `tsp` or `svc` wrapper. Set `--base-url` to that reachable URL for OAuth redirects or advertised URLs.
 
+To use the local stdio MCP server, run `emulate mcp` from the project root. The MCP client must launch it in the project directory so config and file paths resolve correctly. Results remove terminal escapes and redact URL credentials and sensitive query values while preserving clean URLs. See the [MCP server guide](https://emulate.dev/docs/mcp) for tool details.
+
 The generated-secrets destination must not exist. emulate removes inherited ACLs, verifies effective owner-only access, and publishes complete JSON before opening listeners or configuring portless. Handled startup failures remove the invocation-owned artifact. A hard termination can leave a complete artifact that must be removed manually after confirming no invocation is using it. Only service-generated values appear in the artifact. Linux requires `setfacl` and `getfacl` from the `acl` package. The flag fails closed when access controls cannot be verified and is not supported on Windows.
 
 The advertised base URL (used in OAuth redirects, webhook URLs, etc.) can be overridden via `--base-url`, the `EMULATE_BASE_URL` env var (supports `{service}` template), or per-service `baseUrl` in the seed config. When running under portless, the `PORTLESS_URL` env var is also detected automatically.

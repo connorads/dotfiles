@@ -5,13 +5,13 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": "dd491d53824ad9286ec950aee667098446332429a6d41fe28b4ba11f1959264c"
+      "computedHash": "e32e16db6b9f84f5c7a250485540d002953284a9e9f7d95e43ed56a7c6c43646"
     },
     "agent-device": {
       "source": "callstack/agent-device",
       "sourceType": "github",
       "skillPath": "skills/agent-device/SKILL.md",
-      "computedHash": "229cda2fac982b53ef2a4d0ec284d8cc89a1937c772528e3c98b9f2ba302984d"
+      "computedHash": "f062798176bd92e2e13447292e5c4f66146f42110c512cbcd1e50a36e3170d39"
     },
     "beautiful-shadows": {
       "source": "MengTo/Skills",
@@ -49,7 +49,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "f08c8c1be96dfad7f9d5418b1345477dd2e55af58c8da01326c9a2616c7ed721"
+      "computedHash": "2c2f869eb520868563bba5903856a3c71972dcccba1e78459ef5006ad3b4c089"
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
@@ -86,7 +86,7 @@
       "source": "vercel-labs/emulate",
       "sourceType": "github",
       "skillPath": "skills/emulate/SKILL.md",
-      "computedHash": "f312bab777d29d4c42010b414f39f50ebc6c68cb59d96583196a2a8d9f0fe86a"
+      "computedHash": "3b3eb34ff198ea3cf9ed09cfea243ebe36e8f0634b4254654763c635585e93bb"
     },
     "explain-then-fix": {
       "source": "jnsahaj/skills",
@@ -243,7 +243,7 @@
       "source": "kitlangton/psychopomp",
       "sourceType": "github",
       "skillPath": ".agents/skills/psychopomp/SKILL.md",
-      "computedHash": "66df5333b28ecabb044afd5d2be604cbf4db4f62d595b07de5e6730f6e2bfd61"
+      "computedHash": "4308945f313051d6afb96cf7357b150647f906a8af4e4bfd1c2553e28b108004"
     },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",

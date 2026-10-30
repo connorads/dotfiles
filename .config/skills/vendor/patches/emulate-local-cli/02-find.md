@@ -1,0 +1,1 @@
+To use the local stdio MCP server, run `npx emulate mcp` from the project root. The MCP client must launch it in the project directory so config and file paths resolve correctly. Results remove terminal escapes and redact URL credentials and sensitive query values while preserving clean URLs. See the [MCP server guide](https://emulate.dev/docs/mcp) for tool details.
