@@ -123,6 +123,12 @@ Validate the exact path first. Native pruning preserves referenced packages;
 its reported removal size still needs a before/after `df` measurement.
 Temporary-directory rules still apply to stores under `/private/tmp`.
 
+App-update downloads can sit outside the running app under
+`~/Library/Caches/*-updater` and `*.ShipIt`. Inspect their contents and check
+updater processes before removing old payloads. Preserve an updater's active
+staging directory. Measure archives and extracted payloads separately; do not
+infer physical savings from matching sizes or names.
+
 ## When the space comes back
 
 A second "disk full" within days means something writes faster than cleanup
@@ -239,12 +245,11 @@ audio manifest or deleting files.
   outcome unknown; inspect Finder before retrying. Direct `osascript` can time
   out without Automation consent, and restarting Finder does not grant consent.
   Keep `trash -v` movement receipts for recovery.
-- **`~/Library/Containers` stalls every `du` and is never the answer.** It is
-  hundreds of `com.apple.*` sandboxes (600 on this machine, all Apple, largest
-  44K). It is the one directory where a stall means TCC-protected paths, not
-  size - don't spend three scans on it as the "prime suspect". Confirm cheaply
-  with `ls ~/Library/Containers | grep -vc '^com\.apple\.'`; if that is 0,
-  move on.
+- **Container scans can stall on macOS privacy controls.** List
+  `~/Library/Containers` before scanning it. Measure named third-party app
+  containers separately; they can hold substantial offline data. A stalled
+  scan leaves their size unknown. Do not infer that containers are small or
+  disposable from an Apple-heavy directory listing.
 - **A mounted DMG under `/tmp`** (cask/`.pkg` install leftover) reports
   `Read-only file system` and blocks its parent's deletion until
   `hdiutil detach /dev/diskN` (find it via `hdiutil info`); the leftover
