@@ -61,6 +61,8 @@
 .mf-slot { display: inline-grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; color: var(--muted-foreground); font-size: 10.5px; font-weight: 500; line-height: 1; }
 kbd.mf-slot { border: 1px solid var(--border); background: var(--background); }
 .mf-model-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.mf-route { flex-shrink: 0; color: var(--muted-foreground); font-size: 11px; }
+.mf-go-note { margin: 0; padding: 8px 14px; color: var(--muted-foreground); font-size: 12px; border-bottom: 1px solid var(--border); }
 .mf-detail { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: 12px; }
 .mf-row[data-unavailable] .mf-model-name, .mf-row[data-unavailable] .mf-slot { opacity: .55; }
 .mf-row[data-unavailable] .mf-detail { white-space: normal; }

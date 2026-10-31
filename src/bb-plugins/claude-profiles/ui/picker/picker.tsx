@@ -16,6 +16,16 @@ import { closeInnermostPopover } from './popover.tsx';
 import { close, open, openedState, subscribe } from './store.ts';
 import './picker.css';
 
+const goFilter = 'opencode-go';
+const isGo = (providerId: string | undefined, model: string | undefined) => providerId === 'acp-opencode' && Boolean(model?.startsWith('opencode-go/'));
+function routeLabel(providerId: string, model: string): string | null {
+  if (providerId !== 'acp-opencode') return null;
+  if (isGo(providerId, model)) return 'OpenCode Go';
+  if (model.startsWith('opencode/')) return model.endsWith('-free') ? 'OpenCode Free' : 'OpenCode';
+  if (model.startsWith('openai/')) return 'OpenAI account';
+  return model.split('/')[0] ?? 'Other provider';
+}
+
 const controllers = new Map<string, Controller>();
 const message = (error: unknown) => error instanceof Error ? error.message : 'Could not update the model picker.';
 
@@ -56,7 +66,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const working = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(() => isGo(composer.selection?.providerId, composer.selection?.model) ? goFilter : 'all');
   const [accounts, setAccounts] = useState<{ supported: boolean; profiles: Profile[]; currentId: string } | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -129,8 +139,9 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const modelOf = (id: string, model: string) => catalog.find(p => p.providerId === id)?.models.find(m => m.model === model);
   const displayName = (f: Favourite) => `${modelOf(f.providerId, f.model)?.displayName ?? f.model}${f.daybreak ? ' · Daybreak' : ''}`;
   const search = query.trim().toLowerCase();
-  const visible = (providerId: string, text: string) => (filter === 'all' || filter === 'favourites' || filter === providerId) && text.toLowerCase().includes(search);
-  const favouriteRows: Row[] = list.filter(f => visible(f.providerId, `${displayName(f)} ${providerName(f.providerId)} ${f.model}`))
+  const visible = (providerId: string, model: string, text: string) => (filter === 'all' || filter === 'favourites'
+    || filter === providerId || filter === goFilter && isGo(providerId, model)) && text.toLowerCase().includes(search);
+  const favouriteRows: Row[] = list.filter(f => visible(f.providerId, f.model, `${displayName(f)} ${routeLabel(f.providerId, f.model) ?? ''} ${providerName(f.providerId)} ${f.model}`))
     .map(f => {
       const providerCatalog = catalog.find(p => p.providerId === f.providerId);
       return { favourite: f, saved: true, reason: providerCatalog
@@ -138,7 +149,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     });
   const providers = catalog.filter(p => p.models.length > 0 || p.error);
   // A failed catalogue only matches searches for its provider's name, so it never clutters model searches.
-  const groups = filter === 'favourites' ? [] : providers.filter(p => (filter === 'all' || filter === p.providerId)
+  const groups = filter === 'favourites' ? [] : providers.filter(p => (filter === 'all' || filter === p.providerId || filter === goFilter && p.providerId === 'acp-opencode')
     && (!p.error || p.providerName.toLowerCase().includes(search))).map(p => ({ ...p,
     rows: p.models.flatMap(m => {
       const option = m.sessionOptions?.filter(option => option.type === 'boolean').find(option => option.id === 'daybreak');
@@ -146,7 +157,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
       return programmes.map(programme => ({ id: `${p.providerId}:${m.model}:${programme}`, slot: 1, name: '', providerId: p.providerId, model: m.model,
         ...(option && (programme || (composer.scope.kind === 'thread' && currentProvider === p.providerId)) ? { daybreak: programme } : {}) }));
     }).filter(f => !list.some(saved => saved.providerId === f.providerId && saved.model === f.model && (saved.daybreak ?? false) === (f.daybreak ?? false))
-      && visible(p.providerId, `${displayName(f)} ${f.model} ${p.providerName}`))
+      && visible(p.providerId, f.model, `${displayName(f)} ${routeLabel(p.providerId, f.model) ?? ''} ${f.model} ${p.providerName}`))
       .map((favourite): Row => ({ favourite, saved: false, reason: controller.scopeReason(favourite) })),
   }));
   const rows = [...favouriteRows, ...groups.flatMap(group => group.rows)];
@@ -203,6 +214,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     const selected = matches(favourite, composer.selection, daybreak);
     const model = modelOf(favourite.providerId, favourite.model);
     const name = displayName(favourite);
+    const route = routeLabel(favourite.providerId, favourite.model);
     const levels = model?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
     const unavailable = Boolean(reason);
     const unknownProgramme = composer.scope.kind !== 'thread' && model?.sessionOptions?.some(option => option.id === 'daybreak');
@@ -210,11 +222,12 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     return <li className="mf-row" key={favourite.id} data-row={favourite.id} data-selected={selected || undefined} data-unavailable={unavailable || undefined}
       data-enter-target={favourite.id === enterTarget || undefined}>
       <button type="button" data-model className="mf-select" aria-disabled={blocked || unavailable || undefined}
-        aria-label={`Select ${name}`} aria-current={selected || undefined} aria-keyshortcuts={saved ? `${favourite.slot}` : undefined}
+        aria-label={`Select ${name}${route ? ` · ${route}` : ''}`} aria-current={selected || undefined} aria-keyshortcuts={saved ? `${favourite.slot}` : undefined}
         onClick={() => { if (!blocked && !unavailable) choose(favourite); }}>
         {saved ? <kbd className="mf-slot" aria-hidden="true">{favourite.slot}</kbd> : <span className="mf-slot" aria-hidden="true" />}
         <span className="mf-model-name">{name}</span>
-        {(reason || saved || search) && <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>}
+        {route && <span className="mf-route">{route}</span>}
+        {(reason || !route && (saved || search)) && <span className="mf-detail">{reason ?? providerName(favourite.providerId)}</span>}
       </button>
       {saved && model && (levels.length > 0 || favourite.reasoningLevel) && <EffortPill name={name} saved={favourite.reasoningLevel} fallback={model.defaultReasoningEffort}
         levels={levels} disabled={blocked} onChange={effort => setEffort(favourite, effort)} />}
@@ -250,6 +263,8 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const daybreakOption = currentModel?.sessionOptions?.filter(option => option.type === 'boolean').find(option => option.id === 'daybreak');
   const tiers = currentModel?.supportedServiceTiers ?? [];
   const chips = [{ id: 'all', label: 'All' }, { id: 'favourites', label: 'Favourites', count: list.length },
+    ...(providers.some(p => p.providerId === 'acp-opencode' && p.models.some(m => isGo(p.providerId, m.model)))
+      ? [{ id: goFilter, label: 'OpenCode Go' }] : []),
     ...providers.map(p => ({ id: p.providerId, label: p.providerName }))];
   return <dialog ref={dialog} className="mf-dialog" aria-label="Switch model" onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); if (!closeInnermostPopover() && !working.current) onClose(); }}
@@ -272,6 +287,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
           </button>)}
         </div>
       </div>
+      {filter === goFilter && <p className="mf-go-note">Catalogue only. Access depends on your Go plan and workspace settings.</p>}
       {error && <div role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { setError(null); void refresh(); }}>Retry</button></div>}
       <div className="mf-list" aria-label="Models" aria-busy={loading || busy}>
         {loading && <p role="status" className="mf-empty">Loading models…</p>}
@@ -286,7 +302,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
       <div className="mf-now" role="group" aria-label="Current selection">
         <div className="mf-now-model"><span className="mf-now-label">Now</span>
           <span className="mf-now-name">{currentModel?.displayName ?? composer.selection?.model ?? 'Choose a model'}{daybreak && ' · Daybreak'}</span>
-          {currentProvider && <span className="mf-now-provider">{providerName(currentProvider)}</span>}
+          {currentProvider && <span className="mf-now-provider">{routeLabel(currentProvider, composer.selection?.model ?? '') ?? providerName(currentProvider)}</span>}
         </div>
         <div className="mf-now-options">
           {daybreakOption && <div className="mf-field"><span aria-hidden="true">Daybreak</span>

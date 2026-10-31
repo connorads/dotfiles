@@ -20,6 +20,11 @@ sends a prompt.
 This picker works with standard BB. BB's native model selector remains visible
 alongside the plugin controls.
 
+The **OpenCode Go** chip filters to Go subscription routes from OpenCode's model
+catalogue. A current Go model opens this filter automatically. Rows and the
+current selection label Go separately from OpenAI accounts and OpenCode Free.
+The catalogue does not verify account access; Go plan and workspace settings apply.
+
 1. Search by model or provider. Filter with the chips under the search field:
    **All**, **Favourites** or one provider.
 2. Click a model to select it. Click its star to save or remove it as a

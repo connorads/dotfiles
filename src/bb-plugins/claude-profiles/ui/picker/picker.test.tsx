@@ -23,9 +23,9 @@ const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'm
 const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
 type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
 const accountCalls: string[] = [];
-function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { catalogueDefault?: boolean; programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
-  const { programme, catalogueDefault, ...initialSelection } = selection;
-  const providerId = account ? 'claude-code' : 'codex';
+function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { models?: string[]; catalogueDefault?: boolean; programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
+  const { programme, catalogueDefault, models = [first, second].map(f => f.model), ...initialSelection } = selection;
+  const providerId = initialSelection.providerId ?? (account ? 'claude-code' : 'codex');
   let currentId = 'default';
   let daybreak = programme?.value ?? false;
   let saved = initial;
@@ -88,14 +88,14 @@ function render(initial = [first, second], error: string | null = null, account?
         visibility: 'visible', createdAt: 0, updatedAt: 0, latestAttentionAt: 0, canRestoreEnvironment: false, canSpawnChild: true,
       }) },
       system: { executionOptions: async () => ({
-        providers: [{ id: providerId, available: true, displayName: account ? 'Claude Code' : 'Codex', pluginId: 'codex', logoUrl: null,
+        providers: [{ id: providerId, available: true, displayName: providerId === 'acp-opencode' ? 'opencode' : account ? 'Claude Code' : 'Codex', pluginId: 'codex', logoUrl: null,
           completedTurnDisplay: 'collapse', composerActions: [], maintenance: { health: false, installation: false, usage: false },
           capabilities: { modelCatalogScope: 'host', permissionModes: ['auto'], supportsFork: false,
             supportsNativeUserQuestion: false, supportsServiceTier: true, supportsSessionRewind: false,
             supportsThreadArchive: false, supportsThreadRename: false },
         }], permissionCeiling: 'auto', selectedOnlyModels: [],
         modelLoadError: error ? { detail: error, code: 'failed', providerId: 'codex' } : null,
-        models: [first, second].map(f => ({ model: f.model, id: f.model, displayName: f.model, description: '', ...(programme ? { sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean' as const, value: false, ...(programme.fixed && f.model === 'model-a' ? { fixed: true } : {}) }] } : {}), isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }, ...(catalogueDefault ? ['default', 'minimal', 'thinking'].map(reasoningEffort => ({ reasoningEffort, description: '' })) : [])], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
+        models: models.map(model => ({ model, id: model, displayName: model, description: '', ...(programme ? { sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean' as const, value: false, ...(programme.fixed && model === 'model-a' ? { fixed: true } : {}) }] } : {}), isDefault: true, defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }, { reasoningEffort: 'low', description: '' }, ...(catalogueDefault ? ['default', 'minimal', 'thinking'].map(reasoningEffort => ({ reasoningEffort, description: '' })) : [])], supportedServiceTiers: [{ id: 'fast', label: 'Fast' }] })),
       }) },
     },
   });
@@ -688,5 +688,43 @@ test('provider default effort does not disable favourites and can be saved and a
     fireEvent.click(await enabledRow(slot, 'Select model-a'));
     await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('default'));
     expect(slot.inspection.composer.submits).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+const goModels = ['opencode-go/atlas', 'opencode-go/meridian', 'openai/atlas', 'opencode/atlas-free'];
+
+test('OpenCode Go filter keeps only subscription routes, including favourites, and applies the selected route', async () => {
+  const goFavourite = { ...first, providerId: 'acp-opencode', model: 'opencode-go/atlas' };
+  const otherFavourite = { ...second, providerId: 'acp-opencode', model: 'openai/atlas' };
+  const slot = render([goFavourite, otherFavourite], null, undefined,
+    { providerId: 'acp-opencode', model: 'openai/atlas', models: goModels });
+  try {
+    await enabledRow(slot, 'Select opencode-go/meridian · OpenCode Go');
+    fireEvent.click(slot.getByRole('button', { name: 'OpenCode Go' }));
+    expect(slot.queryByRole('button', { name: /Select openai\/atlas/ })).toBeNull();
+    expect(slot.queryByRole('button', { name: /Select opencode\/atlas-free/ })).toBeNull();
+    expect(slot.getByRole('button', { name: 'Select opencode-go/atlas · OpenCode Go' })).toBeTruthy();
+    expect(slot.container.textContent).toContain('Catalogue only. Access depends on your Go plan and workspace settings.');
+    fireEvent.change(slot.getByRole('textbox', { name: 'Search models' }), { target: { value: 'meridian' } });
+    expect(slot.queryByRole('button', { name: 'Select opencode-go/atlas · OpenCode Go' })).toBeNull();
+    fireEvent.click(await enabledRow(slot, 'Select opencode-go/meridian · OpenCode Go'));
+    await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('opencode-go/meridian'));
+    expect(slot.inspection.composer.selection?.providerId).toBe('acp-opencode');
+    expect(slot.inspection.composer.submits).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a current Go model opens the Go filter and All exposes separately labelled routes', async () => {
+  const slot = render([], null, undefined, { providerId: 'acp-opencode', model: 'opencode-go/atlas', models: goModels });
+  try {
+    await enabledRow(slot, 'Select opencode-go/atlas · OpenCode Go');
+    expect(slot.getByRole('button', { name: 'OpenCode Go' }).getAttribute('aria-pressed')).toBe('true');
+    expect(slot.queryByRole('button', { name: /Select openai\/atlas/ })).toBeNull();
+    expect(within(slot.getByRole('group', { name: 'Current selection' })).getByText('OpenCode Go')).toBeTruthy();
+    fireEvent.click(slot.getByRole('button', { name: 'All' }));
+    const other = slot.getByRole('button', { name: 'Select openai/atlas · OpenAI account' });
+    expect(other.textContent).toContain('OpenAI account');
+    const free = slot.getByRole('button', { name: 'Select opencode/atlas-free · OpenCode Free' });
+    expect(free.textContent).toContain('OpenCode Free');
   } finally { slot.lifecycle.unmount(); }
 });
