@@ -252,11 +252,11 @@ enter the code. Device codes need device code sign-in turned on in ChatGPT secur
 settings. **Use browser instead** switches to `codex login`, whose callback reaches
 only a browser on the account machine. Switching closes the running Codex login.
 Concurrent clicks reuse the active login terminal. Offline accounts require their machine to reconnect first.
-Successful login refreshes usage and reopens the overlay. OpenCode reopens it only
-when the refreshed Go usage confirms access. **Check Go access** retries that check
-without starting another sign-in. Unavailable usage stays on the sign-in page
-with an explanation. BB can report an older Go key as expired after successful
-Console OAuth; that usage warning does not prove OAuth sign-in failed. Failed login keeps the
+Successful login refreshes usage and reopens the overlay when usage is available.
+OpenCode reports successful authorisation independently of the allowance check.
+If Go usage is unavailable, the sign-in page offers **Open Go usage in Console**
+and **Refresh Go usage** without starting another sign-in. An unavailable Go
+allowance does not establish that OAuth failed. Failed login keeps the
 terminal available with **Try again**. The **Agent sign-in** sidebar page also
 provides **Agent usage** to return to the account list.
 

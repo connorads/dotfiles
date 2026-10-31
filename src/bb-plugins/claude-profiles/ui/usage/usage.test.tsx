@@ -344,7 +344,7 @@ test.each(['expired', 'unauthenticated'] as const)('%s OpenCode account opens si
   act(() => openUsage());
   const connect = await slot.findByRole('button', { name: 'Sign in again to OpenCode' });
   expect(connect.textContent).toBe('Connect Go');
-  expect(connect.closest('.au-account')?.textContent).toContain('Reconnect OpenCode Go');
+  expect(connect.closest('.au-account')?.textContent).toContain('Go usage unavailable');
   fireEvent.click(connect);
   expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login',
     options: { subPath: JSON.stringify({ hostId: 'host-one', accountId }) } });
@@ -386,26 +386,32 @@ test('OpenCode sign-in explains browser approval from another device before the 
   expect(slot.container.textContent).toContain('terminal');
 });
 
-test.each(['expired', 'unauthenticated', 'error', 'missing'] as const)(
-  'OpenCode does not claim working Go access when refreshed usage is %s', async status => {
+test.each(['expired', 'unauthenticated', 'error', 'missing', 'offline'] as const)(
+  'OpenCode keeps sign-in successful when refreshed usage is %s', async status => {
     const app = await load();
     const page = app.navPanels.find(panel => panel.id === 'claude-login');
     if (!page) throw new Error('Missing sign-in page');
     const target = { hostId: 'host-one', accountId: 'provider-acp:["host-one","acp-opencode"]' };
     const provider = { ...snapshot.machines[0]!.providers[0]!, id: target.accountId, providerId: 'acp-opencode',
-      usage: status === 'error' ? { status, message: 'Service unavailable' } : status === 'missing' ? null : { status } };
+      usage: status === 'error' ? { status, message: 'Service unavailable' } : status === 'missing' || status === 'offline' ? null : { status } };
     const slot = renderSlot(page, { subPath: encodeURIComponent(JSON.stringify(target)) }, {
       rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }),
-        'usage.inspection': async () => inspect({ machines: [{ ...snapshot.machines[0]!, providers: status === 'missing' ? [] : [provider] }] }) },
+        'usage.inspection': async () => {
+          if (status === 'offline') throw new Error('Usage service offline');
+          return inspect({ machines: [{ ...snapshot.machines[0]!, providers: status === 'missing' ? [] : [provider] }] });
+        } },
       sdk: { terminals: { get: async () => terminal(0) } }, openTerminal: () => true,
     });
-    expect((await slot.findByRole('alert')).textContent).toMatch(/Go access|Go key/);
+    await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Go usage is unavailable in BB.'));
+    expect(slot.queryByRole('alert')).toBeNull();
+    expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(slot.getByRole('link', { name: 'Open Go usage in Console' }).getAttribute('href')).toBe('https://opencode.ai/console');
     expect(slot.getByRole('status').textContent).not.toContain('Signed in. Usage refreshed.');
-    expect(slot.getByRole('button', { name: 'Check Go access' })).toBeTruthy();
+    expect(slot.getByRole('button', { name: 'Refresh Go usage' })).toBeTruthy();
     expect(slot.queryByRole('dialog', { name: 'Agent usage' })).toBeNull();
   });
 
-test('OpenCode can recheck Go access without requesting another key', async () => {
+test('OpenCode can refresh Go usage without starting another sign-in', async () => {
   const app = await load();
   const page = app.navPanels.find(panel => panel.id === 'claude-login');
   if (!page) throw new Error('Missing sign-in page');
@@ -420,7 +426,7 @@ test('OpenCode can recheck Go access without requesting another key', async () =
       }] }] }) },
     sdk: { terminals: { get: async () => terminal(0) } }, openTerminal: () => true,
   });
-  const recheck = await slot.findByRole('button', { name: 'Check Go access' });
+  const recheck = await slot.findByRole('button', { name: 'Refresh Go usage' });
   allowed = true;
   fireEvent.click(recheck);
   await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'));

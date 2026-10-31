@@ -40,10 +40,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
       const usage = inspection.snapshot.machines.find(machine => machine.id === target.hostId)
         ?.providers.find(account => account.id === target.accountId)?.usage;
       if (usage?.status !== 'ok') {
-        setMessage('Authorisation completed. Go usage needs attention.');
-        setError(usage?.status === 'expired' || usage?.status === 'unauthenticated'
-          ? 'BB could not confirm Go usage. Check the selected workspace. An older saved Go key can also cause this warning after OAuth sign-in.'
-          : 'Go access could not be verified. Check the subscription in OpenCode Console, then check access again.');
+        setMessage('Signed in. Go usage is unavailable in BB.');
         return;
       }
       setCanCheck(false);
@@ -51,8 +48,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
       openUsage();
     } catch {
       if (alive()) {
-        setMessage('Authorisation completed. Go usage needs attention.');
-        setError('Go access could not be verified. Check access again when the service is available.');
+        setMessage('Signed in. Go usage is unavailable in BB.');
       }
     } finally { if (alive()) setChecking(false); }
   }, [rpc, subPath]);
@@ -129,7 +125,8 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     {error && <p role="alert">{error}</p>}
     <div className="au-login-actions">
       {canCheck && <button type="button" className="au-login-button" disabled={checking}
-        onClick={() => { const current = generation.current; void refreshGoAccess(() => generation.current === current); }}>Check Go access</button>}
+        onClick={() => { const current = generation.current; void refreshGoAccess(() => generation.current === current); }}>Refresh Go usage</button>}
+      {opencode && canCheck && <a className="au-login-button" href="https://opencode.ai/console" target="_blank" rel="noreferrer">Open Go usage in Console</a>}
       {terminalId && <button type="button" className="au-login-button" onClick={() => {
         void navigate.experimental_openTerminal({ terminalId }).then(shown => {
           if (!shown) setError('The terminal has exited or is unavailable. Try signing in again.');
