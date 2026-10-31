@@ -202,7 +202,10 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
         retry_after=$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {print $2; exit}' "$hdr" | tr -d '\r')
         resp=$(<"$body")
 
-        if [[ "$http_code" -eq 200 ]] && jq -e '.five_hour' "$body" >/dev/null 2>&1; then
+        if [[ "$http_code" -eq 200 ]] && jq -e '
+            [.five_hour, .seven_day, .seven_day_sonnet,
+             (.limits[]? | select(.kind == "weekly_scoped") | {utilization: .percent})]
+            | any(.utilization? | numbers | . >= 0)' "$body" >/dev/null 2>&1; then
             mkdir -p "$(dirname "$cache")"
             if [[ -n "$profile" ]]; then
                 # Stamp the profile + display label into the cache so the
@@ -260,8 +263,8 @@ local cache_stale=0
 [[ "$age" -ge "$ttl" ]] && cache_stale=1
 
 local u5 u7 r5 r7
-u5=$(jq -r '.five_hour.utilization // 0' "$cache")
-u7=$(jq -r '.seven_day.utilization // 0' "$cache")
+u5=$(jq -r '.five_hour.utilization // empty' "$cache")
+u7=$(jq -r '.seven_day.utilization // empty' "$cache")
 r5=$(jq -r '.five_hour.resets_at // empty' "$cache")
 r7=$(jq -r '.seven_day.resets_at // empty' "$cache")
 
@@ -292,8 +295,8 @@ _print_window() {
     printf "%-9s %3.0f%%  resets in %s\n" "$label" "$usage" "$remaining"
 }
 
-_print_window "5-hour:" "$u5" "$(_remaining "$r5")"
-_print_window "7-day:" "$u7" "$(_remaining "$r7")"
+[[ -n "$u5" ]] && _print_window "5-hour:" "$u5" "$(_remaining "$r5")"
+[[ -n "$u7" ]] && _print_window "7-day:" "$u7" "$(_remaining "$r7")"
 
 # Sonnet-only window (shown when present)
 local us rs

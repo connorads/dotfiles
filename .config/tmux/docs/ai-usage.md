@@ -40,17 +40,20 @@ length is unknown.
 thing you cannot trust, so a wrong label there misleads during exactly the task
 it exists for. It renders Codex windows through the same core, and omits a
 window whose data is absent rather than printing `0%`, which would read as
-headroom. Claude stays positional there too, and both its windows are read.
+headroom. Claude windows use their named keys and omit absent readings.
 
 Why: OpenAI can withdraw the 5h window, and has done so with no return date.
 Usage then collapses to a single weekly window that arrives in the
 `primary_window` slot. Positional classification (primary=5h, secondary=7d)
 mislabels that weekly figure as 5h. Duration classification is adaptive: it
 renders only the windows that exist and stays correct whichever windows the
-payload carries, in either slot. Claude stays positional because its
-`five_hour`/`seven_day` keys are named and contractually fixed, so they can't
-suffer the same collapse. Spark extras (`additional_rate_limits`) apply the same
-duration rule inline (low-stakes, not the failure mode), not the shared jq.
+payload carries, in either slot. Claude windows use the named
+`five_hour`/`seven_day` keys, independent of response order. The fetcher accepts
+weekly-only responses and the displays omit absent or null windows. Verified
+Ultra accounts have no five-hour limit; Max and unverified Ultra accounts can
+still report one. Plan names do not determine which windows render.
+Spark extras (`additional_rate_limits`) apply the same duration rule inline
+(low-stakes, not the failure mode), not the shared jq.
 
 ## Rows carry the reset instant, not a duration
 

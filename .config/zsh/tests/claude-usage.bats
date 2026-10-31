@@ -306,3 +306,71 @@ EOF
   run jq -r '.last_success_at' "$HOME/.cache/claude-usage.meta.json"
   [ "$output" = "1700000000" ]
 }
+
+@test "weekly-only cache omits absent or null five-hour usage" {
+  for payload in '{"seven_day":{"utilization":87}}' '{"five_hour":null,"seven_day":{"utilization":87}}'; do
+    printf '%s\n' "$payload" >"$HOME/.cache/claude-usage.json"
+    seed_meta 9999999999 0 0
+    run_zsh_function "$CLAUDE_USAGE"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"7-day:"* ]]
+    [[ "$output" == *"87%"* ]]
+    [[ "$output" != *"5-hour:"* ]]
+  done
+}
+
+@test "zero five-hour usage is shown without inventing a weekly window" {
+  printf '%s\n' '{"five_hour":{"utilization":0}}' >"$HOME/.cache/claude-usage.json"
+  seed_meta 9999999999 0 0
+  run_zsh_function "$CLAUDE_USAGE"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"5-hour:"* ]]
+  [[ "$output" == *"0%"* ]]
+  [[ "$output" != *"7-day:"* ]]
+}
+
+@test "weekly-only HTTP success refreshes the cache and clears backoff" {
+  seed_meta 0 2 0
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"synthetic-token"}}'
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo '1.2.3 (Claude Code)'
+EOF
+  write_curl_stub
+  printf '%s\n' '{"five_hour":null,"seven_day":{"utilization":87}}' >"$BATS_TEST_TMPDIR/weekly.json"
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/weekly.json"
+  run_zsh_function "$CLAUDE_USAGE"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"87%"* ]]
+  [[ "$output" != *"5-hour:"* ]]
+  run jq -r '.seven_day.utilization' "$HOME/.cache/claude-usage.json"
+  [ "$output" = "87" ]
+  run jq -r '.fail_count' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "0" ]
+}
+
+@test "malformed HTTP success leaves the last valid cache intact" {
+  printf '%s\n' '{"seven_day":{"utilization":87}}' >"$HOME/.cache/claude-usage.json"
+  touch -t 202001010000 "$HOME/.cache/claude-usage.json"
+  seed_meta 0 0 1700000000
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"synthetic-token"}}'
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo '1.2.3 (Claude Code)'
+EOF
+  write_curl_stub
+  printf '%s\n' '{"five_hour":{"utilization":"invalid"}}' >"$BATS_TEST_TMPDIR/invalid.json"
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/invalid.json"
+  run_zsh_function "$CLAUDE_USAGE"
+  [ "$status" -eq 0 ]
+  run jq -r '.seven_day.utilization' "$HOME/.cache/claude-usage.json"
+  [ "$output" = "87" ]
+  run jq -r '.fail_count' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "1" ]
+}

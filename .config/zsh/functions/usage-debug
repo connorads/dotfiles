@@ -200,10 +200,7 @@ _print_provider() {
 
   if [[ -f "$cache" ]]; then
     if [[ "$kind" == "claude" ]]; then
-      # Claude stays positional - `five_hour`/`seven_day` are named keys and
-      # contractually fixed, so they cannot collapse into one slot the way
-      # Codex's did. Both are read: only the 5h one was, so the weekly figure
-      # never appeared here at all.
+      # Named Claude keys identify each window; absent readings are omitted.
       local pair key label util reset_iso reset_ts rem
       for pair in five_hour:5h seven_day:7d; do
         key="${pair%%:*}"
