@@ -7,6 +7,11 @@ Open **Context** beside an existing thread's composer, or choose
 **+ → Inspect context**. Refresh reads recorded data. It does not launch provider
 diagnostics or send a prompt.
 
+**Overview** leads with usage and available category bars. **Sources** groups
+current registrations by plugin and filters by plugin, label or capability ID.
+**Configure** shows the supported setting and its patch after an edit.
+Session IDs, host and timestamps sit under **Session details**.
+
 ```mermaid
 flowchart LR
   Recorded[BB recorded usage] --> Popup[Context popup]

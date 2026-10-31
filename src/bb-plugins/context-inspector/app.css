@@ -1,6 +1,3 @@
-.ci-popup { width: min(44rem, 100%); max-height: 70dvh; overflow: auto; padding: .75rem; color: var(--foreground); font-family: var(--font-sans); }
-.ci-popup > header { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
-.ci-popup button { border: 1px solid var(--border); border-radius: .25rem; padding: .25rem .5rem; color: var(--foreground); background: transparent; }
-.ci-popup button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.ci-popup details { margin-block: .75rem; }
-.ci-popup li { overflow-wrap: anywhere; }
+.ci-popup { width: min(540px, 100%); min-width: 0; color: var(--foreground); font-family: var(--font-sans); }
+.ci-popup > p { padding: 24px 18px; color: var(--muted-foreground); font-size: 13px; }
+.ci-loading-header { display: flex; align-items: center; gap: 6px; padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 12px; }

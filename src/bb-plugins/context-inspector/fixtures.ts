@@ -16,3 +16,10 @@ export const fixtures = {
   'Late other target': { kind: 'recorded', observation: { target: { threadId: 'thread-other', hostId: 'host-demo' }, receivedAt: '2026-01-01T12:01:00Z', context: detailed } },
 } satisfies Record<string, ObservationState>;
 export const fixtureOwner = JSON.stringify({ 'bb-guide': { introduction: true, skills: true }, 'demo-plugin': { enabled: true } }, null, 2) + '\n';
+export const fixtureInventory = { truncated: false, rows: [
+  { pluginId: 'workspace-tools', enabled: true, kind: 'agent-tool', id: 'files.search', label: 'Search workspace' },
+  { pluginId: 'workspace-tools', enabled: true, kind: 'agent-tool', id: 'files.read', label: 'Read a file' },
+  { pluginId: 'workspace-tools', enabled: true, kind: 'skill', id: 'workspace-guide', label: 'Workspace guide' },
+  { pluginId: 'design-library', enabled: true, kind: 'skill', id: 'interface-design', label: 'Interface design' },
+  { pluginId: 'meeting-notes', enabled: false, kind: 'agent-tool', id: 'notes.find', label: 'Find meeting notes' },
+] };

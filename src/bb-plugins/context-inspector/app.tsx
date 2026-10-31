@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { definePluginApp, useComposer, useRpc, useSdk, type PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
+import { experimental_Icon as Icon, definePluginApp, useComposer, useRpc, useSdk, type PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
 import { ContextInspectorView, FixtureContextInspector } from './view';
 import type { ObservationState, Target } from './observation';
 import { rpcContract, type OwnerResult } from './contracts';
@@ -73,20 +73,14 @@ export function InspectorPopup() {
   }, [threadId, sdk, rpc, revision]);
   const current = result?.threadId === threadId && result.revision === revision ? result : null;
   const data = current?.data;
+  const controls = <><button className="ci-icon-button" type="button" aria-label="Refresh recorded data" title="Refresh recorded data" onClick={() => setRevision(value => value + 1)}><Icon name="RefreshCw" /></button><button className="ci-icon-button" type="button" aria-label="Close" title="Close" onClick={() => composer.experimental_closePopup()}><Icon name="X" /></button></>;
   return <div className="ci-popup">
-    <header><strong>Context inspector</strong><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh recorded data</button>
-      <button type="button" onClick={() => composer.experimental_closePopup()}>Close</button></header>
+    {!data && <header className="ci-loading-header"><strong>Context inspector</strong><span className="ci-spacer" />{controls}</header>}
     {!threadId ? <p>Select an existing thread.</p> : current?.error ? <p role="alert">{current.error}</p> : !data ? <p role="status">Loading selected thread.</p> : <>
       <ContextInspectorView target={data.target} state={data.state} ownerText={data.owner.kind === 'available' ? data.owner.text : ''}
         ownerUnavailable={data.owner.kind === 'unavailable' ? data.owner.reason : data.settings.error}
-        savedIntroduction={data.settings.value} onExportPatch={exportPatch} />
-      <details><summary>Current source inventory</summary>
-        <p>Current plugin registrations. These do not prove historical inclusion in this session. External MCP tools and instruction bodies are outside this inventory.</p>
-        {data.inventoryError && <p role="status">{data.inventoryError}</p>}
-        {data.inventory && <><p>{data.inventory.rows.length} tool and skill registrations shown.{data.inventory.truncated ? ' Limited to 200 rows.' : ''}</p>
-          <ul>{data.inventory.rows.map((row, index) => <li key={`${row.pluginId}/${row.id}/${index}`}>{row.label} ({row.kind}) - owner {row.pluginId}, {row.enabled ? 'enabled' : 'disabled'}</li>)}</ul></>}
-      </details>
-      <p>Configuration host: {data.owner.kind === 'available' ? data.owner.hostId : 'Unavailable'}.</p>
+        savedIntroduction={data.settings.value} onExportPatch={exportPatch} inventory={data.inventory} inventoryError={data.inventoryError}
+        controls={controls} />
     </>}
   </div>;
 }

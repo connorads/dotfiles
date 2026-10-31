@@ -51,14 +51,16 @@ test('late context response from another target never replaces the selected thre
 test('current inventory stays separate and an unavailable owner cannot be previewed', async () => {
   const slot = setup();
   await slot.findByText('thread-first');
-  expect(slot.getByText(/Synthetic tool/).textContent).toContain('synthetic-owner');
+  fireEvent.click(slot.getByRole('button', { name: /Sources/ }));
+  expect(slot.getByText('synthetic-owner')).toBeTruthy();
+  expect(slot.getByText(/Synthetic tool/)).toBeTruthy();
   expect(slot.getByText(/Synthetic skill/)).toBeTruthy();
   expect(slot.queryByText('Do not display this body.')).toBeNull();
-  fireEvent.click(slot.getByRole('button', { name: 'Future owner preview' }));
+  fireEvent.click(slot.getByRole('button', { name: 'Configure' }));
   expect(slot.getByRole('alert').textContent).toBe('Synthetic remote owner unavailable.');
   expect(slot.getByRole('checkbox').hasAttribute('disabled')).toBe(true);
   expect(slot.queryByRole('button', { name: 'Export private patch' })).toBeNull();
-  expect(slot.getByText(/Live saved value: true/)).toBeTruthy();
+  expect(slot.getByText('Saved').textContent).toContain('On');
 });
 test('refresh discards an older response for the same thread', async () => {
   const pending = deferred<ReturnType<typeof usage>>();
