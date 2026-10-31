@@ -182,6 +182,12 @@ event for two minutes, and turns red at ten.
 [Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat
 message into the thread's terminal. You press Enter to run them.
 
+## Context inspection
+
+[Context Inspector](context-inspector/README.md) shows recorded session usage,
+current plugin capabilities and a future configuration patch preview.
+It keeps session evidence separate from current inventory and changes no settings.
+
 ## Executor tools
 
 [Executor](executor/README.md) gives threads the tools from your Executor scoped

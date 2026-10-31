@@ -5,6 +5,7 @@
   "claude-profiles": true,
   "clone-repository": true,
   "composer-keys": true,
+  "context-inspector": true,
   "diff-viewer": true,
   "executor": true,
   "external-links": true,
