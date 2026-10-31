@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, definePluginApp, useComposer, useRpc, useSdk, type PluginBrowserBbSdk } from '@get-bb/plugin-sdk/app';
 import { ContextInspectorView, FixtureContextInspector } from './view';
 import type { ObservationState, Target } from './observation';
@@ -32,6 +32,32 @@ function exportPatch(patch: string) {
 }
 
 export function InspectorPopup() {
+  const popupRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const popup = popupRef.current;
+    const host = popup?.closest<HTMLElement>('[data-promptbox-typeahead-menu]');
+    if (!popup || !host) return;
+    const viewport = window.visualViewport;
+    const resize = () => {
+      const style = getComputedStyle(host);
+      const height = viewport?.height ?? window.innerHeight;
+      const available = style.position === 'absolute' && style.bottom !== 'auto'
+        ? host.getBoundingClientRect().bottom - (viewport?.offsetTop ?? 0) - 12 : height * .76;
+      popup.style.setProperty('--ci-max-height', `${Math.max(0, Math.min(height * .76, available))}px`);
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(host);
+    window.addEventListener('resize', resize);
+    viewport?.addEventListener('resize', resize);
+    viewport?.addEventListener('scroll', resize);
+    resize();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resize);
+      viewport?.removeEventListener('resize', resize);
+      viewport?.removeEventListener('scroll', resize);
+    };
+  }, []);
   const composer = useComposer();
   const sdk = useSdk();
   const rpc = useRpc<typeof rpcContract>();
@@ -74,7 +100,7 @@ export function InspectorPopup() {
   const current = result?.threadId === threadId && result.revision === revision ? result : null;
   const data = current?.data;
   const controls = <><button className="ci-icon-button" type="button" aria-label="Refresh recorded data" title="Refresh recorded data" onClick={() => setRevision(value => value + 1)}><Icon name="RefreshCw" /></button><button className="ci-icon-button" type="button" aria-label="Close" title="Close" onClick={() => composer.experimental_closePopup()}><Icon name="X" /></button></>;
-  return <div className="ci-popup">
+  return <div className="ci-popup" ref={popupRef}>
     {!data && <header className="ci-loading-header"><strong>Context inspector</strong><span className="ci-spacer" />{controls}</header>}
     {!threadId ? <p>Select an existing thread.</p> : current?.error ? <p role="alert">{current.error}</p> : !data ? <p role="status">Loading selected thread.</p> : <>
       <ContextInspectorView target={data.target} state={data.state} ownerText={data.owner.kind === 'available' ? data.owner.text : ''}
@@ -85,12 +111,8 @@ export function InspectorPopup() {
   </div>;
 }
 
-function ContextAction() {
-  const composer = useComposer();
-  return <button type="button" onClick={() => composer.experimental_openPopup(popupId)}>Context</button>;
-}
 export default definePluginApp(app => {
-  app.composer.customize({ id: 'inspector', scopes: ['thread'], actions: [{ id: 'open', component: ContextAction }],
+  app.composer.customize({ id: 'inspector', scopes: ['thread'],
     experimental_popups: [{ id: popupId, label: 'Context inspector', component: InspectorPopup }],
     plusMenu: [{ id: 'open', label: 'Inspect context', run: ({ composer }) => { composer.experimental_openPopup(popupId); } }],
   });

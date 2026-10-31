@@ -3,8 +3,7 @@
 Context Inspector shows recorded session usage, current plugin capabilities and
 a reviewable future configuration edit. Its interfaces are private and changeable.
 
-Open **Context** beside an existing thread's composer, or choose
-**+ → Inspect context**. Refresh reads recorded data. It does not launch provider
+Choose **+ → Inspect context** in an existing thread's composer. Refresh reads recorded data. It does not launch provider
 diagnostics or send a prompt.
 
 **Overview** leads with usage and available category bars. **Sources** groups

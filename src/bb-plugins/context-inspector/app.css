@@ -1,3 +1,3 @@
-.ci-popup { width: min(540px, 100%); min-width: 0; color: var(--foreground); font-family: var(--font-sans); }
+.ci-popup { width: 100%; min-width: 0; color: var(--foreground); font-family: var(--font-sans); }
 .ci-popup > p { padding: 24px 18px; color: var(--muted-foreground); font-size: 13px; }
 .ci-loading-header { display: flex; align-items: center; gap: 6px; padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 12px; }

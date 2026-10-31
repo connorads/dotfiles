@@ -1,18 +1,18 @@
 // @vitest-environment jsdom
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import { InspectorPopup } from './app';
 import { createFakeSdk } from '@get-bb/plugin-sdk/testing';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function deferred<T>() {
   let resolve: (value: T) => void = () => { throw new Error('Not initialised'); };
   const promise = new Promise<T>(done => { resolve = done; });
   return { promise, resolve };
 }
 const usage = (usedTokens: number) => ({ usage: { usedTokens, modelContextWindow: 1000, estimated: false } });
-function setup(firstContext?: Promise<ReturnType<typeof usage>>) {
+function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = false) {
   let contextReads = 0;
   const { sdk } = createFakeSdk({ pluginId: 'context-inspector', overrides: {
       threads: { get: ({ threadId }) => ({ id: threadId, environmentId: 'environment-synthetic' }),
@@ -27,7 +27,7 @@ function setup(firstContext?: Promise<ReturnType<typeof usage>>) {
       ] }] }), getSettings: () => ({ schema: { introduction: { type: 'boolean' } }, values: { introduction: true } }) },
     },
   });
-  return renderSlot({ component: InspectorPopup }, {}, {
+  return renderSlot({ component: anchored ? () => <div data-promptbox-typeahead-menu="" style={{ position: 'absolute', bottom: 200 }}><InspectorPopup /></div> : InspectorPopup }, {}, {
     composer: { scope: { kind: 'thread', threadId: 'thread-first' }, text: 'Synthetic draft' },
     rpc: { owner: () => ({ kind: 'unavailable', reason: 'Synthetic remote owner unavailable.' }) },
     sdk: {
@@ -79,13 +79,26 @@ test('leaving the thread clears pending reads and removes the previous target', 
   expect(slot.getByText('Select an existing thread.')).toBeTruthy();
   expect(slot.queryByText('thread-first')).toBeNull();
 });
-test('registers thread-only composer action, plus menu and synthetic fixture panel', async () => {
+test('registers a thread-only popup and plus menu without an extra composer button', async () => {
   const app = await loadPluginApp(() => import('./app'));
   expect(app.composerCustomizations).toHaveLength(1);
   const registration = app.composerCustomizations[0];
   expect(registration?.scopes).toEqual(['thread']);
   expect(registration?.experimental_popups?.map(popup => popup.id)).toEqual(['context']);
-  expect(registration?.actions).toHaveLength(1);
+  expect(registration?.actions ?? []).toHaveLength(0);
   expect(registration?.plusMenu?.map(item => item.label)).toEqual(['Inspect context']);
   expect(app.navPanels.map(panel => panel.id)).toEqual(['fixtures']);
+});
+
+test('caps an anchored popup at the space above the composer and responds to resizing', async () => {
+  let bottom = 240;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ bottom, top: 0, left: 0, right: 725, width: 725, height: bottom, x: 0, y: 0, toJSON: () => ({}) }));
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  const slot = setup(undefined, true);
+  await slot.findByText('thread-first');
+  const popup = slot.getByRole('region', { name: 'Context inspector' }).parentElement;
+  expect(popup?.style.getPropertyValue('--ci-max-height')).toBe('228px');
+  bottom = 180;
+  fireEvent(window, new Event('resize'));
+  expect(popup?.style.getPropertyValue('--ci-max-height')).toBe('168px');
 });

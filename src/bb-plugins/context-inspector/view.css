@@ -1,6 +1,6 @@
 .context-inspector {
   --ci-accent: var(--timeline-accent, oklch(72% .09 250));
-  display: flex; flex-direction: column; min-width: 0; max-height: 76dvh;
+  display: flex; flex-direction: column; min-width: 0; max-height: var(--ci-max-height, 76dvh);
   color: var(--foreground); font: 13px/1.5 var(--font-sans); text-align: left;
   container: context-inspector / inline-size;
 }
@@ -103,3 +103,11 @@
 .ci-category-track[data-kind="free"] i { background: var(--muted-foreground); opacity: .45; }
 .ci-category-track[data-kind="reserved"] i { background: var(--attention, var(--ci-accent)); }
 .ci-category-track[data-kind="deferred"] i { background: var(--pr-merged, var(--ci-accent)); }
+.ci-report-summary { display: grid; gap: 12px; }
+.ci-remaining { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; }
+.ci-remaining > span { color: var(--muted-foreground); }
+.ci-remaining strong { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; }
+.ci-remaining small { color: var(--muted-foreground); font: 11px var(--font-sans); }
+.ci-report-summary p { color: var(--muted-foreground); font-size: 12px; }
+.ci-inline-action { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--ci-accent); font-size: 12px !important; }
+.ci-inline-action:hover { text-decoration: underline; text-underline-offset: 3px; }
