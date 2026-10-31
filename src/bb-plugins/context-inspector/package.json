@@ -13,11 +13,14 @@
     "branding": {
       "icon": "Search"
     },
-    "skills": []
+    "skills": [],
+    "app": "./app.tsx",
+    "server": "./server.ts"
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build"
   },
   "dependencies": {
     "zod": "catalog:"

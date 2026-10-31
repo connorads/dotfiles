@@ -11,6 +11,9 @@ it('switches between recorded evidence and future preview without changing count
   expect(screen.getByText(/12,000 \/ 100,000 tokens/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Future owner preview' }));
   expect(screen.getByText(/Historical session configuration is unknown/)).toBeTruthy();
+  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByText('No desired-value change.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('checkbox'));
   expect(screen.getAllByText(/"introduction": false/)).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: 'Recorded context' }));
   expect(screen.getByText(/12,000 \/ 100,000 tokens/)).toBeTruthy();
@@ -30,7 +33,7 @@ it('clears future draft and hides old response immediately on target switch', ()
   expect(screen.getByText(/Waiting for the selected target/)).toBeTruthy();
   expect(screen.queryByText(/12,000/)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Future owner preview' }));
-  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
 });
 
 it('blocks owner preview when unavailable and distinguishes current saved state', () => {
@@ -50,6 +53,8 @@ it('exports only after an explicit action and guards unknown capacity', () => {
   expect(screen.queryByRole('meter')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Future owner preview' }));
   expect(exported).toEqual([]);
+  expect((screen.getByRole('button', { name: 'Export private patch' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Export private patch' }));
   expect(exported[0]).toContain('+++ b/.config/bb/plugin-config.json');
 });

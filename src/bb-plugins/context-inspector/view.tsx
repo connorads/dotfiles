@@ -19,7 +19,10 @@ export function ContextInspectorView(props: ContextInspectorViewProps) {
 }
 function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUnavailable, savedIntroduction, onExportPatch }: ContextInspectorViewProps) {
   const [tab, setTab] = useState<'recorded' | 'future'>('recorded');
-  const [introduction, setIntroduction] = useState(false);
+  const [introduction, setIntroduction] = useState(() => {
+    const current = previewIntroduction(ownerText, false);
+    return current.ok ? current.previous ?? savedIntroduction ?? true : savedIntroduction ?? true;
+  });
   const observation = describeObservation(target, state);
   const preview = ownerUnavailable ? { ok: false as const, error: ownerUnavailable } : previewIntroduction(ownerText, introduction);
   return <section className="context-inspector" aria-label="Context inspector">

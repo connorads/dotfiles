@@ -1,60 +1,72 @@
-# Context inspector foundation
+# Context Inspector
 
-Internal fixture-driven React view and pure patch planner. Interfaces are private
-and changeable. The integration driver owns live reads and host registration.
+Context Inspector shows recorded session usage, current plugin capabilities and
+a reviewable future configuration edit. Its interfaces are private and changeable.
+
+Open **Context** beside an existing thread's composer, or choose
+**+ → Inspect context**. Refresh reads recorded data. It does not launch provider
+diagnostics or send a prompt.
 
 ```mermaid
 flowchart LR
-  Fixture[Synthetic fixture driver] --> View[Shared React view]
-  Observation[Same-response recorded context] --> View
-  Owner[Supplied desired-owner JSON] --> Planner[Pure introduction patch planner]
-  Planner --> View
-  View --> Export[Explicit export callback]
+  Recorded[BB recorded usage] --> Popup[Context popup]
+  Inventory[Current plugin registrations] --> Popup
+  Owner[Existing declarative owner] --> Preview[Patch preview]
+  Preview --> Popup
+  Popup --> Export[Explicit private download]
 ```
 
-## Internal integration
+## Recorded context
 
-- `observation.ts` exports `RecordedContext`, inferred from the installed SDK's
-  `threads.context` result, `Target`, `Observation`, `ObservationState`,
-  `sameTarget` and `describeObservation`.
-- `view.tsx` exports `ContextInspectorView`, `ContextInspectorViewProps` and
-  `FixtureContextInspector`. The driver supplies `target`, `state` and `ownerText`.
-  Optional props are `synthetic`, `ownerUnavailable`, `savedIntroduction` and
-  `onExportPatch`. Mark unavailable owner reads explicitly. Do not substitute
-  synthetic owner JSON for a failed read.
-- `patch-preview.ts` exports `previewIntroduction(ownerText, introduction)` and
-  `PatchPreview`. Successful results contain `desiredJson`, `patch`, `previous`
-  and `introduction`. This changes only the desired `bb-guide.introduction`
-  value. Other valid scalar settings retain their values. JSON formatting is
-  normalised. The complete replacement patch includes exact original lines.
-- `fixtures.ts` exports `fixtures`, `fixtureTarget` and `fixtureOwner`. Every
-  fixture identity and token value is synthetic.
+The popup shows reported or estimated usage and available categories. Missing
+category detail stays unavailable. Conflicting category counts or known provider
+sessions are withheld. A target change discards old responses and draft previews.
+
+Current plugin registrations appear separately. They identify tool and skill
+owners, including disabled plugins. They do not establish historical session
+inclusion. The list omits descriptions and stops at 200 registrations. External
+MCP tools and instruction bodies are outside this inventory.
+
+## Future configuration
+
+The first supported preview changes `bb-guide.introduction` in
+[plugin-config.json](../../../.config/bb/plugin-config.json). The popup compares
+the desired value with the current saved value. Other valid settings retain their
+values. JSON formatting is normalised in the generated patch.
+
+Choose the introduction value and select **Export private patch** to download a
+patch for local review. Export does not change files, reconcile settings, stage
+changes or remove prior conversation content. The patch contains existing owner
+values; keep it private.
+
+The owner reader accepts no caller-supplied path. It reads only the server-local
+home's `.config/bb/plugin-config.json`, refuses symlinks and files over 256 KiB,
+and requires the selected workspace to use the server's primary host.
+Unsupported remote targets show an unavailable preview.
+
+The existing owner reconciler applies all managed drift. Review its complete plan
+before applying configuration through the [maintenance procedure](../../../docs/bb.md#plugin-setup).
+Saved values do not prove which configuration an existing session received.
+Activation depends on BB construction and provider behaviour.
+
+## Installation and checks
+
+The workspace [setup procedure](../README.md#setup) installs this independent
+plugin. [plugins.json](../../../.config/bb/plugins.json) owns its enabled state.
+The inspector contributes no agent tools, skills or instructions.
+
+Run `pnpm test`, `pnpm typecheck` and `pnpm build` in this package.
+Tests cover patch application to temporary files, malformed owner refusal,
+conflicting snapshots, unavailable reads, stale targets and SDK registration.
+
+The **Context inspector fixtures** navigation panel uses labelled synthetic
+observations. Its plain React view needs no BB hooks, provider or credentials.
+It demonstrates rendering and previews, not native Claude or Codex attachment.
 
 ## Limits
 
-The foundation has no server backend, RPC, CLI, settings writes, retained history,
-agent tools, skills or instruction contribution. Its initial manifest has no app
-entry. Integration wiring is a separate concern.
-
-The SDK response supplies usage and optional categories. It does not supply file
-inclusion evidence. Category labels cannot establish source inclusion. Missing
-provider identity remains unknown. The view accepts category detail from the same
-response only, withholds known session or count conflicts, and hides responses
-whose target differs. Drivers must also discard superseded requests for the same
-target. The view does not merge independent snapshots.
-
-The desired owner is global. Current saved values do not establish historical
-session state. Preview and export do not reconcile settings or change existing
-session content. No token savings are calculated or claimed. The export callback
-owns download behaviour and private storage. No automatic writes occur.
-
-## Checks
-
-`test` runs Vitest, including plain React fixture interaction tests and application
-of generated patches to temporary synthetic owner files. `typecheck` runs tsc.
-No BB instance, credentials or provider session is required.
-
-The package uses workspace catalogue dependencies. `bb plugin new` invokes npm
-installation, so this foundation uses a minimal manually authored package.
-The existing scaffold conflict is recorded in `../docs/sdk-frictions.md` under
-"Plugin scaffold and build traps". Live installation and reload are separate.
+BB supplies usage and optional categories, not a complete historical construction
+manifest. Category labels cannot prove file or plugin inclusion. The inspector
+calculates no predicted token savings. It retains no history and writes no
+configuration. Native harness inspection and arbitrary contribution toggles are
+separate capabilities.
