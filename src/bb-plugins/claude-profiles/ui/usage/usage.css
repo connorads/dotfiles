@@ -58,9 +58,14 @@
 .au-login-button:disabled { opacity: 0.5; cursor: default; }
 .au-login-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .au-login-page { padding: 20px; color: var(--foreground); }
+.au-login-page h2 { margin: 0 0 12px; color: var(--foreground); font-size: 16px; font-weight: 600; }
+.au-login-page ol { padding-left: 20px; list-style: decimal; line-height: 1.6; }
+.au-login-page li + li { margin-top: 8px; }
+.au-login-page .au-login-hint p { margin: 12px 0; }
+.au-login-page [role="status"] { margin-top: 16px; font-size: 14px; }
 .au-login-hint { color: var(--muted-foreground); font-size: var(--text-xs, 12px); margin-top: 8px; }
 .au-login-page [role="alert"] { color: var(--destructive); margin-top: 12px; }
-.au-login-actions { display: flex; gap: 8px; margin-top: 16px; }
+.au-login-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
 /* Fixed side columns keep bars and figures aligned across accounts, which each own a grid. */
 .au-rows { display: grid; grid-template-columns: 6rem minmax(80px, 1fr) 40px 9rem; column-gap: 16px; row-gap: 10px; align-items: center; }

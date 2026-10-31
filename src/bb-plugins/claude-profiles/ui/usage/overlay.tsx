@@ -12,6 +12,7 @@ import type { ResetCredits } from '../../src/accounts/usage/reset-credits.ts';
 import { closeUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
 import { useNow } from './use-now.ts';
 import './usage.css';
+import { openCodeAccountHost } from '../../src/accounts/usage/opencode.ts';
 
 function Meter({ window, view, stale = false }: { window: UsageWindow; view: WindowView; stale?: boolean }) {
   const elapsed = view.pace.kind === 'elapsed';
@@ -46,13 +47,14 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
   const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
+  const go = openCodeAccountHost(account.id) !== null;
   const canLogin = (usage?.status === 'expired' || usage?.status === 'unauthenticated')
     && (account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
       || account.providerId === 'codex' && account.id.startsWith('provider-codex:')
-      || account.providerId === 'opencode' && account.id.startsWith('provider-opencode:'));
+      || go);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
-  const message = canLogin && connected ? (usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
+  const message = canLogin && connected ? (go ? 'Go key needs attention' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
     : usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
@@ -73,7 +75,7 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
           closeUsage();
           // BB encodes route segments; pass the target without URL encoding.
           navigate.toPluginPanel('claude-login', { subPath: JSON.stringify({ hostId, accountId: account.id }) });
-        }}>Sign in again</button>}
+        }}>{go ? 'Connect Go' : 'Sign in again'}</button>}
     </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}

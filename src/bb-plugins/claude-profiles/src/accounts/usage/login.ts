@@ -5,6 +5,7 @@ import { decodeResourceId } from '../usage-source.ts';
 import type { LoginMethod } from './contract.ts';
 import type { Profile } from '../../../contracts.ts';
 import type { QuotaConfig } from '../quota-cache.ts';
+import { openCodeAccountHost } from './opencode.ts';
 
 interface LoginPorts {
   terminals: Pick<BbPluginApi['sdk']['terminals'], 'create' | 'get' | 'close'>;
@@ -42,12 +43,11 @@ export function createLogin(ports: LoginPorts) {
       throw new Error('Account machine is offline. Connect it before signing in.');
   }
   return async function login(hostId: string, accountId: string, method: LoginMethod = 'device'): Promise<{ terminalId: string }> {
-    if (accountId.startsWith('provider-opencode:')) {
-      const [accountHost] = z.tuple([z.string(), z.literal('opencode')])
-        .parse(JSON.parse(accountId.slice('provider-opencode:'.length)));
+    const accountHost = openCodeAccountHost(accountId);
+    if (accountHost !== null) {
       if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
       await connected(hostId);
-      return open(JSON.stringify([hostId, 'opencode']), 'OpenCode sign-in', hostId, ['opencode', 'auth', 'login']);
+      return open(JSON.stringify([hostId, 'opencode']), 'OpenCode Go sign-in', hostId, ['opencode', 'auth', 'login', 'opencode-go']);
     }
     if (accountId.startsWith('provider-codex:')) {
       const [accountHost] = z.tuple([z.string(), z.literal('codex')])
