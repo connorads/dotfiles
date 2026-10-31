@@ -23,13 +23,17 @@ describe('introduction preview', () => {
     const result = previewIntroduction('{}', false);
     expect(result.ok && JSON.parse(result.desiredJson)).toEqual({ 'bb-guide': { introduction: false } });
   });
-  it.each(['bad JSON', 'null', '[]', '{"bb-guide":null}', '{"bb-guide":{"introduction":"false"}}', '{"other":3}', '{"other":{"setting":null}}', '{"other":{"setting":[]}}', '{"other":{"setting":{}}}'])('rejects malformed owner %s', owner => {
+  it.each(['bad JSON', 'null', '[]', '{"":{}}', '{"bb-guide":null}', '{"bb-guide":{"introduction":"false"}}', '{"other":3}', '{"other":{"setting":null}}', '{"other":{"setting":[]}}', '{"other":{"setting":{}}}'])('rejects malformed owner %s', owner => {
     expect(previewIntroduction(owner, false).ok).toBe(false);
   });
   it('does not create a patch for an unchanged desired value', () => {
     const result = previewIntroduction(fixtureOwner, true);
     expect(result.ok && result.patch).toBe('');
   });
+});
+
+it.each(['{"__proto__":{"setting":true}}', '{"other":{"__proto__":true}}'])('refuses a preview that would lose unrelated keys: %s', owner => {
+  expect(previewIntroduction(owner, false).ok).toBe(false);
 });
 
 it('preserves unrelated scalar values exactly', () => {

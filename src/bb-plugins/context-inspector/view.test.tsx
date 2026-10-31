@@ -58,3 +58,11 @@ it('exports only after an explicit action and guards unknown capacity', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Export private patch' }));
   expect(exported[0]).toContain('+++ b/.config/bb/plugin-config.json');
 });
+
+it('disables edits and export when owner validation fails', () => {
+  render(<ContextInspectorView target={fixtureTarget} state={fixtures['Count only']} ownerText="bad JSON" onExportPatch={() => { throw new Error('Must not export'); }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Future owner preview' }));
+  expect(screen.getByRole('alert').textContent).toContain('valid JSON');
+  expect((screen.getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+  expect(screen.queryByRole('button', { name: 'Export private patch' })).toBeNull();
+});

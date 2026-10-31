@@ -53,7 +53,7 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
       <p>Global desired owner: .config/bb/plugin-config.json</p>
       <p>Only bb-guide.introduction changes. Historical session configuration is unknown.</p>
       <p>Live saved value: {savedIntroduction === undefined ? 'Unknown' : String(savedIntroduction)}. This is current saved state.</p>
-      <label><input type="checkbox" disabled={Boolean(ownerUnavailable)} checked={introduction} onChange={event => setIntroduction(event.target.checked)} /> BB Guide introduction</label>
+      <label><input type="checkbox" disabled={!preview.ok} checked={introduction} onChange={event => setIntroduction(event.target.checked)} /> BB Guide introduction</label>
       {!preview.ok ? <p role="alert">{preview.error}</p> : <>
         <p>Existing desired value: {preview.previous === undefined ? 'Unmanaged' : String(preview.previous)}</p>
         {onExportPatch && <button type="button" disabled={!preview.patch} onClick={() => onExportPatch(preview.patch)}>Export private patch</button>}

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const pluginSettings = z.record(z.string(), z.union([z.boolean(), z.number(), z.string()]));
-const ownerSchema = z.record(z.string(), pluginSettings);
+const ownerSchema = z.record(z.string().min(1), pluginSettings);
 export type PatchPreview =
   | { ok: false; error: string }
   | { ok: true; desiredJson: string; patch: string; previous: boolean | undefined; introduction: boolean };
@@ -12,6 +12,7 @@ export function previewIntroduction(ownerText: string, introduction: boolean): P
   try { input = JSON.parse(ownerText); } catch { return { ok: false, error: 'Owner must contain valid JSON.' }; }
   const parsed = ownerSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Owner must map plugin IDs to setting objects.' };
+  if (JSON.stringify(parsed.data) !== JSON.stringify(input)) return { ok: false, error: 'Owner contains settings that cannot be preserved.' };
   const guide = parsed.data['bb-guide'];
   const previous = guide?.introduction;
   if (previous !== undefined && typeof previous !== 'boolean') return { ok: false, error: 'bb-guide.introduction must be a boolean.' };
