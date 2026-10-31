@@ -1,0 +1,10 @@
+.context-inspector { color: var(--foreground); font-family: var(--font-sans); max-width: 48rem; padding: 1rem; }
+.context-inspector dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .3rem 1rem; }
+.context-inspector dd { margin: 0; overflow-wrap: anywhere; }
+.context-inspector dt, .context-inspector .ci-fixture { color: var(--muted-foreground); }
+.context-inspector nav { display: flex; gap: .5rem; flex-wrap: wrap; }
+.context-inspector button { color: inherit; background: transparent; border: 1px solid var(--border); border-radius: .3rem; padding: .4rem .6rem; cursor: pointer; }
+.context-inspector button[aria-pressed="true"] { border-color: var(--primary); }
+.context-inspector pre { font-family: var(--font-mono); overflow: auto; max-height: 20rem; border: 1px solid var(--border); padding: .5rem; }
+.context-inspector summary { cursor: pointer; padding: .4rem 0; }
+.context-inspector :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
