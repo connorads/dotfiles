@@ -390,7 +390,7 @@ test('Codex login defaults to a device code on the account host and reuses an ac
 });
 
 for (const accountId of ['provider-opencode:["remote","opencode"]', 'provider-acp:["remote","acp-opencode"]'])
-test(`OpenCode login targets Go on the account host and reuses its active terminal for ${accountId}`, async t => {
+test(`OpenCode login uses Console device OAuth on the account host and reuses its active terminal for ${accountId}`, async t => {
   const { harness, created } = loginFixture();
   t.after(() => harness.lifecycle.dispose());
   const input = { hostId: 'remote', accountId };
@@ -398,7 +398,7 @@ test(`OpenCode login targets Go on the account host and reuses its active termin
   await harness.behavior.callRpc('usage.login', input);
   assert.equal(created.length, 1);
   assert.deepEqual(created[0]?.scope, { kind: 'host_path', hostId: 'remote', cwd: null });
-  assert.deepEqual(created[0]?.start?.argv, ['opencode', 'auth', 'login', 'opencode-go']);
+  assert.deepEqual(created[0]?.start?.argv, ['opencode', 'auth', 'login', 'opencode', '--method', 'device']);
 });
 
 test('switching Codex sign-in method closes the running login before starting the other', async t => {

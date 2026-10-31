@@ -344,7 +344,7 @@ test.each(['expired', 'unauthenticated'] as const)('%s OpenCode account opens si
   act(() => openUsage());
   const connect = await slot.findByRole('button', { name: 'Sign in again to OpenCode' });
   expect(connect.textContent).toBe('Connect Go');
-  expect(connect.closest('.au-account')?.textContent).toContain('Go key needs attention');
+  expect(connect.closest('.au-account')?.textContent).toContain('Reconnect OpenCode Go');
   fireEvent.click(connect);
   expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login',
     options: { subPath: JSON.stringify({ hostId: 'host-one', accountId }) } });
@@ -370,7 +370,7 @@ test('OpenCode sign-in opens its terminal and refreshes usage after success', as
     options: { terminalId: 'login-terminal' } });
 });
 
-test('OpenCode sign-in explains where to get the Go key before the terminal finishes', async () => {
+test('OpenCode sign-in explains browser approval from another device before the terminal finishes', async () => {
   const app = await load();
   const page = app.navPanels.find(panel => panel.id === 'claude-login');
   if (!page) throw new Error('Missing sign-in page');
@@ -380,9 +380,9 @@ test('OpenCode sign-in explains where to get the Go key before the terminal fini
     sdk: { terminals: { get: async () => ({ ...terminal(0), status: 'running' as const, exitCode: null, closeReason: null }) } },
     openTerminal: () => true,
   });
-  await waitFor(() => expect(slot.getByRole('status').textContent).toContain('Paste your Go API key'));
-  expect(slot.getByRole('link', { name: 'Open OpenCode Console' }).getAttribute('href')).toBe('https://opencode.ai/auth');
-  expect(slot.container.textContent).toContain('Personal API keys');
+  await waitFor(() => expect(slot.getByRole('status').textContent).toContain('Open the link in the terminal on any device'));
+  expect(slot.container.textContent).toContain('Credentials stay on that machine');
+  expect(slot.container.textContent).not.toContain('API key');
   expect(slot.container.textContent).toContain('terminal');
 });
 

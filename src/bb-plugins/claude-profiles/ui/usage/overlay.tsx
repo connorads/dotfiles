@@ -54,7 +54,7 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
       || go);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
-  const message = canLogin && connected ? (go ? 'Go key needs attention' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
+  const message = canLogin && connected ? (go ? 'Reconnect OpenCode Go' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
     : usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint

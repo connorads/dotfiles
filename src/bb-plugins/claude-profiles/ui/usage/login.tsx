@@ -40,9 +40,9 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
       const usage = inspection.snapshot.machines.find(machine => machine.id === target.hostId)
         ?.providers.find(account => account.id === target.accountId)?.usage;
       if (usage?.status !== 'ok') {
-        setMessage('Key saved. Go access needs attention.');
+        setMessage('Authorisation completed. Go usage needs attention.');
         setError(usage?.status === 'expired' || usage?.status === 'unauthenticated'
-          ? 'BB could not authenticate the Go key. Create a Personal API key in the subscribed workspace, then try again.'
+          ? 'BB could not confirm Go usage. Check the selected workspace. An older saved Go key can also cause this warning after OAuth sign-in.'
           : 'Go access could not be verified. Check the subscription in OpenCode Console, then check access again.');
         return;
       }
@@ -51,7 +51,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
       openUsage();
     } catch {
       if (alive()) {
-        setMessage('Key saved. Go access needs attention.');
+        setMessage('Authorisation completed. Go usage needs attention.');
         setError('Go access could not be verified. Check access again when the service is available.');
       }
     } finally { if (alive()) setChecking(false); }
@@ -75,7 +75,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         if (!await navigation.current.experimental_openTerminal({ terminalId: id }))
           throw new Error('BB could not show the sign-in terminal. Use Show terminal to try again.');
         if (!alive) return;
-        setMessage(opencode ? 'Paste your Go API key into the terminal and press Enter.'
+        setMessage(opencode ? 'Open the link in the terminal on any device and enter the code.'
           : !codex ? `Complete ${name} sign-in in the terminal and browser.`
           : method === 'device' ? 'Open the link in the terminal on any device and enter the code.'
             : 'Complete Codex sign-in in the terminal and the browser on the account machine.');
@@ -85,7 +85,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
             if (!alive) return;
             if (terminal.status === 'exited') {
               if (terminal.exitCode !== 0) throw new Error('Sign-in did not finish. Check the terminal, then try again.');
-              setMessage(opencode ? 'Key saved. Checking Go access…' : 'Signed in. Refreshing usage…');
+              setMessage(opencode ? 'Authorisation completed. Checking Go usage…' : 'Signed in. Refreshing usage…');
               if (opencode) {
                 setCanCheck(true);
                 await refreshGoAccess(() => alive);
@@ -117,12 +117,11 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     {opencode && <div className="au-login-hint">
       <h2>Connect OpenCode Go</h2>
       <ol>
-        <li>Open Console and select the workspace with your Go subscription.</li>
-        <li>Open the account menu, then Account, then Personal API keys. Create a key.</li>
-        <li>Paste the key into the terminal. BB checks Go access and refreshes usage.</li>
+        <li>Open the link shown in the terminal on your laptop, phone or another device.</li>
+        <li>Sign in, select your Go workspace and approve the displayed device code.</li>
+        <li>Return to BB. It checks Go usage after authorisation finishes.</li>
       </ol>
-      <p>Keep the key in the terminal. Do not paste it into chat.</p>
-      <a className="au-login-button" href="https://opencode.ai/auth" target="_blank" rel="noreferrer">Open OpenCode Console</a>
+      <p>Sign-in runs on the selected machine, including a remote server. Credentials stay on that machine.</p>
     </div>}
     <p role="status">{message}</p>
     {codex && method === 'device' && <p className="au-login-hint">

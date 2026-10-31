@@ -47,7 +47,7 @@ export function createLogin(ports: LoginPorts) {
     if (accountHost !== null) {
       if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
       await connected(hostId);
-      return open(JSON.stringify([hostId, 'opencode']), 'OpenCode Go sign-in', hostId, ['opencode', 'auth', 'login', 'opencode-go']);
+      return open(JSON.stringify([hostId, 'opencode']), 'OpenCode Go sign-in', hostId, ['opencode', 'auth', 'login', 'opencode', '--method', 'device']);
     }
     if (accountId.startsWith('provider-codex:')) {
       const [accountHost] = z.tuple([z.string(), z.literal('codex')])

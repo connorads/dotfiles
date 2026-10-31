@@ -242,10 +242,10 @@ window. A reading becomes stale after 4% of its shortest window, with a
 Expired or signed-out Claude and Codex accounts show **Sign in again**.
 OpenCode shows **Connect Go**. The button
 opens **Agent sign-in**, a BB page with a terminal on that account's machine. Claude
-runs `claude auth login`. OpenCode runs `opencode auth login opencode-go` and opens
-the Go key prompt directly. Its sign-in page links to OpenCode Console. Select the
-subscribed workspace, then create a key in Account → Personal API keys. Paste the
-key into the terminal. Claude Default uses the machine's native configuration;
+runs `claude auth login`. OpenCode runs
+`opencode auth login opencode --method device`. Open its terminal link in a
+browser on any device, choose the Go workspace and approve the code. Credentials
+stay on the selected machine, including when it is a remote server. Claude Default uses the machine's native configuration;
 named accounts use their profile directory. Codex uses the machine's one CLI login
 and starts `codex login --device-auth`: open the printed link on any device and
 enter the code. Device codes need device code sign-in turned on in ChatGPT security
@@ -254,8 +254,9 @@ only a browser on the account machine. Switching closes the running Codex login.
 Concurrent clicks reuse the active login terminal. Offline accounts require their machine to reconnect first.
 Successful login refreshes usage and reopens the overlay. OpenCode reopens it only
 when the refreshed Go usage confirms access. **Check Go access** retries that check
-without requesting another key. A rejected key or unavailable service stays on the
-sign-in page with an explanation. Failed login keeps the
+without starting another sign-in. Unavailable usage stays on the sign-in page
+with an explanation. BB can report an older Go key as expired after successful
+Console OAuth; that usage warning does not prove OAuth sign-in failed. Failed login keeps the
 terminal available with **Try again**. The **Agent sign-in** sidebar page also
 provides **Agent usage** to return to the account list.
 

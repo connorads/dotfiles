@@ -608,6 +608,24 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: @thread:thr_gphz9jr2wb, commit `615faf0f`
 
+### OpenCode Go usage can prefer a stale key over Console OAuth
+
+- Found: 2026-10-31, installed desktop provider-acp bundle
+- Wanted: display Go allowance after native Console device authorisation.
+- Gap: `readStoredCredential` returns an `opencode-go` key before checking
+  Console OAuth. `readOpenCodeGoUsage` returns expired on HTTP 401 without
+  trying OAuth. OpenCode resolves Console-managed models through integration
+  `opencode`, so inference can work while BB reports expired usage.
+- Workaround: Agent Switcher uses native device authorisation and separates
+  completed authorisation from unavailable Go usage. It preserves stored keys.
+- Ask: select the credential through OpenCode's provider integration mapping
+  and let OpenCode refresh OAuth before collecting allowance.
+- Status: open; installed collector source verified, OAuth account check pending
+- Category: app-bug
+- Evidence: installed provider-acp `dist/host.js` retains both function names;
+  [OpenCode device flow](https://github.com/anomalyco/opencode/pull/48501) and
+  [model resolver](https://github.com/anomalyco/opencode/blob/v2.1.4/packages/core/src/model-resolver.ts).
+
 ### Usage contract is private and drops failure detail
 
 - Found: 2026-10-12, agent-usage, claude-profiles, SDK 0.6.15 (rechecked 0.6.37)
