@@ -744,6 +744,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: app and provider bugs
 
+### Native Claude usage retains retired plan names
+
+- Found: 2026-10-31, Agent Switcher, SDK 0.6.49
+- Wanted: Personal Claude usage displays Max and Ultra plan names.
+- Gap: The native usage collector reports `Max (20x)` for the renamed Ultra plan.
+- Workaround: Agent Switcher normalises the two known personal labels after collection,
+  including refreshed observations. Team labels and unknown labels pass through.
+- Ask: Update native Claude plan labels for Max and Ultra.
+- Status: open
+- Category: provider
+- Evidence: [plan formatter](../claude-profiles/src/accounts/account.ts),
+  [collector merge](../claude-profiles/src/accounts/usage/overview.ts),
+  [Anthropic plan definition](https://support.claude.com/en/articles/17728952-what-is-the-ultra-plan).
+
 ### Worktree teardown deletes uncommitted work
 
 - Found: 2026-10-11, worktree-reaper spike, BB 0.46.0

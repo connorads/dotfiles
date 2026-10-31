@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { parseUsage } from './quota.ts';
 import { decodeResourceId, measurement, measurementSchema } from './usage-source.ts';
 
 test('maps CLI quota into the BB usage contract without inventing account identity', () => {
@@ -44,4 +45,19 @@ test('passes the profile account email and plan label through', () => {
   const result = measurement({ status: 'ok', observedAt: 1, message: null, windows: [],
     account: { accountEmail: 'a@example.com', planLabel: 'Team Standard' } });
   assert.partialDeepStrictEqual(result.usage, { status: 'ok', plan: null, accountEmail: 'a@example.com', planLabel: 'Team Standard' });
+});
+
+test('weekly-only and reordered Claude limits retain their identity', () => {
+  for (const rate_limits of [
+    { seven_day: { utilization: 87 } },
+    { five_hour: null, seven_day: { utilization: 87 } },
+    { seven_day: { utilization: 87 }, five_hour: { utilization: 0 } },
+  ]) {
+    const result = measurement(parseUsage({ rate_limits_available: true, rate_limits }));
+    assert.equal(result.usage.status, 'ok');
+    if (result.usage.status !== 'ok') throw new Error('Expected usage');
+    assert.partialDeepStrictEqual(result.usage.windows.find(window => window.id === 'seven_day'),
+      { kind: 'weekly', usedPercent: 87 });
+    assert.equal(result.usage.windows.length, rate_limits.five_hour == null ? 1 : 2);
+  }
 });

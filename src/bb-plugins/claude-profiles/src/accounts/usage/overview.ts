@@ -1,6 +1,7 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import type { Usage } from '../quota.ts';
+import { normaliseClaudePlanLabel } from '../account.ts';
 import type { Measurement } from '../usage-source.ts';
 import { sourceSnapshotSchema, type Account, type Header, type Inspection, type Snapshot, type SourceSnapshot, type UsageWindow } from './contract.ts';
 import type { Period } from './pace.ts';
@@ -42,7 +43,9 @@ function foldDefaultProfile(providers: Account[]): Account[] {
     const locator = profileLocatorSchema.safeParse(resourceLocator(account));
     return locator.success ? locator.data[2] : null;
   };
-  const named = providers.map(account => {
+  const named = providers.map(source => {
+    const account = source.providerId === 'claude-code' && source.usage?.status === 'ok'
+      ? { ...source, usage: { ...source.usage, planLabel: normaliseClaudePlanLabel(source.usage.planLabel) } } : source;
     const profile = profileOf(account);
     return profile === null ? account : { ...account, accountLabel: profile === 'default' ? 'Default' : profile };
   });

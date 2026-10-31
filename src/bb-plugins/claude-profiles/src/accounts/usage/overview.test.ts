@@ -155,7 +155,7 @@ test('the default Claude profile folds into the native login it shares, keeping 
   const reader = createUsageReader({ ...ports, callRpc: answer(() => source) });
   const accounts = (await reader.overview(false)).machines[0]?.providers ?? [];
   assert.deepEqual(accounts.map(account => account.accountLabel), ['Default', 'work']);
-  assert.partialDeepStrictEqual(accounts[0]?.usage, { accountEmail: 'me@example.com', planLabel: 'Max (20x)' });
+  assert.partialDeepStrictEqual(accounts[0]?.usage, { accountEmail: 'me@example.com', planLabel: 'Ultra' });
   assert.deepEqual(accounts[0]?.usage?.status === 'ok' && accounts[0].usage.windows.map(w => [w.label, w.period]),
     [['5-hour', 'five-hour'], ['Weekly', 'week'], ['Weekly · Fable', 'week'], ['Credits', null]]);
 });
@@ -178,4 +178,24 @@ test('Grok quota uses its readable provider name and weekly pace', async () => {
   const account = (await reader.overview(false)).machines[0]?.providers[0];
   assert.equal(account?.displayName, 'Grok Build');
   assert.partialDeepStrictEqual(account?.usage, { windows: [{ label: 'Weekly', period: 'week', usedPercent: 6 }] });
+});
+
+test('overview and refreshed inspection use current Claude plan names without inferring windows', async () => {
+  for (const [providerId, planLabel, expected] of [
+    ['claude-code', 'Max (20x)', 'Ultra'], ['claude-code', 'Max (5x)', 'Max'],
+    ['claude-code', 'Team Premium (5x)', 'Team Premium (5x)'],
+    ['claude-code', 'Ultra', 'Ultra'], ['claude-code', 'Future plan', 'Future plan'],
+    ['codex', 'Max (20x)', 'Max (20x)'],
+  ]) {
+    const account = { ...claude('provider-test:["host-one","test"]', null,
+      { status: 'ok', accountEmail: null, planLabel, windows: [window('Weekly limit', 87)] }), providerId };
+    const source = { machines: [{ ...snapshot.machines[0], providers: [account] }] };
+    const reader = createUsageReader({ ...ports, resetCredits: async () => ({ status: 'unavailable', message: 'No cache' }),
+      callRpc: answer(input => input.method === 'getUsage' ? source : { observedAt: 123, usage: account.usage }),
+    });
+    for (const result of [await reader.overview(false), (await reader.inspection(false)).snapshot]) {
+      assert.partialDeepStrictEqual(result.machines[0]?.providers[0]?.usage,
+        { planLabel: expected, windows: [{ label: 'Weekly', period: 'week', usedPercent: 87 }] });
+    }
+  }
 });
