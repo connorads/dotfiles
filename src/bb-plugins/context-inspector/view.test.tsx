@@ -89,3 +89,15 @@ it('shows category kinds and measures each category against window capacity', ()
   expect(screen.getByText('free')).toBeTruthy();
   expect((container.querySelector('[data-kind="free"] i') as HTMLElement).style.width).toBe('88%');
 });
+
+it('keeps scroll input inside the popup without cancelling native scrolling', () => {
+  const prevented: string[] = [];
+  render(<div onMouseDown={event => { prevented.push('mouse'); event.preventDefault(); }} onWheel={event => { prevented.push('wheel'); event.preventDefault(); }}>
+    <ContextInspectorView target={fixtureTarget} state={fixtures['Count only']} ownerText={fixtureOwner} />
+  </div>);
+  const content = screen.getByLabelText('Recorded context').parentElement;
+  if (!content) throw new Error('Expected content');
+  expect(fireEvent.mouseDown(content)).toBe(true);
+  expect(fireEvent.wheel(content, { deltaY: 300 })).toBe(true);
+  expect(prevented).toEqual([]);
+});

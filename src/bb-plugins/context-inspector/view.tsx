@@ -46,7 +46,11 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
       <button type="button" aria-pressed={tab === 'sources'} onClick={() => setTab('sources')}>Sources{inventory && <span title="Tool and skill registrations">{inventory.rows.length}</span>}</button>
       <button type="button" aria-pressed={tab === 'future'} onClick={() => setTab('future')}>Configure</button>
     </nav>
-    <div className="ci-content">
+    <div className="ci-content" role="region" aria-label="Scrollable context details" tabIndex={0}
+      onMouseDown={event => event.stopPropagation()} onWheel={event => event.stopPropagation()}
+      onKeyDown={event => {
+        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.stopPropagation();
+      }}>
     {tab === 'recorded' ? <div aria-label="Recorded context">
       {observation.kind === 'recorded' && observation.snapshot && <div className="ci-section-heading"><h3>Context breakdown</h3><span>Share of context window</span></div>}
       {observation.kind === 'recorded' && observation.snapshot ? <>
