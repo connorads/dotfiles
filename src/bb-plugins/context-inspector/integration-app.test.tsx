@@ -15,7 +15,7 @@ const usage = (usedTokens: number) => ({ usage: { usedTokens, modelContextWindow
 function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = false) {
   let contextReads = 0;
   const { sdk } = createFakeSdk({ pluginId: 'context-inspector', overrides: {
-      threads: { get: ({ threadId }) => ({ id: threadId, environmentId: 'environment-synthetic' }),
+      threads: { get: ({ threadId }) => ({ id: threadId, environmentId: 'environment-synthetic' }), events: { list: () => [] },
         context: ({ threadId }) => {
           contextReads++;
           return threadId === 'thread-first' && firstContext && contextReads === 1 ? firstContext : usage(222);
@@ -29,9 +29,9 @@ function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = fals
   });
   return renderSlot({ component: anchored ? () => <div data-promptbox-typeahead-menu="" style={{ position: 'absolute', bottom: 200 }}><InspectorPopup /></div> : InspectorPopup }, {}, {
     composer: { scope: { kind: 'thread', threadId: 'thread-first' }, text: 'Synthetic draft' },
-    rpc: { owner: () => ({ kind: 'unavailable', reason: 'Synthetic remote owner unavailable.' }) },
+    rpc: { owner: () => ({ kind: 'unavailable', reason: 'Synthetic remote owner unavailable.' }), native: () => ({ providerId: 'codex', tracingEnabled: false, report: { kind: 'unavailable', reason: 'No trace recorded.' } }) },
     sdk: {
-      threads: { get: args => sdk.threads.get(args), context: args => sdk.threads.context(args) },
+      threads: { get: args => sdk.threads.get(args), context: args => sdk.threads.context(args), events: { list: args => sdk.threads.events.list(args) } },
       environments: { get: args => sdk.environments.get(args) },
       plugins: { list: args => sdk.plugins.list(args), getSettings: args => sdk.plugins.getSettings(args) },
     },
@@ -85,7 +85,7 @@ test('registers a thread-only popup and plus menu without an extra composer butt
   const registration = app.composerCustomizations[0];
   expect(registration?.scopes).toEqual(['thread']);
   expect(registration?.experimental_popups?.map(popup => popup.id)).toEqual(['context']);
-  expect(registration?.actions ?? []).toHaveLength(0);
+  expect(registration?.actions?.map(action => action.id)).toEqual(['native-context-anchor']);
   expect(registration?.plusMenu?.map(item => item.label)).toEqual(['Inspect context']);
   expect(app.navPanels.map(panel => panel.id)).toEqual(['fixtures']);
 });

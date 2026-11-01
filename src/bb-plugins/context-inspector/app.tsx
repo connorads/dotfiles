@@ -3,9 +3,75 @@ import { experimental_Icon as Icon, definePluginApp, useComposer, useRpc, useSdk
 import { ContextInspectorView, FixtureContextInspector } from './view';
 import type { ObservationState, Target } from './observation';
 import { rpcContract, type OwnerResult } from './contracts';
+import { NativeCosts } from './native-view';
+import { mountNativeContextDetails } from './native-popup';
+import type { NativeResult } from './native-contract';
 import './app.css';
 
 const popupId = 'context';
+const composerBindings = new Map<HTMLElement, { threadId: string; open: () => void }>();
+
+/** An invisible anchor binds native meter placement to its actual composer. */
+export function NativeContextAnchor() {
+  const composer = useComposer();
+  const anchor = useRef<HTMLSpanElement>(null);
+  const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
+  useEffect(() => {
+    const element = anchor.current;
+    if (!element || !threadId) return;
+    composerBindings.set(element, { threadId, open: () => composer.experimental_openPopup(popupId) });
+    return () => { composerBindings.delete(element); };
+  }, [composer, threadId]);
+  return <span ref={anchor} data-ci-native-anchor="" hidden />;
+}
+
+function nativeBinding(trigger: HTMLElement) {
+  const shell = trigger.closest('[data-promptbox-shell]');
+  if (!shell) return null;
+  const matches = [...composerBindings].filter(([anchor]) => shell.contains(anchor));
+  if (matches.length !== 1) return null;
+  const binding = matches[0][1];
+  // The action callback receives a thread ID. Ambiguous duplicate panes stay undecorated.
+  return [...composerBindings.values()].filter(value => value.threadId === binding.threadId).length === 1 ? binding : null;
+}
+
+export function NativePanel({ threadId }: { threadId: string }) {
+  const rpc = useRpc<typeof rpcContract>();
+  const [data, setData] = useState<{ providerId: string | null; tracingEnabled: boolean; report: NativeResult } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const generation = useRef(0);
+  const read = async (collect: boolean) => {
+    const id = ++generation.current;
+    setLoading(true);
+    try {
+      const value = await rpc.call('native', { threadId, collect });
+      if (id === generation.current) setData(value);
+    } catch {
+      if (id === generation.current) setData(previous => ({ providerId: previous?.providerId ?? null, tracingEnabled: previous?.tracingEnabled ?? false, report: { kind: 'unavailable', reason: 'Native context read failed.' } }));
+    } finally { if (id === generation.current) setLoading(false); }
+  };
+  useEffect(() => {
+    setData(null);
+    void read(false);
+    return () => { generation.current++; };
+  }, [threadId, rpc]);
+  async function change(operation: 'tracing' | 'purge', enabled?: boolean) {
+    const id = ++generation.current;
+    setLoading(true);
+    try {
+      if (operation === 'tracing') await rpc.call('tracing', { threadId, enabled: enabled === true });
+      else {
+        const result = await rpc.call('purge', { threadId });
+        if (!result.purged) throw new Error('Recorder did not confirm deletion.');
+      }
+      if (id === generation.current) await read(false);
+    } catch {
+      if (id === generation.current) setData(previous => ({ providerId: previous?.providerId ?? null, tracingEnabled: previous?.tracingEnabled ?? false, report: { kind: 'unavailable', reason: operation === 'purge' ? 'Trace deletion was refused. Finish queued work and stop the thread recorder first.' : 'Recording preference could not be changed.' } }));
+    } finally { if (id === generation.current) setLoading(false); }
+  }
+  return <NativeCosts report={data?.report ?? null} provider={data?.providerId ?? undefined} tracingEnabled={data?.tracingEnabled}
+    loading={loading} onCollect={() => { void read(true); }} onTracingChange={enabled => { void change('tracing', enabled); }} onPurge={() => { void change('purge'); }} />;
+}
 type InventoryRow = { pluginId: string; enabled: boolean; kind: string; id: string; label: string };
 type Inventory = { rows: InventoryRow[]; truncated: boolean };
 type Settings = { value?: boolean; error?: string };
@@ -73,13 +139,16 @@ export function InspectorPopup() {
       const thread = await sdk.threads.get({ threadId: selectedThreadId, signal: abort.signal });
       const environment = thread.environmentId ? await sdk.environments.get({ environmentId: thread.environmentId, signal: abort.signal }) : null;
       const target: Target = { threadId: thread.id, hostId: environment?.hostId ?? 'Unknown' };
-      const [context, owner, settings, inventory] = await Promise.allSettled([
+      const [context, owner, settings, inventory, identities] = await Promise.allSettled([
         sdk.threads.context({ threadId: thread.id, signal: abort.signal }),
         rpc.call('owner', { threadId: thread.id }),
         sdk.plugins.getSettings({ pluginId: 'bb-guide', signal: abort.signal }),
         sdk.plugins.list({ signal: abort.signal }).then(inventoryRows),
+        sdk.threads.events.list({ threadId: thread.id, types: ['thread/identity', 'thread/context/cleared'], order: 'desc', limit: '1', signal: abort.signal }),
       ]);
       if (!active) return;
+      const identity = identities.status === 'fulfilled' ? identities.value[0] : undefined;
+      if (identity?.type === 'thread/identity') target.providerSessionId = identity.data.providerThreadId;
       let saved: Settings = { error: 'BB Guide introduction schema is unavailable.' };
       if (settings.status === 'fulfilled' && settings.value.schema.introduction?.type === 'boolean') {
         const value = settings.value.values.introduction;
@@ -106,15 +175,23 @@ export function InspectorPopup() {
       <ContextInspectorView target={data.target} state={data.state} ownerText={data.owner.kind === 'available' ? data.owner.text : ''}
         ownerUnavailable={data.owner.kind === 'unavailable' ? data.owner.reason : data.settings.error}
         savedIntroduction={data.settings.value} onExportPatch={exportPatch} inventory={data.inventory} inventoryError={data.inventoryError}
-        controls={controls} />
+        controls={controls} native={<NativePanel key={data.target.threadId} threadId={data.target.threadId} />} />
     </>}
   </div>;
 }
 
 export default definePluginApp(app => {
   app.composer.customize({ id: 'inspector', scopes: ['thread'],
+    actions: [{ id: 'native-context-anchor', component: NativeContextAnchor }],
     experimental_popups: [{ id: popupId, label: 'Context inspector', component: InspectorPopup }],
     plusMenu: [{ id: 'open', label: 'Inspect context', run: ({ composer }) => { composer.experimental_openPopup(popupId); } }],
   });
+  app.contentScripts.register({ id: 'native-context-details', mount: () => mountNativeContextDetails({ document,
+    resolveThread: trigger => nativeBinding(trigger)?.threadId ?? null,
+    onInspect: threadId => {
+      const matches = [...composerBindings.values()].filter(value => value.threadId === threadId);
+      if (matches.length === 1) matches[0].open();
+    },
+  }) });
   app.slots.navPanel({ id: 'fixtures', title: 'Context inspector fixtures', icon: 'Search', path: 'fixtures', component: FixtureContextInspector });
 });

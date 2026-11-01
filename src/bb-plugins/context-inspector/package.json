@@ -15,7 +15,8 @@
     },
     "skills": [],
     "app": "./app.tsx",
-    "server": "./server.ts"
+    "server": "./server.ts",
+    "host": "./host.ts"
   },
   "scripts": {
     "test": "vitest run",

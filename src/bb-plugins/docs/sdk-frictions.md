@@ -1190,3 +1190,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Builtin plugins ship source maps without sources. (2026-10-02 Claude transcript)
 - The feature-request form cannot be filled through `gh`, and screenshots need repo write access. (@thread:thr_x523wkg7m3)
 - Inline visualisations look plain next to T3 Code. (2026-10-12 Codex session)
+
+### Native context detail has no public popup extension
+
+- Found: 2026-11-01, context-inspector, SDK 0.6.37
+- Wanted: Inspect native source costs from the existing context meter.
+- Gap: `threads.context` reads recorded usage. The SDK exposes neither a snapshot
+  writer nor a native context-popover detail slot.
+- Workaround: An independent popup reads host diagnostics. A scoped DOM action
+  opens it from the native meter without replacing native content.
+- Ask: Expose a context-popover action slot with an explicit thread identity.
+- Status: open
+- Category: sdk-gap
+- Evidence: [Popup adapter](../context-inspector/native-popup.ts),
+  [Native collection](../context-inspector/native-server.ts)

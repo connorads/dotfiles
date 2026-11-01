@@ -4,6 +4,7 @@ import { lstat, open } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, parse } from 'node:path';
 import { rpcContract, type OwnerResult } from './contracts';
+import { nativeServices } from './native-server';
 
 const maximumBytes = 256 * 1024;
 
@@ -38,6 +39,7 @@ export async function readOwner(home: string, hostId: string): Promise<OwnerResu
 
 export default function plugin(bb: BbPluginApi) {
   bb.rpc.register(rpcContract, {
+    ...nativeServices(bb),
     async owner({ threadId }): Promise<OwnerResult> {
       const primary = (await bb.sdk.system.config()).primaryHostId;
       if (!primary) return { kind: 'unavailable', reason: 'Server configuration host is unavailable.' };

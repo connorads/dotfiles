@@ -15,12 +15,13 @@ export interface ContextInspectorViewProps {
   inventory?: { rows: { pluginId: string; enabled: boolean; kind: string; id: string; label: string }[]; truncated: boolean } | null;
   inventoryError?: string;
   controls?: ReactNode;
+  native?: ReactNode;
 }
 export function ContextInspectorView(props: ContextInspectorViewProps) {
   // A target change discards the previous target's draft.
   return <InspectorTarget key={JSON.stringify(props.target)} {...props} />;
 }
-function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUnavailable, savedIntroduction, onExportPatch, inventory, inventoryError, controls }: ContextInspectorViewProps) {
+function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUnavailable, savedIntroduction, onExportPatch, inventory, inventoryError, controls, native }: ContextInspectorViewProps) {
   const [tab, setTab] = useState<'recorded' | 'sources' | 'future'>('recorded');
   const [introduction, setIntroduction] = useState(() => {
     const current = previewIntroduction(ownerText, false);
@@ -52,11 +53,16 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
         if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.stopPropagation();
       }}>
     {tab === 'recorded' ? <div aria-label="Recorded context">
+      {native}
       {observation.kind === 'recorded' && observation.snapshot && <div className="ci-section-heading"><h3>Context breakdown</h3><span>Share of context window</span></div>}
       {observation.kind === 'recorded' && observation.snapshot ? <>
         <div className="ci-categories">{observation.snapshot.categories.map((category, index) => <div className="ci-category" key={`${category.id}-${index}`}>
           <div><span>{category.label} <small className="ci-category-kind">{category.kind}</small></span><span className="ci-number">{category.tokens.toLocaleString('en-GB')} <small>tokens</small></span></div>
           <div className="ci-category-track" data-kind={category.kind}><i style={{ width: `${capacityKnown ? Math.min(100, Math.max(0, category.tokens / usage.modelContextWindow * 100)) : 0}%` }} /></div>
+          {category.entries.length > 0 && <details className="ci-recorded-entries"><summary>{category.entries.length} reported sources</summary>
+            {[...category.entries].sort((a, b) => b.tokens - a.tokens).map((entry, entryIndex) => <div className="ci-native-entry" key={`${entry.id}-${entryIndex}`}><span>{entry.label}</span><span className="ci-number">{entry.tokens.toLocaleString('en-GB')} tokens</span></div>)}
+            {category.entries.reduce((sum, entry) => sum + entry.tokens, 0) !== category.tokens && <p className="ci-note">Source estimates and category total are independently reported.</p>}
+          </details>}
         </div>)}</div>
         <p className="ci-note" role="status">{observation.message}</p>
       </> : <div className="ci-report-summary">

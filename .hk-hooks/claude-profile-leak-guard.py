@@ -36,9 +36,12 @@ ALLOW_PATTERN_PATHS = {
     ".zshrc.local.example",
 }
 
-# The claude-profiles BB plugin strips these auth env names from the Claude CLI
-# it spawns, so it must name them. Generic checks only, as for vendored skills.
+# Claude plugins name generic auth variables to isolate diagnostic processes.
+# Concrete profile paths and aliases remain forbidden, as for vendored skills.
 GENERIC_PATTERN_PATHS = {
+    "src/bb-plugins/context-inspector/native-contract.ts",
+    "src/bb-plugins/context-inspector/claude-native.test.ts",
+    "src/bb-plugins/context-inspector/native-server.test.ts",
     "src/bb-plugins/claude-profiles/src/accounts/claude.ts",
     "src/bb-plugins/claude-profiles/src/accounts/claude.test.ts",
 }

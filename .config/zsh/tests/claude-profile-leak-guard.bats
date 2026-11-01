@@ -152,3 +152,22 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"staged concrete .claude-profiles path"* ]]
 }
+
+@test "guard allows generic auth isolation names in context inspector" {
+  mkdir -p src/bb-plugins/context-inspector
+  for name in native-contract.ts claude-native.test.ts native-server.test.ts; do
+    echo "const names = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_USE_BEDROCK'];" >"src/bb-plugins/context-inspector/$name"
+    git add "src/bb-plugins/context-inspector/$name"
+  done
+  run_guard
+  [ "$status" -eq 0 ]
+}
+
+@test "guard blocks concrete profile paths in context inspector" {
+  mkdir -p src/bb-plugins/context-inspector
+  echo "const path = '/Users/example/.claude-profiles/code/example';" >src/bb-plugins/context-inspector/native-contract.ts
+  git add src/bb-plugins/context-inspector/native-contract.ts
+  run_guard
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"staged concrete .claude-profiles path"* ]]
+}

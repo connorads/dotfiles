@@ -3,8 +3,7 @@
 Context Inspector shows recorded session usage, current plugin capabilities and
 a reviewable future configuration edit. Its interfaces are private and changeable.
 
-Choose **+ → Inspect context** in an existing thread's composer. Refresh reads recorded data. It does not launch provider
-diagnostics or send a prompt.
+Open the existing context meter and choose **Inspect source costs**, or choose **+ → Inspect context** in an existing thread's composer. Refresh reads recorded data. Native diagnostics require an explicit action.
 
 **Overview** leads with usage and available category bars. **Sources** groups
 current registrations by plugin and filters by plugin, label or capability ID.
@@ -72,5 +71,34 @@ It demonstrates rendering and previews, not native Claude or Codex attachment.
 BB supplies usage and optional categories, not a complete historical construction
 manifest. Category labels cannot prove file or plugin inclusion. The inspector
 calculates no predicted token savings. It retains no history and writes no
-configuration. Native harness inspection and arbitrary contribution toggles are
-separate capabilities.
+configuration. Arbitrary contribution toggles are unavailable.
+
+## Native source costs
+
+The Overview includes a separate native report. It does not replace BB's recorded
+occupancy or claim exact historical plugin inclusion. Reports join the native
+session identity on the workspace execution host. Session changes discard results.
+
+Claude Code's **Read native summary** forks the saved session without persistence
+and requests its native context summary. It sends no generation prompt. Finish
+active and queued work first. Native category and entry estimates can disagree;
+both remain visible. The diagnostic reproduces ordinary CLI configuration, but
+cannot recover BB-injected tool definitions. Custom authentication or endpoint
+launch overrides refuse collection.
+
+Codex's **Record future Codex requests** enables its native rollout trace for this
+thread when its provider process next starts. Recording is off by default. Raw
+files contain conversation and tool content under the execution host's private
+`~/.bb/context-inspector/traces/` directory. Disabling the preference does not stop
+an existing writer. No disk quota bounds an active writer.
+
+**Read latest request** classifies captured text and tool definitions using a
+labelled UTF-8 byte estimate. It does not use a verified model tokenizer. Native
+`codex debug trace-reduce` reconstructs incremental request history from an
+immutable bounded copy. Missing history or unsupported payloads show a gap rather
+than a fabricated full count. Media costs remain unknown.
+
+Completed bundles older than one day, or beyond the latest three, are pruned.
+**Delete recorded traces** disables future recording and refuses open bundles.
+An uncleanly closed bundle requires manual maintenance. The plugin never stops a
+running provider to delete traces.
