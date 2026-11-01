@@ -40,7 +40,7 @@ fi
 
 # A staged suite runs itself. A staged script runs the suite named after it,
 # plus any suite that names it - `-w` so a short stem like `rl` matches
-# `rl-kill` but not `curl`.
+# `rl-kill` but not `curl`. The exact up route avoids ordinary-word matches.
 suites=$(
 	for f in "$@"; do
 		case $f in
@@ -49,6 +49,9 @@ suites=$(
 			;;
 		.config/nix/modules/bb-service-launcher.nix | .config/nix/modules/darwin-server.nix)
 			echo "$TESTS_DIR/bb-deploy.bats"
+			;;
+		.config/zsh/functions/nix/up)
+			echo "$TESTS_DIR/up.bats"
 			;;
 		# A case pattern's `*` crosses `/`, so the .claude arm covers both the
 		# top-level scripts (statusline.sh, subagent-statusline.sh) and hooks/.

@@ -245,7 +245,9 @@ The `bats-scoped` step (pre-commit) gates the zsh bats suite
 (`~/.config/zsh/tests`, 115 files) via `~/.hk-hooks/bats-tests.sh`, running only
 the suites the staged files touch - a staged `*.bats` runs itself, a staged
 script under `.config/zsh/functions/**` or `.config/tmux/scripts/**` runs the
-suite named after it plus any suite that names it. `bats` absent warns and exits
+suite named after it plus any suite that names it. The exact
+`.config/zsh/functions/nix/up` path selects only `up.bats`; add genuine
+dependants to that route when they appear. `bats` absent warns and exits
 0, same never-brick posture as `ts-typecheck.sh`. CI is PR-only and
 commits land through the hook, so without this gate nothing runs the suite. Conventions and the meaning of the
 `integration` tag: [.config/zsh/tests/AGENTS.md](../.config/zsh/tests/AGENTS.md).

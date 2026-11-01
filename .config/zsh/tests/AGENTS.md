@@ -109,6 +109,8 @@ One hk gate, driving `~/.hk-hooks/bats-tests.sh`:
 - **At commit** (`bats-scoped`, pre-commit): only the suites the staged files touch. A
   staged `*.bats` runs itself; a staged script under `../functions/**` or
   `../../tmux/scripts/**` runs the suite named after it, plus any suite that names it.
+  The exact `../functions/nix/up` path selects only `up.bats`; add genuine
+  dependants to that route when they appear.
 
 `bats` absent warns and passes, so the gate never bricks a commit it can't evaluate.
 CI (`.github/workflows/check.yml`) is PR-only and commits land through the hook, so
