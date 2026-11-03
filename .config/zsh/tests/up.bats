@@ -59,6 +59,13 @@ setup() {
   jq_dir="$(dirname "$(command -v jq)")" # capture before PATH is isolated
   setup_test_home
   export PATH="$PATH:$jq_dir"
+  # The real tokens must never reach a test, nor the real fnox be asked for them.
+  unset MISE_GITHUB_TOKEN HOMEBREW_GITHUB_API_TOKEN
+  write_stub fnox <<'EOF'
+#!/usr/bin/env bash
+echo "fnox $*" >>"$TEST_LOG"
+exit 1
+EOF
 
   write_stub bb-patch <<'EOF'
 #!/usr/bin/env bash
@@ -160,6 +167,7 @@ if [[ "$*" == 'config get --file '*env.BB_DEPLOY_SERVICE ]]; then
   exit 0
 fi
 echo "mise-cwd=$PWD" >>"$TEST_LOG"
+echo "mise-token=${MISE_GITHUB_TOKEN-unset}" >>"$TEST_LOG"
 [ -n "${MISE_DELAY:-}" ] && sleep "$MISE_DELAY"
 if [ "$*" = "lock --global --bump" ]; then
   [ -n "${MISE_SIMULATE_BUMP:-}" ] && echo "bumped" >>"$HOME/.config/mise/mise.lock"
@@ -392,6 +400,58 @@ EOF
   [ "$status" -eq 0 ]
   grep -qFx "$HOME/.local/bin/gh" "$TEST_LOG"
   ! grep -qFx "$HOME/.local/share/mise/shims/gh" "$TEST_LOG"
+}
+
+stub_token_consumers() {
+  write_stub fnox <<'EOF'
+#!/usr/bin/env bash
+echo "fnox $*" >>"$TEST_LOG"
+[ "$1" = get ] && echo "fnox-$2"
+exit 0
+EOF
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew-token=${HOMEBREW_GITHUB_API_TOKEN-unset}" >>"$TEST_LOG"
+exit 0
+EOF
+}
+
+@test "up loads unset GitHub API tokens from fnox for mise and Homebrew" {
+  stub_token_consumers
+
+  run_zsh_function "$UP" --no-audit
+
+  [ "$status" -eq 0 ]
+  grep -qFx 'mise-token=fnox-MISE_GITHUB_TOKEN' "$TEST_LOG"
+  grep -qFx 'brew-token=fnox-HOMEBREW_GITHUB_API_TOKEN' "$TEST_LOG"
+}
+
+@test "up keeps GitHub API tokens already in the environment" {
+  stub_token_consumers
+  export MISE_GITHUB_TOKEN=env-mise HOMEBREW_GITHUB_API_TOKEN=env-brew
+
+  run_zsh_function "$UP" --no-audit
+
+  [ "$status" -eq 0 ]
+  grep -qFx 'mise-token=env-mise' "$TEST_LOG"
+  grep -qFx 'brew-token=env-brew' "$TEST_LOG"
+  ! grep -qF 'fnox get' "$TEST_LOG"
+}
+
+@test "up as a function leaves fnox tokens out of the calling shell" {
+  stub_token_consumers
+  run zsh --no-rcs -c 'fpath=("$1" $fpath); autoload -Uz up; up --no-audit >/dev/null 2>&1; print -r -- "caller-token=${MISE_GITHUB_TOKEN-unset}"' \
+    _ "$FUNCTIONS_DIR/nix"
+  [ "$status" -eq 0 ]
+  [ "$output" = "caller-token=unset" ]
+  grep -qFx 'mise-token=fnox-MISE_GITHUB_TOKEN' "$TEST_LOG"
+}
+
+@test "up gives consumers no token rather than an empty one when fnox resolves none" {
+  run_zsh_function "$UP" --no-audit
+
+  [ "$status" -eq 0 ]
+  grep -qFx 'mise-token=unset' "$TEST_LOG"
 }
 
 @test "up uses home tool configuration without changing the caller directory" {
@@ -1016,7 +1076,7 @@ EOF
   [[ "$output" == *"=> UPDATE COMPLETE (update)"*"- degraded, see Next"* ]] || false
   # repos, not the 6 raw warnings
   grep -qE '^  mise .*401.*3 repos not refreshed' <<<"$output"
-  [[ "$output" == *"Next"*"renew MISE_GITHUB_TOKEN"* ]] || false
+  [[ "$output" == *"Next"*"renew the PAT in fnox"* ]] || false
   # a degradation is not a failure: no Failed section, and the phase stays Applied
   [[ "$output" != *"Failed"* ]] || false
   [[ "$output" != *"Advisories"*"mise"* ]] || false

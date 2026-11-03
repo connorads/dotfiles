@@ -49,6 +49,10 @@ local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
 local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
 local up_brew_detail="" up_brew_resolved=0 up_brew_attempted=0
 local up_phase_diagnosis="" up_phase_degraded="" up_degraded=0
+# A zero-permission PAT lifts GitHub API limits for mise resolution and Homebrew
+# bottle attestation. Homebrew cannot read gh's login: it runs gh with its own
+# PATH. Local exports keep fnox values out of the caller when up is a function.
+local -x MISE_GITHUB_TOKEN=$MISE_GITHUB_TOKEN HOMEBREW_GITHUB_API_TOKEN=$HOMEBREW_GITHUB_API_TOKEN
 
 (umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
   print -u2 "up: cannot create log: $up_log"
@@ -116,6 +120,17 @@ _up_logged() {
   fi
 }
 
+# Fills each unset token from fnox, then unsets any still empty so consumers
+# see no token rather than an empty one. Assigns up's own locals.
+_up_github_tokens() {
+  local name
+  for name in MISE_GITHUB_TOKEN HOMEBREW_GITHUB_API_TOKEN; do
+    [[ -z ${(P)name} ]] && (($+commands[fnox])) &&
+      typeset -g "$name=$(fnox get "$name" 2>/dev/null)"
+    [[ -n ${(P)name} ]] || unset "$name"
+  done
+}
+
 _up_mise() (
   cd "$HOME" || return $?
   mise "$@"
@@ -171,7 +186,7 @@ _up_degradations() {
   if ((repos)); then
     noun=repos; ((repos == 1)) && noun=repo
     _up_degrade "GitHub API rejected the token (401); $repos $noun not refreshed"
-    _up_next "renew MISE_GITHUB_TOKEN (separate credential from 'gh auth'), then rerun up"
+    _up_next "renew the PAT in fnox: fnox set -g MISE_GITHUB_TOKEN and HOMEBREW_GITHUB_API_TOKEN, then rerun up"
   fi
 
   # With no token at all the same calls are rate-limited instead of rejected.
@@ -179,7 +194,7 @@ _up_degradations() {
   if ((repos)); then
     noun=repos; ((repos == 1)) && noun=repo
     _up_degrade "GitHub API rate-limited (403); $repos $noun not refreshed"
-    _up_next "set MISE_GITHUB_TOKEN - unauthenticated GitHub API calls are rate-limited"
+    _up_next "fnox set -g MISE_GITHUB_TOKEN - unauthenticated GitHub API calls are rate-limited"
   fi
 }
 
@@ -566,6 +581,8 @@ _up_apt() {
     sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y &&
     sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 }
+
+_up_github_tokens
 
 _up_preflight || {
   _up_finish
