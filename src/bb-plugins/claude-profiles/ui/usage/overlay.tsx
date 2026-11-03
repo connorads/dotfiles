@@ -1,3 +1,4 @@
+import { BrandIcon } from './brand-icon.tsx';
 import { RollingValue } from './rolling-value.tsx';
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
@@ -154,7 +155,8 @@ function ProviderGroup({ accounts, now, readings, resetCredits, hostId, connecte
   if (!first) return null;
   return <section className="au-provider" aria-label={first.displayName}>
     <h3 className="au-provider-heading">
-      <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />
+      <>{first.providerId === 'acp-grok' ? <BrandIcon brand="grok" />
+        : <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />}</>
       {first.displayName}
     </h3>
     {/* Reset credits belong to the CLI login, which is the machine's one Codex account. */}

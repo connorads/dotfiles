@@ -1,3 +1,4 @@
+import { BrandIcon } from './brand-icon.tsx';
 import { RollingValue } from './rolling-value.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { Icon } from '../components/ui/icon.tsx';
@@ -8,7 +9,7 @@ export function AmpUsage({ value, message, loading, now }: {
   value: AmpOverview | null; message: string | null; loading: boolean; now: Date;
 }) {
   return <section className="au-provider" role="region" aria-label="Amp usage" aria-busy={loading} data-refreshing={loading || undefined}>
-    <h3 className="au-provider-heading"><Icon name="Zap" className="size-3.5" />Amp</h3>
+    <h3 className="au-provider-heading"><BrandIcon brand="amp" />Amp</h3>
     {loading && !value && <p className="au-reading">Checking Amp…</p>}
     {message && <p className="au-account-message">{message}</p>}
     {value?.machines.map(machine => {
