@@ -1355,6 +1355,18 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/py-tests-dir.sh .hk-hooks"
     }
 
+    // The agent guard hooks' own suites (secret paths, destructive git,
+    // mutating gh api), so a guard change runs the tests that pin its policy.
+    ["py-tests-claude-hooks"] {
+        glob = List(".claude/hooks/*.py", ".claude/hooks/pytest.ini")
+        check = "bash .hk-hooks/py-tests-dir.sh .claude/hooks"
+    }
+
+    ["py-tests-vox"] {
+        glob = List(".config/vox/*.py", ".config/vox/pytest.ini")
+        check = "bash .hk-hooks/py-tests-dir.sh .config/vox"
+    }
+
     // Secret scan: block staged secrets before they enter this public repo.
     // gitleaks reads the staged diff itself (`git --staged`), so no per-file
     // glob — the step runs once per commit. --redact keeps any match out of

@@ -235,11 +235,13 @@ step. The script dirs carry a `pytest.ini` with the plugin-free strictness
 A flat script dir has no `pyproject.toml` for that step to discover, so its
 suite is reached by naming the dir instead: `py-tests-dir.sh <root>` runs
 `uv run --with pytest python -m pytest` there, the same invocation `py-checks`
-uses. Two steps are wired to it. `py-tests-tmux` covers the fzf-links path
-core, which decides which file `prefix + u` opens and, being pure, needs nothing
-but `uv`. `py-tests-hk-hooks` runs the checkers' own suites when a checker
-changes. The other script dirs still run only from `mise run py-checks`; add a
-step per dir if that stops being enough.
+uses. Each flat script dir has one step wired to it. `py-tests-tmux` covers
+the fzf-links path core, which decides which file `prefix + u` opens and, being
+pure, needs nothing but `uv`. `py-tests-hk-hooks` runs the checkers' own suites
+when a checker changes. `py-tests-claude-hooks` runs the agent guard suites when
+a guard changes, and `py-tests-vox` runs the vox suite. `gate-coverage` fails a
+tracked dir with a `pytest.ini` that no `py-tests-dir.sh` step names, unless
+`UNGATED` gives a reason.
 
 The `bats-scoped` step (pre-commit) gates the zsh bats suite
 (`~/.config/zsh/tests`, 115 files) via `~/.hk-hooks/bats-tests.sh`, running only
