@@ -1,21 +1,23 @@
 # Handsfree
 
-Hex voice commands control the focused BB window. A Voice header control shows brief
+Spoken commands, recorded through Hex, control the focused BB window. A Voice header control shows brief
 results and failures. Clicking opens activity, command help and numbered matches.
 New drafts provide the same control beside the composer actions.
 
 ## Command pedal
 
-The left pedal sends F18. Focus BB, hold the pedal, speak a command, then release.
+The left pedal sends F18; on the MacBook Air, Caps Lock sends F18 too. Focus BB,
+hold the key, speak a command, then release.
 The Voice header shows recording feedback and the recognised text. Thread, project
 and model searches select a single match directly. Multiple matches offer choices
 in BB. Select with a click, Enter or "choose two".
-Other commands use the same BB actions as always-listening Hex commands.
-The centre pedal remains Right Option for dictation; the right pedal remains Enter.
+The centre pedal remains Option for dictation; the right pedal remains Enter.
 
-The recorder uses Hex's selected microphone and local dictation model. Hex must
-be running. Hex suppresses its command recogniser during programmatic recording;
-always-listening commands resume afterwards. Changing apps cancels recording.
+The recorder runs `hex dictation start --raw` on press and
+`hex dictation stop --print` on release, so it uses Hex's selected microphone and
+local dictation model. Hex must be running. `--raw` skips Hex's Output steps, so a
+command arrives as heard. Hex starts recording before BB confirms the capture
+context, because each `bb` CLI call starts Node. Changing apps cancels recording.
 Changing the BB thread or project rejects the recorded command. Recordings cancel
 after sixty seconds. Escape cancels a held recording.
 
@@ -34,7 +36,7 @@ rejects its saved permission.
 flowchart LR
   Launchd[Login service] --> Keys[Hex Command Keys app]
   Keys -->|F18 and Escape events| Recorder[Bun recorder]
-  Recorder --> Hex[Hex dictation]
+  Recorder --> Hex[hex dictation CLI]
 ```
 
 - `pnpm pedal:status` shows launchd state.
@@ -49,10 +51,10 @@ not required.
 
 ## Use
 
-1. Enable Commands in Hex. Release the Right Alt dictation pedal before speaking a command.
-2. Say `open BB`, then `voice help`.
-3. Say a command from the card. Hold Right Alt to dictate task text.
-4. Release Right Alt, wait for the text, then press the Enter pedal to send.
+1. Focus BB. Hold the command key, say `voice help`, then release.
+2. Hold the command key and say a command from the card.
+3. Hold Option to dictate task text.
+4. Release Option, wait for the text, then press the Enter pedal to send.
 
 | Say | Action |
 | --- | --- |
@@ -116,15 +118,14 @@ a prompt closes it. A monitor opened explicitly stays open when a prompt complet
 Requested help opens the command list. Failures remain available in Activity without opening it automatically.
 
 `take me to …` and `can I go to …` also search threads. `next conversation` and
-`previous conversation` also navigate. Use `next thread` or `go to next thread`
-without `the`. Hex can reject `go to the next thread` as an ambiguous command
-sequence because `go to the` is itself a valid captured command.
+`previous conversation` also navigate. `go to next thread`
+and `go to the next thread` also navigate.
 
 `create new thread`, `start new thread`, `create a new thread` and
 `start a new thread` also open drafts. Each accepts `in …` to select a project.
 `change model to …` and `switch model to …` also select models.
 `list models` also lists models. `what can I say` and `what can I say here`
-also open command help. These phrases work through both Hex and the command pedal.
+also open command help.
 `choose` accepts a model name or a number from one to nine. Model names search
 available providers; several matches offer numbered choices. Spoken versions such
 as `Opus five point five` match `Opus 5.5`. `list favourite models` also lists
@@ -148,8 +149,7 @@ Draft navigation preserves the current draft rather than restoring an older copy
 Reloading clears navigation history and resumes paused BB commands.
 
 Pausing blocks BB actions. Context queries, recognition feedback, help and resume
-remain available. Hex still recognises speech; dictation and global app commands
-remain available.
+remain available. Dictation is unaffected.
 
 Spoken confirmations default off. Their plugin setting persists across reloads.
 Explicit state queries and reply readouts speak regardless of that preference.
@@ -158,13 +158,13 @@ and link destinations, and split long text into chunks. A command that completes
 still succeeds when speech output is unavailable. `stop reading` cancels the
 Handsfree readout without stopping an agent.
 
-Activity reads the latest 256 KiB of Hex's `live.ndjson` on the BB server every
+Activity reads the latest 256 KiB of Hex's
+`~/Library/Application Support/hex/logs/live.ndjson` on the BB server every
 750 ms. It shows the last capture state, transcript, and fifty native attempts.
 Recording and transcription feedback expires after thirty seconds without a
 state update. This file records events; its presence does not prove Hex is running.
-Unmatched speech appears only when requested and does not count as a failed command.
-Each attempt exposes the heard text, matched command, context and result.
-`Handler returned` records Hex's handler outcome. BB action results appear separately.
+Each attempt exposes the heard text and result. Command recordings appear as
+`Printed`. BB action results appear separately.
 Missing or unreadable logs show `Hex diagnostics unavailable on this BB server`.
 
 The monitor opens beside the header or draft control. It is an in-app surface.
@@ -233,9 +233,9 @@ selection. Descriptions without close word matches use Jev.
 
 ```mermaid
 flowchart LR
-  Hex[Hex command] --> Bridge[Focused BB window]
+  Pedal[Command recording] --> Bridge[Focused BB window]
   Bridge --> Choices[Live thread, project or model choices]
-  Choices --> Match[Hex exact match or Jev decision]
+  Choices --> Match[Exact match or Jev decision]
   Match --> Action[BB navigation or composer selection]
   Match --> Card[Numbered choices]
   Card --> Action
@@ -257,7 +257,7 @@ After edits, build the plugin and run `bb plugin reload handsfree`.
 
 ## Local command interface
 
-Hex invokes the installed BB CLI with a JSON command. The CLI waits for the
+The command recorder invokes the installed BB CLI with a JSON command. The CLI waits for the
 focused window's reply. It does not depend on a fixed HTTP port.
 
 `POST /api/v1/plugins/handsfree/http/command` provides the same interface for
@@ -279,4 +279,4 @@ after 1.5 seconds. A window busy with another command rejects the new one.
 
 Tests cover command ownership, expiry, stale context, drafts, model selection,
 attention filters and pedal behaviour. Live checks cover BB navigation and the
-Hex command registry. Spoken recognition requires a microphone check.
+`hex` CLI recording. Spoken recognition requires a microphone check.
