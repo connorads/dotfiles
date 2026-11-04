@@ -17,12 +17,17 @@ const feedback = (message: string, problem = false) => {
 let recordedContext: string | undefined;
 let recordedChoiceTarget: string | undefined;
 const session = makePedalSession({
+  // Record first: the bb CLI takes 0.2-2 s to start, and speech before Hex records is lost.
   start: async () => {
-    const context = await request({ action: 'capture' });
-    if (!context.ok || !context.context || !context.choiceTarget) throw Error(context.message || 'Focus BB before recording a command.');
+    const recording = startHexRecording(runHex);
+    const context = await request({ action: 'capture' }).catch(error => ({ ok: false, message: String(error) } as const));
+    if (!context.ok || !('context' in context) || !context.context || !context.choiceTarget) {
+      await recording.then(handle => handle.cancel(), () => {});
+      throw Error(context.message || 'Focus BB before recording a command.');
+    }
     recordedContext = context.context;
     recordedChoiceTarget = context.choiceTarget;
-    return startHexRecording(runHex);
+    return recording;
   },
   feedback,
   heard: async text => {
