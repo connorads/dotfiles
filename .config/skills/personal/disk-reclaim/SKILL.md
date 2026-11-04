@@ -78,6 +78,13 @@ restore, a 6G photo library is gone forever.
    If directory totals exceed physical usage, check for shared APFS blocks
    before adding them together; see the code-signing clone gotcha below.
 
+For a requested full or deep audit, inventory every direct child of the named
+source, state, cache and app roots. Record each root's status and largest
+unclassified children. Drill those children instead of repeating known cache
+candidates. Report coverage and exclusions beside the findings. Independent
+`du` runs count shared hardlinks again; use one bounded traversal to check
+combined totals. APFS clone sharing can still make them exceed physical usage.
+
 Quote a reclaim estimate only for things you have actually probed - and that
 binds the *options you offer* as much as the totals you report. Bucket a tree
 before proposing a cut-off through it: dir names carry issue numbers, not
@@ -139,6 +146,12 @@ again. Attribute the growth since the last cleanup first:
   fresh writers.
 - Compare each opt-in dry-run with its previous figure: `worktree-build` went
   from 5 dirs/9.8G to 14 dirs/25.5G in one day here.
+
+Check `diskutil apfs list` and `sysctl vm.swapusage` when Data growth does
+not explain falling free space. Swap lives on `/System/Volumes/VM`, separate
+from `/private/var/vm` and the Data volume. Never delete swapfiles manually.
+Offer a planned reboot after saving work; closing jobs or rebooting needs
+approval. Swap can regrow if memory pressure continues.
 
 Report the cause beside the reclaim. `worktree-build` treats a symptom: every
 built worktree regrows its `node_modules`, so the lasting fix is fewer
@@ -298,10 +311,16 @@ audio manifest or deleting files.
   unreferenced. `cleanup --target playwright` walks exactly this; `cleanup`'s
   `browsers` target historically probed `~/.cache` only and reported 0 against
   3.3G.
-- **Aube:** `~/.cache/aube/virtual-store` is a live mise npm-tool working set,
-  not disposable cache. Do not delete it: it leaves mise tool shims dangling.
-  `aube store prune` is the supported way to reclaim unreferenced package data;
-  its saving may be zero and cannot be estimated from the whole store size.
+- **Aube:** `~/.cache/aube/virtual-store` can mix live tool dependencies with
+  unreferenced legacy packages. Preserve the root. Try native pruning first,
+  then verify which layout it covers. A zero result for `virtual-store/v1`
+  does not classify older flat entries. For those entries, resolve installed
+  tool links and follow package-to-package links transitively. Check project,
+  worktree and scratch references, plus open files. Unreadable paths leave
+  ownership unknown. Propose only an exact unreferenced manifest for review;
+  refresh references before moving approved entries to Trash. Verify protected
+  entries remain. Record pre-existing dangling links separately so they are
+  not mistaken for cleanup damage. Store size is not a reclaim estimate.
   Since mise embedded aube as a library, a newer install keeps its store
   **inside the install** at `<install>/node_modules/.mise` rather than in the
   shared cache. A sweep finds it as bulk under
@@ -316,7 +335,8 @@ audio manifest or deleting files.
   re-downloadable and removing it after a nod. If a legacy
   `~/.local/share/mise/http-tarballs` dir still exists
   (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there - read
-  an entry's `metadata.json` before removing it.
+  an entry's `metadata.json` before removing it. Resolve installed tool
+  symlinks too: an archive-named directory can be the live installation target.
 - **Chrome code-signing clones share APFS blocks.** A directory under
   `/private/var/folders/*/X/*.code_sign_clone/` can report hundreds of GiB
   through `du` while sharing blocks with app bundles and other clones. Do not
