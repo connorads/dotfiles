@@ -139,8 +139,6 @@
 !/.config/hex/package.json
 !/.config/hex/bun.lock
 !/.config/hex/tsconfig.json
-!/.config/hex/.agents/
-!/.config/hex/.agents/**
 !/.config/hex/voice/
 !/.config/hex/voice/**
 
