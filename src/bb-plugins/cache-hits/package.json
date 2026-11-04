@@ -11,7 +11,10 @@
     "name": "Cache Hits",
     "description": "Show each thread's prompt-cache hit rate and misses in the thread header.",
     "branding": {
-      "icon": "DatabaseZap"
+      "icon": "./icons/timer.svg",
+      "experimental_icons": {
+        "timer": "./icons/timer.svg"
+      }
     },
     "server": "./server.ts",
     "host": "./host.ts",

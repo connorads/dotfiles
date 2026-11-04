@@ -50,7 +50,7 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   // Codex reports no lifetime, so its value is the hit rate; Claude's is the time left.
   const value = view.left === null ? percent(view.ratio) : view.left <= 0 ? 'cold' : countdown(expiry! - now);
   return <>
-    <Chip className="cache-hits" icon={<Icon name="Zap" />} expanded={open} aria-label={`Prompt cache. ${summary}`} title={summary}
+    <Chip className="cache-hits" icon={<Icon name="cache-hits/timer" />} expanded={open} aria-label={`Prompt cache. ${summary}`} title={summary}
       onClick={event => { chip.current = event.currentTarget; setOpen(!open); }}>
       {!isCompactViewport && <ChipValue>{value}</ChipValue>}
       <ChipDot tone={view.level} className={view.left !== null && view.left <= 0 ? 'ch-cold' : undefined}>{state.misses > 0 ? state.misses : null}</ChipDot>
