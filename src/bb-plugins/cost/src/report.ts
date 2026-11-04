@@ -1,4 +1,4 @@
-import type { Provider } from './records.ts';
+import { providers as providerOrder, type Provider } from './records.ts';
 import type { UsageRow } from './ledger.ts';
 import { findCard, priceGroup, sumParts, type PricedParts, type RateCards } from './prices.ts';
 
@@ -47,7 +47,8 @@ export function threadCost(rows: readonly UsageRow[], cards: RateCards): ThreadC
 }
 
 export interface DayCost { day: string; usd: number; byProvider: Partial<Record<Provider, number>> }
-export interface ThreadLine extends Cost { threadId: string | null; providers: Provider[] }
+/** One BB thread, or for usage outside BB, one working directory (null when the log names none). */
+export interface ThreadLine extends Cost { threadId: string | null; cwd: string | null; providers: Provider[] }
 export interface Summary {
   total: Cost; days: DayCost[]; models: ModelCost[]; threads: ThreadLine[];
   byProvider: Partial<Record<Provider, number>>;
@@ -59,7 +60,7 @@ export function summarise(rows: readonly UsageRow[], cards: RateCards, firstDay:
   const total = emptyCost();
   const days = new Map<string, DayCost>();
   const models = new Map<string, ModelCost>();
-  const threads = new Map<string | null, ThreadLine>();
+  const threads = new Map<string, ThreadLine>();
   const byProvider: Partial<Record<Provider, number>> = {};
   for (const row of rows) {
     const parts = price(row);
@@ -76,10 +77,12 @@ export function summarise(rows: readonly UsageRow[], cards: RateCards, firstDay:
     const model = models.get(modelKey) ?? { ...emptyCost(), model: row.model, provider: row.provider, priced: parts !== null };
     add(model, row, parts);
     models.set(modelKey, model);
-    const thread = threads.get(row.threadId) ?? { ...emptyCost(), threadId: row.threadId, providers: [] };
+    const lineKey = row.threadId ?? `cwd:${row.cwd ?? ''}`;
+    const thread = threads.get(lineKey) ?? { ...emptyCost(), threadId: row.threadId, cwd: row.threadId ? null : row.cwd, providers: [] };
     add(thread, row, parts);
-    if (!thread.providers.includes(row.provider)) thread.providers.push(row.provider);
-    threads.set(row.threadId, thread);
+    if (!thread.providers.includes(row.provider))
+      thread.providers = providerOrder.filter(value => value === row.provider || thread.providers.includes(value));
+    threads.set(lineKey, thread);
   }
   const calendar: DayCost[] = [];
   for (let day = firstDay; day <= lastDay; day = nextDay(day)) calendar.push(days.get(day) ?? { day, usd: 0, byProvider: {} });
@@ -96,3 +99,36 @@ export function nextDay(day: string): string {
 }
 export const localDay = (at: Date) =>
   `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
+
+function merge(into: Cost, from: Cost) {
+  into.usd += from.usd; into.requests += from.requests; into.unpricedTokens += from.unpricedTokens;
+  into.lastAt = Math.max(into.lastAt, from.lastAt);
+  for (const key of Object.keys(from.parts) as (keyof PricedParts)[]) into.parts[key] += from.parts[key];
+  for (const key of Object.keys(from.tokens) as (keyof Tokens)[]) into.tokens[key] += from.tokens[key];
+}
+
+/** A BB project, or a directory no project checks out. `outsideUsd` is the part spent outside BB threads, such as a terminal CLI. */
+export interface ProjectLine extends Cost {
+  key: string; name: string; projectId: string | null; threads: number; outsideUsd: number; providers: Provider[];
+}
+export interface ProjectRef { projectId: string | null; name: string }
+
+/**
+ * Group thread lines by project. `projectOf` names a BB thread's project; `projectAt` finds the project
+ * whose checkout contains a directory, so usage outside BB in a project's checkout joins that project.
+ */
+export function groupProjects(lines: readonly ThreadLine[], projectOf: (threadId: string) => ProjectRef,
+  projectAt: (cwd: string) => ProjectRef | null): ProjectLine[] {
+  const groups = new Map<string, ProjectLine>();
+  for (const line of lines) {
+    const ref = line.threadId ? projectOf(line.threadId)
+      : (line.cwd && projectAt(line.cwd)) || { projectId: null, name: line.cwd ? line.cwd.split('/').filter(Boolean).pop() ?? line.cwd : 'Unknown directory' };
+    const key = ref.projectId ?? `dir:${line.threadId ? '' : line.cwd ?? ''}:${ref.name}`;
+    const group = groups.get(key) ?? { ...emptyCost(), key, name: ref.name, projectId: ref.projectId, threads: 0, outsideUsd: 0, providers: [] };
+    merge(group, line);
+    if (line.threadId) group.threads += 1; else group.outsideUsd += line.usd;
+    group.providers = providerOrder.filter(value => group.providers.includes(value) || line.providers.includes(value));
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => b.usd - a.usd || b.lastAt - a.lastAt);
+}

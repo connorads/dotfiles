@@ -1,10 +1,10 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { providers, type UsageRecord } from './src/records.ts';
-import type { Summary, ThreadCost } from './src/report.ts';
+import type { ProjectLine, Summary, ThreadCost } from './src/report.ts';
 
 const provider = z.enum(providers);
-const context = z.object({ sessionId: z.string().optional(), model: z.string().optional(),
+const context = z.object({ sessionId: z.string().optional(), cwd: z.string().optional(), model: z.string().optional(),
   speed: z.enum(['standard', 'fast']).optional(), skipLine: z.boolean().optional() });
 
 export const hostContract = defineRpcContract({
@@ -15,16 +15,16 @@ export const hostContract = defineRpcContract({
   },
   read: {
     input: z.object({ provider, path: z.string(), offset: z.number().int().nonnegative(), context }),
-    output: z.object({ offset: z.number(), context, records: z.array(z.custom<UsageRecord>()) }),
+    output: z.object({ offset: z.number(), context, records: z.array(z.custom<UsageRecord>()), sessions: z.record(z.string(), z.string()) }),
   },
 });
 
-export interface ThreadView extends ThreadCost { pricesAt: number | null }
-export interface ThreadMeta { title: string; projectId: string | null }
+export interface ThreadView extends ThreadCost { pricesAt: number | null; title: string | null }
+export interface ThreadMeta { title: string; projectName: string | null; provider: string }
 export interface Plan { name: string; usd: number }
 export interface SummaryView extends Summary {
   pricesAt: number | null; firstDay: string; lastDay: string;
-  threadInfo: Record<string, ThreadMeta>; plans: Plan[]; monthUsd: number; firstAt: number | null;
+  threadInfo: Record<string, ThreadMeta>; projects: ProjectLine[]; plans: Plan[]; monthUsd: number; firstAt: number | null;
 }
 export interface Progress {
   state: 'idle' | 'running' | 'failed'; startedAt: number | null; finishedAt: number | null; error: string | null;

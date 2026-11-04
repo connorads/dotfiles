@@ -1,69 +1,323 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useBbNavigate, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { experimental_ProviderIcon as ProviderIcon, experimental_useProviders as useProviders, useBbNavigate, useRealtime, useRpc }
+  from '@get-bb/plugin-sdk/app';
 import type { PluginNavPanelProps } from '@get-bb/plugin-sdk';
-import type { Progress, rpcContract, SummaryView } from './contracts.ts';
-import { ago, shortModel, tokens, usd } from './src/format.ts';
+import type { Progress, rpcContract, SummaryView, ThreadView } from './contracts.ts';
+import { DailyChart } from './chart.tsx';
+import type { Cost, ModelCost, ProjectLine, ThreadLine } from './src/report.ts';
+import { ago, count, dateLabel, dayLabel, folder, percent, providerName, shortModel, tokens, usd } from './src/format.ts';
+import { periods, setPeriod, usePeriod } from './src/period.ts';
+import { providers } from './src/records.ts';
 
-type Days = 7 | 30 | 90;
-type View = 'threads' | 'models' | 'days';
+type Tab = 'threads' | 'projects' | 'models' | 'days';
+const tabs: { id: Tab; label: string }[] = [
+  { id: 'threads', label: 'Threads' }, { id: 'projects', label: 'Projects' }, { id: 'models', label: 'Models' }, { id: 'days', label: 'Days' }];
+
+/** The page header's period switch. The body follows it through the shared period store. */
+export function PeriodSwitch() {
+  const days = usePeriod();
+  return <div className="cost-segmented" role="radiogroup" aria-label="Period">
+    {periods.map(value => <button key={value} type="button" role="radio" aria-checked={days === value}
+      onClick={() => setPeriod(value)}>{value} days</button>)}
+  </div>;
+}
 
 export function UsagePage({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
-  const navigate = useBbNavigate();
-  const [days, setDays] = useState<Days>(30);
-  const [view, setView] = useState<View>('threads');
+  const days = usePeriod();
+  const [tab, setTab] = useState<Tab>('threads');
   const [data, setData] = useState<SummaryView | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const focus = decodeURIComponent(/^thread\/(.+)$/.exec(subPath)?.[1] ?? '') || null;
+  const focus = decodeURIComponent(/^thread\/([^/]+)$/.exec(subPath)?.[1] ?? '') || null;
   const load = useCallback(() => {
-    rpc.call('summary', { days }).then(value => { setData(value); setError(null); }, (reason: unknown) => setError(String(reason)));
+    rpc.call('summary', { days }).then(value => { setData(value); setError(null); },
+      (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
     rpc.call('progress', {}).then(setProgress, () => {});
   }, [rpc, days]);
   useEffect(load, [load]);
   useRealtime('usage-changed', load);
 
-  if (error) return <div className="cost-page"><p className="cost-muted">{error}</p></div>;
-  if (!data) return <div className="cost-page"><p className="cost-muted">Loading…</p></div>;
-  const max = Math.max(...data.days.map(d => d.usd), 0.01);
-  const plans = data.plans.reduce((sum, plan) => sum + plan.usd, 0);
-  return <div className="cost-page">
-    <div className="cost-toolbar">
-      {([7, 30, 90] as const).map(value => <button key={value} aria-pressed={days === value} onClick={() => setDays(value)}>{value}d</button>)}
-    </div>
-    <section className="cost-headline">
-      <div><strong>{usd(data.total.usd)}</strong> <span className="cost-muted">API est. · last {days} days</span></div>
-      <div className="cost-muted">This month {usd(data.monthUsd)}{plans > 0 && ` · plans ${usd(plans)} · ${(data.monthUsd / plans).toFixed(1)}× value`}</div>
+  if (error) return <Shell><p className="cost-blank">Usage could not load: {error}</p></Shell>;
+  if (!data) return <Shell><Loading /></Shell>;
+  if (!data.firstAt) return <Shell><Empty progress={progress} /></Shell>;
+  return <Shell>
+    {focus && <FocusedThread threadId={focus} />}
+    <Summary data={data} days={days} />
+    <section className="cost-card cost-reveal" style={{ '--i': 2 } as React.CSSProperties}>
+      <DailyChart days={data.days} today={data.lastDay} />
     </section>
-    <ol className="cost-bars">
-      {data.days.map(d => <li key={d.day} title={`${d.day}: ${usd(d.usd)}`} style={{ height: `${d.usd / max * 100}%` }} />)}
-    </ol>
-    <div className="cost-toolbar">
-      {(['threads', 'models', 'days'] as const).map(value => <button key={value} aria-pressed={view === value} onClick={() => setView(value)}>{value}</button>)}
+    <section className="cost-card cost-reveal" style={{ '--i': 3 } as React.CSSProperties}>
+      <div className="cost-tabs" role="tablist" aria-label="Breakdown">
+        {tabs.map(value => <button key={value.id} type="button" role="tab" aria-selected={tab === value.id}
+          onClick={() => setTab(value.id)}>{value.label}</button>)}
+      </div>
+      {tab === 'threads' && <ThreadTable lines={data.threads} data={data} focus={focus} />}
+      {tab === 'projects' && <ProjectTable lines={data.projects} />}
+      {tab === 'models' && <ModelTable models={data.models} />}
+      {tab === 'days' && <DayTable data={data} />}
+    </section>
+    <Footer data={data} progress={progress} />
+  </Shell>;
+}
+
+const Shell = ({ children }: { children: ReactNode }) =>
+  <div className="cost-page"><div className="cost-column">{children}</div></div>;
+
+function Summary({ data, days }: { data: SummaryView; days: number }) {
+  const plans = data.plans.reduce((sum, plan) => sum + plan.usd, 0);
+  const allTokens = data.total.tokens.input + data.total.tokens.cacheRead + data.total.tokens.cacheWrite + data.total.tokens.output;
+  const unpriced = allTokens ? data.total.unpricedTokens / allTokens : 0;
+  const dayCount = data.days.length;
+  return <section className="cost-summary cost-reveal" style={{ '--i': 1 } as React.CSSProperties}>
+    <div className="cost-hero">
+      <span className="cost-eyebrow">Last {days} days at API prices</span>
+      <strong>{usd(data.total.usd)}</strong>
+      <ProviderSplit byProvider={data.byProvider} total={data.total.usd} />
     </div>
-    {view === 'threads' && <table className="cost-table"><tbody>
-      {data.threads.map(line => <tr key={line.threadId ?? 'outside'} data-focus={line.threadId === focus || undefined}>
-        <td>{line.threadId
-          ? <button className="cost-link" onClick={() => navigate.toThread(line.threadId!)}>{data.threadInfo[line.threadId]?.title ?? line.threadId}</button>
-          : <span className="cost-muted">Outside BB</span>}</td>
-        <td className="cost-muted">{line.providers.join(', ')}</td>
-        <td className="cost-muted">{ago(line.lastAt)}</td>
-        <td className="cost-num">{usd(line.usd)}</td>
-      </tr>)}
-    </tbody></table>}
-    {view === 'models' && <table className="cost-table"><tbody>
-      {data.models.map(model => <tr key={`${model.provider}:${model.model}`}>
-        <td>{shortModel(model.model)}</td><td className="cost-muted">{model.provider}</td>
-        <td className="cost-muted">{tokens(model.tokens.input + model.tokens.cacheRead + model.tokens.cacheWrite + model.tokens.output)}</td>
-        <td className="cost-num">{model.priced ? usd(model.usd) : 'no price'}</td>
-      </tr>)}
-    </tbody></table>}
-    {view === 'days' && <table className="cost-table"><tbody>
-      {[...data.days].reverse().map(d => <tr key={d.day}><td>{d.day}</td><td className="cost-num">{usd(d.usd)}</td></tr>)}
-    </tbody></table>}
-    <p className="cost-muted">
-      Prices {data.pricesAt ? `from LiteLLM, ${ago(data.pricesAt)}` : 'not fetched'}
-      {progress?.state === 'running' && ` · backfill ${progress.bytes ? Math.round(progress.bytesDone / progress.bytes * 100) : 0}%`}
-    </p>
+    <dl className="cost-tiles">
+      <div>
+        <dt>This month</dt>
+        <dd>{usd(data.monthUsd)}</dd>
+        <dd className="cost-sub">{plans > 0
+          ? <><b>{(data.monthUsd / plans).toFixed(1)}×</b> your {usd(plans)} of plans</>
+          : 'Add plan prices in settings to compare'}</dd>
+      </div>
+      <div>
+        <dt>Daily average</dt>
+        <dd>{usd(data.total.usd / dayCount)}</dd>
+        <dd className="cost-sub">over {dayCount} days</dd>
+      </div>
+      <div>
+        <dt>Requests</dt>
+        <dd>{count(data.total.requests)}</dd>
+        <dd className="cost-sub">{tokens(allTokens)} tokens</dd>
+      </div>
+      <div title={data.models.filter(model => !model.priced).map(model => model.model).join(', ') || undefined}>
+        <dt>Unpriced</dt>
+        <dd>{percent(unpriced)}</dd>
+        <dd className="cost-sub">of tokens have no list price</dd>
+      </div>
+    </dl>
+  </section>;
+}
+
+function ProviderSplit({ byProvider, total }: { byProvider: SummaryView['byProvider']; total: number }) {
+  const present = providers.filter(provider => (byProvider[provider] ?? 0) > 0);
+  if (!total || present.length < 2) return null;
+  return <div className="cost-split">
+    <span className="cost-split-bar" aria-hidden>
+      {present.map(provider => <i key={provider} data-provider={provider} style={{ flexGrow: byProvider[provider]! / total }} />)}
+    </span>
+    <span className="cost-split-legend">
+      {present.map(provider => <span key={provider} data-provider={provider}>
+        {providerName[provider]} <b>{percent(byProvider[provider]! / total)}</b>
+      </span>)}
+    </span>
   </div>;
 }
+
+function useProviderRecord() {
+  const { providers: known } = useProviders();
+  return (id: string) => known.find(provider => provider.id === id) ?? { id };
+}
+
+function ThreadTable({ lines, data, focus }: { lines: readonly ThreadLine[]; data: SummaryView; focus: string | null }) {
+  const navigate = useBbNavigate();
+  const provider = useProviderRecord();
+  const [all, setAll] = useState(false);
+  const max = Math.max(0.01, ...lines.map(line => line.usd));
+  const visible = all ? lines : lines.slice(0, 25);
+  if (!lines.length) return <p className="cost-blank">No usage in this period.</p>;
+  return <>
+    <table className="cost-table">
+      <thead><tr><th>Thread</th><th className="cost-hide-narrow">Last active</th><th className="cost-hide-narrow">Share</th><th className="cost-num">Cost</th></tr></thead>
+      <tbody>
+        {visible.map((line, index) => {
+          const info = line.threadId ? data.threadInfo[line.threadId] : undefined;
+          const outside = !line.threadId;
+          return <tr key={line.threadId ?? `cwd:${line.cwd}`} data-focus={(focus !== null && line.threadId === focus) || undefined}
+            className="cost-row" style={{ '--i': Math.min(index, 12) } as React.CSSProperties}
+            onClick={line.threadId ? () => navigate.toThread(line.threadId!) : undefined}>
+            <td>
+              <span className="cost-entity">
+                <span className="cost-glyph">{outside ? <FolderGlyph /> :
+                  <ProviderIcon providerKind="agent" provider={provider(info?.provider ?? line.providers[0] ?? 'claude-code')} aria-hidden />}</span>
+                <span className="cost-entity-text">
+                  {line.threadId
+                    ? <button type="button" className="cost-title" onClick={event => { event.stopPropagation(); navigate.toThread(line.threadId!); }}>
+                        {info?.title ?? 'Untitled thread'}</button>
+                    : <span className="cost-title" title={line.cwd ?? undefined}>{line.cwd ? folder(line.cwd) : 'Unknown directory'}</span>}
+                  <span className="cost-meta">{outside
+                    ? <><span className="cost-tag">Outside BB</span>{line.providers.map(value => providerName[value]).join(', ')}</>
+                    : [info?.projectName, line.providers.map(value => providerName[value]).join(', ')].filter(Boolean).join(' · ')}</span>
+                </span>
+              </span>
+            </td>
+            <td className="cost-muted cost-hide-narrow">{ago(line.lastAt)}</td>
+            <td className="cost-hide-narrow"><Share value={line.usd / max} /></td>
+            <td className="cost-num"><Amount cost={line} /></td>
+          </tr>;
+        })}
+      </tbody>
+    </table>
+    {lines.length > 25 && <button type="button" className="cost-more" onClick={() => setAll(!all)}>
+      {all ? 'Show top 25' : `Show all ${lines.length}`}</button>}
+  </>;
+}
+
+function ProjectTable({ lines }: { lines: readonly ProjectLine[] }) {
+  const navigate = useBbNavigate();
+  const max = Math.max(0.01, ...lines.map(line => line.usd));
+  if (!lines.length) return <p className="cost-blank">No usage in this period.</p>;
+  return <table className="cost-table">
+    <thead><tr><th>Project</th><th className="cost-hide-narrow">Last active</th><th className="cost-hide-narrow">Share</th><th className="cost-num">Cost</th></tr></thead>
+    <tbody>
+      {lines.map((line, index) => {
+        const threads = line.threads ? `${line.threads} thread${line.threads === 1 ? '' : 's'}` : null;
+        const outside = line.outsideUsd > 0 ? `${usd(line.outsideUsd)} outside BB` : null;
+        return <tr key={line.key} className="cost-row" style={{ '--i': Math.min(index, 12) } as React.CSSProperties}
+          onClick={line.projectId ? () => navigate.toProject(line.projectId!) : undefined}>
+          <td>
+            <span className="cost-entity">
+              <span className="cost-glyph">{line.projectId ? <span className="cost-initial">{line.name.slice(0, 1).toUpperCase()}</span> : <FolderGlyph />}</span>
+              <span className="cost-entity-text">
+                {line.projectId
+                  ? <button type="button" className="cost-title" onClick={event => { event.stopPropagation(); navigate.toProject(line.projectId!); }}>{line.name}</button>
+                  : <span className="cost-title">{line.name}</span>}
+                <span className="cost-meta">{!line.projectId && line.name !== 'No project' && <span className="cost-tag">Not a BB project</span>}
+                  {[threads, outside, line.providers.map(value => providerName[value]).join(', ')].filter(Boolean).join(' · ')}</span>
+              </span>
+            </span>
+          </td>
+          <td className="cost-muted cost-hide-narrow">{ago(line.lastAt)}</td>
+          <td className="cost-hide-narrow"><Share value={line.usd / max} /></td>
+          <td className="cost-num"><Amount cost={line} /></td>
+        </tr>;
+      })}
+    </tbody>
+  </table>;
+}
+
+function ModelTable({ models }: { models: readonly ModelCost[] }) {
+  return <>
+    <div className="cost-mix-legend" aria-hidden>
+      <span data-part="cacheRead">Cache read</span><span data-part="cacheWrite">Cache write</span>
+      <span data-part="input">Input</span><span data-part="output">Output</span>
+    </div>
+    <table className="cost-table">
+      <thead><tr><th>Model</th><th className="cost-hide-narrow">Where the dollars go</th><th className="cost-num cost-hide-narrow">Requests</th><th className="cost-num">Cost</th></tr></thead>
+      <tbody>
+        {models.map((model, index) => <tr key={`${model.provider}:${model.model}`} className="cost-row" style={{ '--i': Math.min(index, 12) } as React.CSSProperties}>
+          <td>
+            <span className="cost-entity-text">
+              <span className="cost-title cost-mono" title={model.model}>{shortModel(model.model)}</span>
+              <span className="cost-meta">{providerName[model.provider]} · {tokens(model.tokens.input + model.tokens.cacheRead + model.tokens.cacheWrite + model.tokens.output)} tokens</span>
+            </span>
+          </td>
+          <td className="cost-hide-narrow">{model.priced ? <Mix cost={model} /> : <span className="cost-muted">Not in the price file</span>}</td>
+          <td className="cost-num cost-muted cost-hide-narrow">{count(model.requests)}</td>
+          <td className="cost-num">{model.priced ? usd(model.usd) : <span className="cost-muted">—</span>}</td>
+        </tr>)}
+      </tbody>
+    </table>
+  </>;
+}
+
+function DayTable({ data }: { data: SummaryView }) {
+  const present = providers.filter(provider => (data.byProvider[provider] ?? 0) > 0);
+  return <table className="cost-table">
+    <thead><tr><th>Day</th>{present.map(provider => <th key={provider} className="cost-num cost-hide-narrow">{providerName[provider]}</th>)}<th className="cost-num">Total</th></tr></thead>
+    <tbody>
+      {[...data.days].reverse().map(day => <tr key={day.day} className="cost-row-static">
+        <td>{day.day === data.lastDay ? 'Today' : dayLabel(day.day)}</td>
+        {present.map(provider => <td key={provider} className="cost-num cost-muted cost-hide-narrow">{day.byProvider[provider] ? usd(day.byProvider[provider]!) : '—'}</td>)}
+        <td className="cost-num">{day.usd ? usd(day.usd) : <span className="cost-muted">—</span>}</td>
+      </tr>)}
+    </tbody>
+  </table>;
+}
+
+/** The thread the header chip opened: its total, where the dollars went and which models it used. */
+function FocusedThread({ threadId }: { threadId: string }) {
+  const rpc = useRpc<typeof rpcContract>();
+  const navigate = useBbNavigate();
+  const [view, setView] = useState<ThreadView | null | undefined>(undefined);
+  const load = useCallback(() => { rpc.call('thread', { threadId }).then(setView, () => setView(null)); }, [rpc, threadId]);
+  useEffect(load, [load]);
+  useRealtime('usage-changed', load);
+  if (view === undefined) return null;
+  return <section className="cost-card cost-focus cost-reveal" style={{ '--i': 0 } as React.CSSProperties}>
+    <header>
+      <span className="cost-eyebrow">This thread, all time</span>
+      <button type="button" className="cost-close" aria-label="Show all usage" onClick={() => navigate.toPluginPanel('usage', { subPath: '' })}>×</button>
+    </header>
+    {view ? <>
+      <div className="cost-focus-head">
+        <button type="button" className="cost-title" onClick={() => navigate.toThread(threadId)}>{view.title ?? 'Untitled thread'}</button>
+        <strong>{usd(view.usd)}</strong>
+      </div>
+      <Mix cost={view} labelled />
+      <ul className="cost-focus-models">
+        {view.models.map(model => <li key={`${model.provider}:${model.model}`}>
+          <span className="cost-mono">{shortModel(model.model)}</span>
+          <span className="cost-muted">{count(model.requests)} requests</span>
+          <b>{model.priced ? usd(model.usd) : 'no price'}</b>
+        </li>)}
+      </ul>
+    </> : <p className="cost-blank">No usage recorded for this thread yet.</p>}
+  </section>;
+}
+
+const parts = ['cacheRead', 'cacheWrite', 'input', 'output'] as const;
+const partName = { cacheRead: 'Cache read', cacheWrite: 'Cache write', input: 'Input', output: 'Output' };
+
+/** A cost's split by token type, as one bar; `labelled` adds the amounts beneath. */
+function Mix({ cost, labelled = false }: { cost: Cost; labelled?: boolean }) {
+  const total = parts.reduce((sum, part) => sum + cost.parts[part], 0);
+  if (!total) return null;
+  const title = parts.map(part => `${partName[part]} ${usd(cost.parts[part])}`).join(' · ');
+  return <div className="cost-mix" title={title}>
+    <span className="cost-mix-bar" aria-label={title} role="img">
+      {parts.filter(part => cost.parts[part] > 0).map(part => <i key={part} data-part={part} style={{ flexGrow: cost.parts[part] / total }} />)}
+    </span>
+    {labelled && <span className="cost-mix-labels">
+      {parts.map(part => <span key={part} data-part={part}>{partName[part]} <b>{usd(cost.parts[part])}</b></span>)}
+    </span>}
+  </div>;
+}
+
+const Share = ({ value }: { value: number }) =>
+  <span className="cost-share" aria-hidden><i style={{ width: `${Math.max(1.5, value * 100)}%` }} /></span>;
+
+function Amount({ cost }: { cost: Cost }) {
+  if (cost.usd === 0 && cost.unpricedTokens > 0) return <span className="cost-muted" title="These models have no list price">no price</span>;
+  return <>{usd(cost.usd)}</>;
+}
+
+function Footer({ data, progress }: { data: SummaryView; progress: Progress | null }) {
+  return <footer className="cost-footer cost-reveal" style={{ '--i': 4 } as React.CSSProperties}>
+    <span>Estimates at LiteLLM list prices{data.pricesAt ? `, updated ${ago(data.pricesAt)}` : ''}. Subscriptions do not bill these amounts.</span>
+    <span>{progress?.state === 'running'
+      ? `Backfill ${progress.bytes ? percent(progress.bytesDone / progress.bytes) : '0%'} · ${count(progress.records)} requests read`
+      : data.firstAt ? `History since ${dateLabel(data.firstAt)}` : ''}</span>
+  </footer>;
+}
+
+function Empty({ progress }: { progress: Progress | null }) {
+  return <div className="cost-empty">
+    <strong>No usage recorded yet</strong>
+    {progress?.state === 'running'
+      ? <p>Reading session logs: {progress.bytes ? percent(progress.bytesDone / progress.bytes) : '0%'} done.</p>
+      : <p>New turns appear here as threads finish. To read past sessions, run <code>bb cost backfill</code>.</p>}
+  </div>;
+}
+
+const Loading = () => <div className="cost-loading" aria-busy aria-label="Loading usage">
+  <span style={{ height: 84 }} /><span style={{ height: 220 }} /><span style={{ height: 320 }} />
+</div>;
+
+const FolderGlyph = () => <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75"
+  strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+</svg>;

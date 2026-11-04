@@ -2,7 +2,7 @@ import { cliCommand, defineCli, type BbPluginApi } from '@get-bb/plugin-sdk';
 import { hostContract, rpcContract, type Plan, type Progress, type SummaryView } from './contracts.ts';
 import { Ledger, migrations, type Database, type FileCursor } from './src/ledger.ts';
 import { parseLiteLlm, priceSourceUrl } from './src/prices.ts';
-import { localDay, summarise, threadCost } from './src/report.ts';
+import { groupProjects, localDay, summarise, threadCost, type ProjectRef } from './src/report.ts';
 export { rpcContract } from './contracts.ts';
 
 const day = 86_400_000;
@@ -93,7 +93,7 @@ export default function plugin(bb: BbPluginApi) {
         progress.bytesDone += result.offset - cursor.offset;
         progress.records += result.records.length;
         cursor = { size: file.size, offset: result.offset, context: result.context };
-        store().ingest(hostId, file.path, cursor, result.records);
+        store().ingest(hostId, file.path, { cursor, records: result.records, sessions: result.sessions });
         changed ||= result.records.length > 0;
       }
       progress.filesDone += 1;
@@ -189,10 +189,25 @@ export default function plugin(bb: BbPluginApi) {
     const cards = prices?.cards ?? {};
     const view = summarise(store().rowsSince(first.getTime()), cards, localDay(first), localDay(now));
     const monthUsd = summarise(store().rowsSince(month.getTime()), cards, localDay(month), localDay(now)).total.usd;
-    const ids = view.threads.slice(0, 200).flatMap(line => line.threadId ? [line.threadId] : []);
-    const info = store().threads(ids);
+    const info = store().threads(view.threads.flatMap(line => line.threadId ? [line.threadId] : []));
+    const list = await bb.sdk.projects.list().catch(() => []);
+    const projects = new Map(list.map(project => [project.id, project.name]));
+    // Checkouts as shallow as a home directory would claim every terminal session, so they never match.
+    const checkouts = list.flatMap(project => ('sources' in project ? project.sources : [])
+      .filter(source => source.path.split('/').filter(Boolean).length > 2)
+      .map(source => ({ path: source.path.replace(/\/+$/, ''), ref: { projectId: project.id, name: project.name } })))
+      .sort((a, b) => b.path.length - a.path.length);
+    const projectAt = (cwd: string): ProjectRef | null =>
+      checkouts.find(checkout => cwd === checkout.path || cwd.startsWith(`${checkout.path}/`))?.ref ?? null;
+    const projectOf = (threadId: string): ProjectRef => {
+      const projectId = info.get(threadId)?.projectId ?? null;
+      return projectId ? { projectId, name: projects.get(projectId) ?? 'Unknown project' } : { projectId: null, name: 'No project' };
+    };
+    const shown = new Set(view.threads.slice(0, 200).flatMap(line => line.threadId ? [line.threadId] : []));
     return { ...view, threads: view.threads.slice(0, 200), pricesAt: prices?.fetchedAt ?? null, firstDay: localDay(first), lastDay: localDay(now),
-      threadInfo: Object.fromEntries([...info].map(([id, value]) => [id, { title: value.title, projectId: value.projectId }])),
+      threadInfo: Object.fromEntries([...info].filter(([id]) => shown.has(id)).map(([id, value]) => [id,
+        { title: value.title, projectName: value.projectId ? projects.get(value.projectId) ?? null : null, provider: value.provider }])),
+      projects: groupProjects(view.threads, projectOf, projectAt),
       plans: parsePlans((await settings.get()).plans), monthUsd, firstAt: store().counts().firstAt };
   }
 
@@ -201,7 +216,7 @@ export default function plugin(bb: BbPluginApi) {
       const rows = store().threadRows(threadId);
       if (!rows.length) return null;
       const prices = store().prices();
-      return { ...threadCost(rows, prices?.cards ?? {}), pricesAt: prices?.fetchedAt ?? null };
+      return { ...threadCost(rows, prices?.cards ?? {}), pricesAt: prices?.fetchedAt ?? null, title: store().threads([threadId]).get(threadId)?.title ?? null };
     },
     summary: ({ days }) => summary(days),
     progress: async () => progress.state === 'running' ? progress : (await bb.storage.kv.get<Progress>('lastBackfill')) ?? progress,

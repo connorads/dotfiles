@@ -76,3 +76,14 @@ test('an oversized line is skipped to its end across reads', () => {
   assert.equal(second.context.skipLine, undefined);
   assert.deepEqual(second.records.map(record => record.key), ['claude:msg_5:req-1']);
 });
+
+test('each session keeps the working directory its log names', () => {
+  const claudeLine = { ...claude('msg_6', { input_tokens: 1, output_tokens: 1 }), cwd: '/work/app' };
+  assert.deepEqual(parseChunk('claude-code', lines(claudeLine), {}, false).sessions, { 'sess-1': '/work/app' });
+  const codex = parseChunk('codex', lines(
+    { timestamp: '2026-11-01T10:00:00Z', type: 'session_meta', payload: { id: 'codex-2', cwd: '/work/api' } },
+    { timestamp: '2026-11-01T10:00:01Z', type: 'turn_context', payload: { model: 'gpt-6.1-sol' } },
+    { timestamp: '2026-11-01T10:00:02Z', type: 'token_usage_record', payload: { response_id: 'resp_2', usage: { input_tokens: 5, output_tokens: 1 } } },
+  ), {}, false);
+  assert.deepEqual(codex.sessions, { 'codex-2': '/work/api' });
+});

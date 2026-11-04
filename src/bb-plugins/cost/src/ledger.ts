@@ -21,6 +21,9 @@ export const migrations = [
   `CREATE TABLE threads (thread_id TEXT PRIMARY KEY, title TEXT NOT NULL, project_id TEXT, provider TEXT NOT NULL,
     mapped_at INTEGER NOT NULL)`,
   `CREATE TABLE prices (id INTEGER PRIMARY KEY CHECK (id = 1), fetched_at INTEGER NOT NULL, cards TEXT NOT NULL)`,
+  `CREATE TABLE session_info (session_id TEXT PRIMARY KEY, cwd TEXT NOT NULL)`,
+  // Forget cursors so the next backfill reads every file again and fills session_info; request keys make it idempotent.
+  `DELETE FROM files`,
 ];
 
 export interface FileCursor { size: number; offset: number; context: FileContext }
@@ -28,7 +31,7 @@ export interface ThreadInfo { threadId: string; title: string; projectId: string
 
 /** Token sums for requests sharing a price: model, speed and context tier, plus the grouping keys asked for. */
 export interface UsageRow {
-  day: string | null; provider: Provider; model: string; threadId: string | null; speed: Speed;
+  day: string | null; provider: Provider; model: string; threadId: string | null; cwd: string | null; speed: Speed;
   over200k: number; over272k: number; requests: number; input: number; cacheRead: number;
   cacheWrite5m: number; cacheWrite1h: number; output: number; webSearches: number; lastAt: number;
 }
@@ -54,7 +57,8 @@ export class Ledger {
    * Record requests and advance the file cursor in one transaction, so a crash never counts a chunk twice.
    * A request seen again keeps its larger copy: Claude Code rewrites lines as output streams in.
    */
-  ingest(hostId: string, path: string, cursor: FileCursor, records: readonly UsageRecord[]) {
+  ingest(hostId: string, path: string, chunk: { cursor: FileCursor; records: readonly UsageRecord[]; sessions?: Record<string, string> }) {
+    const { cursor, records, sessions = {} } = chunk;
     const insert = this.db.prepare(`INSERT INTO requests VALUES (@key, @provider, @sessionId, @hostId, @at, @model, @input,
       @cacheRead, @cacheWrite5m, @cacheWrite1h, @output, @reasoning, @speed, @webSearches)
       ON CONFLICT (key) DO UPDATE SET input = excluded.input, cache_read = excluded.cache_read,
@@ -64,8 +68,10 @@ export class Ledger {
         > requests.input + requests.cache_read + requests.cache_write_5m + requests.cache_write_1h + requests.output`);
     const file = this.db.prepare(`INSERT INTO files VALUES (@hostId, @path, @size, @offset, @context)
       ON CONFLICT (host_id, path) DO UPDATE SET size = excluded.size, offset = excluded.offset, context = excluded.context`);
+    const info = this.db.prepare(`INSERT INTO session_info VALUES (@sessionId, @cwd) ON CONFLICT (session_id) DO NOTHING`);
     this.transaction(() => {
       for (const record of records) insert.run({ ...record, hostId });
+      for (const [sessionId, cwd] of Object.entries(sessions)) info.run({ sessionId, cwd });
       file.run({ hostId, path, size: cursor.size, offset: cursor.offset, context: JSON.stringify(cursor.context) });
     });
   }
@@ -101,15 +107,16 @@ export class Ledger {
   }
 
   threadRows(threadId: string): UsageRow[] {
-    return this.db.prepare(`SELECT NULL AS day, NULL AS threadId, ${sums} FROM requests r
+    return this.db.prepare(`SELECT NULL AS day, NULL AS threadId, NULL AS cwd, ${sums} FROM requests r
       JOIN sessions s ON s.session_id = r.session_id WHERE s.thread_id = @threadId GROUP BY ${priceKeys}`).all({ threadId }) as UsageRow[];
   }
 
-  /** Rows per local day and thread since `from`. Requests outside any BB thread have a null thread. */
+  /** Rows per local day and thread since `from`. Requests outside any BB thread group by working directory instead. */
   rowsSince(from: number): UsageRow[] {
-    return this.db.prepare(`SELECT date(r.at / 1000, 'unixepoch', 'localtime') AS day, s.thread_id AS threadId, ${sums}
-      FROM requests r LEFT JOIN sessions s ON s.session_id = r.session_id WHERE r.at >= @from
-      GROUP BY day, s.thread_id, ${priceKeys}`).all({ from }) as UsageRow[];
+    return this.db.prepare(`SELECT date(r.at / 1000, 'unixepoch', 'localtime') AS day, s.thread_id AS threadId,
+        CASE WHEN s.thread_id IS NULL THEN i.cwd END AS cwd, ${sums}
+      FROM requests r LEFT JOIN sessions s ON s.session_id = r.session_id LEFT JOIN session_info i ON i.session_id = r.session_id
+      WHERE r.at >= @from GROUP BY day, s.thread_id, cwd, ${priceKeys}`).all({ from }) as UsageRow[];
   }
 
   threads(threadIds: readonly string[]): Map<string, ThreadInfo> {

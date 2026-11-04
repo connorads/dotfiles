@@ -3,17 +3,18 @@ import { definePluginApp, experimental_Icon as Icon, useBbNavigate, useRealtime,
 import { Chip, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract, ThreadView } from './contracts.ts';
-import { shortModel, tokens, usd } from './src/format.ts';
-import { UsagePage } from './page.tsx';
+import { count, shortModel, usd } from './src/format.ts';
+import { PeriodSwitch, UsagePage } from './page.tsx';
 import './app.css';
 
 export function describeThread(view: ThreadView): string {
-  const lines = [`${usd(view.usd)} at API prices, ${view.requests} requests`];
   const { parts } = view;
-  lines.push(`Cache read ${usd(parts.cacheRead)} · cache write ${usd(parts.cacheWrite)} · output ${usd(parts.output)} · input ${usd(parts.input)}`);
-  for (const model of view.models.slice(0, 4))
-    lines.push(`${shortModel(model.model)}: ${model.priced ? usd(model.usd) : 'no price'} (${tokens(model.tokens.input + model.tokens.cacheRead + model.tokens.cacheWrite + model.tokens.output)} tokens)`);
-  return lines.join('\n');
+  return [
+    `${usd(view.usd)} at API prices · ${count(view.requests)} requests`,
+    `Cache read ${usd(parts.cacheRead)} · cache write ${usd(parts.cacheWrite)} · input ${usd(parts.input)} · output ${usd(parts.output)}`,
+    ...view.models.slice(0, 4).map(model => `${shortModel(model.model)}: ${model.priced ? usd(model.usd) : 'no list price'}`),
+    'Click for the breakdown',
+  ].join('\n');
 }
 
 function CostChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
@@ -33,5 +34,5 @@ function CostChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps
 
 export default definePluginApp(app => {
   app.slots.experimental_threadHeaderAction({ id: 'cost', title: 'Thread cost', component: CostChip });
-  app.slots.navPanel({ id: 'usage', title: 'Usage', icon: 'cost/coins', path: 'usage', component: UsagePage });
+  app.slots.navPanel({ id: 'usage', title: 'Usage', icon: 'cost/coins', path: 'usage', component: UsagePage, headerContent: PeriodSwitch });
 });

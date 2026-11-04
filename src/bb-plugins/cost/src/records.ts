@@ -27,9 +27,10 @@ export interface UsageRecord {
 }
 
 /** What a parser carries between chunks of one file: Codex and Pi name the session and model once, early. */
-export interface FileContext { sessionId?: string; model?: string; speed?: Speed; skipLine?: boolean }
+export interface FileContext { sessionId?: string; cwd?: string; model?: string; speed?: Speed; skipLine?: boolean }
 
-export interface ParseResult { consumed: number; context: FileContext; records: UsageRecord[] }
+/** `sessions` maps each session seen to its working directory, which names usage outside BB threads. */
+export interface ParseResult { consumed: number; context: FileContext; records: UsageRecord[]; sessions: Record<string, string> }
 
 type Json = Record<string, unknown>;
 const object = (value: unknown): Json | undefined =>
@@ -78,7 +79,12 @@ const codexSpeed = (tier: unknown): Speed | undefined =>
 export function codexStep(line: Json, context: FileContext): UsageRecord | null {
   const payload = object(line.payload);
   if (!payload) return null;
-  if (line.type === 'session_meta') { context.sessionId = text(payload.id) ?? context.sessionId; return null; }
+  if (line.type === 'session_meta') {
+    context.sessionId = text(payload.id) ?? context.sessionId;
+    const cwd = text(payload.cwd);
+    if (cwd) context.cwd = cwd;
+    return null;
+  }
   if (line.type === 'turn_context') {
     context.model = text(payload.model) ?? context.model;
     context.speed = codexSpeed(payload.service_tier) ?? context.speed;
@@ -95,7 +101,12 @@ export function codexStep(line: Json, context: FileContext): UsageRecord | null 
 }
 
 export function piStep(line: Json, context: FileContext): UsageRecord | null {
-  if (line.type === 'session') { context.sessionId = text(line.id) ?? context.sessionId; return null; }
+  if (line.type === 'session') {
+    context.sessionId = text(line.id) ?? context.sessionId;
+    const cwd = text(line.cwd);
+    if (cwd) context.cwd = cwd;
+    return null;
+  }
   const message = object(line.message);
   const usage = object(message?.usage);
   const model = text(message?.model);
@@ -126,16 +137,17 @@ export function parseChunk(provider: Provider, chunk: Buffer, previous: FileCont
   let start = 0;
   if (context.skipLine) {
     const newline = chunk.indexOf(0x0a);
-    if (newline < 0) return { consumed: full ? chunk.length : 0, context, records: [] };
+    if (newline < 0) return { consumed: full ? chunk.length : 0, context, records: [], sessions: {} };
     start = newline + 1;
     delete context.skipLine;
   }
   const end = chunk.lastIndexOf(0x0a) + 1;
   if (end <= start) {
     if (full) context.skipLine = true;
-    return { consumed: full ? chunk.length : start, context, records: [] };
+    return { consumed: full ? chunk.length : start, context, records: [], sessions: {} };
   }
   const records: UsageRecord[] = [];
+  const sessions: Record<string, string> = {};
   const gate = gates[provider];
   for (const line of chunk.subarray(start, end).toString('utf8').split('\n')) {
     if (!line || !gate(line)) continue;
@@ -143,9 +155,12 @@ export function parseChunk(provider: Provider, chunk: Buffer, previous: FileCont
     try { value = object(JSON.parse(line)); } catch { continue; }
     if (!value) continue;
     const record = provider === 'claude-code' ? claudeRecord(value) : provider === 'codex' ? codexStep(value, context) : piStep(value, context);
-    if (record) records.push(record);
+    if (!record) continue;
+    records.push(record);
+    const cwd = provider === 'claude-code' ? text(value.cwd) : context.cwd;
+    if (cwd) sessions[record.sessionId] = cwd;
   }
-  return { consumed: end, context, records };
+  return { consumed: end, context, records, sessions };
 }
 
 export const totalTokens = (r: Pick<UsageRecord, 'input' | 'cacheRead' | 'cacheWrite5m' | 'cacheWrite1h' | 'output'>) =>

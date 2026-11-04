@@ -7,8 +7,14 @@ Subscription plans do not bill these amounts. The figures show usage in API term
 
 - The thread header chip shows the thread's estimate. Hover over it for the split by token type and model.
   Click it to open the Usage page at that thread.
-- The **Usage** page in the navigation rail shows the last 7, 30 or 90 days.
-  It has daily totals and tables by thread, model and day. Usage outside BB threads appears as **Outside BB**.
+- The **Usage** page in the navigation rail shows the last 7, 30 or 90 days. Pick the period in the page header.
+  - A summary: the total, this month against your plans, the daily average, requests and the unpriced share.
+  - Daily columns stacked by provider. Hover over or focus a column for its split.
+  - **Threads**: each BB thread, and each directory used outside BB, such as a terminal CLI session.
+  - **Projects**: BB projects with their threads. Usage outside BB joins the project whose checkout contains its directory.
+    The deepest checkout wins. Checkouts two segments deep or shallower, such as a home directory, never match.
+  - **Models**: cost by model, with a bar for the split between cache reads, cache writes, input and output.
+  - **Days**: every day's figures as a table.
 - `bb cost backfill` reads all history. `bb cost status` shows progress. The [skill](skills/cost/SKILL.md) lists every command.
 
 ## How it reads usage
@@ -34,6 +40,7 @@ Provider logs are the source, not BB events: each log line names its model, and 
   Forks and resumes repeat requests under the same keys.
 - Codex counts cached and written tokens inside `input_tokens`. The plugin subtracts them.
 - Each file keeps a byte cursor. The requests of a chunk and its cursor commit in one transaction, so a scan resumes where it stopped.
+- Each session keeps the working directory its log names, so usage outside BB groups by directory.
 - Sessions map to threads through each thread's `thread/identity` events. Claude Code config directories come from threads' resolved environments and the `claudeConfigDirs` setting.
 
 ## Pricing
@@ -47,6 +54,12 @@ The plugin stores token counts and prices them when read, so a new price file re
 
 The price file is downloaded from LiteLLM's GitHub. A file with fewer than 50 usable chat models is rejected, and the last good copy stays in use.
 A tampered file can only change the estimates.
+
+## Colours
+
+Each provider has one colour in fixed order: Claude Code, Codex, Pi. BB has no categorical chart palette, so the
+plugin defines its own with `light-dark()`, checked with the dataviz palette validator against both surfaces.
+Token types use one ink at four strengths, so they never read as providers.
 
 ## Settings
 
