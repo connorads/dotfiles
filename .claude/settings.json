@@ -364,7 +364,6 @@
       "Bash(claude plugin --help:*)",
       "Bash(claude-usage:*)",
       "Bash(cloud-init status:*)",
-      "Bash(cloudflared tunnel --url http://localhost:*)",
       "Bash(code --list-extensions:*)",
       "Bash(codex exec --help:*)",
       "Bash(codex resume --help:*)",
@@ -1025,6 +1024,7 @@
       "mcp__ide"
     ],
     "ask": [
+      "Bash(cloudflared tunnel --url http://localhost:*)",
       "Bash(gh pr merge:*)",
       "Bash(gh repo edit:*)",
       "Bash(gh stack merge:*)"
