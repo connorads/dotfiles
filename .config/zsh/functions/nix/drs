@@ -1,11 +1,20 @@
 #!/usr/bin/env zsh
-# drs: switch the Nix Darwin system independently of the calling terminal
+# drs: switch the Nix Darwin system; outside the GUI session, independently of the calling terminal
 emulate -L zsh
 
 local rebuild run_dir label log_fd result arg arg_index
 rebuild=$(whence -p darwin-rebuild) || return 127
 zmodload zsh/system || return 1
 sudo -v || return $?
+
+# A system launchd job survives an SSH disconnect, but it sits outside the GUI
+# session: macOS denies it App Management, so nix-darwin aborts activation
+# while /Applications/Nix Apps holds apps. A GUI-session caller rebuilds
+# directly and lends activation its own app's permission.
+if [[ $(launchctl managername 2>/dev/null) == Aqua ]]; then
+  sudo "$rebuild" switch --flake "$HOME/.config/nix" "$@"
+  return
+fi
 mkdir -p "$HOME/.local/state/drs" || return 1
 run_dir=$(mktemp -d "$HOME/.local/state/drs/run.XXXXXXXX") || return 1
 label="org.nixos.drs.${run_dir:t}"

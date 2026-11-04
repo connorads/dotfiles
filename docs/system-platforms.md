@@ -25,8 +25,11 @@ The `up` function runs both on NixOS. An agent on rpi5 can modify the system con
 
 ## Darwin rebuilds over SSH
 
-`drs` submits `darwin-rebuild switch` to a system launchd job after sudo authentication.
+Outside the GUI session, `drs` submits `darwin-rebuild switch` to a system launchd job after sudo authentication.
 The job runs independently of the calling terminal. Restarting Tailscale can disconnect SSH without stopping activation.
+macOS denies the job App Management, so nix-darwin aborts activation while `/Applications/Nix Apps` holds apps.
+In the GUI session (`launchctl managername` reports `Aqua`), `drs` runs `sudo darwin-rebuild switch` directly.
+Activation then uses the calling app's App Management permission, such as the terminal's or BB's.
 
 ```mermaid
 flowchart LR

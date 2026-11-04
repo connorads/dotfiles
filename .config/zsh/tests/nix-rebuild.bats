@@ -55,6 +55,9 @@ import plistlib
 import sys
 from pathlib import Path
 
+if sys.argv[1] == 'managername':
+    print(os.environ.get('LAUNCHD_SESSION', 'Background'))
+    sys.exit(0)
 if sys.argv[1] == 'bootstrap':
     assert sys.argv[2] == 'system'
     data = plistlib.loads(Path(sys.argv[3]).read_bytes())
@@ -135,6 +138,27 @@ EOF
   [ "$status" -eq 23 ]
   [[ "$output" == *"build output"* ]]
   [[ "$output" == *"activation failed"* ]]
+  [[ "$output" == *"Rebuild log:"* ]]
+}
+
+# A system launchd job is outside the GUI session, so macOS denies it App
+# Management and nix-darwin aborts activation. Local sessions keep the caller.
+@test "drs rebuilds directly in the GUI session without a launchd job" {
+  export LAUNCHD_SESSION=Aqua
+  write_stub darwin-rebuild <<'EOF'
+#!/usr/bin/env bash
+echo "darwin-rebuild $*" >>"$TEST_LOG"
+exit 23
+EOF
+  run_zsh_function "$FUNCTIONS_DIR/nix/drs" --show-trace
+  [ "$status" -eq 23 ]
+  [ "$(cat "$TEST_LOG")" = "darwin-rebuild switch --flake $TEST_HOME/.config/nix --show-trace" ]
+  [ ! -d "$TEST_HOME/.local/state/drs" ]
+}
+
+@test "drs submits a launchd job outside the GUI session" {
+  run_zsh_function "$FUNCTIONS_DIR/nix/drs"
+  [ "$status" -eq 0 ]
   [[ "$output" == *"Rebuild log:"* ]]
 }
 
