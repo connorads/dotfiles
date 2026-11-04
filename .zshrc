@@ -138,22 +138,11 @@ export CLAUDE_CODE_NO_FLICKER=1
 # cached values are this account's own.
 export CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF=1
 
-# Stop `hyperframes init` silently refreshing installed skills at scaffold
-# time (--skip-skills is neutered upstream; only this variable opts out).
-# The skill set is vendored and reviewed in ~/.config/skills/vendor.
-export HYPERFRAMES_SKIP_SKILLS=1
-
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
 # Homebrew supply chain: verify bottle provenance via Sigstore/GitHub attestations
 [[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_VERIFY_ATTESTATIONS=1
-
-# uv supply chain: abort sync if a locked dependency matches an OSV MAL-* malware
-# advisory. Runs before download, incl. `uv sync --frozen` - the one path
-# exclude-newer (resolution-only) leaves unguarded. Preview feature; UV_MALWARE_CHECK=0
-# to bypass a one-off. Complements, does not replace, the exclude-newer cooldown.
-export UV_MALWARE_CHECK=1
 
 # Startup profiling output (before p10k to avoid noise)
 [[ -n "${ZSH_PROFILE+1}" ]] && zprof

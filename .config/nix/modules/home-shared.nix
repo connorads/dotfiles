@@ -169,6 +169,19 @@
   home.sessionVariables = {
     EDITOR = "micro";
     VISUAL = "micro";
+
+    # Supply-chain guards sit here rather than in .zshrc so that `zsh -c` and
+    # agent shells inherit them.
+    #
+    # uv: abort sync if a locked dependency matches an OSV MAL-* malware
+    # advisory. Runs before download, incl. `uv sync --frozen` - the one path
+    # exclude-newer (resolution-only) leaves unguarded. Preview feature;
+    # UV_MALWARE_CHECK=0 bypasses a one-off.
+    UV_MALWARE_CHECK = "1";
+    # Stop `hyperframes init` silently refreshing installed skills at scaffold
+    # time (--skip-skills is neutered upstream; only this variable opts out).
+    # The skill set is vendored and reviewed in ~/.config/skills/vendor.
+    HYPERFRAMES_SKIP_SKILLS = "1";
   };
 
   # tmux-fingers ships a compiled Crystal binary, so it can't be a pin_tmux_plugin

@@ -469,7 +469,7 @@ procedure before replacing vetted content.
   procedures in its README); `skill-patch apply|check` re-applies/verifies them, the
   update-vendored-skills flow runs apply after every refresh, and the hk
   `vendored-skill-patches` step blocks commits that stage a clobbered skill. Runtime
-  guards in `.zshrc`: `HYPERFRAMES_NO_TELEMETRY=1` (PostHog off, gates the
+  guards set by Nix session variables: `HYPERFRAMES_NO_TELEMETRY=1` (PostHog off, gates the
   hyperframes-cli post-render feedback directive) and `HYPERFRAMES_SKIP_SKILLS=1` (stops
   `npx hyperframes init` refreshing installed skills at scaffold time).
 

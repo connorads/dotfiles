@@ -24,9 +24,9 @@ declared() {
 }
 
 # `zsh -f` unsets RCS, and nix-darwin's /etc/zshenv body is wrapped in
-# `if [[ -o rcs ]]`, so its `EDITOR=nano` default is not in play. Unsetting both
-# vars first stops an inherited value faking a pass. What survives is what
-# ~/.zshenv itself exported.
+# `if [[ -o rcs ]]`, so its `EDITOR=nano` default is not in play. Unsetting the
+# queried var first stops an inherited value faking a pass. What survives is
+# what ~/.zshenv itself exported.
 #
 # `__HM_SESS_VARS_SOURCED` is the generated file's own self-guard, and it is
 # exported - so any shell whose ancestor already read ~/.zshenv passes it down
@@ -34,7 +34,7 @@ declared() {
 # Clearing it is what makes this subshell behave like a fresh login shell
 # rather than measuring the guard.
 zshenv_var() {
-  env -u EDITOR -u VISUAL -u __HM_SESS_VARS_SOURCED \
+  env -u "$1" -u __HM_SESS_VARS_SOURCED \
     zsh -f -c "source '$ZSHENV'; print -r -- \${$1}"
 }
 
@@ -52,4 +52,12 @@ setup() {
   run zshenv_var VISUAL
   [ "$status" -eq 0 ]
   [ "$output" = "$(declared VISUAL)" ]
+}
+
+# A supply-chain guard, so non-interactive shells (`zsh -c`, agents) must see
+# it, not only interactive ones reading .zshrc.
+@test ".zshenv exports UV_MALWARE_CHECK=1" {
+  run zshenv_var UV_MALWARE_CHECK
+  [ "$status" -eq 0 ]
+  [ "$output" = "1" ]
 }
