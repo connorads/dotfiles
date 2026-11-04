@@ -48,3 +48,8 @@ test('bounded tail skips split first line and retains fifty attempts', async () 
   await writeFile(path, lines({ kind: 'unknown', text: 'x'.repeat(300_000) }, ...Array.from({ length: 80 }, (_, i) => command('executed', i))));
   const snapshot = await read(); assert.equal(snapshot.attempts.length, 50); assert.equal(snapshot.attempts[0]?.at, 30);
 });
+test('a printed dictation from the command pedal is listed with its text', async () => {
+  const { read, path } = await fixture();
+  await writeFile(path, lines({ kind: 'dictation', timestamp_ms: 300, phase: 'printed', text: 'Next thread' }));
+  assert.deepEqual((await read()).attempts.map(row => [row.heard, row.result, row.problem]), [['Next thread', 'Printed', false]]);
+});

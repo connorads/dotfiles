@@ -10,10 +10,10 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('command'), timestamp_ms: at, heard: z.string(), command: z.string().nullable(),
     outcome: z.union([z.enum(['ignored', 'woke', 'slept', 'submitted', 'executed']), failed]), context: z.string().default('') }),
   z.object({ kind: z.literal('dictation'), timestamp_ms: at, text: z.string().default(''),
-    phase: z.union([z.enum(['started', 'discarded', 'cancelled', 'transcribing', 'pasted', 'edited', 'voice_action', 'logged', 'repasted', 'meeting_pasted']), failed]) }),
+    phase: z.union([z.enum(['started', 'discarded', 'cancelled', 'transcribing', 'pasted', 'edited', 'voice_action', 'logged', 'repasted', 'meeting_pasted', 'printed']), failed]) }),
 ]);
 const commandLabels = { ignored: 'Unmatched speech', woke: 'Commands enabled', slept: 'Commands sleeping', submitted: 'Submitted', executed: 'Handler returned' };
-const dictationLabels = { started: 'Recording', discarded: 'Discarded', cancelled: 'Cancelled', transcribing: 'Transcribing', pasted: 'Pasted', edited: 'Edited', voice_action: 'Voice action dispatched', logged: 'Logged', repasted: 'Pasted again', meeting_pasted: 'Meeting pasted' };
+const dictationLabels = { started: 'Recording', discarded: 'Discarded', cancelled: 'Cancelled', transcribing: 'Transcribing', pasted: 'Pasted', edited: 'Edited', voice_action: 'Voice action dispatched', logged: 'Logged', repasted: 'Pasted again', meeting_pasted: 'Meeting pasted', printed: 'Printed' };
 
 function parseTail(text: string): Diagnostics {
   const snapshot: Diagnostics = { available: true, state: null, transcript: null, attempts: [] };

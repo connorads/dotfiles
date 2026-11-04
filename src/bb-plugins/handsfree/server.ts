@@ -10,7 +10,7 @@ import { makeApprovals } from './approval.ts';
 
 export default function plugin(bb: BbPluginApi) {
   bb.settings.define({ spokenFeedback: { type: 'boolean', label: 'Read voice command confirmations aloud', default: false } });
-  const diagnostics = makeDiagnostics(join(homedir(), 'Library/Application Support/voice-control/logs/live.ndjson'));
+  const diagnostics = makeDiagnostics(join(homedir(), 'Library/Application Support/hex/logs/live.ndjson'));
   const archives = makeArchives({
     get: id => bb.sdk.threads.get({ threadId: id }),
     children: async id => (await bb.sdk.threads.childSummary({ threadId: id })).unarchivedDescendantCount,
