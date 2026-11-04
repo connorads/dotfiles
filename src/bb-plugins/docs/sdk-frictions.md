@@ -1226,3 +1226,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: [Popup adapter](../context-inspector/native-popup.ts),
   [Native collection](../context-inspector/native-server.ts)
+
+### Plugin dialogs sit under the native browser panel
+
+- Found: 2026-11-04, claude-profiles, chip, BB 0.48.0, SDK 0.6.49
+- Wanted: chip popovers and centred plugin modals stay visible while the browser panel is open.
+- Gap: the desktop browser is a native `WebContentsView` above the window's web content,
+  so no CSS or top-layer `<dialog>` can cover it. BB hides the view through a private
+  overlay counter that its own Dialog, image lightbox and maximised pane increment.
+  The SDK exposes neither the counter nor a Dialog that uses it.
+- Workaround: none yet. Close the browser panel before opening the popover.
+- Ask: export a hook such as `experimental_useNativeViewSuppression(open)`, or increment
+  the counter whenever an open `aria-modal` element exists, which BB already detects for `modalOpen`.
+- Status: open; source verified, live repro pending
+- Category: sdk-gap
+- Evidence: [ChipPopover](../chip/popover.tsx), @thread:thr_36kydsm27n
