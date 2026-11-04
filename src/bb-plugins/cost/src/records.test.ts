@@ -87,3 +87,25 @@ test('each session keeps the working directory its log names', () => {
   ), {}, false);
   assert.deepEqual(codex.sessions, { 'codex-2': '/work/api' });
 });
+
+test('turns count messages that start work, not tool results, command echoes or agent-to-agent prompts', () => {
+  const user = (uuid: string, content: unknown, extra: object = {}) =>
+    ({ type: 'user', uuid, sessionId: 'sess-1', timestamp: '2026-11-01T10:00:00Z', message: { role: 'user', content }, ...extra });
+  const claude = parseChunk('claude-code', lines(
+    user('u1', 'Fix the flaky test'),
+    user('u2', [{ type: 'text', text: 'And the lint' }]),
+    user('u3', [{ type: 'tool_result', content: 'ok' }]),
+    user('u4', '<local-command-stdout>done</local-command-stdout>'),
+    user('u5', 'meta', { isMeta: true }),
+  ), {}, false);
+  assert.deepEqual(claude.turns.map(turn => turn.key), ['claude:u1', 'claude:u2']);
+  const codex = parseChunk('codex', lines(
+    { timestamp: '2026-11-01T10:00:00Z', type: 'session_meta', payload: { id: 'codex-3' } },
+    { timestamp: '2026-11-01T10:00:01Z', type: 'event_msg', payload: { type: 'task_started', turn_attribution: { turn_id: 't1', parent_turn_id: null } } },
+    { timestamp: '2026-11-01T10:00:02Z', type: 'event_msg', payload: { type: 'task_started', turn_attribution: { turn_id: 't2', parent_turn_id: 't1' } } },
+  ), {}, false);
+  assert.deepEqual(codex.turns, [{ key: 'codex:t1', sessionId: 'codex-3', at: Date.parse('2026-11-01T10:00:01Z') }]);
+  const pi = parseChunk('pi', lines({ type: 'session', id: 'pi-1' },
+    { type: 'message', id: 'e1', timestamp: '2026-11-01T10:00:00Z', message: { role: 'user', content: [{ type: 'text', text: 'hi' }], timestamp: 5 } }), {}, false);
+  assert.deepEqual(pi.turns, [{ key: 'pi:e1:5', sessionId: 'pi-1', at: 5 }]);
+});

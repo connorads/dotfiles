@@ -2,39 +2,50 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { experimental_ProviderIcon as ProviderIcon, experimental_useProviders as useProviders, useBbNavigate, useRealtime, useRpc }
   from '@get-bb/plugin-sdk/app';
 import type { PluginNavPanelProps } from '@get-bb/plugin-sdk';
-import type { Progress, rpcContract, SummaryView, ThreadView } from './contracts.ts';
+import type { Progress, rpcContract, SeriesView, SummaryView, ThreadView } from './contracts.ts';
 import { DailyChart } from './chart.tsx';
+import { Insights } from './insights-view.tsx';
 import type { Cost, ModelCost, ProjectLine, ThreadLine } from './src/report.ts';
 import { ago, count, dateLabel, dayLabel, folder, percent, providerName, shortModel, tokens, usd } from './src/format.ts';
-import { periods, setPeriod, usePeriod } from './src/period.ts';
+import { periods, setGrouped, setPeriod, useGrouped, usePeriod } from './src/period.ts';
 import { providers } from './src/records.ts';
 
-type Tab = 'threads' | 'projects' | 'models' | 'days';
+type Tab = 'threads' | 'projects' | 'models' | 'insights' | 'days';
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'threads', label: 'Threads' }, { id: 'projects', label: 'Projects' }, { id: 'models', label: 'Models' }, { id: 'days', label: 'Days' }];
+  { id: 'threads', label: 'Threads' }, { id: 'projects', label: 'Projects' }, { id: 'models', label: 'Models' },
+  { id: 'insights', label: 'Insights' }, { id: 'days', label: 'Days' }];
 
-/** The page header's period switch. The body follows it through the shared period store. */
+/** The page header's controls. The body follows them through the shared store. */
 export function PeriodSwitch() {
   const days = usePeriod();
-  return <div className="cost-segmented" role="radiogroup" aria-label="Period">
-    {periods.map(value => <button key={value} type="button" role="radio" aria-checked={days === value}
-      onClick={() => setPeriod(value)}>{value} days</button>)}
+  const grouped = useGrouped();
+  return <div className="cost-header-controls">
+    <div className="cost-segmented" role="radiogroup" aria-label="Sub-threads"
+      title="Grouped counts each sub-thread's usage toward the thread that started it">
+      <button type="button" role="radio" aria-checked={!grouped} onClick={() => setGrouped(false)}>Each thread</button>
+      <button type="button" role="radio" aria-checked={grouped} onClick={() => setGrouped(true)}>With sub-threads</button>
+    </div>
+    <div className="cost-segmented" role="radiogroup" aria-label="Period">
+      {periods.map(value => <button key={value} type="button" role="radio" aria-checked={days === value}
+        onClick={() => setPeriod(value)}>{value} days</button>)}
+    </div>
   </div>;
 }
 
 export function UsagePage({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
   const days = usePeriod();
+  const grouped = useGrouped();
   const [tab, setTab] = useState<Tab>('threads');
   const [data, setData] = useState<SummaryView | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const focus = decodeURIComponent(/^thread\/([^/]+)$/.exec(subPath)?.[1] ?? '') || null;
   const load = useCallback(() => {
-    rpc.call('summary', { days }).then(value => { setData(value); setError(null); },
+    rpc.call('summary', { days, group: grouped }).then(value => { setData(value); setError(null); },
       (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
     rpc.call('progress', {}).then(setProgress, () => {});
-  }, [rpc, days]);
+  }, [rpc, days, grouped]);
   useEffect(load, [load]);
   useRealtime('usage-changed', load);
 
@@ -52,9 +63,10 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
         {tabs.map(value => <button key={value.id} type="button" role="tab" aria-selected={tab === value.id}
           onClick={() => setTab(value.id)}>{value.label}</button>)}
       </div>
-      {tab === 'threads' && <ThreadTable lines={data.threads} data={data} focus={focus} />}
+      {tab === 'threads' && <ThreadTable lines={data.threads} data={data} focus={focus} grouped={grouped} />}
       {tab === 'projects' && <ProjectTable lines={data.projects} />}
       {tab === 'models' && <ModelTable models={data.models} />}
+      {tab === 'insights' && <Insights days={days} grouped={grouped} />}
       {tab === 'days' && <DayTable data={data} />}
     </section>
     <Footer data={data} progress={progress} />
@@ -122,7 +134,7 @@ function useProviderRecord() {
   return (id: string) => known.find(provider => provider.id === id) ?? { id };
 }
 
-function ThreadTable({ lines, data, focus }: { lines: readonly ThreadLine[]; data: SummaryView; focus: string | null }) {
+function ThreadTable({ lines, data, focus, grouped }: { lines: readonly ThreadLine[]; data: SummaryView; focus: string | null; grouped: boolean }) {
   const navigate = useBbNavigate();
   const provider = useProviderRecord();
   const [all, setAll] = useState(false);
@@ -162,7 +174,9 @@ function ThreadTable({ lines, data, focus }: { lines: readonly ThreadLine[]; dat
       </tbody>
     </table>
     {lines.length > 25 && <button type="button" className="cost-more" onClick={() => setAll(!all)}>
-      {all ? 'Show top 25' : `Show all ${lines.length}`}</button>}
+      {all ? 'Show top 25' : lines.length < data.threadCount ? `Show top ${lines.length}` : `Show all ${lines.length}`}</button>}
+    {all && lines.length < data.threadCount && <p className="cost-note cost-centre">
+      {count(data.threadCount - lines.length)} more {grouped ? 'thread groups' : 'threads'} each cost {usd(lines[lines.length - 1]!.usd)} or less.</p>}
   </>;
 }
 
@@ -258,6 +272,7 @@ function FocusedThread({ threadId }: { threadId: string }) {
         <strong>{usd(view.usd)}</strong>
       </div>
       <Mix cost={view} labelled />
+      <Growth threadId={threadId} />
       <ul className="cost-focus-models">
         {view.models.map(model => <li key={`${model.provider}:${model.model}`}>
           <span className="cost-mono">{shortModel(model.model)}</span>
@@ -267,6 +282,38 @@ function FocusedThread({ threadId }: { threadId: string }) {
       </ul>
     </> : <p className="cost-blank">No usage recorded for this thread yet.</p>}
   </section>;
+}
+
+const growthHeight = 96;
+
+/** Each request's cost over the thread's life: context grows, so later requests usually cost more. */
+function Growth({ threadId }: { threadId: string }) {
+  const rpc = useRpc<typeof rpcContract>();
+  const [series, setSeries] = useState<SeriesView | null>(null);
+  const load = useCallback(() => { rpc.call('series', { threadId }).then(setSeries, () => setSeries(null)); }, [rpc, threadId]);
+  useEffect(load, [load]);
+  useRealtime('usage-changed', load);
+  if (!series || series.points.length < 2) return null;
+  const max = Math.max(...series.points.map(point => point.usd), 0.0001);
+  const last = series.points[series.points.length - 1]!.index;
+  // A viewBox in data units with a non-scaling stroke keeps the line 2px at any width; labels stay in HTML.
+  const path = series.points.map((point, index) =>
+    `${index ? 'L' : 'M'}${(point.index - 1) / Math.max(1, last - 1) * 1000},${growthHeight - point.usd / max * (growthHeight - 4)}`).join(' ');
+  return <figure className="cost-growth">
+    <figcaption>
+      <span>Cost per request across {count(series.requests)} requests</span>
+      {series.growth !== null && <b>{series.growth >= 1.15 ? `The last tenth cost ${series.growth.toFixed(1)}× the first`
+        : series.growth <= 0.87 ? `The last tenth cost ${percent(series.growth)} of the first` : 'Steady cost per request'}</b>}
+    </figcaption>
+    <div className="cost-growth-plot">
+      <span className="cost-growth-max">{usd(max)}</span>
+      <svg viewBox={`0 0 1000 ${growthHeight}`} preserveAspectRatio="none" height={growthHeight} width="100%" aria-hidden>
+        <path d={`${path} L1000,${growthHeight} L0,${growthHeight} Z`} className="cost-growth-area" />
+        <path d={path} className="cost-growth-line" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+    <div className="cost-growth-axis"><span>Request 1</span><span>Request {count(last)}</span></div>
+  </figure>;
 }
 
 const parts = ['cacheRead', 'cacheWrite', 'input', 'output'] as const;

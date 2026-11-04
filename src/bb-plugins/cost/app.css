@@ -168,3 +168,57 @@ button.cost-title:hover { text-decoration: underline; text-decoration-color: col
   .cost-hide-narrow { display: none; }
   .cost-hero > strong { font-size: 32px; }
 }
+
+/* Header controls */
+.cost-header-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+@container page-header (max-width: 720px) { .cost-header-controls > :first-child { display: none; } }
+
+/* Insights */
+.cost-insights { display: grid; gap: 18px; }
+.cost-tiles-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.cost-panel { display: grid; gap: 10px; }
+.cost-panel > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.cost-panel h3 { margin: 0; font-size: 13.5px; font-weight: 600; }
+.cost-panel > header > span { font-size: 12px; }
+.cost-note { margin: 0; color: var(--muted-foreground); font-size: 12px; }
+.cost-centre { margin-top: 8px; text-align: center; }
+.cost-histogram { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.cost-histogram > li { display: grid; grid-template-rows: auto 120px auto auto; gap: 4px; justify-items: center; text-align: center; }
+.cost-histogram-count { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cost-histogram-bar { display: flex; align-items: flex-end; justify-content: center; width: 100%; border-bottom: 1px solid var(--border); }
+.cost-histogram-bar > i { display: block; width: min(48px, 70%); min-height: 1px; border-radius: 4px 4px 0 0;
+  background: color-mix(in oklch, var(--foreground) 70%, transparent); transform-origin: bottom; animation: cost-grow .6s var(--cost-ease) both; }
+.cost-histogram-label { font-size: 12px; }
+.cost-histogram-share { color: var(--muted-foreground); font-size: 11px; }
+.cost-scatter { position: relative; }
+.cost-scatter svg { display: block; overflow: visible; }
+.cost-tick line { stroke: var(--cost-hair); stroke-width: 1; }
+.cost-tick text { fill: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cost-dot { fill: var(--cost-series); fill-opacity: .7; stroke: var(--card, var(--background)); stroke-width: 1.5; cursor: pointer; transition: r .12s; }
+.cost-dot:hover, .cost-dot[data-active] { fill-opacity: 1; }
+.cost-scatter-legend { display: flex; gap: 12px; margin-top: 4px; color: var(--muted-foreground); font-size: 11.5px; }
+.cost-scatter-legend > span::before, .cost-swatch::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--cost-series); vertical-align: -.5px;
+}
+.cost-scatter-tip { top: 0; max-width: 280px; transform: translate(14px, -50%); }
+.cost-scatter-tip[data-edge="end"] { transform: translate(calc(-100% - 14px), -50%); }
+.cost-scatter-tip strong { overflow: hidden; color: var(--foreground); text-overflow: ellipsis; }
+.cost-tooltip > span.cost-plain::before { visibility: hidden; }
+.cost-band { display: flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; }
+.cost-bands .cost-share { width: 160px; }
+
+/* Growth line in the focused thread */
+.cost-growth { display: grid; gap: 6px; margin: 0; }
+.cost-growth figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted-foreground); font-size: 12px; }
+.cost-growth figcaption b { color: var(--foreground); font-weight: 500; }
+.cost-growth-plot { position: relative; padding-top: 18px; border-bottom: 1px solid var(--border); }
+.cost-growth-plot svg { display: block; }
+.cost-growth-max { position: absolute; top: 0; left: 0; color: var(--muted-foreground); font-size: 11px; }
+.cost-growth-line { fill: none; stroke: var(--foreground); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.cost-growth-area { fill: color-mix(in oklch, var(--foreground) 8%, transparent); }
+.cost-growth-axis { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: 11px; }
+
+@container cost (max-width: 760px) {
+  .cost-tiles-five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cost-histogram { gap: 4px; }
+}

@@ -14,7 +14,12 @@ Subscription plans do not bill these amounts. The figures show usage in API term
   - **Projects**: BB projects with their threads. Usage outside BB joins the project whose checkout contains its directory.
     The deepest checkout wins. Checkouts two segments deep or shallower, such as a home directory, never match.
   - **Models**: cost by model, with a bar for the split between cache reads, cache writes, input and output.
+  - **Insights**: the median, mean and 90th-percentile thread, how concentrated spend is, a histogram of thread costs,
+    and a scatter of cost against length. Length is requests, turns or peak context. A table gives the median cost and
+    cost per request in each length band, and another compares providers.
   - **Days**: every day's figures as a table.
+- The header's **With sub-threads** switch folds each sub-thread into the thread that started it, across every view.
+- The thread card plots each request's cost over the thread's life and compares its last tenth of requests with its first.
 - `bb cost backfill` reads all history. `bb cost status` shows progress. The [skill](skills/cost/SKILL.md) lists every command.
 
 ## How it reads usage
@@ -41,6 +46,9 @@ Provider logs are the source, not BB events: each log line names its model, and 
 - Codex counts cached and written tokens inside `input_tokens`. The plugin subtracts them.
 - Each file keeps a byte cursor. The requests of a chunk and its cursor commit in one transaction, so a scan resumes where it stopped.
 - Each session keeps the working directory its log names, so usage outside BB groups by directory.
+- Turns are messages that start work. Claude Code turns are user lines with text, not tool results, command echoes or meta lines.
+  Codex turns are `task_started` events with no parent turn. Pi turns are user messages.
+- Peak context is the largest prompt any request sent: uncached input plus cache reads and writes.
 - Sessions map to threads through each thread's `thread/identity` events. Claude Code config directories come from threads' resolved environments and the `claudeConfigDirs` setting.
 
 ## Pricing

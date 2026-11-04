@@ -62,7 +62,7 @@ export default experimental_defineHostEntry({
         const buffer = Buffer.alloc(chunkBytes);
         const { bytesRead } = await file.read(buffer, 0, chunkBytes, offset);
         const result = parseChunk(provider, buffer.subarray(0, bytesRead), context, bytesRead === chunkBytes);
-        return { offset: offset + result.consumed, context: result.context, records: result.records, sessions: result.sessions };
+        return { offset: offset + result.consumed, context: result.context, records: result.records, turns: result.turns, sessions: result.sessions };
       } finally { await file.close(); }
     },
   },

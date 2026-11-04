@@ -29,8 +29,11 @@ export interface UsageRecord {
 /** What a parser carries between chunks of one file: Codex and Pi name the session and model once, early. */
 export interface FileContext { sessionId?: string; cwd?: string; model?: string; speed?: Speed; skipLine?: boolean }
 
+/** A turn someone started: a person's message, or a message BB or a parent agent sent. Thread length counts these. */
+export interface Turn { key: string; sessionId: string; at: number }
+
 /** `sessions` maps each session seen to its working directory, which names usage outside BB threads. */
-export interface ParseResult { consumed: number; context: FileContext; records: UsageRecord[]; sessions: Record<string, string> }
+export interface ParseResult { consumed: number; context: FileContext; records: UsageRecord[]; turns: Turn[]; sessions: Record<string, string> }
 
 type Json = Record<string, unknown>;
 const object = (value: unknown): Json | undefined =>
@@ -120,11 +123,43 @@ export function piStep(line: Json, context: FileContext): UsageRecord | null {
     output, reasoning: Math.min(output, count(usage.reasoning)), speed: 'standard', webSearches: 0 };
 }
 
+function claudeTurn(line: Json): Turn | null {
+  if (line.type !== 'user' || line.isSidechain || line.isMeta) return null;
+  const content = object(line.message)?.content;
+  const words = typeof content === 'string' ? content
+    : Array.isArray(content) ? content.map(part => object(part)).find(part => part?.type === 'text')?.text : undefined;
+  // Tool results arrive as user lines with no text; command echoes and caveats start with a tag.
+  const uuid = text(line.uuid), sessionId = text(line.sessionId), at = time(line.timestamp);
+  if (typeof words !== 'string' || !words.trim() || words.startsWith('<') || !uuid || !sessionId || at === undefined) return null;
+  return { key: `claude:${uuid}`, sessionId, at };
+}
+
+function codexTurn(line: Json, context: FileContext): Turn | null {
+  const payload = object(line.payload);
+  if (line.type !== 'event_msg' || payload?.type !== 'task_started') return null;
+  const attribution = object(payload.turn_attribution);
+  // A turn with a parent is one agent prompting another inside the same request chain, not a new message.
+  if (attribution?.parent_turn_id) return null;
+  const id = text(attribution?.turn_id), at = time(line.timestamp);
+  return id && context.sessionId && at !== undefined ? { key: `codex:${id}`, sessionId: context.sessionId, at } : null;
+}
+
+function piTurn(line: Json, context: FileContext): Turn | null {
+  const message = object(line.message);
+  const at = time(message?.timestamp) ?? time(line.timestamp);
+  if (line.type !== 'message' || message?.role !== 'user' || !context.sessionId || at === undefined) return null;
+  // Entry ids repeat in forks, which copy their parent's entries; the id and time together name one message.
+  return { key: `pi:${text(line.id) ?? ''}:${at}`, sessionId: context.sessionId, at };
+}
+
 // Cheap substring gates: most lines are tool output, and JSON.parse dominates a full scan.
 const gates: Record<Provider, (line: string) => boolean> = {
-  'claude-code': line => line.includes('"usage"') && line.includes('"assistant"'),
-  codex: line => line.includes('"token_usage_record"') || line.includes('"turn_context"') || line.includes('"session_meta"'),
-  pi: line => line.includes('"usage"') || line.includes('"type":"session"'),
+  // User lines carrying tool results are most of a transcript's bytes and never start a turn.
+  'claude-code': line => (line.includes('"usage"') && line.includes('"assistant"'))
+    || (line.includes('"type":"user"') && !line.includes('"tool_result"')),
+  codex: line => line.includes('"token_usage_record"') || line.includes('"turn_context"') || line.includes('"session_meta"')
+    || line.includes('"task_started"'),
+  pi: line => line.includes('"usage"') || line.includes('"type":"session"') || line.includes('"role":"user"'),
 };
 
 /**
@@ -137,16 +172,17 @@ export function parseChunk(provider: Provider, chunk: Buffer, previous: FileCont
   let start = 0;
   if (context.skipLine) {
     const newline = chunk.indexOf(0x0a);
-    if (newline < 0) return { consumed: full ? chunk.length : 0, context, records: [], sessions: {} };
+    if (newline < 0) return { consumed: full ? chunk.length : 0, context, records: [], turns: [], sessions: {} };
     start = newline + 1;
     delete context.skipLine;
   }
   const end = chunk.lastIndexOf(0x0a) + 1;
   if (end <= start) {
     if (full) context.skipLine = true;
-    return { consumed: full ? chunk.length : start, context, records: [], sessions: {} };
+    return { consumed: full ? chunk.length : start, context, records: [], turns: [], sessions: {} };
   }
   const records: UsageRecord[] = [];
+  const turns: Turn[] = [];
   const sessions: Record<string, string> = {};
   const gate = gates[provider];
   for (const line of chunk.subarray(start, end).toString('utf8').split('\n')) {
@@ -154,13 +190,15 @@ export function parseChunk(provider: Provider, chunk: Buffer, previous: FileCont
     let value: Json | undefined;
     try { value = object(JSON.parse(line)); } catch { continue; }
     if (!value) continue;
+    const turn = provider === 'claude-code' ? claudeTurn(value) : provider === 'codex' ? codexTurn(value, context) : piTurn(value, context);
+    if (turn) { turns.push(turn); continue; }
     const record = provider === 'claude-code' ? claudeRecord(value) : provider === 'codex' ? codexStep(value, context) : piStep(value, context);
     if (!record) continue;
     records.push(record);
     const cwd = provider === 'claude-code' ? text(value.cwd) : context.cwd;
     if (cwd) sessions[record.sessionId] = cwd;
   }
-  return { consumed: end, context, records, sessions };
+  return { consumed: end, context, records, turns, sessions };
 }
 
 export const totalTokens = (r: Pick<UsageRecord, 'input' | 'cacheRead' | 'cacheWrite5m' | 'cacheWrite1h' | 'output'>) =>

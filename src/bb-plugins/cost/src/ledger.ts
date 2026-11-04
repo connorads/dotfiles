@@ -1,4 +1,4 @@
-import type { FileContext, Provider, Speed, UsageRecord } from './records.ts';
+import type { FileContext, Provider, Speed, Turn, UsageRecord } from './records.ts';
 import type { RateCards } from './prices.ts';
 
 /** The subset of better-sqlite3 the ledger uses; node:sqlite satisfies it in tests. */
@@ -24,10 +24,16 @@ export const migrations = [
   `CREATE TABLE session_info (session_id TEXT PRIMARY KEY, cwd TEXT NOT NULL)`,
   // Forget cursors so the next backfill reads every file again and fills session_info; request keys make it idempotent.
   `DELETE FROM files`,
+  `CREATE TABLE turns (key TEXT PRIMARY KEY, session_id TEXT NOT NULL, at INTEGER NOT NULL)`,
+  `CREATE INDEX turns_session ON turns(session_id)`,
+  `ALTER TABLE threads ADD COLUMN parent_id TEXT`,
+  // Read every file again to fill turns, and map every thread again to fill parents.
+  `DELETE FROM files`,
+  `UPDATE threads SET mapped_at = 0`,
 ];
 
 export interface FileCursor { size: number; offset: number; context: FileContext }
-export interface ThreadInfo { threadId: string; title: string; projectId: string | null; provider: string }
+export interface ThreadInfo { threadId: string; title: string; projectId: string | null; provider: string; parentId: string | null }
 
 /** Token sums for requests sharing a price: model, speed and context tier, plus the grouping keys asked for. */
 export interface UsageRow {
@@ -57,8 +63,10 @@ export class Ledger {
    * Record requests and advance the file cursor in one transaction, so a crash never counts a chunk twice.
    * A request seen again keeps its larger copy: Claude Code rewrites lines as output streams in.
    */
-  ingest(hostId: string, path: string, chunk: { cursor: FileCursor; records: readonly UsageRecord[]; sessions?: Record<string, string> }) {
-    const { cursor, records, sessions = {} } = chunk;
+  ingest(hostId: string, path: string,
+    chunk: { cursor: FileCursor; records: readonly UsageRecord[]; turns?: readonly Turn[]; sessions?: Record<string, string> }) {
+    const { cursor, records, turns = [], sessions = {} } = chunk;
+    const turn = this.db.prepare('INSERT INTO turns VALUES (@key, @sessionId, @at) ON CONFLICT (key) DO NOTHING');
     const insert = this.db.prepare(`INSERT INTO requests VALUES (@key, @provider, @sessionId, @hostId, @at, @model, @input,
       @cacheRead, @cacheWrite5m, @cacheWrite1h, @output, @reasoning, @speed, @webSearches)
       ON CONFLICT (key) DO UPDATE SET input = excluded.input, cache_read = excluded.cache_read,
@@ -72,6 +80,7 @@ export class Ledger {
     this.transaction(() => {
       for (const record of records) insert.run({ ...record, hostId });
       for (const [sessionId, cwd] of Object.entries(sessions)) info.run({ sessionId, cwd });
+      for (const value of turns) turn.run({ key: value.key, sessionId: value.sessionId, at: value.at });
       file.run({ hostId, path, size: cursor.size, offset: cursor.offset, context: JSON.stringify(cursor.context) });
     });
   }
@@ -85,9 +94,9 @@ export class Ledger {
   mapThread(thread: ThreadInfo, sessionIds: readonly string[], at: number) {
     const session = this.db.prepare(`INSERT INTO sessions VALUES (@sessionId, @threadId)
       ON CONFLICT (session_id) DO UPDATE SET thread_id = excluded.thread_id`);
-    const info = this.db.prepare(`INSERT INTO threads VALUES (@threadId, @title, @projectId, @provider, @at)
+    const info = this.db.prepare(`INSERT INTO threads VALUES (@threadId, @title, @projectId, @provider, @at, @parentId)
       ON CONFLICT (thread_id) DO UPDATE SET title = excluded.title, project_id = excluded.project_id,
-        provider = excluded.provider, mapped_at = excluded.mapped_at`);
+        provider = excluded.provider, mapped_at = excluded.mapped_at, parent_id = excluded.parent_id`);
     this.transaction(() => {
       info.run({ ...thread, at });
       for (const sessionId of sessionIds) session.run({ sessionId, threadId: thread.threadId });
@@ -120,11 +129,40 @@ export class Ledger {
   }
 
   threads(threadIds: readonly string[]): Map<string, ThreadInfo> {
-    const lookup = this.db.prepare('SELECT thread_id AS threadId, title, project_id AS projectId, provider FROM threads WHERE thread_id = @threadId');
+    const lookup = this.db.prepare(`SELECT thread_id AS threadId, title, project_id AS projectId, provider, parent_id AS parentId
+      FROM threads WHERE thread_id = @threadId`);
     return new Map(threadIds.flatMap(threadId => {
       const row = lookup.get({ threadId }) as ThreadInfo | undefined;
       return row ? [[threadId, row] as const] : [];
     }));
+  }
+
+  /** Each mapped thread's parent, for folding sub-threads into the thread that started them. */
+  parents(): Map<string, string> {
+    const rows = this.db.prepare('SELECT thread_id AS threadId, parent_id AS parentId FROM threads WHERE parent_id IS NOT NULL').all() as
+      { threadId: string; parentId: string }[];
+    return new Map(rows.map(row => [row.threadId, row.parentId]));
+  }
+
+  /** Length measures per BB thread since `from`: requests, turns and the largest prompt any request sent. */
+  lengths(from: number): Map<string, { requests: number; turns: number; peakContext: number }> {
+    const result = new Map<string, { requests: number; turns: number; peakContext: number }>();
+    const requests = this.db.prepare(`SELECT s.thread_id AS threadId, count(*) AS requests, max(${prompt}) AS peak FROM requests r
+      JOIN sessions s ON s.session_id = r.session_id WHERE r.at >= @from GROUP BY s.thread_id`).all({ from }) as
+      { threadId: string; requests: number; peak: number }[];
+    for (const row of requests) result.set(row.threadId, { requests: row.requests, turns: 0, peakContext: row.peak });
+    const turns = this.db.prepare(`SELECT s.thread_id AS threadId, count(*) AS turns FROM turns t
+      JOIN sessions s ON s.session_id = t.session_id WHERE t.at >= @from GROUP BY s.thread_id`).all({ from }) as { threadId: string; turns: number }[];
+    for (const row of turns) { const value = result.get(row.threadId); if (value) value.turns = row.turns; }
+    return result;
+  }
+
+  /** A thread's requests in order, one row each, so each can be priced on its own. */
+  threadRequests(threadId: string): UsageRow[] {
+    return this.db.prepare(`SELECT NULL AS day, NULL AS threadId, NULL AS cwd, r.provider AS provider, r.model AS model, r.speed AS speed,
+        ${prompt} > 200000 AS over200k, ${prompt} > 272000 AS over272k, 1 AS requests, r.input AS input, r.cache_read AS cacheRead,
+        r.cache_write_5m AS cacheWrite5m, r.cache_write_1h AS cacheWrite1h, r.output AS output, r.web_searches AS webSearches, r.at AS lastAt
+      FROM requests r JOIN sessions s ON s.session_id = r.session_id WHERE s.thread_id = @threadId ORDER BY r.at`).all({ threadId }) as UsageRow[];
   }
 
   prices(): { fetchedAt: number; cards: RateCards } | null {

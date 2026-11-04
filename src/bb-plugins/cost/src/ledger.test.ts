@@ -23,7 +23,7 @@ test('a request seen again keeps its larger copy and counts once', () => {
   const store = ledger();
   store.ingest('host', '/a.jsonl', { cursor, records: [record('k1', { output: 10 })] });
   store.ingest('host', '/a.jsonl', { cursor, records: [record('k1', { output: 1000 }), record('k1', { output: 5 })] });
-  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: null, provider: 'claude-code' }, ['sess-1'], 1);
+  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: null, provider: 'claude-code', parentId: null }, ['sess-1'], 1);
   const cost = threadCost(store.threadRows('thr_1'), cards);
   assert.equal(cost.requests, 1);
   // 1000×4e-6 + 1000×2e-5
@@ -44,7 +44,7 @@ test('the summary fills empty days, separates usage outside BB, and counts unpri
     record('k2', { sessionId: 'cli-session' }),
     record('k3', { model: 'codex-auto-review', provider: 'codex', sessionId: 'cli-codex', at: new Date(2026, 10, 1, 9).getTime() }),
   ], sessions: { 'sess-1': '/work/app', 'cli-session': '/work/game', 'cli-codex': '/work/game' } });
-  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: null, provider: 'claude-code' }, ['sess-1'], 1);
+  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: null, provider: 'claude-code', parentId: null }, ['sess-1'], 1);
   const summary = summarise(store.rowsSince(0), cards, '2026-11-01', '2026-11-04');
   assert.deepEqual(summary.days.map(day => [day.day, Math.round(day.usd * 1000)]),
     [['2026-11-01', 0], ['2026-11-02', 0], ['2026-11-03', 68], ['2026-11-04', 0]]);
@@ -60,10 +60,20 @@ test('projects gather their threads and the CLI usage in their checkouts', () =>
   store.ingest('host', '/a.jsonl', { cursor, records: [
     record('k1'), record('k2', { sessionId: 'cli-in-app' }), record('k3', { sessionId: 'cli-elsewhere' }),
   ], sessions: { 'sess-1': '/work/app', 'cli-in-app': '/work/app/packages/web', 'cli-elsewhere': '/work/scratch' } });
-  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: 'proj_app', provider: 'claude-code' }, ['sess-1'], 1);
+  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: 'proj_app', provider: 'claude-code', parentId: null }, ['sess-1'], 1);
   const { threads } = summarise(store.rowsSince(0), cards, '2026-11-03', '2026-11-03');
   const app = { projectId: 'proj_app', name: 'app' };
   const projects = groupProjects(threads, () => app, cwd => cwd.startsWith('/work/app') ? app : null);
   assert.deepEqual(projects.map(line => [line.name, line.threads, Math.round(line.usd * 1000), Math.round(line.outsideUsd * 1000)]),
     [['app', 1, 48, 24], ['scratch', 0, 24, 24]]);
+});
+
+test('thread lengths count requests, turns and the largest prompt', () => {
+  const store = ledger();
+  store.ingest('host', '/a.jsonl', { cursor, records: [record('k1', { cacheRead: 150_000 }), record('k2')],
+    turns: [{ key: 't1', sessionId: 'sess-1', at: 1 }, { key: 't1', sessionId: 'sess-1', at: 1 }, { key: 't2', sessionId: 'sess-1', at: 2 }] });
+  store.mapThread({ threadId: 'thr_1', title: 'Fix', projectId: null, provider: 'claude-code', parentId: 'thr_0' }, ['sess-1'], 1);
+  assert.deepEqual(store.lengths(0).get('thr_1'), { requests: 2, turns: 2, peakContext: 151_000 });
+  assert.deepEqual([...store.parents()], [['thr_1', 'thr_0']]);
+  assert.equal(store.threadRequests('thr_1').length, 2);
 });
