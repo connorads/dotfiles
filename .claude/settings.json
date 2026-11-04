@@ -998,7 +998,6 @@
       "Bash(wrangler whoami:*)",
       "Bash(wt-add:*)",
       "Bash(wt-status:*)",
-      "Bash(xargs:*)",
       "Bash(xxd:*)",
       "Bash(yarn run build:*)",
       "Bash(yarn run check:*)",
