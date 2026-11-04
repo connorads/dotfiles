@@ -9,8 +9,24 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from bb_patch import FILES
-from package_candidate import prepare_package
+from adapters import bb_0_47_1, bb_0_48_1
+from bb_patch import FILES, digest
+from package_candidate import DEFAULT_HARNESSES, EXACT_RECIPES, prepare_package
+
+CORE_ANCHORS = "\n".join(
+    [
+        "function buildThreadActivityStateByThreadId(deps, threads2) {",
+        "    if (!backgroundActivity && !promptBannerActivity) {",
+        "activeWorkflowCount: backgroundActivity?.activeWorkflowCount ?? EMPTY_THREAD_ACTIVITY.activeWorkflowCount",
+        "  const api = {\n    pluginId,",
+        "        pendingNeedsConfiguration = null;\n      }\n    },\n    closeWebSockets()",
+        "      invalidated = true;\n      rpcCaller.revoke();",
+        "      publishSignal: (channel, payload) => {\n        deps.hub.notifyPluginSignal(row.id, channel, payload);\n      },",
+    ]
+)
+PLUGIN_ANCHORS = (
+    "function D(u){x.rpc.experimental_invalidate([`runs:${u}`])}let t=cv(x,A,r);e.onChange"
+)
 
 
 class PackageCandidateTests(unittest.TestCase):
@@ -44,6 +60,138 @@ class PackageCandidateTests(unittest.TestCase):
                 (self.package / "server/dist" / name).read_bytes(),
             )
         json.dumps(report)
+
+    def exact_fixture(self):
+        (self.package / "package.json").write_text('{"version":"0.48.1"}')
+        (self.package / "server/dist" / FILES[0]).write_text(CORE_ANCHORS)
+        (self.package / "server/dist" / FILES[1]).write_text(PLUGIN_ANCHORS)
+        return patch.dict(
+            EXACT_RECIPES["0.48.1"]["pristine"],
+            {
+                name: digest((self.package / "server/dist" / name).read_bytes())
+                for name in FILES[:2]
+            },
+        )
+
+    def test_exact_048_1_selects_rpc_recipe(self):
+        def check_pristine(directory, node, patches, **_):
+            for name in FILES[:2]:
+                self.assertEqual(
+                    (directory / "pristine" / name).read_bytes(),
+                    (self.package / "server/dist" / name).read_bytes(),
+                )
+
+        with (
+            self.exact_fixture(),
+            patch("package_candidate._check_candidate", side_effect=check_pristine) as check,
+        ):
+            result = self.prepare()
+        self.assertEqual(result["status"], "patched", result.get("warning"))
+        self.assertEqual(
+            check.call_args.kwargs["harnesses"], {"activity": "scripts/test-activity-0.48.1.mjs"}
+        )
+        for name in FILES:
+            original = (self.package / "server/dist" / name).read_bytes()
+            self.assertEqual(
+                (Path(result["package"]) / "server/dist" / name).read_bytes(),
+                bb_0_48_1.transform("activity", name, original),
+            )
+        self.assertEqual(
+            set(result["provenance"]["recipe"]),
+            {
+                "scripts/package_candidate.py",
+                "scripts/bb_patch.py",
+                "scripts/adapters/bb_0_47_1.py",
+                "scripts/adapters/bb_0_48_1.py",
+            },
+        )
+        self.assertEqual(set(result["provenance"]["tests"]), {"scripts/test-activity-0.48.1.mjs"})
+
+    def test_048_1_session_options_retains_stock(self):
+        with self.exact_fixture(), patch("package_candidate._check_candidate"):
+            result = self.prepare(set_id="session-options-plus-activity")
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["appliedPatches"], ["activity"])
+        self.assertEqual(
+            result["failedPatches"],
+            {
+                "session-options": "Patch incompatible: No session-options recipe for 0.48.1",
+            },
+        )
+        for name in FILES[2:]:
+            self.assertEqual(
+                (Path(result["package"]) / "server/dist" / name).read_bytes(),
+                (self.package / "server/dist" / name).read_bytes(),
+            )
+
+    def test_unrecognised_048_1_bytes_retain_stock(self):
+        for name in FILES[:2]:
+            with (
+                self.subTest(name=name),
+                self.exact_fixture(),
+                patch("package_candidate._check_candidate") as check,
+            ):
+                path = self.package / "server/dist" / name
+                path.write_bytes(path.read_bytes() + b"// changed")
+                result = self.prepare(set_id="session-options-plus-activity")
+            self.stock(result)
+            check.assert_not_called()
+            self.assertEqual(
+                result["failedPatches"],
+                {
+                    patch: "Unrecognised 0.48.1 input bytes"
+                    for patch in ("session-options", "activity")
+                },
+            )
+
+    def test_other_versions_keep_default_recipe(self):
+        (self.package / "server/dist" / FILES[0]).write_text(CORE_ANCHORS)
+        (self.package / "server/dist" / FILES[1]).write_text(
+            "function D(u){x.realtime.publish(_a,{threadId:u})}let t=pv(x,A,r);e.onChange"
+        )
+        for version in ("0.48.0", "99.0.0"):
+            with (
+                self.subTest(version=version),
+                patch("package_candidate._check_candidate") as check,
+            ):
+                (self.package / "package.json").write_text(json.dumps({"version": version}))
+                result = self.prepare()
+            self.assertEqual(result["status"], "patched")
+            self.assertEqual(check.call_args.kwargs["harnesses"], DEFAULT_HARNESSES)
+            for name in FILES:
+                original = (self.package / "server/dist" / name).read_bytes()
+                self.assertEqual(
+                    (Path(result["package"]) / "server/dist" / name).read_bytes(),
+                    bb_0_47_1.transform("activity", name, original),
+                )
+            self.assertEqual(
+                set(result["provenance"]["recipe"]),
+                {
+                    "scripts/package_candidate.py",
+                    "scripts/bb_patch.py",
+                    "scripts/adapters/bb_0_47_1.py",
+                },
+            )
+            self.assertEqual(set(result["provenance"]["tests"]), set(DEFAULT_HARNESSES.values()))
+
+    def test_future_version_cannot_select_rpc_recipe_by_anchor_match(self):
+        self.exact_fixture()
+        (self.package / "package.json").write_text('{"version":"0.48.2"}')
+        with patch("package_candidate._check_candidate") as check:
+            result = self.prepare()
+        self.stock(result)
+        check.assert_not_called()
+        self.assertIn("realtime.publish", result["failedPatches"]["activity"])
+
+    def test_default_recipe_keeps_default_harnesses(self):
+        with (
+            patch("package_candidate.transform", side_effect=lambda p, n, b: b),
+            patch("package_candidate._check_candidate") as check,
+        ):
+            self.prepare(set_id="session-options-plus-activity")
+        self.assertEqual(check.call_count, 2)
+        for call in check.call_args_list:
+            self.assertEqual(call.kwargs["harnesses"], DEFAULT_HARNESSES)
 
     def test_incompatible_transformation_retains_stock_and_reuses_identity(self):
         first = self.prepare()
@@ -105,7 +253,7 @@ class PackageCandidateTests(unittest.TestCase):
             )
 
     def test_later_harness_failure_preserves_accepted_feature(self):
-        def check_feature(directory, node, features):
+        def check_feature(directory, node, features, **_):
             if features == ["activity"]:
                 self.assertIn(b"// session-options", (directory / FILES[0]).read_bytes())
                 raise ValueError("activity harness failure")

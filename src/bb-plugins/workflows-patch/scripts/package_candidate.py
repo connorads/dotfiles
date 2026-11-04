@@ -7,8 +7,25 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from adapters import bb_0_48_1
 from adapters.bb_0_47_1 import transform
 from bb_patch import FILES, ROOT, SETS, digest
+
+EXACT_RECIPES = {
+    "0.48.1": {
+        "module": bb_0_48_1,
+        "pristine": {
+            "start-server.js": "41ffbb6d40eafb1253242e529b1032a7043d29e0cf0eb1c03d6d3c11e2c0a1d7",
+            "builtin-plugins/workflows/dist/server.js": "013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b",
+        },
+        "recipe": ("scripts/adapters/bb_0_47_1.py", "scripts/adapters/bb_0_48_1.py"),
+        "harnesses": {"activity": "scripts/test-activity-0.48.1.mjs"},
+    },
+}
+DEFAULT_HARNESSES = {
+    "activity": "scripts/test-activity.mjs",
+    "session-options": "scripts/test-bundle.mjs",
+}
 
 
 def _paths(package, output, node):
@@ -70,20 +87,20 @@ def _run(node, arguments):
         raise ValueError(f"Check failed ({' '.join(map(str, arguments))}): {detail}")
 
 
-def _check_candidate(directory, node, patches):
+def _check_candidate(directory, node, patches, *, harnesses):
     for name in FILES:
         if name.endswith(".js"):
             _run(node, ["--check", directory / name])
     for patch in patches:
         if patch == "activity":
             arguments = [
-                ROOT / "scripts/test-activity.mjs",
+                ROOT / harnesses[patch],
                 directory / FILES[0],
                 directory / FILES[1],
             ]
         else:
             arguments = [
-                ROOT / "scripts/test-bundle.mjs",
+                ROOT / harnesses[patch],
                 directory / FILES[1],
                 directory / "session.mjs",
             ]
@@ -100,12 +117,16 @@ def _prepare_fresh(package: Path, output: Path, node: Path, set_id: str):
     if not isinstance(version, str):
         raise ValueError("Package version must be a string")
     pristine = {name: _optional_bytes(package / "server/dist" / name) for name in FILES}
+    recipe = EXACT_RECIPES.get(version)
+    adapt = recipe["module"].transform if recipe else lambda *args: transform(*args)
+    harnesses = recipe["harnesses"] if recipe else DEFAULT_HARNESSES
+    adapter_paths = recipe["recipe"] if recipe else ("scripts/adapters/bb_0_47_1.py",)
     recipe_paths = [
         Path(__file__).resolve(),
         ROOT / "scripts/bb_patch.py",
-        ROOT / "scripts/adapters/bb_0_47_1.py",
+        *(ROOT / name for name in adapter_paths),
     ]
-    harness_paths = [ROOT / f"scripts/test-{name}.mjs" for name in ("bundle", "activity")]
+    harness_paths = [ROOT / name for name in harnesses.values()]
     provenance = {
         "recipe": {str(path.relative_to(ROOT)): digest(path.read_bytes()) for path in recipe_paths},
         "tests": {str(path.relative_to(ROOT)): digest(path.read_bytes()) for path in harness_paths},
@@ -128,8 +149,15 @@ def _prepare_fresh(package: Path, output: Path, node: Path, set_id: str):
         "sourceTree": _tree_digest(target),
     }
     missing = [name for name, data in pristine.items() if data is None]
-    if missing:
-        warning = f"Patch targets missing: {', '.join(missing)}"
+    unrecognised = recipe and any(
+        _fingerprint(pristine[name]) != expected for name, expected in recipe["pristine"].items()
+    )
+    if missing or unrecognised:
+        warning = (
+            f"Unrecognised {version} input bytes"
+            if unrecognised
+            else f"Patch targets missing: {', '.join(missing)}"
+        )
         report.update(
             appliedPatches=[],
             failedPatches={patch: warning for patch in SETS[set_id]},
@@ -147,7 +175,7 @@ def _prepare_fresh(package: Path, output: Path, node: Path, set_id: str):
             # Each feature transforms the last accepted bytes. Rejected changes
             # never enter the package or the next feature's input.
             try:
-                proposed = {name: transform(patch, name, data) for name, data in candidate.items()}
+                proposed = {name: adapt(patch, name, data) for name, data in candidate.items()}
             except (ValueError, UnicodeError) as error:
                 report["failedPatches"][patch] = f"Patch incompatible: {error}"
                 continue
@@ -156,10 +184,12 @@ def _prepare_fresh(package: Path, output: Path, node: Path, set_id: str):
                 path = directory / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
-            (directory / "pristine").mkdir()
-            (directory / "pristine/start-server.js").write_bytes(pristine[FILES[0]])
+            for name in FILES[:2]:
+                path = directory / "pristine" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(pristine[name])
             try:
-                _check_candidate(directory, node, [patch])
+                _check_candidate(directory, node, [patch], harnesses=harnesses)
             except (ValueError, subprocess.SubprocessError) as error:
                 report["failedPatches"][patch] = f"Patch verification failed: {error}"
                 continue

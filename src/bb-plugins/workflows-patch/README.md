@@ -78,7 +78,19 @@ bb-patch prepare-package --package /absolute/mise/node_modules/bb-app \
   --set session-options-plus-activity
 ```
 
-Package preparation tries the exact transformations on unfamiliar versions.
+Package preparation selects a separate activity recipe for npm BB `0.48.1`.
+Admission requires version `0.48.1` and these pristine SHA-256 digests:
+
+| File under `server/dist` | SHA-256 |
+| --- | --- |
+| `start-server.js` | `41ffbb6d40eafb1253242e529b1032a7043d29e0cf0eb1c03d6d3c11e2c0a1d7` |
+| `builtin-plugins/workflows/dist/server.js` | `013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b` |
+
+A digest mismatch retains every requested feature's stock bytes.
+The `0.48.1` recipe explicitly refuses session-options, including its authoring change.
+The combined set therefore publishes activity as `partial`, with stock progress view and authoring files.
+Other versions try the existing `0.47.1` transformations and harnesses.
+Version `0.48.2` receives no `0.48.1` recipe by anchor matching.
 Each feature must pass syntax checks and its existing offline behaviour harness before publication.
 An incompatible feature retains its original files. Other requested features still run.
 Missing patch targets also retain stock files. Missing runtime layout or failed copying blocks preparation.
@@ -86,8 +98,12 @@ Checks have a 60-second timeout. A timeout retains the stock feature.
 
 The JSON result reports `patched`, `partial` or `stock`, applied features, failures and before/after hashes.
 Its identity includes complete source and result trees, dependency location, Node version, recipe and harness digests.
+The `0.48.1` provenance includes both adapters because it reuses the pinned core transform.
+Changing shared preparation code changes identities for every version, including `0.48.0`; prepare fresh releases.
 Repeated preparation reruns checks and refuses changed runtime files in an existing release.
 The source package remains unchanged. Preparation never starts a server or activates a release.
+Source preservation establishes no upstream authenticity. The copy and identity include every package entry, including unexpected local directories.
+Candidates from a modified installation require review against a verified pristine package before release selection.
 
 Each release contains a copied package and a dependency link to its installed source.
 Deployment retains the source's mise pins so pruning preserves those dependencies.
@@ -115,9 +131,31 @@ The session harness resolves Zod and SDK imports from the adjacent `workflow-tim
 Workspace dependencies must already be installed. Node must provide `node:sqlite` for the activity harness.
 The activity harness executes copied core and plugin fragments together against synthetic SQLite records.
 It checks lifecycle counting, activation failure, invalidation, stale generations, source failures and progress publication.
+The separate `0.48.1` harness resolves minified bindings through unique esbuild function labels.
+It checks late registration refusal, terminal sidebar notifications, RPC invalidation tags and pristine plugin fragment equivalence.
+These checks use copied fragments inside a synthetic API scaffold. They establish fragment behaviour alongside static caller audits.
+They do not establish activity counts or realtime notification delivery through a running server.
+Child-thread status lines use a separate count and exclude plugin workflows.
 Syntax checks establish parsing only.
 The scoped `workflows-patch` hook runs independent tests and validates tracked input fingerprints.
 Copied-release behaviour remains an explicit check when release fixtures are absent.
+
+The opt-in npm `0.48.1` test prepares activity and combined copies from the installed source.
+It checks exact output hashes, stock session files, and unchanged source contents and metadata.
+Set `BB_PATCH_NODE` to an installed Node executable with `node:sqlite`:
+
+```sh
+BB_PATCH_PACKAGE_0481=/absolute/mise/node_modules/bb-app \
+  BB_PATCH_NODE=/absolute/node/bin/node \
+  python3 -B -m unittest discover -s scripts -p test_package_0_48_1.py
+```
+
+An isolated server smoke check needs fresh temporary HOME and data directories, loopback ports, and no credentials or provider execution.
+Enable Workflows only in that disposable instance; fresh data leaves it disabled.
+An orphan reconciliation check may seed a queued run whose origin does not exist, then restart the disposable instance.
+It establishes copied-server startup, an empty thread-list response and orphan cancellation without execution.
+It does not establish sidebar counts or realtime notifications. Those require a real synthetic origin thread and observed count changes and notifications.
+Live activation and runtime status remain unknown.
 
 To measure the actual copied query and aggregation, set `BB_PATCH_MEASUREMENTS` to an evidence file:
 
