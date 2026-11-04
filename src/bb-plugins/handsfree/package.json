@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@bb-plugins/chip": "workspace:*",
-    "@kitlangton/hex": "0.3.1",
     "zod": "catalog:"
   },
   "devDependencies": {

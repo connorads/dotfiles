@@ -892,9 +892,6 @@ importers:
       '@bb-plugins/chip':
         specifier: workspace:*
         version: link:../chip
-      '@kitlangton/hex':
-        specifier: 0.3.1
-        version: 0.3.1
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1614,15 +1611,6 @@ packages:
     resolution: {integrity: sha512-z/fZg0L8fJe2dnnQjWkmMw409iBclSWcOqdjoBy8eLHeBr/7F7VipzkY1CfgA2Fa5uW+zxZ54OvWMtdDcsp/yg==}
     peerDependencies:
       react: ^19.2.3
-
-  '@kitlangton/hex@0.3.1':
-    resolution: {integrity: sha512-jsj72A9Ipefn3MZZK1TuYpzUNB1kd7W9jBDKpk3qrTKmY1mR8kRvFfCll7MXFuExrLJ9rkNXzlrkrK4D+qAMxw==}
-    engines: {node: '>=20.3.0'}
-    peerDependencies:
-      effect: '>=4.0.0-rc.112 <5.0.0'
-    peerDependenciesMeta:
-      effect:
-        optional: true
 
   '@modelcontextprotocol/client@2.3.1':
     resolution: {integrity: sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==}
@@ -2878,8 +2866,6 @@ snapshots:
       react: 19.2.4
     transitivePeerDependencies:
       - zod
-
-  '@kitlangton/hex@0.3.1': {}
 
   '@modelcontextprotocol/client@2.3.1':
     dependencies:

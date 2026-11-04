@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline';
-import { connect } from '@kitlangton/hex';
 import { makePedalSession } from '../pedal-session.ts';
+import { runHex, startHexRecording } from './hex-recording.ts';
 import { requestBb, type BbPorts } from '../../../../.config/hex/voice/bb.ts';
 import { runSpeech } from '../../../../.config/hex/voice/speech.ts';
 import { serialisePedalRequests } from '../pedal-requests.ts';
@@ -22,7 +22,7 @@ const session = makePedalSession({
     if (!context.ok || !context.context || !context.choiceTarget) throw Error(context.message || 'Focus BB before recording a command.');
     recordedContext = context.context;
     recordedChoiceTarget = context.choiceTarget;
-    return (await connect()).dictation.start({ source: 'bb-command-pedal' });
+    return startHexRecording(runHex);
   },
   feedback,
   heard: async text => {
