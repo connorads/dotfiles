@@ -25,7 +25,9 @@ Three assertions, in value order:
       must appear in the gates claiming its language. A project added tomorrow
       fails this until it is wired in - the trap that left agent-guard ungated
       for its whole life. Roots deliberately outside the first-party gates are
-      listed in UNGATED with a reason.
+      listed in UNGATED with a reason. The same holds for flat script dirs
+      with a pytest.ini: each needs a step running `py-tests-dir.sh <dir>`,
+      or an UNGATED reason, so a new suite cannot sit outside the commit gate.
 
 Exit codes: 0 = every assertion holds, 1 = drift (printed to stderr).
 
@@ -435,6 +437,32 @@ def check_projects(
     return errors
 
 
+_PY_TESTS_DIR = re.compile(r"py-tests-dir\.sh\s+(\S+)")
+
+
+def discover_pytest_dirs(tracked: Iterable[str]) -> set[str]:
+    """Every non-vendored dir that carries a pytest.ini."""
+    return {
+        path.rsplit("/", 1)[0] if "/" in path else "."
+        for path in tracked
+        if path.rsplit("/", 1)[-1] == "pytest.ini" and not DISCOVERY_EXCLUDE.search("/" + path)
+    }
+
+
+def check_pytest_dirs(
+    dirs: Iterable[str], steps: dict[str, Step], ungated: dict[str, str] | None = None
+) -> list[str]:
+    """Assert each pytest.ini dir is named by a `py-tests-dir.sh <dir>` step."""
+    exempt = UNGATED if ungated is None else ungated
+    named = {m.group(1) for step in steps.values() for m in _PY_TESTS_DIR.finditer(step.check)}
+    return [
+        f"{d}: pytest.ini dir is not run by any py-tests-dir.sh step (add a step to"
+        f" {HK_PKL}, or add the dir to gate-coverage.py UNGATED with a reason)"
+        for d in sorted(dirs)
+        if d not in named and d not in exempt
+    ]
+
+
 # --------------------------------------------------------------------------
 # wiring
 # --------------------------------------------------------------------------
@@ -513,6 +541,7 @@ def main() -> int:
         )
     else:
         errors += check_projects(discover_projects(tracked), steps)
+        errors += check_pytest_dirs(discover_pytest_dirs(tracked), steps)
 
     if errors:
         print("gate-coverage: gate path lists have drifted:", file=sys.stderr)

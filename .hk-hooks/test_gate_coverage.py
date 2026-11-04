@@ -280,6 +280,35 @@ class TestCheckProjects:
         assert "no longer a discovered project" in errors[0]
 
 
+class TestPytestDirs:
+    STEPS = _mod.parse_hk_steps(
+        'x {\n    ["py-tests-tmux"] {\n        glob = List(".config/tmux/*.py")\n'
+        '        check = "bash .hk-hooks/py-tests-dir.sh .config/tmux"\n    }\n}\n'
+    )
+
+    def test_pytest_ini_resolves_to_its_dir(self) -> None:
+        assert _mod.discover_pytest_dirs(
+            [".config/tmux/pytest.ini", ".config/tmux/test_x.py", "pytest.ini"]
+        ) == {".config/tmux", "."}
+
+    def test_vendored_pytest_ini_is_excluded(self) -> None:
+        tracked = [".config/skills/vendor/.agents/skills/x/tests/pytest.ini"]
+        assert _mod.discover_pytest_dirs(tracked) == set()
+
+    def test_dir_named_by_a_py_tests_dir_step_passes(self) -> None:
+        assert _mod.check_pytest_dirs({".config/tmux"}, self.STEPS, ungated={}) == []
+
+    def test_unnamed_dir_fails(self) -> None:
+        errors = _mod.check_pytest_dirs({".config/vox"}, self.STEPS, ungated={})
+        assert len(errors) == 1
+        assert ".config/vox" in errors[0]
+        assert "py-tests-dir.sh" in errors[0]
+
+    def test_ungated_dir_is_exempt(self) -> None:
+        exempt = {".config/vox": "reason"}
+        assert _mod.check_pytest_dirs({".config/vox"}, self.STEPS, ungated=exempt) == []
+
+
 class TestLive:
     def test_real_tree_passes(self) -> None:
         """The gate against the real work-tree - the contract the hk step runs."""
