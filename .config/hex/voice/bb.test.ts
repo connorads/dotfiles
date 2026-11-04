@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import type { Command, Reply } from "../../../src/bb-plugins/handsfree/contracts.ts"
 import { matchBb, parseReply, runBb, type BbPorts } from "./bb.ts"
-import { err, ok } from "./pane.ts"
+import { err, ok } from "./jev.ts"
 
 const setup = (labels: string[], probabilities: Record<string, number> = {}) => {
   const commands: Command[] = []

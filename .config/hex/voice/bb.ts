@@ -1,5 +1,5 @@
 import { replySchema, type Candidate, type Command, type Kind, type Reply } from "../../../src/bb-plugins/handsfree/contracts.ts"
-import { JEV_MODEL } from "./goto.ts"
+import { JEV_MODEL } from "./jev.ts"
 import type { Ports } from "./ports.ts"
 
 export interface BbPorts extends Pick<Ports, "judge" | "notify" | "log"> {

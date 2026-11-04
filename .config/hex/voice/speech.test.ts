@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { parseSpeech, runSpeech } from './speech.ts'
 import { matchBb, parseReply, type BbPorts } from './bb.ts'
-import { ok } from './pane.ts'
+import { ok } from './jev.ts'
 import { commandSchema, type Command } from '../../../src/bb-plugins/handsfree/contracts.ts'
 
 test('dictated punctuation and supported command aliases use existing BB actions', () => {
