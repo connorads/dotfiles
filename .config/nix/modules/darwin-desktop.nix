@@ -132,6 +132,18 @@
     };
   };
 
+  # Caps Lock sends F18, the key the Handsfree command pedal listens for
+  # (src/bb-plugins/handsfree/pedal/keys.swift), so holding it records a BB command.
+  system.keyboard = {
+    enableKeyMapping = true;
+    userKeyMapping = [
+      {
+        HIDKeyboardModifierMappingSrc = 30064771129; # 0x700000039 Caps Lock
+        HIDKeyboardModifierMappingDst = 30064771181; # 0x70000006D F18
+      }
+    ];
+  };
+
   # -- System Defaults (macOS preferences) --
   # Host-neutral personal defaults (dark mode, scroll, key-repeat, Finder, etc.)
   # live in darwin-ui.nix, shared by both Macs. Only app/hardware-coupled defaults
