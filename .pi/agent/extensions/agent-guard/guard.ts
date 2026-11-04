@@ -30,7 +30,23 @@ export const SECRET_PATHS = [
   ".config/op",
   ".kube",
   ".password-store",
+  ".codex/auth.json",
+  ".pi/agent/auth.json",
+  ".local/share/opencode/auth.json",
+  ".grok/auth.json",
+  ".local/share/amp/secrets.json",
+  ".config/hcloud",
+  ".local/share/atuin/key",
+  ".bb/auth.json",
+  ".bb/auth-secret",
+  ".bb/machine-environment-key",
+  ".config/.wrangler/config",
+  "Library/Preferences/.wrangler/config",
 ] as const;
+
+// pi reads its own login token; every other agent's stays denied.
+const OWN_PATHS = [".pi/agent/auth.json"] as const;
+const OWN_COMPONENTS = OWN_PATHS.map((p) => p.split("/"));
 
 const SECRET_COMPONENTS = SECRET_PATHS.map((p) => p.split("/"));
 
@@ -70,6 +86,7 @@ const SECRET_FALLBACK_RE = new RegExp(
     + SECRET_PATHS.map((p) => p.replace(/[.\\+*?[^\]$(){}=!<>|:-]/g, "\\$&")).join("|")
     + ")(?:/|$|[\\s'\";|&)])",
 );
+const SECRET_FALLBACK_GLOBAL_RE = new RegExp(SECRET_FALLBACK_RE.source, "g");
 const FALLBACK_BYPASS_RE = new RegExp(`\\b${BYPASS_VAR}=(\\S*)`);
 
 /**
@@ -199,6 +216,7 @@ function homeRelativeComponents(candidate: string, home: string): string[] | und
 export function matchedSecret(candidate: string, home: string): string | undefined {
   const components = homeRelativeComponents(candidate, home);
   if (!components || components.length === 0) return undefined;
+  if (OWN_COMPONENTS.some((own) => own.every((part, k) => components[k] === part))) return undefined;
   for (let s = 0; s < SECRET_PATHS.length; s++) {
     const secret = SECRET_COMPONENTS[s]!;
     if (secret.every((part, k) => components[k] === part)) return SECRET_PATHS[s];
@@ -279,8 +297,10 @@ function bashBlockReason(command: string, home: string): string | undefined {
     // Conservative fallback: only explicitly home-anchored secret paths.
     const bypass = FALLBACK_BYPASS_RE.exec(command);
     if (bypass && !BYPASS_FALSEY.has(bypass[1]!)) return undefined;
-    const match = SECRET_FALLBACK_RE.exec(command);
-    if (match) return secretReason(match[1]!);
+    for (const match of command.matchAll(SECRET_FALLBACK_GLOBAL_RE)) {
+      const secret = matchedSecret(`~/${match[1]!}`, home);
+      if (secret) return secretReason(secret);
+    }
     return undefined;
   }
 

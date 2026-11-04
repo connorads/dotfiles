@@ -40,6 +40,19 @@ class TestMatches:
             # falsey bypass marker does not opt out
             "SECRETS_OK=0 cat ~/.ssh/id_rsa",
             "SECRETS_OK= cat ~/.ssh/id_rsa",
+            # other agents' tokens and CLI credentials
+            "cat ~/.codex/auth.json",
+            "cat ~/.pi/agent/auth.json",
+            "cat ~/.local/share/opencode/auth.json",
+            "cat ~/.grok/auth.json",
+            "cat ~/.local/share/amp/secrets.json",
+            "cat ~/.config/hcloud/cli.toml",
+            "xxd ~/.local/share/atuin/key",
+            "cat ~/.bb/auth.json",
+            "cat ~/.bb/auth-secret",
+            "cat ~/.bb/machine-environment-key",
+            "cat ~/.config/.wrangler/config/default.toml",
+            "cat ~/Library/Preferences/.wrangler/config/default.toml",
         ],
     )
     def test_flagged(self, command: str) -> None:
@@ -75,6 +88,11 @@ class TestNonMatches:
             # SECRETS_OK escape hatch
             "SECRETS_OK=1 cat ~/.ssh/known_hosts",
             "SECRETS_OK=true xxd ~/.aws/credentials",
+            # siblings of a listed credential file stay readable
+            "cat ~/.codex/config.toml",
+            "ls ~/.bb/thread-storage",
+            "sqlite3 ~/.local/share/atuin/history.db .tables",
+            "cat ~/.config/.wrangler/logs/latest.log",
         ],
     )
     def test_not_flagged(self, command: str) -> None:
@@ -83,6 +101,25 @@ class TestNonMatches:
     def test_bypass_scoped_to_segment(self) -> None:
         # The opt-out covers its own segment only.
         cmd = "SECRETS_OK=1 cat ~/.ssh/a && cat ~/.ssh/b"
+        assert secret_access_reason(cmd) is not None
+
+
+class TestOwnPaths:
+    OWN = (".codex/auth.json",)
+
+    def test_own_token_is_exempt(self) -> None:
+        assert secret_access_reason("cat ~/.codex/auth.json", own=self.OWN) is None
+
+    def test_other_agent_token_still_flagged(self) -> None:
+        assert secret_access_reason("cat ~/.pi/agent/auth.json", own=self.OWN) is not None
+
+    def test_exemption_is_per_path_not_per_command(self) -> None:
+        cmd = "cat ~/.codex/auth.json ~/.grok/auth.json"
+        assert secret_access_reason(cmd, own=self.OWN) is not None
+
+    def test_own_token_exempt_in_fallback(self) -> None:
+        cmd = "cat ~/.codex/auth.json 'unclosed"
+        assert secret_access_reason(cmd, own=self.OWN) is None
         assert secret_access_reason(cmd) is not None
 
 

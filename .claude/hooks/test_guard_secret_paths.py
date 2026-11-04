@@ -40,6 +40,12 @@ class TestIntegration:
         assert r.returncode == 0
         assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
+    def test_other_agent_token_denied(self) -> None:
+        # Codex's token is exempt only inside the Codex guard.
+        r = self._run("cat ~/.codex/auth.json")
+        assert r.returncode == 0
+        assert json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
     def test_bypass_marker_returns_no_output(self) -> None:
         r = self._run("SECRETS_OK=1 cat ~/.ssh/known_hosts")
         assert r.returncode == 0

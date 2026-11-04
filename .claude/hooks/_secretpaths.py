@@ -17,6 +17,10 @@ Obfuscated access (`python -c 'open(...)'`, constructed paths, `..` hops)
 evades a textual guard - the srt/native OS sandbox remains the backstop
 (two-layer model, see ~/.config/srt/AGENTS.md).
 
+Each agent's own token sits on the list too, so no agent reads another's. A
+guard passes its agent's own paths as `own`, which exempts them for that
+agent only.
+
 Escape hatch: prefix the command with `SECRETS_OK=1` (precedent: NPM_OK=1 in
 prefer-pnpm) for a deliberate, model-usable opt-out.
 
@@ -51,6 +55,18 @@ SECRET_PATHS = (
     ".config/op",
     ".kube",
     ".password-store",
+    ".codex/auth.json",
+    ".pi/agent/auth.json",
+    ".local/share/opencode/auth.json",
+    ".grok/auth.json",
+    ".local/share/amp/secrets.json",
+    ".config/hcloud",
+    ".local/share/atuin/key",
+    ".bb/auth.json",
+    ".bb/auth-secret",
+    ".bb/machine-environment-key",
+    ".config/.wrangler/config",
+    "Library/Preferences/.wrangler/config",
 )
 
 # Env marker for a deliberate opt-out (no human confirmation needed).
@@ -101,34 +117,43 @@ def _home_relative_components(candidate: str) -> list[str] | None:
     return [c for c in rel.split("/") if c not in ("", ".")]
 
 
-def _matched_secret(candidate: str) -> str | None:
-    """Secret path the candidate falls under (component-wise), or None."""
+def _matched_secret(candidate: str, own: tuple[str, ...]) -> str | None:
+    """Secret path the candidate falls under (component-wise), or None.
+
+    `own` holds the calling agent's own credential paths. An agent reads its
+    own token, so its guard passes those and still denies every other agent's.
+    """
     components = _home_relative_components(candidate)
     if not components:
         return None
+    for exempt in own:
+        exempt_components = exempt.split("/")
+        if components[: len(exempt_components)] == exempt_components:
+            return None
     for secret, secret_components in zip(SECRET_PATHS, _SECRET_COMPONENTS, strict=True):
         if components[: len(secret_components)] == secret_components:
             return secret
     return None
 
 
-def _segment_secret(segment: list[str]) -> str | None:
+def _segment_secret(segment: list[str], own: tuple[str, ...]) -> str | None:
     """First secret path any token in the segment touches, or None."""
     for tok in segment:
         # Check the whole token and any =-glued pieces (--flag=~/.ssh/x,
         # VAR=~/.ssh/x), so glued forms don't slip past.
         for piece in (tok, *tok.split("=")[1:]):
-            secret = _matched_secret(piece)
+            secret = _matched_secret(piece, own)
             if secret:
                 return secret
     return None
 
 
-def secret_access_reason(command: str) -> str | None:
+def secret_access_reason(command: str, own: tuple[str, ...] = ()) -> str | None:
     """Return why a command touches a protected secret path, or None.
 
     Commit commands are skipped so a message *mentioning* a path never trips
-    the guard. A segment carrying a non-falsey SECRETS_OK= prefix is exempt.
+    the guard. A segment carrying a non-falsey SECRETS_OK= prefix is exempt,
+    and so are paths under `own` (the calling agent's own credentials).
     """
     if _shellparse.NOT_COMMIT_RE.search(command):
         return None
@@ -138,16 +163,16 @@ def secret_access_reason(command: str) -> str | None:
         bypass = _FALLBACK_BYPASS_RE.search(command)
         if bypass and bypass.group(1) not in _BYPASS_FALSEY:
             return None
-        match = _FALLBACK_RE.search(command)
-        if match:
-            return f"touches the protected secret path ~/{match.group(1)}"
+        for match in _FALLBACK_RE.finditer(command):
+            if _matched_secret(f"~/{match.group(1)}", own):
+                return f"touches the protected secret path ~/{match.group(1)}"
         return None
 
     for segment in _shellparse.command_segments(tokens):
         bypass = _shellparse.env_assignments(segment).get(BYPASS_VAR)
         if bypass is not None and bypass not in _BYPASS_FALSEY:
             continue
-        secret = _segment_secret(segment)
+        secret = _segment_secret(segment, own)
         if secret:
             return f"touches the protected secret path ~/{secret}"
     return None

@@ -37,7 +37,23 @@ from typing import Any
 # srt paths that are single files: the contents glob (path/**) is meaningless
 # for them, so only the bare deny rule is required. Everything else is treated
 # as a directory and needs both forms.
-FILE_PATHS = frozenset({"~/.netrc", "~/.zshrc.local", "~/.docker/config.json", "~/.zshenv"})
+FILE_PATHS = frozenset(
+    {
+        "~/.netrc",
+        "~/.zshrc.local",
+        "~/.docker/config.json",
+        "~/.zshenv",
+        "~/.codex/auth.json",
+        "~/.pi/agent/auth.json",
+        "~/.local/share/opencode/auth.json",
+        "~/.grok/auth.json",
+        "~/.local/share/amp/secrets.json",
+        "~/.local/share/atuin/key",
+        "~/.bb/auth.json",
+        "~/.bb/auth-secret",
+        "~/.bb/machine-environment-key",
+    }
+)
 
 _TS_SECRET_ARRAY_RE = re.compile(
     r"export const SECRET_PATHS = \[(.*?)\] as const;?$", re.DOTALL | re.M

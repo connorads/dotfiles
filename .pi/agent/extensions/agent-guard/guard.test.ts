@@ -126,5 +126,17 @@ test("matchedSecret is component-aware", () => {
 test("SECRET_PATHS has the srt denyRead cardinality", () => {
   // Full parity with srt base.json is enforced by the secret-path-parity hk
   // step; this catches accidental local edits.
-  assert.equal(SECRET_PATHS.length, 16);
+  assert.equal(SECRET_PATHS.length, 28);
+});
+
+test("own token: pi reads its own, never another agent's", () => {
+  assert.equal(bash("cat ~/.pi/agent/auth.json"), undefined);
+  assert.equal(blockReason("read", { path: `${HOME}/.pi/agent/auth.json` }, HOME), undefined);
+  assert.equal(bash("cat ~/.pi/agent/auth.json 'unclosed"), undefined);
+  assert.ok(bash("cat ~/.codex/auth.json"));
+  assert.ok(bash("cat ~/.pi/agent/auth.json ~/.grok/auth.json"));
+  assert.ok(bash("cat ~/.codex/auth.json 'unclosed"));
+  assert.ok(blockReason("read", { path: "~/.bb/auth-secret" }, HOME));
+  assert.ok(blockReason("read", { path: "~/.config/hcloud/cli.toml" }, HOME));
+  assert.equal(blockReason("read", { path: "~/.pi/agent/settings.json" }, HOME), undefined);
 });

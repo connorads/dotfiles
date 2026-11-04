@@ -28,6 +28,17 @@ the `agent-guard` extension (`~/.pi/agent/extensions/agent-guard/`). The `secret
 hk step fails a dotfiles commit when any of those surfaces drifts from `denyRead` here - so
 edits to this list propagate (or at least block) rather than rot.
 
+## Own-token exemption
+
+The list holds every agent's own login token, so no agent reads another's. srt `denyRead`
+binds the enrolled process itself, so each tool re-allows its own token through `allowRead`
+in its overlay (`opencode.overlay.json` re-allows `~/.local/share/opencode/auth.json`).
+`allowRead` beats `denyRead` because the most specific rule wins. The guards skip their own
+agent's path: Codex `OWN_PATHS` in `guard-secret-paths-codex.py`, pi `OWN_PATHS` in `guard.ts`.
+
+There is no write twin: `denyWrite` beats any `allowWrite`, so an enrolled tool cannot rewrite
+its own token. Run its login or token refresh outside the sandbox.
+
 ## Write precedence and the denyWrite blocklist
 
 `denyWrite` takes precedence over `allowWrite` (srt emits allow rules then deny rules; Seatbelt

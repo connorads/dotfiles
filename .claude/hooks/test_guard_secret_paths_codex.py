@@ -30,6 +30,16 @@ class TestIntegration:
         assert "SECRETS_OK=1" in r.stderr
         assert r.stdout == ""
 
+    def test_own_token_exits_0(self) -> None:
+        r = self._run("cat ~/.codex/auth.json")
+        assert r.returncode == 0
+        assert r.stderr == ""
+
+    def test_other_agent_token_exits_2(self) -> None:
+        r = self._run("cat ~/.pi/agent/auth.json")
+        assert r.returncode == 2
+        assert "~/.pi/agent/auth.json" in r.stderr
+
     def test_bypass_marker_exits_0(self) -> None:
         r = self._run("SECRETS_OK=1 cat ~/.ssh/known_hosts")
         assert r.returncode == 0

@@ -13,6 +13,10 @@ export const SECRET_PATHS = [
   ".ssh", ".config/gh", ".aws", ".config/gcloud", ".netrc",
   ".config/fnox", ".fnox", "Library/Keychains", ".zshrc.local", ".docker/config.json",
   ".gnupg", ".cloudflared", ".gemini", ".config/op", ".kube", ".password-store",
+  ".codex/auth.json", ".pi/agent/auth.json", ".local/share/opencode/auth.json", ".grok/auth.json",
+  ".local/share/amp/secrets.json", ".config/hcloud", ".local/share/atuin/key", ".bb/auth.json",
+  ".bb/auth-secret", ".bb/machine-environment-key", ".config/.wrangler/config",
+  "Library/Preferences/.wrangler/config",
 ] as const
 
 const pass: Decision = { kind: "pass" }

@@ -27,6 +27,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import _secretpaths
 
+# Codex reads its own login token; every other agent's stays denied.
+OWN_PATHS = (".codex/auth.json",)
+
 
 def main() -> int:
     try:
@@ -38,7 +41,7 @@ def main() -> int:
     if not command:
         return 0
 
-    reason = _secretpaths.secret_access_reason(command)
+    reason = _secretpaths.secret_access_reason(command, own=OWN_PATHS)
     if reason:
         print(
             f"This command {reason} (srt denyRead twin; see "
