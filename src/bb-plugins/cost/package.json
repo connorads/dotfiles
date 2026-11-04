@@ -1,0 +1,51 @@
+{
+  "name": "bb-plugin-cost",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.45",
+    "bbPluginSdk": ">=0.6.37"
+  },
+  "bb": {
+    "name": "Cost",
+    "description": "Estimate what agent threads would cost at API prices, per thread and over time.",
+    "branding": {
+      "icon": "./icons/coins.svg",
+      "experimental_icons": {
+        "coins": "./icons/coins.svg"
+      }
+    },
+    "server": "./server.ts",
+    "host": "./host.ts",
+    "app": "./app.tsx",
+    "skills": [
+      "./skills/cost"
+    ]
+  },
+  "scripts": {
+    "test": "pnpm test:core",
+    "test:core": "node --experimental-strip-types --no-warnings --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": {
+    "@bb-plugins/chip": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "hono": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

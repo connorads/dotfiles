@@ -1,0 +1,14 @@
+.cost-page { display: grid; gap: 16px; max-width: 960px; margin: 0 auto; padding: 20px; overflow: auto; }
+.cost-muted { color: var(--muted-foreground); }
+.cost-toolbar { display: flex; gap: 6px; }
+.cost-toolbar button { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--muted-foreground); }
+.cost-toolbar button[aria-pressed="true"] { color: var(--foreground); background: var(--accent); }
+.cost-headline strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.cost-bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; margin: 0; padding: 0; list-style: none; border-bottom: 1px solid var(--border); }
+.cost-bars li { flex: 1; min-height: 1px; background: var(--chart-1, var(--primary)); border-radius: 2px 2px 0 0; }
+.cost-table { width: 100%; border-collapse: collapse; }
+.cost-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.cost-table tr[data-focus] { background: var(--accent); }
+.cost-num { text-align: right; font-variant-numeric: tabular-nums; }
+.cost-link { padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.cost-link:hover { text-decoration: underline; }

@@ -6,6 +6,7 @@
   "clone-repository": true,
   "composer-keys": true,
   "context-inspector": true,
+  "cost": true,
   "diff-viewer": true,
   "executor": true,
   "external-links": true,

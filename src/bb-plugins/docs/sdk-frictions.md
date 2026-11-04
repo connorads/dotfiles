@@ -1112,10 +1112,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   the generated dependencies with workspace catalogue pins and run `pnpm install`.
   The scaffold install can fail when its latest SDK pin is inside the release-age
   quarantine. Keep the quarantine and use the workspace's reviewed SDK pin.
+  For icons, declare SVGs in `bb.branding.experimental_icons` and use `<pluginId>/<name>`.
+  `branding.icon` rejects that form and takes the SVG path instead.
 - Ask: a package-manager option, an optional server entry, and an icon-name type.
+  The SDK types `BbIconName` as `string` and publishes no built-in name list, so an
+  unknown name such as `CircleDollarSign` passes the build and renders the generic bolt.
 - Status: open
 - Category: cli
-- Evidence: `spikes/model-favourites`
+- Evidence: `spikes/model-favourites`, `cost/icons`, `cache-hits/icons`
 
 ### GitHub releases have no changelog
 

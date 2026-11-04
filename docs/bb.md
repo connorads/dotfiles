@@ -28,6 +28,9 @@ Before choosing files, check `bb plugin list --json` and
 `bb settings keyboard list --json`. The usage command is
 `plugin:claude-profiles/show-usage`.
 
+The **Cost** plugin estimates API-price spend per thread and over time from provider logs.
+Read its [guide](../src/bb-plugins/cost/README.md).
+
 ## Claude account connectors
 
 BB's global machine environment sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
