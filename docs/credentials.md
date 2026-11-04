@@ -13,7 +13,7 @@ Existing credentials stay in place until their consumers pass migration tests.
 Keep application-managed OAuth sessions and SSH keys in their native stores.
 The Air's fnox contains ElevenLabs, Brave, Exa, Typesafe, FreeAgent, fal and
 Sprite Fusion. Context7, Gemini and xAI have no configured values in its shell file.
-The Mini's fnox contains ElevenLabs. Brave, Context7, Exa, Gemini and xAI have
+The Mini's fnox contains ElevenLabs and Typesafe. Brave, Context7, Exa, Gemini and xAI have
 empty assignments in its shell file.
 
 Use `fnox exec -- <command>` to decrypt credentials into a command's environment.
