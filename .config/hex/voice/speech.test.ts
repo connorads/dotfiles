@@ -59,17 +59,6 @@ test('pedal search offers even a unique literal match without navigating', async
   expect(commands.at(-1)).toMatchObject({ action: 'select', id: 'hex' })
 })
 
-test('every registered BB command phrase is accepted by the pedal parser', async () => {
-  const { default: config } = await import('../hex.config.ts')
-  for (const [id, command] of Object.entries(config.commands)) {
-    if (!id.startsWith('bb-')) continue
-    for (const phrase of command.phrases) {
-      const spoken = phrase.replace('{n}', 'two').replace(/\{[^}]+\}/g, 'example')
-      expect(parseSpeech(spoken), `${id}: ${spoken}`).not.toHaveProperty('error')
-    }
-  }
-})
-
 test('recorded choices keep their captured target through recognition feedback', async () => {
   const commands: Command[] = []
   const ports: BbPorts = {

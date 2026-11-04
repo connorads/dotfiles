@@ -127,15 +127,14 @@
 !/.config/vale/
 !/.config/vale/**
 
-# hex: HEX voice-command workspace; HEX loads hex.config.ts from this path.
-# .hex-sdk is HEX-managed (refreshed from the app bundle on host start).
+# hex: Hex loads hex.config.ts from this path; voice/ holds the BB command code.
+# AGENTS.md and hex.d.ts are Hex-managed: Hex rewrites them when they differ.
 !/.config/hex/
 /.config/hex/**
 !/.config/hex/hex.config.ts
 !/.config/hex/package.json
 !/.config/hex/bun.lock
 !/.config/hex/tsconfig.json
-!/.config/hex/AGENTS.md
 !/.config/hex/.agents/
 !/.config/hex/.agents/**
 !/.config/hex/voice/
