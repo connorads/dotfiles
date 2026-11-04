@@ -132,6 +132,8 @@
 !/.config/hex/
 /.config/hex/**
 !/.config/hex/hex.config.ts
+!/.config/hex/british.ts
+!/.config/hex/british.test.ts
 !/.config/hex/package.json
 !/.config/hex/bun.lock
 !/.config/hex/tsconfig.json

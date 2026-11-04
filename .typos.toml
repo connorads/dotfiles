@@ -7,7 +7,8 @@
 # upstream (same set as `no_reformat` in hk.pkl), and binary/font assets are
 # not prose. summon persona references are verbatim quote collections (a
 # source's own spelling is not ours to correct), and its pointer fixtures stand
-# in for those sources, garble included; lazy-lock.json is generated.
+# in for those sources, garble included; lazy-lock.json is generated. Hex's
+# british.ts builds words from deliberate stems ("categor", "memor").
 extend-exclude = [
   "vendor/.agents/skills/",
   ".config/skills/sets/",
@@ -16,6 +17,7 @@ extend-exclude = [
   ".config/skills/personal/summon/references/",
   ".config/skills/personal/summon/tests/fixtures/",
   ".config/nvim/lazy-lock.json",
+  ".config/hex/british.ts",
   "*.patch",
   "*.png",
   "*.jpg",
