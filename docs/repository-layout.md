@@ -31,7 +31,7 @@ Detail lives in each file's header comment or the linked subsystem doc.
 | [.config/vale/styles/Connorads/](../.config/vale/styles/Connorads/) | The house style rules; tests: [vale-style.bats](../.config/zsh/tests/vale-style.bats) |
 | [.oxlintrc.json](../.oxlintrc.json) | The tree's only oxlint config, type-aware rules on |
 | [.config/opencode/package.json](../.config/opencode/package.json) | OpenCode plugin development checks; `test` runs the V2 adapter suite from `src/opencode-plugins` |
-| [.config/hex/hex.config.ts](../.config/hex/hex.config.ts) | Hex transforms; Hex loads this path and reloads on save. Hex rewrites its own `AGENTS.md` and `hex.d.ts` here, untracked. BB command code: [.config/hex/voice/](../.config/hex/voice/) |
+| [.config/hex/hex.config.ts](../.config/hex/hex.config.ts) | Hex transforms; Hex loads this path and reloads on save. Hex rewrites its own `AGENTS.md` and `hex.d.ts` here, untracked. BB command code: [.config/hex/voice/](../.config/hex/voice/). Dictation vocabulary lives in the private `connorads/lexicon` repo at `~/git/lexicon`, applied with its `sync` |
 | [.npmrc](../.npmrc), [.config/pnpm/config.yaml](../.config/pnpm/config.yaml), [.bunfig.toml](../.bunfig.toml), [.config/pip/pip.conf](../.config/pip/pip.conf), [.yarnrc.yml](../.yarnrc.yml) | Per-manager quarantine and install-script block; see [docs/supply-chain.md](../docs/supply-chain.md) |
 | [.config/aube/config.toml](../.config/aube/config.toml) | aube, mise's npm backend: quarantine, trust policy, typosquat gates |
 | [.zshrc](../.zshrc) | Shell config with aliases and autoloaded helpers |
