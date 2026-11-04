@@ -1,7 +1,7 @@
 import { UnauthorizedError, type CallToolResult, type Tool } from "@modelcontextprotocol/client";
 import type { StateView } from "../contracts.ts";
 import { ExecutorConnection } from "./connection.ts";
-import { ConnectionSchema, parseConnectionUrl, resolveChoice, slugFor, type Connection, type ThreadChoice } from "./connections.ts";
+import { approvalMode, ConnectionSchema, parseConnectionUrl, resolveChoice, slugFor, type ApprovalMode, type Connection, type ThreadChoice } from "./connections.ts";
 import type { CredentialStore } from "./credentials.ts";
 import {
   discover, exchangeCode, OAuthError, pollDevice, readCallback, refresh, registerClient, revoke, startBrowser, startDevice,
@@ -16,6 +16,7 @@ type Kv = {
 };
 
 export type ToolCache = { tools: Tool[]; instructions: string | null };
+export type ToolCaches = Partial<Record<ApprovalMode, ToolCache>>;
 
 export type ServiceDeps = {
   kv: Kv;
@@ -25,7 +26,7 @@ export type ServiceDeps = {
   /** Tells windows to refetch state. */
   changed(): void;
   /** Runs when the tool list is first known or changes shape. */
-  toolsChanged(cache: ToolCache): void;
+  toolsChanged(caches: ToolCaches): void;
   /** Where the browser returns after sign-in: BB's own loopback route. */
   callbackUrl(): string;
   now?: () => number;
@@ -62,7 +63,7 @@ export class ExecutorService {
   #defaultId: string | null;
   readonly #choices: Map<string, ThreadChoice>;
   #signedIn: Set<string>;
-  #tools: ToolCache | null;
+  #tools: ToolCaches;
   readonly #signIns = new Map<string, SignIn>();
   readonly #errors = new Map<string, string>();
   readonly #endpoints = new Map<string, Promise<Endpoints>>();
@@ -74,7 +75,7 @@ export class ExecutorService {
     defaultId: string | null;
     choices: Map<string, ThreadChoice>;
     signedIn: Set<string>;
-    tools: ToolCache | null;
+    tools: ToolCaches;
   }) {
     this.#deps = deps;
     this.#now = deps.now ?? Date.now;
@@ -99,11 +100,16 @@ export class ExecutorService {
     }
     const vault = await deps.credentials.snapshot();
     const signedIn = new Set(Object.keys(vault.grants).filter((id) => connections.some((c) => c.id === id)));
-    const tools = (await deps.kv.get<ToolCache>("tools")) ?? null;
+    // Each mode owns a cache key; the model key also serves saved model connections.
+    const tools: ToolCaches = {};
+    const model = await deps.kv.get<ToolCache>("tools");
+    const browser = await deps.kv.get<ToolCache>("tools:browser");
+    if (model) tools.model = model;
+    if (browser) tools.browser = browser;
     return new ExecutorService(deps, { connections, defaultId, choices, signedIn, tools });
   }
 
-  get tools(): ToolCache | null {
+  get tools(): ToolCaches {
     return this.#tools;
   }
 
@@ -133,7 +139,7 @@ export class ExecutorService {
               expiresAt: pending.start.expiresAt,
             }),
       errors: Object.fromEntries(this.#errors),
-      toolsReady: this.#tools !== null,
+      toolsReady: Object.keys(this.#tools).length > 0,
     };
   }
 
@@ -270,17 +276,20 @@ export class ExecutorService {
     }
   }
 
-  async call(threadId: string, tool: string, args: Record<string, unknown>, signal: AbortSignal): Promise<CallToolResult> {
+  async call(threadId: string, tool: { name: string; mode: ApprovalMode }, args: Record<string, unknown>, signal: AbortSignal): Promise<CallToolResult> {
     const connection = this.#connectionForThread(threadId);
+    if (approvalMode(connection.url) !== tool.mode) {
+      throw new UserFacingError("The Executor approval mode changed. Use the tools for the selected connection in a new turn.");
+    }
     try {
-      return await this.#client(connection).callTool(tool, args, signal);
+      return await this.#client(connection).callTool(tool.name, args, signal);
     } catch (error) {
       if (!(error instanceof UnauthorizedError)) throw error;
     }
     // A 401 means Executor ran nothing, so refresh the token and try once more.
     await this.#expireAccessToken(connection.id);
     try {
-      return await this.#client(connection).callTool(tool, args, signal);
+      return await this.#client(connection).callTool(tool.name, args, signal);
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         throw new UserFacingError(`Executor rejected the sign-in for "${connection.name}". Sign in again from Settings → Executor.`);
@@ -289,19 +298,30 @@ export class ExecutorService {
     }
   }
 
-  /** Reads the tool list from a signed-in connection, preferring the default. */
+  /** Each approval mode owns its schemas and instructions. Never copy a model resume into browser mode. */
   async refreshTools(): Promise<void> {
+    const before = JSON.stringify(this.#tools);
     const candidates = this.#connections
       .filter((c) => this.#signedIn.has(c.id))
       .sort((a, b) => Number(b.id === this.#defaultId) - Number(a.id === this.#defaultId));
-    const connection = candidates[0];
-    if (!connection) return;
-    const client = this.#client(connection);
-    const cache: ToolCache = { tools: await client.listTools(), instructions: (await client.instructions()) ?? null };
-    const before = this.#tools?.tools.map((t) => t.name).join(",");
-    await this.#deps.kv.set("tools", cache);
-    this.#tools = cache;
-    if (before !== cache.tools.map((t) => t.name).join(",")) this.#deps.toolsChanged(cache);
+    for (const mode of ["model", "browser"] as const) {
+      const connection = candidates.find(c => approvalMode(c.url) === mode);
+      if (!connection) continue;
+      try {
+        const client = this.#client(connection);
+        const cache: ToolCache = { tools: await client.listTools(), instructions: (await client.instructions()) ?? null };
+        await this.#deps.kv.set(mode === "model" ? "tools" : "tools:browser", cache);
+        this.#tools[mode] = cache;
+      } catch (error) {
+        this.#deps.log.warn(`tool list (${mode}): ${describe(error)}`);
+      }
+    }
+    if (before !== JSON.stringify(this.#tools)) this.#deps.toolsChanged(this.#tools);
+  }
+
+  modeFor(threadId: string): ApprovalMode | null {
+    const resolved = resolveChoice(this.choiceFor(threadId), this.#defaultId, this.#connections);
+    return resolved.kind === "connection" ? approvalMode(resolved.connection.url) : null;
   }
 
   async close(): Promise<void> {
@@ -354,7 +374,7 @@ export class ExecutorService {
     await this.#dropClient(connection.id);
     this.#deps.changed();
     this.#deps.log.info(`signed in to ${connection.name}`);
-    if (this.#tools === null) await this.refreshTools().catch((e: unknown) => this.#deps.log.warn(`tool list: ${describe(e)}`));
+    await this.refreshTools();
   }
 
   #expire(id: string, controller: AbortController): void {

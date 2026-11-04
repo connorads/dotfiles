@@ -38,8 +38,8 @@ async function setup(options: { autoApprove?: boolean; guardDevice?: boolean } =
     return host.harness.behavior.fetchHttp("GET", `/oauth/callback${back.search}`);
   };
   /** Adds and signs in to a connection in the browser. */
-  const connect = async (name: string, id: string) => {
-    const added = await rpc<{ ok: boolean; id: string }>("add", { name, url: connectionUrl(id) });
+  const connect = async (name: string, id: string, mode: "model" | "browser" = "model") => {
+    const added = await rpc<{ ok: boolean; id: string }>("add", { name, url: connectionUrl(id) + (mode === "browser" ? "&elicitation_mode=browser" : "") });
     assert.ok(added.ok);
     await rpc("signIn", { id: added.id, method: "browser" });
     const page = await approveInBrowser(added.id);
@@ -103,7 +103,7 @@ test("browser sign-in stores the grant, learns the tools and asks for one reload
   await t.connect("Coding", "c_1");
   assert.equal(t.reloads(), 1);
   await t.reload();
-  assert.deepEqual(await t.tools(), ["executor_search", "executor_execute", "executor_chart", "executor_whoami"]);
+  assert.deepEqual(await t.tools(), ["executor_search", "executor_execute", "executor_resume", "executor_chart", "executor_whoami"]);
   const config = await t.harness.behavior.resolveAgentConfiguration(makePluginAgentConfigurationContext());
   assert.match(config.instructions ?? "", new RegExp(FAKE_INSTRUCTIONS));
   await t.harness.lifecycle.dispose();
@@ -297,4 +297,125 @@ test("speaks stateless MCP 2026-07-28 with the token only in the header", async 
   assert.ok(mcp.every((r) => !r.headers.has("mcp-session-id")));
   assert.ok(mcp.every((r) => /^Bearer at_\d+$/.test(r.headers.get("authorization") ?? "") && !r.url.includes("at_")));
   await t.harness.lifecycle.dispose();
+});
+
+
+test("model and browser connections retain separate tools, instructions and OAuth resources", async () => {
+  const t = await setup();
+  try {
+    const model = await t.connect("Model", "c_model");
+    const browser = await t.connect("Browser", "c_browser", "browser");
+    await t.reload();
+    await t.rpc("setThreadChoice", {threadId: "model", choice: {kind: "connection", id: model}});
+    await t.rpc("setThreadChoice", {threadId: "browser", choice: {kind: "connection", id: browser}});
+    assert.ok((await t.tools("model")).includes("executor_resume"));
+    assert.ok(!(await t.tools("model")).includes("executor_browser_resume"));
+    assert.ok((await t.tools("browser")).includes("executor_browser_resume"));
+    assert.ok(!(await t.tools("browser")).includes("executor_resume"));
+    const configuration = await t.harness.behavior.resolveAgentConfiguration(makePluginAgentConfigurationContext({thread: {id: "browser"} as never}));
+    assert.match(configuration.instructions ?? "", /requestId only/);
+    const definitions = t.harness.inspection.registrations.agentTools;
+    const browserTool = definitions.find(tool => tool.name === "executor_browser_resume");
+    assert.ok(browserTool);
+    assert.deepEqual((browserTool.inputSchema as {required: string[]}).required, ["requestId"]);
+    const rawState = await t.state();
+    assert.match(rawState.connections.find(c => c.id === browser)?.url ?? "", /connection=c_browser&elicitation_mode=browser/);
+    const stale = await t.harness.behavior.callAgentTool("executor_resume", {requestId: "apr_fixture", response: {action: "accept"}}, {threadId: "browser"});
+    assert.ok(typeof stale !== "string" && stale.isError);
+    const wrong = await t.harness.behavior.callAgentTool("executor_browser_resume", {requestId: "apr_fixture"}, {threadId: "model"});
+    assert.ok(typeof wrong !== "string" && wrong.isError);
+    await t.rpc("setThreadChoice", {threadId: "browser", choice: {kind: "off"}});
+    assert.deepEqual(await t.tools("browser"), []);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("browser approval links survive BB, stay pending, and resume once without repeating execute", async () => {
+  const t = await setup();
+  try {
+    await t.connect("Browser", "c_browser", "browser");
+    await t.reload();
+    const call = async (name: string, args: Record<string, unknown>) => {
+      const result = await t.harness.behavior.callAgentTool(name, args, {threadId: "browser"});
+      assert.ok(typeof result !== "string" && !result.isError, JSON.stringify(result));
+      return JSON.parse((result.content[0] as {text: string}).text);
+    };
+    for (const decision of ["accept", "decline", "expire"] as const) {
+      const pending = await call("executor_browser_execute", {code: "needs-approval"});
+      assert.match(pending.approvalUrl, /^https:\/\/executor.test\/approve\//);
+      const before = t.executor.effects();
+      assert.equal((await call("executor_browser_resume", {requestId: pending.requestId})).status, "approval-required");
+      assert.equal(t.executor.effects(), before);
+      if (decision === "expire") t.executor.expireApproval();
+      else t.executor.answerApproval(decision);
+      const finished = await call("executor_browser_resume", {requestId: pending.requestId});
+      assert.equal(finished.status, decision === "expire" ? "unavailable" : "completed");
+      assert.equal(t.executor.effects(), before + Number(decision === "accept"));
+      assert.equal((await call("executor_browser_resume", {requestId: pending.requestId})).status, "unavailable");
+      assert.equal(t.executor.effects(), before + Number(decision === "accept"));
+    }
+    const executions = await Promise.all(t.executor.requests.filter(r => r.method === "POST" && new URL(r.url).pathname === "/mcp").map(r => r.clone().json()));
+    assert.equal(executions.filter(r => r.method === "tools/call" && r.params?.name === "execute").length, 3);
+    assert.ok(executions.filter(r => r.method === "tools/call" && r.params?.name === "resume").every(r => !Object.hasOwn(r.params.arguments, "response")));
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("a same-name tool description change refreshes registration once", async () => {
+  const t = await setup();
+  try {
+    await t.connect("Model", "c_model");
+    await t.reload();
+    const before = t.reloads();
+    t.executor.setResumeDescription("Updated resume instructions.");
+    await t.reload();
+    for (let i = 0; i < 200 && t.reloads() === before; i++) await new Promise(resolve => setTimeout(resolve, 2));
+    assert.equal(t.reloads(), before + 1);
+    await t.reload();
+    assert.equal(t.harness.inspection.registrations.agentTools.find(tool => tool.name === "executor_resume")?.description, "Updated resume instructions.");
+    assert.equal(t.reloads(), before + 1);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+
+test("schema-only and instruction-only changes reload the matching registration", async () => {
+  const t = await setup();
+  try {
+    await t.connect("Model", "c_model");
+    await t.reload();
+    for (const change of ["schema", "instructions"] as const) {
+      const before = t.reloads();
+      if (change === "schema") t.executor.addResumeField();
+      else t.executor.setInstructions("Updated server-only instructions.");
+      await t.reload();
+      for (let i = 0; i < 200 && t.reloads() === before; i++) await new Promise(resolve => setTimeout(resolve, 2));
+      assert.equal(t.reloads(), before + 1);
+      await t.reload();
+      if (change === "schema") {
+        const schema = t.harness.inspection.registrations.agentTools.find(tool => tool.name === "executor_resume")?.inputSchema as {properties: Record<string, unknown>};
+        assert.ok(Object.hasOwn(schema.properties, "note"));
+      } else {
+        const configuration = await t.harness.behavior.resolveAgentConfiguration(makePluginAgentConfigurationContext());
+        assert.match(configuration.instructions ?? "", /Updated server-only instructions/);
+      }
+    }
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("a failed browser refresh keeps cached browser tools and refreshed model tools", async () => {
+  const t = await setup();
+  try {
+    await t.connect("Model", "c_model");
+    const browser = await t.connect("Browser", "c_browser", "browser");
+    await t.reload();
+    t.executor.setBrowserOffline();
+    t.executor.setResumeDescription("Refreshed while browser is unavailable.");
+    const before = t.reloads();
+    await t.reload();
+    for (let i = 0; i < 200 && t.reloads() === before; i++) await new Promise(resolve => setTimeout(resolve, 2));
+    assert.equal(t.reloads(), before + 1);
+    await t.reload();
+    assert.equal(await t.whoami("model"), "c_model");
+    assert.equal(t.harness.inspection.registrations.agentTools.find(tool => tool.name === "executor_resume")?.description, "Refreshed while browser is unavailable.");
+    await t.rpc("setThreadChoice", {threadId: "browser", choice: {kind: "connection", id: browser}});
+    assert.ok((await t.tools("browser")).includes("executor_browser_resume"));
+  } finally { await t.harness.lifecycle.dispose(); }
 });

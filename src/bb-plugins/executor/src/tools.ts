@@ -7,19 +7,19 @@ const PREFIX = "executor_";
 const MAX_NAME = 64;
 
 /** Provider tool names must match ^[a-zA-Z0-9_-]{1,64}$. */
-export function bbToolName(upstream: string): string {
-  return (PREFIX + upstream.replace(/[^a-zA-Z0-9_-]/g, "_")).slice(0, MAX_NAME);
+export function bbToolName(upstream: string, mode: "model" | "browser" = "model"): string {
+  return (PREFIX + (mode === "browser" ? "browser_" : "") + upstream.replace(/[^a-zA-Z0-9_-]/g, "_")).slice(0, MAX_NAME);
 }
 
 export type ToolBinding = { bbName: string; upstream: Tool };
 
 /** Pairs each upstream tool with its BB name; drops later duplicates. */
-export function bindTools(tools: readonly Tool[]): { bindings: ToolBinding[]; skipped: string[] } {
+export function bindTools(tools: readonly Tool[], mode: "model" | "browser"): { bindings: ToolBinding[]; skipped: string[] } {
   const seen = new Set<string>();
   const bindings: ToolBinding[] = [];
   const skipped: string[] = [];
   for (const upstream of tools) {
-    const bbName = bbToolName(upstream.name);
+    const bbName = bbToolName(upstream.name, mode);
     if (seen.has(bbName)) {
       skipped.push(upstream.name);
       continue;

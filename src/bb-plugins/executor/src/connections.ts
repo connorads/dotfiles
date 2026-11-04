@@ -7,15 +7,20 @@ export const ConnectionSchema = z.object({
 });
 export type Connection = z.infer<typeof ConnectionSchema>;
 
+export type ApprovalMode = "model" | "browser";
+
+export function approvalMode(url: string): ApprovalMode {
+  return new URL(url).searchParams.get("elicitation_mode") === "browser" ? "browser" : "model";
+}
+
 /** A thread follows the default, names one connection, or turns Executor off. */
 export type ThreadChoice = { kind: "default" } | { kind: "connection"; id: string } | { kind: "off" };
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
- * Accepts the URL from Executor's Connect page. Keeps only `connection`, so
- * the URL matches the resource Executor binds the grant to. Other approval
- * modes are refused because this plugin advertises no elicitation support.
+ * Accepts the URL from Executor's Connect page. Keeps `connection` and browser approval delivery, so
+ * the URL matches the resource Executor binds the grant to. Native mode is refused because the plugin has no form elicitation support.
  */
 export function parseConnectionUrl(raw: string): { ok: true; url: URL } | { ok: false; message: string } {
   const url = URL.parse(raw.trim());
@@ -28,12 +33,13 @@ export function parseConnectionUrl(raw: string): { ok: true; url: URL } | { ok: 
   }
   if (url.username || url.password) return { ok: false, message: "The URL must not contain credentials." };
   const mode = url.searchParams.get("elicitation_mode");
-  if (mode && mode !== "model") {
-    return { ok: false, message: "Use a connection with the default approval mode, not native or browser." };
+  if (mode && mode !== "model" && mode !== "browser") {
+    return { ok: false, message: "Use model or browser approval mode. Native approval mode is unsupported." };
   }
   const connection = url.searchParams.get("connection");
   url.search = "";
   if (connection) url.searchParams.set("connection", connection);
+  if (mode === "browser") url.searchParams.set("elicitation_mode", mode);
   url.hash = "";
   return { ok: true, url };
 }

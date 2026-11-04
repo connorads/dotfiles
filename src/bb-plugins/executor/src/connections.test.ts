@@ -48,3 +48,12 @@ test("tool names fit provider rules", () => {
   assert.equal(bbToolName("a.b c"), "executor_a_b_c");
   assert.equal(bbToolName("x".repeat(100)).length, 64);
 });
+
+
+test("keeps browser delivery and scope, rejects unsupported modes", () => {
+  const browser = parseConnectionUrl("https://executor.test/mcp?tracking=drop&elicitation_mode=browser&connection=c_1#fragment");
+  assert.ok(browser.ok);
+  assert.equal(browser.url.href, "https://executor.test/mcp?connection=c_1&elicitation_mode=browser");
+  assert.ok(!parseConnectionUrl("https://executor.test/mcp?elicitation_mode=native").ok);
+  assert.ok(!parseConnectionUrl("https://executor.test/mcp?elicitation_mode=typo").ok);
+});

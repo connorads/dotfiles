@@ -32,13 +32,25 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
   let autoApprove = options.autoApprove ?? true;
   /** Tests call sequentially, so the request being served names the connection. */
   let currentConnection: string | null = null;
+  let browserMode = false;
+  let resumeDescription = "Resume a program.";
+  let instructions: string | undefined;
+  let extraResumeField = false;
+  let browserOffline = false;
+  let effects = 0;
+  let approval: { answer?: "accept" | "decline" } | undefined;
+  const pending = () => structured({ status: "approval-required", requestId: "apr_fixture", approvalUrl: `${FAKE_ORIGIN}/approve/apr_fixture` });
 
   const handler = createMcpHandler(() => {
-    const server = new McpServer({ name: "fake-executor", version: "0.0.0" }, { instructions: FAKE_INSTRUCTIONS });
+    const server = new McpServer({ name: "fake-executor", version: "0.0.0" }, { instructions: instructions ?? (browserMode ? "Show approvalUrl. Resume with requestId only." : FAKE_INSTRUCTIONS) });
     server.registerTool("search", { description: "Find tools.", inputSchema: z.object({ query: z.string() }) },
       async ({ query }) => structured({ items: [{ path: `tools.linear.${query}` }] }));
     server.registerTool("execute", { description: "Run a program.", inputSchema: z.object({ code: z.string() }) },
       async ({ code }, ctx) => {
+        if (browserMode && code === "needs-approval") {
+          approval = {};
+          return pending();
+        }
         if (code === "fail") return { content: [{ type: "text", text: "boom" }], isError: true };
         if (code === "hang") {
           await new Promise((resolve) => ctx.mcpReq.signal.addEventListener("abort", resolve, { once: true }));
@@ -46,6 +58,17 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
         }
         return structured({ status: "completed", execution: { ok: true, result: code } });
       });
+    server.registerTool("resume", {
+      description: resumeDescription,
+      inputSchema: browserMode ? z.object({ requestId: z.string() }) : z.object({ requestId: z.string(), response: z.object({ action: z.string() }), ...(extraResumeField ? {note: z.string().optional()} : {}) }),
+    }, async () => {
+      if (!approval) return structured({ status: "unavailable" });
+      if (!approval.answer) return pending();
+      const accepted = approval.answer === "accept";
+      approval = undefined;
+      if (accepted) effects++;
+      return structured({ status: "completed", execution: { ok: accepted } });
+    });
     server.registerTool("chart", { description: "Return an image.", inputSchema: z.object({}) },
       async () => ({ content: [{ type: "image", data: "iVBORw0KGgo=", mimeType: "image/png" }] }));
     server.registerTool("whoami", { description: "Name the connection.", inputSchema: z.object({}) },
@@ -140,6 +163,8 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
       // A grant serves only the URL it was issued for, as Executor's deliveryRefusal does.
       if (!grant || grant.expired || grant.resource !== url.href) return new Response("unauthorized", { status: 401 });
       currentConnection = url.searchParams.get("connection");
+      browserMode = url.searchParams.get("elicitation_mode") === "browser";
+      if (browserMode && browserOffline) return new Response("unavailable", {status: 503});
       return handler.fetch(request);
     }
     return new Response("not found", { status: 404 });
@@ -170,6 +195,13 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
 
   return {
     fetch,
+    answerApproval(answer: "accept" | "decline") { if (!approval) throw new Error("No pending review"); approval.answer = answer; },
+    expireApproval() { approval = undefined; },
+    effects: () => effects,
+    setResumeDescription(value: string) { resumeDescription = value; },
+    setInstructions(value: string) { instructions = value; },
+    addResumeField() { extraResumeField = true; },
+    setBrowserOffline() { browserOffline = true; },
     authorize,
     requests,
     clients,

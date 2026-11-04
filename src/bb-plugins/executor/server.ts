@@ -3,7 +3,8 @@ import { rpcContract, STATE_CHANGED, THREAD_CHANGED, threadChoice } from "./cont
 import { CallCancelledError } from "./src/connection.ts";
 import { CredentialStore, vaultSettingSchema } from "./src/credentials.ts";
 import type { FetchLike } from "./src/oauth.ts";
-import { describe, ExecutorService, UserFacingError, type ToolCache } from "./src/service.ts";
+import { describe, ExecutorService, UserFacingError, type ToolCache, type ToolCaches } from "./src/service.ts";
+import type { ApprovalMode } from "./src/connections.ts";
 import { bindTools, errorResult, toBbResult } from "./src/tools.ts";
 
 const MAX_INSTRUCTIONS = 4096;
@@ -44,7 +45,7 @@ async function load(bb: BbPluginApi, options: Options) {
     // After the current handler returns, so the reload does not dispose it mid-call.
     setTimeout(() => void bb.sdk.plugins.reload({ pluginId: bb.pluginId }).catch((e: unknown) => log.warn(`reload: ${describe(e)}`)), 0);
   });
-  const toolsAtLoad = new Set<string>();
+  let toolsAtLoad = "";
   // Background work can outlive a reload; the old API handle must not be touched then.
   let disposed = false;
   const live = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
@@ -58,9 +59,8 @@ async function load(bb: BbPluginApi, options: Options) {
     fetch: options.fetch ?? fetch,
     log,
     changed: live(() => bb.realtime.publish(STATE_CHANGED, null)),
-    toolsChanged: live((cache: ToolCache) => {
-      const names = cache.tools.map((t) => t.name);
-      if (names.length !== toolsAtLoad.size || names.some((n) => !toolsAtLoad.has(n))) reload();
+    toolsChanged: live((caches: ToolCaches) => {
+      if (JSON.stringify(caches) !== toolsAtLoad) reload();
     }),
     callbackUrl: () => `${bb.server.loopbackBaseUrl}/api/v1/plugins/${bb.pluginId}/http${CALLBACK_PATH}`,
     ...(options.sleep ? { sleep: options.sleep } : {}),
@@ -70,9 +70,15 @@ async function load(bb: BbPluginApi, options: Options) {
     return service.close();
   });
 
-  const toolNames = registerTools(bb, service, service.tools);
-  for (const name of service.tools?.tools.map((t) => t.name) ?? []) toolsAtLoad.add(name);
-  const instructions = agentInstructions(service.tools?.instructions ?? null);
+  const toolNames = {
+    model: registerTools(bb, service, service.tools.model, "model"),
+    browser: registerTools(bb, service, service.tools.browser, "browser"),
+  };
+  toolsAtLoad = JSON.stringify(service.tools);
+  const instructions = {
+    model: agentInstructions(service.tools.model?.instructions ?? null, "model"),
+    browser: agentInstructions(service.tools.browser?.instructions ?? null, "browser"),
+  };
   bb.experimental_hooks.on("message.dispatch", async (ctx) => {
     const submission = ctx.experimental_submission;
     if (submission?.pluginId !== bb.pluginId) return { action: "proceed" };
@@ -84,11 +90,10 @@ async function load(bb: BbPluginApi, options: Options) {
     }
     return { action: "proceed" };
   });
-  bb.agents.configure((ctx) => ({
-    tools: service.choiceFor(ctx.thread.id).kind === "off" ? [] : toolNames,
-    skills: [],
-    instructions,
-  }));
+  bb.agents.configure((ctx) => {
+    const mode = service.modeFor(ctx.thread.id);
+    return { tools: mode ? toolNames[mode] : [], skills: [], instructions: mode ? instructions[mode] : "" };
+  });
 
   bb.rpc.register(rpcContract, {
     state: async () => service.state(),
@@ -115,12 +120,12 @@ async function load(bb: BbPluginApi, options: Options) {
 
   // Never block load on the network: tools come from the cache, refreshed here.
   void service.refreshTools().catch((e: unknown) => log.warn(`tool list: ${describe(e)}`));
-  bb.log.info(`loaded with ${toolNames.length} Executor tools`);
+  bb.log.info(`loaded with ${toolNames.model.length + toolNames.browser.length} Executor tools`);
 }
 
-function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCache | null): string[] {
+function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCache | undefined, mode: ApprovalMode): string[] {
   if (!cache) return [];
-  const { bindings, skipped } = bindTools(cache.tools);
+  const { bindings, skipped } = bindTools(cache.tools, mode);
   if (skipped.length > 0) bb.log.warn(`skipped tools whose BB names collide: ${skipped.join(", ")}`);
   for (const { bbName, upstream } of bindings) {
     bb.agents.registerTool({
@@ -130,7 +135,7 @@ function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCac
       presentation: { label: { pending: `Running Executor ${upstream.name}`, completed: `Ran Executor ${upstream.name}` } },
       async execute(params, ctx) {
         try {
-          return toBbResult(await service.call(ctx.threadId, upstream.name, asArguments(params), ctx.signal));
+          return toBbResult(await service.call(ctx.threadId, { name: upstream.name, mode }, asArguments(params), ctx.signal));
         } catch (error) {
           if (error instanceof CallCancelledError || error instanceof UserFacingError) return errorResult(error.message);
           return errorResult(`Executor ${upstream.name} failed: ${describe(error)}`);
@@ -141,11 +146,13 @@ function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCac
   return bindings.map((b) => b.bbName);
 }
 
-function agentInstructions(server: string | null): string {
-  const lead = "Executor tools carry the `executor_` prefix. The person picks which Executor connection this thread uses.";
+function agentInstructions(server: string | null, mode: ApprovalMode): string {
+  const prefix = mode === "browser" ? "executor_browser_" : "executor_";
+  const lead = `Executor tools carry the \`${prefix}\` prefix. The person picks which Executor connection this thread uses.`
+    + (mode === "browser" ? " Show approvalUrl for approval or input. The person answers in their signed-in browser. Call executor_browser_resume with requestId only; never submit a decision yourself." : "");
   const text = server ? `${lead}\n\n${server}` : lead;
   if (text.length <= MAX_INSTRUCTIONS) return text;
-  const note = "\n\n[Truncated. Call executor_skills for the full guide.]";
+  const note = `\n\n[Truncated. Call ${prefix}skills for the full guide.]`;
   return text.slice(0, MAX_INSTRUCTIONS - note.length) + note;
 }
 

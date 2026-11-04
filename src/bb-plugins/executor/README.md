@@ -46,8 +46,8 @@ flowchart LR
 ```
 
 - **Connection**: a name and the MCP URL from Executor's Connect page. The
-  plugin keeps only its `connection` parameter, which is what Executor binds a
-  sign-in to.
+  plugin keeps its `connection` and optional `elicitation_mode=browser`
+  parameters, which Executor binds the sign-in to.
 - **Sign-in**: OAuth authorization code with PKCE (S256). The browser returns
   to BB's own loopback route, `/api/v1/plugins/executor/http/oauth/callback`,
   which accepts a navigation with no `Origin` and checks a single-use `state`
@@ -56,10 +56,11 @@ flowchart LR
   it: a self-hosted Executor behind an access proxy may keep
   `device-authorization` behind sign-in, which leaves only the browser flow.
   Executor API keys are not used: they ignore connection limits.
-- **Thread choice**: kept in plugin storage, not thread metadata, so an agent
-  cannot move its own thread to a broader connection. All connections expose
-  the same tools, so a change applies on the thread's next call with no restart.
-  Turning a thread off also removes the tools from its next session.
+- **Thread choice**: kept in plugin storage. This selector is a routing preference,
+  not a security boundary. An agent with BB CLI or RPC access can change it.
+  Connections with the same approval mode share tool schemas. Model and browser
+  modes use separate tool names, schemas and instructions. Turning a thread off
+  also removes the tools from its next session.
 
 ## Behaviour
 
@@ -69,16 +70,49 @@ flowchart LR
 - A 401 means Executor ran nothing, so the plugin refreshes and retries once.
   Any other failure is never retried, because a retry could repeat side
   effects. Calls time out after 330 s, above Executor's 5-minute program limit.
-- The tool list is cached. The plugin reloads itself once when it first learns
-  the list or the list changes; it never waits on the network while loading.
+- Tool schemas and instructions are cached separately for model and browser
+  approval modes. The plugin reloads when either changes, including changes
+  that keep the same tool names. Loading never waits on the network.
 - MCP `2026-07-28` (stateless) through `@modelcontextprotocol/client`, with
   fallback to older revisions. Each result's JSON goes to the agent once.
 
 ## Approvals
 
-Executor asks before tools its apps mark as needing approval. The result has
-`status: "approval-required"`, and the agent must ask you before it calls
-`executor_resume`. BB does not yet show its own approval form.
+Approval delivery is optional per connection. Existing URLs use Executor's
+model mode. The agent presents an approval request and submits your answer
+with `executor_resume`.
+
+For browser delivery:
+
+1. Copy the scoped connection URL from Executor's Connect page.
+2. Append `&elicitation_mode=browser` when the URL already has a query, or
+   `?elicitation_mode=browser` for a plain `/mcp` URL.
+3. Add it as a separate connection in Settings → Executor and sign in.
+   Executor fixes approval mode in the new OAuth grant. Editing an issued
+   grant's URL does not change its mode.
+4. Select the browser connection. If a tool requests approval or input, open
+   its `approvalUrl`, sign in to Executor and answer there. Desktop and phone
+   use the same web flow, subject to the deployment's sign-in requirements.
+
+Browser connections expose `executor_browser_*` tools. Their resume tool takes
+only `requestId` and collects the answer saved in the browser. Model connections
+keep `executor_*` tools and their existing schemas. A tool from the wrong mode
+fails before reaching Executor. Start a new turn after changing approval modes
+so the agent receives the matching tools and instructions.
+
+```mermaid
+flowchart LR
+  Agent[Agent requests tool] --> Pending[Executor saves approval request]
+  Pending --> Browser[Person opens approvalUrl and answers]
+  Browser --> Resume[Agent resumes with requestId]
+  Resume --> Executor[Executor continues the saved call]
+```
+
+Browser mode changes where approval appears. App tool policies determine which
+actions request approval. It does not require approval for every write or stop
+connection switching. An agent that can operate the signed-in browser may also
+submit approval. BB does not show its own approval form. Native elicitation mode
+is unsupported.
 
 ## Checks
 
