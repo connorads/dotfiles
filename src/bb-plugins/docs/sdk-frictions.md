@@ -1171,6 +1171,24 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Evidence: installed `NewThreadComposer` project membership and effective-project
   calculation; Clone Repository live check and delayed-project-list test.
 
+### Workflow pre-call failures can disappear from call history
+
+- Found: 2026-10-31, built-in Workflows plugin
+- Wanted: account for every attempted branch in a parallel research workflow.
+- Gap: a five-branch research fan-out returned only four persisted call rows.
+  The next persisted call index skipped the missing branch. The run succeeded,
+  and compact status reported no failed calls. The missing branch selected a
+  different provider. The cause was not established from bounded history.
+- Workaround: compare expected labels and output files with persisted history.
+  Mark gaps explicitly and run the missing research through its normal CLI.
+- Ask: persist attempted calls before selection/preflight, or expose rejected
+  calls and their reasons in history and compact status.
+- Status: observed missing diagnostics; root cause unconfirmed
+- Category: app-bug
+- Evidence: validated source had five research labels; history contained four
+  research calls, no call index 4, and nine successful calls overall. The
+  provider's CLI completed the missing public-search task separately.
+
 ## Unconfirmed signals
 
 - BB does not restart a running Claude process when provider env changes. (@thread:thr_7m6n8hipb3)
