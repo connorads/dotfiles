@@ -302,6 +302,12 @@
       "skillPath": "skills/typesafe-ai/SKILL.md",
       "computedHash": "9cd84c5e535dec8dec59917c110f9c00b4a61faadb86b432ec7e41051170af12"
     },
+    "untangle-codebase": {
+      "source": "caldoai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/untangle-codebase/SKILL.md",
+      "computedHash": "d5e9e1c4a1f30f34c0120dea773d0170004d6c19ef5e8f236c35773bd6c5bdbc"
+    },
     "varlock": {
       "source": "dmno-dev/varlock",
       "ref": "varlock@1.20.0",
