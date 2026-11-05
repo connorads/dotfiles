@@ -200,3 +200,70 @@ def test_429_is_reported_as_quota(
     res = run(url, codex_home, "a fox", "-o", str(tmp_path / "f.png"))
     assert res.returncode != 0
     assert "quota" in res.stderr
+
+
+def test_gif_sends_output_format_and_frame_controls(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path
+) -> None:
+    state, url = backend
+    out = tmp_path / "loop.gif"
+    res = run(
+        url,
+        codex_home,
+        "a bouncing ball",
+        "-o",
+        str(out),
+        "--gif",
+        "--frames",
+        "4",
+        "--frame-ms",
+        "250",
+    )
+    assert res.returncode == 0, res.stderr
+    [req] = state.requests
+    assert req["body"]["output_format"] == "gif"
+    assert req["body"]["frame_count"] == 4
+    assert req["body"]["frame_duration_ms"] == 250
+    assert json.loads(res.stdout)["mode"] == "generate"
+
+
+def test_gif_defaults_leave_frame_controls_to_the_server(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path
+) -> None:
+    state, url = backend
+    res = run(url, codex_home, "a bouncing ball", "-o", str(tmp_path / "loop.gif"), "--gif")
+    assert res.returncode == 0, res.stderr
+    [req] = state.requests
+    assert req["body"]["output_format"] == "gif"
+    assert "frame_count" not in req["body"]
+    assert "frame_duration_ms" not in req["body"]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["-o", "loop.png", "--gif"],
+        ["-o", "loop.gif"],
+        ["-o", "loop.gif", "--gif", "--frames", "17"],
+        ["-o", "loop.gif", "--gif", "--frame-ms", "10"],
+        ["-o", "img.png", "--frames", "4"],
+    ],
+)
+def test_gif_arguments_are_validated_before_any_request(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path, args: list[str]
+) -> None:
+    state, url = backend
+    args = [str(tmp_path / a) if a.startswith(("loop", "img")) else a for a in args]
+    res = run(url, codex_home, "a bouncing ball", *args)
+    assert res.returncode == 2
+    assert state.requests == []
+
+
+def test_gif_not_enabled_is_reported_as_rollout(
+    backend: tuple[Backend, str], codex_home: Path, tmp_path: Path
+) -> None:
+    state, url = backend
+    state.fail = (400, {"detail": "GIF output is not enabled for this request."})
+    res = run(url, codex_home, "a bouncing ball", "-o", str(tmp_path / "loop.gif"), "--gif")
+    assert res.returncode != 0
+    assert "not enabled for this account" in res.stderr

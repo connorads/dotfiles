@@ -20,7 +20,8 @@ user for an OpenAI API key for this.
 
 ```bash
 scripts/codex_imagegen.py "<prompt>" -o <out.png> [--quality low|medium|high|auto] \
-  [--background auto|transparent|opaque] [-r <image> ...] [--force]
+  [--background auto|transparent|opaque] [-r <image> ...] [--force] \
+  [--gif [--frames 2-16] [--frame-ms 20-2000]]
 ```
 
 - It prints one JSON line (`path`, `mode`, `size`, `quality`, `background`,
@@ -40,8 +41,8 @@ scripts/codex_imagegen.py "<prompt>" -o <out.png> [--quality low|medium|high|aut
   back at about 2.33:1 (1916x821). The ratio is followed roughly and the output
   is not a standard size, so resize or crop afterwards to hit exact pixels (for
   example `sips -z`).
-- **Quality appears capped at `medium` on ChatGPT sign-ins.** `low` is
-  honoured, but `high` came back as `medium` (checked 2026-09-23). The response
+- **`high` is not honoured on ChatGPT sign-ins.** `low` is honoured, but
+  `high` came back as `medium` (2026-09-23) and as `low` (2026-11-05). The response
   JSON reports the tier you actually got. Use `low` for drafts and iteration,
   and `auto` for finals.
 - `--background transparent` returns real alpha, but that alpha is soft: the
@@ -58,6 +59,31 @@ scripts/codex_imagegen.py "<prompt>" -o <out.png> [--quality low|medium|high|aut
   (`magick in.jpg -depth 8 -strip ref.png`).
 - `quality: auto` on an edit sometimes returns `low`; check the JSON and rerun
   a final asset that came back `low`.
+
+## Animated GIFs
+
+`--gif` asks the server to assemble a looping GIF. `-o` must end in `.gif`.
+It sends the same fields as Codex's `image_gen` tool: `output_format: "gif"`,
+plus `frame_count` and `frame_duration_ms` when given (server defaults: 9
+frames at 200 ms).
+
+- **Not enabled for this sign-in yet (checked 2026-11-05).** The server
+  answers `400 GIF output is not enabled for this request`. Codex 0.166 has
+  no GIF flag either: `image_generation_animation` exists only on Codex
+  `main`. Until it works, make the frames as PNG edits of one base image (see
+  below) and join them with `magick -delay 20 -loop 0 f*.png out.gif`.
+- To change a GIF, do not pass the GIF as `-r`. Split its frames into a
+  spritesheet with equal cells in a regular grid, pass that, and set `--gif`.
+  This is the procedure Codex's tool description gives the model.
+
+## The image model
+
+The script sends `model: "gpt-image-2"`, as Codex's source does. The server
+picks the model, so Images 2.6 needs no client change. The server also
+accepts `gpt-image-2.6-flare` and `gpt-image-2.6-sunburst` (the API model
+IDs). Their responses were identical to `gpt-image-2` in size, tokens and
+quality (checked 2026-11-05), so there is no sign that the name changes
+anything.
 
 ## A consistent set of characters or assets
 

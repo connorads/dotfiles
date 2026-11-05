@@ -31,6 +31,9 @@ TOKEN_URL = os.environ.get(
 CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 IMAGE_MODEL = "gpt-image-2"
 MAX_REFS = 5
+# GifOptions ranges in codex-rs/codex-api/src/images.rs; the server defaults to 9 x 200 ms.
+GIF_FRAMES = range(2, 17)
+GIF_FRAME_MS = range(20, 2001)
 REFRESH_MARGIN_S = 300
 TIMEOUT_S = 300
 
@@ -164,6 +167,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     refs = [Path(r).expanduser() for r in args.ref]
     if len(refs) > MAX_REFS:
         raise Fail(f"at most {MAX_REFS} --ref images", 2)
+    if args.gif != (out.suffix.lower() == ".gif"):
+        raise Fail("--gif and a .gif --out go together", 2)
+    if not args.gif and (args.frames or args.frame_ms):
+        raise Fail("--frames and --frame-ms need --gif", 2)
+    if args.frames is not None and args.frames not in GIF_FRAMES:
+        raise Fail("--frames must be 2-16", 2)
+    if args.frame_ms is not None and args.frame_ms not in GIF_FRAME_MS:
+        raise Fail("--frame-ms must be 20-2000", 2)
 
     body: dict[str, Any] = {
         "prompt": prompt,
@@ -173,6 +184,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         # The server picks dimensions from the prompt for ChatGPT sign-ins; size is ignored.
         "size": "auto",
     }
+    if args.gif:
+        body["output_format"] = "gif"
+        if args.frames is not None:
+            body["frame_count"] = args.frames
+        if args.frame_ms is not None:
+            body["frame_duration_ms"] = args.frame_ms
     if refs:
         body["images"] = [{"image_url": data_url(r)} for r in refs]
     url = f"{BASE_URL}/images/{'edits' if refs else 'generations'}"
@@ -191,7 +208,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         status, raw = post(url, body, auth["tokens"], version)
     if status != 200:
         detail = raw.decode(errors="replace")[:500]
-        if "invalid_image_file" in detail:
+        if "GIF output is not enabled" in detail:
+            hint = (
+                " GIF output is not enabled for this account yet; generate frames as PNGs instead."
+            )
+        elif "invalid_image_file" in detail:
             hint = " A reference image was rejected; re-save it as an 8-bit PNG."
         elif "image_gen" in detail or status == 429:
             hint = " Image quota likely exhausted; see resets_at."
@@ -218,12 +239,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("prompt", help="image prompt, or - to read it from stdin")
-    p.add_argument("-o", "--out", required=True, help="output PNG path")
+    p.add_argument("-o", "--out", required=True, help="output path: .png, or .gif with --gif")
     p.add_argument(
         "-r", "--ref", action="append", default=[], help="reference/edit image (repeatable, max 5)"
     )
     p.add_argument("--quality", default="auto", choices=["auto", "low", "medium", "high"])
     p.add_argument("--background", default="auto", choices=["auto", "transparent", "opaque"])
+    p.add_argument("--gif", action="store_true", help="animated looping GIF (2-16 frames)")
+    p.add_argument("--frames", type=int, help="GIF frame count, 2-16 (server default 9)")
+    p.add_argument("--frame-ms", type=int, help="GIF frame duration in ms, 20-2000 (default 200)")
     p.add_argument("--force", action="store_true", help="overwrite --out if it exists")
     try:
         print(json.dumps(run(p.parse_args())))
