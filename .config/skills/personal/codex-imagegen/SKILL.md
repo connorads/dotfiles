@@ -79,11 +79,7 @@ frames at 200 ms).
 ## The image model
 
 The script sends `model: "gpt-image-2"`, as Codex's source does. The server
-picks the model, so Images 2.6 needs no client change. The server also
-accepts `gpt-image-2.6-flare` and `gpt-image-2.6-sunburst` (the API model
-IDs). Their responses were identical to `gpt-image-2` in size, tokens and
-quality (checked 2026-11-05), so there is no sign that the name changes
-anything.
+picks the model, so Images 2.6 needs no client change.
 
 ## A consistent set of characters or assets
 
