@@ -151,10 +151,9 @@ tmux caffeine lib, so the BB chip and the tmux pill always agree.
 
 ## Focus view
 
-[Focus](focus/README.md) shows only the sidebar projects you tick and moves the
-rest into More. `⌘⇧F` turns the view on or off, keeping your ticks, and the
-footer eye button toggles focus with a mouse. Tap it on touch screens or right-click
-it to pick projects. Turning it off restores the sidebar.
+[Focus](focus/README.md) keeps named sets of sidebar projects and moves the rest
+into More. `⌘⇧F` opens the switcher, a number chooses a set, and a second `⌘⇧F`
+swaps between Off and your last set. Turning it off restores the sidebar.
 
 ## Chat links
 

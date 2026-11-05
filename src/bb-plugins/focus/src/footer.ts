@@ -1,29 +1,22 @@
 const selector = 'button[data-testid="plugin-sidebar-footer-item-focus-focus"]';
 
-// The footer SDK has no context-menu callback or persistent active state.
-export function mountFooter(document: Document, actions: {
-  toggle(): void;
-  choose(): void;
+// Footer action items have no persistent active state, and the mask needs a
+// root attribute for its CSS to reach host markup.
+export function mountChrome(document: Document, actions: {
   active(): boolean;
+  mask(): string | null;
   subscribe(update: () => void): () => void;
 }) {
-  const originals = new Map<Element, string | null>();
+  const root = document.documentElement;
   const update = () => {
     for (const button of Array.from(document.querySelectorAll(selector))) {
-      if (!originals.has(button)) originals.set(button, button.getAttribute('aria-pressed'));
       button.setAttribute('aria-pressed', String(actions.active()));
       button.classList.toggle('fx-active', actions.active());
     }
+    const mask = actions.mask();
+    if (mask) root.setAttribute('data-focus-mask', mask);
+    else root.removeAttribute('data-focus-mask');
   };
-  const handle = (event: Event) => {
-    if (!(event.target instanceof Element) || !event.target.closest(selector)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (event.type === 'contextmenu' || document.defaultView?.matchMedia('(pointer: coarse)').matches) actions.choose();
-    else actions.toggle();
-  };
-  document.addEventListener('click', handle, true);
-  document.addEventListener('contextmenu', handle, true);
   const observer = new MutationObserver(update);
   observer.observe(document.body, { childList: true, subtree: true });
   const unsubscribe = actions.subscribe(update);
@@ -31,12 +24,10 @@ export function mountFooter(document: Document, actions: {
   return () => {
     observer.disconnect();
     unsubscribe();
-    document.removeEventListener('click', handle, true);
-    document.removeEventListener('contextmenu', handle, true);
-    for (const [button, pressed] of originals) {
+    root.removeAttribute('data-focus-mask');
+    for (const button of Array.from(document.querySelectorAll(selector))) {
       button.classList.remove('fx-active');
-      if (pressed === null) button.removeAttribute('aria-pressed');
-      else button.setAttribute('aria-pressed', pressed);
+      button.removeAttribute('aria-pressed');
     }
   };
 }

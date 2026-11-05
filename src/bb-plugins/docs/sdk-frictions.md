@@ -571,6 +571,11 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   disclosure for project selection, and decorates the active state through a content script.
 - Ask: a group filter that includes Pinned, a `projectHeaderMenu` slot, and `active` and
   `onContextMenu` on footer items.
+- Modal gap (2026-11-05, Focus, SDK 0.6.37): `aria-modal="true"` on an
+  `experimental_appOverlay` sets BB's `modalOpen` context, which blocks the plugin's own
+  shortcut, so a toggle cannot close its own dialog. Focus's switcher omits `aria-modal`.
+  Ask: let a plugin command opt in to running while its own overlay is open.
+- Rows in thread search and `@` mentions have no stable hook, so a mask cannot cover them.
 - Status: open
 - Category: sdk-gap
 - Evidence: @thread:thr_cn53dfhu4k, commit `0e99be89`

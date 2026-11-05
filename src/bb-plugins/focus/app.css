@@ -1,27 +1,50 @@
-.fx-panel { display: grid; gap: 6px; padding: 8px; font-size: 13px; color: var(--foreground); }
-.fx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
-.fx-title { font-weight: 600; }
-.fx-list { display: grid; max-height: 40vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
-.fx-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; }
-.fx-row:hover { background: var(--sidebar-accent, var(--muted)); }
-.fx-pick { display: flex; flex: 1; min-width: 0; align-items: center; gap: 8px; cursor: pointer; }
-.fx-pick input { margin: 0; accent-color: var(--primary); }
-.fx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fx-row[data-shown] .fx-name { font-weight: 500; }
-.fx-button, .fx-pin {
-  border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted-foreground);
-  font: inherit; font-size: 11px; padding: 1px 6px; cursor: pointer;
+.fx-backdrop {
+  position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-start;
+  padding: 14vh 16px 16px; background: color-mix(in srgb, var(--background) 55%, transparent);
 }
-.fx-button:hover, .fx-pin:hover { color: var(--foreground); }
-.fx-pin { opacity: 0; }
-.fx-row:hover .fx-pin, .fx-pin:focus-visible, .fx-pin[aria-pressed="true"] { opacity: 1; }
-.fx-pin[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
-.fx-note { margin: 0; padding: 0 4px; font-size: 11px; color: var(--muted-foreground); }
+.fx-card {
+  display: flex; flex-direction: column; gap: 4px; width: min(360px, 100%); max-height: min(72vh, 560px); padding: 6px;
+  border: 1px solid var(--border); border-radius: 10px; outline: none;
+  background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-lg); font-size: 13px;
+}
+.fx-scroll { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.fx-row { display: flex; align-items: center; gap: 4px; padding-right: 6px; border-radius: 6px; }
+.fx-row[data-highlighted] { background: var(--accent); color: var(--accent-foreground); }
+.fx-choose {
+  display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; padding: 7px 8px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.fx-key {
+  flex: none; width: 20px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted-foreground);
+  font: 11px/16px var(--font-mono); text-align: center;
+}
+.fx-label { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.fx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-detail, .fx-note { color: var(--muted-foreground); font-size: 11px; }
+.fx-note { margin: 0; padding: 4px 8px; }
+.fx-current { flex: none; color: var(--muted-foreground); font-size: 11px; }
+.fx-edit, .fx-delete {
+  flex: none; padding: 2px 6px; border: 0; border-radius: 6px; background: none;
+  color: var(--muted-foreground); font: inherit; font-size: 11px; cursor: pointer;
+}
+.fx-edit:hover, .fx-delete:hover { color: var(--foreground); background: var(--accent); }
+.fx-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 4px; }
+.fx-editor-head { display: flex; align-items: center; gap: 4px; }
+.fx-input {
+  flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--input); border-radius: 6px;
+  background: transparent; color: inherit; font: inherit;
+}
+.fx-toggle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.fx-toggle:hover { background: var(--accent); }
+.fx-toggle input { margin: 0; accent-color: var(--primary); }
+.fx-delete { align-self: flex-start; padding: 4px 8px; }
 
 button.fx-active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
 button.fx-active [data-icon-root] { opacity: 1; }
 
+:root[data-focus-mask='hide-rest'] [data-testid='sidebar-thread-list-more-trigger'],
+:root[data-focus-mask='hide-rest'] [data-sidebar-sticky-group]:has([data-sidebar='group-label'] span[title='Pinned']) { display: none; }
+
 @media (pointer: coarse) {
-  .fx-pin { opacity: 1; min-width: 44px; min-height: 44px; }
-  .fx-pick, .fx-button { min-height: 44px; }
+  .fx-choose, .fx-toggle, .fx-edit, .fx-delete { min-height: 44px; }
 }
