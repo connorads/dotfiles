@@ -55,6 +55,10 @@ restore, a 6G photo library is gone forever.
    nested inside repos - so size it early and on its own. The one stall that is
    *not* a suspect is `~/Library/Containers` (see Gotchas). `ncdu` is for the
    user to drive: it's a TUI and gives an agent nothing non-interactively.
+   `du` exits non-zero on any unreadable subpath yet still prints the total,
+   so tag a stall by a missing line, not by exit code. Never total a file list
+   with `xargs du -c | tail -1`: `xargs` splits long lists into batches, and the
+   last line holds only the final batch's total. Sum in one process instead.
 5. Reconcile `du` home subtotals against the volume's *own* used figure before
    concluding. **`df` is the wrong denominator for this**: on a shared APFS
    container it reports container-wide usage - Data volume plus the System
@@ -65,6 +69,8 @@ restore, a 6G photo library is gone forever.
    diskutil info /System/Volumes/Data | grep 'Volume Used'
    ```
 
+   An agent sandbox blocks it (`unable to use the DiskManagement framework`).
+   Run it outside the sandbox, or label the Data figure unknown.
    It prints **decimal GB**; divide by 1.074 to compare with `du -h`. The gap
    is not small - one verified reading had `df` at 131G used against a Data
    volume holding 99.0 GB (92 GiB). Home rarely equals even that: a shortfall
@@ -106,7 +112,18 @@ dirs only: ad-hoc `mktemp` dirs that agents create at the root of
 `/private/tmp/claude-<uid>` are outside it (68G there against a 22M
 `claude-temp` candidate). Size the root with `du -d1` before quoting the
 target as the fix; for the ad-hoc dirs, offer a reboot or delete only the dirs
-the user names.
+the user names. Bucket that scratch by last write before offering either: 44G
+once held 0.6G untouched for three days, so a reboot would have cut into running
+work and a named-dir deletion had almost nothing to take.
+
+Agent transcripts grow fast: Claude `projects/` under every profile, plus Codex
+`sessions` and `archived_sessions` (31G here, 21G of it under 30 days old).
+`cleanup` prunes only `~/.codex/sessions`. Do not propose lowering Claude's
+`cleanupPeriodDays` without reading why it is set: a long value protects
+`claude --resume` of hibernated sessions, and cost reporting reads these files.
+Compression halves them at best, because tool output dominates. Retention with
+an off-machine backup is the real lever, and the cutoff is the user's call.
+Size the age buckets first; a cutoff past the oldest file frees nothing.
 
 Version stores that keep every release: `~/.codex/packages/app-server-daemon/releases`
 (about 310M each; only the `current` symlink target runs), pnpm's own versions
@@ -122,6 +139,10 @@ conversation records and real application state. Database files are not caches
 merely because a test created their directory. Verify that retained harnesses
 create disposable fixtures, then check live ownership before proposing removal.
 An idle, unarchived thread can resume; preserve its source and reports.
+Archived threads are the large candidates: `bb thread show <id>` prints an
+`Archived:` line. Rank thread dirs by size and pair each with that status.
+Check for writes in the last day, then name each thread and size for approval.
+Their contents are data, such as rehearsal clones and corpora, not caches.
 
 Project-local `.pnpm-store` directories are outside the global store prune.
 Read `storeDir` from `node_modules/.modules.yaml` where available, then use
@@ -133,7 +154,10 @@ Temporary-directory rules still apply to stores under `/private/tmp`.
 App-update downloads can sit outside the running app under
 `~/Library/Caches/*-updater` and `*.ShipIt`. Inspect their contents and check
 updater processes before removing old payloads. Preserve an updater's active
-staging directory. Measure archives and extracted payloads separately; do not
+staging directory. Where the sandbox hides the process list, compare the staged
+bundle's `CFBundleShortVersionString` with the installed app's. A staged
+version at or below the installed one is stale. A newer one is a pending
+update; removing it forces a re-download, so name that before the nod. Measure archives and extracted payloads separately; do not
 infer physical savings from matching sizes or names.
 
 ## When the space comes back
