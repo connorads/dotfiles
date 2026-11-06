@@ -1144,6 +1144,11 @@
       }
     }
   },
+  "sandbox": {
+    "excludedCommands": [
+      "playwright-cli *"
+    ]
+  },
   "showClearContextOnPlanAccept": true,
   "skipDangerousModePermissionPrompt": true,
   "statusLine": {
