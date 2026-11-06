@@ -85,7 +85,11 @@ Report required checks as passed, failed or skipped. A successful hook exit does
 
 ## Deletion Safety
 
-When `rm -rf` is blocked, do not route around it with another permanent-deletion command. Outside `/tmp`, `/private/tmp`, `/var/tmp` and `$TMPDIR`, move the target to Trash with `trash`. Inside those, leave agent-created data for system cleanup and `mktemp -d` a fresh directory if needed. For generated output, prefer the project's native clean command.
+Do not run `rm` with recursive and force flags together. Do not substitute
+another permanent-deletion command. Outside `/tmp`, `/private/tmp`, `/var/tmp`
+and `$TMPDIR`, move the target to Trash with `trash`. Inside those, leave
+agent-created data for system cleanup and use `mktemp -d` for a fresh directory.
+For generated output, prefer the project's native clean command.
 
 ## Scope
 
