@@ -1,0 +1,1 @@
+`npm ls expo`

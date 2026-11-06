@@ -1,0 +1,1 @@
+`expo` declares the `expo-modules` bin itself and forwards it to `expo-modules-cli`, so pnpm links it into `node_modules/.bin`, including isolated installs. `pnpm exec expo-modules` uses that installed command. It needs `expo` installed in the module package; when the command is missing, use the project's dependency installation workflow and existing package protections.

@@ -1,0 +1,6 @@
+{
+  "reason": "use pnpm for installed project tools without task-time npm downloads",
+  "files": [
+    "expo/.agents/skills/expo-migrate-module/references/migration-map.md"
+  ]
+}
