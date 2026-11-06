@@ -767,6 +767,23 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: app and provider bugs
 
+### Generated turns are recorded as user messages
+
+- Found: 2026-11-06, a private thread-review collector, CLI 0.45.0
+- Wanted: Tell a person's messages apart from text BB or a plugin generated.
+- Gap: Workflow completion notices (`[BB workflow finished · …]`) and a plugin's spawn
+  prompt (Vox recorder ingestion) are `client/turn/requested` events with
+  `initiator: "user"`, `senderThreadId: null` and `systemMessageKind: "unlabeled"`,
+  the same metadata as a typed message.
+- Workaround: The collector labels workflow notices by their text prefix, and the
+  `source: "spawn"` turn of a `vox-recorder` thread by `originPluginId`.
+- Ask: Set a distinct `initiator` or `systemMessageKind` for workflow notices and
+  plugin-generated prompts in `bb thread log --format json` and `threads.events.list`.
+- Status: open
+- Category: app-bug
+- Evidence: `bb thread log <id> --format json --all` on a thread that ran a workflow,
+  and on a thread spawned by Vox recorder.
+
 ### Native Claude usage retains retired plan names
 
 - Found: 2026-10-31, Agent Switcher, SDK 0.6.49
