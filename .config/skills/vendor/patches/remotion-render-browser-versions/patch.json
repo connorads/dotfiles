@@ -1,0 +1,6 @@
+{
+  "reason": "Use the browser required by the locked Remotion version without unreviewed runtime updates",
+  "files": [
+    ".agents/skills/remotion-best-practices/remotion-render/REFERENCE.md"
+  ]
+}

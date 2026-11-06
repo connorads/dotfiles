@@ -5,13 +5,13 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": "e32e16db6b9f84f5c7a250485540d002953284a9e9f7d95e43ed56a7c6c43646"
+      "computedHash": "60a9cbe5af176150582c019e16e5d3703a41bb02d88438e881349876120d7944"
     },
     "agent-device": {
       "source": "callstack/agent-device",
       "sourceType": "github",
       "skillPath": "skills/agent-device/SKILL.md",
-      "computedHash": "f062798176bd92e2e13447292e5c4f66146f42110c512cbcd1e50a36e3170d39"
+      "computedHash": "fb43bca78f0022a4c5348b6740a1edcc7599d8e01c23d76bdeaecdaf752f8216"
     },
     "beautiful-shadows": {
       "source": "MengTo/Skills",
@@ -49,7 +49,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "2c2f869eb520868563bba5903856a3c71972dcccba1e78459ef5006ad3b4c089"
+      "computedHash": "e7c26bb690042060d60fcccf3e5807d000c9c064f732b6fcfccb8bbcdc5dc04a"
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
@@ -74,7 +74,7 @@
       "source": "cathrynlavery/diagram-design",
       "sourceType": "github",
       "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "60a5683c454680790701665621d37e7d519c971c0fade9632a396c44b005383b"
+      "computedHash": "fd4df2f34ebd780c1f36c75d8c49439f06b5e78aada0c655450c6a000d8b8965"
     },
     "effect": {
       "source": "kitlangton/skills",
@@ -159,7 +159,7 @@
       "source": "elayadesign/ai-design-skills",
       "sourceType": "github",
       "skillPath": "skills/landing-page-design/SKILL.md",
-      "computedHash": "8a5b47edc97a646b183d781186014ace4252eada17ab174302f89e366eb3a968"
+      "computedHash": "e0cf363a00650a18797c3cfc086b7e32cdff56b4cb34d72978d7b60aa8ca0172"
     },
     "lavish": {
       "source": "kunchenguid/lavish-axi",
@@ -243,7 +243,7 @@
       "source": "kitlangton/psychopomp",
       "sourceType": "github",
       "skillPath": ".agents/skills/psychopomp/SKILL.md",
-      "computedHash": "4308945f313051d6afb96cf7357b150647f906a8af4e4bfd1c2553e28b108004"
+      "computedHash": "a75125179c03d8d9944400c92ff07385f065126d40a525ef0d6b3cc591859ecf"
     },
     "raea": {
       "source": "shinyobjectz/raea",
@@ -263,7 +263,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "e3cc169fcb69c59efd9c3f1feaf0bdbf124488aec9dd2809266733f4d615b90a"
+      "computedHash": "9a4c0a0f9e3cc4613cbe351bb6be48568eb1cca0b06995aeae9e91292102aa16"
     },
     "reverse-engineer-anything": {
       "source": "morluto/rea",
