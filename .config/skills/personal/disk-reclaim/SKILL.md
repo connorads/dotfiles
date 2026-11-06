@@ -147,8 +147,13 @@ Their contents are data, such as rehearsal clones and corpora, not caches.
 Project-local `.pnpm-store` directories are outside the global store prune.
 Read `storeDir` from `node_modules/.modules.yaml` where available, then use
 `pnpm --dir <outside-project> --store-dir <exact-store> store prune`.
-Validate the exact path first. Native pruning preserves referenced packages;
-its reported removal size still needs a before/after `df` measurement.
+Validate the resolved destination with `pnpm --dir <outside-project>
+--store-dir <store-root> store path` before pruning. The binary selects the
+store layout: a newer pnpm can append `/v11` to an explicit `/v10` path.
+Use an installed pnpm major that resolves the intended layout. Modules
+metadata can contain JSON despite its `.yaml` extension; parse its contents.
+Prefer native pruning to whole-store deletion. Its reported removal size still
+needs a before/after `df` measurement.
 Temporary-directory rules still apply to stores under `/private/tmp`.
 
 App-update downloads can sit outside the running app under
@@ -300,10 +305,10 @@ audio manifest or deleting files.
   three here, against 40G in the repo's live one). They read as irreplaceable
   because their `worktree-agent-*` branches hold unmerged commits, but
   `git worktree remove` drops only the checkout - the branch and its commits
-  stay in the main repo, so a clean one goes with no loss. Check
-  `git status --porcelain` in each first, and confirm the branch survives
-  afterwards. Being inside the repo, they hide from a `~/git/*` scan behind the
-  repo's own total.
+  stay in the main repo. Check `git status --porcelain`, classify ignored files
+  and verify ownership before removal; clean status alone does not make the
+  checkout disposable. Confirm the branch survives afterwards. Being inside
+  the repo, they hide from a `~/git/*` scan behind the repo's own total.
 - **Managed worktrees under `~/.trees`** are the same trap at ten times the
   size: each carries its own `node_modules` and build output (~2.4G plus ~2.9G
   each in a Next.js repo; 25 worktrees held 68G here). `wt-status --all --pr
@@ -313,16 +318,24 @@ audio manifest or deleting files.
   runs after each removal - and `wt-clean --force` escalates that to `git branch
   -D`, which destroys unmerged commits. For the merged-but-no-PR worktrees
   `wt-clean` deliberately spares, bare `wt-remove <path>` is the
-  branch-preserving primitive. To keep every worktree and branch while
-  reclaiming rebuildable output, use `cleanup --target worktree-build --yes`.
+  branch-preserving primitive where local deletion rules permit it. Record
+  branch tips before removal and verify them afterwards. Missing worktree
+  registrations offer metadata cleanup, not checkout-sized disk savings.
+  For build-only cleanup, inspect every candidate path before execution. A
+  basename match can select `.venv/.../site-packages/coverage`, which is an
+  installed Python package. Exclude dependency environments and select only
+  verified generated output; do not run the blanket target with unsafe matches.
   `~/.trees` also holds agent run roots that are not repos: a dir with its own
   `RUN.md`/`brief.md`, an `evidence/` tree and a nested `wt/` of worktrees
   (103 in one run), which `wt-status` lists under the run's name. Read the
   run's notes (`RUN.md`, `PAUSED.md`) before classifying: they say whether it
   finished, that each worktree has its own branch, and which dirs are evidence.
-  It protects worktrees containing any live or hibernated agent CWD, removes
-  only `node_modules`, `.next`, `.turbo`, and `coverage`, and skips an artefact
-  if Git reports any tracked file beneath it.
+- **BB-managed worktrees have an owning environment.** Inspect thread status,
+  final output and pending decisions before retiring a clean checkout. Idle
+  does not mean finished. Use BB's documented environment lifecycle and verify
+  the environment reaches `destroyed`; preserve reports and branch tips.
+  Follow local Trash rules for the checkout files. A moved checkout and a
+  retired environment are separate outcomes; verify both.
 - **Several Playwright browser revisions is the normal state, not stale
   build-up.** A machine with many repos pins one revision per `playwright-core`
   version, so four chromium revisions in `~/Library/Caches/ms-playwright` can
