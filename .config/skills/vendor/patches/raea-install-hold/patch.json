@@ -1,0 +1,6 @@
+{
+  "reason": "raea is on hold until its releases are built in CI with provenance; agents must not install it.",
+  "files": [
+    ".agents/skills/raea/SKILL.md"
+  ]
+}

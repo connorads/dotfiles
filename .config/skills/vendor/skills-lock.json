@@ -245,6 +245,20 @@
       "skillPath": ".agents/skills/psychopomp/SKILL.md",
       "computedHash": "4308945f313051d6afb96cf7357b150647f906a8af4e4bfd1c2553e28b108004"
     },
+    "raea": {
+      "source": "shinyobjectz/raea",
+      "ref": "v0.1.0-canary.2",
+      "sourceType": "github",
+      "skillPath": "sdk/skills/raea/SKILL.md",
+      "computedHash": "35671a131714e1300557f61998f4f3c9f3c5fb8e2595e3aea556115dff672054"
+    },
+    "raea-bevy": {
+      "source": "shinyobjectz/raea",
+      "ref": "v0.1.0-canary.2",
+      "sourceType": "github",
+      "skillPath": "sdk/skills/raea-bevy/SKILL.md",
+      "computedHash": "d32e73e02635765591891fbfb153893525aa5c967ccfe6af3e8e53753a130ffc"
+    },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
