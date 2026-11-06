@@ -93,7 +93,8 @@ def egress_reason(
     return (
         "This call holds one of the user's Claude account email addresses and "
         "may send it off this machine. If nobody asked to send it, run the "
-        "call again without the address, using a generic client name. If the "
-        "user explicitly asked to send it, use a Bash call with an "
-        f"`{BYPASS_VAR}=1` prefix."
+        "call again without the address, using a generic client name. Add an "
+        f"`{BYPASS_VAR}=1` prefix to a Bash call only when the user explicitly "
+        "asked in this conversation to send their address there. Never add it "
+        "on your own judgement."
     )
