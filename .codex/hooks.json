@@ -14,7 +14,8 @@
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-secret-paths-codex.py\"" } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-mutating-api-codex.py\"" } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-git-destructive-codex.py\"" } ] },
-      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] }
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/atuin-agent\" hook codex" } ] },
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-email-egress-codex.py\"" } ] }
     ],
     "PostToolUse": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] },
