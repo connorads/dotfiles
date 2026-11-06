@@ -85,6 +85,15 @@
       {
         "hooks": [
           {
+            "command": "python3 ~/.claude/hooks/guard-email-egress.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|Monitor|WebFetch|WebSearch"
+      },
+      {
+        "hooks": [
+          {
             "command": "python3 ~/.claude/hooks/no-self-attribution.py",
             "type": "command"
           },
