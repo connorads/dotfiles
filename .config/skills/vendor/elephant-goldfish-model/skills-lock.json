@@ -5,19 +5,19 @@
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-bootstrap/SKILL.md",
-      "computedHash": "d32f760e2fc4c82607e76d2edf8b626a4a5b280e9a3640a9544f3c2ce6f1c8c3"
+      "computedHash": "6b304ed8acd9e9e3ce9c9d0abcaaad4d5d1db9fd62bd6ff97929a9a95791603b"
     },
     "egm-brainstorm": {
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-brainstorm/SKILL.md",
-      "computedHash": "56db1ec73b04de3825d1e075262138f0d66763e7ab82f9f67cda2c4ed9b0cf4b"
+      "computedHash": "6d86b08331767b57c77a0c6f8c27f805dd8b41876956a3b2c3f9a93433e1da66"
     },
     "egm-draft": {
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-draft/SKILL.md",
-      "computedHash": "c719c13448fa72609b2a87585a1d2cbdf52027d9d944e4f3ea2009fff5cd18ff"
+      "computedHash": "5a58b3bc2a1e4bb7a6c5482e86f43b20a432288565198557bada461be0a6af31"
     },
     "egm-drift-report": {
       "source": "google/elephant-goldfish-model",
@@ -29,19 +29,19 @@
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-resolve/SKILL.md",
-      "computedHash": "c3459efc56ae95cf814fd5dcb3c1b4c0ccd91b465614ff39249f4047a6029833"
+      "computedHash": "8922acb8053dda4a18ae2b683bf77c1459d1cbc335eb23fbe4a6e357b5b52115"
     },
     "egm-review": {
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-review/SKILL.md",
-      "computedHash": "7527be03913be9c168826243982a1aa55a6952cb5ff2a5a3e2b841facfb5c6f2"
+      "computedHash": "db34988b8a7dbecf133396acf1196a7df0a81bbc063abf78505bff1e2106c119"
     },
     "egm-review-loop": {
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-review-loop/SKILL.md",
-      "computedHash": "2053d524df95424436389ba5b7a9485b08f49027ad03d9e2bd5400208845b450"
+      "computedHash": "7b8dfee0f58b8c4fa79a96233d44718f10b35f58a90d716682d759fe9757db0a"
     }
   }
 }

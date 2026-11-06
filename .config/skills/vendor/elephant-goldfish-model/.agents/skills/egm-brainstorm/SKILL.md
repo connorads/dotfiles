@@ -7,7 +7,7 @@ description: >-
   Goldfish Model (EGM). Helps turn half-baked concepts into structured
   hypotheses via clarifying questions, review, and iterative refinement.
   Produces an RFC summary for human review or more detailed design with
-  /egm-draft.
+  egm-draft.
 ---
 
 # EGM Brainstorm: Interactive Multi-Lens Ideation & Refinement
@@ -120,14 +120,16 @@ If your harness has no subagent tool, stop and tell the user: a review in the sa
 | **Migration & Backward Compatibility** | Rollout safety & version skew | *How do existing clients/data migrate? Does this break serialized schemas, protos, or persistent storage? How is rollback handled mid-migration?* |
 | **Observability & SRE Debuggability** | Telemetry & operational visibility | *Are key operations traceable via distributed tracing? Are telemetry metrics actionable? How will oncall engineers triage a production incident at 3 AM?* |
 | **Long-Term Tech Debt & Maintenance** | Future maintainability | *Does this introduce tightly coupled dependencies or brittle state machines that will be painful to maintain in 2 years?* |
+| **Inventive Catalyst** | Contradiction elimination & inventive transforms | *What fundamental trade-off is this design accepting as inevitable? How can we resolve this conflict using proven software transforms to achieve the Ideal Final Result without compromise?* |
 
 ## Execution Workflow
 
 ### Step 1: Deep Clarification & Problem Statement Drilling
 
-1.  **Check for Concept Foundation**: Verify if the user provided an initial
+1.  **Check for Concept Foundation & Author Identity**: Verify if the user provided an initial
     feature idea or concept prompt. If missing, prompt the user to describe what
-    they want to brainstorm.
+    they want to brainstorm. Resolve the brief's `Author` from `git config user.name`,
+    then `GIT_AUTHOR_NAME`; if neither is set, ask in chat.
 2.  **Iterative Problem Drilling (Multi-Turn Chat)**: Do **NOT** rush into
     launching subagents after a single response. Continue asking targeted,
     open-ended clarifying questions across multiple chat turns as needed until
@@ -181,17 +183,18 @@ If your harness has no subagent tool, stop and tell the user: a review in the sa
 ### Step 2: Goldfish Review & Synthesis
 
 1.  **Delegate to Synthesizer Subagent**: Spawn the intermediate
-    **`egm-synthesizer`** agent (or parallel Goldfish subagents across the 6
+    **`egm-synthesizer`** agent (or parallel Goldfish subagents across the 7
     specialized lenses if your harness cannot nest subagents):
     *   Subagent: `egm-synthesizer` (`agents/synthesizer.md`)
     *   `Prompt`: >- Conduct multi-lens brainstorm for feature concept:
         `[AnchoredFeatureHypothesis]`. Mode: `BRAINSTORM`. Reviewers:
         `[egm-design, egm-codebase-details, egm-zoom-out, egm-comprehension,
-        egm-implementation-readiness, egm-structural]`.
+        egm-implementation-readiness, egm-structural, egm-inventive-catalyst]`.
 2.  **Synthesizer Execution**: The `egm-synthesizer` subagent launches the
     parallel Goldfish reviewers across the specialized lenses (`egm-design`,
     `egm-codebase-details`, `egm-zoom-out`, `egm-comprehension`,
-    `egm-implementation-readiness`, `egm-structural`) with `Mode: BRAINSTORM`.
+    `egm-implementation-readiness`, `egm-structural`,
+    `egm-inventive-catalyst`) with `Mode: BRAINSTORM`.
 3.  **Deduplication**: Collect the raw findings from the Goldfish reviewers,
     deduplicate overlapping points, and format them into a cohesive analysis.
 4.  **Write/Update Artifact**: Format and write the synthesized brief to
@@ -212,7 +215,7 @@ The `concepts_brief.md` artifact follows this structure:
 
 ## Analysis
 
-[Cohesive analysis found by review lenses written in plain English.]
+[Cohesive analysis found by review lenses written in plain English, covering inventive contradictions, suggested catalog patterns, secondary trade-offs, and the Ideal Final Result.]
 
 ## Goals vs. Non-Goals
 
@@ -221,7 +224,7 @@ The `concepts_brief.md` artifact follows this structure:
 
 ## Alternatives Weighed
 
-[Each option rejected during ideation, with the reason. `/egm-draft` copies
+[Each option rejected during ideation, with the technical reason (e.g. "Rejected by author: <reason>"). Do not attribute a rejection to a maintainer without linking their issue, discussion, or PR. `/egm-draft` copies
 these into Alternatives Considered and has no other source for them.]
 
 ## Key Decisions & Staging for Next Steps
@@ -254,7 +257,7 @@ these into Alternatives Considered and has no other source for them.]
           "question": "Brainstorming complete. concepts_brief.md is finalized. Select next step:",
           "options": [
             "Publish concepts_brief.md as RFC for team feedback",
-            "Proceed to /egm-draft (Initialize formal design document)",
+            "Proceed to egm-draft (Initialize formal design document)",
             "Continue refining concepts_brief.md in ideation mode",
             "Conclude brainstorming and keep brief for later"
           ],
@@ -271,14 +274,18 @@ these into Alternatives Considered and has no other source for them.]
         *   Notify the user in chat that the RFC has been published and can be
             shared with the team for feedback before formal drafting. Remind the
             user that once feedback is gathered, a detailed design can be
-            initiated by running `/egm-draft docs/designs/<feature_name>.md`.
-    *   **Option 1: `Proceed to /egm-draft (Initialize formal design
+            initiated by starting the `egm-draft` skill on
+            `docs/designs/<feature_name>.md` with the host's command form (for
+            example `/egm:egm-draft docs/designs/<feature_name>.md` in Claude
+            Code and agy CLI, or the skill picker in Codex).
+    *   **Option 1: `Proceed to egm-draft (Initialize formal design
         document)`**:
         *   Confirm that `concepts_brief.md` is saved in the working directory
             or artifact directory.
-        *   Instruct the user to run `/egm-draft` (or activate the `egm-draft`
-            skill), noting that `/egm-draft` automatically ingests
-            `concepts_brief.md` as its Priority 1 intake source.
+        *   Instruct the user to start the `egm-draft` skill with the host's
+            command form (for example `/egm:egm-draft` in Claude Code and agy
+            CLI, or the skill picker in Codex), noting that it automatically
+            ingests `concepts_brief.md` as its Priority 1 intake source.
     *   **Option 2: `Continue refining concepts_brief.md in ideation mode`**:
         *   Return to Step 3 iteration loop to drill into further edge cases or
             update the brief based on user chat input.

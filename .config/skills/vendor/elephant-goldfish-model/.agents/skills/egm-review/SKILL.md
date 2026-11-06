@@ -95,8 +95,7 @@ If your harness has no subagent tool, stop and tell the user: a review in the sa
 
 *   **`TargetFile`**: Absolute or relative path to the design document.
 *   **`GoldfishContext`** (Optional): Reading list to establish the system
-    baseline. If omitted, the system defaults to no additional context (but
-    always automatically reads files linked or referenced in the design doc).
+    baseline. If omitted, it holds only the linked files that Step 1.3 adds.
 *   **`Step` (Optional)**: Specific pipeline preset or stage to run (e.g.
     `interactive`, `uninterrupted`, `feature_spec`, `implementation`, or an
     individual stage `5`, `6`, `7`, `8`, `9`). If omitted, the user is prompted.
@@ -112,16 +111,35 @@ If your harness has no subagent tool, stop and tell the user: a review in the sa
         use structured question tools such as `ask_question`, as providing an
         arbitrary file path is an open-ended text input, not a choice between
         fixed options) and end your turn.
-2.  Once `TargetFile` is provided, verify if `GoldfishContext` is provided (or
-    if the user explicitly stated in their prompt to proceed with no additional
-    context). If missing:
+2.  Once `TargetFile` is provided, verify if `GoldfishContext` is provided (an
+    empty list counts as provided, as does the user explicitly stating in their
+    prompt to proceed with no additional context). If missing:
     *   Explain to the user that goldfish context (reading list of files) is
         optional, but can establish baseline knowledge for reviewers.
-    *   Clarify that reviewers **always automatically read** files explicitly
-        mentioned or linked in the target design document itself.
+    *   Clarify that linked files inside the working directory are added
+        automatically, and that other links and URLs need approval.
     *   Prompt the user in chat via regular text if they wish to provide
         additional context files. Do NOT use structured question tools for
         open-ended file paths.
+3.  **Linked Files (run later)**: Do not run this during intake. Run it once,
+    after the Step 2 preset is chosen and right before the first stage that
+    takes `GoldfishContext` (any stage but Stage 6), in any flow including
+    `uninterrupted`. Read `TargetFile`, skip anchor-only links (`#...`), drop
+    the `#fragment` from other links, and resolve each relative link against
+    the design document's folder. Add each link whose real path (after
+    following symbolic links) stays inside the working directory to
+    `GoldfishContext`, skipping files that do not exist. If any link resolves
+    outside the working directory or is a URL, list those links in chat as
+    regular text, ask which to include, and end your turn; if no one can
+    answer, as in a headless run, leave them all out and keep going. Add only
+    approved ones and tell the user which were left out. Some reviewers cannot
+    open URLs, so save the raw page of each URL in `GoldfishContext` as a new
+    file in the working directory (or your harness's artifact directory) and
+    pass its absolute path instead. If a page cannot be saved, ask the user for
+    a local copy and end your turn; if no one can answer, as in a headless run,
+    leave it out, tell the user, and keep going. Pass
+    `GoldfishContext` to every stage except Stage 6, which reads the document
+    alone; tell any synthesizer to give these files to each reviewer.
 
 ### Step 2: Curated Pipeline Preset Selection
 
@@ -209,7 +227,7 @@ If your harness has no subagent tool, stop and tell the user: a review in the sa
         high-level feature specification:
         *   Notify the user in chat that no implementation plan was detected.
         *   Assign `FeatureRange = 1..End` and `DetailedRange = N/A`.
-        *   Offer to execute Stages 5–8 (Feature Spec gates) and proceed.
+        *   Offer to execute Stages 5-8 (Feature Spec gates) and proceed.
 
 ### Step 4: Staging Strategy
 
@@ -271,6 +289,7 @@ plain chat):
     *   **Resume Notification**: When the author replies in chat indicating
         edits are complete:
         *   Re-read `TargetFile` to recalculate line shifts.
+        *   If Step 1.3 has run, apply its rules to links added since then.
         *   Re-run the current stage subflow.
         *   **1-Audit Convergence Cap**: Each stage allows a maximum of 1
             re-audit. If manual doc updates are requested again after a
@@ -285,10 +304,11 @@ plain chat):
 1.  **Uninterrupted Stage Execution**: Execute all five review stages in
     sequence without interactive checkpoint pauses between steps. For each
     stage, write the individual report file to the working directory (or your
-    harness's artifact directory, if it has one):
+    harness's artifact directory, if it has one). Pass `GoldfishContext` to
+    every step except Step 6.
     *   **Step 5 (Initial Zoom Out)**: Spawn `egm-synthesizer` (or direct
-        subagent) with `Reviewers: [egm-zoom-out]` on `full file` → write
-        `zoom_out_report.md`.
+        subagent) with `Reviewers: [egm-zoom-out, egm-inventive-catalyst]` on
+        `full file` → write `zoom_out_report.md`.
     *   **Step 6 (Comprehension Test)**: Spawn the `egm-comprehension`
         subagent directly (not the synthesizer) on `FeatureRange` &
         `DetailedRange` → write its complete result to
@@ -321,7 +341,10 @@ plain chat):
     applying `resources/document_standards/zoom-out-standard.md`. When running
     as Step 8 (Intermediate Zoom Out), include `zoom_out_report.md` path in
     context and focus on additions/mitigations from Comprehension and Critic
-    stages.
+    stages. When running as Step 5, also
+    spawn `egm-inventive-catalyst` in parallel and write both into
+    `zoom_out_report.md`.
+    In both Stage 5 and Stage 8, pass `GoldfishContext`.
 2.  **Delivery**: Write findings to `zoom_out_report.md` (Stage 5) or
     `intermediate_zoom_out_report.md` (Stage 8) using your file-writing tool.
 3.  **Notify User (No Chat Dumps)**: Notify user that findings are written to
@@ -370,9 +393,9 @@ plain chat):
 ### Subflow: Critic Review
 
 1.  **Invoke Antagonistic Review Loop**: Invoke `egm-review-loop` in-thread on
-    `FeatureRange` with reviewers `[egm-design, egm-structural, egm-style]` and
+    `FeatureRange` with reviewers `[egm-design, egm-structural, egm-style]`,
     standards `{"egm-design": "feature-spec-standard", "egm-structural":
-    "feature-spec-standard"}`.
+    "feature-spec-standard"}`, and `GoldfishContext`.
 2.  **Notify User (No Chat Dumps)**: Notify user that findings are written to
     `critic_report.md` (give its path).
 3.  **Checkpoint Gate**: Present the Stage 7 gate:
@@ -400,7 +423,8 @@ plain chat):
     `DetailedRange` with reviewers `[egm-implementation-readiness,
     egm-codebase-details, egm-style]` and standards
     `{"egm-implementation-readiness": "implementation-readiness-standard",
-    "egm-codebase-details": "implementation-readiness-standard"}`.
+    "egm-codebase-details": "implementation-readiness-standard"}`, and
+    `GoldfishContext`.
 2.  **Notify User (No Chat Dumps)**: Notify user that findings are written to
     `implementation_readiness_report.md` (give its path).
 3.  **Terminal Checkpoint Gate**: Present the Stage 9 terminal gate:
