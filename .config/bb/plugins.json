@@ -18,6 +18,7 @@
   "machine-health": true,
   "message-drafts": false,
   "mobile-home-spacing": true,
+  "patch-health": true,
   "preferences": true,
   "repo-tasks": true,
   "run-in-terminal": true,

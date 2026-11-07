@@ -1159,7 +1159,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   unknown name such as `CircleDollarSign` passes the build and renders the generic bolt.
 - Status: open
 - Category: cli
-- Evidence: `spikes/model-favourites`, `cost/icons`, `cache-hits/icons`
+- Evidence: `spikes/model-favourites`, `cost/icons`, `cache-hits/icons`, `patch-health/icons`
 
 ### GitHub releases have no changelog
 

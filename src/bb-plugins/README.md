@@ -181,6 +181,11 @@ event for two minutes, and turns red at ten.
 [Run in Terminal](run-in-terminal/README.md) pastes shell commands from a chat
 message into the thread's terminal. You press Enter to run them.
 
+## Patch inspection
+
+[Patches](patch-health/README.md) inspects desktop patch files from the command palette.
+It separates file evidence from unchecked live behaviour and changes no installation.
+
 ## Context inspection
 
 [Context Inspector](context-inspector/README.md) shows recorded session usage,
