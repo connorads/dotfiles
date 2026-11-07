@@ -1,0 +1,139 @@
+#!/usr/bin/env zsh
+# transcript-backup: seal idle agent transcripts into age-encrypted archives on B2, then prune verified originals
+emulate -L zsh
+setopt err_return pipe_fail extended_glob
+
+local days=30 dry_run=0 prune=1
+while (( $# )); do
+  case $1 in
+    --dry-run) dry_run=1 ;;
+    --no-prune) prune=0 ;;
+    -h|--help)
+      print "usage: transcript-backup [--dry-run] [--no-prune]"
+      print "Backs up Claude and Codex sessions idle for ${days}+ days, then deletes originals that verify."
+      return 0 ;;
+    *) print -u2 "transcript-backup: unknown option: $1"; return 2 ;;
+  esac
+  shift
+done
+
+local cfg=${XDG_CONFIG_HOME:-$HOME/.config}/transcript-backup
+local recipients=${TRANSCRIPT_BACKUP_RECIPIENTS:-$cfg/recipients.txt}
+local hib_dir=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}
+local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/transcript-backup
+local uuid_re='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+local tool
+for tool in age zstd rclone jq tar shasum; do
+  command -v $tool >/dev/null || { print -u2 "transcript-backup: $tool not found"; return 1 }
+done
+[[ -s $recipients ]] || { print -u2 "transcript-backup: no age recipients at $recipients"; return 1 }
+
+# Hibernated sessions will be resumed; fail closed if any record is unreadable.
+local -A protected
+local rec sid
+for rec in $hib_dir/*.json(N.); do
+  sid=$(jq -er '.sessionId | select(type == "string")' $rec 2>/dev/null) || {
+    print -u2 "transcript-backup: cannot read hibernation record $rec"
+    return 1
+  }
+  protected[$sid]=1
+done
+
+# A Claude session is <project>/<uuid>.jsonl plus its <uuid>/ sidecar dir.
+# A Codex session is one rollout file. Anything touched within $days stays.
+local -a files sidecars unit recent
+local f id
+for f in $HOME/.claude/projects/*/*.jsonl(N.) $HOME/.claude-profiles/*/*/projects/*/*.jsonl(N.); do
+  id=${f:t:r}
+  [[ $id =~ $uuid_re ]] || continue
+  (( ${+protected[$id]} )) && continue
+  unit=($f)
+  [[ -d ${f:r} ]] && unit+=(${f:r}/**/*(N.))
+  recent=(${^unit}(Nm-$days))
+  (( $#recent )) && continue
+  files+=($unit)
+  if [[ -d ${f:r} ]]; then sidecars+=(${f:r}); fi
+done
+for f in ${CODEX_HOME:-$HOME/.codex}/{sessions,archived_sessions}/**/rollout-*.jsonl(N.); do
+  recent=($f(Nm-$days))
+  (( $#recent )) && continue
+  files+=($f)
+done
+
+if (( ! $#files )); then
+  print "transcript-backup: nothing to back up"
+  return 0
+fi
+
+zmodload -F zsh/stat b:zstat
+local -A size mtime st
+local -a rel
+local total=0
+for f in $files; do
+  zstat -H st -- $f
+  size[$f]=$st[size]; mtime[$f]=$st[mtime]
+  total=$(( total + st[size] ))
+  rel+=(${f#$HOME/})
+done
+
+if (( dry_run )); then
+  print -l -- $rel
+  print "transcript-backup: ${#files} files, $(( total / 1048576 ))M would be backed up"
+  return 0
+fi
+
+local remote
+if [[ -n ${TRANSCRIPT_BACKUP_REMOTE:-} ]]; then
+  remote=$TRANSCRIPT_BACKUP_REMOTE
+else
+  local B2_KEY_ID B2_APPLICATION_KEY B2_BUCKET
+  source ${TRANSCRIPT_BACKUP_ENV:-$cfg/b2.env}
+  local -x RCLONE_CONFIG_TBB2_TYPE=b2
+  local -x RCLONE_CONFIG_TBB2_ACCOUNT=$B2_KEY_ID
+  local -x RCLONE_CONFIG_TBB2_KEY=$B2_APPLICATION_KEY
+  remote="tbb2:$B2_BUCKET/transcripts"
+fi
+
+local stage
+stage=$(mktemp -d "${TMPDIR:-/tmp}/transcript-backup.XXXXXX")
+{
+  print -rN -- $rel >$stage/list
+  tar -C $HOME --null -T $stage/list -cf - | zstd -6 -T0 -q | age -R $recipients >$stage/archive
+
+  local sha name got
+  sha=$(shasum -a 256 $stage/archive | cut -d' ' -f1)
+  name="$(date -u +%Y/%m)/$(date -u +%Y%m%dT%H%M%SZ)-${HOST%%.*}-${sha[1,12]}.tar.zst.age"
+
+  rclone copyto --immutable $stage/archive "$remote/$name"
+  got=$(rclone cat "$remote/$name" | shasum -a 256 | cut -d' ' -f1)
+  if [[ $got != $sha ]]; then
+    print -u2 "transcript-backup: verification failed for $name; nothing deleted"
+    return 1
+  fi
+
+  mkdir -p $state_dir
+  print -r -- "$(date -u +%FT%TZ)"$'\037'"$name"$'\037'"$sha"$'\037'"${#files}"$'\037'"$total" >>$state_dir/ledger
+  print "transcript-backup: uploaded $name (${#files} files, $(( total / 1048576 ))M)"
+
+  (( prune )) || return 0
+
+  # Delete only what is byte-for-byte the file we archived: a session resumed
+  # since selection has a new size or mtime and stays.
+  local deleted=0 kept=0
+  for f in $files; do
+    if zstat -H st -- $f 2>/dev/null && [[ $st[size] == $size[$f] && $st[mtime] == $mtime[$f] ]]; then
+      rm -f -- $f; deleted=$(( deleted + 1 ))
+    else
+      kept=$(( kept + 1 ))
+    fi
+  done
+  local d
+  for d in $sidecars; do
+    if [[ -d $d ]]; then find $d -depth -type d -empty -delete; fi
+  done
+  print "transcript-backup: deleted $deleted files, kept $kept changed since archiving"
+} always {
+  rm -f -- $stage/list $stage/archive
+  rmdir -- $stage 2>/dev/null
+}
