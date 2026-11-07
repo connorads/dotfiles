@@ -92,6 +92,8 @@ The command manages enablement and settings only; install missing plugins separa
 BB's built-in Workflows plugin supports provider-independent workflows, including Codex workers.
 Its enabled state is managed by [plugins.json](../.config/bb/plugins.json).
 Use the supplied `workflows` skill for authoring, validation, execution and inspection.
+For source saved outside the origin workspace, pass its text through CLI `--script` or tool `script`.
+`--file` and `scriptPath` require a path inside that workspace.
 For local bundle changes, use the [patch registry and manager](../src/bb-plugins/workflows-patch/README.md).
 For desktop-owned servers, inspect the explicit installation after native updates.
 `up` performs read-only desktop reconciliation after Homebrew and macOS activation.
