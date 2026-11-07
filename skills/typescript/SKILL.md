@@ -28,6 +28,7 @@ config - see routing.
 | Agnostic principles (functional core/shell, ports, errors as values, observability, config lifetimes) | `architecture` | states the TS idiom + why, points there |
 | tsconfig flags, lint rules, boundaries, purity bans, test and publish gates | `mechanical-enforcement` (`references/typescript.md`) | names the idiom, points there for config |
 | Inside an Effect program: `Effect.gen`, services, layers, `Schema`, `Schedule`, `Stream` | vendored `effect` skill (`skl effect`) | the adopt/decline boundary and the seam only |
+| An Effect program calling a third-party or cloud API (Stripe, AWS, GitHub, ...) | `distilled` (Effect-native `@distilled.cloud/*` SDKs) | - |
 | Test strategy, layers, fakes-not-mocks, property tests | `testing` | TS specifics only (fast-check, no `vi.mock`) |
 | Coverage, mutation, CI/hook enforcement | `test-coverage` | - |
 
