@@ -54,3 +54,14 @@
   .ph-content dl { grid-template-columns: 1fr; gap: 3px; }
   .ph-content dd { margin-bottom: 7px; }
 }
+.ph-next { border-top: 1px solid var(--border); padding: 14px 18px; }
+.ph-next-label { color: var(--muted-foreground); font-size: 11px; }
+.ph-next h3 { margin: 3px 0 6px; font-size: 13px; font-weight: 600; }
+.ph-next p { margin: 0 0 10px; color: var(--muted-foreground); font-size: 12px; }
+.ph-next details { margin-bottom: 12px; color: var(--muted-foreground); font-size: 11.5px; }
+.ph-next summary { cursor: pointer; }
+.ph-next details p { margin: 8px 0 0; }
+.ph-next code { font: 11px var(--font-mono); }
+.ph-next-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ph-next-actions button { border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; color: var(--foreground); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.ph-next-actions [role=status] { color: var(--muted-foreground); font-size: 11px; }
