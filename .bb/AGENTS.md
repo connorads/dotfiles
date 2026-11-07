@@ -11,6 +11,7 @@ Verify the destination exists on the host that owns the file.
 Resolve the destination from the checkout containing the file, including a separate worktree.
 Do not rely on bare filenames or relative paths becoming links.
 Keep relative links inside repository documentation relative.
+Write hostnames and domains as full `https://` URLs, never inline code. BB renders inline `host.example.com` as a workspace file link.
 
 Before changing local BB configuration or plugins, read `~/docs/bb.md` for maintenance procedures and ownership.
 Do not rebuild or fork BB, including bundled plugins, without a new, explicit user decision. Check existing local plugins and pinned bundle patches first.

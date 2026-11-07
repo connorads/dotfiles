@@ -94,10 +94,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Found: 2026-10-23, installed BB desktop frontend
 - Wanted: Open a Markdown file mentioned by an agent working in a separate worktree.
 - Gap: Inline code ending in `.md` or `.markdown` becomes a file link without an existence check.
+  The rule is broader: any whitespace-free inline code whose last segment matches `\.[\p{L}\p{N}_-]+$` becomes a relative file link.
+  A bare hostname such as `` `host.example.co.uk` `` therefore renders as a file named `host.example.co.uk` in the workspace.
   Message-relative links use the thread workspace as both `baseDir` and `rootPath`.
   A shell command's working directory does not supply that link's base directory.
 - Workaround: [Global BB instructions](../../../.bb/AGENTS.md) require explicit Markdown links with verified absolute destinations on the owning host.
+  Write hostnames as full `https://` URLs, not inline code.
 - Ask: Show the resolved destination on missing-file errors and avoid presenting nonexistent filename autolinks as verified files.
+  Skip inline code that parses as a hostname with a public suffix, or render it as an `https://` link.
   Offer an explicit checkout selection for repairing missing destinations; never silently choose a same-named file in another checkout.
   Explicit destinations remain necessary when a message does not identify a unique working directory.
 - Status: open. Path lookup contrast verified through BB's file API; UI click replay remains untested.
