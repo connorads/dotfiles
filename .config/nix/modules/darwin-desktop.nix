@@ -274,6 +274,30 @@
     };
   };
 
+  # -- agent transcript backup --
+  # Weekly: seal sessions idle 30+ days to B2, prune verified originals.
+  launchd.user.agents.transcript-backup = {
+    serviceConfig = {
+      Label = "dev.connorads.transcript-backup";
+      ProgramArguments = [
+        "/bin/zsh"
+        "-c"
+        # zsh startup files rebuild PATH without mise shims, so prepend them here.
+        "PATH=$HOME/.local/share/mise/shims:$PATH transcript-backup || /usr/bin/osascript -e 'display notification \"See ~/.cache/transcript-backup.log\" with title \"Transcript backup failed\"'"
+      ];
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 11;
+          Minute = 0;
+        }
+      ];
+      ProcessType = "Background";
+      StandardOutPath = "/Users/connorads/.cache/transcript-backup.log";
+      StandardErrorPath = "/Users/connorads/.cache/transcript-backup.log";
+    };
+  };
+
   launchd.user.agents.linearmouse.serviceConfig = {
     ProgramArguments = [
       "/usr/bin/open"
