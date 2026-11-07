@@ -147,7 +147,7 @@ EOF
 exit 0
 EOF
 
-  run zsh -fc "fpath=(/home/connor/.config/zsh/functions/git \$fpath); HOME='$HOME'; PATH='$PATH'; cd '$repo'; autoload -Uz wt-add; wt-add --no-setup topic 2>/dev/null"
+  run zsh -fc "fpath=('$FUNCTIONS_DIR/git' \$fpath); HOME='$HOME'; PATH='$PATH'; cd '$repo'; autoload -Uz wt-add; wt-add --no-setup topic 2>/dev/null"
 
   [ "$status" -eq 0 ]
   [ "$output" = "$HOME/.trees/repo/topic" ]
