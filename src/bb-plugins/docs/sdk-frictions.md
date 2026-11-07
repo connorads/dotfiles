@@ -69,9 +69,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Workaround: The [pinned Workflows bundle patch](../workflows-patch/README.md) accepts
   provider session options, passes them to a direct worker, and shows their labels.
   Session options are independent of activity. The registry pins independent and combined sets and refuses unknown bundle tuples.
+- Also (2026-11-06, BB 0.48.1): a native update replaces the patched files with stock
+  bytes, and each release renames minified bindings. Each release needs its own adapter
+  and harness; 0.48.1 has a draft desktop session-options recipe. Until it is installed,
+  select opencode's `openai/gpt-daybreak-red-latest` or `-blue-latest` models, which need
+  no session option.
+- Also (2026-11-06): `agent()` has no permission-mode option. Workers inherit the origin's
+  mode, so an `auto` origin fails every `acp-opencode` worker with
+  `Permission mode "auto" is not supported`. The failure happens before a call record
+  exists: `parallel()` returns `null`, and status and history show zero calls.
+  Workaround: launch from an origin thread whose mode the worker provider supports.
 - Ask: Accept provider-neutral `sessionOptions` in `agent()`; validate against the selected
   model, pass them to `threads.spawn`, persist the effective values, and show enabled options
-  beside the worker model in both progress views.
+  beside the worker model in both progress views. Accept an explicit `permissionMode`, and
+  record pre-spawn selection failures as failed calls.
 - Status: open
 - Category: sdk-gap
 - Evidence: Stock Workflows source and installed bundle; pinned patch script and

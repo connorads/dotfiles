@@ -95,7 +95,18 @@ def sha(value):
     return value
 
 
-RELEASE_ADAPTERS = {"0.47.1": "scripts/adapters/bb_0_47_1.py"}
+RELEASE_ADAPTERS = {
+    "0.47.1": "scripts/adapters/bb_0_47_1.py",
+    "0.48.1": "scripts/adapters/bb_0_48_1.py",
+}
+# Minified bindings differ per release, so each release names its own harness per profile.
+RELEASE_HARNESSES = {
+    "0.47.1": {
+        "session-options": "scripts/test-bundle.mjs",
+        "activity": "scripts/test-activity.mjs",
+    },
+    "0.48.1": {"session-options": "scripts/test-bundle-0.48.1.mjs"},
+}
 
 
 def manifests(registry=REGISTRY):
@@ -170,11 +181,10 @@ def manifests(registry=REGISTRY):
             or item["verification"]["profiles"] != expected_profiles
         ):
             raise ValueError("Unknown verification profile")
-        expected_harnesses = (
-            {"scripts/test-bundle.mjs"} if "session-options" in item["patches"] else set()
-        )
-        if "activity" in item["patches"]:
-            expected_harnesses.add("scripts/test-activity.mjs")
+        release_harnesses = RELEASE_HARNESSES[identity["version"]]
+        if any(patch not in release_harnesses for patch in item["patches"]):
+            raise ValueError("No verification harness for release")
+        expected_harnesses = {release_harnesses[patch] for patch in item["patches"]}
         if set(item["verification"]["harnesses"]) != expected_harnesses:
             raise ValueError("Undeclared verification harness")
         for name, value in item["verification"]["harnesses"].items():
@@ -490,18 +500,19 @@ def verify(plan_path, registry=None):
             )
             checks.append({"id": f"syntax:{name}", "exitCode": 0})
     with tempfile.TemporaryDirectory(prefix="bb-patch-verify-") as scratch:
+        harnesses = RELEASE_HARNESSES[manifest["installation"]["version"]]
         for profile in manifest["verification"]["profiles"]:
             if profile == "session-options":
                 command = [
                     "node",
-                    str(ROOT / "scripts/test-bundle.mjs"),
+                    str(ROOT / harnesses[profile]),
                     str(directory / FILES[1]),
                     str(Path(scratch) / "session.mjs"),
                 ]
             else:
                 command = [
                     "node",
-                    str(ROOT / "scripts/test-activity.mjs"),
+                    str(ROOT / harnesses[profile]),
                     str(directory / FILES[0]),
                     str(directory / FILES[1]),
                 ]

@@ -19,7 +19,10 @@ EXACT_RECIPES = {
             "builtin-plugins/workflows/dist/server.js": "013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b",
         },
         "recipe": ("scripts/adapters/bb_0_47_1.py", "scripts/adapters/bb_0_48_1.py"),
-        "harnesses": {"activity": "scripts/test-activity-0.48.1.mjs"},
+        "harnesses": {
+            "session-options": "scripts/test-bundle-0.48.1.mjs",
+            "activity": "scripts/test-activity-0.48.1.mjs",
+        },
     },
 }
 DEFAULT_HARNESSES = {

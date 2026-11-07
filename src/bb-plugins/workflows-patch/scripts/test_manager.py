@@ -171,7 +171,10 @@ class PlanningTests(Fixture):
                 entry["pristine"] = "a" * 64
             (self.registry / ("next-" + other["id"] + ".json")).write_text(json.dumps(other))
         # Admission remains explicit, even when more than one release is retained.
-        with patch.dict(manager.RELEASE_ADAPTERS, {"0.47.2": "scripts/adapters/bb_0_47_2.py"}):
+        with (
+            patch.dict(manager.RELEASE_ADAPTERS, {"0.47.2": "scripts/adapters/bb_0_47_2.py"}),
+            patch.dict(manager.RELEASE_HARNESSES, {"0.47.2": manager.RELEASE_HARNESSES["0.47.1"]}),
+        ):
             for path in self.registry.glob("next-*.json"):
                 value = json.loads(path.read_text())
                 value["adapter"]["path"] = "scripts/adapters/bb_0_47_2.py"

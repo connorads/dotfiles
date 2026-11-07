@@ -1,4 +1,4 @@
-"""Exact-cardinality RPC activity recipe checks with synthetic anchor fixtures."""
+"""Exact-cardinality 0.48.1 recipe checks with synthetic anchor fixtures."""
 # ruff: noqa: PT009, PT027 - standard-library unittest suite; no pytest dependency
 
 import unittest
@@ -46,13 +46,25 @@ class Adapter0481Tests(unittest.TestCase):
         )
         self.assertEqual(result.count("x.rpc.experimental_invalidate([`runs:${u}`])"), 1)
 
-    def test_session_options_refused_for_every_file(self):
-        for name in ("start-server.js", "builtin-plugins/workflows/dist/app.js", "authoring.md"):
-            with (
-                self.subTest(name=name),
-                self.assertRaisesRegex(ValueError, "No session-options recipe"),
-            ):
-                bb_0_48_1.transform("session-options", name, b"synthetic")
+    def test_session_options_leave_core_unchanged(self):
+        data = b"synthetic core"
+        self.assertIs(bb_0_48_1.transform("session-options", "start-server.js", data), data)
+
+    def test_session_options_progress_metadata_uses_048_1_bindings(self):
+        stock = "metadata:[a.provider,fw(a.model),a.reasoningLevel]"
+        self.assertEqual(
+            bb_0_48_1.patch_session_app(stock),
+            "metadata:[a.provider,fw(a.model),a.reasoningLevel,...a.sessionOptionLabels]",
+        )
+        with self.assertRaisesRegex(ValueError, "Expected one occurrence"):
+            bb_0_48_1.patch_session_app("metadata:[i.provider,$n(i.model),i.reasoningLevel]")
+
+    def test_session_options_refuse_047_1_plugin_bindings(self):
+        old = "return kp.parse({providerId:k.provider,model:Q.model,reasoningLevel:k.reasoningLevel,permissionMode:N})"
+        with self.assertRaisesRegex(ValueError, "Expected one occurrence"):
+            bb_0_48_1.transform(
+                "session-options", "builtin-plugins/workflows/dist/server.js", old.encode()
+            )
 
     def test_unknown_transformation_refused(self):
         with self.assertRaisesRegex(ValueError, "Unknown transformation"):

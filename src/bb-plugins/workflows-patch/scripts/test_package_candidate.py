@@ -88,7 +88,11 @@ class PackageCandidateTests(unittest.TestCase):
             result = self.prepare()
         self.assertEqual(result["status"], "patched", result.get("warning"))
         self.assertEqual(
-            check.call_args.kwargs["harnesses"], {"activity": "scripts/test-activity-0.48.1.mjs"}
+            check.call_args.kwargs["harnesses"],
+            {
+                "session-options": "scripts/test-bundle-0.48.1.mjs",
+                "activity": "scripts/test-activity-0.48.1.mjs",
+            },
         )
         for name in FILES:
             original = (self.package / "server/dist" / name).read_bytes()
@@ -105,18 +109,20 @@ class PackageCandidateTests(unittest.TestCase):
                 "scripts/adapters/bb_0_48_1.py",
             },
         )
-        self.assertEqual(set(result["provenance"]["tests"]), {"scripts/test-activity-0.48.1.mjs"})
+        self.assertEqual(
+            set(result["provenance"]["tests"]),
+            {"scripts/test-bundle-0.48.1.mjs", "scripts/test-activity-0.48.1.mjs"},
+        )
 
-    def test_048_1_session_options_retains_stock(self):
+    def test_048_1_session_options_without_anchors_retains_stock(self):
         with self.exact_fixture(), patch("package_candidate._check_candidate"):
             result = self.prepare(set_id="session-options-plus-activity")
         self.assertEqual(result["status"], "partial")
         self.assertEqual(result["appliedPatches"], ["activity"])
-        self.assertEqual(
-            result["failedPatches"],
-            {
-                "session-options": "Patch incompatible: No session-options recipe for 0.48.1",
-            },
+        self.assertEqual(list(result["failedPatches"]), ["session-options"])
+        self.assertRegex(
+            result["failedPatches"]["session-options"],
+            "^Patch incompatible: Expected one occurrence",
         )
         for name in FILES[2:]:
             self.assertEqual(

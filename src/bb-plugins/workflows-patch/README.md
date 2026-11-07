@@ -1,6 +1,7 @@
 # BB bundle patch registry
 
-The desktop registry prepares exact BB 0.47.1 bundles without compiling BB or a bundled plugin.
+The desktop registry prepares exact BB 0.47.1 and 0.48.1 bundles without compiling BB or a bundled plugin.
+Desktop 0.48.1 has only a draft `session-options` manifest. Its `start-server.js` differs from the npm package the 0.48.1 activity recipe pins.
 The manager inspects explicit installations and verifies copied candidates.
 Its apply and restore commands admit only disposable copies beneath the operating system's canonical user temporary directory.
 They never reload plugins, restart servers or invoke an updater.
@@ -78,7 +79,7 @@ bb-patch prepare-package --package /absolute/mise/node_modules/bb-app \
   --set session-options-plus-activity
 ```
 
-Package preparation selects a separate activity recipe for npm BB `0.48.1`.
+Package preparation selects a separate session-options and activity recipe for npm BB `0.48.1`.
 Admission requires version `0.48.1` and these pristine SHA-256 digests:
 
 | File under `server/dist` | SHA-256 |
@@ -87,8 +88,8 @@ Admission requires version `0.48.1` and these pristine SHA-256 digests:
 | `builtin-plugins/workflows/dist/server.js` | `013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b` |
 
 A digest mismatch retains every requested feature's stock bytes.
-The `0.48.1` recipe explicitly refuses session-options, including its authoring change.
-The combined set therefore publishes activity as `partial`, with stock progress view and authoring files.
+The `0.48.1` session-options recipe is the `0.47.1` recipe with the release's minified bindings.
+Its harness, `scripts/test-bundle-0.48.1.mjs`, exports and calls those bindings.
 Other versions try the existing `0.47.1` transformations and harnesses.
 Version `0.48.2` receives no `0.48.1` recipe by anchor matching.
 Each feature must pass syntax checks and its existing offline behaviour harness before publication.
@@ -141,7 +142,7 @@ The scoped `workflows-patch` hook runs independent tests and validates tracked i
 Copied-release behaviour remains an explicit check when release fixtures are absent.
 
 The opt-in npm `0.48.1` test prepares activity and combined copies from the installed source.
-It checks exact output hashes, stock session files, and unchanged source contents and metadata.
+It checks exact output hashes, session-options output, and unchanged source contents and metadata.
 Set `BB_PATCH_NODE` to an installed Node executable with `node:sqlite`:
 
 ```sh
@@ -245,6 +246,7 @@ A missing desktop is reported directly. The CLI installation is never substitute
 2. Run equivalent acceptance tests against pristine upstream. Retire any patch whose behaviour upstream supplies.
 3. Add a separate release adapter and draft manifests for remaining patches. Resolve identifiers through actual lifecycle functions.
 4. Add the release and adapter path to `RELEASE_ADAPTERS` in `scripts/bb_patch.py` before candidate preparation.
+   Add its per-profile harness paths to `RELEASE_HARNESSES`.
    Retain admitted releases. Registry uniqueness and pristine consistency apply within each installation identity.
 5. Prepare fresh scratch candidates. Run independent session-options, activity, combined, recovery and performance checks.
 6. Review adapter, harness, intermediate and final fingerprints. Perform adversarial and simplification passes before offline approval.
