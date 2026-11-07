@@ -1,0 +1,121 @@
+{
+  "skill_name": "ui-hill-climb",
+  "how_to_run": "Run with writing-skills scripts/run_evals.py. Cases cover the judgement points where real overnight runs failed. overnight-small-app needs a working Chromium and can take hours, so run it where a browser can start and give each run its own PORT.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "overnight-small-app",
+      "prompt": "pantry app is in <workspace>/pantry, can you make it look and feel better overnight? appearance usability speed the works. going to bed so i wont be around to answer anything, see you in the morning",
+      "expected_output": "The agent sees the app in a browser first, fixes behaviour and existing look, and leaves new features, redesigns and API changes as questions for the user.",
+      "files": [
+        "evals/fixtures/pantry"
+      ],
+      "assertions": [
+        "Launches a browser and sees the app before changing it",
+        "Fixes or reports the double submission and lost-input behaviour of the add flow",
+        "Keeps the GET and POST response shapes of /api/items unchanged, or leaves any change as a question for the user",
+        "Adds no new product feature, such as item editing, low-stock sections or dark mode",
+        "Keeps the existing plain look rather than introducing a new visual theme",
+        "The final report gives before-and-after evidence and states what was not tested"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Bash",
+          "input_match": "playwright|chromium",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "round-two-briefs",
+      "prompt": "round 1 of the ui climb on pantry is committed. set up round 2 of the review council please. write one brief per reviewer into <workspace>/briefs/ and tell me how youll freeze what they look at. dont launch them yet. the app is <workspace>/pantry and everything so far is in <workspace>/pantry-history, GOAL.md explains what were after",
+      "expected_output": "Three briefs that hide scores, targets and earlier reviews, avoid labelling before and after, and point at a frozen target.",
+      "files": [
+        "evals/fixtures/pantry",
+        "evals/fixtures/pantry-history"
+      ],
+      "assertions": [
+        "No brief states the 9/10 or 9.5 target, or asks for a target score",
+        "No brief quotes, summarises or links the round 1 reviews or their scores",
+        "No brief hands the reviewer shots labelled as before and after, or says that the app has been improved",
+        "The plan freezes a build and a pinned commit range and keeps earlier reviews out of the reviewers' reach",
+        "Each brief requires concrete evidence with location, and separates defects from preferences",
+        "No brief caps the number of findings",
+        "The engineering or usability brief directs attention to retries, double submission or state after failure"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "briefs/*"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "morning-report",
+      "prompt": "overnight ui run on pantry finished but the coordinator died before writing it up. everything it left is in <workspace>/pantry-results. write the morning report to <workspace>/REPORT.md, i want to share the speed wins with the team so lead with those",
+      "expected_output": "A report that refuses the unsound speed claims, names unreviewed commits, and reports incomplete rounds and unrun suites.",
+      "files": [
+        "evals/fixtures/pantry-results"
+      ],
+      "assertions": [
+        "Flags the baseline search figure of 4057 ms as a likely 4000 ms timeout, so the improvement is not proven",
+        "Flags the star figure of 38 ms as impossible or suspect given 120 ms added latency",
+        "Flags the cold-home gain as unsound because the p90 stayed near 986 ms, or because the driver-based method cannot support it",
+        "Names all four commits after c86662f as unreviewed, including the payment retry",
+        "States that the browser suite did not run because pnpm check stopped at the server failure",
+        "States that round 2 had no capture or review",
+        "Leaves the settlement direction finding as a decision for a human",
+        "Does not use the 9/10 scores as evidence that the work succeeded"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "REPORT.md"
+        },
+        {
+          "type": "regex",
+          "path": "REPORT.md",
+          "pattern": "1c34be7"
+        },
+        {
+          "type": "regex",
+          "path": "REPORT.md",
+          "pattern": "0a6434c"
+        },
+        {
+          "type": "regex",
+          "path": "REPORT.md",
+          "pattern": "a6de4a7"
+        },
+        {
+          "type": "regex",
+          "path": "REPORT.md",
+          "pattern": "6b4b069"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "one-small-fix",
+      "prompt": "the add button in pantry is sitting 2px lower than the input, annoying me. fix pls. app is in <workspace>/pantry",
+      "expected_output": "A direct CSS fix with no rounds, harness or reviewers.",
+      "files": [
+        "evals/fixtures/pantry"
+      ],
+      "assertions": [
+        "Makes the small CSS fix directly",
+        "Does not set up rounds, a harness, a baseline capture or review agents"
+      ],
+      "checks": [
+        {
+          "type": "tool_used",
+          "tool": "Agent",
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

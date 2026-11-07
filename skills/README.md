@@ -26,6 +26,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `accessibility` | Screen-reader-first a11y (WCAG 2.2 AA) | `pnpm dlx skills add connorads/dotfiles -s accessibility` |
 | `holistic-ux` | UX via systems thinking and service design | `pnpm dlx skills add connorads/dotfiles -s holistic-ux` |
 | `ui-design` | Build application screens and complete task flows | `pnpm dlx skills add connorads/dotfiles -s ui-design` |
+| `ui-hill-climb` | Improve a running app over bounded, independently reviewed rounds | `pnpm dlx skills add connorads/dotfiles -s ui-hill-climb` |
 | `homebrew-cask-authoring` | Author and submit Homebrew Casks | `pnpm dlx skills add connorads/dotfiles -s homebrew-cask-authoring` |
 | `utm` | Drive UTM virtual machines on macOS | `pnpm dlx skills add connorads/dotfiles -s utm` |
 | `writing-skills` | Author, review, and eval agent skills test-first | `pnpm dlx skills add connorads/dotfiles -s writing-skills` |

@@ -1,0 +1,9 @@
+$ pnpm check
+format ok
+lint ok
+typecheck ok
+unit: 412 passed
+server: 1 failed, test/month.test.ts hard-codes 2026-10
+ELIFECYCLE Command failed with exit code 1.
+
+The browser suite runs after server in pnpm check.

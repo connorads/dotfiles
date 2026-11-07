@@ -1,0 +1,8 @@
+1c34be7 fix: keep payment retry across navigation
+0a6434c fix: restore focus after failed delete
+a6de4a7 fix: hold scroll position on return
+6b4b069 fix: guard discard on the edit form
+c86662f feat: move search into the header   <- round 3 reviews froze here
+b77e120 feat: virtualise the item list
+9ae31d0 fix: queue taps during a save
+4c0d1f2 feat: left rail from 900 px

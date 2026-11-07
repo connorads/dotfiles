@@ -1,0 +1,5 @@
+body { font: 13px sans-serif; color: #999; margin: 8px; }
+h1 { font-size: 15px; }
+form { display: flex; align-items: flex-start; gap: 4px; }
+.add { margin-top: 2px; padding: 2px 6px; }
+li { padding: 1px 0; }
