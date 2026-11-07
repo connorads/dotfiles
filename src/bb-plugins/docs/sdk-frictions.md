@@ -1292,3 +1292,21 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open
 - Category: app-bug
 - Evidence: bundled automations/dist/server.js (recordAutomationFailure), automations/dist/app.js (Paused group), push-notifications/dist/server.js (thread.failed subscription).
+
+### Loaded patch identity is unavailable to plugins
+
+- Found: 2026-11-07, Patch Health research, BB 0.48.1.
+- Wanted: distinguish installed patch files from the code serving the current connection.
+- Gap: `PluginServerApi` exposes server URLs and the data directory, but no loaded
+  release identity or core, plugin and frontend generations. A semantic version
+  or current file hash cannot establish which JavaScript a process loaded.
+- Workaround: inspect explicit installations and report loaded patch identity as
+  unavailable. A local listener-to-executable mapping establishes executable origin
+  only. Keep live behaviour checks separate from file inspection.
+- Ask: expose read-only startup identity and loaded core, plugin and frontend
+  generations, with documented provenance and invalidation rules.
+- Status: open; source verified. Exact loaded JavaScript identity remains unavailable.
+- Category: sdk-gap
+- Evidence: BB 0.48.1 `start-server.js.map`, embedded
+  `packages/plugin-sdk/src/backend-contract.ts` (`PluginServerApi`) and
+  `services/plugins/plugin-api.ts` (server API construction).
