@@ -34,7 +34,8 @@ function Popup({ focus }: { focus: HTMLElement | null }) {
     return () => { current = false; };
   }, [rpc, connection, attempt]);
   return <ChipPopover ref={dialog} aria-label="Patches" trigger={() => focus?.isConnected ? focus : null} anchor={null} width={580}
-    instant panelClassName="ph-panel" onClose={close}>
+    instant panelClassName="ph-panel" onClose={close}
+    place={() => { const width = Math.min(580, window.innerWidth - 24); return { width, left: (window.innerWidth - width) / 2, top: 24, origin: 'top center' }; }}>
     <PatchView snapshot={data?.snapshot ?? null} hostId={data?.hostId ?? null} loading={loading} error={error}
       onRefresh={() => setAttempt(value => value + 1)} onClose={close} />
   </ChipPopover>;
