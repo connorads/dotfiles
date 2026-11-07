@@ -459,6 +459,19 @@ EOF
   [ ! -e "$HOME/.cache/node-gyp" ]
 }
 
+@test "codex cleanup truncates the TUI log and keeps old sessions for transcript-backup" {
+  mkdir -p "$HOME/.codex/log" "$HOME/.codex/sessions/2026/01/01"
+  printf 'noise\n' >"$HOME/.codex/log/codex-tui.log"
+  printf 'session\n' >"$HOME/.codex/sessions/2026/01/01/rollout-old.jsonl"
+  touch -t 202601010000 "$HOME/.codex/sessions/2026/01/01/rollout-old.jsonl"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --codex
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$HOME/.codex/log/codex-tui.log" ]
+  [ -e "$HOME/.codex/sessions/2026/01/01/rollout-old.jsonl" ]
+}
+
 @test "rustup cleanup uninstalls only unmarked toolchains" {
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --rustup
 

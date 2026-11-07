@@ -100,8 +100,7 @@ this machine change; check every time rather than trusting a remembered figure.
 
 Where large things tend to hide: `~/Library/Application Support` (games, model
 weights), Rust `target/` dirs under repos, `~/Downloads`, LLM/Whisper model
-stores, `~/.codex/sessions` (single transcripts reach 400M; `cleanup`'s codex
-target prunes only those older than 30 days), `~/Recordings/vox` WAV (`vox
+stores, `~/.codex/sessions` (single transcripts reach 400M), `~/Recordings/vox` WAV (`vox
 compact` converts to Opus with preview and confirm), and `/private/tmp` (dev/agent scratch accumulates there and is cleared
 only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
 rebooting or with `cleanup --target claude-temp --yes`. That opt-in target
@@ -118,12 +117,13 @@ work and a named-dir deletion had almost nothing to take.
 
 Agent transcripts grow fast: Claude `projects/` under every profile, plus Codex
 `sessions` and `archived_sessions` (31G here, 21G of it under 30 days old).
-`cleanup` prunes only `~/.codex/sessions`. Do not propose lowering Claude's
+`transcript-backup` owns their deletion: it seals sessions idle 30+ days into
+age-encrypted archives on B2, verifies by download, then prunes. `--dry-run`
+sizes the candidates. A weekly launchd job runs it and notifies on failure, so
+a large transcript total first means checking `~/.cache/transcript-backup.log`.
+Do not add another deletion path, and do not propose lowering Claude's
 `cleanupPeriodDays` without reading why it is set: a long value protects
 `claude --resume` of hibernated sessions, and cost reporting reads these files.
-Compression halves them at best, because tool output dominates. Retention with
-an off-machine backup is the real lever, and the cutoff is the user's call.
-Size the age buckets first; a cutoff past the oldest file frees nothing.
 
 Version stores that keep every release: `~/.codex/packages/app-server-daemon/releases`
 (about 310M each; only the `current` symlink target runs), pnpm's own versions

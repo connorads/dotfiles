@@ -64,7 +64,7 @@ CLEANUP_LABELS=(
   nix "Nix garbage collection"
   mise "mise unused tool versions"
   mise-cache "mise download and metadata cache"
-  codex "Codex TUI log and old session files"
+  codex "Codex TUI log"
   brew "Homebrew download cache"
   go "Go build and module caches"
   claude-temp "Inactive Claude scratch sessions"
@@ -811,17 +811,13 @@ _cleanup_probe_target() {
       command="mise cache clear (fallback: rm -rf mise cache roots)"
       ;;
     codex)
+      # Sessions are transcripts: transcript-backup archives them before deleting.
       local log_file=$HOME/.codex/log/codex-tui.log
-      local -a sessions
       kb=0
       [[ -f "$log_file" ]] && (( kb += $(_cleanup_kb_sum "$log_file") ))
-      if [[ -d $HOME/.codex/sessions ]]; then
-        sessions=("${(@f)$(find "$HOME/.codex/sessions" -type f -mtime +30 2>/dev/null)}")
-        (( ${#sessions[@]} > 0 )) && (( kb += $(_cleanup_kb_sum "${sessions[@]}") ))
-      fi
       (( kb > 0 )) || applicable=0
-      detail="Truncate: $log_file; prune sessions older than 30d"
-      command="truncate -s 0 codex-tui.log; rm stale session files"
+      detail="Truncate: $log_file"
+      command="truncate -s 0 codex-tui.log"
       ;;
     brew)
       command -v brew >/dev/null 2>&1 || applicable=0
@@ -1040,10 +1036,6 @@ _cleanup_run_target() {
     codex)
       local log_file=$HOME/.codex/log/codex-tui.log
       [[ -f "$log_file" ]] && : > "$log_file"
-      if [[ -d $HOME/.codex/sessions ]]; then
-        find "$HOME/.codex/sessions" -type f -mtime +30 -delete 2>/dev/null
-        find "$HOME/.codex/sessions" -type d -empty -delete 2>/dev/null
-      fi
       ;;
     brew)
       command -v brew >/dev/null 2>&1 || return 0
