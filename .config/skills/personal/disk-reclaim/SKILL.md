@@ -118,7 +118,7 @@ work and a named-dir deletion had almost nothing to take.
 Agent transcripts grow fast: Claude `projects/` under every profile, plus Codex
 `sessions` and `archived_sessions` (31G here, 21G of it under 30 days old).
 `transcript-backup` owns their deletion: it seals sessions idle 30+ days into
-age-encrypted archives on B2, verifies by download, then prunes. `--dry-run`
+age-encrypted archives on B2, checks the SHA-1 B2 stores, then prunes. `--dry-run`
 sizes the candidates. A weekly launchd job runs it and notifies on failure, so
 a large transcript total first means checking `~/.cache/transcript-backup.log`.
 Do not add another deletion path, and do not propose lowering Claude's

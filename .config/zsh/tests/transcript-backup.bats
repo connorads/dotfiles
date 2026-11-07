@@ -138,16 +138,38 @@ EOF2
   [ -z "$(find "$TMPDIR" -mindepth 1 -print)" ]
 }
 
-@test "a download that does not match deletes nothing" {
+@test "a remote checksum that does not match deletes nothing" {
   fake_rclone <<'EOF'
 #!/bin/sh
-[ "$1" = cat ] && { printf 'corrupted'; exit 0; }
+[ "$1" = lsjson ] && { printf '[{"Name":"x","Hashes":{"sha1":"0000000000000000000000000000000000000000"}}]'; exit 0; }
 exec "$REAL_RCLONE_BIN" "$@"
 EOF
   run "$TB"
   [ "$status" -ne 0 ]
   [[ "$output" == *"verification failed"* ]]
   [ -e "$P/$UUID_A.jsonl" ]
+}
+
+@test "a missing remote checksum deletes nothing" {
+  fake_rclone <<'EOF'
+#!/bin/sh
+[ "$1" = lsjson ] && { printf '[]'; exit 0; }
+exec "$REAL_RCLONE_BIN" "$@"
+EOF
+  run "$TB"
+  [ "$status" -ne 0 ]
+  [ -e "$P/$UUID_A.jsonl" ]
+}
+
+@test "verification never downloads the archive" {
+  fake_rclone <<'EOF'
+#!/bin/sh
+[ "$1" = cat ] && { echo "download attempted" >&2; exit 9; }
+exec "$REAL_RCLONE_BIN" "$@"
+EOF
+  run "$TB"
+  [ "$status" -eq 0 ]
+  [ ! -e "$P/$UUID_A.jsonl" ]
 }
 
 @test "a session that changes during the upload is kept" {

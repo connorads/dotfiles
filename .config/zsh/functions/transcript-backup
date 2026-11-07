@@ -107,8 +107,13 @@ sha=$(shasum -a 256 $stage/archive | cut -d' ' -f1)
 name="$(date -u +%Y/%m)/$(date -u +%Y%m%dT%H%M%SZ)-${HOST%%.*}-${sha[1,12]}.tar.zst.age"
 
 rclone copyto --immutable $stage/archive "$remote/$name"
-got=$(rclone cat "$remote/$name" | shasum -a 256 | cut -d' ' -f1)
-if [[ $got != $sha ]]; then
+# Check B2's stored SHA-1 from a listing, not a read-back: free-tier download
+# caps refuse a download, and `rclone cat` then exits 0 with no output.
+local sha1
+sha1=$(shasum -a 1 $stage/archive | cut -d' ' -f1)
+got=$(rclone lsjson --hash --hash-type sha1 --files-only "$remote/${name:h}" --include "/${name:t}" |
+  jq -r '.[0].Hashes.sha1 // empty')
+if [[ -z $got || $got != $sha1 ]]; then
   print -u2 "transcript-backup: verification failed for $name; nothing deleted"
   return 1
 fi
