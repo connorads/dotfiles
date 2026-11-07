@@ -97,43 +97,40 @@ fi
 
 local stage
 stage=$(mktemp -d "${TMPDIR:-/tmp}/transcript-backup.XXXXXX")
-{
-  print -rN -- $rel >$stage/list
-  tar -C $HOME --null -T $stage/list -cf - | zstd -6 -T0 -q | age -R $recipients >$stage/archive
+# EXIT, not `always`: run as a script, a top-level return skips `always`.
+trap "rm -f -- ${(q)stage}/list ${(q)stage}/archive; rmdir -- ${(q)stage} 2>/dev/null" EXIT
+print -rN -- $rel >$stage/list
+tar -C $HOME --null -T $stage/list -cf - | zstd -6 -T0 -q | age -R $recipients >$stage/archive
 
-  local sha name got
-  sha=$(shasum -a 256 $stage/archive | cut -d' ' -f1)
-  name="$(date -u +%Y/%m)/$(date -u +%Y%m%dT%H%M%SZ)-${HOST%%.*}-${sha[1,12]}.tar.zst.age"
+local sha name got
+sha=$(shasum -a 256 $stage/archive | cut -d' ' -f1)
+name="$(date -u +%Y/%m)/$(date -u +%Y%m%dT%H%M%SZ)-${HOST%%.*}-${sha[1,12]}.tar.zst.age"
 
-  rclone copyto --immutable $stage/archive "$remote/$name"
-  got=$(rclone cat "$remote/$name" | shasum -a 256 | cut -d' ' -f1)
-  if [[ $got != $sha ]]; then
-    print -u2 "transcript-backup: verification failed for $name; nothing deleted"
-    return 1
+rclone copyto --immutable $stage/archive "$remote/$name"
+got=$(rclone cat "$remote/$name" | shasum -a 256 | cut -d' ' -f1)
+if [[ $got != $sha ]]; then
+  print -u2 "transcript-backup: verification failed for $name; nothing deleted"
+  return 1
+fi
+
+mkdir -p $state_dir
+print -r -- "$(date -u +%FT%TZ)"$'\037'"$name"$'\037'"$sha"$'\037'"${#files}"$'\037'"$total" >>$state_dir/ledger
+print "transcript-backup: uploaded $name (${#files} files, $(( total / 1048576 ))M)"
+
+(( prune )) || return 0
+
+# Delete only what is byte-for-byte the file we archived: a session resumed
+# since selection has a new size or mtime and stays.
+local deleted=0 kept=0
+for f in $files; do
+  if zstat -H st -- $f 2>/dev/null && [[ $st[size] == $size[$f] && $st[mtime] == $mtime[$f] ]]; then
+    rm -f -- $f; deleted=$(( deleted + 1 ))
+  else
+    kept=$(( kept + 1 ))
   fi
-
-  mkdir -p $state_dir
-  print -r -- "$(date -u +%FT%TZ)"$'\037'"$name"$'\037'"$sha"$'\037'"${#files}"$'\037'"$total" >>$state_dir/ledger
-  print "transcript-backup: uploaded $name (${#files} files, $(( total / 1048576 ))M)"
-
-  (( prune )) || return 0
-
-  # Delete only what is byte-for-byte the file we archived: a session resumed
-  # since selection has a new size or mtime and stays.
-  local deleted=0 kept=0
-  for f in $files; do
-    if zstat -H st -- $f 2>/dev/null && [[ $st[size] == $size[$f] && $st[mtime] == $mtime[$f] ]]; then
-      rm -f -- $f; deleted=$(( deleted + 1 ))
-    else
-      kept=$(( kept + 1 ))
-    fi
-  done
-  local d
-  for d in $sidecars; do
-    if [[ -d $d ]]; then find $d -depth -type d -empty -delete; fi
-  done
-  print "transcript-backup: deleted $deleted files, kept $kept changed since archiving"
-} always {
-  rm -f -- $stage/list $stage/archive
-  rmdir -- $stage 2>/dev/null
-}
+done
+local d
+for d in $sidecars; do
+  if [[ -d $d ]]; then find $d -depth -type d -empty -delete; fi
+done
+print "transcript-backup: deleted $deleted files, kept $kept changed since archiving"

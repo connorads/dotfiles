@@ -125,6 +125,19 @@ EOF
   [ -e "$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-x.jsonl" ]
 }
 
+@test "a failed run removes its staging archive" {
+  fake_rclone <<'EOF2'
+#!/bin/sh
+[ "$1" = copyto ] && exit 7
+exec "$REAL_RCLONE_BIN" "$@"
+EOF2
+  export TMPDIR="$BATS_TEST_TMPDIR/stage"
+  mkdir -p "$TMPDIR"
+  run "$TB"
+  [ "$status" -ne 0 ]
+  [ -z "$(find "$TMPDIR" -mindepth 1 -print)" ]
+}
+
 @test "a download that does not match deletes nothing" {
   fake_rclone <<'EOF'
 #!/bin/sh
