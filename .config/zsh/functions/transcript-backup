@@ -106,9 +106,10 @@ local sha name got
 sha=$(shasum -a 256 $stage/archive | cut -d' ' -f1)
 name="$(date -u +%Y/%m)/$(date -u +%Y%m%dT%H%M%SZ)-${HOST%%.*}-${sha[1,12]}.tar.zst.age"
 
-# Names are unique, so skip rclone's existence check: on B2 it is a HEAD that
-# counts as a download and fails once the free daily download cap is spent.
-rclone copyto --no-check-dest $stage/archive "$remote/$name"
+# On B2 a HEAD counts as a download, which the free daily cap refuses. Names are
+# unique, so skip the existence check; one stream skips the multi-thread
+# uploader's post-copy HEAD.
+rclone copyto --no-check-dest --multi-thread-streams 0 $stage/archive "$remote/$name"
 # Check B2's stored SHA-1 from a listing, not a read-back: free-tier download
 # caps refuse a download, and `rclone cat` then exits 0 with no output.
 local sha1
