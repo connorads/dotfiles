@@ -197,6 +197,12 @@
       "skillPath": "skills/marimo-notebook/SKILL.md",
       "computedHash": "d843af038a49245369d9a91b8dda531a0d58882bc06623604b673cb144588edd"
     },
+    "merge-risk": {
+      "source": "warpdotdev/common-skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/merge-risk/SKILL.md",
+      "computedHash": "0eb9f25538707620ce0b28356ad25ae1e440db8f9c0fc2868fc74d9d745ccb82"
+    },
     "minimalist-ui": {
       "source": "Leonxlnx/taste-skill-classics",
       "sourceType": "github",
