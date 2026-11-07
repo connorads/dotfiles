@@ -69,6 +69,9 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Workaround: The [pinned Workflows bundle patch](../workflows-patch/README.md) accepts
   provider session options, passes them to a direct worker, and shows their labels.
   Session options are independent of activity. The registry pins independent and combined sets and refuses unknown bundle tuples.
+- Also (2026-11-06): a worker cannot run on a named Claude account. Workers start on the
+  Default account even when the composer's remembered account differs, so a run cannot
+  spread quota across accounts. No workaround; run on Default.
 - Also (2026-11-06, BB 0.48.1): a native update replaces the patched files with stock
   bytes, and each release renames minified bindings. Each release needs its own adapter
   and harness; 0.48.1 has a draft desktop session-options recipe. Until it is installed,
@@ -1278,3 +1281,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open; source verified, live repro pending
 - Category: sdk-gap
 - Evidence: [ChipPopover](../chip/popover.tsx), @thread:thr_36kydsm27n
+
+### Automation automatic pauses need persistent alerts
+
+- Found: 2026-11-06, bundled automations and push-notifications plugins.
+- Wanted: notice when repeated failures stop a recurring schedule.
+- Gap: automations stores the automatic pause in enabled, nextRunAt and lastError. Its bundled server has no notification dispatch. The notification plugin subscribes to thread failures, but not automation pause transitions. The Automations app shows failure details and a Paused group, requiring a visit.
+- Workaround: inspect Automations periodically. An hourly script monitor was tested, then removed because it repeats alerts and depends on the same scheduler.
+- Ask: emit an automation-paused event and retain one unread alert with the task, failure reason and Resume action. Route that event through configured notification channels.
+- Status: open
+- Category: app-bug
+- Evidence: bundled automations/dist/server.js (recordAutomationFailure), automations/dist/app.js (Paused group), push-notifications/dist/server.js (thread.failed subscription).
