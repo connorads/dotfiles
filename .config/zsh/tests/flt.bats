@@ -97,6 +97,8 @@ teardown() { stop_private_server; }
   tx list-commands | grep -q '^new-pane' || skip "no floating-pane support in this tmux"
   TMUX="$(tx display -p '#{socket_path}'),$(tx display -p '#{pid}'),0"
   run -0 env TMUX="$TMUX" zsh --no-rcs "$FLT" tr 'sleep 60'
-  run -0 tx list-panes -F '#{pane_floating_flag} #{pane_left},#{pane_top}'
-  [[ "$output" == *"1 60,1"* ]] # 25% of 80 = 20 wide flush right at 60; 5% top inset = row 1
+  # tmux 3.8 reports a floating pane's content area inside a one-cell border, so
+  # assert the outer box: 25% of 80 = 20 wide flush right at 60; 5% top inset = row 1.
+  run -0 tx list-panes -F '#{pane_floating_flag} #{e|-:#{pane_left},1},#{e|-:#{pane_top},1} #{e|+:#{pane_width},2}'
+  [[ "$output" == *"1 60,1 20"* ]]
 }
