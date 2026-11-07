@@ -15,9 +15,11 @@ passes Executor's own MCP tools through with an `executor_` prefix
 1. In Executor, open **Connect**, create or pick a scoped connection, and copy
    its MCP URL. Hosted (`mcp.executor.sh`) and self-hosted Executors both
    work: the plugin reads every endpoint from the server's OAuth metadata.
-2. In BB, open **Settings → Executor**, add it with a name, and press
-   **Add and sign in**. Open the sign-in page, approve, and the browser returns
-   to BB. The first connection becomes the default.
+2. In BB, press `⌥E` and paste the URL, or press `a` and fill it in. The name
+   is optional. **Add and sign in** selects the connection for the thread or
+   draft and starts its sign-in. Open the sign-in page, approve, and the browser
+   returns to BB. The first connection becomes the default. Settings → Executor
+   has the same form.
 3. Before starting a thread, use the composer chip or `⌥E` to choose:
    `d` default, `1`-`9` a connection, `o` off. The choice applies before the
    agent receives tools. Off disables Executor tools only.

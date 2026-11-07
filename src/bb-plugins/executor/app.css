@@ -74,3 +74,15 @@
 @media (pointer: coarse) {
   .ex-connection button { min-height: 44px; }
 }
+
+.ex-add { display: grid; gap: 6px; margin: 4px 12px 10px; }
+.ex-add-row { display: flex; gap: 6px; }
+.ex-add-row .ex-input { flex: 1; min-width: 0; }
+.ex-add-error { padding: 0; }
+.ex-input {
+  height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--foreground); font: 400 12px/1 var(--font-sans);
+}
+.ex-input::placeholder { color: var(--muted-foreground); }
+.ex-input:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
+.ex-button:disabled { opacity: .55; cursor: default; }

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
+import { AddForm, looksLikeMcpUrl } from './add-form.tsx';
 import type { ConnectionView, StateView } from './contracts.ts';
 import { SignInPanel } from './sign-in.tsx';
 import { choose, message, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
@@ -30,6 +31,20 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
   const rows = view ? rowsFor(view) : [];
   const current = rows.find(row => sameChoice(row.choice, choice))?.id ?? 'default';
   const signIns = view?.signIns ?? [];
+  // null: closed. A string: open, prefilled with that URL.
+  const [adding, setAdding] = useState<string | null>(null);
+  const showAdd = adding !== null || view?.connections.length === 0;
+
+  function openAdd(url = '') {
+    setError(null);
+    setAdding(url);
+  }
+
+  async function added(id: string) {
+    setAdding(null);
+    await choose(threadId, { kind: 'connection', id });
+    await rpc().call('signIn', { id, method: 'browser' });
+  }
 
   // Row ids are fixed words or connection slugs ([a-z0-9-]), so the selector needs no escaping.
   const focusRow = useCallback((id: string) => {
@@ -60,7 +75,7 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target as HTMLElement;
-    if (target.closest('.ex-signin')) return;
+    if (target.closest('.ex-signin, .ex-add')) return;
     const index = rows.findIndex(row => row.id === target.dataset['row']);
     const move = (step: number) => {
       const next = rows[(Math.max(index, 0) + step + rows.length) % rows.length];
@@ -68,18 +83,28 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     };
     if (event.key === 'ArrowDown' || event.key === 'j') { event.preventDefault(); move(1); return; }
     if (event.key === 'ArrowUp' || event.key === 'k') { event.preventDefault(); move(-1); return; }
+    if (event.key === 'a') { event.preventDefault(); openAdd(); return; }
     const byKey = rows.find(row => row.keycap === event.key);
     if (byKey) { event.preventDefault(); void pick(byKey); }
   }
 
+  // Paste an MCP URL anywhere in the popover to start adding it.
+  function onPaste(event: ClipboardEvent<HTMLDialogElement>) {
+    if ((event.target as HTMLElement).closest('input')) return;
+    const text = event.clipboardData.getData('text/plain');
+    if (!looksLikeMcpUrl(text)) return;
+    event.preventDefault();
+    openAdd(text.trim());
+  }
+
   return <ChipPopover ref={dialog} aria-label="Executor connection" trigger={visibleChip} anchor={anchor} width={360}
-    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onClose={onClose}>
+    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste} onClose={onClose}>
     <header className="ex-header">
       <h2>Executor connection</h2>
       <span className="ex-muted">{threadId ? 'for this thread' : 'before the first message'}</span>
     </header>
     {!view ? <p className="ex-empty">Loading…</p>
-      : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one in Settings → Executor.</p>
+      : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one from Executor's Connect page.</p>
       : <section className="ex-rows" aria-label="Connections">
         {rows.map(row => <button key={row.id} type="button" className="ex-row" data-row={row.id}
           aria-pressed={row.id === current} onClick={() => void pick(row)}>
@@ -89,7 +114,11 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
             {row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
           </span>
         </button>)}
+        {!showAdd && <button type="button" className="ex-row" data-row="add" onClick={() => openAdd()}>
+          <kbd>a</kbd><span className="ex-row-label">Add connection…</span><span className="ex-row-aside">or paste a URL</span>
+        </button>}
       </section>}
+    {view && showAdd && <AddForm key={adding ?? ''} initialUrl={adding ?? ''} count={view.connections.length} onAdded={added} />}
     {signIns.map(signIn => <SignInPanel key={signIn.id} signIn={signIn}
       name={view?.connections.find(c => c.id === signIn.id)?.name ?? signIn.id} />)}
     {Object.entries(view?.errors ?? {}).map(([id, text]) => <p key={id} className="ex-error" role="alert">
@@ -99,7 +128,7 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     <footer className="ex-footer">
       <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
       <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
-      <span>Manage connections in Settings → Executor.</span>
+      <span>Sign out, change the default or remove in Settings → Executor.</span>
     </footer>
   </ChipPopover>;
 }

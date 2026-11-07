@@ -201,3 +201,56 @@ it('chip: turns Executor off for a thread', async () => {
   expect(await chip.findByRole('button', { name: 'Executor is off for this thread' })).toBeTruthy();
   await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
 });
+
+it('popover: adds a connection by key, selects it for the thread and starts its sign-in', async () => {
+  let view = two;
+  let choice: unknown = { kind: 'default' };
+  const handlers = {
+    state: () => view,
+    threadChoice: () => choice,
+    setThreadChoice: (input: unknown) => { choice = (input as { choice: unknown }).choice; return null; },
+    add: (input: unknown) => {
+      const { name } = input as { name: string };
+      view = stateOf({ connections: [...two.connections, connection('connection-3', name, { status: 'signed-out' })] });
+      return { ok: true, id: 'connection-3' };
+    },
+    signIn: () => null,
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-add', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog', { name: 'Executor connection' });
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  const url = await overlay.findByRole('textbox', { name: 'Connection URL' });
+  expect(document.activeElement).toBe(url);
+  fireEvent.change(url, { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  await waitFor(() => expect(overlay.rpcCalls.map(c => c.method)).toContain('signIn'));
+  expect(overlay.rpcCalls.find(c => c.method === 'add')?.input).toEqual({ name: 'Connection 3', url: 'https://mcp.executor.sh/mcp?connection=c_3' });
+  expect(choice).toEqual({ kind: 'connection', id: 'connection-3' });
+  expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'connection-3', method: 'browser' });
+  await waitFor(() => expect(overlay.queryByRole('form', { name: 'Add connection' })).toBeNull());
+});
+
+it('popover: pasting an MCP URL opens the add form with it filled in', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }) } });
+  act(() => toggle('t-paste', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog', { name: 'Executor connection' });
+  fireEvent.paste(dialog, { clipboardData: { getData: () => ' https://mcp.executor.sh/mcp?connection=c_9 ' } });
+  const url = await overlay.findByRole('textbox', { name: 'Connection URL' });
+  expect((url as HTMLInputElement).value).toBe('https://mcp.executor.sh/mcp?connection=c_9');
+  expect(document.activeElement).toBe(overlay.getByRole('textbox', { name: 'Connection name' }));
+});
+
+it('popover: shows the add form when there are no connections and keeps it open on a refused URL', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => stateOf({}), add: () => ({ ok: false, message: 'That is not an Executor MCP URL. It ends in /mcp.' }) },
+  });
+  act(() => toggle(null, 'pointer'));
+  const url = await overlay.findByRole('textbox', { name: 'Connection URL' });
+  fireEvent.change(url, { target: { value: 'https://example.com' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  expect((await overlay.findByRole('alert')).textContent).toBe('That is not an Executor MCP URL. It ends in /mcp.');
+  expect(overlay.rpcCalls.find(c => c.method === 'add')?.input).toEqual({ name: 'Connection 1', url: 'https://example.com' });
+  expect(overlay.getByRole('form', { name: 'Add connection' })).toBeTruthy();
+});
