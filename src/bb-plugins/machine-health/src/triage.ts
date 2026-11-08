@@ -20,7 +20,7 @@ export interface Work { command: string; processes: number }
  * tree; `bb` is bb itself or recognised provider infrastructure. Null may be ended.
  */
 export type Owner = 'thread' | 'bb' | null;
-export interface AppProcess { pid: number; mb: number; command: string; owner: Owner }
+export interface AppProcess { pid: number; mb: number; command: string; started: string | null; owner: Owner }
 export interface AppGroup { app: string; mb: number; count: number; processes: AppProcess[] }
 export interface ThreadUsage { threadId: string; rootPid: number; mb: number; processes: number; work: Work | null }
 export interface Triage { apps: AppGroup[]; threads: ThreadUsage[] }
@@ -108,6 +108,12 @@ const ownerOf = (proc: Proc, threadPids: Set<number>, infrastructure: Set<number
   threadPids.has(proc.pid) ? 'thread'
     : infrastructure.has(proc.pid) || proc.command.includes(bbBundle) ? 'bb' : null;
 
+export function processOwners(procs: Proc[], trees: ProviderTree[]): Map<number, Owner> {
+  const threadPids = new Set(trees.flatMap(tree => tree.pids));
+  const infrastructure = infrastructurePids(procs);
+  return new Map(procs.map(proc => [proc.pid, ownerOf(proc, threadPids, infrastructure)]));
+}
+
 /**
  * Apps grouped by bundle and ranked by summed footprint; threads ranked by
  * their tree's footprint. Sums over-count shared pages, so the ranking is
@@ -124,7 +130,7 @@ export function triage(procs: Proc[], trees: ProviderTree[], footprints: Map<num
     const group = groups.get(app) ?? { app, mb: 0, count: 0, processes: [] };
     group.mb += mb;
     group.count += 1;
-    group.processes.push({ pid: proc.pid, mb, command: proc.command.slice(0, commandCap), owner: ownerOf(proc, threadPids, infrastructure) });
+    group.processes.push({ pid: proc.pid, mb, command: proc.command.slice(0, commandCap), started: null, owner: ownerOf(proc, threadPids, infrastructure) });
     groups.set(app, group);
   }
   const apps = [...groups.values()].sort((a, b) => b.mb - a.mb).slice(0, appLimit);

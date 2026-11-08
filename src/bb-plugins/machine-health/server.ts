@@ -65,7 +65,7 @@ export default function plugin(bb: BbPluginApi) {
           return { threadId: usage.threadId, title: usage.threadId, mb: usage.mb, refusal: 'unknown thread' };
         }
       })));
-      return { hostId, gauge: readGauge(sample.raw), apps: sample.apps, threads, action: actionText(threads) };
+      return { hostId, gauge: readGauge(sample.raw), apps: sample.apps, threads, services: sample.services, serviceError: sample.serviceError, action: actionText(threads) };
     },
     hibernate: async ({ hostId, threadIds }) => {
       const onHost = new Set<string>();
@@ -88,8 +88,8 @@ export default function plugin(bb: BbPluginApi) {
       bb.log.info(`hibernate on ${hostId}: ${summary}`);
       return { outcomes, summary };
     },
-    terminate: async ({ hostId, pid, command }) => {
-      const result = await host.call('terminate', { pid, command }, { hostId });
+    terminate: async ({ hostId, pid, command, started }) => {
+      const result = await host.call('terminate', { pid, command, started }, { hostId, timeoutMs: 25_000 });
       samples.delete(hostId);
       if (result.ok) bb.log.info(`terminated pid ${pid} on ${hostId}`);
       return result;

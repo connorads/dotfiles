@@ -56,10 +56,14 @@ const machineSchema = z.object({
 const work = z.object({ command: z.string(), processes: z.number().int() });
 const appGroup = z.object({
   app: z.string(), mb: z.number(), count: z.number(),
-  processes: z.array(z.object({ pid: z.number(), mb: z.number(), command: z.string(), owner: z.enum(['thread', 'bb']).nullable() })),
+  processes: z.array(z.object({ pid: z.number(), mb: z.number(), command: z.string(), started: z.string().nullable(), owner: z.enum(['thread', 'bb']).nullable() })),
 });
 const threadUsage = z.object({ threadId: z.string(), rootPid: z.number(), mb: z.number(), processes: z.number(), work: work.nullable() });
-export const triageSampleSchema = z.object({ raw: rawGaugeSchema, apps: z.array(appGroup), threads: z.array(threadUsage) });
+const service = z.object({
+  rootPid: z.number(), name: z.string(), cwd: z.string().nullable(), listeners: z.array(z.string()),
+  ageSec: z.number().nullable(), mb: z.number(), evidence: z.string(), processes: appGroup.shape.processes,
+});
+export const triageSampleSchema = z.object({ raw: rawGaugeSchema, apps: z.array(appGroup), threads: z.array(threadUsage), services: z.array(service), serviceError: z.string().nullable() });
 
 // The pure core owns the types; these fail to compile if a schema drifts from them.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
@@ -71,11 +75,12 @@ const matches: [
 void matches;
 
 const terminateResult = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true) }),
+  z.object({ ok: z.literal(true), outcome: z.enum(['exited', 'still-running']) }),
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 const pid = z.number().int().positive();
 const command = z.string().min(1);
+const started = z.string().min(1);
 
 /** Runs on the machine being read. Triage, processes and terminate need macOS tools. */
 export const hostContract = defineRpcContract({
@@ -88,8 +93,8 @@ export const hostContract = defineRpcContract({
     input: z.object({ threadIds: z.array(z.string()) }),
     output: z.object({ threads: z.array(z.object({ threadId: z.string(), work: work.nullable() })) }),
   },
-  /** SIGTERM one process, only if the pid still runs the command the user saw. */
-  terminate: { input: z.object({ pid, command }), output: terminateResult },
+  /** SIGTERM one process, only if command and start time still match; verify exit afterwards. */
+  terminate: { input: z.object({ pid, command, started }), output: terminateResult },
 });
 
 const threadRow = z.object({ threadId: z.string(), title: z.string(), mb: z.number(), refusal: z.string().nullable() });
@@ -108,13 +113,13 @@ export const rpcContract = defineRpcContract({
   /** What holds memory on the thread's machine; macOS only. */
   triage: {
     input: z.object({ threadId }),
-    output: z.object({ hostId, gauge: gaugeSchema, apps: z.array(appGroup), threads: z.array(threadRow), action: z.string() }),
+    output: z.object({ hostId, gauge: gaugeSchema, apps: z.array(appGroup), threads: z.array(threadRow), services: z.array(service), serviceError: z.string().nullable(), action: z.string() }),
   },
   hibernate: {
     input: z.object({ hostId, threadIds: z.array(threadId).min(1).max(50) }),
     output: z.object({ outcomes: z.array(outcome), summary: z.string() }),
   },
-  terminate: { input: z.object({ hostId, pid, command }), output: terminateResult },
+  terminate: { input: z.object({ hostId, pid, command, started }), output: terminateResult },
 });
 
 export type ThreadRowData = z.infer<typeof threadRow>;

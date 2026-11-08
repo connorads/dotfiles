@@ -8,6 +8,7 @@ import { hostContract } from './contracts.ts';
 import { createCpuSampler, snapshot } from './src/cpu.ts';
 import type { Sample } from './src/machine.ts';
 import { parsePs, parseThreadIds, parseTopMem, rawGauge, sysctlKeys } from './src/parse.ts';
+import { developmentServices, identityRefusal, parseLsofFields, parseProcessTimes } from './src/services.ts';
 import type { Platform } from './src/present.ts';
 import { providerTrees, terminateRefusal, threadWork, triage } from './src/triage.ts';
 import {
@@ -169,18 +170,44 @@ export default experimental_defineHostEntry({
       const [{ raw }, { procs, trees }, top] = await Promise.all([
         darwinMemory(signal), readProcesses(signal), capture('/usr/bin/top', ['-l', '1', '-stats', 'pid,mem'], signal),
       ]);
-      return { raw, ...triage(procs, trees, parseTopMem(top)) };
+      const footprints = parseTopMem(top);
+      const result = triage(procs, trees, footprints);
+      const [timing, ports] = await Promise.all([
+        run('/bin/ps', ['-axo', 'pid=,lstart=,etime='], signal),
+        run('/usr/sbin/lsof', ['-nP', '-iTCP', '-sTCP:LISTEN', '-Fpn'], signal),
+      ]);
+      const times = parseProcessTimes(timing.stdout);
+      const listeners = parseLsofFields(ports.stdout);
+      const preliminary = developmentServices(procs, trees,  { footprints, times, directories: new Map(), listeners }).slice(0, 50);
+      const cwd = preliminary.length ? await run('/usr/sbin/lsof',
+        ['-a', '-p', preliminary.map(s => s.rootPid).join(','), '-d', 'cwd', '-Fn'], signal) : null;
+      for (const app of result.apps) for (const proc of app.processes) proc.started = times.get(proc.pid)?.started ?? null;
+      const services = developmentServices(procs, trees, { footprints, times, directories: parseLsofFields(cwd?.stdout ?? ''), listeners }).slice(0, 50);
+      const serviceError = timing.code !== 0 || times.size === 0 || ports.code === null || (ports.code !== 0 && ports.code !== 1) || (cwd && cwd.code !== 0)
+        ? 'Some process ages, directories or listeners could not be read. Missing values are unknown.' : null;
+      return { raw, ...result, services, serviceError };
     },
     processes: async ({ threadIds }, { signal }) => {
       const { procs, trees } = await readProcesses(signal);
       return { threads: threadWork(trees, procs, threadIds) };
     },
-    terminate: async ({ pid, command }, { signal }) => {
+    terminate: async ({ pid, command, started }, { signal }) => {
+      const times = parseProcessTimes(await capture('/bin/ps', ['-p', String(pid), '-o', 'pid=,lstart=,etime='], signal));
+      const identity = identityRefusal(started, times.get(pid)?.started ?? null);
+      if (identity) return { ok: false as const, reason: identity };
       const reason = terminateRefusal({ pid, command }, await readProcesses(signal), [process.pid, process.ppid]);
       if (reason) return { ok: false as const, reason };
       try {
         process.kill(pid, 'SIGTERM');
-        return { ok: true as const };
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const probe = await run('/bin/ps', ['-p', String(pid), '-o', 'pid=,lstart=,etime='], signal);
+          const current = parseProcessTimes(probe.stdout).get(pid);
+          if (probe.code === 1 || (probe.code === 0 && current && current.started !== started)) {
+            return { ok: true as const, outcome: 'exited' as const };
+          }
+        }
+        return { ok: true as const, outcome: 'still-running' as const };
       } catch (cause) {
         return { ok: false as const, reason: cause instanceof Error ? cause.message : String(cause) };
       }

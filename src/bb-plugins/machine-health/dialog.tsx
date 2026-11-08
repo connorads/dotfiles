@@ -54,7 +54,7 @@ function MemoryBars({ gauge, action }: { gauge: Gauge; action: string }) {
   </section>;
 }
 
-function Apps({ apps, onEnd }: { apps: AppGroup[]; onEnd: (pid: number, command: string) => Promise<void> }) {
+function Apps({ apps, onEnd }: { apps: AppGroup[]; onEnd: (pid: number, command: string, started: string) => Promise<void> }) {
   const [all, setAll] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<number | null>(null);
@@ -79,9 +79,9 @@ function Apps({ apps, onEnd }: { apps: AppGroup[]; onEnd: (pid: number, command:
               : proc.owner === 'bb'
               ? <span className="mh-why">part of bb</span>
               : confirm === proc.pid
-              ? <span className="mh-confirm">End? <button type="button" onClick={() => { setConfirm(null); void onEnd(proc.pid, proc.command); }}>Yes</button>
+              ? <span className="mh-confirm">End? <button type="button" onClick={() => { setConfirm(null); void onEnd(proc.pid, proc.command, proc.started!); }}>Yes</button>
                 <button type="button" onClick={() => setConfirm(null)}>No</button></span>
-              : <button type="button" onClick={() => setConfirm(proc.pid)}>End</button>}
+              : <button type="button" disabled={!proc.started} onClick={() => setConfirm(proc.pid)}>End</button>}
           </li>)}
         </ul>}
       </li>)}
@@ -169,12 +169,12 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
     catch (cause) { setError(message(cause)); }
     finally { setBusy(false); refresh(); }
   };
-  const end = async (pid: number, command: string) => {
+  const end = async (pid: number, command: string, started: string) => {
     if (!data) return;
     setHibernated(null); setStatus(null); setError(null);
     try {
-      const outcome = await rpc.call('terminate', { hostId: data.hostId, pid, command });
-      setStatus(outcome.ok ? `Sent SIGTERM to ${pid}.` : outcome.reason);
+      const outcome = await rpc.call('terminate', { hostId: data.hostId, pid, command, started });
+      setStatus(outcome.ok ? outcome.outcome === 'exited' ? `Process ${pid} exited.` : `Sent SIGTERM to ${pid}; exit was not confirmed.` : outcome.reason);
     } catch (cause) { setError(message(cause)); }
     refresh();
   };
