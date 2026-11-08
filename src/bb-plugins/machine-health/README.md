@@ -33,21 +33,30 @@ NixOS it compares the booted kernel, initrd and modules with
 
 ## Dialog
 
-1. Vitals: host, uptime, memory state, RAM, CPU, disk, battery, SSH and the
-   sample age. macOS RAM% counts reclaimable pages, so it reads about 90% on a
-   healthy Mac; the memory row is the signal.
-2. Memory: the slots and segments bars with their amber and red lines, swap,
-   wired memory and the next action.
-3. bb threads on this machine, ranked by the footprint of each provider process
-   tree. Tick idle threads and hibernate them.
-4. Top apps by summed footprint. Expand an app to end one process with SIGTERM.
-   Processes in a thread's provider tree, bb's own processes, recognised Codex
-   app-server roots and bridge-worker descendants offer no End.
+The summary shows memory state, swap used, CPU and free disk space.
+Memory details and machine vitals expand separately.
 
-Narrow dialogs stack memory metrics and place thread reasons below their names.
+Three views keep each task in its own list:
 
-Memory, threads and apps need macOS. A Linux machine shows vitals only. Press `r`
-to refresh and `Esc` to close. `Q` also closes outside text fields.
+- **Services** groups recognised Vite, Next.js, Python and Worker servers, and
+  Playwright browser processes, by ancestry. Independent instances stay separate.
+  Expand a row for its directory, listeners, ownership evidence and individual processes.
+  Age does not establish abandonment. Unknown ownership stays explicit.
+- **Threads** ranks provider process trees and offers Hibernate for eligible threads.
+- **Apps** ranks summed footprints. Expand an app for its individual processes.
+
+Process stops require confirmation and matching PID, command and start time.
+The host sends SIGTERM and polls for up to three seconds. It reports either
+confirmed exit or an unconfirmed exit. It never escalates automatically.
+Provider-tree processes, BB infrastructure, PID 1 and the host worker refuse Stop.
+A process stop affects one PID; surviving workers remain visible after refresh.
+
+Service recognition is heuristic, not a complete process inventory.
+The view includes at most 50 groups, ranked by footprint, even without a footprint reading.
+Missing ages, directories and listeners remain unknown. No services expire automatically.
+
+Memory, threads, services and apps need macOS. Linux shows vitals only.
+Press `r` to refresh and `Esc` to close. `Q` closes outside text fields.
 
 ## Hibernate
 
@@ -139,8 +148,8 @@ flowchart LR
   environment. The host reads `ps -E`, keeps only `BB_THREAD_ID` and drops the
   rest of the environment, secrets included. Thread terminals inherit the same
   variable but hang off the daemon and survive a stop, so they are not counted.
-- **End process.** The host signals a pid only if it still runs the command
-  shown. It refuses provider-tree processes, bb's own processes, pid 1 and
+- **End process.** The host signals a PID only if its command and start time still match
+  the sample shown. It refuses provider-tree processes, bb's own processes, pid 1 and
   itself. Protection uses the current process table and ancestry, including
   provider roots with no footprint reading or thread mapping.
 - **Tools.** The host runs tools with `LC_ALL=C` and a `PATH` of the system

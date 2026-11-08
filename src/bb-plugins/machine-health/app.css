@@ -107,3 +107,57 @@
   .mh-state, .mh-actions, .mh-confirm { flex-wrap: wrap; }
   .mh-rows dd { min-width: 0; overflow-wrap: anywhere; }
 }
+
+/* Summary first; each process view reveals its own detail. */
+.mh-panel > * { flex-shrink: 0; }
+.mh-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mh-heading > strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.mh-health { color: var(--mh-tone); font-size: 12px; }
+.mh-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 8px 0; }
+.mh-summary dt { color: var(--muted-foreground); font-size: 12px; }
+.mh-summary dd { margin: 4px 0 0; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.mh-diagnostics > summary { color: var(--muted-foreground); cursor: pointer; font-size: 12px; }
+.mh-diagnostics[open] > summary { margin-bottom: 12px; }
+.mh-diagnostics > .mh-rows { margin-top: 16px; }
+.mh-panel .mh-views { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.mh-panel .mh-views button { border: 0; padding: 6px 12px; color: var(--muted-foreground); }
+.mh-panel .mh-views button[aria-pressed="true"] { color: var(--foreground); background: var(--accent); }
+.mh-views button > span { margin-left: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mh-view { min-height: 120px; }
+.mh-view-note { margin: 0 0 12px; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.mh-service { border-bottom: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent); }
+.mh-service > summary { display: flex; align-items: center; gap: 12px; padding: 12px 4px; cursor: pointer; list-style: none; }
+.mh-service > summary::-webkit-details-marker { display: none; }
+.mh-service > summary::before { content: '›'; color: var(--muted-foreground); font-size: 18px; width: 12px; flex: none; }
+.mh-service[open] > summary::before { transform: rotate(90deg); }
+.mh-service > summary:hover { background: var(--state-hover); }
+.mh-service-name { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.mh-service-name strong { font-weight: 600; overflow-wrap: anywhere; }
+.mh-service-name > span { color: var(--muted-foreground); font-size: 12px; }
+.mh-service > summary > .mh-mb { font-size: 14px; }
+.mh-service-detail { padding: 0 4px 12px 28px; }
+.mh-service-detail > p:first-child { margin: 0 0 12px; font-size: 12px; color: var(--muted-foreground); }
+.mh-service-detail .mh-rows { font-size: 12px; margin-bottom: 12px; }
+.mh-service-detail dd { min-width: 0; overflow-wrap: anywhere; }
+.mh-service .mh-procs { margin-left: 0; }
+.mh-panel .mh-procs li { grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; }
+.mh-panel .mh-procs .mh-confirm { grid-column: 2 / -1; flex-wrap: wrap; }
+.mh-panel button:focus-visible, .mh-panel summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.mh-footer { border-top: 1px solid var(--border); padding-top: 12px; flex-wrap: wrap; }
+@container machine-health (max-width: 400px) {
+  .mh-summary { gap: 8px; }
+  .mh-summary dd { font-size: 18px; }
+  .mh-service-detail { padding-left: 4px; }
+  .mh-panel .mh-procs li { grid-template-columns: 48px minmax(0, 1fr); }
+  .mh-procs li > button, .mh-procs li > .mh-why { grid-column: 2; justify-self: start; }
+}
+.mh-diagnostics > summary { min-height: 24px; }
+.mh-stop { grid-column: 3; }
+.mh-stop > summary { min-height: 24px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; list-style: none; }
+.mh-stop > summary::-webkit-details-marker { display: none; }
+.mh-stop > summary[aria-disabled="true"] { opacity: .5; cursor: default; }
+.mh-stop[open] { grid-column: 2 / -1; }
+.mh-stop[open] > summary { width: fit-content; margin-bottom: 6px; }
+@container machine-health (max-width: 400px) {
+  .mh-stop { grid-column: 2; justify-self: start; }
+}

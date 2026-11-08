@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import { useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
 import type { Outcome, ThreadRowData, TriageData, rpcContract } from './contracts.ts';
 import { gapText, humanMb } from './src/format.ts';
 import { segmentLines, slotLines, stateGlyph, type Gauge, type Lines } from './src/gauge.ts';
 import { detailRows, type Machine } from './src/present.ts';
+import { ProcessRows, Services, type EndProcess } from './services-view.tsx';
 import type { AppGroup } from './src/triage.ts';
 
 export type Anchor = { right: number; bottom: number } | null;
@@ -54,10 +55,9 @@ function MemoryBars({ gauge, action }: { gauge: Gauge; action: string }) {
   </section>;
 }
 
-function Apps({ apps, onEnd }: { apps: AppGroup[]; onEnd: (pid: number, command: string, started: string) => Promise<void> }) {
+function Apps({ apps, busy, onEnd }: { apps: AppGroup[]; busy: boolean; onEnd: EndProcess }) {
   const [all, setAll] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<number | null>(null);
   const max = apps[0]?.mb ?? 1;
   return <section aria-labelledby="mh-apps">
     <h3 id="mh-apps">Top apps <small>footprint; shared pages over-count</small></h3>
@@ -70,20 +70,7 @@ function Apps({ apps, onEnd }: { apps: AppGroup[]; onEnd: (pid: number, command:
           <span className="mh-mb">≈{humanMb(app.mb)}</span>
           <span className="mh-count">({app.count})</span>
         </button>
-        {open === app.app && <ul className="mh-procs">
-          {app.processes.map(proc => <li key={proc.pid}>
-            <span className="mh-mb">{humanMb(proc.mb)}</span>
-            <code title={proc.command}>{proc.pid} {proc.command}</code>
-            {proc.owner === 'thread'
-              ? <span className="mh-why">bb thread: hibernate it above</span>
-              : proc.owner === 'bb'
-              ? <span className="mh-why">part of bb</span>
-              : confirm === proc.pid
-              ? <span className="mh-confirm">End? <button type="button" onClick={() => { setConfirm(null); void onEnd(proc.pid, proc.command, proc.started!); }}>Yes</button>
-                <button type="button" onClick={() => setConfirm(null)}>No</button></span>
-              : <button type="button" disabled={!proc.started} onClick={() => setConfirm(proc.pid)}>End</button>}
-          </li>)}
-        </ul>}
+        {open === app.app && <ProcessRows processes={app.processes} busy={busy} onEnd={onEnd} />}
       </li>)}
     </ul>
     {apps.length > topApps && <button type="button" className="mh-link" onClick={() => setAll(!all)}>{all ? `Show top ${topApps}` : `Show top ${apps.length} apps`}</button>}
@@ -149,16 +136,21 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const [hibernated, setHibernated] = useState<Hibernated | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<'services' | 'threads' | 'apps'>('services');
+  const request = useRef(0);
 
   const refreshTriage = useCallback(async () => {
+    const current = ++request.current;
     setLoading(true);
-    try { setData(await rpc.call('triage', { threadId })); setTriageError(null); }
-    catch (cause) { setTriageError(message(cause)); }
-    finally { setLoading(false); }
+    try {
+      const next = await rpc.call('triage', { threadId });
+      if (current === request.current) { setData(next); setTriageError(null); }
+    } catch (cause) { if (current === request.current) setTriageError(message(cause)); }
+    finally { if (current === request.current) setLoading(false); }
   }, [rpc, threadId]);
   const refresh = useCallback(() => { onRefreshMachine(); void refreshTriage(); }, [onRefreshMachine, refreshTriage]);
 
-  useEffect(() => { void refreshTriage(); }, [refreshTriage]);
+  useEffect(() => { setData(null); void refreshTriage(); return () => { request.current++; }; }, [refreshTriage]);
 
   const hibernate = async (threadIds: string[]) => {
     if (!data) return;
@@ -171,12 +163,12 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   };
   const end = async (pid: number, command: string, started: string) => {
     if (!data) return;
-    setHibernated(null); setStatus(null); setError(null);
+    setBusy(true); setHibernated(null); setStatus(null); setError(null);
     try {
       const outcome = await rpc.call('terminate', { hostId: data.hostId, pid, command, started });
       setStatus(outcome.ok ? outcome.outcome === 'exited' ? `Process ${pid} exited.` : `Sent SIGTERM to ${pid}; exit was not confirmed.` : outcome.reason);
     } catch (cause) { setError(message(cause)); }
-    refresh();
+    finally { setBusy(false); refresh(); }
   };
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
@@ -187,24 +179,42 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
 
   return <ChipPopover panelClassName="mh-panel" aria-label="Machine health" onKeyDown={keyboard}
     trigger={() => chipEl(threadId)} anchor={anchor} width={600} onClose={onClose}>
-    <section aria-label="Vitals">
-      {machine ? <Rows machine={machine} /> : !machineError && <p className="mh-empty">Sampling…</p>}
-      {machineError && <p role="alert" className="mh-error">{machineError}</p>}
-    </section>
-    {!data && !triageError && <p className="mh-empty">Sampling footprints…</p>}
-    {triageError && <p className="mh-empty">{triageError}</p>}
+    <header className="mh-heading">
+      <strong>{machine?.vitals?.hostname ?? machine?.name ?? 'Machine health'}</strong>
+      {data && <span className="mh-health" data-state={data.gauge.state}>{stateGlyph[data.gauge.state]} Memory {data.gauge.state.toLowerCase()}</span>}
+    </header>
+    {machineError && <p role="alert" className="mh-error">{machineError}</p>}
+    {machine && <dl className="mh-summary">
+      <div><dt>Swap used</dt><dd>{data ? humanMb(data.gauge.swapUsedMb) : '…'}</dd></div>
+      <div><dt>CPU</dt><dd>{machine.vitals?.cpuPct == null ? 'Unavailable' : `${Math.round(machine.vitals.cpuPct)}%`}</dd></div>
+      <div><dt>Disk free</dt><dd>{machine.vitals?.disk ? humanMb(machine.vitals.disk.freeBytes / 1048576) : 'Unavailable'}</dd></div>
+    </dl>}
+    {!data && !triageError && <p className="mh-empty" role="status">Reading processes…</p>}
+    {triageError && <p role="alert" className="mh-error">{data ? 'Refresh failed. Showing the previous process sample. ' : ''}{triageError}</p>}
+    <details className="mh-diagnostics">
+      <summary>Memory details and machine vitals</summary>
+      {data && <MemoryBars gauge={data.gauge} action={data.action} />}
+      {machine && <Rows machine={machine} />}
+    </details>
     {data && <>
-      <MemoryBars gauge={data.gauge} action={data.action} />
-      <Threads threads={data.threads} busy={busy} onHibernate={ids => { void hibernate(ids); }}
-        onOpen={id => { onClose(); navigate.toThread(id); }} />
-      <Apps apps={data.apps} onEnd={end} />
+      <nav className="mh-views" aria-label="Process view">
+        <button type="button" aria-pressed={view === 'services'} onClick={() => setView('services')}>Services <span>{data.services.length}</span></button>
+        <button type="button" aria-pressed={view === 'threads'} onClick={() => setView('threads')}>Threads <span>{data.threads.length}</span></button>
+        <button type="button" aria-pressed={view === 'apps'} onClick={() => setView('apps')}>Apps</button>
+      </nav>
+      <div className="mh-view" aria-busy={busy || loading}>
+        {view === 'services' && <Services services={data.services} error={data.serviceError} busy={busy || loading} onEnd={end} />}
+        {view === 'threads' && <Threads threads={data.threads} busy={busy || loading} onHibernate={ids => { void hibernate(ids); }}
+          onOpen={id => { onClose(); navigate.toThread(id); }} />}
+        {view === 'apps' && <Apps apps={data.apps} busy={busy || loading} onEnd={end} />}
+      </div>
     </>}
     {hibernated && <HibernateResult {...hibernated} />}
     {status && <p role="status" className="mh-result">{status}</p>}
     {error && <p role="alert" className="mh-error">{error}</p>}
     <footer className="mh-footer">
       {labelButton}
-      <button type="button" onClick={refresh} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
+      <button type="button" onClick={refresh} disabled={loading || busy}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
       <button type="button" onClick={onClose}>Close</button>
     </footer>
   </ChipPopover>;
