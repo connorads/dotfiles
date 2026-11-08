@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { basename, isAbsolute, join } from 'node:path';
 import type { Change, CommitDetail, DiffSource, Snapshot } from '../contracts.ts';
 import { gitEnv } from './git-env.ts';
+import { imagePreview } from './image.ts';
 import { logFormat, parseLog, parseNameStatus, parseNumstat, parseStashes, parseStatus, withStats } from './porcelain.ts';
 
 export interface Repo {
@@ -115,6 +116,8 @@ export async function diff(repo: Repo, input: { path: string; origPath: string |
   const path = relative(input.path);
   // Untracked directories are listed collapsed; git has no single patch for one.
   if (path.endsWith('/')) return { patch: '', truncated: false };
+  const images = await imagePreview(repo, { ...input, path }, sourceBase => base(repo, sourceBase));
+  if (images) return { patch: '', truncated: false, images };
   const paths = (input.origPath ? [relative(input.origPath), path] : [path]).map(value => `:(literal)${value}`);
   const flags = ['diff', '--no-color', '--no-ext-diff', '-M'];
   const { source } = input;

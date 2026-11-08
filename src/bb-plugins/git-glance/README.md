@@ -11,6 +11,9 @@ number of changed files. Click it or press `Alt+G` to open a pop-up with:
 - branch, upstream, stash count and any merge or rebase in progress
 - conflicted, staged, unstaged and untracked files with line counts
 - an inline diff for each file, in BB's diff viewer
+- Before and After previews for PNG, JPEG, GIF, WebP, AVIF, SVG, BMP and ICO images.
+  Previews use the selected commit, index or working file, with a 2 MiB limit per side.
+  Working-file previews reject symbolic links.
 - the last 30 commits with a lane graph; filled nodes are not on any remote.
   Click a commit for its message, author and changed files, each with a diff.
 - diffs use BB's own viewer, which is built on Pierre diffs

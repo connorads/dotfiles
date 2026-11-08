@@ -57,16 +57,28 @@ export function ChangeRow({ file, source, threadId, open, onToggle, flash = null
 export function DiffPane({ file, source, threadId, fill = false }: { file: FileRow; source: DiffSource; threadId: string; fill?: boolean }) {
   const rpc = useRpc<typeof rpcContract>();
   const zoomed = useContext(Zoomed);
-  const [result, setResult] = useState<{ patch: string; truncated: boolean } | { error: string } | null>(null);
+  const [result, setResult] = useState<{ patch: string; truncated: boolean; images?: { before: string | null; after: string | null } } | { error: string } | null>(null);
   const sourceKey = JSON.stringify(source);
   useEffect(() => {
     let live = true;
+    setResult(null);
     rpc.call('diff', { threadId, path: file.path, origPath: file.origPath, source: JSON.parse(sourceKey) as DiffSource })
       .then(value => { if (live) setResult(value); }, cause => { if (live) setResult({ error: message(cause) }); });
     return () => { live = false; };
   }, [rpc, threadId, file.path, file.origPath, file.added, file.removed, sourceKey]);
   if (!result) return <div className="gg-diff gg-diff-loading" aria-busy><i /><i /><i /></div>;
   if ('error' in result) return <div className="gg-diff gg-note gg-danger">{result.error}</div>;
+  if (result.images) return <div className="gg-diff gg-images" data-fill={fill || undefined}>
+    {(['before', 'after'] as const).map(side => {
+      const uri = result.images?.[side];
+      return uri && <figure key={side}><figcaption>{side === 'before' ? 'Before' : 'After'}</figcaption>
+        <img src={uri} alt={`${side === 'before' ? 'Before' : 'After'}: ${file.path}`}
+          onError={event => { event.currentTarget.hidden = true; event.currentTarget.nextElementSibling?.removeAttribute('hidden'); }} />
+        <p className="gg-note" hidden>Image could not be decoded.</p>
+      </figure>;
+    })}
+    {!result.images.before && !result.images.after && <p className="gg-note">No image content available.</p>}
+  </div>;
   if (!result.patch.trim()) return <div className="gg-diff gg-note">No textual changes.</div>;
   return <div className="gg-diff" data-fill={fill || undefined}>
     <Diff patch={result.patch} path={file.path} view={zoomed ? 'split' : 'unified'} overflow="scroll" className="gg-diff-view" />

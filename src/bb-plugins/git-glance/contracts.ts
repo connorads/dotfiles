@@ -105,7 +105,9 @@ export const commitDetailSchema = z.object({
   hidden: z.number(),
 });
 export type CommitDetail = z.infer<typeof commitDetailSchema>;
-const diffOutput = z.object({ patch: z.string(), truncated: z.boolean() });
+const diffOutput = z.object({ patch: z.string(), truncated: z.boolean(),
+  images: z.object({ before: z.string().nullable(), after: z.string().nullable() }).optional(),
+});
 const root = z.string().min(1);
 export const checkoutTargetSchema = z.object({ hostId: z.string().min(1), path: root });
 
