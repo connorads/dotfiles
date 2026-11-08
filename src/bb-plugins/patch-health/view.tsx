@@ -1,5 +1,5 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react';
-import { experimental_copyToClipboard, experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
 import type { Patch, Snapshot } from './model';
 
 const descriptions = {
@@ -23,45 +23,8 @@ function summary(snapshot: Snapshot | null, loading: boolean, error: string | nu
   return snapshot.patches.some(patch => patch.files === 'unverified') ? 'Desktop files need review' : 'Files present. Live checks pending.';
 }
 
-function NextStep({ snapshot }: { snapshot: Snapshot }) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const instruction = snapshot.kind === 'unavailable'
-    ? { title: 'Restore inspection', text: 'Check that the patch manager and desktop installation are available on the inspection host. Then use Refresh.' }
-    : snapshot.pendingState
-      ? { title: 'Review the patch transaction', text: `The manager reports ${snapshot.pendingState}. Inspect its journal before preparing another change. Restarting cannot resolve an incomplete file transaction.` }
-      : snapshot.patches.some(patch => patch.files === 'unverified')
-        ? { title: 'Inspect the unrecognised files', text: 'Compare the complete installation with the patch registry. Do not reinstall over unknown files or restart to test a mixed installation.' }
-        : snapshot.patches.some(patch => patch.files === 'absent')
-          ? { title: 'Check the server setup', text: 'Restarting BB will not install missing patch files. Check the connected server and its deployment before choosing a compatible patch route.' }
-          : { title: 'Verify the running feature', text: 'Activation is unknown. Check which server is connected and run the feature acceptance check before deciding whether BB needs restarting.' };
-  const request = [
-    'Investigate my BB patch setup and give me the next concrete action.',
-    `Desktop observation: ${JSON.stringify(snapshot)}`,
-    'Run bb-deploy status and identify the connected server executable. Inspect candidate provenance and verification evidence.',
-    'Check recipe support for the exact target and release. Desktop missing files alone do not prove the connected server needs repair.',
-    'Explain whether installation, server activation, desktop reopening or no change is required. Run relevant acceptance checks where possible.',
-    'Do not apply patches, activate a server or restart BB during diagnosis. Prepare a concrete handover plan if needed.',
-  ].join('\n');
-  async function copy() {
-    try { setCopyState(await experimental_copyToClipboard({ text: request }) ? 'copied' : 'failed'); }
-    catch { setCopyState('failed'); }
-  }
-  return <section className="ph-next" aria-label="Next step">
-    <span className="ph-next-label">Next step</span><h3>{instruction.title}</h3><p>{instruction.text}</p>
-    {snapshot.kind === 'available' && <details><summary>Installation and restart guidance</summary>
-      <p>Check deployment with <code>bb-deploy status</code>. A prepared candidate is not an active server.</p>
-      <p>The desktop patch manager writes disposable copies only. It cannot reinstall patches into the live desktop app.</p>
-      <p>After a verified installation, Workflow activity needs server activation. Session options also needs desktop view activation.</p>
-      <p>Schedule activation when BB is idle, then test the feature. A machine reboot is not part of this patch procedure.</p>
-    </details>}
-    <div className="ph-next-actions"><button type="button" onClick={() => { void copy(); }}>Copy diagnostic request</button>
-      <span role="status">{copyState === 'copied' ? 'Copied. Paste into a BB chat.' : copyState === 'failed' ? 'Copy failed. Check server setup with bb-deploy status.' : 'No machine reboot needed.'}</span>
-    </div>
-  </section>;
-}
-
-export function PatchView({ snapshot, hostId, loading, error, onRefresh, onClose }: {
-  snapshot: Snapshot | null; hostId: string | null; loading: boolean; error: string | null; onRefresh: () => void; onClose: () => void;
+export function PatchView({ snapshot, hostId, loading, error, onRefresh, onClose, repair }: {
+  repair: ReactNode; snapshot: Snapshot | null; hostId: string | null; loading: boolean; error: string | null; onRefresh: () => void; onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -105,12 +68,12 @@ export function PatchView({ snapshot, hostId, loading, error, onRefresh, onClose
       })}</ul>}
       {!loading && !error && snapshot?.kind === 'unavailable' && <p className="ph-error" role="alert">{snapshot.reason}</p>}
       {error && <p className="ph-error" role="alert">Refresh when the connection is available. Previous results are not shown as current.</p>}
-      {!loading && !error && snapshot && <NextStep key={snapshot.observedAt} snapshot={snapshot} />}
+      {repair}
       {available && <details className="ph-installation"><summary><Icon name="patch-health/chevron" />Installation details</summary><div>
         <dl><dt>Inspected installation</dt><dd>{available.app}</dd><dt>Inspection host</dt><dd>{hostId ?? 'Unavailable'}</dd><dt>File classification</dt><dd>{available.classification}</dd><dt>Observed</dt><dd><time dateTime={available.observedAt}>{new Date(available.observedAt).toLocaleString()}</time></dd><dt>Loaded code identity</dt><dd>Unavailable</dd>{available.pendingState && <><dt>Patch transaction</dt><dd>{available.pendingState}</dd></>}</dl>
         <p>This inspects desktop files on the server host. It does not identify the code loaded by the connected server or inspect prepared server packages.</p>
       </div></details>}
     </div>
-    <footer className="ph-footer"><span>Read-only inspection</span><span className="ph-spacer" /><kbd>↑</kbd><kbd>↓</kbd><span>move</span><kbd>↵</kbd><span>details</span></footer>
+    <footer className="ph-footer"><span>Live BB: inspection only</span><span className="ph-spacer" /><kbd>↑</kbd><kbd>↓</kbd><span>move</span><kbd>↵</kbd><span>details</span></footer>
   </div>;
 }

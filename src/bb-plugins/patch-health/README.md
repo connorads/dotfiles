@@ -1,73 +1,75 @@
 # Patches
 
-Open **Patches** from BB's command palette to inspect desktop patch files.
-Expand a patch for its evidence. Use **Refresh** to collect another observation.
+Open **Patches** from BB's command palette to inspect desktop patches and rehearse a repair.
+Expand a patch for its file evidence. **Refresh** collects another observation.
 Arrow keys move between patches. Enter expands details. Escape closes the popover.
+
+## Repair rehearsal
+
+1. Select **Prepare rehearsal** to copy the installed CLI package and verify both patches offline.
+2. Select **Run rehearsal** to restart the disposable server against separate test data.
+3. Read the evidence. Live feature acceptance requires a separate check.
 
 ```mermaid
 flowchart LR
-  Palette[Command palette] --> Popover[Patches popover]
-  Popover --> Host[BB primary host]
-  Host --> Inspector[Read-only patch manager]
+  Prepare[Prepare copied candidate] --> Verify[Verify receipt and inputs]
+  Verify --> Stock[Start disposable stock server]
+  Stock --> Candidate[Restart copied candidate]
+  Candidate --> Checks[Check activity API and cold restart]
+  Checks --> Evidence[Save evidence; stop lab server]
 ```
 
-## Next step
+The lab uses a private temporary directory, separate HOME, data and loopback port.
+It inherits no provider credentials. It does not dispatch provider work.
+The runner has no live activation command. It never changes deployment pins or restarts the current BB.
+A machine reboot is not required.
 
-The popover shows guidance below the patch rows without requiring expansion.
-Missing files require checking the server setup. Restarting cannot install them.
-File matches require a live feature check because activation remains unknown.
-Pending transactions take priority over normal installation advice.
-Unknown files require inspection before another change.
+Closing the popover leaves the host worker running. Reopening reads the saved operation.
+Progress polling runs only while an open popover watches an active operation.
+Interrupted operations offer **Inspect and stop lab**. Recovery checks process identity before signalling a recorded lab process.
+It never automatically restarts interrupted work. Prepare a fresh rehearsal after inspection.
+An identity mismatch refuses signals and requires manual inspection.
 
-```mermaid
-flowchart TD
-  Inspection[Inspection result] --> Pending{Pending transaction}
-  Pending -->|Yes| Journal[Review transaction journal]
-  Pending -->|No| Files{File evidence}
-  Files -->|Missing| Deployment[Check server setup]
-  Files -->|Unrecognised| Review[Inspect complete file set]
-  Files -->|Present| Live[Verify running feature]
-  Inspection -->|Unavailable| Restore[Restore inspection]
+```sh
+bb patches status
+bb patches prepare
+bb patches rehearse --id <reviewed-operation-id> --revision <reviewed-revision>
 ```
 
-**Copy diagnostic request** copies the observation and a read-only investigation request.
-Paste it into a BB chat to check deployment, candidate evidence and the connected server.
-The button does not run commands or start an agent.
-The request asks for a concrete handover plan before installation or activation.
-It is not a repair or activation command.
+The CLI and UI use the same host-owned record. Stale revisions refuse actions.
+The private pointer lives at `~/.local/state/bb-patch-lab/current.json`.
+A stale `create.lock` requires inspection of the recorded operation before manual removal.
+Temporary lab directories remain available for evidence and system cleanup.
 
-Deployment inspection uses `bb-deploy status`. A prepared candidate is not an active server.
+## Evidence limits
+
+Offline checks cover both patch recipes. Restart checks cover copied stock and candidate servers.
+The activity API check uses synthetic database records, then checks terminal records after a cold restart.
+It does not prove workflow execution, notification delivery or session options reaching a provider worker.
+The interface keeps **Live feature acceptance: Not checked**.
+This experimental runner does not establish live maintenance admission or production supervision.
+
+The [patch manager](../workflows-patch/README.md) owns recipes and verification.
 The [deployment guide](../../../docs/remote-access.md#bb-user-server-deployments)
-owns candidate activation and the initial server handover.
-The [patch manager](../workflows-patch/README.md) only admits disposable desktop transactions.
-Its desktop recipes do not authorise changes to the live application.
+owns activation and the initial server handover. A prepared candidate is not an active server.
 
-Workflow activity requires server activation after verified installation.
-Session options also requires desktop view activation.
-Activation runs when BB is idle and needs a subsequent feature acceptance check.
-A machine reboot is not part of this procedure.
+## Desktop inspection
 
-## Evidence
-
-The inspector checks `/Applications/bb.app` on BB's primary host.
-It checks Workflow activity and Session options against the combined profile.
+The inspector checks `/Applications/bb.app` on BB's primary host against the combined profile.
 Only a complete recognised file tuple establishes file presence.
 Mixed or unknown tuples show **Cannot verify**.
-
 **Files present** describes installed files. Live behaviour stays **Not checked**.
-The plugin cannot identify loaded server code or inspect prepared server packages.
 The desktop installation can differ from the connected server.
-Connection loss and refresh hide previous results until another inspection completes.
-
-The plugin never applies patches, activates packages or restarts BB.
-Inspection runs on demand. It does not poll or store reports.
+Connection loss hides inspection results until another observation completes.
+Desktop inspection never applies patches or changes the application.
 
 ## Requirements
 
 The primary host must run macOS and have the local
-[patch manager](../workflows-patch/README.md) at
-`~/src/bb-plugins/workflows-patch/scripts/bb_patch.py`.
-The host uses `/usr/bin/python3` with fixed arguments and a twelve-second timeout.
+[patch manager](../workflows-patch/README.md) under `~/src/bb-plugins/workflows-patch/scripts/`.
+Inspection uses `/usr/bin/python3` with fixed arguments and a twelve-second timeout.
+Rehearsal requires mise-managed Node and `npm:bb-app` with an exact supported recipe.
+Preparation reads installed versions. It does not install dependencies.
 Missing prerequisites produce an unavailable state.
 
 ## Development

@@ -65,3 +65,8 @@
 .ph-next-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .ph-next-actions button { border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; color: var(--foreground); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
 .ph-next-actions [role=status] { color: var(--muted-foreground); font-size: 11px; }
+
+.ph-next dl { margin-bottom: 12px; }
+.ph-next details { margin-top: 12px; overflow-wrap: anywhere; }
+.ph-next-actions button:disabled { opacity: .5; cursor: default; }
+.ph-next-actions button:first-child:not(:disabled) { background: var(--state-hover); }

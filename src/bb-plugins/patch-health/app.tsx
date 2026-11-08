@@ -4,6 +4,7 @@ import { ChipPopover } from '@bb-plugins/chip';
 import { rpcContract } from './contracts';
 import type { Snapshot } from './model';
 import { PatchView } from './view';
+import { LabPanel } from './lab-panel';
 import './app.css';
 
 let opened: { focus: HTMLElement | null } | null = null;
@@ -37,7 +38,7 @@ function Popup({ focus }: { focus: HTMLElement | null }) {
     instant panelClassName="ph-panel" onClose={close}
     place={() => { const width = Math.min(580, window.innerWidth - 24); return { width, left: (window.innerWidth - width) / 2, top: 24, origin: 'top center' }; }}>
     <PatchView snapshot={data?.snapshot ?? null} hostId={data?.hostId ?? null} loading={loading} error={error}
-      onRefresh={() => setAttempt(value => value + 1)} onClose={close} />
+      repair={<LabPanel />} onRefresh={() => setAttempt(value => value + 1)} onClose={close} />
   </ChipPopover>;
 }
 function Overlay() {
