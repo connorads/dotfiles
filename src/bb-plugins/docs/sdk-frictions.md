@@ -1310,3 +1310,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Evidence: BB 0.48.1 `start-server.js.map`, embedded
   `packages/plugin-sdk/src/backend-contract.ts` (`PluginServerApi`) and
   `services/plugins/plugin-api.ts` (server API construction).
+
+### Automation-origin follow-ups cannot create schedules
+
+- Found: 2026-11-08, automations plugin.
+- Wanted: create a user-requested recurring schedule during a follow-up in a thread originally spawned by an automation.
+- Gap: `bb automation create` returns `Automation-spawned threads cannot create automations` even for a later direct user request.
+- Workaround: start a regular thread and create the schedule there.
+- Ask: distinguish a direct user follow-up from autonomous automation execution when applying the creation restriction.
+- Status: open
+- Category: app-bug
+- Evidence: `bb automation create --project <project> ... --json` returned `automation_failed` with the message above.
