@@ -31,6 +31,7 @@ from pathlib import Path
 # ~1s for everything else - and a stop must not stall on them. The rule for a
 # new step: if it runs somebody else's test runner, add it here.
 SKIP_STEPS = [
+    "check-leak",
     "nix-eval",
     "bats-scoped",
     "ts-tests-scoped",

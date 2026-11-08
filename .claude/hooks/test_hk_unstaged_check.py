@@ -110,3 +110,27 @@ def test_repo_pinned_hk_is_used_over_path_hk(repo: Path) -> None:
     r = _run(repo)
     assert r.returncode == 0
     assert r.stdout == ""
+
+
+def test_stop_preserves_build_output_and_runs_lint(repo: Path) -> None:
+    dist = repo / "dist"
+    dist.mkdir()
+    bundle = dist / "app.js"
+    bundle.write_text("frozen")
+    _fake_hk(
+        repo / "bin",
+        HELP_WITH_FLAG,
+        "\n".join(
+            [
+                'case ",${HK_SKIP_STEPS}," in',
+                "  *,check-leak,*) ;;",
+                "  *) printf production > dist/app.js ;;",
+                "esac",
+                "printf checked > lint.marker",
+            ]
+        ),
+    )
+    r = _run(repo)
+    assert r.returncode == 0
+    assert bundle.read_text() == "frozen"
+    assert (repo / "lint.marker").read_text() == "checked"
