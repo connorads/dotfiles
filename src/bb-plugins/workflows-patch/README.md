@@ -256,3 +256,38 @@ The authoring source maps remain unchanged. They do not accurately map inserted 
 Never copy archived generated bundles into a new release or discover recipes from private backup archives.
 
 Draft final tuples do not satisfy patch requirements. Draft recipes still permit preparation and offline verification from recognised pristine inputs.
+
+## Disposable server rehearsal
+
+The [Patches plugin](../patch-health/README.md) prepares and runs disposable server rehearsals.
+`scripts/lab_candidate.py` binds offline results to package, Node, dependency and recipe fingerprints.
+Its receipt admits only exact supported releases and both required patches.
+Revalidation refuses changed inputs before starting a copied server.
+The dependency fingerprint covers the installed mise distribution, including internal links and optional missing targets.
+
+`scripts/patch_lab.py` stores a private journal in an owned, marked OS temporary directory.
+It starts copied stock and candidate server entrypoints with separate HOME, data and loopback port.
+It checks listener ownership before accepting health responses.
+The fixture queries workflow activity through HTTP and checks terminal records after a cold restart.
+It does not execute provider work or prove session-options delivery and notification behaviour.
+
+```mermaid
+stateDiagram-v2
+  [*] --> created
+  created --> preparing
+  preparing --> ready
+  ready --> rehearsing
+  rehearsing --> checks_pending
+  preparing --> blocked
+  rehearsing --> blocked
+  preparing --> interrupted
+  rehearsing --> interrupted
+  interrupted --> stopped: Stop only owned lab process
+```
+
+The detached worker survives a closed popover. Its journal supports explicit interruption recovery.
+Recovery checks recorded PID, start signature and lab path before signalling.
+Identity mismatches refuse signals. Recovery never escalates to forced termination or automatic restart.
+A fresh rehearsal uses a fresh directory. Temporary evidence remains for inspection and system cleanup.
+There is no live activation operation, launch-service change or deployment-pin change.
+The runner does not establish production supervision or live maintenance admission.

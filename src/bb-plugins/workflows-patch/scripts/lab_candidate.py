@@ -17,10 +17,10 @@ def dependency_digest(root):
     for path in sorted(root.rglob("*")):
         info = path.lstat()
         if path.is_symlink():
-            target = path.resolve(strict=True)
+            target = path.resolve(strict=False)
             if not target.is_relative_to(root):
                 raise ValueError("Dependency link escapes installed dependency root")
-            value = ["link", os.readlink(path)]
+            value = ["link", os.readlink(path), target.exists()]
         elif path.is_dir():
             value = ["directory", stat.S_IMODE(info.st_mode)]
         elif path.is_file():
@@ -41,11 +41,14 @@ def file_digest(path):
 
 
 def inputs(package, node):
+    source = package.resolve(strict=True)
+    roots = [parent for parent in source.parents if parent.name == "node_modules"]
+    dependency_root = roots[-1] if roots else source.parent
     return {
         "node": str(node.resolve(strict=True)),
         "nodeHash": file_digest(node),
-        "dependencyRoot": str(package.resolve(strict=True).parent),
-        "dependencyHash": dependency_digest(package.resolve(strict=True).parent),
+        "dependencyRoot": str(dependency_root),
+        "dependencyHash": dependency_digest(dependency_root),
     }
 
 

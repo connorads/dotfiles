@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from bb_patch import canonical, digest
-from lab_candidate import dependency_digest, file_digest, verify_receipt
+from lab_candidate import dependency_digest, file_digest, inputs, verify_receipt
 from package_candidate import _tree_digest
 
 
@@ -84,3 +84,22 @@ class LabCandidateTests(unittest.TestCase):
         ):
             prepare_verified(self.package, self.root / "output", self.node)
         prepare.assert_not_called()
+
+    def test_mise_dependency_links_bind_the_enclosing_installation(self):
+        outer = self.root / "installed/node_modules"
+        package = outer / ".mise/bb-app/node_modules/bb-app"
+        package.mkdir(parents=True)
+        dependency = outer / ".mise/library"
+        dependency.mkdir()
+        (dependency / "code.js").write_text("// dependency")
+        (package.parent / "library").symlink_to(dependency, target_is_directory=True)
+        receipt = inputs(package, self.node)
+        self.assertEqual(receipt["dependencyRoot"], str(outer))
+        (dependency / "code.js").write_text("// changed dependency")
+        self.assertNotEqual(inputs(package, self.node)["dependencyHash"], receipt["dependencyHash"])
+
+    def test_absent_optional_dependency_is_bound_and_new_presence_invalidates_it(self):
+        (self.deps / "optional").symlink_to(self.deps / "other-platform")
+        before = dependency_digest(self.deps)
+        (self.deps / "other-platform").write_text("newly present dependency")
+        self.assertNotEqual(dependency_digest(self.deps), before)
