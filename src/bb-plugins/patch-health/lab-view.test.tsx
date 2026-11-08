@@ -16,15 +16,15 @@ function sample(phase: 'ready' | 'rehearsing' | 'checks-pending' | 'interrupted'
 test('the first action prepares a disposable rehearsal and offers no live restart', () => {
   let calls = 0;
   const view = render({ kind: 'none' }, { onPrepare: () => { calls++; } });
-  fireEvent.click(view.getByRole('button', { name: 'Prepare rehearsal' }));
+  fireEvent.click(view.getByRole('button', { name: 'Prepare test copy' }));
   expect(calls).toBe(1);
-  expect(view.getByText(/live activation disabled/)).toBeTruthy();
+  expect(view.getByText(/Your BB will stay running/)).toBeTruthy();
   expect(view.queryByRole('button', { name: 'Restart server' })).toBeNull();
 });
 test('run uses the reviewed operation identity and revision', () => {
   let received: unknown;
   const view = render(sample('ready'), { onRun: (id, revision) => { received = { id, revision }; } });
-  fireEvent.click(view.getByRole('button', { name: 'Run rehearsal' }));
+  fireEvent.click(view.getByRole('button', { name: 'Run test' }));
   expect(received).toEqual({ id: 'bb-patch-lab-example', revision: 7 });
 });
 test('health and restart success never become live feature success', () => {
@@ -32,29 +32,32 @@ test('health and restart success never become live feature success', () => {
   if (state.kind !== 'available') throw Error('Bad fixture');
   state.lab.checks.restart = 'passed';
   const view = render(state);
-  expect(view.getByRole('heading', { name: 'Disposable restart passed' })).toBeTruthy();
-  expect(view.getByText('Not checked')).toBeTruthy();
+  expect(view.getByRole('heading', { name: 'The test copy started successfully' })).toBeTruthy();
+  const details = view.getByText('Test details').closest('details');
+  expect(details?.open).toBe(false);
+  expect(view.getByText(/You do not need to restart anything/)).toBeTruthy();
+  expect(view.getByText(/That is not available here yet/)).toBeTruthy();
   expect(view.queryByText('Both patches are working')).toBeNull();
 });
 test('active workers cannot be started again', () => {
   const view = render(sample('rehearsing'));
-  expect(view.queryByRole('button', { name: 'Run rehearsal' })).toBeNull();
-  expect(view.queryByRole('button', { name: 'Prepare fresh rehearsal' })).toBeNull();
+  expect(view.queryByRole('button', { name: 'Run test' })).toBeNull();
+  expect(view.queryByRole('button', { name: 'Test again' })).toBeNull();
 });
 test('an interrupted operation exposes inspection instead of blind retry', () => {
   const view = render(sample('interrupted'));
-  expect(view.getByRole('button', { name: 'Inspect and stop lab' })).toBeTruthy();
-  expect(view.queryByRole('button', { name: 'Run rehearsal' })).toBeNull();
+  expect(view.getByRole('button', { name: 'Stop test copy' })).toBeTruthy();
+  expect(view.queryByRole('button', { name: 'Run test' })).toBeNull();
 });
 test('pending or disconnected actions stay disabled', () => {
   const view = render(sample('ready'), { pending: false, error: 'Disconnected' });
-  expect(view.getByRole('button', { name: 'Run rehearsal' }).hasAttribute('disabled')).toBe(true);
-  expect(view.getByRole('alert').textContent).toBe('Disconnected');
+  expect(view.queryByRole('button', { name: 'Run test' })).toBeNull();
+  expect(view.getByRole('alert').textContent).toBe('Check your connection, then select Refresh.');
 });
 
 test('a stopped lab offers a fresh rehearsal after recovery', () => {
   const view = render(sample('stopped'));
-  expect(view.getByRole('heading', { name: 'Lab stopped safely' })).toBeTruthy();
-  expect(view.getByRole('button', { name: 'Prepare fresh rehearsal' })).toBeTruthy();
-  expect(view.queryByRole('button', { name: 'Inspect and stop lab' })).toBeNull();
+  expect(view.getByRole('heading', { name: 'The test copy has stopped' })).toBeTruthy();
+  expect(view.getByRole('button', { name: 'Test again' })).toBeTruthy();
+  expect(view.queryByRole('button', { name: 'Stop test copy' })).toBeNull();
 });

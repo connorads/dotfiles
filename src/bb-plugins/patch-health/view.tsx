@@ -4,23 +4,23 @@ import type { Patch, Snapshot } from './model';
 
 const descriptions = {
   activity: { name: 'Workflow activity', detail: 'Active workflows in your sidebar' },
-  'session-options': { name: 'Session options', detail: 'Model settings passed to workflow workers' },
+  'session-options': { name: 'Session options', detail: 'Your chosen model and settings for each workflow' },
 };
 function status(patch: Patch) {
-  return patch.files === 'absent' ? 'Missing' : patch.files === 'present' ? 'Files present' : 'Cannot verify';
+  return patch.files === 'absent' ? 'Not installed' : patch.files === 'present' ? 'Installed files found' : 'Cannot verify';
 }
 function explanation(patch: Patch) {
-  if (patch.files === 'absent') return 'The inspected desktop installation does not contain this patch. A separate server package can have different patches.';
-  if (patch.files === 'present') return 'The complete desktop file set matches an approved patch profile. Live behaviour has not been checked.';
-  return 'The complete desktop file set is not recognised as an approved profile. Individual matching files cannot verify this patch.';
+  if (patch.files === 'absent') return 'This fix is missing from the desktop app. A test copy can have different fixes.';
+  if (patch.files === 'present') return 'The desktop app contains this fix. We have not checked whether it works in your current BB.';
+  return 'We could not tell whether this fix is installed. Check the technical details before making changes.';
 }
 function summary(snapshot: Snapshot | null, loading: boolean, error: string | null) {
   if (error) return error;
-  if (loading) return 'Inspecting desktop files…';
-  if (!snapshot || snapshot.kind === 'unavailable') return 'Could not inspect desktop files';
+  if (loading) return 'Checking the desktop app…';
+  if (!snapshot || snapshot.kind === 'unavailable') return 'Could not check the desktop app';
   const missing = snapshot.patches.filter(patch => patch.files === 'absent').length;
-  if (missing) return `${missing} ${missing === 1 ? 'patch' : 'patches'} missing from desktop`;
-  return snapshot.patches.some(patch => patch.files === 'unverified') ? 'Desktop files need review' : 'Files present. Live checks pending.';
+  if (missing) return `${missing} ${missing === 1 ? 'fix is' : 'fixes are'} missing from the desktop app`;
+  return snapshot.patches.some(patch => patch.files === 'unverified') ? 'Could not identify the installed fixes' : 'Fixes found. Still need checking in your BB.';
 }
 
 export function PatchView({ snapshot, hostId, loading, error, onRefresh, onClose, repair }: {
@@ -74,6 +74,6 @@ export function PatchView({ snapshot, hostId, loading, error, onRefresh, onClose
         <p>This inspects desktop files on the server host. It does not identify the code loaded by the connected server or inspect prepared server packages.</p>
       </div></details>}
     </div>
-    <footer className="ph-footer"><span>Live BB: inspection only</span><span className="ph-spacer" /><kbd>↑</kbd><kbd>↓</kbd><span>move</span><kbd>↵</kbd><span>details</span></footer>
+    <footer className="ph-footer"><span className="ph-spacer" /><kbd>↑</kbd><kbd>↓</kbd><span>move</span><kbd>↵</kbd><span>details</span></footer>
   </div>;
 }

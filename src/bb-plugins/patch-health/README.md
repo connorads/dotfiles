@@ -6,9 +6,9 @@ Arrow keys move between patches. Enter expands details. Escape closes the popove
 
 ## Repair rehearsal
 
-1. Select **Prepare rehearsal** to copy the installed CLI package and verify both patches offline.
-2. Select **Run rehearsal** to restart the disposable server against separate test data.
-3. Read the evidence. Live feature acceptance requires a separate check.
+1. Select **Prepare test copy** to copy the installed CLI package and verify both patches offline.
+2. Select **Run test** to restart the disposable server against separate test data.
+3. Read the result. Open **Test details** for checks and logs.
 
 ```mermaid
 flowchart LR
@@ -26,7 +26,7 @@ A machine reboot is not required.
 
 Closing the popover leaves the host worker running. Reopening reads the saved operation.
 Progress polling runs only while an open popover watches an active operation.
-Interrupted operations offer **Inspect and stop lab**. Recovery checks process identity before signalling a recorded lab process.
+Interrupted tests offer **Stop test copy**. Recovery checks process identity before signalling a recorded lab process.
 It never automatically restarts interrupted work. Prepare a fresh rehearsal after inspection.
 An identity mismatch refuses signals and requires manual inspection.
 
@@ -46,7 +46,9 @@ Temporary lab directories remain available for evidence and system cleanup.
 Offline checks cover both patch recipes. Restart checks cover copied stock and candidate servers.
 The activity API check uses synthetic database records, then checks terminal records after a cold restart.
 It does not prove workflow execution, notification delivery or session options reaching a provider worker.
-The interface keeps **Live feature acceptance: Not checked**.
+The result states that the current BB has not changed and needs no restart.
+It states that installing fixes is unavailable.
+**Test details** keeps the current BB feature checks marked **Not checked**.
 This experimental runner does not establish live maintenance admission or production supervision.
 
 The [patch manager](../workflows-patch/README.md) owns recipes and verification.

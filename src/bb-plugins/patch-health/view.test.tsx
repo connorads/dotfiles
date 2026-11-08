@@ -15,7 +15,7 @@ function render(snapshot: Snapshot, extra: { loading?: boolean; error?: string }
 }
 test('shows file matches without implying live success and reveals evidence on demand', () => {
   const view = render(sample());
-  expect(within(view.getByRole('banner')).getByRole('status').textContent).toBe('Files present. Live checks pending.');
+  expect(within(view.getByRole('banner')).getByRole('status').textContent).toBe('Fixes found. Still need checking in your BB.');
   expect(view.queryByText('Check passed')).toBeNull();
   const row = view.getByRole('button', { name: /Workflow activity/ });
   fireEvent.click(row);
@@ -26,7 +26,7 @@ test('shows file matches without implying live success and reveals evidence on d
 });
 test('identifies the inspected desktop instead of calling it the running server', () => {
   const view = render(sample(['activity', 'session-options']));
-  expect(within(view.getByRole('banner')).getByRole('status').textContent).toBe('2 patches missing from desktop');
+  expect(within(view.getByRole('banner')).getByRole('status').textContent).toBe('2 fixes are missing from the desktop app');
   expect(view.getByText('Desktop · 0.48.1')).toBeTruthy();
   fireEvent.click(view.getByText('Installation details'));
   expect(view.getByText('/Applications/bb.app')).toBeTruthy();
