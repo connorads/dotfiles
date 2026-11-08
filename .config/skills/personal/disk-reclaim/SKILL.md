@@ -11,430 +11,294 @@ disable-model-invocation: true
 
 # Disk reclaim
 
-Every byte is **rebuildable**, **re-downloadable**, or **irreplaceable**.
-Reclaim the first freely, the second with a nod, the third only with explicit
-approval of the selected files. Sort anything this skill doesn't name into one
-of those three and act accordingly.
+Recover useful free space while preserving work the user still needs.
+Keep finding candidates beyond familiar caches. A cleaner's target list is
+one source of opportunities, not the boundary of the investigation.
 
-The biggest number is rarely the right first target: a 60G game is one click to
-restore, a 6G photo library is gone forever.
+```mermaid
+flowchart LR
+    A[Measure pressure] --> B[Find the next opportunity]
+    B --> C[Establish value and ownership]
+    C --> D[Reclaim authorised targets]
+    D --> E[Verify physical recovery]
+    E --> B
+```
 
-## Survey before promising
+## Choose the next useful action
 
-1. `df -h /System/Volumes/Data` for the real figure.
-2. `cleanup --dry-run` sizes its known cache targets without touching anything
-   (`--json` to parse it, `cleanup --help` for the target list). Do this
-   *before* hand-rolling deletion, but do not mistake it for a complete cache
-   inventory. Give it the login PATH: each target probes for its tool, and a
-   bare non-interactive shell without mise shims or `/opt/homebrew/bin` reports
-   those as `not available on this host` and silently drops them from the
-   total.
-   If the agent PATH omits installed tools, resolve their existing paths with
-   `mise ls --current --json`. Avoid `mise exec` for discovery; it can try to
-   install missing configured tools.
-   A failed, timed-out or interrupted probe leaves its target **unknown**, even
-   if the wrapper prints zero. Keep completed measurements; do not turn missing
-   evidence into a zero-sized candidate.
-3. Then probe `~/Library/Caches` as well as the large home directories.
-   Individual tools use different cache roots - for example, a browser cache
-   can live there while `cleanup` checks only `~/.cache`.
-   Inspect large app profiles under `~/Library/Application Support` for nested
-   HTTP caches and `Service Worker/CacheStorage`, including Electron partitions.
-   Size these separately from databases, `WebStorage`, `File System` and VM disks.
-   Prefer app storage controls. Treat offline copies as re-downloadable data
-   requiring approval, even when their path contains "Cache".
-4. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home - background
-   it, or use `dust`. A glob over a directory holding tens of thousands of
-   entries dies with `argument list too long`; `du -d1 -xh <dir>` walks it
-   instead. Scan named roots separately: cloud-managed or protected
-   trees can stall a broad scan. A stalled path is unclassified, not zero. A
-   per-dir scan that emits *no line* for a named directory stalled on it - that
-   dir is the prime suspect, not empty; re-scan it alone with a timeout. On a
-   dev machine the source root (`~/git`, `~/src`, `~/code`) is routinely the
-   single largest tree and the classic stall culprit - build outputs and caches
-   nested inside repos - so size it early and on its own. The one stall that is
-   *not* a suspect is `~/Library/Containers` (see Gotchas). `ncdu` is for the
-   user to drive: it's a TUI and gives an agent nothing non-interactively.
-   `du` exits non-zero on any unreadable subpath yet still prints the total,
-   so tag a stall by a missing line, not by exit code. Never total a file list
-   with `xargs du -c | tail -1`: `xargs` splits long lists into batches, and the
-   last line holds only the final batch's total. Sum in one process instead.
-5. Reconcile `du` home subtotals against the volume's *own* used figure before
-   concluding. **`df` is the wrong denominator for this**: on a shared APFS
-   container it reports container-wide usage - Data volume plus the System
-   volume, `/nix`, and snapshots - so every volume prints the *same* numbers
-   and none of them is what `du ~` can add up to. Read the Data volume alone:
+Maintain a private working inventory across cleanup batches. For each large
+root or candidate, record its measured size, contents, owner, recovery cost,
+authorisation and outcome. Mark paths as unexplored, protected, selected or
+cleared. A failed or blocked measurement stays unknown, never zero.
 
-   ```bash
-   diskutil info /System/Volumes/Data | grep 'Volume Used'
-   ```
+Start with current free space and the native cleaner's preview. Then follow
+the largest unexplored children, unexplained volume usage or recent growth.
+Do not keep re-running exhausted cache probes while large areas remain unknown.
+Investigate independent roots separately so one slow scan does not block the rest.
 
-   An agent sandbox blocks it (`unable to use the DiskManagement framework`).
-   Run it outside the sandbox, or label the Data figure unknown.
-   It prints **decimal GB**; divide by 1.074 to compare with `du -h`. The gap
-   is not small - one verified reading had `df` at 131G used against a Data
-   volume holding 99.0 GB (92 GiB). Home rarely equals even that: a shortfall
-   lives outside `~` - probe `/private/tmp`, `/opt/homebrew`, `/Library`
-   (`/nix` is its own volume, so it is outside the Data figure entirely).
-   Until the accounted total approaches *Volume Used*, the survey is
-   unfinished: a large unexplained remainder is not a footnote, it is the
-   reclaim target - keep drilling before presenting a complete disk breakdown.
-   An unknown probe does not block independently measured cleanup candidates;
-   label the unmeasured remainder instead of claiming the survey is complete.
-   If directory totals exceed physical usage, check for shared APFS blocks
-   before adding them together; see the code-signing clone gotcha below.
+Rank candidates by recoverable space, value retained, disruption and rebuild
+cost. A smaller obsolete download can be a better target than a large active
+build. Split mixed directories: preserve useful source and final reports while
+proposing their disposable dependencies or intermediate recordings separately.
 
-For a requested full or deep audit, inventory every direct child of the named
-source, state, cache and app roots. Record each root's status and largest
-unclassified children. Drill those children instead of repeating known cache
-candidates. Report coverage and exclusions beside the findings. Independent
-`du` runs count shared hardlinks again; use one bounded traversal to check
-combined totals. APFS clone sharing can still make them exceed physical usage.
+For a quick cleanup, act on verified opportunities without waiting for a full
+audit. For a deep audit, inventory every direct child of the named roots and
+report coverage and unknowns. Continue when asked for more. Finish when the
+requested headroom is observed or further progress needs a specific user decision.
+Do not invent a headroom target or treat one successful cleaner as completion.
 
-Quote a reclaim estimate only for things you have actually probed - and that
-binds the *options you offer* as much as the totals you report. Bucket a tree
-before proposing a cut-off through it: dir names carry issue numbers, not
-dates, and a plausible-sounding "delete everything before July" split of a
-10.9G tree once freed 45M. Size the buckets, then offer the split. Sizes on
-this machine change; check every time rather than trusting a remembered figure.
+## Measure the actual pressure
 
-Where large things tend to hide: `~/Library/Application Support` (games, model
-weights), Rust `target/` dirs under repos, `~/Downloads`, LLM/Whisper model
-stores, `~/.codex/sessions` (single transcripts reach 400M), `~/Recordings/vox` WAV (`vox
-compact` converts to Opus with preview and confirm), and `/private/tmp` (dev/agent scratch accumulates there and is cleared
-only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
-rebooting or with `cleanup --target claude-temp --yes`. That opt-in target
-removes only current-user Claude session scratch older than 60 minutes. It
-protects live sessions from every configured profile and every hibernation
-record, including orphaned records whose pane is gone. It matches session
-dirs only: ad-hoc `mktemp` dirs that agents create at the root of
-`/private/tmp/claude-<uid>` are outside it (68G there against a 22M
-`claude-temp` candidate). Size the root with `du -d1` before quoting the
-target as the fix; for the ad-hoc dirs, offer a reboot or delete only the dirs
-the user names. Bucket that scratch by last write before offering either: 44G
-once held 0.6G untouched for three days, so a reboot would have cut into running
-work and a named-dir deletion had almost nothing to take.
+- Read `df -k /System/Volumes/Data` before and after each cleanup batch.
+  Use consistent units; `du` and cleaner estimates are candidate sizes, not savings.
+- Run `cleanup --dry-run --json` with the login PATH. Check `cleanup --help`
+  for supported targets. A missing tool, timeout or failed probe leaves that
+  target unknown even if the wrapper prints zero. Resolve installed tools with
+  `command -v` or `mise ls --current --json`; discovery must not install tools.
+- Size named roots with `du -xhd 1 <root>` and drill large children.
+  Use `rg --files` or bounded listings to inspect contents. Avoid huge shell
+  globs, interactive `ncdu`, and `xargs du -c | tail -1`, which can total only
+  the last batch. Keep long inventories in private files with bounded summaries.
+- A scan without a result leaves the path unmeasured. Privacy controls can
+  stall `~/Library/Containers`; list it first and measure named third-party
+  containers separately. Do not infer that a stalled directory is large or small.
+- Reconcile directory totals with the Data volume's own usage using
+  `diskutil info /System/Volumes/Data` or `diskutil apfs list`. `df` reports
+  shared-container pressure, including other volumes. Data's decimal GB and
+  `du`'s GiB need conversion. Probe `/private/tmp`, `/Library` and
+  `/opt/homebrew` when home-directory totals leave substantial Data usage unexplained.
+  A sandbox denial leaves volume accounting unknown; it does not block unrelated candidates.
+- Shared hardlinks, APFS clones and sparse files invalidate sums of apparent
+  sizes. Use one traversal for combined hardlink accounting. Physical recovery
+  still requires a before/after `df` reading.
 
-Agent transcripts grow fast: Claude `projects/` under every profile, plus Codex
-`sessions` and `archived_sessions` (31G here, 21G of it under 30 days old).
-`transcript-backup` owns their deletion: it seals sessions idle 30+ days into
-age-encrypted archives on B2, checks the SHA-1 B2 stores, then prunes. `--dry-run`
-sizes the candidates. A weekly launchd job runs it and notifies on failure, so
-a large transcript total first means checking `~/.cache/transcript-backup.log`.
-Do not add another deletion path, and do not propose lowering Claude's
-`cleanupPeriodDays` without reading why it is set: a long value protects
-`claude --resume` of hibernated sessions, and cost reporting reads these files.
+## Search beyond the default cleaner
 
-Version stores that keep every release: `~/.codex/packages/app-server-daemon/releases`
-(about 310M each; only the `current` symlink target runs), pnpm's own versions
-under `~/.local/share/pnpm/package-manager-store/v11/links/@pnpm/` (keep those
-a repo's `packageManager` field pins; `pnpm store prune` never touches them),
-and a Claude Desktop VM per profile at
-`~/.claude-profiles/desktop/<profile>/vm_bundles` (9.4G). Check no process
-holds a release or VM before removing it.
+Use measured size and missing coverage to choose among these areas. None of
+the paths below is disposable merely because it appears in this list.
 
-Agent test artefacts also accumulate under `~/.bb/thread-storage`. Inspect
-isolated test runs and downloaded runtimes separately from source, reports,
-conversation records and real application state. Database files are not caches
-merely because a test created their directory. Verify that retained harnesses
-create disposable fixtures, then check live ownership before proposing removal.
-An idle, unarchived thread can resume; preserve its source and reports.
-Archived threads are the large candidates: `bb thread show <id>` prints an
-`Archived:` line. Rank thread dirs by size and pair each with that status.
-Check for writes in the last day, then name each thread and size for approval.
-Their contents are data, such as rehearsal clones and corpora, not caches.
-
-Project-local `.pnpm-store` directories are outside the global store prune.
-Read `storeDir` from `node_modules/.modules.yaml` where available, then use
-`pnpm --dir <outside-project> --store-dir <exact-store> store prune`.
-Validate the resolved destination with `pnpm --dir <outside-project>
---store-dir <store-root> store path` before pruning. The binary selects the
-store layout: a newer pnpm can append `/v11` to an explicit `/v10` path.
-Use an installed pnpm major that resolves the intended layout. Modules
-metadata can contain JSON despite its `.yaml` extension; parse its contents.
-Prefer native pruning to whole-store deletion. Its reported removal size still
-needs a before/after `df` measurement.
-Temporary-directory rules still apply to stores under `/private/tmp`.
-
-App-update downloads can sit outside the running app under
-`~/Library/Caches/*-updater` and `*.ShipIt`. Inspect their contents and check
-updater processes before removing old payloads. Preserve an updater's active
-staging directory. Where the sandbox hides the process list, compare the staged
-bundle's `CFBundleShortVersionString` with the installed app's. A staged
-version at or below the installed one is stale. A newer one is a pending
-update; removing it forces a re-download, so name that before the nod. Measure archives and extracted payloads separately; do not
-infer physical savings from matching sizes or names.
-
-## When the space comes back
-
-A second "disk full" within days means something writes faster than cleanup
-reclaims. Re-running `cleanup` alone buys the same headroom and loses it
-again. Attribute the growth since the last cleanup first:
-
-- `find ~ -xdev -type f -size +200M -newermt <last-cleanup-date>` names the
-  fresh writers.
-- Compare each opt-in dry-run with its previous figure: `worktree-build` went
-  from 5 dirs/9.8G to 14 dirs/25.5G in one day here.
-
-Check `diskutil apfs list` and `sysctl vm.swapusage` when Data growth does
-not explain falling free space. Swap lives on `/System/Volumes/VM`, separate
-from `/private/var/vm` and the Data volume. Never delete swapfiles manually.
-Offer a planned reboot after saving work; closing jobs or rebooting needs
-approval. Swap can regrow if memory pressure continues.
-
-Report the cause beside the reclaim. `worktree-build` treats a symptom: every
-built worktree regrows its `node_modules`, so the lasting fix is fewer
-worktrees.
-
-## Software use
-
-When recommending app removal, inspect usage evidence rather than bundle age.
-Updates change modification times. Null Spotlight last-used fields mean unknown
-usage, not an unused app. An absent desktop bundle does not prove its CLI or
-server is unused. Report a size shortlist when usage cannot be established.
-
-## What may be deleted
-
-| Class | Examples | Rule |
+| Area | Where to look | What to separate |
 |---|---|---|
-| Rebuildable | `target/`, `node_modules/`, caches | Proceed |
-| Re-downloadable | Steam games, LLM/Whisper models, media rips | Name it and the size, proceed on a nod |
-| Irreplaceable | Photos, documents, anything authored | Never without an explicit yes |
+| Project trees | `~/git`, `~/src`, managed worktrees and `.claude/worktrees` | Dependencies, build output and local package stores from source, captures and reports |
+| Agent artefacts | `~/.bb/thread-storage` and each large run's children | Intermediate screenshots, recordings, test fixtures and downloaded runtimes from final evidence and harnesses |
+| Temporary work | `/private/tmp/claude-<uid>`, `$TMPDIR` and named experiment roots | Package archives, comparison copies, alternate installs, failed backup staging and retained tests from modified checkouts |
+| Application storage | `~/Library/Caches`, `~/Library/Application Support`, named containers and every configured profile | HTTP caches, stale updates and downloadable content from offline documents, databases and writable VM state |
+| Tool installations | mise data, pnpm stores and package-manager versions, aube stores, Codex releases | Unreferenced versions and downloads from live dependencies and pinned tools |
+| Personal storage | `~/Downloads`, recordings, model stores and games | Duplicate downloads or approved audio from authored material and transcripts |
+| History and backups | Agent transcripts, rehearsal Git repositories and retained backups | Verified redundant copies from unique history, keys and the only surviving archive |
 
-Before classifying a language cache, check its tool still exists:
-`command -v dart flutter gradle go`. A cache whose toolchain is gone is not
-"re-downloadable pending a nod", it is dead weight - `~/.pub-cache`,
-`~/.gradle` and `~/.dartServer` held 1.6G between them on a machine with no
-Dart, Flutter or Gradle installed at all. `go` is the same pair twice over:
-`~/Library/Caches/go-build` and `~/go/pkg/mod` (690M and 124M here) are both
-dead weight with no `go` on the machine. `cleanup --target go --yes` delegates
-to `go clean -cache -modcache` when Go exists. Without Go it removes only
-those canonical roots and preserves `~/go/src` and `~/go/bin`. The check
-extends to the *manager*:
-Android's `sdkmanager` is a JVM wrapper, so with no `java` it cannot list or
-uninstall the packages it installed, and the idiomatic-cleaner route is closed
-before you reach it (9.1G of `system-images`, `ndk` and `emulator` sat under a
-`sdkmanager` that could not run). Hand-delete those, leaving the
-package-manager-owned `cmdline-tools` alone. The mirror-image failure is a
-manager that runs but has no removal verb: LM Studio's `lms` has `get`, `load`,
-`ls` and `import` but no `rm`, so a model comes out only by deleting
-`~/.lmstudio/models/<publisher>/` once `lms ps` confirms none are loaded.
+### Projects, stores and worktrees
 
-**Ask before deleting anything in `~/Downloads`** - it mixes all three classes.
-Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
-the user's call, however obviously disposable it looks.
+Prefer the project's native clean command. Check activity before cleaning a
+build tree; forcing a concurrent rebuild is disruption even when files are
+rebuildable. Git-untracked and gitignored paths can contain valuable captures.
+Inspect contents; a directory named `coverage` inside `site-packages` is an
+installed package, not test output.
 
-Treat an active project's build tree differently from an idle one. It is
-rebuildable, but cleaning it during active work is short-lived headroom and
-forces an expensive rebuild; prefer other candidates first and make that
-trade-off explicit.
+Use `cleanup --target worktree-build --dry-run --json` for managed build
+candidates and `cleanup --target cargo-target --dry-run --json` for Rust output.
+Inspect exact candidates before executing either. The `cargo` target covers
+registry cache, not project `target/`; `cargo-target` uses `CLEANUP_CARGO_ROOTS`.
 
-Untracked is not disposable: a gitignored `.cache/` or output tree can hold
-expensive-to-rebuild artefacts or irreplaceable captures, so sort its contents
-by the three classes - don't clear it wholesale because git ignores it. A
-project cleaner or its docs, where present, is the fastest classifier.
+For stores outside the global prune, inspect `storeDir` in
+`node_modules/.modules.yaml`; its contents may be JSON. Verify
+`pnpm --dir /private/tmp --store-dir <root> store path` resolves the intended
+layout before `store prune`. An installed pnpm major can append a different
+layout version. Store size is not unreferenced size.
 
-When removing MacWhisper recordings while retaining transcripts, read
-[references/macwhisper.md](references/macwhisper.md) before preparing the
-audio manifest or deleting files.
+For checkout removal, inspect clean status, ignored files, ownership and branch
+tips. A clean checkout or idle thread does not establish completed work.
+`git worktree remove` retains branches, but local deletion rules still apply.
+`wt-status --all --pr --json` and `wt-clean --dry-run` classify managed trees.
+`wt-clean` also deletes branches; `--force` can destroy unmerged commits.
+Use branch-preserving removal where appropriate and verify retained tips.
+Missing checkout registrations offer metadata cleanup, not checkout-sized savings.
 
-## Gotchas
+Run roots under `~/.trees` can contain notes, evidence and nested worktrees.
+Read `RUN.md` or `PAUSED.md` before classifying them. BB-managed environments
+need their documented lifecycle, completion evidence and pending decisions
+checked before retirement. Verify retirement separately from file removal.
 
-- **Follow a deletion rejection's required route.** Prefer an idiomatic cleaner
-  before requesting manual deletion. If a rejected permanent deletion requires
-  Trash, move the exact target with `trash`. Do not retry through another
-  permanent-deletion command, API or temporary directory. Leave agent-created
-  temporary data for system cleanup unless the user approves named targets.
-- **Hibernated agents still own their scratch state.** Conversation persistence
-  does not prove that scratch files are disposable. `cleanup --target
-  claude-temp` fails closed if any live-agent query or hibernation record is
-  unreadable, and refreshes both sets immediately before deletion. Do not
-  hand-delete `/private/tmp/claude-<uid>` wholesale.
-- **Confirm reclaim with `df`, not the command's exit code - nor its reported
-  total.** macOS `/usr/bin/trash` exits non-zero if *any* path arg is missing
-  while still trashing the rest, and says nothing about bytes freed; `du
-  ~/.Trash` reads `0` whether or not anything is in it, because the directory
-  is TCC-protected rather than empty. Cleaners that *do* report a
-  figure report **apparent** size: `cargo clean` printed `Removed 704697 files,
-  219.3GiB total` for a tree `du` and `df` both put at 63 GiB - a 3.5x
-  overstatement from hardlinks and sparse files. Never pass a cleaner's own
-  number to the user. After any delete/clean, re-check `df` for physical free
-  space. Target `du` confirms that files left the target, not that physical
-  blocks were freed. Verify every measured cache root after a native cleaner
-  succeeds. Its active cache directory can differ from an older platform path.
-  Record free space
-  immediately before and after each cleanup, running cleanups sequentially.
-  Report candidate size, observed interval change and current free space
-  separately. Other agents, downloads and user actions can change the same
-  volume; a whole-session increase is not attributable cleanup savings.
-- **Trashing frees nothing until Trash is emptied.** Emptying deletes all current
-  contents, including unrelated items and mounted-volume Trash. Obtain explicit
-  approval to empty all Trash. When the installed helper is available, run
-  `/usr/local/bin/empty-trash check`, then `/usr/local/bin/empty-trash empty`.
-  Use the full path to avoid a shell alias and never run the helper with sudo.
-  It needs prior Finder permission and a logged-in desktop session. Verify the
-  helper result and `df`; target sizes alone do not prove recovery. Without
-  approval or a working helper, report the trashed files as pending.
-- **`trash` duration is unpredictable.** One run on a many-file tree outlived
-  tool timeouts and was killed mid-move, leaving some args done and some
-  untouched; another moved 90 paths holding 19G of `node_modules` in seconds.
-  Background it with `trash -v`, and verify per-path afterwards with `ls -d`
-  rather than trusting one exit code for the whole list.
-- **SSH and BB need the Trash helper's permission identity.** The installed
-  helper launches through LaunchServices; it does not need Full Disk Access on
-  the caller. A sandbox can block that launch. Use the execution tool's approval
-  mechanism when needed for an authorised request. A helper timeout leaves the
-  outcome unknown; inspect Finder before retrying. Direct `osascript` can time
-  out without Automation consent, and restarting Finder does not grant consent.
-  Keep `trash -v` movement receipts for recovery.
-- **Container scans can stall on macOS privacy controls.** List
-  `~/Library/Containers` before scanning it. Measure named third-party app
-  containers separately; they can hold substantial offline data. A stalled
-  scan leaves their size unknown. Do not infer that containers are small or
-  disposable from an Apple-heavy directory listing.
-- **A mounted DMG under `/tmp`** (cask/`.pkg` install leftover) reports
-  `Read-only file system` and blocks its parent's deletion until
-  `hdiutil detach /dev/diskN` (find it via `hdiutil info`); the leftover
-  `.cdr`/dir then clears with `rm -f`/`rmdir`.
-- **Rust build dirs: `cleanup --target cargo-target --yes`** (opt-in; scans
-  `$CLEANUP_CARGO_ROOTS`). `cleanup`'s `cargo` target is the registry cache
-  only and does not touch `target/`. These dirs get large enough to dominate a
-  survey while `.git` beside them stays small.
-- **Agent worktrees under `<repo>/.claude/worktrees/`** each carry their own
-  build tree, so one repo holds several copies of its own `target/` (23G across
-  three here, against 40G in the repo's live one). They read as irreplaceable
-  because their `worktree-agent-*` branches hold unmerged commits, but
-  `git worktree remove` drops only the checkout - the branch and its commits
-  stay in the main repo. Check `git status --porcelain`, classify ignored files
-  and verify ownership before removal; clean status alone does not make the
-  checkout disposable. Confirm the branch survives afterwards. Being inside
-  the repo, they hide from a `~/git/*` scan behind the repo's own total.
-- **Managed worktrees under `~/.trees`** are the same trap at ten times the
-  size: each carries its own `node_modules` and build output (~2.4G plus ~2.9G
-  each in a Next.js repo; 25 worktrees held 68G here). `wt-status --all --pr
-  --json` classifies them and `wt-clean --dry-run` previews only the MERGED-PR
-  set. Do not carry the branch-survives advice above across to it: **`wt-clean`
-  deletes the branch too** - it hard-codes `--delete-branch`, so `git branch -d`
-  runs after each removal - and `wt-clean --force` escalates that to `git branch
-  -D`, which destroys unmerged commits. For the merged-but-no-PR worktrees
-  `wt-clean` deliberately spares, bare `wt-remove <path>` is the
-  branch-preserving primitive where local deletion rules permit it. Record
-  branch tips before removal and verify them afterwards. Missing worktree
-  registrations offer metadata cleanup, not checkout-sized disk savings.
-  For build-only cleanup, inspect every candidate path before execution. A
-  basename match can select `.venv/.../site-packages/coverage`, which is an
-  installed Python package. Exclude dependency environments and select only
-  verified generated output; do not run the blanket target with unsafe matches.
-  `~/.trees` also holds agent run roots that are not repos: a dir with its own
-  `RUN.md`/`brief.md`, an `evidence/` tree and a nested `wt/` of worktrees
-  (103 in one run), which `wt-status` lists under the run's name. Read the
-  run's notes (`RUN.md`, `PAUSED.md`) before classifying: they say whether it
-  finished, that each worktree has its own branch, and which dirs are evidence.
-- **BB-managed worktrees have an owning environment.** Inspect thread status,
-  final output and pending decisions before retiring a clean checkout. Idle
-  does not mean finished. Use BB's documented environment lifecycle and verify
-  the environment reaches `destroyed`; preserve reports and branch tips.
-  Follow local Trash rules for the checkout files. A moved checkout and a
-  retired environment are separate outcomes; verify both.
-- **Several Playwright browser revisions is the normal state, not stale
-  build-up.** A machine with many repos pins one revision per `playwright-core`
-  version, so four chromium revisions in `~/Library/Caches/ms-playwright` can
-  all be live, and pruning the "old" ones forces gigabytes of re-download.
-  Resolve it rather than guessing by age: each file under `<root>/.links` names
-  a `playwright-core` install, that install's `browsers.json` lists every
-  `{name, revision}` it needs, and the on-disk directory is the name with
-  hyphens replaced by underscores plus `-<revision>` (`chromium-headless-shell`
-  becomes `chromium_headless_shell-1234`). Anything outside that set is
-  unreferenced. `cleanup --target playwright` walks exactly this; `cleanup`'s
-  `browsers` target historically probed `~/.cache` only and reported 0 against
-  3.3G.
-- **Aube:** `~/.cache/aube/virtual-store` can mix live tool dependencies with
-  unreferenced legacy packages. Preserve the root. Try native pruning first,
-  then verify which layout it covers. A zero result for `virtual-store/v1`
-  does not classify older flat entries. For those entries, resolve installed
-  tool links and follow package-to-package links transitively. Check project,
-  worktree and scratch references, plus open files. Unreadable paths leave
-  ownership unknown. Propose only an exact unreferenced manifest for review;
-  refresh references before moving approved entries to Trash. Verify protected
-  entries remain. Record pre-existing dangling links separately so they are
-  not mistaken for cleanup damage. Store size is not a reclaim estimate.
-  Since mise embedded aube as a library, a newer install keeps its store
-  **inside the install** at `<install>/node_modules/.mise` rather than in the
-  shared cache. A sweep finds it as bulk under
-  `~/.local/share/mise/installs/`, and it looks like cache because of the name.
-  It is not: it is the tool's own dependency tree, and deleting it breaks the
-  tool. Reclaim it with `mise prune` / uninstalling the tool, never by hand.
-- **mise downloads:** `mise prune` can remove an old tool while its downloaded
-  archives remain under `~/.local/share/mise/downloads/<tool>/`. That root is
-  in mise's *data* dir, not its cache dir (`~/Library/Caches/mise`), so
-  `mise cache clear` never touches it. For a large entry, confirm no installed
-  tool still references it (`mise ls <tool>`) before treating it as
-  re-downloadable and removing it after a nod. If a legacy
-  `~/.local/share/mise/http-tarballs` dir still exists
-  (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there - read
-  an entry's `metadata.json` before removing it. Resolve installed tool
-  symlinks too: an archive-named directory can be the live installation target.
-- **Chrome code-signing clones share APFS blocks.** A directory under
-  `/private/var/folders/*/X/*.code_sign_clone/` can report hundreds of GiB
-  through `du` while sharing blocks with app bundles and other clones. Do not
-  add that total to physical usage or quote it as reclaimable space. Check
-  running owners before proposing removal: a live process can depend on its
-  clone for code-signature checks. Measure physical change with `df`, not by
-  summing clone sizes. The mechanism and sources are in the KB note
-  `apfs-clone-disk-accounting.md`; consult it when investigating this case.
-- **APFS local snapshots pin deleted blocks.** After big deletions the `df`
-  figure can refuse to move: Time Machine local snapshots keep the old blocks
-  live. Inspect with `tmutil listlocalsnapshots /`; reclaim with
-  `tmutil thinlocalsnapshots / <bytes> 4`, or wait - macOS thins them under
-  pressure. Never quote purgeable or snapshot space as a saving; it is not
-  yours to promise.
-- **`/nix/store` size is not reclaimable space.** Most of it is live. Trust
-  `cleanup`'s nix probe, which sizes dead paths only; `nix-collect-garbage -d`
-  routinely frees nothing while costing rollback generations. Never quote the
-  store total as a saving.
-- **Podman is separate from Docker.** A stopped Podman VM can make Docker
-  cleanup look empty while `~/.local/share/containers/podman/machine` remains
-  large. Inspect `podman machine list`; remove a machine only with a nod,
-  because it discards its images, containers, and volumes.
-- **VM disks are sparse and never shrink.** Even a *successful* in-guest prune
-  leaves host `df` unmoved: `~/.colima/_lima/_disks/colima/datadisk` is 100 GiB
-  apparent against 38G allocated, and a sparse file only grows, so
-  `docker system prune` frees blocks inside the guest filesystem while the host
-  allocation stays put. Only `colima delete` (or the Podman equivalent) returns
-  host bytes, and it discards every image, container and volume - a nod, never
-  a default. Never quote a VM disk's size as reclaimable; like `/nix/store`,
-  the estimate would equal the total.
-  `colima delete` also leaves the *named data disk* behind (`colima list` goes
-  empty while `_lima/_disks/<name>` still holds gigabytes). Check
-  `LIMA_HOME=~/.colima/_lima limactl disk list` for an entry with an empty
-  `IN-USE-BY` and remove it with `limactl disk delete <name>`. nix's colima
-  package doesn't expose `limactl` on PATH; it lives in the `lima-full` store
-  path colima references.
-- **`brew cleanup -n` under-reports.** It applies brew's 120-day policy, so it
-  can print nothing while gigabytes sit in `$(brew --cache)/downloads`. Use
-  `cleanup --target brew` (or `brew cleanup --prune=all -n`) for the true
-  figure.
-- **Steam: uninstall in the app**, never delete `steamapps/common/*` - the
-  manifests desync. Usually the largest single win, and the user must do it.
-- **Yarn v1:** do not probe `yarn cache clean` with `--help` - it runs the
-  cleaner. Use `yarn cache --help` to inspect the parent command instead.
-- **`stat` on PATH is GNU coreutils (nix).** BSD flags fail with `cannot read
-  file system information for '%SB'`; call `/usr/bin/stat` for birth times.
-- **A full `cleanup --yes` can outlive a 5-minute tool timeout.** Background
-  it and read the `volume_available_*` JSON lines when it finishes. Targets
-  run in series, so one stalled step blocks every later one: `bun pm cache rm`
-  once spun at 100% CPU for 19 minutes with its cache size flat. Re-measure the
-  current target's dir with `du` while it runs. If it stops shrinking, ask the
-  user to stop the process, then rerun the remaining targets with explicit
-  `--target` flags.
-- **Apps from nix-darwin's Homebrew module come back after `brew uninstall`.**
-  Delete the cask line from the nix config and rebuild with `drs`; the
-  `cleanup = "uninstall"` activation setting removes it. App data dirs
-  (`~/Library/Android`, `~/.lmstudio`) stay behind for a separate step.
-- Don't pipe a long-running background command through `tail`: the output is
-  lost to buffering and you end up polling for a result that never lands.
+### Agent runs, scratch and history
 
-## Skill validation
+Rank BB thread directories by size. Refresh `bb thread show <id>` and final
+output on each search; a previously protected thread may now be archived.
+Read the run's harness to distinguish disposable fixture databases from real
+application records. Select intermediate evidence separately from final
+reports, harnesses and source. Retain exact private manifests for approved batches.
 
-When revising these rules, use [evals/regressions.md](evals/regressions.md)
-for synthetic decision checks. These cases require no real cleanup.
+`cleanup --target claude-temp --dry-run --json` covers inactive UUID session
+scratch, not every ad-hoc directory beneath `/private/tmp/claude-<uid>`.
+Size that root separately. Live and hibernated sessions retain ownership;
+unreadable ownership records leave protection unknown. For ad-hoc temporary
+work, propose named targets rather than sweeping the root. A reboot can clear
+temporary work but ends running jobs and needs approval.
+
+Research clones can be downloadable; modified source is authored data.
+For Git rehearsals, inspect with `git -C <checkout>` and account for ignored
+files. Verify a retained backup contains HEAD and every local and rehearsal
+remote ref tip, with object connectivity checked. A similarly named backup
+or clean checkout alone does not prove redundancy.
+
+Inspect backup-tool logs before proposing abandoned staging archives.
+Verify retained originals or a verified archive can reproduce their contents.
+Preserve keys and the only surviving copy.
+
+`transcript-backup` owns Claude and Codex transcript pruning. Check
+`~/.cache/transcript-backup.log` and redirect its `--dry-run` file listing to
+private storage; report the summary. It archives idle sessions, verifies remote
+storage and prunes unchanged originals. Hibernated sessions are protected.
+Do not add manual transcript deletion or silently lower `cleanupPeriodDays`.
+Resume support and cost reporting can depend on that history.
+
+### Applications, runtimes and downloads
+
+Inspect nested HTTP caches separately from `Service Worker/CacheStorage`,
+`WebStorage`, `File System`, IndexedDB and VM disks. Offline copies require
+approval even when their directory contains the word "cache".
+
+For updater payloads under `*-updater` and `*.ShipIt`, preserve active staging.
+Compare staged and installed app versions: equal or older is stale; newer is
+pending. Say that removing a pending update forces another download.
+
+Check installed tools and references before removing residual language caches.
+A missing runtime can also prevent its native cleaner from working. Preserve
+source and tool binaries when only caches are selected. Check installed model
+managers' supported operations and loaded models before proposing model removal.
+
+Inspect tool version stores with their owning manager. `mise prune` can leave
+downloads beneath `~/.local/share/mise/downloads`; `mise cache clear` does not
+cover that data directory. Check installed symlink targets before treating an
+archive-named directory as a download. Embedded `node_modules/.mise` belongs
+to the installed tool; use mise's lifecycle rather than removing it by hand.
+
+Preserve aube's virtual-store root. Native pruning of one layout does not
+classify legacy entries. For remaining candidates, trace installed tool and
+package links transitively, check project and scratch references and open files,
+and propose only an exact unreferenced manifest. Record existing dangling links.
+
+`pnpm store prune` does not prune pnpm's own package-manager versions.
+Check project `packageManager` pins before selecting those versions. For Codex
+app-server releases, inspect the `current` symlink and running references.
+
+Playwright browser revisions can all be required. Resolve `.links` to installed
+`playwright-core` packages and their `browsers.json`, or use
+`cleanup --target playwright --dry-run --json`. Age alone does not make a
+revision unused. Probe the actual platform cache, including `~/Library/Caches`.
+
+A VM bundle can contain both a downloadable base image and writable session
+disks. Explain the selected bundle's data loss before removal. A stopped VM
+is not an empty VM. Guest pruning may leave host allocation unchanged; inspect
+sparse-file allocation and the manager's deletion or compaction operations.
+Podman and Colima are separate managers. Colima can retain an unused named
+Lima disk after VM deletion; inspect `LIMA_HOME=~/.colima/_lima limactl disk list`.
+Resolve the installed Lima binary if it is not on PATH. Delete only an approved,
+unreferenced disk through its manager.
+
+Check usage rather than bundle timestamps before proposing app removal. Null
+Spotlight last-used data means unknown. An absent desktop bundle does not prove
+its CLI is unused. Declaratively managed Homebrew apps return after uninstall;
+change their owning configuration only when that change is requested. Uninstall
+Steam games in Steam so manifests remain consistent.
+
+For large Homebrew caches, use `cleanup --target brew`'s preview or
+`brew cleanup --prune=all -n`; the default age policy can hide candidates.
+Do not probe Yarn v1 `cache clean` with `--help`; use `yarn cache --help`.
+
+### Recordings with transcripts
+
+Ask before selecting anything in Downloads or removing original recordings.
+For vox, inspect `vox compact` for an audio-preserving compaction route.
+
+For MacWhisper, prefer supported audio-only operations. Inspect the installed
+CLI and live database schema; check both Application Support and sandboxed app
+storage. Select by verified database creation dates, converting the user's
+strict calendar cutoff from their timezone. Filesystem mtimes are not recording dates.
+
+Record exact audio paths, owning record IDs, creation dates, sizes, modification
+times and file identities. Missing files contribute no savings.
+Before removing approved audio, make a consistent SQLite backup including WAL
+through the backup API and verify it with `PRAGMA quick_check`. Resolve direct
+session and shared meeting, recording, voice-memo or podcast transcript links.
+Export readable text and structured segments, speakers, summaries, translations
+and dictation where present. Verify exports against the source and retain a
+user-visible archive with the backup and exact audio manifest.
+
+Revalidate database ownership, dates and file identity. Reject symlinks and
+paths outside the media root; defer open audio or unknown usage. Remove only
+approved audio, preserving transcript records, settings and unrelated media.
+Verify retained records and files, then check transcripts in the app where
+possible. Unchanged rows prove database preservation, not working in-app access.
+Report unverified UI access and dangling media references without inventing a
+schema migration. Keep private transcript text out of tool output.
+
+## Decide and reclaim
+
+| Recovery class | Authority |
+|---|---|
+| Rebuildable output or verified cache | Proceed where local rules permit, after checking active ownership |
+| Downloadable packages, models, games or offline copies | Name the selected content and measured size; obtain a nod |
+| Authored work, recordings, session state or unique history | Obtain explicit approval for the selected data loss |
+
+Reusability and current ownership are separate questions. Age, PPID 1, clean
+Git status and absence of open files do not prove abandonment. Check running
+processes, owning tasks, hibernation records, shared consumers and dependency
+references as relevant. Use `lsof -nP -Fpcn` with filtered private results;
+recursive `lsof +D` on huge trees can stall. Defer candidates with unknown ownership.
+
+Group verified candidates into a reviewable batch. Give exact paths or a private
+manifest, measured size, recovery cost and what remains. Reuse approval for the
+same batch; refresh identities and ownership immediately before execution.
+
+Prefer native cleaners. Follow local deletion rules; do not run recursive-force
+`rm` or substitute another permanent-deletion API. Outside permitted temporary
+roots use `trash -v`. Leave agent-created temporary work unless the user approves
+named targets. A rejected action is not permission to use another route.
+
+Moving to Trash frees no space. Obtain explicit approval to empty all Trash,
+including unrelated and mounted-volume contents. If available, use
+`/usr/local/bin/empty-trash check`, then its `empty` command, without sudo.
+Otherwise use authorised Finder emptying with an adequate timeout and verify
+Finder's item count afterwards. A timeout leaves the result unknown; inspect
+progress before retrying. A sandbox denial or missing Automation consent is
+not a successful cleanup. Keep movement receipts and report pending reclaim.
+
+## Verify, report and continue
+
+Check each approved path, the actual cache root and deliberately retained work.
+A non-zero batch command can still remove some targets; inspect them individually.
+Measure immediate before/after free space and report candidate size, observed
+interval change and current free space separately. Concurrent activity means
+neither session-wide change nor cleaner estimates establish attributable savings.
+
+If deletion succeeds without physical recovery, inspect Trash, open references,
+APFS shared blocks and snapshots. `du ~/.Trash` can return zero despite contents
+because of privacy controls. Chrome `.code_sign_clone` trees can share app-bundle
+blocks and running processes can depend on them. Read the KB's APFS accounting
+note before treating their apparent size as a recovery opportunity.
+
+Use `tmutil listlocalsnapshots /` to inspect snapshots that can pin deleted
+blocks. Snapshot thinning is an intervention, not promised reclaim. `/nix/store`
+is mostly live; trust the dead-path probe rather than quoting the whole store
+or deleting rollback generations as routine cleanup.
+
+For a stalled cleaner, identify the current step and compare its size over time.
+Flat size plus sustained work can identify a stuck operation; elapsed time alone
+cannot. Obtain stop approval where needed, then run the unaffected targets
+explicitly. Keep missing or skipped probes visible.
+
+If the user still needs space, return to the largest unexplored opportunities.
+Preserve the inventory so the next batch builds on the investigation.
+
+When pressure recurs, attribute growth before repeating cleanup. Compare root
+sizes and opt-in cleaner previews; inspect large recently modified files.
+Check `diskutil apfs list` and `sysctl vm.swapusage` to separate Data growth from
+swap on the VM volume. Never delete swapfiles. Use the process-cleanup skill
+for stopping jobs; a reboot or closing live work needs approval.
+
+Inspect the actual producer in both main and active scratch checkouts before
+proposing prevention. Cleanup may already handle successes while retaining
+failures. Count overlapping runs as well as workers per run. Recommend the
+smallest change that addresses the observed writer, such as bounded failure
+retention, shared dependency storage or a shared limit on heavy jobs. Keep a
+one-off reclaim separate from configuration or workflow changes.

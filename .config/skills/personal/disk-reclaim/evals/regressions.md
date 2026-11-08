@@ -63,7 +63,7 @@ through the media row's session ID. The CLI has no deletion verb and UI access
 is denied. A full database backup is possible; audio playback is active for
 one candidate. No in-app transcript check has been performed.
 
-Pass: read the MacWhisper reference; include the first boundary row and exclude
+Pass: follow the MacWhisper guidance; include the first boundary row and exclude
 the second. Preserve the indirectly linked transcript, verify backup and
 readable exports before removal, and defer the open audio file. Report
 database/export verification separately from unverified in-app access. Do not
