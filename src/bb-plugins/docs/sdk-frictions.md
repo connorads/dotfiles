@@ -103,11 +103,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   A shell command's working directory does not supply that link's base directory.
 - Workaround: [Global BB instructions](../../../.bb/AGENTS.md) require explicit Markdown links with verified absolute destinations on the owning host.
   Write hostnames as full `https://` URLs, not inline code.
-- Ask: Show the resolved destination on missing-file errors and avoid presenting nonexistent filename autolinks as verified files.
+  A disposable plugin verifies document-preview recovery through a `fileOpener` wrapper around `Original`.
+  It searches same-project, same-host thread storage and opens unique matches through SDK host-file preview navigation.
+  Cross-thread `thread-storage` preview targets are declined; an explicit host-file target opens the discovered capture.
+  Duplicate matches require a chooser. Truncated listings cannot establish uniqueness.
+- Ask: Provide a local-file resolution hook with document, thread and host context before navigation.
+  Show the resolved destination on missing-file errors and avoid presenting nonexistent filename autolinks as verified files.
   Skip inline code that parses as a hostname with a public suffix, or render it as an `https://` link.
   Offer an explicit checkout selection for repairing missing destinations; never silently choose a same-named file in another checkout.
   Explicit destinations remain necessary when a message does not identify a unique working directory.
-- Status: open. Path lookup contrast verified through BB's file API; UI click replay remains untested.
+- Status: open. Document-preview recovery passes live click, keyboard, duplicate-choice and plugin-removal checks on BB 0.48.1.
+  The original message-link worktree case remains untested in the UI.
 - Category: app-bug
 - Evidence: Installed `ThreadTimelineNavigationContext-*.js` message routing and `markdown-preview-*.js` inline-code conversion.
   BB file reads returned `ENOENT` for workspace-relative candidates and succeeded for the absolute worktree destination.
