@@ -441,6 +441,7 @@ test('Claude account switch failure retains the selected account and reports the
     const button = await slot.findByLabelText('Claude account');
     fireEvent.click(within(accountMenu(slot)).getByRole('option', { name: /^Work/ }));
     await slot.findByText('Clear queued messages before switching profiles.');
+    expect(slot.queryByRole('button', { name: 'Retry' })).toBeNull();
     expect(button.textContent).toBe('Default');
   } finally { slot.lifecycle.unmount(); }
 });

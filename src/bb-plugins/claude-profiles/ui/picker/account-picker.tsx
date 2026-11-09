@@ -56,7 +56,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [supported, setSupported] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; refresh: boolean } | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const claude = isClaude(composer);
   const connectors = useConnectorSettings(threadId);
@@ -81,7 +81,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
             [profile.id]: { status: 'error', windows: [], observedAt: null, message: 'Usage unavailable' } }));
         });
       }
-    } catch (cause) { if (request === generation.current) setError(cause instanceof Error ? cause.message : 'Could not load accounts.'); }
+    } catch (cause) { if (request === generation.current) setError({ message: cause instanceof Error ? cause.message : 'Could not load accounts.', refresh: true }); }
     finally { if (request === generation.current) setLoading(false); }
   }, [rpc, threadId, claude]);
   useEffect(() => { void load(); return () => { generation.current++; }; }, [load, composer.isRunning]);
@@ -109,7 +109,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
     try {
       await rpc.call('choose', { threadId, profileId: profile.id });
       toast.success(`Claude account: ${profile.label}`); onClose();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not switch account.'); }
+    } catch (cause) { setError({ message: cause instanceof Error ? cause.message : 'Could not switch account.', refresh: false }); }
     finally { working.current = false; setBusy(false); }
   }
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
@@ -148,7 +148,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
         <button className="mf-dismiss" type="button" aria-label="Close account picker" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button></header>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
       {supported && <ConnectorControls controls={connectors} threadId={threadId} disabled={blocked} />}
-      {error && <p role="alert" className="mf-error">{error} <button type="button" disabled={busy} onClick={() => { void load(true); }}>Retry</button></p>}
+      {error && <p role="alert" className="mf-error">{error.message} {error.refresh && <button type="button" disabled={busy} onClick={() => { void load(true); }}>Refresh accounts</button>}</p>}
       {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-intro"><span>Accounts <span className="ap-count">{profiles.length || ''}</span></span>
         <span className="ap-legend"><i /> Time elapsed</span>

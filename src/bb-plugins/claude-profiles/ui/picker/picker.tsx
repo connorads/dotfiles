@@ -329,8 +329,11 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
         {accounts?.supported ? <AccountMenu threadId={threadId} profiles={accounts.profiles} currentId={accounts.currentId} buttonRef={accountButton}
           disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting}
           onChoose={profileId => { void run(async () => {
-            const { currentId } = await rpc.call('choose', { threadId, profileId });
-            setAccounts(previous => previous ? { ...previous, currentId } : previous);
+            setProfileError(null);
+            try {
+              const { currentId } = await rpc.call('choose', { threadId, profileId });
+              setAccounts(previous => previous ? { ...previous, currentId } : previous);
+            } catch (cause) { setProfileError(message(cause)); }
           }); }} />
           : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? accountUnavailable}</span>}
         {accounts?.supported && composer.isRunning ? <small>Available when this turn finishes.</small>

@@ -14,7 +14,7 @@ function TestAccounts() {
   const composer = useComposer();
   return <AccountPicker composer={composer} onClose={() => composer.focus()} />;
 }
-function renderAccounts(running = false, fail = false) {
+function renderAccounts(running = false, fail: 'load' | 'switch' | null = null) {
   return renderSlot<Record<string, never>, typeof rpcContract>({ component: TestAccounts }, {}, {
     composer: { text: 'Keep my draft', isRunning: running,
       scope: { kind: 'thread', threadId: 'thread-test' }, selection: { providerId: 'claude-code', model: 'opus' } },
@@ -34,13 +34,13 @@ function renderAccounts(running = false, fail = false) {
       'favourites.setEffort': () => [],
       nextThreadQuota: () => { throw new Error('Unused'); },
       threadAccounts: () => [],
-      accounts: () => ({ supported: true, profiles: [
+      accounts: () => { if (fail === 'load') throw new Error('Accounts unavailable'); return { supported: true, profiles: [
         { id: 'default', label: 'Default', configDir: null },
-        { id: 'work', label: 'Work', configDir: '/profiles/work' }], currentId: 'default' }),
+        { id: 'work', label: 'Work', configDir: '/profiles/work' }], currentId: 'default' }; },
       usage: () => ({ status: 'ok', observedAt: Date.now(), message: null, windows: [
         { id: 'seven_day', label: 'Seven days', usedPercent: 80, cost: null,
           resetsAt: new Date(Date.now() + 7 * 86400000 * 0.8).toISOString() }] }),
-      choose: input => { if (fail) throw new Error('Switch refused'); return { currentId: input.profileId }; },
+      choose: input => { if (fail === 'switch') throw new Error('Switch refused'); return { currentId: input.profileId }; },
     },
   });
 }
@@ -60,7 +60,7 @@ test('compares weekly use with elapsed time and switches by number without chang
   } finally { slot.lifecycle.unmount(); }
 });
 test('moves focus with arrows and keeps switch failures visible', async () => {
-  const slot = renderAccounts(false, true);
+  const slot = renderAccounts(false, 'switch');
   try {
     const current = await slot.findByRole('button', { name: 'Switch to Default' });
     await waitFor(() => expect(document.activeElement).toBe(current));
@@ -70,6 +70,8 @@ test('moves focus with arrows and keeps switch failures visible', async () => {
     fireEvent.keyDown(work, { key: 'Enter' });
     await slot.findByRole('alert');
     expect(slot.getByText('Switch refused')).toBeTruthy();
+    expect(slot.queryByRole('button', { name: 'Retry' })).toBeNull();
+    expect(slot.queryByRole('button', { name: 'Refresh accounts' })).toBeNull();
     expect(slot.inspection.composer.focusCount).toBe(0);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -115,5 +117,16 @@ test('leaves native select keys alone and preserves account focus through policy
     await slot.behavior.emitRealtime('profiles-changed', {});
     await waitFor(() => expect(slot.getByRole('button', { name: 'Switch to Work' })).toBe(work));
     expect(document.activeElement).toBe(work);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('account loading failures offer an explicitly labelled refresh', async () => {
+  const slot = renderAccounts(false, 'load');
+  try {
+    const refresh = await slot.findByRole('button', { name: 'Refresh accounts' });
+    const before = slot.inspection.rpcCalls.filter(call => call.method === 'accounts').length;
+    fireEvent.click(refresh);
+    await waitFor(() => expect(slot.inspection.rpcCalls.filter(call => call.method === 'accounts')).toHaveLength(before + 1));
+    expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
   } finally { slot.lifecycle.unmount(); }
 });
