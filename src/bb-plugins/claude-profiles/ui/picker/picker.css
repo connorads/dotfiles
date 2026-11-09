@@ -136,3 +136,12 @@ kbd.mf-slot { border: 1px solid var(--border); background: var(--background); }
   .mf-detail { display: none; }
   .mf-row[data-unavailable] .mf-detail { display: block; }
 }
+
+fieldset.mf-picker { margin: 0; padding: 0; border: 0; }
+.mf-picker [hidden] { display: none; }
+.mf-switch-status { display: flex; align-items: center; gap: 12px; padding: 18px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.mf-switch-status strong { display: block; color: var(--foreground); }
+.mf-switch-status small { display: block; margin-top: 4px; color: var(--muted-foreground); }
+.mf-spinner { width: 18px; height: 18px; flex-shrink: 0; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: mf-spin .8s linear infinite; }
+@keyframes mf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mf-spinner { animation: none; } }

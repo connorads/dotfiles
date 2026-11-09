@@ -21,7 +21,7 @@ function TestPicker() {
 const first: Favourite = { id: 'a', slot: 1, name: 'Deep', providerId: 'codex', model: 'model-a', reasoningLevel: 'high' };
 const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'model-b', reasoningLevel: 'low' };
 const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
-type Account = { running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
+type Account = { pending?: Promise<{ currentId: string }>; running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
 const accountCalls: string[] = [];
 function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { models?: string[]; catalogueDefault?: boolean; programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {
   const { programme, catalogueDefault, models = [first, second].map(f => f.model), ...initialSelection } = selection;
@@ -59,6 +59,7 @@ function render(initial = [first, second], error: string | null = null, account?
       },
       choose: input => {
         accountCalls.push('choose');
+        if (account?.pending) return account.pending;
         if (account?.failSwitch) throw new Error('Clear queued messages before switching profiles.');
         currentId = input.profileId;
         return { currentId };
@@ -727,5 +728,24 @@ test('a current Go model opens the Go filter and All exposes separately labelled
     expect(other.textContent).toContain('OpenAI account');
     const free = slot.getByRole('button', { name: 'Select opencode/atlas-free · OpenCode Free' });
     expect(free.textContent).toContain('OpenCode Free');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('new chat selection locks the model picker and restores focus after completion', async () => {
+  let finish!: (value: { currentId: string }) => void;
+  const pending = new Promise<{ currentId: string }>(resolve => { finish = resolve; });
+  const slot = render([], null, { newThread: true, pending });
+  try {
+    const button = await slot.findByLabelText('Claude account');
+    fireEvent.click(within(accountMenu(slot)).getByRole('option', { name: /^Work/ }));
+    await slot.findByText('Selecting Work…');
+    const dialog = slot.getByRole('dialog');
+    for (const control of Array.from(dialog.querySelectorAll('button, input, select'))) expect(control.matches(':disabled')).toBe(true);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(slot.inspection.composer.focusCount).toBe(0);
+    finish({ currentId: 'work' });
+    await waitFor(() => expect(button.textContent).toBe('Work'));
+    await waitFor(() => expect(document.activeElement).toBe(button));
+    expect(slot.inspection.composer.text).toBe('Do not send this draft');
   } finally { slot.lifecycle.unmount(); }
 });

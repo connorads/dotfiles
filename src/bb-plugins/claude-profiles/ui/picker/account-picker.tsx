@@ -11,6 +11,7 @@ import { percent, readingAge, readingState, viewWindow } from '../../src/account
 import { pace, periodStart } from '../../src/accounts/usage/pace.ts';
 import { useNow } from '../usage/use-now.ts';
 import { accountUnavailable, isClaude } from '../account-status.tsx';
+import { SwitchStatus } from './switch-status.tsx';
 import './picker.css';
 import './account-picker.css';
 
@@ -55,6 +56,12 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   const [quotas, setQuotas] = useState<Record<string, Usage>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingAccount, setPendingAccount] = useState<Profile | null>(null);
+  const restoreFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (busy) dialog.current?.focus();
+    else if (restoreFocus.current) { restoreFocus.current.focus(); restoreFocus.current = null; }
+  }, [busy]);
   const [supported, setSupported] = useState(true);
   const [error, setError] = useState<{ message: string; refresh: boolean } | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
@@ -70,7 +77,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
       if (request !== generation.current) return;
       setSupported(accounts.supported);
       if (!accounts.supported) { setProfiles([]); return; }
-      setProfiles(accounts.profiles); setCurrentId(accounts.currentId);
+      setProfiles(accounts.profiles); if (!working.current) setCurrentId(accounts.currentId);
       for (const profile of accounts.profiles) {
         const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id })
           : rpc.call('usage', { threadId, profileId: profile.id, refresh });
@@ -105,15 +112,19 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   async function choose(profile: Profile) {
     if (blocked || working.current) return;
     if (profile.id === currentId) { onClose(); return; }
+    restoreFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPendingAccount(profile);
     working.current = true; setBusy(true); setError(null);
     try {
       await rpc.call('choose', { threadId, profileId: profile.id });
+      restoreFocus.current = null;
       toast.success(`Claude account: ${profile.label}`); onClose();
     } catch (cause) { setError({ message: cause instanceof Error ? cause.message : 'Could not switch account.', refresh: false }); }
-    finally { working.current = false; setBusy(false); }
+    finally { working.current = false; setBusy(false); setPendingAccount(null); }
   }
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
+    if (working.current && event.key !== 'Tab') { event.preventDefault(); return; }
     if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (event.key === 'Escape') { event.preventDefault(); if (!working.current) onClose(); return; }
     const target = event.target;
@@ -143,13 +154,14 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
   return <ChipPopover ref={dialog} tabIndex={-1} aria-label="Switch Claude account"
     trigger={() => null} anchor={null} width={580} instant panelClassName="ap-panel"
     onKeyDown={keyboard} onClose={() => { if (!working.current) onClose(); }}>
-    <div className="mf-picker">
+    <fieldset className="mf-picker" disabled={busy}>
+      {pendingAccount && <SwitchStatus label={pendingAccount.label} thread={threadId !== null} />}
       <header className="ap-head"><span><Icon name="Users" className="ap-icon" /><strong>Claude accounts</strong></span>
         <button className="mf-dismiss" type="button" aria-label="Close account picker" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button></header>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
       {supported && <ConnectorControls controls={connectors} threadId={threadId} disabled={blocked} />}
       {error && <p role="alert" className="mf-error">{error.message} {error.refresh && <button type="button" disabled={busy} onClick={() => { void load(true); }}>Refresh accounts</button>}</p>}
-      {(composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
+      {!busy && (composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-intro"><span>Accounts <span className="ap-count">{profiles.length || ''}</span></span>
         <span className="ap-legend"><i /> Time elapsed</span>
         <button type="button" className="ap-refresh" disabled={loading || busy} onClick={() => { void load(true); }} aria-label="Refresh account usage"><Icon name="ArrowReloadHorizontal" className="ap-icon" /></button></div>
@@ -164,13 +176,13 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
             onClick={() => { void choose(profile); }}>
             <kbd className="mf-kbd">{index < 9 ? index + 1 : '↵'}</kbd><strong>{profile.label}</strong>
               {profile.id === currentId && <span className="ap-current"><Icon name="Check" className="ap-icon" />Current</span>}
-          </button><AccountConnector controls={connectors} profile={profile} /></div>
+          </button><AccountConnector controls={connectors} profile={profile} disabled={blocked} /></div>
           <Quota usage={quotas[profile.id]} now={now} />
         </section>)}
       </div>
-      <footer className="mf-footer ap-footer">{supported && <><span><kbd className="mf-kbd">↑↓</kbd> account</span><span><kbd className="mf-kbd">←→</kbd> control</span>
+      <footer className="mf-footer ap-footer" hidden={busy}>{supported && <><span><kbd className="mf-kbd">↑↓</kbd> account</span><span><kbd className="mf-kbd">←→</kbd> control</span>
         <span><kbd className="mf-kbd">C</kbd> connectors</span><span><kbd className="mf-kbd">1-9</kbd> switch</span></>}
-        <span>{busy ? 'Switching…' : <><kbd className="mf-kbd">↵</kbd> select</>}</span></footer>
-    </div>
+        <span><kbd className="mf-kbd">↵</kbd> select</span></footer>
+    </fieldset>
   </ChipPopover>;
 }

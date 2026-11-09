@@ -14,7 +14,7 @@ function TestAccounts() {
   const composer = useComposer();
   return <AccountPicker composer={composer} onClose={() => composer.focus()} />;
 }
-function renderAccounts(running = false, fail: 'load' | 'switch' | null = null) {
+function renderAccounts(running = false, fail: 'load' | 'switch' | null = null, pending?: Promise<{ currentId: string }>) {
   return renderSlot<Record<string, never>, typeof rpcContract>({ component: TestAccounts }, {}, {
     composer: { text: 'Keep my draft', isRunning: running,
       scope: { kind: 'thread', threadId: 'thread-test' }, selection: { providerId: 'claude-code', model: 'opus' } },
@@ -40,7 +40,7 @@ function renderAccounts(running = false, fail: 'load' | 'switch' | null = null) 
       usage: () => ({ status: 'ok', observedAt: Date.now(), message: null, windows: [
         { id: 'seven_day', label: 'Seven days', usedPercent: 80, cost: null,
           resetsAt: new Date(Date.now() + 7 * 86400000 * 0.8).toISOString() }] }),
-      choose: input => { if (fail === 'switch') throw new Error('Switch refused'); return { currentId: input.profileId }; },
+      choose: input => { if (pending) return pending; if (fail === 'switch') throw new Error('Switch refused'); return { currentId: input.profileId }; },
     },
   });
 }
@@ -128,5 +128,29 @@ test('account loading failures offer an explicitly labelled refresh', async () =
     fireEvent.click(refresh);
     await waitFor(() => expect(slot.inspection.rpcCalls.filter(call => call.method === 'accounts')).toHaveLength(before + 1));
     expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('announces the target and blocks controls and dismissal until switching finishes', async () => {
+  let finish!: (value: { currentId: string }) => void;
+  const pending = new Promise<{ currentId: string }>(resolve => { finish = resolve; });
+  const slot = renderAccounts(false, null, pending);
+  try {
+    const work = await slot.findByRole('button', { name: 'Switch to Work' });
+    work.focus();
+    fireEvent.click(work);
+    await slot.findByText('Switching to Work…');
+    const dialog = slot.getByRole('dialog');
+    expect(document.activeElement).toBe(dialog);
+    for (const control of Array.from(dialog.querySelectorAll('button, input, select'))) expect(control.matches(':disabled')).toBe(true);
+    expect(slot.getByRole('button', { name: 'Switch to Default' }).getAttribute('aria-current')).toBe('true');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: '2' });
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(slot.inspection.composer.focusCount).toBe(0);
+    expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose')).toHaveLength(1);
+    finish({ currentId: 'work' });
+    await waitFor(() => expect(slot.inspection.composer.focusCount).toBe(1));
+    await waitFor(() => expect(work.matches(':disabled')).toBe(false));
   } finally { slot.lifecycle.unmount(); }
 });

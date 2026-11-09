@@ -14,6 +14,7 @@ import { effortLabel, EffortPill, Segmented } from './controls.tsx';
 import { createController, type Controller } from './controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
 import { close, open, openedState, subscribe } from './store.ts';
+import { SwitchStatus } from './switch-status.tsx';
 import './picker.css';
 
 const goFilter = 'opencode-go';
@@ -63,6 +64,12 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   const [catalog, setCatalog] = useState<Awaited<ReturnType<Controller['catalog']>>>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingAccount, setPendingAccount] = useState<Profile | null>(null);
+  const restoreFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (busy) dialog.current?.focus();
+    else if (restoreFocus.current) { restoreFocus.current.focus(); restoreFocus.current = null; }
+  }, [busy]);
   const working = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -120,6 +127,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   }, [loading]);
   async function run(work: () => Promise<unknown>, reload = false) {
     if (working.current) return;
+    restoreFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     working.current = true; setBusy(true); setError(null);
     try { await work(); if (reload) await refresh(); }
     catch (cause) { setError(message(cause)); }
@@ -179,6 +187,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
   }
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
+    if (working.current && event.key !== 'Tab') { event.preventDefault(); return; }
     if (event.nativeEvent.isComposing) return;
     const target = event.target;
     const inSearch = target === searchInput.current;
@@ -266,13 +275,14 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     ...(providers.some(p => p.providerId === 'acp-opencode' && p.models.some(m => isGo(p.providerId, m.model)))
       ? [{ id: goFilter, label: 'OpenCode Go' }] : []),
     ...providers.map(p => ({ id: p.providerId, label: p.providerName }))];
-  return <dialog ref={dialog} className="mf-dialog" aria-label="Switch model" onKeyDown={keyboard}
+  return <dialog ref={dialog} tabIndex={-1} className="mf-dialog" aria-label="Switch model" onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); if (!closeInnermostPopover() && !working.current) onClose(); }}
     onPointerDown={event => { if (event.target === event.currentTarget && !working.current) {
       const bounds = event.currentTarget.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) onClose();
     } }}>
-    <div className="mf-picker">
+    <fieldset className="mf-picker" disabled={busy}>
+      {pendingAccount && <SwitchStatus label={pendingAccount.label} thread={threadId !== null} />}
       <div className="mf-head">
         <div className="mf-search"><Icon name="Search" className="mf-search-icon" />
           <input ref={searchInput} aria-label="Search models" placeholder="Search models or providers…" value={query}
@@ -330,10 +340,13 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
           disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting}
           onChoose={profileId => { void run(async () => {
             setProfileError(null);
+            restoreFocus.current = accountButton.current;
+            setPendingAccount(accounts.profiles.find(profile => profile.id === profileId) ?? null);
             try {
               const { currentId } = await rpc.call('choose', { threadId, profileId });
               setAccounts(previous => previous ? { ...previous, currentId } : previous);
             } catch (cause) { setProfileError(message(cause)); }
+            finally { setPendingAccount(null); }
           }); }} />
           : <span>{profilesLoading ? 'Loading Claude accounts…' : profileError ?? accountUnavailable}</span>}
         {accounts?.supported && composer.isRunning ? <small>Available when this turn finishes.</small>
@@ -343,14 +356,14 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
       </div>}
       {claude && accounts?.supported && <AccountConnectors threadId={threadId} profiles={accounts.profiles}
         disabled={busy || profilesLoading || composer.isRunning || composer.isSubmitting} />}
-      <div className="mf-footer" aria-hidden="true">
+      <div className="mf-footer" aria-hidden="true" hidden={busy}>
         <span><kbd className="mf-kbd">↑</kbd><kbd className="mf-kbd">↓</kbd> move</span>
         <span><kbd className="mf-kbd">↵</kbd> select</span>
         <span><kbd className="mf-kbd">1-9</kbd> favourite</span>
         <span><kbd className="mf-kbd">←</kbd><kbd className="mf-kbd">→</kbd> effort</span>
         <span><kbd className="mf-kbd">⌘S</kbd> star</span>
       </div>
-    </div>
+    </fieldset>
   </dialog>;
 }
 type Row = { favourite: Favourite; saved: boolean; reason: string | null };
