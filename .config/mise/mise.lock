@@ -642,7 +642,7 @@ allow_builds = '["@parcel/watcher", "better-sqlite3", "fs-native-extensions"]'
 trust_policy_excludes = '["pino@9.14.0"]'
 
 [[tools."npm:cf"]]
-version = "0.15.0"
+version = "1.0.0-beta.28"
 backend = "npm:cf"
 
 [[tools."npm:critique"]]
