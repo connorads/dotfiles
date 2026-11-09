@@ -455,8 +455,9 @@ Existing JSONL files must match or extend the target at a complete line boundary
 Other existing files must match exactly. Target-only files and conflicting
 metadata stop the switch without overwriting the conflicting history.
 
-The transfer refuses symlinks and special files. Limits are 64 MiB per file,
-256 MiB per session and 4096 files and directories. The runtime must be idle.
+The transfer refuses symlinks and special files. It permits up to 4096 files
+and directories. Copying and comparison use bounded buffers without a byte-size
+limit. The runtime must be idle.
 Files are staged and both histories are checked again before publication.
 Child files are published before the parent transcript. An interrupted transfer
 can leave some child files updated; retrying completes a compatible transfer.

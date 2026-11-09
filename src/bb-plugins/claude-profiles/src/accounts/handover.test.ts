@@ -111,12 +111,27 @@ test('refuses target-only state instead of merging two branches', async () => {
   await sidecar(f.target, 'subagents/agent-target.jsonl', 'only at target\n');
   await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
 });
-test('refuses oversized files before publishing history', async () => {
+test('copies files larger than the former per-file limit', async () => {
   const f = await fixture();
   const large = await sidecar(f.source, 'tool-results/large.txt', '');
   await truncate(large, 64 * 1024 * 1024 + 1);
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /Unsupported session file/);
-  await assert.rejects(readFile(f.destination), { code: 'ENOENT' });
+  await transferSession(f.source, f.target, sessionId);
+  const copied = join(f.target, 'projects', 'workspace', sessionId, 'tool-results/large.txt');
+  assert.equal((await fs.stat(copied)).size, 64 * 1024 * 1024 + 1);
+  assert.equal(await readFile(f.destination, 'utf8'), await readFile(f.file, 'utf8'));
+});
+test('copies a session larger than the former total limit', async () => {
+  const f = await fixture();
+  for (let index = 0; index < 4; index++) {
+    const path = await sidecar(f.source, `tool-results/${index}.txt`, '');
+    await truncate(path, 64 * 1024 * 1024);
+  }
+  await transferSession(f.source, f.target, sessionId);
+  for (let index = 0; index < 4; index++) {
+    const path = join(f.target, 'projects', 'workspace', sessionId, `tool-results/${index}.txt`);
+    assert.equal((await fs.stat(path)).size, 64 * 1024 * 1024);
+  }
+  assert.equal(await readFile(f.destination, 'utf8'), await readFile(f.file, 'utf8'));
 });
 test('rejects a source change during staging without publishing history', async t => {
   const f = await fixture();

@@ -1,7 +1,7 @@
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, rename, rmdir, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 async function stat(path: string) {
   return lstat(path).catch(error => {
@@ -17,22 +17,41 @@ async function directory(path: string, create = false) {
   if (value.isSymbolicLink()) throw new Error('Refusing a symlink in session paths.');
   if (!value.isDirectory()) throw new Error('Session path is not a directory.');
 }
-async function bytes(path: string) {
+async function* chunks(path: string, limit = Infinity) {
   const value = await lstat(path);
   if (value.isSymbolicLink()) throw new Error('Refusing a symlink in session paths.');
-  if (!value.isFile() || value.size > 64 * 1024 * 1024) throw new Error('Unsupported session file.');
+  if (!value.isFile()) throw new Error('Unsupported session file.');
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
-    const current = await file.stat();
-    if (!current.isFile() || current.size > 64 * 1024 * 1024) throw new Error('Unsupported session file.');
-    return await file.readFile();
+    if (!(await file.stat()).isFile()) throw new Error('Unsupported session file.');
+    const buffer = Buffer.alloc(64 * 1024);
+    let remaining = limit;
+    while (remaining > 0) {
+      const { bytesRead } = await file.read(buffer, 0, Math.min(buffer.length, remaining), null);
+      if (bytesRead === 0) break;
+      remaining -= bytesRead;
+      yield buffer.subarray(0, bytesRead);
+    }
   } finally { await file.close(); }
 }
-
-type Snapshot = Map<string, Buffer | null>;
+type Fingerprint = { size: number; hash: string; lastByte: number | undefined };
+async function fingerprint(path: string, limit = Infinity): Promise<Fingerprint> {
+  const hash = createHash('sha256');
+  let size = 0;
+  let lastByte: number | undefined;
+  for await (const chunk of chunks(path, limit)) {
+    hash.update(chunk);
+    size += chunk.length;
+    lastByte = chunk[chunk.length - 1];
+  }
+  return { size, hash: hash.digest('hex'), lastByte };
+}
+function same(left: Fingerprint, right: Fingerprint) {
+  return left.size === right.size && left.hash === right.hash;
+}
+type Snapshot = Map<string, Fingerprint | null>;
 async function snapshot(project: string, sessionId: string): Promise<Snapshot> {
   const result: Snapshot = new Map();
-  let size = 0;
   async function visit(path: string) {
     if (result.size >= 4096) throw new Error('Session has too many files or directories.');
     const full = join(project, path);
@@ -42,10 +61,7 @@ async function snapshot(project: string, sessionId: string): Promise<Snapshot> {
       result.set(path, null);
       for (const entry of (await readdir(full)).sort()) await visit(join(path, entry));
     } else {
-      const content = await bytes(full);
-      size += content.length;
-      if (size > 256 * 1024 * 1024) throw new Error('Session exceeds the transfer size limit.');
-      result.set(path, content);
+      result.set(path, await fingerprint(full));
     }
   }
   if (await stat(join(project, `${sessionId}.jsonl`))) await visit(`${sessionId}.jsonl`);
@@ -58,25 +74,26 @@ async function snapshot(project: string, sessionId: string): Promise<Snapshot> {
 function equal(left: Snapshot, right: Snapshot) {
   return left.size === right.size && [...left].every(([path, content]) => {
     const other = right.get(path);
-    return content === null ? other === null : other !== null && other !== undefined && content.equals(other);
+    return content === null ? other === null : other !== null && other !== undefined && same(content, other);
   });
 }
-function changes(source: Snapshot, target: Snapshot) {
+async function changes(source: Snapshot, target: Snapshot, sourceProject: string) {
   for (const [path, previous] of target) {
     const content = source.get(path);
     if (content === undefined || (previous === null) !== (content === null)) {
       throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
     }
-    if (previous !== null && content !== null && !previous.equals(content)) {
+    if (previous !== null && content !== null && !same(previous, content)) {
       const extendsLog = path.endsWith('.jsonl') &&
-        (previous.length === 0 || previous[previous.length - 1] === 10) &&
-        content.subarray(0, previous.length).equals(previous);
+        previous.size <= content.size &&
+        (previous.size === 0 || previous.lastByte === 10) &&
+        same(await fingerprint(join(sourceProject, path), previous.size), previous);
       if (!extendsLog) throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
     }
   }
   return [...source].filter(([path, content]) => {
     const previous = target.get(path);
-    return content !== null && (previous === undefined || previous === null || !content.equals(previous));
+    return content !== null && (previous === undefined || previous === null || !same(content, previous));
   });
 }
 
@@ -101,12 +118,12 @@ export async function transferSession(source: string, target: string, sessionId:
   await directory(sourceProject);
   const content = await snapshot(sourceProject, sessionId);
   const main = `${sessionId}.jsonl`;
-  if (!Buffer.isBuffer(content.get(main))) throw new Error('Source history changed during the switch.');
+  if (!content.get(main)) throw new Error('Source history changed during the switch.');
   await directory(join(target, 'projects'), true);
   const targetProject = join(target, 'projects', project);
   await directory(targetProject, true);
   const previous = await snapshot(targetProject, sessionId);
-  const pending = changes(content, previous);
+  const pending = await changes(content, previous, sourceProject);
   const temporary = join(targetProject, `.${sessionId}-${randomUUID()}.tmp`);
   await directory(temporary, true);
   const staged: string[] = [];
@@ -118,8 +135,13 @@ export async function transferSession(source: string, target: string, sessionId:
       if (value === null) continue;
       const file = await open(join(temporary, path), 'wx', 0o600);
       staged.push(path);
-      try { await file.writeFile(value); await file.sync(); }
-      finally { await file.close(); }
+      try {
+        for await (const chunk of chunks(join(sourceProject, path))) await file.writeFile(chunk);
+        await file.sync();
+      } finally { await file.close(); }
+      if (!same(value, await fingerprint(join(temporary, path)))) {
+        throw new Error('Source history changed during the switch. Try again when idle.');
+      }
     }
     if (!equal(content, await snapshot(sourceProject, sessionId))) {
       throw new Error('Source history changed during the switch. Try again when idle.');
@@ -146,7 +168,7 @@ export async function transferSession(source: string, target: string, sessionId:
       const current = await stat(join(targetProject, path));
       const expected = previous.get(path);
       if (current?.isSymbolicLink() || (expected === undefined ? current !== null :
-        !current || expected === null || !(await bytes(join(targetProject, path))).equals(expected))) {
+        !current || expected === null || !same(await fingerprint(join(targetProject, path)), expected))) {
         throw new Error('Target history changed during the switch.');
       }
       await rename(join(temporary, path), join(targetProject, path));
