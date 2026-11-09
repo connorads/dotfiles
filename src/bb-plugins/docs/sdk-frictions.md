@@ -570,6 +570,9 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   `[data-markdown-preview] a`: [links.ts](../external-links/links.ts). BB markup
   changes can break it. Git Glance decorates hash-shaped inline code through
   [chat-links.ts](../git-glance/chat-links.ts), preserving text nodes and restoring attributes on disposal.
+- Repository context: bare hashes carry no checkout identity. Git Glance checks
+  the selected checkout first, then known same-host checkouts on demand. A small
+  recent-path list stays in private plugin app data; Git supplies its object index.
 - Ask: a non-exclusive Markdown decorator for links and inline code, with message thread context.
 - Status: open. `experimental_timelineRenderer` excludes core assistant messages.
 - Category: sdk-gap
@@ -1134,11 +1137,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   `bb plugin rpc call X state` with no input gives 400 instead of sending `{}`.
   `bb plugin logs caffeine` was empty. `bb plugin types --check` compares the literal
   `catalog:` with the SDK version. The `bb` CLI on PATH lagged the app version.
-- Workaround: none.
-- Ask: fix each item.
+  On BB 0.45.0 with builder SDK 0.6.104, build and reload can serve new JavaScript
+  while an open browser retains the previous preview after an ordinary reload.
+- Workaround for stale app code: clear the disposable browser's HTTP cache and
+  reload with caching disabled. This revealed the rebuilt Git Glance preview.
+- Ask: fix each diagnostic; ensure frontend asset URLs change with their bytes
+  and plugin reload invalidates the active app bundle.
 - Status: open
 - Category: cli
 - Evidence: @thread:thr_w2ahaf7phe, commit `ef48adfe`
+  Stale-app reproduction: build Git Glance, reload the plugin, reload its page,
+  compare the preview with the served app JavaScript, then clear the HTTP cache.
 
 ### Plugin scaffold and build traps
 

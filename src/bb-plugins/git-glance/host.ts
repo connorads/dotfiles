@@ -11,6 +11,7 @@ import { realpath } from 'node:fs/promises';
 import { stashAction } from './src/stashes.ts';
 import type { OpOptions, OpResult } from './src/spawn.ts';
 import { sync } from './src/sync.ts';
+import { findCommit } from './src/find-commit.ts';
 
 const monitors = new Map<string, Promise<Monitor | null>>();
 const syncing = new Set<string>();
@@ -72,6 +73,7 @@ export default experimental_defineHostEntry({
     },
     diff: async ({ root, ...input }) => diff(await required(root), input),
     commit: async ({ root, sha }) => commitDetail(await required(root), sha),
+    findCommit: ({ roots, sha }, context) => findCommit(roots, sha, AbortSignal.any([context.signal, context.lifecycle.signal])),
     review: async ({ root }) => review(await required(root)),
     branches: async ({ root }) => listBranches(await required(root)),
     run: async ({ root, request, opId }, context) => {

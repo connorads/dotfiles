@@ -25,14 +25,14 @@ const stashLimit = 50;
 const changeLimit = 400;
 const patchLimit = 512 * 1024;
 
-interface Run { stdout: string; code: number }
-export function run(cwd: string, args: string[], okCodes: readonly number[] = [0]): Promise<Run> {
+interface Run { stdout: string; stderr: string; code: number }
+export function run(cwd: string, args: string[], okCodes: readonly number[] = [0], signal?: AbortSignal): Promise<Run> {
   return new Promise((resolve, reject) => {
     // GIT_OPTIONAL_LOCKS=0: status never takes index.lock, so polling cannot block an agent's commit.
-    execFile('git', args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 10_000,
-      env: gitEnv({ GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' }) }, (error, stdout, stderr) => {
+    execFile('git', args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 10_000, signal,
+      env: gitEnv({ GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1' }) }, (error, stdout, stderr) => {
       const code = error ? typeof error.code === 'number' ? error.code : -1 : 0;
-      if (okCodes.includes(code)) resolve({ stdout, code });
+      if (okCodes.includes(code)) resolve({ stdout, stderr, code });
       else reject(new Error(stderr.trim() || error?.message || `git ${args[0]} failed`));
     });
   });
@@ -48,10 +48,10 @@ export const git = (repo: Repo, args: string[], okCodes?: readonly number[]) =>
  * The checkout's repository, or the bare dotfiles repository when the checkout is
  * the home directory and no repository encloses it (see the `lgdf` shell function).
  */
-export async function resolveRepo(root: string, home = homedir()): Promise<Repo | null> {
+export async function resolveRepo(root: string, home = homedir(), signal?: AbortSignal): Promise<Repo | null> {
   try {
     const [top, gitDir, commonDir] = (await run(root,
-      ['rev-parse', '--path-format=absolute', '--show-toplevel', '--git-dir', '--git-common-dir'])).stdout.trim().split('\n');
+      ['rev-parse', '--path-format=absolute', '--show-toplevel', '--git-dir', '--git-common-dir'], [0], signal)).stdout.trim().split('\n');
     if (top && gitDir && commonDir) return { kind: 'repo', name: basename(top), cwd: top, gitDir, commonDir, select: [] };
   } catch { /* not inside a work tree */ }
   const dotfiles = join(home, 'git', 'dotfiles');

@@ -41,21 +41,37 @@ own plugin.
 ## Commit hashes in chat
 
 Click a hash shown as inline code to open its message, author, files and diffs.
-Enter and Space work too. Git Glance uses the message thread's selected repository,
-including the dotfiles fallback. Opening a hash does not fetch or switch branches.
+Enter and Space work too. Git Glance checks the message thread's selected repository
+first, including the dotfiles fallback. On a miss, it checks other known checkouts
+on the same host. Opening a hash does not fetch or switch branches.
 
 ```mermaid
 flowchart LR
-  Hash[Inline hash in chat] --> Repository[Message thread's selected repository]
-  Repository --> Commit[Commit details and file diffs]
+  Hash[Inline hash in chat] --> Repository[Check selected repository]
+  Repository -->|Found| Commit[Commit details and file diffs]
+  Repository -->|Missing| Known[Check known repositories on the same host]
+  Known -->|One complete match| Commit
+  Known -->|Multiple matches or incomplete search| Choose[Choose a matching checkout]
+  Choose --> Commit
 ```
 
 - Candidates contain 7-64 hexadecimal characters and at least one letter.
 - Commands, code blocks, existing links and ordinary text retain their normal behaviour.
 - Commits outside the recent history list open if they exist in the local repository.
-- Missing or ambiguous hashes show Git's error. Use a longer hash or open **Git status**
-  to choose another repository, then click the hash again.
-- Repository selection persists per thread. Hash clicks do not infer repositories from nearby paths.
+- A sole match opens automatically when every candidate was checked. Multiple
+  matches show checkout paths to choose from. An incomplete search requires a choice.
+- A missing hash shows a hint to use a longer hash or choose a repository in
+  **Git status**, then click the hash again.
+- Opening a match selects that checkout in Git Glance for the message thread.
+  The header shows its repository and path. The thread's working directory stays the same.
+- Discovery uses existing BB project sources, up to 128 ready environments and
+  the last 64 checkouts selected through Git Glance. It never crawls the filesystem.
+- Recent checkout paths live only in BB's private plugin key-value app data.
+  No path inventory or commit index is written into a repository.
+- Lookup checks at most 128 additional paths with four concurrent Git processes.
+  Each path has a two-second Git deadline; each search batch has a five-second deadline.
+  Missing, unavailable, ambiguous or truncated candidates mark the search incomplete.
+- Reads disable [Git's lazy fetching](https://git-scm.com/docs/git#Documentation/git.txt-GITNOLAZYFETCH), including in partial clones.
 
 The inline-code decoration uses BB's content-script API. It depends on BB's rendered
 timeline markup and removes its attributes and listeners when the plugin unloads.

@@ -40,6 +40,17 @@ export default function plugin(bb: BbPluginApi) {
     return path ? { hostId, root: path } : null;
   }
   const selectionKey = (threadId: string) => `repository:${threadId}`;
+  const knownKey = (hostId: string) => `known-checkouts:${hostId}`;
+  const knownSchema = z.array(z.string().min(1)).max(64);
+  async function known(hostId: string) {
+    return knownSchema.safeParse(await bb.storage.kv.get(knownKey(hostId))).data ?? [];
+  }
+  // Paths live in private plugin app data, with no commit-object index.
+  async function rememberRoot(target: Checkout) {
+    const paths = await known(target.hostId);
+    if (paths[0] !== target.root) await bb.storage.kv.set(knownKey(target.hostId),
+      [target.root, ...paths.filter(path => path !== target.root)].slice(0, 64));
+  }
   async function checkout(threadId: string): Promise<Checkout | null> {
     const base = await environment(threadId);
     const selected = await bb.storage.kv.get<{ base: Checkout; root: string }>(selectionKey(threadId));
@@ -68,6 +79,7 @@ export default function plugin(bb: BbPluginApi) {
   const watch = (target: Checkout) => host.call('watch', { root: target.root }, { hostId: target.hostId, timeoutMs: 20_000 });
   async function remember(threadId: string, base: Checkout, target: Checkout) {
     await bb.storage.kv.set(selectionKey(threadId), { base, root: target.root });
+    await rememberRoot(target);
     for (const emptied of leases.move(threadId, target)) {
       await host.call('unwatch', { root: emptied.root }, { hostId: emptied.hostId });
     }
@@ -97,6 +109,32 @@ export default function plugin(bb: BbPluginApi) {
   bb.onDispose(() => clearInterval(sweep));
 
   bb.rpc.register(rpcContract, {
+    findCommit: async ({ threadId, sha }) => {
+      const target = await required(threadId);
+      const search = (roots: string[]) => host.call('findCommit', { roots, sha }, { hostId: target.hostId, timeoutMs: 7000 });
+      const selected = await search([target.root]);
+      if (selected.matches.length) return { ...selected, hostId: target.hostId };
+      const sources = await Promise.allSettled([
+        bb.sdk.projects.list(),
+        bb.sdk.environments.list({ hostId: target.hostId, status: 'ready', limit: 128, offset: 0 }),
+      ]);
+      const roots = new Set(await known(target.hostId));
+      let unchecked = selected.unchecked;
+      const [projects, environments] = sources;
+      if (projects.status === 'fulfilled') {
+        for (const project of projects.value) for (const source of project.sources) {
+          if (source.hostId === target.hostId) roots.add(source.path);
+        }
+      } else unchecked++;
+      if (environments.status === 'fulfilled') {
+        for (const env of environments.value) if (env.hostId === target.hostId && env.path) roots.add(env.path);
+        if (environments.value.length === 128) unchecked++;
+      } else unchecked++;
+      roots.delete(target.root);
+      const paths = [...roots];
+      const result = await search(paths.slice(0, 128));
+      return { ...result, hostId: target.hostId, unchecked: result.unchecked + unchecked + Math.max(0, paths.length - 128) };
+    },
     reviewTarget: async ({ threadId, root }) => {
       const target = await required(threadId);
       if (target.root !== root) throw new Error('Repository selection changed. Reopen Git Glance and try again.');

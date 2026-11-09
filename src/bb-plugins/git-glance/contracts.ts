@@ -110,6 +110,10 @@ const diffOutput = z.object({ patch: z.string(), truncated: z.boolean(),
 });
 const root = z.string().min(1);
 export const checkoutTargetSchema = z.object({ hostId: z.string().min(1), path: root });
+const commitLookupSchema = z.object({
+  matches: z.array(z.object({ root, sha })), unchecked: z.number().int().nonnegative(),
+});
+export type CommitLookup = z.infer<typeof commitLookupSchema>;
 
 const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
   folders: z.array(z.object({ name: z.string(), repository: z.boolean() })),
@@ -132,6 +136,7 @@ export const hostContract = defineRpcContract({
   unwatch: { input: z.object({ root }), output: z.object({}) },
   diff: { input: z.object({ root, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ root, sha }), output: commitDetailSchema },
+  findCommit: { input: z.object({ roots: z.array(root).max(128), sha }), output: commitLookupSchema },
   run: { input: z.object({ root, request: opRequest, opId: z.string() }), output: opResult },
   review: { input: z.object({ root }), output: reviewSchema },
   branches: { input: z.object({ root }), output: z.array(branchSchema) },
@@ -163,6 +168,7 @@ export const rpcContract = defineRpcContract({
   unwatch: { input: z.object(holder), output: z.object({}) },
   diff: { input: z.object({ ...thread, ...diffInput }), output: diffOutput },
   commit: { input: z.object({ ...thread, sha }), output: commitDetailSchema },
+  findCommit: { input: z.object({ ...thread, sha }), output: commitLookupSchema.extend({ hostId: z.string() }) },
   run: { input: z.object({ ...thread, root, request: opRequest, origin: z.enum(['user', 'auto']) }), output: z.object({ op: opStateSchema.nullable() }) },
   review: { input: z.object(thread), output: reviewSchema },
   branches: { input: z.object(thread), output: z.array(branchSchema) },
