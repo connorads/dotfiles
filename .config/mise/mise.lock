@@ -611,7 +611,7 @@ version = "0.9.1"
 backend = "npm:@kitlangton/ghui"
 
 [[tools."npm:@playwright/cli"]]
-version = "0.1.21"
+version = "0.1.23"
 backend = "npm:@playwright/cli"
 
 [[tools."npm:@tobilu/qmd"]]
