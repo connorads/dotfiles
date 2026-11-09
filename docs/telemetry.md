@@ -118,7 +118,7 @@ replace them.
 | Pi | `PI_TELEMETRY=0` | [Pi 1.2.0 resolver](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/telemetry.ts) |
 | PowerShell | `POWERSHELL_TELEMETRY_OPTOUT=1` | [PowerShell 7.6.4 implementation](https://github.com/PowerShell/PowerShell/blob/v7.6.4/src/System.Management.Automation/utils/Telemetry.cs) |
 | Slack CLI | `SLACK_DISABLE_TELEMETRY=1` | [Slack 4.2.0 environment reader](https://github.com/slackapi/slack-cli/blob/v4.2.0/internal/config/dotenv.go) |
-| EAS CLI | `DISABLE_EAS_ANALYTICS=1` | [EAS 24.14.0 analytics](https://github.com/expo/eas-cli/blob/v24.14.0/packages/eas-cli/src/analytics/AnalyticsManager.ts) |
+| EAS CLI | `DISABLE_EAS_ANALYTICS=1` | [EAS 27.4.1 analytics](https://github.com/expo/eas-cli/blob/v27.4.1/packages/eas-cli/src/analytics/AnalyticsManager.ts) |
 | cf CLI | `CF_SEND_TELEMETRY=false` | [Official telemetry policy](https://github.com/cloudflare/cf/blob/main/packages/cli/telemetry.md) |
 | Lavish Axi | `LAVISH_AXI_TELEMETRY=0` | [Telemetry resolver](https://github.com/kunchenguid/lavish-axi/blob/main/src/telemetry.js) |
 | ONNX Runtime | `ORT_DISABLE_TELEMETRY=1` | [1.30.0 privacy controls](https://github.com/microsoft/onnxruntime/blob/v1.30.0/docs/Privacy.md) |

@@ -45,7 +45,7 @@ url_api = "https://api.github.com/repos/FiloSottile/age/releases/assets/53554189
 provenance = "github-attestations"
 
 [[tools.amp]]
-version = "0.0.1783547350-gd57707"
+version = "0.0.1794240032-ga42e06"
 backend = "npm:@ampcode/cli"
 
 [tools.amp.options]
@@ -127,20 +127,20 @@ url = "https://github.com/shenwei356/rush/releases/download/v0.11.0/rush_darwin_
 url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/579424349"
 
 [[tools."aqua:x.ai/cli/grok"]]
-version = "1.0.50"
+version = "1.0.77"
 backend = "aqua:x.ai/cli/grok"
 
 [tools."aqua:x.ai/cli/grok"."platforms.linux-arm64"]
-checksum = "sha256:947eea63e52393e00778d651d22e0dad22d30e9ee5b2af7944efc3fd4438ecc0"
-url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-linux-aarch64"
+checksum = "sha256:b30eee14a656124ef3c9da8577b5e783ef2cffabeb2b679c5c49633e77eed574"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.77-linux-aarch64"
 
 [tools."aqua:x.ai/cli/grok"."platforms.linux-x64"]
-checksum = "sha256:c80de0155706ff2d995623887b102f2d0abd2c62b2643dea3a0cebaf7dd724d5"
-url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-linux-x86_64"
+checksum = "sha256:b702950aa5827d855e493278ab6215a4e0f5bceb5bba6c6243a9f55cdd143b0a"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.77-linux-x86_64"
 
 [tools."aqua:x.ai/cli/grok"."platforms.macos-arm64"]
-checksum = "blake3:7a3c34ec6c15cd2264a3906151fa3fb2c865ccbaf4bdaa7bc10d4cf5c9d234c0"
-url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.50-macos-aarch64"
+checksum = "sha256:197c66a63e5ac46e07450b0ca21d141ce665050a412180f185dadfae1c7a5b2a"
+url = "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-1.0.77-macos-aarch64"
 
 [[tools.ast-grep]]
 version = "0.51.1"
@@ -531,23 +531,23 @@ checksum = "sha256:c5bb22ba029d5909da9c6db82aa037278a66d1cf8a5572f433879f7dcd866
 url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-darwin-arm64.tar.gz"
 
 [[tools."http:opencode"]]
-version = "2.1.4"
+version = "2.2.5"
 backend = "http:opencode"
 
 [tools."http:opencode".options]
 strip_components = "1"
 
 [tools."http:opencode"."platforms.linux-arm64"]
-checksum = "sha512:76bc342d6306d2789a13de1e3d79b587baa314165945c4990f781a72dde1c773983d77aca7bc6b3add1b9f7b2271835437a7e88c446b0ca47a8d8ad79995feac"
-url = "https://registry.npmjs.org/@opencode/cli-linux-arm64/-/cli-linux-arm64-2.1.4.tgz"
+checksum = "sha512:3b8a8ecbf5916109a10a5301ff9a816a861fcda0cad7e3c945039f53cd22c728f9aee41b0b1ada1fe556d94c876fa4563a552fe357de73e8ac77ad8bbc2bb0b8"
+url = "https://registry.npmjs.org/@opencode/cli-linux-arm64/-/cli-linux-arm64-2.2.5.tgz"
 
 [tools."http:opencode"."platforms.linux-x64"]
-checksum = "sha512:a3c109d19b13e1dcc328dfb49a91b610a6cd1b3272a7e175fbe02fdbc51179155f884bfe377e1e6449cdfee9e488ca1eaca1da77a5ba222ee4e2e9139cf36635"
-url = "https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.1.4.tgz"
+checksum = "sha512:0641c07d3a8db20feaa61c8736b9c7f831a43b166c1a36a63693390efc2812fcfb6403cdc3c9846cc5c64c20ce007fbffb8d04a9e89ee8a359059650c0f0a368"
+url = "https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.2.5.tgz"
 
 [tools."http:opencode"."platforms.macos-arm64"]
-checksum = "sha512:4308f2be8bd3753d20162e6bc54c8f56561e3c87b710b76e47da25bbe28959ed3cf575480ce4cc871ca505efd9188a6fa171d8a3a6e9d8db24222a82140117b3"
-url = "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.1.4.tgz"
+checksum = "sha512:53019bd8c209a8b4a1e307eb92fa8d880a211b559fe6df7a371ef5d7742f9ad0a7e4b1a29a65d83744dbd5c843d2631145d3ef9d482e7af291770334b71658d5"
+url = "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.2.5.tgz"
 
 [[tools.lychee]]
 version = "0.24.2"
@@ -658,7 +658,7 @@ version = "0.251.0"
 backend = "npm:droid"
 
 [[tools."npm:eas-cli"]]
-version = "24.14.0"
+version = "27.4.1"
 backend = "npm:eas-cli"
 
 [[tools."npm:executor"]]
@@ -741,7 +741,7 @@ version = "0.6.0"
 backend = "npm:vgpu"
 
 [[tools."npm:wrangler"]]
-version = "4.156.0"
+version = "4.158.0"
 backend = "npm:wrangler"
 
 [[tools.oxlint]]
