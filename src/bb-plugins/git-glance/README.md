@@ -43,7 +43,8 @@ own plugin.
 Click a hash shown as inline code to open its message, author, files and diffs.
 Enter and Space work too. Git Glance checks the message thread's selected repository
 first, including the dotfiles fallback. On a miss, it checks other known checkouts
-on the same host. Opening a hash does not fetch or switch branches.
+on the same host. If those miss too, BB discovers repositories on that host and
+Git Glance retries the hash in newly found paths. Opening a hash does not fetch or switch branches.
 
 ```mermaid
 flowchart LR
@@ -52,6 +53,10 @@ flowchart LR
   Repository -->|Missing| Known[Check known repositories on the same host]
   Known -->|One complete match| Commit
   Known -->|Multiple matches or incomplete search| Choose[Choose a matching checkout]
+  Known -->|Missing| Discover[BB repository discovery]
+  Discover --> Retry[Check newly discovered repositories]
+  Retry -->|One complete match| Commit
+  Retry -->|Multiple matches or incomplete search| Choose
   Choose --> Commit
 ```
 
@@ -65,11 +70,17 @@ flowchart LR
 - Opening a match selects that checkout in Git Glance for the message thread.
   The header shows its repository and path. The thread's working directory stays the same.
 - Discovery uses existing BB project sources, up to 128 ready environments and
-  the last 64 checkouts selected through Git Glance. It never crawls the filesystem.
+  the last 64 checkouts selected through Git Glance first.
+- A miss then calls BB's bounded repository discovery on the same host. Each miss
+  starts a fresh discovery call, so newly created repositories can be found without registration.
+  BB scans visible home-directory folders, skips generated and system folders,
+  and stops below repositories. Hidden folders and nested repositories are outside its coverage.
+  Activity, depth, result and time limits also apply. This scan creates no BB projects.
 - Recent checkout paths live only in BB's private plugin key-value app data.
   No path inventory or commit index is written into a repository.
-- Lookup checks at most 128 additional paths with four concurrent Git processes.
+- Lookup checks at most 128 known paths and 128 newly discovered paths with four concurrent Git processes.
   Each path has a two-second Git deadline; each search batch has a five-second deadline.
+  The BB discovery request has a five-second deadline.
   Missing, unavailable, ambiguous or truncated candidates mark the search incomplete.
 - Reads disable [Git's lazy fetching](https://git-scm.com/docs/git#Documentation/git.txt-GITNOLAZYFETCH), including in partial clones.
 

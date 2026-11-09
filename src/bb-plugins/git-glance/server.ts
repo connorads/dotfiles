@@ -133,7 +133,16 @@ export default function plugin(bb: BbPluginApi) {
       roots.delete(target.root);
       const paths = [...roots];
       const result = await search(paths.slice(0, 128));
-      return { ...result, hostId: target.hostId, unchecked: result.unchecked + unchecked + Math.max(0, paths.length - 128) };
+      unchecked += result.unchecked + Math.max(0, paths.length - 128);
+      if (result.matches.length) return { ...result, hostId: target.hostId, unchecked };
+      const discovered = await bb.sdk.hosts.experimental_discoverRepos({ hostId: target.hostId, signal: AbortSignal.timeout(5000) }).catch(() => null);
+      if (!discovered) return { ...result, hostId: target.hostId, unchecked: unchecked + 1 };
+      const checked = new Set([target.root, ...paths.slice(0, 128)]);
+      const extra = [...new Set(discovered.repos.map(repo => repo.path))].filter(path => !checked.has(path));
+      if (extra.length === 0) return { ...result, hostId: target.hostId, unchecked: unchecked + Number(discovered.truncated) };
+      const found = await search(extra.slice(0, 128));
+      return { ...found, hostId: target.hostId,
+        unchecked: unchecked + found.unchecked + Number(discovered.truncated) + Math.max(0, extra.length - 128) };
     },
     reviewTarget: async ({ threadId, root }) => {
       const target = await required(threadId);

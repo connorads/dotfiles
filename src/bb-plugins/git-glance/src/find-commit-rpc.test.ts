@@ -11,6 +11,7 @@ const source = (hostId: string, path: string) => ({ id: path, projectId: 'p', ty
 function setup(matches: string[] = [], unchecked = 0) {
   const { bb, harness } = createFakePluginHost({
     sdk: {
+      hosts: { experimental_discoverRepos: async () => ({ repos: [], truncated: false }) },
       threads: { get: async () => makeThreadResponse({ environmentId: 'env' }) },
       environments: {
         get: async () => ({ id: 'env', hostId: 'host', path: '/selected' }),
@@ -40,7 +41,73 @@ test('a match in the selected repository avoids cross-repository discovery', asy
   try {
     assert.deepEqual(await find(), { hostId: 'host', matches: [{ root: '/selected', sha }], unchecked: 0 });
     assert.equal(harness.inspection.sdk.callsTo('projects.list').length, 0);
+    assert.equal(harness.inspection.sdk.callsTo('hosts.experimental_discoverRepos').length, 0);
     assert.equal(harness.experimental_hostRpcCalls.length, 1);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+const discovered = (path: string) => ({ path, name: 'Example', lastActivityAt: '2026-01-01T00:00:00.000Z', originUrl: null, projectId: null });
+
+test('a known match avoids a filesystem discovery scan', async () => {
+  const { harness, find } = setup(['/project']);
+  try {
+    assert.deepEqual((await find()).matches, [{ root: '/project', sha }]);
+    assert.equal(harness.inspection.sdk.callsTo('hosts.experimental_discoverRepos').length, 0);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+test('a complete miss discovers newly created repositories and retries only new paths', async () => {
+  const { harness, find } = setup(['/new']);
+  try {
+    harness.inspection.sdk.stub('hosts.experimental_discoverRepos', async ({ hostId }) => {
+      assert.equal(hostId, 'host');
+      return { repos: [discovered('/project'), discovered('/new'), discovered('/new')], truncated: false };
+    });
+    assert.deepEqual(await find(), { hostId: 'host', matches: [{ root: '/new', sha }], unchecked: 0 });
+    const searches = harness.experimental_hostRpcCalls.filter(call => call.method === 'findCommit');
+    assert.deepEqual(searches.map(call => call.input), [
+      { roots: ['/selected'], sha: sha.slice(0, 7) },
+      { roots: ['/project', '/worktree'], sha: sha.slice(0, 7) },
+      { roots: ['/new'], sha: sha.slice(0, 7) },
+    ]);
+    assert.equal(harness.inspection.sdk.callsTo('threads.update').length, 0);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+test('each miss refreshes discovery so a repository created after an earlier click is found', async () => {
+  const { harness, find } = setup(['/new']);
+  let paths: string[] = [];
+  try {
+    harness.inspection.sdk.stub('hosts.experimental_discoverRepos', async () => ({ repos: paths.map(discovered), truncated: false }));
+    assert.deepEqual((await find()).matches, []);
+    paths = ['/new'];
+    assert.deepEqual((await find()).matches, [{ root: '/new', sha }]);
+    assert.equal(harness.inspection.sdk.callsTo('hosts.experimental_discoverRepos').length, 2);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+test('discovery failure and truncation report incomplete coverage', async () => {
+  const { harness, find } = setup(['/new']);
+  try {
+    harness.inspection.sdk.stub('hosts.experimental_discoverRepos', async () => { throw new Error('unavailable'); });
+    assert.deepEqual(await find(), { hostId: 'host', matches: [], unchecked: 1 });
+    harness.inspection.sdk.stub('hosts.experimental_discoverRepos', async () => ({ repos: [discovered('/new')], truncated: true }));
+    assert.deepEqual(await find(), { hostId: 'host', matches: [{ root: '/new', sha }], unchecked: 1 });
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+test('discovery results beyond the search limit leave coverage incomplete', async () => {
+  const { harness, find } = setup(['/new/199']);
+  try {
+    harness.inspection.sdk.stub('hosts.experimental_discoverRepos', async () => ({
+      repos: Array.from({ length: 200 }, (_, i) => discovered(`/new/${i}`)), truncated: false,
+    }));
+    const result = await find();
+    assert.deepEqual(result.matches, []);
+    assert.equal(result.unchecked, 72);
+    const last = harness.experimental_hostRpcCalls.at(-1);
+    assert.ok(last);
+    assert.equal((last.input as { roots: string[] }).roots.length, 128);
   } finally { await harness.lifecycle.dispose(); }
 });
 

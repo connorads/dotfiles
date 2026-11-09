@@ -571,8 +571,10 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   changes can break it. Git Glance decorates hash-shaped inline code through
   [chat-links.ts](../git-glance/chat-links.ts), preserving text nodes and restoring attributes on disposal.
 - Repository context: bare hashes carry no checkout identity. Git Glance checks
-  the selected checkout first, then known same-host checkouts on demand. A small
-  recent-path list stays in private plugin app data; Git supplies its object index.
+  the selected checkout first, then known same-host checkouts on demand. A further
+  miss calls `hosts.experimental_discoverRepos` and checks newly discovered paths.
+  BB's scan skips hidden folders and stops below repositories. A small recent-path
+  list stays in private plugin app data; Git supplies its object index.
 - Ask: a non-exclusive Markdown decorator for links and inline code, with message thread context.
 - Status: open. `experimental_timelineRenderer` excludes core assistant messages.
 - Category: sdk-gap
