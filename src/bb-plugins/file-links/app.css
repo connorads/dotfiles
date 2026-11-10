@@ -1,0 +1,11 @@
+.fl-preview { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.fl-original { flex: 1; min-height: 0; }
+.fl-status { display: flex; align-items: center; gap: .75rem; padding: .5rem .75rem; border-bottom: 1px solid var(--border); font-size: .8125rem; }
+.fl-status > span { flex: 1; }
+.fl-status button, .fl-choice-header button { padding: .25rem .5rem; border-radius: .25rem; }
+.fl-choices { color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: .5rem; width: min(44rem, calc(100vw - 2rem)); max-height: 75vh; padding: .75rem; }
+.fl-choices::backdrop { background: rgb(0 0 0 / .35); }
+.fl-choice-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; }
+.fl-choice { display: block; width: 100%; padding: .625rem; text-align: left; overflow-wrap: anywhere; border-top: 1px solid var(--border); font-size: .8125rem; }
+.fl-choice:hover, .fl-status button:hover, .fl-choice-header button:hover { background: var(--muted); }
+.fl-preview button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
