@@ -108,6 +108,9 @@ to the repository's BB project.
 
 ## File navigation
 
+[File Links](file-links/README.md) resolves missing Markdown file links against
+the workspace and project captures. Duplicate matches require a choice.
+
 [File History](file-history/README.md) adds Previous file and Next file controls
 to thread file previews. Mouse Back and Forward use file history while the
 pointer is over the file panel.
