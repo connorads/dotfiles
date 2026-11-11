@@ -89,6 +89,13 @@ the paths below is disposable merely because it appears in this list.
 
 ### Projects, stores and worktrees
 
+For a broad audit, census installed dependencies and local package stores
+across projects, nested subprojects and worktrees.
+Global store pruning leaves installed dependency trees intact. Group candidates
+by owning project so dormant installations can be reviewed together.
+Before removing dependencies, inspect editable patches and local links.
+Preserve unfinished edits and verify retained patch files can reproduce applied changes.
+
 Prefer the project's native clean command. Check activity before cleaning a
 build tree; forcing a concurrent rebuild is disruption even when files are
 rebuildable. Git-untracked and gitignored paths can contain valuable captures.
@@ -250,6 +257,10 @@ Group verified candidates into a reviewable batch. Give exact paths or a private
 manifest, measured size, recovery cost and what remains. Reuse approval for the
 same batch; refresh identities and ownership immediately before execution.
 
+Carry user exclusions into later batches and command recommendations. Check
+wrapper defaults; use explicit targets when defaults include excluded areas.
+Explain extra lifecycle effects, including removal of rollback generations.
+
 Prefer native cleaners. Follow local deletion rules; do not run recursive-force
 `rm` or substitute another permanent-deletion API. Outside permitted temporary
 roots use `trash -v`. Leave agent-created temporary work unless the user approves
@@ -259,7 +270,9 @@ Moving to Trash frees no space. Obtain explicit approval to empty all Trash,
 including unrelated and mounted-volume contents. If available, use
 `/usr/local/bin/empty-trash check`, then its `empty` command, without sudo.
 Otherwise use authorised Finder emptying with an adequate timeout and verify
-Finder's item count afterwards. A timeout leaves the result unknown; inspect
+a complete Trash listing, including hidden items, before and after emptying.
+Finder's normal item count can omit dot-directories. Reconcile the listing
+with movement receipts before emptying. A timeout leaves the result unknown; inspect
 progress before retrying. A sandbox denial or missing Automation consent is
 not a successful cleanup. Keep movement receipts and report pending reclaim.
 
@@ -267,6 +280,10 @@ not a successful cleanup. Keep movement receipts and report pending reclaim.
 
 Check each approved path, the actual cache root and deliberately retained work.
 A non-zero batch command can still remove some targets; inspect them individually.
+Keep chat concise and link a private detailed receipt. Record per-target outcomes,
+retained work, recovery cost and native cleaner output. For package pruning,
+capture package names and versions before pruning when the tool omits them.
+Explain the native classifier and its limits; do not invent per-package disuse reasons.
 Measure immediate before/after free space and report candidate size, observed
 interval change and current free space separately. Concurrent activity means
 neither session-wide change nor cleaner estimates establish attributable savings.
