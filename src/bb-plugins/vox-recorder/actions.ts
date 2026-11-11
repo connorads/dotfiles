@@ -9,10 +9,10 @@ import { askTitle, closeDialog, currentStatus, message, notify, dismiss, promptO
  * Start at once and ask for a title while the capture spins up; the answer
  * acts only once the start has returned (see afterStart).
  */
-export async function startWithPrompt() {
-  const started: Promise<Outcome> = rpc().call('start', {}).catch(cause => ({ ok: false as const, path: null, reason: message(cause) }));
+export async function startWithPrompt(recordOnly: boolean) {
+  const started: Promise<Outcome> = rpc().call(recordOnly ? 'startRecordOnly' : 'start', {}).catch(cause => ({ ok: false as const, path: null, reason: message(cause) }));
   const asked = Date.now();
-  const answer = await askTitle('start', null);
+  const answer = await askTitle('start', null, recordOnly);
   const decision = afterStart(await started, answer === null ? { kind: 'escape', afterMs: Date.now() - asked } : { kind: 'enter', title: answer });
   try {
     switch (decision.kind) {
@@ -36,11 +36,11 @@ export async function stop() {
   void refresh();
 }
 
-export async function toggleRecording() {
+export async function toggleRecording(recordOnly = false) {
   // The prompt belongs to a start in flight; a second press must not stop or restart under it.
   if (promptOpen()) return;
   if (currentStatus()?.state === 'recording') await stop();
-  else await startWithPrompt();
+  else await startWithPrompt(recordOnly);
 }
 
 /** Name… on a live recording: Esc means no rename, never discard. */

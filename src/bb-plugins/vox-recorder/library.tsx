@@ -140,7 +140,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
     onClose={onClose} onEscape={() => { if (confirm) setConfirm(null); else if (renaming !== null) setRenaming(null); else onClose(); }}>
     {recording && <section className="vx-live" aria-label="Live recording">
       <span className="vx-live-dot" aria-hidden />
-      <strong>Recording</strong>
+      <strong>{recording.recordOnly ? 'Record only' : 'Meeting'}</strong>
       <span className="vx-muted">{recording.dir.split('/').at(-1)} · {livePill?.text ?? humanAge(0)}</span>
       <span className="vx-spacer" />
       <button type="button" onClick={() => { void grabInto(composer, null); onClose(); }} title="Transcribe the call so far into the composer (⌥Y)">Grab so far</button>
@@ -182,6 +182,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
           onClick={() => { setSelected(r.name); setDetail(true); list.current?.focus(); }} onDoubleClick={() => insert(r)}>
           <span className="vx-title">{r.title}</span>
           <span className="vx-kind" data-kind={r.kind}>{r.kind}</span>
+          {r.recordOnly && <span className="vx-muted">record only</span>}
           <span className="vx-muted vx-when">{when(r.name)}</span>
           <span className="vx-muted vx-size">{formatBytes(r.bytes)}</span>
         </li>)}

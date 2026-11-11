@@ -36,6 +36,7 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
     *.asr.json *.diar.json  raw fluidaudiocli output, so a re-segment never
                           re-transcribes (diar only on a diarised track)
     transcript.md         merged, name-fixed - the artefact everything consumes
+    record-only           optional marker excluding automatic meeting processing
     vox.log               voxtap + fluidaudiocli stderr
     transcribing.pid      only while transcription runs: "pid start_epoch"
 ```

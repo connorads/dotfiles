@@ -5,9 +5,25 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { testDatabase } from './ingestion-test-db.ts';
 import { completedTranscripts } from './ingestion-scan.ts';
+import { listRecordings, readTranscript } from './disk.ts';
 import { digest, dispatch, IngestionLedger, revisionKey, type Candidate, type IngestionPorts } from './ingestion.ts';
 
 const text = '[00:00:01] Me: Business call.\n';
+test('record-only transcripts stay copyable but never become ingestion candidates after rename or retranscription', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'vox-record-only-'));
+  const paths = { store: root, bin: '', statefile: join(root, 'state'), seenfile: join(root, 'seen') };
+  const name = '2026-10-12-120000-rehearsal';
+  const dir = join(root, name);
+  await mkdir(dir);
+  await writeFile(join(dir, 'record-only'), '');
+  await writeFile(join(dir, 'transcript.md'), text);
+  assert.deepEqual(await completedTranscripts(paths, () => false), []);
+  assert.equal((await listRecordings(paths, () => false))[0]?.name, name);
+  assert.equal((await readTranscript(paths, name)).text, text);
+  await rename(dir, join(root, name + '-renamed'));
+  await writeFile(join(root, name + '-renamed', 'transcript.md'), text + 'More feedback.');
+  assert.deepEqual(await completedTranscripts(paths, () => false), []);
+});
 const candidate: Candidate = { identity: 'host:directory-1', name: '2026-10-12-120000-call', path: '/store/call/transcript.md', hash: digest(text) };
 function fixture() {
   const db = testDatabase();

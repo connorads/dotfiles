@@ -10,7 +10,7 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 export type Dialog =
   | { kind: 'library'; anchor: Anchor }
   /** `start`: Esc discards the capture this prompt started. `rename`: Esc only skips the rename. */
-  | { kind: 'name'; purpose: 'start' | 'rename'; name: string | null; resolve: (answer: string | null) => void };
+  | { kind: 'name'; purpose: 'start' | 'rename'; name: string | null; recordOnly: boolean; resolve: (answer: string | null) => void };
 export type Notice = { id: number; tone: 'info' | 'success' | 'error'; text: string };
 
 interface State { status: VoxStatusDto | null; dialog: Dialog | null; notices: Notice[] }
@@ -65,8 +65,8 @@ export function closeDialog() { setDialog(null); }
 export const promptOpen = () => state.dialog?.kind === 'name';
 
 /** Raise the title prompt; resolves with the answer, or null for Esc. */
-export function askTitle(purpose: 'start' | 'rename', name: string | null): Promise<string | null> {
-  return new Promise(resolve => setDialog({ kind: 'name', purpose, name, resolve }));
+export function askTitle(purpose: 'start' | 'rename', name: string | null, recordOnly = false): Promise<string | null> {
+  return new Promise(resolve => setDialog({ kind: 'name', purpose, name, recordOnly, resolve }));
 }
 export const currentStatus = () => state.status;
 

@@ -101,6 +101,7 @@ if os.environ.get("VOXTAP_STUB_OLD"):
     sys.exit(1)
 
 directory = argv[1]
+note("record-only-marker " + str(os.path.exists(os.path.join(directory, "record-only"))))
 if "--no-sys" not in argv:
     with open(os.path.join(directory, "sys.wav"), "w") as fh:
         fh.write("RIFF")
@@ -331,6 +332,26 @@ aged_recording() {
 # PATH-shadow fakes rather than function mocks, so real command lookup and
 # argument passing are exercised and the logged argv is the assertion target.
 
+@test "record-only marks before capture and keeps a copyable transcript after rename and stop" {
+  require_macos
+  stub_voxtap
+  stub_fluid
+  stub_ffmpeg
+  vox --record-only
+  [ "$status" -eq 0 ]
+  [ -f "$output/record-only" ]
+  grep -q '^record-only-marker True$' "$TEST_LOG"
+  local dir=$output
+  vox rename "$dir" rehearsal
+  [ "$status" -eq 0 ]
+  [ -f "$output/record-only" ]
+  dir=$output
+  vox stop
+  [ "$status" -eq 0 ]
+  [ -f "$dir/record-only" ]
+  [ -s "$dir/transcript.md" ]
+}
+
 @test "start launches one voxtap for both tracks and records its pid" {
   require_macos
   stub_voxtap
@@ -346,6 +367,7 @@ aged_recording() {
   ! grep -q '^ffmpeg ' "$TEST_LOG"
   [ -f "$output/mic.wav" ]
   [ -f "$output/sys.wav" ]
+  [ ! -e "$output/record-only" ]
   [ "$(awk '{ print $1 }' "$VOX_STATEFILE")" != "" ]
   [[ "$(awk '{ print $1 }' "$VOX_STATEFILE")" != *,* ]]
 }

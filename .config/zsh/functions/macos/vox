@@ -9,6 +9,7 @@
 #
 #   vox                      start (no args, no thinking)
 #   vox --name <title>       start with a title
+#   vox --record-only        start without automatic transcript processing
 #   vox stop                 finalise -> transcribe -> merge -> compact -> print the path
 #   vox cancel               stop and discard, without transcribing
 #   vox status               state + elapsed
@@ -121,7 +122,7 @@ _vox_await_output() {
 	return 1
 }
 
-# _vox_start [TITLE] - detach one voxtap capturing both tracks, and wait until
+# _vox_start [TITLE] [MODE] - detach one voxtap capturing both tracks, and wait until
 # its files exist.
 _vox_start() {
 	local title=${1:-}
@@ -153,6 +154,9 @@ _vox_start() {
 	clean=$(_vox_slug "$title")
 	[[ -n "$clean" ]] && dir="$dir-$clean"
 	mkdir -p "$dir" || return 1
+	if [[ "${2:-}" == record-only ]]; then
+		: >"$dir/record-only" || return 1
+	fi
 
 	nohup "$vox_voxtap" record "$dir" "${flags[@]}" \
 		</dev/null >>"$dir/vox.log" 2>&1 &!
@@ -166,7 +170,7 @@ _vox_start() {
 		kill -INT "$pid" 2>/dev/null
 		local reason
 		reason=$(tail -n 1 "$dir/vox.log" 2>/dev/null)
-		rm -f "$dir"/{vox.log,mic.wav,sys.wav}
+		rm -f "$dir"/{vox.log,mic.wav,sys.wav,record-only}
 		rmdir "$dir" 2>/dev/null
 		reason=${reason#voxtap: }
 		# A usage line means voxtap does not know `record`: vox is a dotfile and
@@ -876,6 +880,7 @@ _vox_help() {
 
   vox                      start recording
   vox --name <title>       start recording, titled
+  vox --record-only        start without automatic transcript processing
   vox stop                 stop, transcribe, merge, compact to Opus, print the path
   vox cancel               stop and discard, without transcribing
   vox status               state + elapsed
@@ -906,6 +911,7 @@ transcript.md and vox.log. The directory name is the title.'
 
 case "${1:-}" in
 '') _vox_start ;;
+--record-only) _vox_start '' record-only ;;
 # A flag, not a bare argument: the *) branch below treats a bare argument as a
 # file to transcribe, so a mistyped path would silently become a title and
 # record nothing.

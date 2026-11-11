@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { readFacts, type IsAlive, type VoxPaths } from './disk.ts';
 import { isRecordingName } from './library.ts';
 import { digest, type Candidate } from './ingestion.ts';
+import { isRecordOnly } from './recording-mode.ts';
 
 /** Directory inode and birth time survive a rename and separate same-second imports. */
 export async function completedTranscripts(paths: VoxPaths, alive: IsAlive): Promise<Candidate[]> {
@@ -16,6 +17,7 @@ export async function completedTranscripts(paths: VoxPaths, alive: IsAlive): Pro
   for (const name of names) {
     const dir = join(paths.store, name);
     if (busy.has(dir)) continue;
+    if (await isRecordOnly(dir)) continue;
     const path = join(dir, 'transcript.md');
     try {
       const directory = await stat(dir);

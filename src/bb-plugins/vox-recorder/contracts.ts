@@ -4,7 +4,7 @@ import { candidateSchema } from './src/ingestion.ts';
 
 export const statusSchema = z.object({
   state: z.enum(['recording', 'transcribing', 'empty', 'ready', 'idle']),
-  recording: z.object({ dir: z.string(), startedAt: z.number().nullable() }).nullable(),
+  recording: z.object({ dir: z.string(), startedAt: z.number().nullable(), recordOnly: z.boolean() }).nullable(),
   jobs: z.object({ count: z.number(), oldestStartedAt: z.number().nullable(), newestDir: z.string().nullable() }),
   unread: z.number(),
   empty: z.number(),
@@ -12,6 +12,7 @@ export const statusSchema = z.object({
 export const recordingSchema = z.object({
   name: z.string(), title: z.string(), startedAt: z.number(), bytes: z.number(),
   kind: z.enum(['recording', 'transcribing', 'pending', 'empty', 'solo', '2-way']),
+  recordOnly: z.boolean(),
 });
 export const previewSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('transcript'), text: z.string(), truncated: z.boolean() }),
@@ -39,6 +40,7 @@ const shared = {
   transcript: { input: z.object({ name }), output: z.object({ path: z.string(), text: z.string() }) },
   markSeen: { input: empty, output: empty },
   start: { input: empty, output: outcome },
+  startRecordOnly: { input: empty, output: outcome },
   /** Detaches: transcription takes minutes, so the result arrives as a `finished` signal. */
   stop: { input: empty, output: z.object({ dir: z.string() }) },
   cancel: { input: empty, output: empty },

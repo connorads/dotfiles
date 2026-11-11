@@ -16,6 +16,7 @@ Q closes the recordings library outside text fields. Q dismisses a pending confi
 | Action | Shortcut |
 | --- | --- |
 | Start or stop recording | `Alt+V` |
+| Start or stop record-only capture | `Ctrl+Alt+Shift+V` |
 | Open the recordings library | `Ctrl+Alt+V`, or click the header pill |
 | Attach the live call so far to the composer | `Alt+Y` |
 | Attach the last 5 minutes of the live call | Palette: **Attach last 5 minutes of live call** |
@@ -34,6 +35,11 @@ from a terminal. No shortcut fires while a vox dialog is open.
 - **Stop.** `Alt+V` while recording runs `vox stop` in the background. A notice
   reports the transcript when transcription ends. The capture still reads as
   recording while it flushes, so a second stop or a discard of it is refused.
+- **Record only.** `Ctrl+Alt+Shift+V` starts the same mic and system capture, with
+  automatic meeting processing excluded. The title prompt, recording pill and
+  library identify it as record only. `Alt+V` or `Ctrl+Alt+Shift+V` stops and
+  transcribes it. Open Recordings with `Ctrl+Alt+V`, select the recording and
+  click Copy transcript. Nothing copies automatically.
 - **Grab.** `Alt+Y` transcribes the call so far with `vox grab` and inserts an
   `@vox` pill such as "Call so far · 812 words". On send, the pill becomes the
   frozen transcript as agent-only context.
@@ -46,6 +52,19 @@ from a terminal. No shortcut fires while a vox dialog is open.
 ### Automatic ingestion into Klimble
 
 The plugin watches completed transcripts from both BB and terminal recordings.
+`vox --record-only` creates a `record-only` marker before capture starts.
+The automatic processing scan excludes marked directories. The marker survives
+renaming, retranscription and BB restarts. Existing recordings and normal
+`vox` starts remain eligible for meeting processing. Record-only transcripts
+remain available for copying, attaching and agent tools.
+
+```mermaid
+flowchart LR
+  Start[Ctrl+Alt+Shift+V] --> Record[Record only]
+  Record --> Stop[Alt+V stops and transcribes]
+  Stop --> Copy[Ctrl+Alt+V opens library for copying]
+```
+
 Vox publishes a transcript with an atomic rename, so partial merge output cannot
 start ingestion. Empty transcripts and live grabs are ignored.
 

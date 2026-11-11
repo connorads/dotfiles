@@ -48,6 +48,7 @@ export default function plugin(bb: BbPluginApi) {
     transcript: input => call('transcript', input),
     markSeen: () => call('markSeen', {}),
     start: () => call('start', {}),
+    startRecordOnly: () => call('startRecordOnly', {}),
     stop: () => call('stop', {}),
     cancel: () => call('cancel', {}),
     rename: input => call('rename', input),

@@ -25,7 +25,8 @@ function NameDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'name' }> }) {
   return <dialog ref={element} className="vx-dialog vx-name" aria-label="Name the recording" aria-modal="true"
     onCancel={event => { event.preventDefault(); answer(null); }} onKeyDown={event => { if (event.key !== 'Escape') event.stopPropagation(); }}>
     <form className="vx-panel vx-name-panel" onSubmit={event => { event.preventDefault(); answer(title); }}>
-      <label htmlFor="vx-title"><span className="vx-live-dot" aria-hidden />{dialog.purpose === 'start' ? 'Recording. Name it (optional)' : `Rename ${dialog.name}`}</label>
+      <label htmlFor="vx-title"><span className="vx-live-dot" aria-hidden />{dialog.purpose === 'start' ? `${dialog.recordOnly ? 'Record only' : 'Meeting'}. Name it (optional)` : `Rename ${dialog.name}`}</label>
+      {dialog.purpose === 'start' && dialog.recordOnly && <p>Transcribe only. No automatic processing. Copy the transcript from Recordings when ready.</p>}
       <input id="vx-title" autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. alpha kickoff" />
       <div className="vx-actions"><button type="submit">{dialog.purpose === 'start' ? 'Keep recording' : 'Save name'}</button><button type="button" onClick={() => answer(null)}>{dialog.purpose === 'start' ? 'Cancel' : 'Keep name'}</button></div>
       <span className="vx-hint">↵ {dialog.purpose === 'start' ? 'keep' : 'rename'} · esc {dialog.purpose === 'start' ? `discard in the first ${DISCARD_GRACE_MS / 1000} s, then keep` : 'leave the name'}</span>
@@ -94,9 +95,9 @@ function Chip({ isCompactViewport }: PluginThreadHeaderActionProps) {
   const shown = status && pill(status, now / 1000);
   if (!shown) return null;
   return <VoxChip data-vox-chip tone={shown.tone === 'empty' ? 'danger' : undefined} expanded={dialog?.kind === 'library'}
-    aria-label={`Vox: ${shown.label}`} title={`Vox: ${shown.label} (⌃⌥V)`} onClick={toggleLibrary}
+    aria-label={`Vox: ${status?.recording?.recordOnly ? 'Record only. ' : ''}${shown.label}`} title={`Vox: ${status?.recording?.recordOnly ? 'Record only. ' : ''}${shown.label} (⌃⌥V)`} onClick={toggleLibrary}
     icon={<span className="vx-glyph" data-tone={shown.tone}>{shown.glyph}</span>}>
-    {!isCompactViewport || shown.tone !== 'muted' ? <ChipValue>{shown.text}</ChipValue> : null}
+    {!isCompactViewport || shown.tone !== 'muted' ? <ChipValue>{status?.recording?.recordOnly ? 'Record only · ' : ''}{shown.text}</ChipValue> : null}
   </VoxChip>;
 }
 
@@ -104,6 +105,7 @@ export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'vox', component: Overlay });
   app.slots.experimental_threadHeaderAction({ id: 'pill', title: 'Vox recording', component: Chip });
   app.commands.register({ id: 'toggle', title: 'Start or stop recording', defaultShortcut: { key: 'v', alt: true }, run: () => { void toggleRecording(); } });
+  app.commands.register({ id: 'record-only', title: 'Start or stop record-only capture', defaultShortcut: { key: 'v', control: true, alt: true, shift: true }, run: () => { void toggleRecording(true); } });
   app.commands.register({ id: 'recordings', title: 'Open recordings', defaultShortcut: { key: 'v', control: true, alt: true }, run: openLibrary });
   app.composer.experimental_registerCommand({ id: 'grab', title: 'Attach live call so far', defaultShortcut: { key: 'y', alt: true }, run: ({ composer }) => grabInto(composer, null) });
   app.composer.experimental_registerCommand({ id: 'grab-recent', title: 'Attach last 5 minutes of live call', run: ({ composer }) => grabInto(composer, '5m') });

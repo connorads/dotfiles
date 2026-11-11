@@ -13,6 +13,7 @@ import { baseName, interpret, reasonOf } from './src/outcome.ts';
 import { run, runDetached } from './src/run.ts';
 import type { Outcome } from './src/outcome.ts';
 import { completedTranscripts } from './src/ingestion-scan.ts';
+import { isRecordOnly } from './src/recording-mode.ts';
 
 type Context = ExperimentalHostRpcContext<typeof hostSignals>;
 
@@ -30,7 +31,10 @@ let lastSent = '';
 /** The capture a stop is halting: it reads as recording until its flush ends, and a second `vox stop` would transcribe it twice. */
 let stopping: string | null = null;
 
-const status = () => readStatus(paths, isAlive);
+const status = async () => {
+  const current = await readStatus(paths, isAlive);
+  return { ...current, recording: current.recording ? { ...current.recording, recordOnly: await isRecordOnly(current.recording.dir) } : null };
+};
 
 async function publish(context: Context) {
   const next = await status();
@@ -101,13 +105,20 @@ export default experimental_defineHostEntry({
     // Leaves lastSent alone: this answer reaches one window, and the next publish must still reach the rest.
     subscribe: async (_input, context) => { await subscribe(context); return status(); },
     status: () => status(),
-    list: () => listRecordings(paths, isAlive),
+    list: async () => Promise.all((await listRecordings(paths, isAlive)).map(async recording => ({
+      ...recording, recordOnly: await isRecordOnly(recordingDir(paths, recording.name)),
+    }))),
     preview: ({ name }) => readPreview(paths, name, isAlive),
     transcript: ({ name }) => readTranscript(paths, name),
     transcriptPath: ({ name }) => ({ path: join(recordingDir(paths, name), 'transcript.md') }),
     markSeen: async (_input, context) => { await markSeen(paths); await publish(context); return {}; },
     start: async (_input, context) => {
       const outcome = await vox([], 'vox: the capture did not start');
+      await publish(context);
+      return outcome;
+    },
+    startRecordOnly: async (_input, context) => {
+      const outcome = await vox(['--record-only'], 'vox: the capture did not start');
       await publish(context);
       return outcome;
     },
