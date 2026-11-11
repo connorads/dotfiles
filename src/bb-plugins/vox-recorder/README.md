@@ -16,13 +16,13 @@ Q closes the recordings library outside text fields. Q dismisses a pending confi
 | Action | Shortcut |
 | --- | --- |
 | Start or stop recording | `Alt+V` |
-| Open the recordings library | `Alt+Shift+V`, or click the header pill |
+| Open the recordings library | `Ctrl+Alt+V`, or click the header pill |
 | Attach the live call so far to the composer | `Alt+Y` |
 | Attach the last 5 minutes of the live call | Palette: **Attach last 5 minutes of live call** |
 
-Rebind any of them in Settings → Keyboard. No built-in, override or other
+Alt+Shift+V belongs to Hex repaste. Rebind Vox shortcuts in Settings → Keyboard. No built-in, override or other
 workspace plugin uses these defaults; a colliding plugin default never binds.
-`Alt+V` and `Alt+Shift+V` work anywhere outside a modal, a focused terminal
+`Alt+V` and `Ctrl+Alt+V` work anywhere outside a modal, a focused terminal
 included. `Alt+Y` is a composer command, so it needs a prompt and does not fire
 from a terminal. No shortcut fires while a vox dialog is open.
 
@@ -144,7 +144,7 @@ Name… on a live recording never discards it.
 flowchart LR
   subgraph App[app.tsx, every window]
     Pill[Header pill] --> Lib[Library dialog]
-    Keys[Alt+V, Alt+Shift+V, Alt+Y] --> Prompt[Title prompt]
+    Keys[Alt+V, Ctrl+Alt+V, Alt+Y] --> Prompt[Title prompt]
     Lib --> Composer[(Composer @vox pill)]
     Keys --> Composer
   end
@@ -247,7 +247,7 @@ other option.
   keystroke. A cold worker can miss the 2 s search budget and show no rows.
 - The tmux picker's multi-select, play and paste-path are not ported.
 - Seen in a running BB (0.46.0): the pill and its realtime updates across two
-  windows, the library in light and dark, `Alt+Shift+V`, `Alt+Y` refusing
+  windows, the library in light and dark, `Ctrl+Alt+V`, `Alt+Y` refusing
   when idle, the palette entries with their shortcuts, a `@vox` pill
   inserted from the library, `e` opening the transcript, and `@` search
   returning vox rows from the server. Not yet seen: `Alt+V`, the title prompt,
