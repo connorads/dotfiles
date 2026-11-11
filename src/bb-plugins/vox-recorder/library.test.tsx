@@ -12,6 +12,30 @@ beforeAll(() => {
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
 });
 afterEach(() => { slot?.lifecycle.unmount(); });
+test('copy is visible without opening actions and copies the filtered recording in full', async () => {
+  function Surface() { setClient(useRpc<typeof rpcContract>()); return <Library anchor={null} onClose={() => {}} />; }
+  const app = await loadPluginApp(async () => definePluginApp(app => { app.slots.experimental_appOverlay({ id: 'copy-test', component: Surface }); }));
+  slot = renderSlot(app.appOverlays[0]!, {}, { rpc: {
+    list: () => [
+      { name: '2026-01-01-alpha', title: 'Alpha', startedAt: 0, bytes: 100, kind: 'solo' },
+      { name: '2026-01-02-beta', title: 'Beta', startedAt: 0, bytes: 100, kind: 'solo' },
+    ],
+    markSeen: () => ({}), preview: () => ({ kind: 'transcript', text: 'Short preview', truncated: true }),
+    transcript: (input: unknown) => {
+      expect(input).toEqual({ name: '2026-01-02-beta' });
+      return { text: 'Full transcript of Beta' };
+    },
+  } });
+  const filter = slot.getByRole('textbox', { name: 'Filter recordings' });
+  await slot.findByRole('option', { name: /Alpha/ });
+  fireEvent.change(filter, { target: { value: 'Beta' } });
+  expect(slot.inspection.experimental_clipboardWrites).toEqual([]);
+  const copy = slot.getByRole('button', { name: 'Copy transcript' });
+  expect(copy.closest('details:not([open])')).toBeNull();
+  fireEvent.click(copy);
+  await waitFor(() => expect(slot!.inspection.experimental_clipboardWrites).toEqual([{ text: 'Full transcript of Beta' }]));
+  expect((filter as HTMLInputElement).value).toBe('Beta');
+});
 test('visible recording actions rename, cancel and confirm the selected recording', async () => {
   function Surface() { setClient(useRpc<typeof rpcContract>()); return <Library anchor={null} onClose={() => {}} />; }
   const app = await loadPluginApp(async () => definePluginApp(app => { app.slots.experimental_appOverlay({ id: 'library-test', component: Surface }); }));

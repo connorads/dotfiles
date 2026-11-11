@@ -153,7 +153,7 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
       <Icon name="Search" className="vx-icon vx-muted" />
       <input ref={filterInput} className="vx-filter" placeholder="Filter, ↓ for the list" value={filter} aria-label="Filter recordings"
         onChange={event => setFilter(event.target.value)} />
-      <span className="vx-hint">↵ insert · c copy · e open · r rename · o reveal · t retranscribe · d delete · x reclaim · / filter</span>
+      <span className="vx-hint">↓ focus list · then c copy · ↵ insert · e open · / filter</span>
     </header>
     {confirm && <div className="vx-confirm" role="alertdialog">
       <span>{confirm.label}</span>
@@ -163,8 +163,9 @@ export function Library({ anchor, onClose }: { anchor: Anchor; onClose: () => vo
     <div className="vx-actions">
       <button type="button" className="vx-list-back" onClick={() => setDetail(false)}>Recordings</button>
       <button type="button" disabled={!current || !readable(current)} onClick={() => current && insert(current)}>Insert transcript</button>
+      <button type="button" disabled={!current || !readable(current)} onClick={() => current && void copy(current.name)}>Copy transcript</button>
       <details><summary>Recording actions</summary><div className="vx-action-menu">
-        {(['copy', 'open', 'rename', 'reveal', 'retranscribe', 'delete', 'reclaim'] as const).map(action => <button type="button" key={action} disabled={!current} onClick={() => current && letter(action, current)}>{({ copy: 'Copy transcript', open: 'Open transcript', rename: 'Rename', reveal: 'Reveal files', retranscribe: 'Retranscribe', delete: 'Delete recording', reclaim: 'Delete audio' })[action]}</button>)}
+        {(['open', 'rename', 'reveal', 'retranscribe', 'delete', 'reclaim'] as const).map(action => <button type="button" key={action} disabled={!current} onClick={() => current && letter(action, current)}>{({ open: 'Open transcript', rename: 'Rename', reveal: 'Reveal files', retranscribe: 'Retranscribe', delete: 'Delete recording', reclaim: 'Delete audio' })[action]}</button>)}
       </div></details>
       <button type="button" onClick={onClose}>Close</button>
     </div>
