@@ -13,8 +13,8 @@ async function bundle(request: unknown, options: { name?: string; session?: stri
   const root = (await prepareTraceRoot(threadId, home)).path;
   const path = join(root, options.name ?? 'trace-synthetic');
   await mkdir(join(path, 'payloads'), { recursive: true });
-  await writeFile(join(path, 'manifest.json'), JSON.stringify({ schema_version: 1, root_thread_id: options.session ?? sessionId, started_at_unix_ms: options.time ?? 1000 }));
-  const event = { schema_version: 1, wall_time_unix_ms: options.time ?? 1000, thread_id: options.session ?? sessionId,
+  await writeFile(join(path, 'manifest.json'), JSON.stringify({ schema_version: 2, root_thread_id: options.session ?? sessionId, started_at_unix_ms: options.time ?? 1000 }));
+  const event = { schema_version: 2, wall_time_unix_ms: options.time ?? 1000, thread_id: options.session ?? sessionId,
     payload: { type: 'inference_started', inference_call_id: 'request-synthetic', thread_id: options.session ?? sessionId, request_payload: { path: 'payloads/1.json' } } };
   await writeFile(join(path, 'trace.jsonl'), `${JSON.stringify(event)}\n${options.complete ? `${JSON.stringify({ payload: { type: 'rollout_ended' } })}\n` : ''}${options.tail ?? ''}`);
   await writeFile(join(path, 'payloads', '1.json'), JSON.stringify(request));
@@ -52,6 +52,13 @@ test('counts calls and string results and names unsupported material', async () 
 });
 test('never joins another native session or child thread', async () => {
   await bundle({ input: [message('test')] }, { session: 'other-session' });
+  expect(await readCodex(threadId, sessionId, home)).toMatchObject({ kind: 'unavailable' });
+});
+test('refuses legacy trace manifests', async () => {
+  const path = await bundle({ input: [message('Synthetic legacy input.')] });
+  const manifest = JSON.parse(await readFile(join(path, 'manifest.json'), 'utf8'));
+  manifest.schema_version = 1;
+  await writeFile(join(path, 'manifest.json'), JSON.stringify(manifest));
   expect(await readCodex(threadId, sessionId, home)).toMatchObject({ kind: 'unavailable' });
 });
 test('reads latest native inference and tolerates incomplete final JSONL line', async () => {

@@ -9,9 +9,9 @@ const maxLogBytes = 4 * 1024 * 1024;
 const maxPayloadBytes = 8 * 1024 * 1024;
 const day = 86400000;
 const object = z.record(z.string(), z.unknown());
-const manifestSchema = z.object({ schema_version: z.literal(1), root_thread_id: z.string() });
+const manifestSchema = z.object({ schema_version: z.literal(2), root_thread_id: z.string() });
 const eventSchema = z.object({
-  schema_version: z.literal(1), wall_time_unix_ms: z.number().finite().nonnegative(), thread_id: z.string().nullable(),
+  schema_version: z.literal(2), wall_time_unix_ms: z.number().finite().nonnegative(), thread_id: z.string().nullable(),
   payload: z.object({ type: z.literal('inference_started'), inference_call_id: z.string().min(1), thread_id: z.string(),
     request_payload: z.object({ path: z.string().regex(/^payloads\/[0-9]+\.json$/) }),
   }),

@@ -12,12 +12,12 @@ const maxSnapshotBytes = 64 * 1024 * 1024;
 const maxReducedBytes = 32 * 1024 * 1024;
 const object = z.record(z.string(), z.unknown());
 const payloadRef = z.object({ raw_payload_id: z.string().min(1).max(160), path: z.string().regex(/^payloads\/[0-9]+\.json$/), kind: z.object({ type: z.string().max(80) }) });
-const manifestSchema = z.object({ schema_version: z.literal(1), trace_id: z.string(), rollout_id: z.string(), root_thread_id: z.string(),
+const manifestSchema = z.object({ schema_version: z.literal(2), trace_id: z.string(), rollout_id: z.string(), root_thread_id: z.string(),
   started_at_unix_ms: z.number().finite(), raw_event_log: z.literal('trace.jsonl'), payloads_dir: z.literal('payloads') });
 const inferenceSchema = z.object({ thread_id: z.string(), execution: z.object({ started_seq: z.number().finite() }),
   request_item_ids: z.array(z.string()).max(10000), response_item_ids: z.array(z.string()).max(10000),
   raw_request_payload_id: z.string(), raw_response_payload_id: z.string().nullable() });
-const graphSchema = z.object({ schema_version: z.literal(1), root_thread_id: z.string(),
+const graphSchema = z.object({ schema_version: z.literal(2), root_thread_id: z.string(),
   inference_calls: z.record(z.string(), inferenceSchema), conversation_items: z.record(z.string(), z.object({ thread_id: z.string() })) });
 export type ReducerRunner = (snapshot: string, output: string) => Promise<void>;
 const execute = promisify(execFile);

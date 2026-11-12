@@ -98,6 +98,9 @@ labelled UTF-8 byte estimate. It does not use a verified model tokenizer. Native
 immutable bounded copy. Missing history or unsupported payloads show a gap rather
 than a fabricated full count. Media costs remain unknown.
 
+Codex collection requires trace format 2 and a matching native reducer.
+Format 1 bundles remain unavailable. Record a new bundle for current requests.
+
 Completed bundles older than one day, or beyond the latest three, are pruned.
 **Delete recorded traces** disables future recording and refuses open bundles.
 An uncleanly closed bundle requires manual maintenance. The plugin never stops a

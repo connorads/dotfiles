@@ -21,7 +21,7 @@ const events = [
   { type: 'inference_completed', inference_call_id: 'inference-1', response_id: 'response-1', upstream_request_id: null, response_payload: ref(2, 'inference_response') },
   { type: 'inference_started', inference_call_id: identity.inferenceId, thread_id: sessionId, codex_turn_id: 'turn-synthetic', model: 'synthetic', provider_name: 'synthetic', request_payload: ref(3, 'inference_request') },
 ];
-const graph = () => ({ schema_version: 1, root_thread_id: sessionId,
+const graph = () => ({ schema_version: 2, root_thread_id: sessionId,
   conversation_items: { a: { thread_id: sessionId }, b: { thread_id: sessionId }, c: { thread_id: sessionId } },
   inference_calls: {
     'inference-1': { thread_id: sessionId, execution: { started_seq: 4 }, request_item_ids: ['a'], response_item_ids: ['b'], raw_request_payload_id: 'raw:1', raw_response_payload_id: 'raw:2' },
@@ -31,8 +31,8 @@ const graph = () => ({ schema_version: 1, root_thread_id: sessionId,
 beforeEach(async () => {
   directory = await mkdtemp(join(await realpath(tmpdir()), 'codex-reducer-test-'));
   await mkdir(join(directory, 'payloads'));
-  await writeFile(join(directory, 'manifest.json'), JSON.stringify({ schema_version: 1, trace_id: 'trace-synthetic', rollout_id: 'rollout-synthetic', root_thread_id: sessionId, started_at_unix_ms: 1000, raw_event_log: 'trace.jsonl', payloads_dir: 'payloads' }));
-  await writeFile(join(directory, 'trace.jsonl'), events.map((payload, index) => JSON.stringify({ schema_version: 1, seq: index + 1, wall_time_unix_ms: 1000 + index, rollout_id: 'rollout-synthetic', thread_id: sessionId, codex_turn_id: 'turn-synthetic', payload })).join('\n') + '\n');
+  await writeFile(join(directory, 'manifest.json'), JSON.stringify({ schema_version: 2, trace_id: 'trace-synthetic', rollout_id: 'rollout-synthetic', root_thread_id: sessionId, started_at_unix_ms: 1000, raw_event_log: 'trace.jsonl', payloads_dir: 'payloads' }));
+  await writeFile(join(directory, 'trace.jsonl'), events.map((payload, index) => JSON.stringify({ schema_version: 2, seq: index + 1, wall_time_unix_ms: 1000 + index, rollout_id: 'rollout-synthetic', thread_id: sessionId, codex_turn_id: 'turn-synthetic', payload })).join('\n') + '\n');
   for (const [index, value] of values.entries()) await writeFile(join(directory, 'payloads', `${index + 1}.json`), JSON.stringify(value));
 });
 function runner(transform = graph): ReducerRunner {
