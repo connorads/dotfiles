@@ -1342,3 +1342,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open
 - Category: app-bug
 - Evidence: `bb automation create --project <project> ... --json` returned `automation_failed` with the message above.
+
+### Claude model discovery omits an available model
+
+- Found: 2026-11-12, BB 0.49.0 with Claude Code 2.1.322.
+- Wanted: select Fable 5.2 from the model picker after updating Claude Code.
+- Gap: BB model refresh succeeds but lists Fable 5.1. Direct initialisation with the updated CLI reports Fable 5.2.
+  Reloading the provider does not resolve the discrepancy. The cause remains unconfirmed.
+- Workaround: add `{"providerId":"claude-code","model":"claude-fable-5-2","displayName":"Fable 5.2"}`
+  to `customModels` in the data directory's `config.json`, then run `bb-app config refresh`.
+  The entry uses `model`, not `id`.
+- Ask: expose the executable and refresh provenance for model discovery so a successful stale catalogue can be diagnosed.
+- Status: open; custom entry verified in the model list and model access verified through the updated CLI.
+- Category: provider-issue
+- Evidence: `bb updates status` reports Claude Code 2.1.322; `bb provider models claude-code` returns Fable 5.1.
+  The same CLI's initialisation resolves `fable` to `claude-fable-5-2`, and an explicit model request succeeds.
