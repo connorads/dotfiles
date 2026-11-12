@@ -1,6 +1,6 @@
 // Integration: the real host entry on this machine, through the SDK harness.
 // Figures vary by machine; the contract does not. The CPU window logic is unit-tested in cpu.test.ts.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { experimental_createHostEntryHarness } from '@get-bb/plugin-sdk/testing/host';
@@ -52,24 +52,30 @@ test('tool PATH puts system dirs first and reaches NixOS tools', () => {
 });
 
 
-test('termination refuses a changed identity and confirms a disposable child exits', {
+test('termination refuses a changed identity and confirms a disposable process exits', {
   skip: process.platform !== 'darwin' || !psReadable ? 'requires readable macOS processes' : false,
 }, async () => {
   const harness = experimental_createHostEntryHarness(entry);
-  const child = spawn('/bin/sleep', ['60']);
+  // A direct child inherits BB's protected provider ancestry when tests run inside BB.
+  const pid = Number(execFileSync('/bin/sh', [
+    '-c', '/bin/sleep 60 </dev/null >/dev/null 2>&1 & echo "$!"',
+  ], { encoding: 'utf8' }).trim());
   try {
-    assert.ok(child.pid);
-    const pid = child.pid;
+    assert.ok(Number.isInteger(pid) && pid > 1);
+    const parent = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8' });
+    assert.equal(Number(parent.trim()), 1);
     const table = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'pid=,lstart=,etime='], { encoding: 'utf8' });
     const started = parseProcessTimes(table).get(pid)!.started;
     const command = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' }).trim();
     const refused = await harness.experimental_call('terminate', { pid, command, started: 'different' });
     assert.equal(refused.ok, false);
-    assert.equal(child.exitCode, null);
+    assert.doesNotThrow(() => process.kill(pid, 0));
     const outcome = await harness.experimental_call('terminate', { pid, command, started });
     assert.deepEqual(outcome, { ok: true, outcome: 'exited' });
   } finally {
-    child.kill('SIGTERM');
+    try { process.kill(pid, 'SIGTERM'); } catch (error) {
+      assert.ok(error instanceof Error && 'code' in error && error.code === 'ESRCH', String(error));
+    }
     await harness.experimental_dispose();
   }
 });
