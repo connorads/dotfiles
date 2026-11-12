@@ -121,7 +121,12 @@
 
   home.packages = [
     pkgs.neovim
-    pkgs.fresh-editor
+    (
+      if pkgs.stdenv.hostPlatform.system == "aarch64-darwin" then
+        pkgs.callPackage ../packages/fresh-editor.nix { }
+      else
+        pkgs.fresh-editor
+    )
   ];
 
   programs.atuin = {

@@ -96,6 +96,10 @@ Atuin uses the upstream Apple Silicon release binary through Nix. Home Manager
 owns its shell integration and settings. The version and checksum are pinned in
 [atuin.nix](../.config/nix/packages/atuin.nix); flake updates do not change them.
 
+Fresh uses the upstream Apple Silicon release binary through Nix.
+Its version and checksum are pinned in [fresh-editor.nix](../.config/nix/packages/fresh-editor.nix).
+Linux uses the nixpkgs package.
+
 Claude Code is mise-owned. Do not install it natively or re-enable its self-updater. Why: [docs/adr/0011](../docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
 
 ## Mouse buttons
