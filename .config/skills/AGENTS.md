@@ -83,7 +83,7 @@ vendored skills is a set.** Count by the lockfile `source` field, which is the g
 criterion:
 
 ```bash
-jq -r '.skills|to_entries|group_by(.value.source)|map(select(length>=4))
+jq -r '.skills|to_entries|group_by(.value.source|ascii_downcase)|map(select(length>=4))
   |.[]|"\(length)\t\(.[0].value.source)"' ~/.config/skills/vendor/skills-lock.json
 ```
 
@@ -289,7 +289,7 @@ patch. Run from `$HOME` so the `dotfiles` git-dir/work-tree split sees plain
 
 ```bash
 V=.config/skills/vendor; SET=<set>; SRC=<owner/repo>
-jq -r --arg s "$SRC" '.skills|to_entries[]|select(.value.source==$s)|.key' $V/skills-lock.json > /tmp/names
+jq -r --arg s "$SRC" '.skills|to_entries[]|select((.value.source|ascii_downcase)==($s|ascii_downcase))|.key' $V/skills-lock.json > /tmp/names
 mkdir -p "$V/$SET/.agents/skills"    # git mv will not create the parent
 while read -r n; do dotfiles mv "$V/.agents/skills/$n" "$V/$SET/.agents/skills/$n"; done < /tmp/names
 ```
@@ -302,7 +302,7 @@ nothing duplicated) **before** overwriting the bucket file:
 
 ```bash
 for m in '==' '!='; do
-  jq --indent 2 --arg s "$SRC" "{version: .version, skills: (.skills|to_entries|map(select(.value.source $m \$s))|sort_by(.key)|from_entries)}" \
+  jq --indent 2 --arg s "$SRC" "{version: .version, skills: (.skills|to_entries|map(select((.value.source|ascii_downcase) $m (\$s|ascii_downcase)))|sort_by(.key)|from_entries)}" \
     $V/skills-lock.json
 done   # first output → $V/$SET/skills-lock.json, second → $V/skills-lock.json
 ```
