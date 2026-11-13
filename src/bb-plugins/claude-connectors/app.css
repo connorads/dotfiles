@@ -1,0 +1,59 @@
+/* BB theme tokens only. Pop-up shell from @bb-plugins/chip. */
+.cc-off { color: var(--muted-foreground); }
+.cc-inherited { color: var(--muted-foreground); font-weight: 400; }
+.bbp-popover-panel.cc-panel { overflow: auto; }
+
+.cc-header { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border-seam, var(--border)); }
+.cc-header h2 { flex: 1; margin: 0; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
+.cc-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.cc-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
+.cc-error { color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
+.cc-pad { margin: 0; padding: 0 14px 8px; }
+
+.cc-rows { display: grid; padding: 4px; }
+.cc-row {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 4px 8px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .12s;
+}
+.cc-row:hover, .cc-row:focus { background: var(--state-hover, var(--accent)); outline: none; }
+.cc-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.cc-row[aria-pressed="true"] .cc-row-label { font-weight: 600; }
+.cc-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.cc-check { color: var(--brand, var(--primary)); }
+.cc-row kbd, .cc-keys kbd, .cc-link kbd {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
+  border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
+  font: 500 10.5px/1 var(--font-mono);
+}
+
+.cc-preview { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 14px 10px; border-top: 1px solid var(--border-seam, var(--border)); }
+.cc-tag { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--foreground); font-size: 11.5px; line-height: 18px; }
+
+.cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.cc-keys { display: flex; align-items: center; gap: 4px; }
+.cc-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary)); font: inherit; cursor: pointer; }
+.cc-link:hover { text-decoration: underline; }
+
+/* Settings */
+.cc-settings { display: grid; gap: 16px; }
+.cc-card h3 { margin: 0 0 4px; font: 600 13px/1.3 var(--font-sans); }
+.cc-card > .cc-muted { margin: 0 0 8px; }
+.cc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cc-select, .cc-input {
+  height: 28px; padding: 0 8px; border: 1px solid var(--input, var(--border)); border-radius: 6px;
+  background: var(--background); color: var(--foreground); font: inherit; font-size: 13px;
+}
+.cc-input { min-width: 160px; }
+.cc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cc-table th { text-align: left; font-weight: 500; color: var(--muted-foreground); font-size: 12px; padding: 4px 0; }
+.cc-table td { padding: 5px 0; border-top: 1px solid var(--border); }
+.cc-tools { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
+.cc-tool { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+.cc-tool-text { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 2px 8px; min-width: 0; }
+.cc-tool-text code { font: 12px var(--font-mono); }
+.cc-tool-desc { grid-column: 1 / -1; color: var(--muted-foreground); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-badge { justify-self: start; padding: 0 6px; border-radius: 4px; font-size: 10.5px; line-height: 16px; color: var(--warning-text, var(--warning)); border: 1px solid currentColor; }
+.cc-seg { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.cc-seg button { padding: 2px 10px; border: 0; background: none; color: var(--muted-foreground); font: inherit; font-size: 12px; cursor: pointer; }
+.cc-seg button[aria-pressed="true"] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }
