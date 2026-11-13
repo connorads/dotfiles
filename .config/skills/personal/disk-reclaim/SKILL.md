@@ -31,9 +31,15 @@ root or candidate, record its measured size, contents, owner, recovery cost,
 authorisation and outcome. Mark paths as unexplored, protected, selected or
 cleared. A failed or blocked measurement stays unknown, never zero.
 
-Start with current free space and the native cleaner's preview. Then follow
-the largest unexplored children, unexplained volume usage or recent growth.
-Do not keep re-running exhausted cache probes while large areas remain unknown.
+Start with current free space and the native cleaner's preview. On later
+rounds, resume the inventory and follow the largest unexplored areas,
+unexplained volume usage or recent growth. Repeat exhausted cache probes only
+when there is evidence of new growth. Revisit protected candidates when their
+ownership or recovery cost changes.
+
+Compare disposable installations across projects, worktrees and scratch copies
+in the same inventory. Group verified candidates into batches by recovery cost
+and disruption, rather than stopping after cleaning one folder or tool cache.
 Investigate independent roots separately so one slow scan does not block the rest.
 
 Rank candidates by recoverable space, value retained, disruption and rebuild
