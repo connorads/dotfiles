@@ -13,6 +13,7 @@ The AI usage surfaces track two providers:
   account-labelled too, with the model folded into the window token (`7d·S`
   Sonnet, `7d·F` Fable) to stay distinguishable across accounts. Accounts are
   launched with `ccp`.
+  An expired credential file uses a newer Keychain session when one exists.
 - Codex: [`../zsh/functions/codex-usage`](../../zsh/functions/codex-usage)
   reads Codex auth and caches `~/.cache/codex-usage.json`.
 

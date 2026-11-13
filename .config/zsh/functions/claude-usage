@@ -103,6 +103,8 @@ source "${self_file:A:h}/usage-cache-lib"
 # Read the OAuth credentials JSON for a given config dir. File-first: recent
 # Claude Code keeps the token in <config-dir>/.credentials.json and may leave
 # the keychain item empty, so an empty keychain read must not mean "logged out".
+# An expired file can coexist with a newer Keychain session. Keep the file
+# unless Keychain holds a token with a later expiry.
 # Falls back to the per-config-dir keychain service (the default account uses
 # the un-suffixed "Claude Code-credentials"; profiles are hash-suffixed).
 _read_claude_credentials_json() {
@@ -114,6 +116,16 @@ _read_claude_credentials_json() {
     fi
     if [[ -z "$credentials_json" && "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
         credentials_json=$(security find-generic-password -s "$service" -w 2>/dev/null || true)
+    elif [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
+        local file_expiry keychain_json keychain_expiry
+        file_expiry=$(print -r -- "$credentials_json" | jq -r '.claudeAiOauth.expiresAt | numbers' 2>/dev/null)
+        if [[ -n "$file_expiry" && "$file_expiry" -le "$((now * 1000))" ]]; then
+            keychain_json=$(security find-generic-password -s "$service" -w 2>/dev/null || true)
+            keychain_expiry=$(print -r -- "$keychain_json" | jq -r 'select(.claudeAiOauth.accessToken | strings | length > 0) | .claudeAiOauth.expiresAt | numbers' 2>/dev/null)
+            if [[ -n "$keychain_expiry" && "$keychain_expiry" -gt "$file_expiry" ]]; then
+                credentials_json="$keychain_json"
+            fi
+        fi
     fi
     print -r -- "$credentials_json"
 }

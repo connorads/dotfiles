@@ -163,6 +163,38 @@ EOF
   [ -f "$HOME/.cache/claude-usage.json" ]
 }
 
+@test "a newer Keychain session resumes collection when the credential file has expired" {
+  mkdir -p "$HOME/.claude"
+  printf '%s\n' '{"claudeAiOauth":{"accessToken":"old-file-token","expiresAt":111}}' >"$HOME/.claude/.credentials.json"
+  seed_auth_paused_meta 111
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"new-keychain-token","expiresAt":4102444800000}}'
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo '2.1.322 (Claude Code)'
+EOF
+  write_stub curl <<'EOF'
+#!/usr/bin/env bash
+hdr='' out='' prev='' auth=''
+for arg in "$@"; do
+  case "$prev" in
+    -D) hdr="$arg" ;;
+    -o) out="$arg" ;;
+    -H) [[ "$arg" == Authorization:* ]] && auth="$arg" ;;
+  esac
+  prev="$arg"
+done
+[[ "$auth" == 'Authorization: Bearer new-keychain-token' ]] || exit 7
+printf 'HTTP/1.1 200 OK\r\n\r\n' >"$hdr"
+printf '%s\n' '{"seven_day":{"utilization":12}}' >"$out"
+EOF
+  run_zsh_function "$CLAUDE_USAGE"
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.cache/claude-usage.json" ]
+}
+
 @test "401 pauses auth refresh instead of exponential backoff" {
   seed_meta 0 0 1700000000
   write_stub security <<'EOF'

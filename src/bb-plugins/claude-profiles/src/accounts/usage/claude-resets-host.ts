@@ -26,10 +26,10 @@ export async function readClaudeResets(home: string, profileId: string, refresh:
 }
 
 export function collectClaudeResets(home: string, profileId: string, signal: AbortSignal): Promise<boolean> {
-  const path = [join(home, '.local/bin'), join(home, '.nix-profile/bin'),
+  const path = [join(home, '.local/bin'), join(home, '.local/share/mise/shims'), join(home, '.nix-profile/bin'),
     `/etc/profiles/per-user/${basename(home)}/bin`, '/run/current-system/sw/bin', process.env.PATH ?? '/usr/bin:/bin'].join(':');
   return new Promise(resolve => {
-    execFile('zsh', [join(home, '.config/zsh/functions/claude-usage'), ...(profileId === 'default' ? [] : ['--profile', profileId])],
+    execFile('zsh', ['-f', join(home, '.config/zsh/functions/claude-usage'), ...(profileId === 'default' ? [] : ['--profile', profileId])],
       { signal, timeout: 25_000, maxBuffer: 64 * 1024, env: { ...process.env, PATH: path } }, error => resolve(error === null));
   });
 }
