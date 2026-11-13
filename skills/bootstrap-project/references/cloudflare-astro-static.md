@@ -24,6 +24,12 @@ Keep Astro in static output mode. Do not add `@astrojs/cloudflare`. Add a
 Workers assets-only `wrangler.jsonc` whose assets directory is `./dist`, then
 use native scripts for build and Wrangler deployment.
 
+This is the one Cloudflare recipe on Wrangler. As of 2026-11-13 the `cf` docs
+state that Astro 6 and later does not build with `cf` during its beta. Move
+this recipe to `cf init .` once the
+[cf first Worker page](https://developers.cloudflare.com/cf/get-started/first-worker/)
+drops that limitation.
+
 Astro's checker still depends on TypeScript APIs removed in TypeScript 7.
 Select TypeScript 6 for `astro check` until Astro's language tools declare
 TypeScript 7 support. Recheck this constraint against the installed source

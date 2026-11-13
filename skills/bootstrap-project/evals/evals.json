@@ -106,6 +106,19 @@
         "Builds and checks the platform shell without adding RPC, Durable Object or WebSocket product design"
       ],
       "history": "Alchemy local development can create real cloud resources and its account-wide state infrastructure; the old reference incorrectly called it cloud-free."
+    },
+    {
+      "id": 9,
+      "name": "cloudflare-scaffold-uses-cf-not-wrangler",
+      "prompt": "new tanstack start app on cloudflare called tidepool. use the new cf cli, not wrangler. local only, don't deploy",
+      "assertions": [
+        "Selects cloudflare-tanstack-start and scaffolds with TanStack's CLI without its Cloudflare deployment add-on",
+        "Adds Cloudflare with cf init . and does not run C3 or cf migrate",
+        "Leaves no wrangler.jsonc, wrangler.toml or wrangler dependency in the project",
+        "Rehearses with the deploy script's --dry-run and does not run a real deploy",
+        "Pins cf and @cloudflare/vite-plugin to exact versions and ignores .cloudflare/"
+      ],
+      "history": "In 2026-11 the recipe still routed to C3 and Wrangler. A real project went C3 then cf migrate; a spike showed that path keeps wrangler.jsonc beside cloudflare.config.ts and leaves deploy on wrangler."
     }
   ],
   "trigger_evals": [
@@ -114,6 +127,7 @@
     {"prompt": "spin up a Rust command line tool", "should_trigger": true},
     {"prompt": "harden this half-finished Vite repo", "should_trigger": true},
     {"prompt": "create an Astro site on Cloudflare", "should_trigger": true},
+    {"prompt": "set up a new cloudflare worker api with cf init and my usual repo setup", "should_trigger": true},
     {"prompt": "add a search screen to this existing React app", "should_trigger": false},
     {"prompt": "deploy the existing worker that is already configured", "should_trigger": false},
     {"prompt": "design the domain model before we choose a stack", "should_trigger": false},

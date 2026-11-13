@@ -19,6 +19,7 @@ for arg in "$@"; do
 done
 case "$*" in
 	*'create vite@latest'*) mkdir -p "$3/src"; printf '{}\n' > "$3/package.json" ;;
+	*'@tanstack/cli@latest create'*) mkdir -p "$4/src"; printf '{}\n' > "$4/package.json" ;;
 	*'create-foldkit-app'*)
 		while [ "$#" -gt 0 ]; do
 			if [ "$1" = --name ]; then mkdir -p "$2/src"; printf '{}\n' > "$2/package.json"; break; fi
@@ -51,7 +52,7 @@ EOF
 @test "all recipes remain bounded and deployment-free" {
 	run "$SCRIPT" --output "$BATS_TEST_TMPDIR/matrix"
 	[ "$status" -eq 0 ]
-	[ "$(grep -c '^' "$LOG")" -eq 10 ]
+	[ "$(grep -c '^' "$LOG")" -eq 11 ]
 	! grep -Eqi 'deploy|alchemy dev|gh repo' "$LOG"
 	[ "$(printf '%s\n' "$output" | wc -l | tr -d ' ')" -le 15 ]
 }

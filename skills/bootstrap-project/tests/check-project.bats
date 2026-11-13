@@ -70,3 +70,19 @@ EOF
 	run env PATH="$BATS_TEST_TMPDIR/bin:/usr/bin:/bin" "$SCRIPT" --root "$ROOT" --recipe python-library
 	[ "$status" -eq 0 ]
 }
+
+@test "accepts a cf-configured Cloudflare Worker" {
+	printf 'export default {};\n' >"$ROOT/cloudflare.config.ts"
+	run "$SCRIPT" --root "$ROOT" --recipe cloudflare-worker
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"PASS cloudflare-worker"* ]]
+}
+
+@test "rejects Wrangler config beside cloudflare.config.ts" {
+	printf 'export default {};\n' >"$ROOT/cloudflare.config.ts"
+	printf '{}\n' >"$ROOT/wrangler.jsonc"
+	mkdir -p "$ROOT/src/routes"
+	run "$SCRIPT" --root "$ROOT" --recipe cloudflare-tanstack-start
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"remove wrangler.jsonc"* ]]
+}

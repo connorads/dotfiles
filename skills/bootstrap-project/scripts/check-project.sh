@@ -49,7 +49,7 @@ done
 }
 
 case "$recipe" in
-cloudflare-tanstack-start | cloudflare-astro-static | cloudflare-foldkit-alchemy | vite-react-ts | python-app | python-library | rust-cli | rust-library | typescript-cli | typescript-library) ;;
+cloudflare-worker | cloudflare-tanstack-start | cloudflare-astro-static | cloudflare-foldkit-alchemy | vite-react-ts | python-app | python-library | rust-cli | rust-library | typescript-cli | typescript-library) ;;
 *)
 	printf 'ERROR unknown recipe: %s\n' "$recipe" >&2
 	exit 2
@@ -136,9 +136,12 @@ rust-*)
 esac
 
 case "$recipe" in
-cloudflare-tanstack-start)
-	need_file wrangler.jsonc 'retain the generated Workers configuration'
-	need_dir src/routes 'retain TanStack file routes'
+cloudflare-worker | cloudflare-tanstack-start)
+	need_file cloudflare.config.ts 'configure the Worker for the cf CLI'
+	for f in wrangler.jsonc wrangler.json wrangler.toml; do
+		[ ! -f "$root/$f" ] || fail "remove $f - cloudflare.config.ts is the only Workers configuration"
+	done
+	case "$recipe" in cloudflare-tanstack-start) need_dir src/routes 'retain TanStack file routes' ;; esac
 	;;
 cloudflare-astro-static)
 	need_file astro.config.mjs 'retain Astro configuration'

@@ -39,6 +39,7 @@ Read exactly one recipe before invoking its scaffolder.
 
 | Intent | Recipe |
 |---|---|
+| Cloudflare Worker or API without a frontend framework | [references/cloudflare-worker.md](references/cloudflare-worker.md) |
 | TanStack Start on Cloudflare Workers | [references/cloudflare-tanstack-start.md](references/cloudflare-tanstack-start.md) |
 | Static Astro on Cloudflare Workers | [references/cloudflare-astro-static.md](references/cloudflare-astro-static.md) |
 | Foldkit, minimal Effect Worker and Alchemy | [references/cloudflare-foldkit-alchemy.md](references/cloudflare-foldkit-alchemy.md) |
@@ -49,6 +50,10 @@ Read exactly one recipe before invoking its scaffolder.
 | Rust library | [references/rust-library.md](references/rust-library.md) |
 | TypeScript CLI | [references/typescript-cli.md](references/typescript-cli.md) |
 | TypeScript library | [references/typescript-library.md](references/typescript-library.md) |
+
+Cloudflare recipes use the `cf` CLI and `cloudflare.config.ts`, except static
+Astro. A new project never goes through C3 then `cf migrate`; that leaves two
+configuration sources and a Wrangler deploy script.
 
 A recipe is platform wiring, not product architecture. Stop before choosing
 databases, authentication, domain modules, RPC surfaces or application

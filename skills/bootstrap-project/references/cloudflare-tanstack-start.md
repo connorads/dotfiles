@@ -2,70 +2,99 @@
 
 Recipe ID: `cloudflare-tanstack-start`
 
-Last verified: 2026-09-04 against Create Cloudflare 2.72.3 and the generated
-TanStack Start project.
+Last verified: 2026-11-13 against `@tanstack/cli` 0.72.16, `cf` 1.0.0-beta.28
+and `@cloudflare/vite-plugin` 2.0.0-beta.v.12.
 
 ## Scaffold
 
-Preselect Node 24 and pnpm 11. Run exactly:
+Preselect Node 24 and pnpm. Scaffold with TanStack's CLI, without its
+deployment add-on:
 
 ```sh
-pnpm create cloudflare@latest <name> --framework=tanstack-start \
-  --platform=workers --no-deploy --no-git --no-open
+pnpm dlx @tanstack/cli@<version> create <name> --framework React \
+  --package-manager pnpm --no-git --no-intent --no-examples \
+  --toolchain biome --non-interactive --no-install
 ```
 
-Do not add `-y` or `--accept-defaults`. C3 2.72.3 still exits successfully but
-creates the Hello World Worker instead of TanStack Start. Verify TanStack and
-React dependencies in `package.json` before accepting the scaffold.
+`--toolchain` is the linter and formatter choice; `mechanical-enforcement`
+owns it. Do not add `--deployment cloudflare`. That add-on writes
+`wrangler.jsonc`, a `wrangler` devDependency and a `wrangler deploy` script.
 
-C3 delegates to TanStack's current CLI and then adds Cloudflare wiring. The
-observed scaffold has no `AGENTS.md`, tests, test script or Vitest dependency.
-Do not preserve earlier workarounds for those absent files.
+Do not use C3 (`create-cloudflare`) here: it still writes a Wrangler project
+for TanStack.
+
+Install, commit the untouched scaffold, then add Cloudflare:
+
+```sh
+pnpm install
+pnpm add -D -E cf@<version>
+CI=1 pnpm exec cf init . --package-manager pnpm
+```
+
+`CI=1` makes autoconfig apply its edits without prompting. `cf init --dry-run`
+validates arguments only and shows no plan; review `git diff` instead. Never run
+`cf init`, `cf dev`, `cf build` or `cf deploy` in a directory that has a
+Wrangler config: `cf migrate` owns that case.
 
 ## Generated contract
 
-- `wrangler.jsonc` selects Workers, `nodejs_compat` and the TanStack server
-  entry.
-- `vite.config.ts` composes TanStack Start with the Cloudflare Vite plugin.
-- Routes live under `src/routes/`; `src/routeTree.gen.ts` is generated and may
-  need an explicit formatter or linter exclusion.
-- A build emits `dist/client` and `dist/server/wrangler.json`. The generated
-  Wrangler file is the effective deployment configuration and supplies the
-  static assets directory.
+`cf init .` produces:
 
-C3 may print a current compatibility date while retaining an older date in
-`wrangler.jsonc`. Inspect the file and review intervening compatibility notes
-before changing it.
+- `cloudflare.config.ts` from `cf/config`, with the TanStack server entry as
+  the Worker entrypoint. It is the only deployment configuration.
+- The Cloudflare Vite plugin in `vite.config.ts`, with
+  `viteEnvironment: { name: "ssr" }`, and an exact beta
+  `@cloudflare/vite-plugin` devDependency.
+- `.cloudflare/types` in the `tsconfig.json` include. The `**/*.ts` glob skips
+  dot-directories, so the include is required.
+- `deploy: cf deploy` and `cf-typegen: cf workers types` scripts.
+
+`cf build` writes `.cloudflare/output/` and `.cloudflare/types/index.d.ts`.
 
 ## House delta
 
-- Add a real test and native test script. An empty or absent test runner is not
-  a gate.
-- Review generated `pnpm-workspace.yaml#allowBuilds` entries. The observed
-  scaffold approved esbuild, lightningcss, sharp and workerd. Do not inherit
-  those decisions without the supply-chain owner.
-- Remove obsolete `pnpm.onlyBuiltDependencies` metadata when the current pnpm
-  reports it as ignored.
-- Add numeric mise selectors, exact `packageManager`, lockfile, canonical pnpm
-  lifecycle checker and hk wiring.
+- Rewrite scripts to the `cf` entrypoints: `dev: cf dev`, `build: cf build`,
+  `typecheck: cf workers types && tsc --noEmit`, `deploy: cf deploy`. Drop
+  `preview`, `cf-typegen` and `generate-routes`; the last runs `vite build`
+  outside `cf`. `cf dev` runs Vite itself, so the `dev` script does not
+  recurse.
+- Commit `src/routeTree.gen.ts` after the first build. Typecheck fails with
+  TS2307 on a checkout without it, and the build regenerates it.
+- Add `.cloudflare/` to `.gitignore`; `cf init` does not.
+- Run the project formatter over `vite.config.ts`. `cf init` appends its
+  plugin without following the file's style and drops the final newline.
+- Remove the dead `pnpm.onlyBuiltDependencies` block from `package.json`;
+  `pnpm-workspace.yaml#allowBuilds` holds the decisions. Review each
+  `allowBuilds` entry with `supply-chain-hardening`.
+- Pin `@tanstack/*` dependencies; the scaffold leaves them on `latest`. Use
+  `pnpm add -E` with the installed versions.
+- `cf` and `@cloudflare/vite-plugin` 2.x are prereleases, and `cf` publishes
+  them on `latest`. Keep both exact and upgrade them deliberately.
+- Add a real test and native test script, numeric mise selectors, exact
+  `packageManager`, lockfile, canonical pnpm lifecycle checker and hk wiring.
+
+`cf dev` accepts no host or port arguments. It serves Vite on
+`localhost:5173`, which satisfies the loopback rule.
 
 ## Proof
 
-Run native lint, test and build checks. Build before the direct Wrangler
-rehearsal because its generated entry does not exist beforehand:
-
 ```sh
 pnpm run build
-pnpm exec wrangler deploy --dry-run
+pnpm run typecheck
+pnpm run deploy --dry-run
 ```
 
-`pnpm run deploy --dry-run` is also a safe generated-script rehearsal at the
-verified versions. Bare `pnpm deploy --dry-run` is not the package script and
-errors under pnpm 11.25.0.
+The dry run builds and validates without credentials or API calls. For the
+local smoke, run `pnpm run dev` and request `/` for a 200. `cf dev` logs a
+failed fetch of the `Request.cf` object when offline and continues.
+
+`cf build --mode` fails for TanStack Start (cloudflare/cf#532, open). Use
+environment variables, not modes, until it closes.
 
 After an authorised deployment, smoke the public application route. A green
-Wrangler command alone is insufficient.
+`cf deploy` alone is insufficient.
 
-Sources: [Cloudflare TanStack Start guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/),
-[automatic configuration](https://developers.cloudflare.com/workers/framework-guides/automatic-configuration/),
-[Wrangler commands](https://developers.cloudflare.com/workers/wrangler/commands/workers/).
+Sources: [cf first Worker and existing apps](https://developers.cloudflare.com/cf/get-started/first-worker/),
+[cloudflare.config.ts](https://developers.cloudflare.com/cf/projects/cloudflare-config/),
+[Wrangler users](https://developers.cloudflare.com/cf/wrangler/),
+[TanStack CLI](https://tanstack.com/start/latest/docs/framework/react/quick-start).

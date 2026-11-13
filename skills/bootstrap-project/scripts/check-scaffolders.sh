@@ -3,7 +3,7 @@
 
 set -u
 
-recipes='cloudflare-tanstack-start cloudflare-astro-static cloudflare-foldkit-alchemy vite-react-ts python-app python-library rust-cli rust-library typescript-cli typescript-library'
+recipes='cloudflare-worker cloudflare-tanstack-start cloudflare-astro-static cloudflare-foldkit-alchemy vite-react-ts python-app python-library rust-cli rust-library typescript-cli typescript-library'
 selected=
 output=
 
@@ -65,9 +65,13 @@ run_recipe() {
 	dest="$output/$id"
 	log="$output/$id.log"
 	case "$id" in
+	cloudflare-worker)
+		command -v pnpm >/dev/null 2>&1 || return 2
+		pnpm dlx cf@latest init "$dest" --package-manager pnpm --no-install >"$log" 2>&1
+		;;
 	cloudflare-tanstack-start)
 		command -v pnpm >/dev/null 2>&1 || return 2
-		pnpm create cloudflare@latest "$dest" --framework=tanstack-start --platform=workers --no-deploy --no-git --no-open >"$log" 2>&1
+		(cd "$output" && pnpm dlx @tanstack/cli@latest create "$id" --framework React --package-manager pnpm --no-git --no-intent --no-examples --toolchain biome --non-interactive --no-install) >"$log" 2>&1
 		;;
 	cloudflare-astro-static)
 		command -v pnpm >/dev/null 2>&1 || return 2
