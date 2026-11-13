@@ -18,12 +18,11 @@ fetch_url() {
 check_download() {
   download_file=${1:-$tmp}
   if [ ! -f "$download_file" ]; then
-    rm -f "$tmp.sha256"
     echo "impeccable: download completed but the file was removed before execution: $url; check your antivirus quarantine or logs. Refusing to continue; do not disable protection." >&2
     exit 127
   fi
   if [ ! -s "$download_file" ]; then
-    rm -f "$download_file" "$tmp.sha256"
+    rm -f "$download_file"
     echo "impeccable: downloaded file is empty: $url; refusing the unverified download" >&2
     exit 127
   fi
@@ -34,10 +33,20 @@ if [ -n "$probing" ]; then
 fi
 if [ -n "$version" ] && [ "$os" != unknown ] && [ "$arch" != unknown ]; then
   base="${IMPECCABLE_DOWNLOAD_BASE:-https://github.com/pbakaus/impeccable/releases/download}"
-  asset="impeccable-$os-$arch"
-  [ "$os" = windows ] && asset="$asset.exe"
   url="$base/engine-v$version/$asset"
+  read_expected
+  # Fail closed before any network traffic or cache write.
+  if [ -z "$expected" ] && [ -z "$expected_x64" ]; then
+    echo "impeccable: no checksum for engine $version ($asset) in $manifest; refusing the unverified download" >&2
+    exit 127
+  fi
   tmp="$cache_root/bin/$version/.impeccable.part.$$"
+  # An interrupted download (Ctrl-C, a hook timeout) would otherwise leave the
+  # PID-named staging file behind for good. The handlers must exit explicitly.
+  cleanup() { rm -f "$tmp" 2>/dev/null || :; }
+  trap 'cleanup; exit 129' HUP
+  trap 'cleanup; exit 130' INT
+  trap 'cleanup; exit 143' TERM
   if ! mkdir -p "$cache_root/bin/$version" 2>/dev/null; then
     echo "impeccable: engine $version is not installed; cannot create cache directory: $cache_root/bin/$version" >&2
     setup_help
@@ -51,40 +60,22 @@ if [ -n "$version" ] && [ "$os" != unknown ] && [ "$arch" != unknown ]; then
     exit 127
   fi
   fetched=0
-  if fetch_url "$url"; then
+  if [ -n "$expected" ] && fetch_url "$url"; then
     fetched=1
-  elif [ "$os" = windows ] && [ "$arch" = arm64 ]; then
+  elif [ -n "$expected_x64" ]; then
     # Windows on ARM runs x64 binaries; fall back when no arm64 asset exists.
     url="$base/engine-v$version/impeccable-windows-x64.exe"
+    expected=$expected_x64
     fetch_url "$url" && fetched=1
   fi
   if [ "$fetched" = 1 ]; then
     check_download
-    # Fail closed: a freshly downloaded binary runs only after verifying
-    # against its .sha256 sidecar. A sidecar that cannot be fetched, or a
-    # machine with no sha256 tool, refuses the download instead of exec'ing
-    # an unverified binary. (A binary already on PATH or in the cache that
-    # passes engine-probe is unaffected.)
-    sidecar_ok=0
-    if command -v curl >/dev/null 2>&1; then
-      curl -fsSL --retry 2 -o "$tmp.sha256" "$url.sha256" 2>/dev/null && sidecar_ok=1
-    elif command -v wget >/dev/null 2>&1; then
-      wget -q -O "$tmp.sha256" "$url.sha256" 2>/dev/null && sidecar_ok=1
-    fi
+    # No sha256 tool refuses the download too.
+    hash_file "$tmp"
     check_download
-    expected=""
-    [ "$sidecar_ok" = 1 ] && expected=$(cut -d' ' -f1 < "$tmp.sha256")
-    actual=""
-    if command -v shasum >/dev/null 2>&1; then
-      if digest=$(shasum -a 256 "$tmp" 2>/dev/null); then actual=${digest%% *}; fi
-    elif command -v sha256sum >/dev/null 2>&1; then
-      if digest=$(sha256sum "$tmp" 2>/dev/null); then actual=${digest%% *}; fi
-    fi
-    check_download
-    rm -f "$tmp.sha256"
-    if [ -z "$expected" ] || [ -z "$actual" ]; then
+    if [ -z "$actual" ]; then
       rm -f "$tmp"
-      echo "impeccable: cannot verify $url against $url.sha256 (sidecar unavailable or hashing failed); refusing the unverified download" >&2
+      echo "impeccable: cannot verify $url (no sha256 tool, or hashing failed); refusing the unverified download" >&2
       exit 127
     fi
     if [ "$actual" != "$expected" ]; then
@@ -107,6 +98,8 @@ if [ -n "$version" ] && [ "$os" != unknown ] && [ "$arch" != unknown ]; then
       exit 127
     fi
     check_download "$cached"
+    cached_size
+    { echo "$actual $size" > "$cached.verified"; } 2>/dev/null || :
     exec "$cached" "$@"
   fi
   rm -f "$tmp" 2>/dev/null

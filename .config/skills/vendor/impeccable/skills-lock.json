@@ -3,10 +3,10 @@
   "skills": {
     "impeccable": {
       "source": "pbakaus/impeccable",
-      "ref": "skill-v4.3.1",
+      "ref": "skill-v4.8.2",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "0c186575780acff90578f7ee166651165d663bab718e8df5875f21d4fcffa708"
+      "computedHash": "473b21f5816f4a655e0e481c70c73c02957e1cc08397066b20a69f6436bee7cf"
     }
   }
 }

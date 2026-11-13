@@ -1,1 +1,1 @@
-- **Tool version.** Refresh the vendored skill through the catalogue maintenance workflow, review upstream changes, and replay local patches. Never run an upstream self-updater during a design task.
+- **Tool version.** Refresh the vendored skill through the catalogue maintenance workflow, review upstream changes, and replay local patches. Never run an upstream self-updater or a harness plugin-manager update during a design task.
