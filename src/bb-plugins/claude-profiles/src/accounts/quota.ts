@@ -14,6 +14,8 @@ export type Usage = z.infer<typeof usageSchema>;
 const rawUsage = z.object({ rate_limits_available: z.boolean().optional(), rate_limits: z.record(z.string(), z.unknown()).nullable().optional() });
 const rawWindow = z.object({ utilization: z.number().finite().nonnegative(), resets_at: z.string().nullable().optional(),
   limit_dollars: z.number().finite().positive().nullable().optional(), used_dollars: z.number().finite().nonnegative().nullable().optional() });
+const scopedLimit = z.object({ kind: z.literal('weekly_scoped'), percent: z.number().finite().nonnegative(),
+  resets_at: z.string().nullable().optional(), scope: z.object({ model: z.object({ display_name: z.string().trim().min(1) }) }) });
 // Claude names new allowances with internal codenames, so only documented windows keep their key as a label.
 function label(id: string, credit: boolean): string {
   if (id === 'five_hour') return 'Five hours';
@@ -33,6 +35,16 @@ export function parseUsage(input: unknown): Usage {
       const cost = limit != null && used != null ? { usedUsdCents: used * 100, limitUsdCents: limit * 100 } : null;
       windows.push({ id, label: label(id, cost !== null), usedPercent: window.data.utilization,
         resetsAt: window.data.resets_at ?? null, cost });
+    }
+    // Some model allowances, such as Fable, appear only as scoped entries in this list, never as a `seven_day_*` key.
+    const limits = z.array(z.unknown()).catch([]).parse(parsed.data.rate_limits?.limits ?? []);
+    for (const entry of limits) {
+      const limit = scopedLimit.safeParse(entry);
+      if (!limit.success) continue;
+      const name = limit.data.scope.model.display_name;
+      const id = `seven_day_${name.toLowerCase()}`;
+      if (windows.some(window => window.id === id)) continue;
+      windows.push({ id, label: name, usedPercent: limit.data.percent, resetsAt: limit.data.resets_at ?? null, cost: null });
     }
   }
   // A signed-out profile also answers with no windows; the caller tells the two apart with the login status.

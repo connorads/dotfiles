@@ -39,3 +39,18 @@ test('labels unrecognised limits generically instead of exposing internal names'
   } });
   assert.deepEqual(result.windows.map(w => [w.label, w.cost]), [['Five hours', null], ['Other limit', null]]);
 });
+test('reads model-scoped weekly limits that Claude reports only in its limits list', () => {
+  const result = parseUsage({ rate_limits_available: true, rate_limits: {
+    seven_day: { utilization: 8, resets_at: '2026-11-14T04:00:00Z' },
+    seven_day_opus: { utilization: 3, resets_at: null },
+    model_scoped: [{ display_name: 'Fable', utilization: 9, resets_at: '2026-11-14T04:00:00Z' }],
+    limits: [
+      { kind: 'weekly_all', percent: 8, resets_at: '2026-11-14T04:00:00Z', scope: null },
+      { kind: 'weekly_scoped', percent: 9, resets_at: '2026-11-14T04:00:00Z', scope: { model: { id: null, display_name: 'Fable' } } },
+      { kind: 'weekly_scoped', percent: 3, resets_at: null, scope: { model: { id: null, display_name: 'Opus' } } },
+      { kind: 'weekly_scoped', percent: null, scope: { model: { display_name: 'Sonnet' } } },
+    ],
+  } });
+  assert.deepEqual(result.windows.map(w => [w.id, w.label, w.usedPercent]),
+    [['seven_day', 'Seven days', 8], ['seven_day_opus', 'seven day opus', 3], ['seven_day_fable', 'Fable', 9]]);
+});
