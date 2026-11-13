@@ -1,9 +1,11 @@
 import { execFile } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { homedir, userInfo } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
+import { NativeArtifacts } from './src/artifacts.ts';
 import { CHANGED, rpcContract } from './contracts.ts';
 import { isProfileName, OFF, resolveChoice, type Choice } from './src/choice.ts';
 import { policyKey, type Access, type Overrides } from './src/policy.ts';
@@ -20,14 +22,16 @@ export default async function plugin(bb: BbPluginApi) {
     profileRoot: { type: 'string', label: 'Claude profile root', default: '~/.claude-profiles/code',
       description: 'Each folder inside is one CLAUDE_CONFIG_DIR, such as ~/.claude-profiles/code/<name>.' },
     executable: { type: 'string', label: 'Native Claude executable', default: 'claude',
-      description: 'Runs `claude mcp list` in a profile to renew its login. It makes no model request.' },
+      description: 'Runs `claude mcp list` to renew connector logins and `claude mcp serve` for artefact tools. No model request.' },
   });
   const initial = await settings.get();
   let claudePath = initial.executable || 'claude';
+  const profilesRoot = expandHome(initial.profileRoot || '~/.claude-profiles/code');
   const service = new ConnectorService({
     run, fetch, now: Date.now, user: userInfo().username,
+    artifacts: new NativeArtifacts({ executable: () => claudePath, configDir: profile => join(profilesRoot, profile) }),
     listDir: async path => (await readdir(path, { withFileTypes: true })).filter(d => d.isDirectory()).map(d => d.name),
-    profilesRoot: expandHome(initial.profileRoot || '~/.claude-profiles/code'),
+    profilesRoot,
     claudePath: () => claudePath,
   });
 

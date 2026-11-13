@@ -34,3 +34,35 @@ flowchart LR
 - The connector list and the MCP proxy are undocumented Anthropic endpoints. They can
   change without notice. Anthropic's credential policy covers OAuth use outside Claude
   Code, so keep this personal and local.
+
+## Claude Code artefacts
+
+The `Claude Code Artifacts` connector exposes the available native artefact tools
+through the selected profile's `claude mcp serve`. These can include `Artifact`,
+`ArtifactComments` and `ArtifactData`. Some native configurations combine them in `Artifact`.
+Claude Code handles authentication and account policy. No model request is made.
+
+```sh
+bb claude-connectors tools "Claude Code Artifacts"
+bb claude-connectors allow "Claude Code Artifacts" Artifact
+```
+
+Each tool combines read and write actions, so each starts off.
+Allow only the tools you need. The agent must confirm content before writes.
+Use `claude_connectors_list` with this connector to read the native input schemas.
+Publish inputs use absolute local file paths. Files must exist on the BB server's machine.
+
+```mermaid
+flowchart LR
+  Agent[BB agent] --> Policy[Connector access controls]
+  Policy --> Native[Claude Code MCP server]
+  Native --> Profile[Selected profile]
+```
+
+Each request starts and closes its own native process. Background watches and
+comment notifications do not persist between calls. Calls time out after two minutes.
+The adapter allows only these artefact tool names, even when the native server lists other tools.
+
+The adapter uses the undocumented `CLAUDE_CODE_ARTIFACT=1` switch.
+Claude Code settings and account restrictions still apply. Native tool names
+and schemas depend on the installed Claude Code version.

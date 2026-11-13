@@ -1376,3 +1376,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: provider-issue
 - Evidence: `bb updates status` reports Claude Code 2.1.322; `bb provider models claude-code` returns Fable 5.1.
   The same CLI's initialisation resolves `fable` to `claude-fable-5-2`, and an explicit model request succeeds.
+
+### Native Claude Code artefacts are absent from account connector discovery
+
+- Found: 2026-11-13, Claude Connectors, Claude Code 2.1.322
+- Wanted: Use Claude Code artefact tools from any BB provider with the selected account.
+- Gap: Account connector discovery omits built-in tools. Artefacts default off in SDK and MCP-server contexts.
+  The native artefact HTTP MCP endpoint returned HTTP 404 during a live discovery probe.
+- Workaround: [Native adapter](../claude-connectors/src/artifacts.ts) runs `claude mcp serve` with `CLAUDE_CODE_ARTIFACT=1`.
+  It filters discovery and calls to three artefact tools. Native Claude Code owns authentication and account restrictions.
+  Each request closes its process, so background watches do not persist.
+- Ask: Document a supported native artefact MCP interface and its enablement switch.
+- Status: open. Native discovery and read-only listing verified without a model request.
+- Category: provider
+- Evidence: Claude Code 2.1.322; [adapter tests](../claude-connectors/src/artifacts.test.ts).

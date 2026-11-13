@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { ARTIFACT_CONNECTOR, type Artifacts } from './artifacts.ts';
 import { ConnectorSession, HttpError, listConnectors, type Connector, type FetchLike, type Tool } from './mcp.ts';
 import { accessFor, type Access, type Overrides } from './policy.ts';
 import { CONNECTOR_SCOPE, keychainService, needsRefresh, parseToken, type Token } from './token.ts';
@@ -7,6 +8,7 @@ export type Run = (file: string, args: string[], options: { env?: NodeJS.Process
 export type ListDir = (path: string) => Promise<string[]>;
 
 export type Deps = {
+  artifacts?: Artifacts;
   run: Run;
   listDir: ListDir;
   fetch: FetchLike;
@@ -100,13 +102,16 @@ export class ConnectorService {
     const hit = this.#connectors.get(profile);
     if (hit && this.deps.now() - hit.at < TTL_MS) return hit.value;
     const value = await this.#authed(profile, async () => listConnectors(this.deps.fetch, await this.token(profile), signal));
+    if (this.deps.artifacts) value.push(ARTIFACT_CONNECTOR);
     this.#connectors.set(profile, { value, at: this.deps.now() });
     return value;
   }
 
   async connector(profile: string, nameOrId: string, signal?: AbortSignal): Promise<Connector> {
-    const all = await this.connectors(profile, signal);
     const wanted = nameOrId.trim().toLowerCase();
+    if (this.deps.artifacts && (wanted === ARTIFACT_CONNECTOR.id || wanted === ARTIFACT_CONNECTOR.name.toLowerCase()))
+      return ARTIFACT_CONNECTOR;
+    const all = await this.connectors(profile, signal);
     const found = all.find(c => c.id === nameOrId || c.name.toLowerCase() === wanted);
     if (!found) throw new UserFacingError(`No connector "${nameOrId}" in profile "${profile}". Available: ${all.map(c => c.name).join(', ')}.`);
     return found;
@@ -126,7 +131,9 @@ export class ConnectorService {
     const key = `${profile}\u0000${connector.id}`;
     const hit = this.#tools.get(key);
     if (hit && this.deps.now() - hit.at < TTL_MS) return hit.value;
-    const value = await this.#authed(profile, () => this.#session(profile, connector).listTools(signal));
+    const value = connector.id === ARTIFACT_CONNECTOR.id && this.deps.artifacts
+      ? await this.deps.artifacts.tools(profile, signal)
+      : await this.#authed(profile, () => this.#session(profile, connector).listTools(signal));
     this.#tools.set(key, { value, at: this.deps.now() });
     return value;
   }
@@ -149,6 +156,8 @@ export class ConnectorService {
     if (!tool) throw new UserFacingError(`${connector.name} has no tool "${toolName}". Call claude_connectors_list with this connector to see its tools.`);
     if (accessFor(connector.name, tool, overrides) !== 'allow')
       throw new UserFacingError(`${connector.name}/${toolName} is turned off in Claude Connectors. Ask the person to allow it: bb claude-connectors allow "${connector.name}" ${toolName}`);
+    if (connector.id === ARTIFACT_CONNECTOR.id && this.deps.artifacts)
+      return this.deps.artifacts.call({ profile, tool: toolName, args, signal });
     return this.#authed(profile, () => this.#session(profile, connector).callTool(toolName, args, signal));
   }
 }

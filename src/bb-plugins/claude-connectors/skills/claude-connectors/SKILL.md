@@ -25,3 +25,12 @@ A thread that was off gets the tools from its next turn.
 The profile must be signed in with a full claude.ai login in Claude Code.
 The plugin runs `claude mcp list` in that profile to renew the login. That
 command makes no model request.
+
+For Claude Code artefacts, list the `Claude Code Artifacts` connector.
+It exposes native `Artifact` tools through the Claude Code MCP server.
+`ArtifactComments` and `ArtifactData` appear when the native server provides them.
+Some native configurations combine their actions in `Artifact`.
+Each tool combines reads and writes, so all start off.
+Ask the person to allow the required tool. Read its native schema before calling.
+Use absolute file paths for publishing. Calls make no model request.
+Background watches and comment notifications do not persist between calls.

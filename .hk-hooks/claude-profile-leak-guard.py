@@ -45,6 +45,7 @@ GENERIC_PATTERN_PATHS = {
     "src/bb-plugins/claude-profiles/src/accounts/claude.ts",
     "src/bb-plugins/claude-profiles/src/accounts/claude.test.ts",
     "src/bb-plugins/claude-connectors/src/service.ts",
+    "src/bb-plugins/claude-connectors/src/artifacts.ts",
 }
 
 TOKEN_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]+")
