@@ -435,6 +435,25 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: @thread:thr_vektgz87sg, @thread:thr_6dq5m7peea, commit `439f9fb5`
 
+### Claude usage for a non-default config dir
+
+- Found: 2026-11-13, claude-profiles, SDK 0.6.49
+- Wanted: every Claude account in the usage overlay shows the same limits, including
+  model-scoped weekly allowances such as Fable, as soon as Claude adds them.
+- Gap: `provider-claude-code` normalises `get_usage` into provider-usage windows,
+  including `rate_limits.limits[]` entries of kind `weekly_scoped`. It reads only the
+  native login. No RPC or SDK export accepts a `CLAUDE_CONFIG_DIR`. `account-pool` holds
+  a second private copy of the parser.
+- Workaround: claude-profiles runs `get_usage` itself and keeps its own parser:
+  [quota.ts](../claude-profiles/src/accounts/quota.ts). It drifted: Team seats showed no
+  Fable row until it learnt `weekly_scoped`. The parser now names reported fields it
+  neither reads nor ignores, and the overlay shows them under the account.
+- Ask: `provider-claude-code` `provider-usage.v1.getResource` for a resource that names
+  a config dir, or an SDK export of its usage normaliser.
+- Status: open
+- Category: sdk-gap
+- Evidence: commit `98319956`, `claude-profiles/src/accounts/quota.ts`
+
 ### Per-request Claude usage and 5m/1h cache-write split
 
 - Found: 2026-10-10, cache-hits, SDK 0.6.15 (rechecked 0.6.37)
