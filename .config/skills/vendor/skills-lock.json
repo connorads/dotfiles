@@ -137,6 +137,20 @@
       "skillPath": "skills/gh-stack/SKILL.md",
       "computedHash": "e54bf50370987f13ca2803b3be829f36350b68a79dc36ffd3b27350bc6d2fde1"
     },
+    "hairline-adopt": {
+      "source": "lucasmarkes/hairline",
+      "ref": "v0.5.1",
+      "sourceType": "github",
+      "skillPath": "skills/hairline-adopt/SKILL.md",
+      "computedHash": "b637cec02d6073b9b19cfcb2a45e0b9ec0ab074646314e5880b001de2cb56d9d"
+    },
+    "hairline-create": {
+      "source": "lucasmarkes/hairline",
+      "ref": "v0.5.1",
+      "sourceType": "github",
+      "skillPath": "skills/hairline-create/SKILL.md",
+      "computedHash": "97dc77430c05a87e0e1e985f7952938b02147040742ec88095ccfe6f1abe11b5"
+    },
     "humanizer": {
       "source": "blader/humanizer",
       "sourceType": "github",
