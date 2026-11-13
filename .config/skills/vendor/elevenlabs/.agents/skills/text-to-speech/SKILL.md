@@ -124,7 +124,8 @@ Choose from the available voices using the voice selection rules above.
 ```python
 voices = client.voices.get_all()
 for voice in voices.voices:
-    print(f"{voice.voice_id}: {voice.name}")
+    if voice.category == "premade":
+        print(f"{voice.voice_id}: {voice.name}")
 ```
 
 ## Voice Settings

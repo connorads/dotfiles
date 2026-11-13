@@ -37,13 +37,15 @@ elevenlabs auth login
 
 # Initialize project and create an agent
 elevenlabs agents init
-elevenlabs agents add "My Assistant" --template complete
+elevenlabs agents add "My Assistant" --template default
 
 # Push to ElevenLabs platform
 elevenlabs agents push
 ```
 
-**Available templates:** `complete`, `minimal`, `voice-only`, `text-only`, `customer-service`, `assistant`
+**Available templates:** `default`, `minimal`, `voice-only`, `text-only`, `customer-service`, `assistant`
+
+Once the agent exists, give the user its links: they can talk to it at `https://elevenlabs.io/app/talk-to?agent_id=<agent-id>` and edit it at `https://elevenlabs.io/app/agents/agents/<agent-id>`. On a data residency account, use its region's host instead of `elevenlabs.io`, such as `eu.residency.elevenlabs.io`. The talk-to page only opens public agents, which is the default; for an agent with authentication enabled, give only the dashboard link.
 
 ### Python
 
@@ -513,9 +515,9 @@ elevenlabs agents pull --agent <agent-id>   # Import specific agent
 elevenlabs agents push              # Upload configurations
 elevenlabs agents push --dry-run    # Preview changes first
 
-# Add tools
-elevenlabs tools add-webhook "Weather API"
-elevenlabs tools add-client "UI Tool"
+# Add tools (names use letters, numbers, - and _)
+elevenlabs tools add weather-api --type webhook
+elevenlabs tools add ui-tool --type client
 ```
 
 ### Project Structure
