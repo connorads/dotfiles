@@ -13,6 +13,7 @@
     { "path": "~/.config/skills/vendor/impeccable/.agents/skills", "name": "impeccable" },
     { "path": "~/.config/skills/vendor/jakubkrehel/.agents/skills", "name": "jakubkrehel" },
     { "path": "~/.config/skills/vendor/mattpocock/.agents/skills", "name": "mattpocock" },
+    { "path": "~/.config/skills/vendor/mengto/.agents/skills", "name": "mengto" },
     { "path": "~/.config/skills/vendor/nextjs/.agents/skills", "name": "nextjs" },
     { "path": "~/.config/skills/vendor/ponytail/.agents/skills", "name": "ponytail" },
     { "path": "~/.config/skills/vendor/poteto-plugins/.agents/skills", "name": "poteto-plugins" },

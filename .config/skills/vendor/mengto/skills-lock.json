@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "audit-ai-design-slop": {
+      "source": "mengto/skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/ui/audit-ai-design-slop/SKILL.md",
+      "computedHash": "9e029607aaae049e80135af43be248d0b60394b6e2ca85426e6878765613029c"
+    },
+    "beautiful-shadows": {
+      "source": "MengTo/Skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/web-design/beautiful-shadows/SKILL.md",
+      "computedHash": "6abcd3ab6141c617f4e8514886d0ac744a1d6c1e4b0ccbd7087a19bedd5746f1"
+    },
+    "no-ai-design-slop": {
+      "source": "mengto/skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/ui/no-ai-design-slop/SKILL.md",
+      "computedHash": "b3b7e88b282f4e498c10592d77f3a55e65ad1b81979cf2a6b06aa07e84eed34f"
+    },
+    "video-to-superprompt": {
+      "source": "mengto/skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/codex/video-to-superprompt/SKILL.md",
+      "computedHash": "a688ba781bedfdf191cf9915bec080dcb1d6aa944e0de86057a5cbcf5327eabf"
+    }
+  }
+}

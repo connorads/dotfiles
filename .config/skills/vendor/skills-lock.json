@@ -13,18 +13,6 @@
       "skillPath": "skills/agent-device/SKILL.md",
       "computedHash": "33b29ead3d535e89cc4b1821931d5b7d35b749c0f7a8fddd59a25da788231fe9"
     },
-    "audit-ai-design-slop": {
-      "source": "mengto/skills",
-      "sourceType": "github",
-      "skillPath": "agent-skills/ui/audit-ai-design-slop/SKILL.md",
-      "computedHash": "9e029607aaae049e80135af43be248d0b60394b6e2ca85426e6878765613029c"
-    },
-    "beautiful-shadows": {
-      "source": "MengTo/Skills",
-      "sourceType": "github",
-      "skillPath": "agent-skills/web-design/beautiful-shadows/SKILL.md",
-      "computedHash": "6abcd3ab6141c617f4e8514886d0ac744a1d6c1e4b0ccbd7087a19bedd5746f1"
-    },
     "benchmark-checklist": {
       "source": "cursor/plugins",
       "sourceType": "github",
@@ -235,12 +223,6 @@
       "skillPath": "claude/.claude/skills/mutation-testing/SKILL.md",
       "computedHash": "b32e0bc74fdd240e258bee45cea16b49907610fe762a436545e993a938c7da5c"
     },
-    "no-ai-design-slop": {
-      "source": "mengto/skills",
-      "sourceType": "github",
-      "skillPath": "agent-skills/ui/no-ai-design-slop/SKILL.md",
-      "computedHash": "b3b7e88b282f4e498c10592d77f3a55e65ad1b81979cf2a6b06aa07e84eed34f"
-    },
     "no-ai-slop": {
       "source": "petergyang/no-ai-slop",
       "sourceType": "github",
@@ -366,12 +348,6 @@
       "sourceType": "github",
       "skillPath": "skills/vgpu/SKILL.md",
       "computedHash": "b0c9d358a6d419ee36503a59ca42a8f4b7ce0d641fc16365ec5479e348507b3c"
-    },
-    "video-to-superprompt": {
-      "source": "mengto/skills",
-      "sourceType": "github",
-      "skillPath": "agent-skills/codex/video-to-superprompt/SKILL.md",
-      "computedHash": "a688ba781bedfdf191cf9915bec080dcb1d6aa944e0de86057a5cbcf5327eabf"
     },
     "visual-pr": {
       "source": "humanlayer/skills",
