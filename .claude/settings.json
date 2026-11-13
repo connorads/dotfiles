@@ -56,6 +56,10 @@
           {
             "command": "~/.local/bin/atuin-agent hook claude-code",
             "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/dotfiles-tracked-hint.py",
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -75,6 +79,10 @@
         "hooks": [
           {
             "command": "~/.local/bin/atuin-agent hook claude-code",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/dotfiles-tracked-hint.py",
             "type": "command"
           }
         ],

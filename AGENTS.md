@@ -87,7 +87,8 @@ Run `mise run gate-coverage` after moves; a hook glob matching nothing exits 0.
 - Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit, and sorts keys (`jq -S`) so the reordering Claude Code does on every rewrite stays out of git; permission arrays keep their authored order.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
-- Vendored `src/` subprojects (`handoff`, `pin-audit`, `skl`, `xreview`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Everything under `~/src` is tracked in the dotfiles work-tree, not in standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Under `~`, plain git reports `not a git repository` for dotfiles-tracked paths. Check tracking with `dotfiles ls-files --error-unmatch <absolute path>`; a relative pathspec resolves against the current directory and silently matches nothing.
 
 ## Verification by Change
 
