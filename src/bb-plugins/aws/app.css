@@ -1,0 +1,51 @@
+/* BB theme tokens only. Pop-up shell from @bb-plugins/chip. */
+.bbp-popover-panel.aws-panel { overflow: auto; max-height: 70vh; }
+
+.aws-header {
+  display: flex; align-items: baseline; gap: 8px; padding: 12px 14px;
+  border-bottom: 1px solid var(--border-seam, var(--border));
+}
+.aws-header h2 { flex: 1; margin: 0; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
+.aws-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.aws-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
+
+.aws-fields { display: flex; gap: 6px; padding: 8px 12px 4px; }
+.aws-input {
+  flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent; color: var(--foreground); font: 13px var(--font-sans);
+}
+.aws-input:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
+.aws-region { flex: 0 0 130px; font-family: var(--font-mono); font-size: 12px; }
+
+.aws-rows { display: grid; padding: 4px; }
+.aws-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 4px 8px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
+}
+.aws-row[data-active] { background: var(--state-hover); }
+.aws-row[aria-pressed="true"] .aws-row-label { font-weight: 600; }
+.aws-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
+.aws-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.aws-row-aside[data-warn] { color: var(--warning-text, var(--warning)); }
+
+.aws-signin {
+  margin: 8px 12px; padding: 10px 12px; border-radius: 8px; font-size: var(--text-sm, 13px);
+  border: 1px solid var(--border); background: var(--surface-recessed, transparent); color: var(--foreground);
+}
+.aws-signin button {
+  height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent;
+  background: var(--foreground); color: var(--background); font: 500 12px/1 var(--font-sans); cursor: pointer;
+}
+.aws-signin button:disabled { opacity: .6; cursor: default; }
+
+.aws-error { margin: 0; padding: 6px 14px; color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
+
+.aws-footer {
+  display: grid; gap: 4px; padding: 8px 14px;
+  border-top: 1px solid var(--border-seam, var(--border)); background: var(--surface-recessed, transparent);
+  color: var(--subtle-foreground, var(--muted-foreground)); font-size: var(--text-xs, 12px);
+}
+.aws-footer kbd {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
+  border: 1px solid var(--border); border-bottom-width: 2px; color: var(--muted-foreground); font: 500 10.5px/1 var(--font-mono);
+}

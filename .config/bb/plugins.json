@@ -2,6 +2,7 @@
   "cache-hits": true,
   "caffeine": true,
   "chat-timestamps": true,
+  "claude-connectors": true,
   "claude-profiles": true,
   "clone-repository": true,
   "composer-keys": true,

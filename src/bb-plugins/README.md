@@ -201,6 +201,11 @@ It keeps session evidence separate from current inventory and changes no setting
 connections. BB signs in once per connection, and each thread picks which
 connection it uses, so no agent needs its own MCP config.
 
+## AWS profiles
+
+[AWS](aws/README.md) picks the Granted profile a thread may use with `⌥W`. BB
+serves that thread temporary credentials, so agents never sign in to AWS.
+
 ## Mobile start screen
 
 [Mobile Home Spacing](mobile-home-spacing/README.md) places recent threads below

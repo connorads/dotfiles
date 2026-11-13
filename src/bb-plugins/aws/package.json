@@ -1,0 +1,47 @@
+{
+  "name": "bb-plugin-aws",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.37"
+  },
+  "bb": {
+    "name": "AWS",
+    "description": "Choose the AWS profile a thread may use. BB serves short-lived credentials from Granted; agents never sign in.",
+    "branding": {
+      "icon": "Cloud01"
+    },
+    "server": "./server.ts",
+    "skills": [],
+    "app": "./app.tsx"
+  },
+  "scripts": {
+    "test": "pnpm test:core && pnpm test:ui",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev",
+    "test:core": "node --experimental-strip-types --test 'src/**/*.test.ts'",
+    "test:ui": "vitest run app.test.tsx"
+  },
+  "dependencies": {
+    "@bb-plugins/chip": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "better-sqlite3": "catalog:",
+    "hono": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
