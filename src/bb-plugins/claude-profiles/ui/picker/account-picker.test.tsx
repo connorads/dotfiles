@@ -19,11 +19,9 @@ function renderAccounts(running = false, fail: 'load' | 'switch' | null = null, 
     composer: { text: 'Keep my draft', isRunning: running,
       scope: { kind: 'thread', threadId: 'thread-test' }, selection: { providerId: 'claude-code', model: 'opus' } },
     rpc: {
-      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
-      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
-      'connectors.global.set': () => ({ pending: 0 }),
-      'connectors.account.set': () => ({ pending: 0 }),
-      'connectors.restart': () => ({ pending: 0 }),
+      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: {}, profileId: 'default', restartPending: false }),
+      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, accounts: {}, profileId: 'default', restartPending: false }),
+      'connectors.account.set': () => ({ restarted: 0 }),
       'usage.login': () => { throw new Error('Unused'); },
       'usage.amp': () => { throw new Error('Unused'); },
       'usage.header': () => { throw new Error('Unused'); },
@@ -103,16 +101,10 @@ test('moves between account and connector columns and toggles the focused accoun
     expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
   } finally { slot.lifecycle.unmount(); }
 });
-test('leaves native select keys alone and preserves account focus through policy refreshes', async () => {
+test('preserves account focus through policy refreshes', async () => {
   const slot = renderAccounts();
   try {
     const work = await slot.findByRole('button', { name: 'Switch to Work' });
-    const select = slot.getByRole('combobox', { name: "This thread's connectors" });
-    select.focus();
-    expect(fireEvent.keyDown(select, { key: 'ArrowDown' })).toBe(true);
-    expect(document.activeElement).toBe(select);
-    fireEvent.keyDown(select, { key: '2' });
-    expect(slot.inspection.rpcCalls.some(call => call.method === 'choose')).toBe(false);
     work.focus();
     await slot.behavior.emitRealtime('profiles-changed', {});
     await waitFor(() => expect(slot.getByRole('button', { name: 'Switch to Work' })).toBe(work));

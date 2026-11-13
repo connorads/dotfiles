@@ -203,7 +203,9 @@ export default function plugin(bb: BbPluginApi) {
         return { action: 'wait', reason: `Moving to ${pending.label}…`, sendAt: Date.now() + 2000 };
       }
     }
-    if (input.thread.providerId === 'claude-code' && (connectors.changing || switching.has(input.thread.id))) return { action: 'reject', message: 'Claude session settings are changing. Send your message after they finish.' };
+    if (input.thread.providerId === 'claude-code' && (connectors.changing || switching.has(input.thread.id))) {
+      return { action: 'wait', reason: 'Applying Claude account settings…', sendAt: Date.now() + 2000 };
+    }
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
       try {
         await claimBinding(input.thread, input.parentThreadId, input.host?.id ?? null);
@@ -220,8 +222,8 @@ export default function plugin(bb: BbPluginApi) {
       await review(input.thread.id);
       const notice = await takeNotice(input.thread.id);
       if (notice) return { action: 'reject', message: notice };
-      try { await connectors.beforeDispatch(input.thread.id); }
-      catch (error) { return { action: 'reject', message: error instanceof Error ? error.message : 'Could not apply connector settings.' }; }
+      const decision = await connectors.beforeDispatch(input.thread.id, input.attempt);
+      if (decision) return { action: decision.action, reason: decision.reason, sendAt: decision.sendAt };
     }
     return { action: 'proceed' };
   });

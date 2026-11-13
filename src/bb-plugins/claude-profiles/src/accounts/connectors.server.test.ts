@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createFakePluginHost, makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 import { registerConnectors } from './connectors.ts';
 
+const tick = () => new Promise(resolve => setTimeout(resolve, 5));
+
 function setup() {
   const threads = new Map(['t1', 't2'].map(id => [id, makeThreadResponse({ id, providerId: 'claude-code', status: 'idle', environmentId: 'e1' })]));
   const events = new Map<string, unknown[]>();
@@ -14,7 +16,7 @@ function setup() {
       get: async ({ threadId }: { threadId: string }) => threads.get(threadId) ?? makeThreadResponse({ id: threadId, providerId: 'claude-code', environmentId: 'e1' }),
       list: async ({ offset = 0 }: { offset?: number }) => offset ? [] : [...threads.values()].filter(thread => !thread.archivedAt),
       stop: async ({ threadId }: { threadId: string }) => { if (stopError) throw new Error('Stop failed'); stops.push(threadId); const thread = threads.get(threadId);
-        if (thread && !retainedActive) threads.set(threadId, { ...thread, status: 'idle' });
+        if (thread) threads.set(threadId, { ...thread, status: retainedActive ? 'active' : 'idle' });
         return threads.get(threadId); },
       events: { list: async ({ threadId }: { threadId: string }) => events.get(threadId) ?? [] },
     },
@@ -25,7 +27,7 @@ function setup() {
     hostId: 'h1', profileId: profileId ?? (await bb.storage.kv.get<{profile: {id: string}}>(`thread:${threadId}`))?.profile.id ?? 'default',
   }));
   const rpc = (method: string, input: unknown) => harness.behavior.callRpc(method, input);
-  return { bb, connectors, stops, threads, switching, rpc,
+  return { bb, harness, connectors, stops, threads, switching, rpc,
     failStop: () => { stopError = true; },
     retainActive: () => { retainedActive = true; },
     launched: (threadId: string, enabled: boolean, seq = 2) => events.set(threadId, [{ type: 'provider.env-resolved', seq, threadId,
@@ -35,7 +37,7 @@ function setup() {
   };
 }
 
-test('global, account and thread controls combine without a thread override granting access', async () => {
+test('account and thread controls combine without a thread override granting access', async () => {
   const { rpc, env, account } = setup();
   assert.equal(await env(), 'false');
   await account('default', true);
@@ -43,12 +45,9 @@ test('global, account and thread controls combine without a thread override gran
   await rpc('connectors.set', { threadId: 't1', mode: 'off' });
   assert.equal(await env(), 'false');
   await rpc('connectors.set', { threadId: 't1', mode: 'account' });
-  await rpc('connectors.global.set', { blocked: true });
-  assert.equal(await env(), 'false');
-  await account('default', true);
-  assert.equal(await env(), 'false');
-  await rpc('connectors.global.set', { blocked: false });
   assert.equal(await env(), 'true');
+  await account('default', false);
+  assert.equal(await env(), 'false');
 });
 
 test('switching accounts recalculates access and another host starts off', async () => {
@@ -72,41 +71,54 @@ test('old off choices remain off and old on choices cannot enable an account', a
   assert.equal(await env('t2'), 'false');
 });
 
-test('policy changes restart idle sessions and leave active sessions explicitly pending', async () => {
+test('policy changes restart idle sessions and leave active sessions pending until idle', async () => {
   const { threads, account, connectors, stops, launched } = setup();
   threads.set('t2', makeThreadResponse({ id: 't2', providerId: 'claude-code', environmentId: 'e1', status: 'active' }));
   launched('t1', false); launched('t2', false);
-  await account('default', true);
+  assert.deepEqual(await account('default', true), { restarted: 1 });
   assert.deepEqual(stops, ['t1']);
-  assert.equal((await connectors.state('t2')).pending, 1);
+  assert.equal((await connectors.state('t2')).restartPending, true);
   assert.equal((await connectors.state('t2')).launch, 'off');
   threads.set('t2', makeThreadResponse({ id: 't2', providerId: 'claude-code', environmentId: 'e1', status: 'idle' }));
   await connectors.settle('t2');
   assert.deepEqual(stops, ['t1', 't2']);
-  assert.equal((await connectors.state('t2')).pending, 0);
+  assert.equal((await connectors.state('t2')).restartPending, false);
   assert.equal((await connectors.state('t2')).launch, 'pending');
   launched('t2', true, 3);
   assert.equal((await connectors.state('t2')).launch, 'on');
 });
 
-test('stop failures stay pending and an explicit action stops active sessions', async () => {
+test('a pending restart makes the next turn wait while the session stops beside the hook', async () => {
+  const { threads, account, connectors, stops, harness } = setup();
+  threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'active' }));
+  await account('default', true);
+  assert.deepEqual(await connectors.beforeDispatch('t1', 'join-turn'), null);
+  threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'idle', queuedMessageCount: 1 }));
+  const decision = await connectors.beforeDispatch('t1', 'start-turn');
+  assert.equal(decision?.action, 'wait');
+  assert.equal(decision?.reason, 'Applying connector settings…');
+  await tick();
+  assert.ok(stops.includes('t1'));
+  assert.equal((await connectors.state('t1')).restartPending, false);
+  assert.ok(harness.inspection.recheckCount >= 1);
+  assert.equal(await connectors.beforeDispatch('t1', 'start-turn'), null);
+});
+
+test('stop failures stay pending and the next turn keeps waiting', async () => {
   const failed = setup();
   failed.failStop();
   await failed.account('default', true);
-  assert.equal((await failed.connectors.state('t1')).pending, 2);
-  await assert.rejects(failed.connectors.beforeDispatch('t1'), /Stop failed/);
-  const active = setup();
-  active.threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'active' }));
-  await active.account('default', true);
-  await active.rpc('connectors.restart', {});
-  assert.ok(active.stops.includes('t1'));
-  assert.equal((await active.connectors.state('t1')).pending, 0);
+  assert.equal((await failed.connectors.state('t1')).restartPending, true);
+  assert.equal((await failed.connectors.beforeDispatch('t1', 'start-turn'))?.action, 'wait');
+  await tick();
+  assert.equal((await failed.connectors.state('t1')).restartPending, true);
 });
 
-test('global block stops an old process whose launch disagrees with its stored policy', async () => {
-  const { connectors, launched, rpc, stops } = setup();
-  launched('t1', true);
-  await rpc('connectors.global.set', { blocked: true });
+test('turning an account off stops an old process whose launch still allows access', async () => {
+  const { connectors, launched, account, stops } = setup();
+  await account('default', true);
+  launched('t1', true, 5);
+  await account('default', false);
   assert.ok(stops.includes('t1'));
   assert.equal((await connectors.state('t1')).enabled, false);
 });
@@ -134,13 +146,13 @@ test('automatic restarts preserve queued turns and account switches reject polic
   const { connectors, account, threads, switching, env } = setup();
   for (const id of ['t1', 't2']) threads.set(id, makeThreadResponse({ id, providerId: 'claude-code', environmentId: 'e1', status: 'active', queuedMessageCount: 1 }));
   await account('default', true);
-  assert.equal((await connectors.state('t1')).pending, 2);
   threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'idle', queuedMessageCount: 1 }));
-  await connectors.beforeDispatch('t1');
-  assert.equal((await connectors.state('t1')).pending, 1);
+  await connectors.beforeDispatch('t1', 'start-turn');
+  await tick();
+  assert.equal((await connectors.state('t1')).restartPending, false);
   threads.set('t2', makeThreadResponse({ id: 't2', providerId: 'claude-code', environmentId: 'e1', status: 'idle', queuedMessageCount: 1 }));
   await connectors.settle('t2');
-  assert.equal((await connectors.state('t1')).pending, 0);
+  assert.equal((await connectors.state('t2')).restartPending, false);
   assert.equal(threads.get('t1')?.queuedMessageCount, 1);
   assert.equal(threads.get('t2')?.queuedMessageCount, 1);
   switching.add('t2');
@@ -152,9 +164,10 @@ test('before dispatch reconciles an old launch with the migrated account policy'
   const { bb, launched, connectors, stops } = setup();
   await bb.storage.kv.set('connectors:t1', { enabled: true, afterSeq: 0 });
   launched('t1', true);
-  await connectors.beforeDispatch('t1');
+  assert.equal((await connectors.beforeDispatch('t1', 'start-turn'))?.action, 'wait');
+  await tick();
   assert.deepEqual(stops, ['t1']);
-  await connectors.beforeDispatch('t1');
+  assert.equal(await connectors.beforeDispatch('t1', 'start-turn'), null);
   assert.deepEqual(stops, ['t1']);
 });
 
@@ -166,25 +179,13 @@ test('an account change leaves other accounts and other providers running', asyn
   assert.deepEqual(stops, ['t1']);
 });
 
-test('deleted and archived threads stop contributing to the pending count', async () => {
-  const { threads, account, connectors, launched, stops } = setup();
-  launched('t2', false);
-  for (const id of ['t1', 't2']) threads.set(id, makeThreadResponse({ id, providerId: 'claude-code', environmentId: 'e1', status: 'active' }));
-  await account('default', true);
-  assert.equal((await connectors.state('t1')).pending, 2);
-  threads.delete('t1');
-  threads.set('t2', makeThreadResponse({ id: 't2', providerId: 'claude-code', environmentId: 'e1', status: 'idle', archivedAt: 1 }));
-  assert.equal((await connectors.state(null)).pending, 0);
-  threads.set('t2', makeThreadResponse({ id: 't2', providerId: 'claude-code', environmentId: 'e1', status: 'idle' }));
-  await connectors.beforeDispatch('t2');
-  assert.ok(stops.includes('t2'));
-});
-
 test('a stop which retains an active turn cannot clear the pending restart', async () => {
-  const { threads, account, connectors, retainActive, rpc } = setup();
+  const { threads, account, connectors, retainActive } = setup();
   threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'active' }));
   await account('default', true);
   retainActive();
-  await rpc('connectors.restart', {});
-  assert.equal((await connectors.state('t1')).pending, 1);
+  threads.set('t1', makeThreadResponse({ id: 't1', providerId: 'claude-code', environmentId: 'e1', status: 'idle' }));
+  await connectors.beforeDispatch('t1', 'start-turn');
+  await tick();
+  assert.equal((await connectors.state('t1')).restartPending, true);
 });

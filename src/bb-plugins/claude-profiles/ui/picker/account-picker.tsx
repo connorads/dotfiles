@@ -159,7 +159,7 @@ export function AccountPicker({ composer, onClose }: { composer: PluginComposerA
       <header className="ap-head"><span><Icon name="Users" className="ap-icon" /><strong>Claude accounts</strong></span>
         <button className="mf-dismiss" type="button" aria-label="Close account picker" disabled={busy} onClick={onClose}><kbd className="mf-kbd">esc</kbd></button></header>
       {!loading && !supported && <p role="status" className="ap-notice">{accountUnavailable}</p>}
-      {supported && <ConnectorControls controls={connectors} threadId={threadId} disabled={blocked} />}
+      {supported && <ConnectorControls controls={connectors} threadId={threadId} />}
       {error && <p role="alert" className="mf-error">{error.message} {error.refresh && <button type="button" disabled={busy} onClick={() => { void load(true); }}>Refresh accounts</button>}</p>}
       {!busy && (composer.isRunning || composer.isSubmitting) && <p role="status" className="ap-notice">Stop the turn and clear queued messages before switching.</p>}
       <div className="ap-intro"><span>Accounts <span className="ap-count">{profiles.length || ''}</span></span>

@@ -130,3 +130,17 @@ test('a pending account must exist on the thread machine', async () => {
   const { harness } = await setup();
   await assert.rejects(harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'missing' }), /Profile does not exist/);
 });
+
+test('a send during a manual switch waits instead of failing', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const { harness, thread, dispatch } = await setup({ transfer: () => gate });
+  thread.status = 'idle';
+  const switching = harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' });
+  await new Promise(resolve => setTimeout(resolve, 5));
+  const decision = await dispatch('start-turn');
+  assert.equal(decision.action, 'wait');
+  release();
+  await switching;
+  assert.deepEqual(await dispatch('start-turn'), { action: 'proceed' });
+});

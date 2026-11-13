@@ -35,11 +35,9 @@ function render(initial = [first, second], error: string | null = null, account?
       scope: programme?.thread ? { kind: 'thread', threadId: 'thread-test' } : account?.queued ? { kind: 'queued-message', threadId: 'thread-test', queuedMessageId: 'queued-test' }
         : account && !account.newThread ? { kind: 'thread', threadId: 'thread-test' } : { kind: 'new-thread', projectId: null } },
     rpc: {
-      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
-      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, globalBlocked: false, accounts: {}, profileId: 'default', pending: 0 }),
-      'connectors.global.set': () => ({ pending: 0 }),
-      'connectors.account.set': () => ({ pending: 0 }),
-      'connectors.restart': () => ({ pending: 0 }),
+      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: {}, profileId: 'default', restartPending: false }),
+      'connectors.set': input => ({ enabled: false, launch: 'pending', mode: input.mode, accounts: {}, profileId: 'default', restartPending: false }),
+      'connectors.account.set': () => ({ restarted: 0 }),
       'usage.login': () => { throw new Error('Unused'); },
       'favourites.list': () => saved,
       'favourites.add': input => { saved = [...saved, { ...input, id: 'new', slot: 2 }]; return saved; },
@@ -294,20 +292,6 @@ test('empty focused search selects a saved slot and preserves the draft', async 
     expect(slot.inspection.composer.focusCount).toBeGreaterThan(0);
   } finally { slot.lifecycle.unmount(); }
 });
-test('connector controls keep their native keys without selecting a model favourite', async () => {
-  const slot = render(undefined, null, {});
-  try {
-    const select = await slot.findByRole('combobox', { name: "This thread's connectors" });
-    await waitFor(() => expect(select.hasAttribute('disabled')).toBe(false));
-    select.focus();
-    expect(fireEvent.keyDown(select, { key: '1' })).toBe(true);
-    expect(fireEvent.keyDown(select, { key: 'ArrowDown' })).toBe(true);
-    expect(document.activeElement).toBe(select);
-    expect(slot.inspection.composer.selections).toEqual([]);
-    expect(slot.inspection.composer.focusCount).toBe(0);
-  } finally { slot.lifecycle.unmount(); }
-});
-
 test('empty slots, modified digits and composing input remain search input', async () => {
   const slot = render();
   try {

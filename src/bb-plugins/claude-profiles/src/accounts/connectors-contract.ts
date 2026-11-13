@@ -6,17 +6,15 @@ const connectorState = z.object({
   enabled: z.boolean(),
   launch: z.enum(['pending', 'on', 'off', 'unknown']),
   mode,
-  globalBlocked: z.boolean(),
   accounts: z.record(z.string(), z.boolean()),
   profileId: z.string(),
-  pending: z.number(),
+  // This thread's running process keeps old access until its next idle restart.
+  restartPending: z.boolean(),
 });
 export type ConnectorState = z.infer<typeof connectorState>;
-const result = z.object({ pending: z.number() });
+const result = z.object({ restarted: z.number() });
 export const connectorsContract = defineRpcContract({
   'connectors.get': { input: z.object({ threadId: z.string().nullable() }), output: connectorState },
   'connectors.set': { input: z.object({ threadId: z.string(), mode }), output: connectorState },
-  'connectors.global.set': { input: z.object({ blocked: z.boolean() }), output: result },
   'connectors.account.set': { input: z.object({ threadId: z.string().nullable(), profileId: z.string(), enabled: z.boolean() }), output: result },
-  'connectors.restart': { input: z.object({}), output: result },
 });

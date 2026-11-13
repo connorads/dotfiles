@@ -8,16 +8,17 @@ const choiceSchema = z.object({ mode: z.enum(['account', 'off']), afterSeq: z.nu
 type Choice = z.infer<typeof choiceSchema>;
 const initialChoice: Choice = { mode: 'account', afterSeq: 0, restartRequired: false };
 const legacyChoice = z.object({ enabled: z.boolean(), afterSeq: z.number() });
-const globalKey = 'connector-policy:blocked';
 const accountKey = (hostId: string, profileId: string) => `connector-policy:account:${encodeURIComponent(hostId)}:${encodeURIComponent(profileId)}`;
 const key = (threadId: string) => `connectors:${threadId}`;
 type Thread = Awaited<ReturnType<BbPluginApi['sdk']['threads']['get']>>;
+type Wait = { action: 'wait'; reason: string; sendAt: number };
+const wait: Wait = { action: 'wait', reason: 'Applying connector settings…', get sendAt() { return Date.now() + 2000; } };
 const idle = (thread: Thread) => ['idle', 'error'].includes(thread.status) && !thread.activeBackgroundAgentCount;
 
 export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
   scope: (threadId: string | null, profileId?: string) => Promise<{ hostId: string; profileId: string }>) {
   let changing = false;
-  let restarting = false;
+  const restarting = new Set<string>();
   async function choice(threadId: string): Promise<Choice> {
     const raw = await bb.storage.kv.get(key(threadId));
     const value = choiceSchema.safeParse(raw);
@@ -35,21 +36,8 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
   async function enabled(threadId: string, hostId: string) {
     const selected = await bb.storage.kv.get<Selection>(`thread:${threadId}`);
     if (selected && selected.hostId !== hostId) return false;
-    return !await bb.storage.kv.get(globalKey) && (await choice(threadId)).mode === 'account'
+    return (await choice(threadId)).mode === 'account'
       && await bb.storage.kv.get(accountKey(hostId, selected?.profile.id ?? 'default')) === true;
-  }
-  async function pendingIds() {
-    const pending: string[] = [];
-    for (const entry of await bb.storage.kv.list('connectors:')) {
-      const id = entry.slice('connectors:'.length);
-      if ((await choice(id)).restartRequired) pending.push(id);
-    }
-    if (!pending.length) return pending;
-    const live = new Set((await threads()).map(thread => thread.id));
-    for (const id of pending) {
-      if (!live.has(id)) await bb.storage.kv.set(key(id), { ...await choice(id), afterSeq: 0, restartRequired: false });
-    }
-    return pending.filter(id => live.has(id));
   }
   const publish = () => bb.realtime.publish('profiles-changed', {});
   async function state(threadId: string | null): Promise<ConnectorState> {
@@ -60,11 +48,10 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
       accounts[decodeURIComponent(entry.slice(prefix.length))] = await bb.storage.kv.get(entry) === true;
     }
     const saved = threadId === null ? initialChoice : await choice(threadId);
-    const globalBlocked = await bb.storage.kv.get(globalKey) === true;
     const event = threadId === null ? undefined : await latestLaunch(threadId);
     const value = event?.data.entries.find(entry => entry.name === connectorVariable)?.value;
-    return { enabled: !globalBlocked && accounts[account.profileId] === true && saved.mode === 'account',
-      mode: saved.mode, globalBlocked, accounts, profileId: account.profileId, pending: (await pendingIds()).length,
+    return { enabled: accounts[account.profileId] === true && saved.mode === 'account',
+      mode: saved.mode, accounts, profileId: account.profileId, restartPending: saved.restartRequired,
       launch: !event || (!saved.restartRequired && event.seq <= saved.afterSeq) ? 'pending' : value === 'true' ? 'on' : value === 'false' ? 'off' : 'unknown' };
   }
   async function invalidate(threadId: string, restartRequired = false) {
@@ -73,7 +60,7 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
     await bb.storage.kv.set(key(threadId), { ...saved, afterSeq: latest?.seq ?? 0, restartRequired });
   }
   async function stop(threadId: string, force: boolean, mode?: Choice['mode']) {
-    if (changing || (restarting && !force) || switching.has(threadId)) throw new Error('Claude session settings are changing. Try again after they finish.');
+    if (changing || switching.has(threadId)) throw new Error('Claude session settings are changing. Try again after they finish.');
     switching.add(threadId);
     try {
       const thread = await bb.sdk.threads.get({ threadId });
@@ -85,7 +72,7 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
     } finally { switching.delete(threadId); }
   }
   async function settle(threadId: string) {
-    if (changing || restarting || switching.has(threadId) || !(await choice(threadId)).restartRequired) return;
+    if (changing || restarting.has(threadId) || switching.has(threadId) || !(await choice(threadId)).restartRequired) return;
     const thread = await bb.sdk.threads.get({ threadId });
     if (idle(thread)) {
       try { await stop(threadId, false); publish(); }
@@ -103,7 +90,7 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
     }
   }
   async function change(write: () => Promise<void>, account?: {hostId: string; profileId: string}) {
-    if (changing || restarting || switching.size) throw new Error('Claude session settings are changing. Try again after they finish.');
+    if (changing || restarting.size || switching.size) throw new Error('Claude session settings are changing. Try again after they finish.');
     changing = true;
     const affected: string[] = [];
     try {
@@ -124,10 +111,12 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
       }
     } finally { changing = false; publish(); }
     for (const id of affected) await settle(id);
-    return { pending: (await pendingIds()).length };
+    let restarted = 0;
+    for (const id of affected) if (!(await choice(id)).restartRequired) restarted++;
+    return { restarted };
   }
   async function set(threadId: string, mode: Choice['mode']) {
-    if (changing || restarting) throw new Error('Claude session settings are changing. Try again after they finish.');
+    if (changing || restarting.has(threadId)) throw new Error('Claude session settings are changing. Try again after they finish.');
     await scope(threadId);
     await stop(threadId, false, mode);
     publish();
@@ -136,21 +125,9 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
   bb.rpc.register(connectorsContract, {
     'connectors.get': ({ threadId }) => state(threadId),
     'connectors.set': ({ threadId, mode }) => set(threadId, mode),
-    'connectors.global.set': ({ blocked }) => change(() => bb.storage.kv.set(globalKey, blocked)),
     'connectors.account.set': async ({ threadId, profileId, enabled }) => {
       const account = await scope(threadId, profileId);
       return change(() => bb.storage.kv.set(accountKey(account.hostId, account.profileId), enabled), account);
-    },
-    'connectors.restart': async () => {
-      if (changing || restarting || switching.size) throw new Error('Claude session settings are changing. Try again after they finish.');
-      restarting = true;
-      try {
-        for (const id of await pendingIds()) {
-          try { await stop(id, true); }
-          catch (error) { bb.log.warn(`Connector restart remains pending: ${error instanceof Error ? error.message : String(error)}`); }
-        }
-      } finally { restarting = false; publish(); }
-      return { pending: (await pendingIds()).length };
     },
   });
   async function claim(thread: { id: string; originKind: 'fork' | null; sourceThreadId: string | null }, parentThreadId: string | null) {
@@ -162,9 +139,10 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
   }
   return {
     state, set, invalidate, claim, settle,
-    get changing() { return changing || restarting; },
-    async beforeDispatch(threadId: string) {
-      if (changing || restarting) throw new Error('Claude connector settings are changing. Send your message after they finish.');
+    get changing() { return changing; },
+    // Decides fast and never stops a session inside BB's server-wide dispatch lock.
+    async beforeDispatch(threadId: string, attempt: 'start-turn' | 'join-turn'): Promise<Wait | null> {
+      if (changing || restarting.has(threadId)) return wait;
       const saved = await choice(threadId);
       if (!saved.restartRequired) {
         const launch = await latestLaunch(threadId);
@@ -174,7 +152,13 @@ export function registerConnectors(bb: BbPluginApi, switching: Set<string>,
           if (value !== String(await enabled(threadId, account.hostId))) await invalidate(threadId, true);
         }
       }
-      if ((await choice(threadId)).restartRequired) await stop(threadId, false);
+      // A steer joins the running process, which keeps its launch access until the turn ends.
+      if (attempt === 'join-turn' || !(await choice(threadId)).restartRequired) return null;
+      restarting.add(threadId);
+      void stop(threadId, false)
+        .catch(error => bb.log.warn(`Connector restart remains pending: ${error instanceof Error ? error.message : String(error)}`))
+        .finally(() => { restarting.delete(threadId); publish(); void bb.experimental_hooks.recheck('message.dispatch'); });
+      return wait;
     },
     async env(threadId: string, hostId: string) {
       if (!await bb.storage.kv.get(key(threadId))) {
