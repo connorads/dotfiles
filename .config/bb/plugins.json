@@ -1,4 +1,5 @@
 {
+  "aws": true,
   "cache-hits": true,
   "caffeine": true,
   "chat-timestamps": true,
