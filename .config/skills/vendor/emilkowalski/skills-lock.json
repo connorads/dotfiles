@@ -7,6 +7,12 @@
       "skillPath": "skills/animate/SKILL.md",
       "computedHash": "f76ddd3d4446c3c56a143ea98650c370b3e8f88e6203d1e22082d2082bf1eed7"
     },
+    "animate-expo": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate-expo/SKILL.md",
+      "computedHash": "9bcd72cb7364f5b8c2e3ff65f705e802f2f7850876dea9cf42e9ec5ac7b856cd"
+    },
     "animation-performance": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
@@ -25,11 +31,23 @@
       "skillPath": "skills/apple-design/SKILL.md",
       "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
     },
+    "ask-sonner": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ask-sonner/SKILL.md",
+      "computedHash": "5a46b138bc1fc711aaffc11cf99b94d417da641a301458d474943f72e0712092"
+    },
     "break-ui": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
       "skillPath": "skills/break-ui/SKILL.md",
       "computedHash": "60ada67662925f4df5e3c6ff41cac3ab241b66f8898100a5ffcd7ba7196cb868"
+    },
+    "choreograph": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/choreograph/SKILL.md",
+      "computedHash": "01ac79c1e42400e9cf6a52ba65dbccbedee615db4736f6748425a333af07839d"
     },
     "emil-design-eng": {
       "source": "emilkowalski/skills",
@@ -43,11 +61,23 @@
       "skillPath": "skills/find-animation-opportunities/SKILL.md",
       "computedHash": "465d087c41768e4f14ed640dd049036009f613feb55baaa5831b68b33178f9d2"
     },
+    "gestures": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/gestures/SKILL.md",
+      "computedHash": "ae5942f635cf231c0be31025eb8b568da362c9704e9a1cf85350ea5f2be499d8"
+    },
     "improve-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
       "skillPath": "skills/improve-animations/SKILL.md",
       "computedHash": "f6652a3bb94950baa33c684cc0966c838eb65cf22ebb5769a4f51ea205c254fe"
+    },
+    "learn-taste": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/learn-taste/SKILL.md",
+      "computedHash": "b84f191120e86041e0693d2b907156cfae7824e6a800728d56da1a312bd85554"
     },
     "mobile-native": {
       "source": "emilkowalski/skills",
@@ -60,6 +90,18 @@
       "sourceType": "github",
       "skillPath": "skills/pick-ui-library/SKILL.md",
       "computedHash": "5d2a77bf0ecafbda85aa95fb49999b6d77945d9066ec83d970b62e5b388cd686"
+    },
+    "prototype": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/prototype/SKILL.md",
+      "computedHash": "0a59ba7e30d4c1d778d1fbc6da8bbaef3c106aa4e7f81203088ebfedfb616495"
+    },
+    "remove-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remove-animations/SKILL.md",
+      "computedHash": "19beb2b9fccba7528e4c41c40aff02ac8916f4669708305e57c8e6d36c10d149"
     },
     "review-animations": {
       "source": "emilkowalski/skills",
