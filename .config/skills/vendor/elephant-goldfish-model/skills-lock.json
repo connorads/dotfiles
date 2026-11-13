@@ -5,7 +5,7 @@
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
       "skillPath": "skills/egm-bootstrap/SKILL.md",
-      "computedHash": "6b304ed8acd9e9e3ce9c9d0abcaaad4d5d1db9fd62bd6ff97929a9a95791603b"
+      "computedHash": "9634992792894d0c8159fe55e1b22267a8c03d260c90d141fbbf21fd9dfdbb6d"
     },
     "egm-brainstorm": {
       "source": "google/elephant-goldfish-model",
