@@ -1,5 +1,5 @@
 {
-  "reason": "termctrl is nix-managed (packages/terminal-control.nix); do not self-install",
+  "reason": "termctrl is not provisioned here; do not self-install it at task time",
   "files": [
     ".agents/skills/terminal-control/SKILL.md"
   ]

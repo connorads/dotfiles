@@ -21,10 +21,10 @@
     },
     "caveman": {
       "source": "JuliusBrussee/caveman",
-      "ref": "v1.9.1",
+      "ref": "v4.1.0",
       "sourceType": "github",
       "skillPath": "skills/caveman/SKILL.md",
-      "computedHash": "d18cdf73a5f5c496d681a43a6846336b110223bdffa6817b8992529c57f1a815"
+      "computedHash": "71b600c88c8d1d36f18c4875db23b53c5d6cb9ba3195e19451d6b1bb67db07c4"
     },
     "clapper": {
       "source": "ArchAstro/clapper",
@@ -47,10 +47,10 @@
     },
     "code-simplification": {
       "source": "addyosmani/agent-skills",
-      "ref": "0.6.9",
+      "ref": "0.6.15",
       "sourceType": "github",
       "skillPath": "skills/code-simplification/SKILL.md",
-      "computedHash": "7973e746e8e2ea5004d520da970c15a106824b8d6be1bcff48908aec021f3677"
+      "computedHash": "e4c1f0c12274be9981e1301bfbb9b3112b63e2209413071728b132c9b4ee2f5b"
     },
     "correct": {
       "source": "cursor/plugins",
@@ -96,10 +96,10 @@
     },
     "feynman": {
       "source": "leostera/feynman",
-      "ref": "v0.8.0",
+      "ref": "v0.15.0",
       "sourceType": "github",
-      "skillPath": "skills/feynman/SKILL.md",
-      "computedHash": "c7e8a2bef9d4473b91c78501ad92b8078e5a44e076c49172276d4dc7172f945c"
+      "skillPath": "packages/feynman/skills/feynman/SKILL.md",
+      "computedHash": "1aca0c3974da8b542db8f43be6b540bdfbf0ec80ba209259284614cdfcb6388d"
     },
     "fframes-video": {
       "source": "dmtrKovalenko/fframes",
@@ -312,10 +312,10 @@
     },
     "terminal-control": {
       "source": "anomalyco/terminal-control",
-      "ref": "v0.4.1",
+      "ref": "v1.2.1",
       "sourceType": "github",
       "skillPath": "skills/terminal-control/SKILL.md",
-      "computedHash": "9ad2a1739894c7a60d6568be93e765d441bb8f84c19a591e796509a4d11ff6a2"
+      "computedHash": "2175a5fb1a2fbe6fcff4049c9970018bbe8ca5a870882186a17265c42c8fa19a"
     },
     "thermo-nuclear-code-quality-review": {
       "source": "cursor/plugins",
@@ -325,10 +325,10 @@
     },
     "typesafe-ai": {
       "source": "typesafe-ai/skills",
-      "ref": "v0.5.7",
+      "ref": "v0.6.2",
       "sourceType": "github",
       "skillPath": "skills/typesafe-ai/SKILL.md",
-      "computedHash": "9cd84c5e535dec8dec59917c110f9c00b4a61faadb86b432ec7e41051170af12"
+      "computedHash": "15e077333436b1e63e526c7c7559202816f4848dabefd3aa3d4c91988fd181b5"
     },
     "untangle-codebase": {
       "source": "caldoai/skills",
@@ -338,10 +338,10 @@
     },
     "varlock": {
       "source": "dmno-dev/varlock",
-      "ref": "varlock@1.20.0",
+      "ref": "varlock@1.24.0",
       "sourceType": "github",
       "skillPath": "skills/varlock/SKILL.md",
-      "computedHash": "2fe44911234ed0ac31f10d1127b8b6ea54ee1f51f11da4dfa70050ee4075ca9e"
+      "computedHash": "dd6f7de5155f31c602c7b92361f832e32e12cb632feaadd0c0022740d0e5da5b"
     },
     "vgpu": {
       "source": "vercel-labs/vgpu",
