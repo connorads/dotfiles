@@ -224,6 +224,11 @@ them by reset type and expiry; Codex groups its reset credits by expiry. Deadlin
 within three days show in amber. Hover over an expiry for its date and local time.
 Held Claude resets stay visible when they are paused or cannot be used yet.
 
+Claude adds limits without notice, often under internal codenames. A Claude account
+lists **Unread usage fields** when Claude reports a field with a value that
+[quota.ts](src/accounts/quota.ts) neither reads nor ignores on purpose. A limit may be
+missing from that account. Read the field or add it to the parser's ignore list.
+
 A Claude profile row shows the account email and plan cached in the profile's
 `.claude.json`. Team seats read as Team Standard or Team Premium with the
 premium multiplier.

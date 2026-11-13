@@ -39,7 +39,7 @@ test('inspection keeps provider observation times and isolates reset-credit fail
   });
   const value = await reader.inspection(false);
   assert.deepEqual(value.snapshot, await reader.overview(false));
-  assert.deepEqual(value.readings, [{ accountId: snapshot.machines[0]!.providers[0]!.id, observedAt: 123 }]);
+  assert.deepEqual(value.readings, [{ accountId: snapshot.machines[0]!.providers[0]!.id, observedAt: 123, unread: [] }]);
   assert.deepEqual(value.resetCredits, [{ hostId: 'host-one', reading: { status: 'unavailable', message: 'Reset credits could not be read from this machine.' } }]);
   assert.ok(!('observedAt' in (value.snapshot.machines[0]?.providers[0]?.usage ?? {})));
 });
@@ -220,4 +220,23 @@ test('overview and refreshed inspection use current Claude plan names without in
         { planLabel: expected, windows: [{ label: 'Weekly', period: 'week', usedPercent: 87 }] });
     }
   }
+});
+
+test('inspection names unread Claude fields on named profiles and on the folded Default', async () => {
+  const empty = { status: 'ok', accountEmail: null, planLabel: null, windows: [window('Seven days', 30)] };
+  const source = { machines: [{ ...snapshot.machines[0], providers: [
+    claude('provider-claude-code:["host-one","claude-code"]', null, empty),
+    claude('claude-profiles:["host-one","~/.claude-profiles","default"]', null, empty),
+    claude('claude-profiles:["host-one","~/.claude-profiles","work"]', null, empty),
+  ] }] };
+  const reader = createUsageReader({ ...ports, claudeResets: async () => ({ status: 'unavailable', message: 'No cache' }),
+    claudeResource: async resourceId => ({ accountKey: null, observedAt: 456, unread: [resourceId.includes('work') ? 'copper_kite' : 'limits.daily_burst'],
+      usage: { status: 'ok', plan: null, accountEmail: null, planLabel: null,
+        windows: [{ id: 'seven_day', label: 'Seven days', kind: 'weekly', usedPercent: 40, resetsAt: null, model: null, cost: null }] } }),
+    callRpc: answer(input => input.method === 'getUsage' ? source : { observedAt: 123, usage: empty }),
+  });
+  const value = await reader.inspection(false);
+  assert.deepEqual(value.readings.map(reading => [reading.accountId, reading.unread]), [
+    [source.machines[0]!.providers[0]!.id, ['limits.daily_burst']], [source.machines[0]!.providers[2]!.id, ['copper_kite']],
+  ]);
 });

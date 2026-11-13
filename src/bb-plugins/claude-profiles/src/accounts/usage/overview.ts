@@ -96,12 +96,13 @@ export function createUsageReader(ports: UsagePorts) {
   async function overview(refresh: boolean) { return fold(await collectOverview(refresh)); }
   async function inspection(refresh: boolean): Promise<Inspection> {
     let raw = await collectOverview(refresh);
-    const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable(),
+    const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable(), unread: z.array(z.string()).optional(),
       usage: sourceSnapshotSchema.shape.machines.element.shape.providers.element.shape.usage });
     const [observations, resetCredits] = await Promise.all([
       Promise.all(raw.machines.flatMap(machine => machine.providers.map(async account => {
         const separator = account.id.indexOf(':');
         let observedAt: number | null = null;
+        let unread: string[] = [];
         let usage: Account['usage'] = null;
         if (machine.status === 'connected' && account.usage?.status === 'ok' && separator > 0) {
           try {
@@ -112,11 +113,12 @@ export function createUsageReader(ports: UsagePorts) {
                 outputSchema: observationSchema, signal: AbortSignal.timeout(15_000) });
             if (value.usage?.status === 'ok') {
               observedAt = value.observedAt;
+              unread = value.unread ?? [];
               usage = { ...value.usage, windows: value.usage.windows.map(describeWindow) };
             }
           } catch { /* A source without observation metadata leaves its reading age unknown. */ }
         }
-        return { accountId: account.id, observedAt, usage };
+        return { accountId: account.id, observedAt, unread, usage };
       }))),
       Promise.all(raw.machines.filter(machine => machine.providers.some(account => account.providerId === 'codex')).map(async machine => {
         let reading: ResetCredits;
@@ -134,15 +136,18 @@ export function createUsageReader(ports: UsagePorts) {
     })) })) };
     const snapshot = fold(raw);
     const readings = snapshot.machines.flatMap(machine => machine.providers.map(account => {
-      const native = observations.find(value => value.accountId === account.id)?.observedAt ?? null;
+      const own = observations.find(value => value.accountId === account.id);
+      const native = own?.observedAt ?? null;
       if (account.providerId !== 'claude-code' || account.accountLabel !== 'Default' || account.id.startsWith('claude-profiles:'))
-        return { accountId: account.id, observedAt: native };
+        return { accountId: account.id, observedAt: native, unread: own?.unread ?? [] };
       const source = raw.machines.find(value => value.id === machine.id)?.providers.find(value => {
         const locator = profileLocatorSchema.safeParse(resourceLocator(value));
         return value.id.startsWith('claude-profiles:') && locator.success && locator.data[2] === 'default';
       });
-      const profile = source ? observations.find(value => value.accountId === source.id)?.observedAt ?? null : native;
-      return { accountId: account.id, observedAt: native === null || profile === null ? null : Math.min(native, profile) };
+      // BB's own Claude parser reads the native login, so only this plugin's parse of the same account can name unread fields.
+      const sourced = source ? observations.find(value => value.accountId === source.id) : own;
+      const profile = source ? sourced?.observedAt ?? null : native;
+      return { accountId: account.id, observedAt: native === null || profile === null ? null : Math.min(native, profile), unread: sourced?.unread ?? [] };
     }));
     const claudeResets = await Promise.all(snapshot.machines.flatMap(machine => machine.providers
       .filter(account => account.providerId === 'claude-code').map(async account => {

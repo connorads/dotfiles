@@ -36,7 +36,7 @@ export const headerSchema = z.object({
 });
 export const inspectionSchema = z.object({
   snapshot: snapshotSchema,
-  readings: z.array(z.object({ accountId: z.string(), observedAt: z.number().nonnegative().nullable() })),
+  readings: z.array(z.object({ accountId: z.string(), observedAt: z.number().nonnegative().nullable(), unread: z.array(z.string()) })),
   resetCredits: z.array(z.object({ hostId: z.string(), reading: resetCreditsSchema })),
   claudeResets: z.array(z.object({ accountId: z.string(), reading: claudeResetsSchema })),
 });

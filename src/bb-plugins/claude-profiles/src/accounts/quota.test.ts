@@ -54,3 +54,17 @@ test('reads model-scoped weekly limits that Claude reports only in its limits li
   assert.deepEqual(result.windows.map(w => [w.id, w.label, w.usedPercent]),
     [['seven_day', 'Seven days', 8], ['seven_day_opus', 'seven day opus', 3], ['seven_day_fable', 'Fable', 9]]);
 });
+test('lists reported fields it neither reads nor deliberately ignores', () => {
+  const result = parseUsage({ rate_limits_available: true, rate_limits: {
+    five_hour: { utilization: 5 }, seven_day_opus: null, extra_usage: { is_enabled: false }, spend: { percent: 0 },
+    model_scoped: [], weekly_scoped_shares: [], member_dashboard_available: false,
+    copper_kite: { remaining: 3 }, pace: 'fast',
+    limits: [{ kind: 'session', percent: 5 }, { kind: 'weekly_all', percent: 8 }, { kind: 'daily_burst', percent: 2 }],
+  } });
+  assert.deepEqual(result.unread, ['copper_kite', 'pace', 'limits.daily_burst']);
+});
+test('reports nothing unread when every field is read or known', () => {
+  assert.deepEqual(parseUsage({ rate_limits_available: true, rate_limits: {
+    seven_day: { utilization: 1 }, limits: [{ kind: 'weekly_scoped', percent: 1, scope: { model: { display_name: 'Fable' } } }],
+  } }).unread, []);
+});

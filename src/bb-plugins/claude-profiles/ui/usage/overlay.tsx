@@ -44,8 +44,8 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now, observedAt, resetCredits, claudeResets, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
-  resetCredits: ResetCredits | null; claudeResets: ClaudeResets | null; hostId: string; connected: boolean }) {
+function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeResets, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
+  unread: string[]; resetCredits: ResetCredits | null; claudeResets: ClaudeResets | null; hostId: string; connected: boolean }) {
   const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
@@ -85,6 +85,9 @@ function AccountBlock({ account, now, observedAt, resetCredits, claudeResets, ho
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
     {claudeResets && usage?.status === 'ok' && <ClaudeResetRows reading={claudeResets} now={now} />}
+    {usage?.status === 'ok' && unread.length > 0 && <p className="au-reading"
+      title="The provider reported these fields with values this plugin does not read, so a limit may be missing above.">
+      Unread usage fields: {unread.join(', ')}</p>}
     {usage?.status === 'ok' && reading !== 'fresh' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
       {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
     </p>}
@@ -201,6 +204,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, ho
     {/* Reset credits belong to the CLI login, which is the machine's one Codex account. */}
     <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now} hostId={hostId} connected={connected}
       observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null}
+      unread={readings.find(reading => reading.accountId === account.id)?.unread ?? []}
       claudeResets={claudeResets.find(reading => reading.accountId === account.id)?.reading ?? null}
       resetCredits={account === first && first.providerId === 'codex' ? resetCredits : null} />)}
     </div>

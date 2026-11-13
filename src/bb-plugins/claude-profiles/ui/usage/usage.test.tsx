@@ -23,7 +23,7 @@ const snapshot: Snapshot = { machines: [{ id: 'host-one', displayName: 'Laptop',
 
 const inspect = (value: Snapshot = snapshot): Inspection => ({ snapshot: value,
   claudeResets: [],
-  readings: value.machines.flatMap(machine => machine.providers.map(account => ({ accountId: account.id, observedAt: NOW.getTime() }))),
+  readings: value.machines.flatMap(machine => machine.providers.map(account => ({ accountId: account.id, observedAt: NOW.getTime(), unread: [] }))),
   resetCredits: [{ hostId: 'host-one', reading: { status: 'ok', accountLabel: 'cli@example.com',
     observedAt: NOW.getTime() - 90_000, held: 3, usable: 0, unknownExpiryCount: 1,
     expiries: [{ count: 1, expiresAt: hoursFromNow(48) }, { count: 1, expiresAt: hoursFromNow(96) }] } }],
@@ -529,4 +529,15 @@ test('Codex sign-in starts with a device code and can switch to the account mach
   expect(calls[1]).toMatchObject({ method: 'browser' });
   await waitFor(() => expect(slot.getByRole('status').textContent).toContain('browser on the account machine'));
   expect(slot.getByRole('button', { name: 'Use a device code instead' })).toBeTruthy();
+});
+
+test('fields Claude reported but the parser could not read are named under that account only', async () => {
+  const app = await load();
+  const value = inspect();
+  value.readings.find(reading => reading.accountId === 'Claude:Work')!.unread = ['copper_kite', 'limits.daily_burst'];
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => value } });
+  act(() => openUsage());
+  const note = await slot.findByText('Unread usage fields: copper_kite, limits.daily_burst');
+  expect(note.closest('section')?.getAttribute('aria-label')).toBe('Claude · Work');
+  expect(slot.queryAllByText(/Unread usage fields/u)).toHaveLength(1);
 });

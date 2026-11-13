@@ -10,7 +10,7 @@ export const resourceSchema = z.object({
   scope: z.object({ kind: z.literal('host'), hostId: z.string(), hostName: z.string() }),
 });
 export const measurementSchema = z.object({
-  accountKey: z.string().nullable(), observedAt: z.number().nullable(),
+  accountKey: z.string().nullable(), observedAt: z.number().nullable(), unread: z.array(z.string()).optional(),
   usage: z.discriminatedUnion('status', [
     z.object({ status: z.literal('ok'), ...accountFields, windows: z.array(z.object({
       id: z.string(), label: z.string(), kind: z.enum(['five-hour', 'daily', 'weekly', 'custom']),
@@ -30,7 +30,7 @@ export function measurement(value: Usage): Measurement {
     return { accountKey: null, observedAt: value.observedAt, usage: { status: value.status, ...fields } };
   if (value.status === 'error') return { accountKey: null, observedAt: value.observedAt,
     usage: { status: 'error', ...fields, message: value.message ?? 'Claude quota unavailable.' } };
-  return { accountKey: null, observedAt: value.observedAt, usage: { status: 'ok', ...fields,
+  return { accountKey: null, observedAt: value.observedAt, unread: value.unread, usage: { status: 'ok', ...fields,
     accountEmail: value.account?.accountEmail ?? null, planLabel: value.account?.planLabel ?? null,
     windows: value.windows.map(window => ({ ...window,
       kind: window.id === 'five_hour' ? 'five-hour' : window.id.startsWith('seven_day') ? 'weekly' : 'custom',
