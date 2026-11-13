@@ -66,6 +66,10 @@ Wrangler config: `cf migrate` owns that case.
 - Remove the dead `pnpm.onlyBuiltDependencies` block from `package.json`;
   `pnpm-workspace.yaml#allowBuilds` holds the decisions. Review each
   `allowBuilds` entry with `supply-chain-hardening`.
+- Record a decision for `workerd`; `cf init .` adds it without one. A cold
+  install with clean pnpm config, as in Workers Builds, fails with
+  `ERR_PNPM_IGNORED_BUILDS` until it has one. `workerd: false` worked for
+  build, dev and deploy.
 - Pin `@tanstack/*` dependencies; the scaffold leaves them on `latest`. Use
   `pnpm add -E` with the installed versions.
 - `cf` and `@cloudflare/vite-plugin` 2.x are prereleases, and `cf` publishes
