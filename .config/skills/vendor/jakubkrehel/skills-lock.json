@@ -5,13 +5,13 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-accessibility/SKILL.md",
-      "computedHash": "7fe3f3727dc1c15b5148e1b8d47f1b025f9886348ec8a33f4c4536aa5372cbbe"
+      "computedHash": "f41fce9a55ad32c7f5e2d83eeb33b012d0527e95f5463dd891b92b2e0b13c250"
     },
     "better-colors": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-colors/SKILL.md",
-      "computedHash": "b24b63ebd25658a95e5f791cd83552aca6554dd6746aa6065d930a9492fb9886"
+      "computedHash": "b00e36418b17f7601e196b4066f8b0c1a4489f3adbb6a0fc288d3c699395656e"
     },
     "better-interface": {
       "source": "jakubkrehel/skills",
@@ -23,19 +23,19 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-layout/SKILL.md",
-      "computedHash": "822bb216c43ce743221b1afe42a21c7efc80d85b71847cf109c33af9513da655"
+      "computedHash": "1541da10d123951893d4b19b8fc2975510ac682cd49532980d6b71818f3683cb"
     },
     "better-typography": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-typography/SKILL.md",
-      "computedHash": "6546baea71117ed05b74dd9fb4ebf25300b3a8c9fab1751fd9981701550bd1b7"
+      "computedHash": "cd368ec794997d0a79393e1f98841000502941a1c9c20b3bd3fc9844ee81d81d"
     },
     "better-ui": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-ui/SKILL.md",
-      "computedHash": "8a21f243313aa3b7f6bb5e13d241eef07926fe52bc0a866d154a10f88b7c007a"
+      "computedHash": "0b3ff767dca22a3fe177edb4d3abb4c88fadb64490c2e40834426259183f31e4"
     },
     "better-writing": {
       "source": "jakubkrehel/skills",
@@ -53,7 +53,7 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/explain-interface/SKILL.md",
-      "computedHash": "c15f9e3e5844fe4e70e2ea3251665d84fbdeff899bdc9a839cb88f9bdb5dfc65"
+      "computedHash": "549eeeb730895c9ab7e9bcba5e61da7438f26ba913c5f53f5a54cf2b31e07828"
     },
     "interface-review": {
       "source": "jakubkrehel/skills",
