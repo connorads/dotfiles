@@ -281,10 +281,10 @@
     },
     "reverse-engineer-anything": {
       "source": "morluto/rea",
-      "ref": "rea-agents-6.4.0",
+      "ref": "rea-agents-6.8.0",
       "sourceType": "github",
       "skillPath": ".agents/skills/reverse-engineer-anything/SKILL.md",
-      "computedHash": "cae64595905f3bea4cb2c808fb54dfcc4ac23f3b0f49b1f03208aa3cf9a5b1d7"
+      "computedHash": "5eb458e9f41e75bd767f15ffc00f3192529b67e97146156e3dab2838b1733bbe"
     },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
