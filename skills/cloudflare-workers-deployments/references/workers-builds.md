@@ -26,14 +26,37 @@ or `main`.
 
 Inspect:
 
-- `wrangler.toml`, `wrangler.jsonc`, or framework adapter config.
+- `cloudflare.config.ts` (a `cf` project) or `wrangler.toml`/`wrangler.jsonc`
+  (a Wrangler project). See "Two Project Shapes" in `SKILL.md`.
 - `package.json` scripts, `packageManager`, lockfiles, and workspace files.
 - Build output directory and whether the Worker is assets-only, module/API, or
   full-stack.
 - Default/production branch, preview branch behaviour, root directory, and watch
   paths.
 
-Common static-assets baseline:
+`cf` project package-script baseline:
+
+```json
+{
+  "scripts": {
+    "build": "cf build",
+    "typecheck": "cf workers types && tsc --noEmit",
+    "deploy": "cf deploy",
+    "deploy:preview": "cf previews deploy"
+  },
+  "devDependencies": {
+    "cf": "<exact-version>"
+  }
+}
+```
+
+Rehearse with `pnpm run deploy --dry-run`; it builds and validates without
+credentials. Pin `workersDev: true` and `previewUrls: true` in the `worker`
+block of `cloudflare.config.ts` for the same reason as the Wrangler keys below.
+Whether Workers Builds runs `cf previews deploy` as its preview command is
+unverified; the docs name only Wrangler commands (2026-11).
+
+Wrangler static-assets baseline:
 
 ```jsonc
 // wrangler.jsonc
@@ -54,7 +77,7 @@ later deploy cannot turn them off. `previews` can be empty, but it must exist
 for `wrangler preview` (the preview deploy command, open beta, needs wrangler
 >= ~4.135). Without it, branch builds fail; see `troubleshooting.md`.
 
-Common package-script baseline:
+Wrangler package-script baseline:
 
 ```json
 {
@@ -97,12 +120,12 @@ Check tools before mutating Cloudflare:
 
 ```bash
 cf --version
-wrangler --version
+wrangler --version   # Wrangler projects, wrangler tail, single secrets
 jq --version
 ```
 
-Discover the `cf` surface live; it changes between minor versions. On cf
-v0.15.0 (2026-10):
+Discover the `cf` surface live; it changes between releases. Verified on cf
+0.15.0 (2026-10) and again on 1.0.0-beta.28 (2026-11):
 
 - `cf builds --help` lists the Workers Builds commands (tokens, repos,
   triggers, workers, list, create, get, logs, versions, deploy-hooks, limits).
@@ -144,8 +167,8 @@ cf builds tokens list
 
 `cf workers get` and `cf workers versions list` accept the Worker id or name.
 A missing Worker returns API error 10007. `cf context show`,
-`cf workers subdomains get` and `cf workers domains list` do not exist in cf
-v0.15.0. For custom domains see `routing-and-assets.md`.
+`cf workers subdomains get` and `cf workers domains list` do not exist (cf
+0.15.0 and 1.0.0-beta.28). For custom domains see `routing-and-assets.md`.
 
 Get GitHub numeric IDs when needed:
 
@@ -200,8 +223,8 @@ GitHub-App-authorised token, which gh's OAuth token is not.
   https://dash.cloudflare.com/<account-id>/workers/services/view/<worker-name>/production/settings
   ```
 
-  `<account-id>` comes from `cf auth whoami`; `<worker-name>` from the repo's
-  wrangler config `name`. Then: Build -> Connect. Offer to open it with the
+  `<account-id>` comes from `cf auth whoami`; `<worker-name>` from the
+  project config's Worker `name`. Then: Build -> Connect. Offer to open it with the
   platform opener (`open` on macOS, `xdg-open` on Linux), falling back to
   printing the link; do not launch it unprompted. No display is itself the
   signal to take the CLI path instead.
@@ -213,8 +236,10 @@ GitHub-App-authorised token, which gh's OAuth token is not.
 
 The dashboard reuses an existing user build token if one exists. It creates a
 production trigger and a non-production trigger, and sets the preview deploy
-command to `wrangler preview` (not `wrangler versions upload`). The CLI
-Previews call creates the same pair.
+command to `wrangler preview` (not `wrangler versions upload`) for a Wrangler
+project. For a `cf` project, read the trigger back and set its deploy commands
+to the `deploy` and `deploy:preview` scripts. The CLI Previews call creates the
+same pair.
 
 ### cf CLI write calls: use `--body`
 
@@ -230,9 +255,9 @@ fields match the REST API, so the JSON bodies in this file work verbatim as
 
 ## Create A Worker Project Without Local Deployment
 
-cf v0.15.0 (2026-10) has no Worker-create command. `cf workers beta workers
-create` is gone, and `cf schema --list` shows only GET on
-`/accounts/{account_id}/workers/workers`. Two options:
+`cf` has no Worker-create command (cf 0.15.0 and 1.0.0-beta.28):
+`cf schema --list` maps no command to POST on
+`/accounts/{account_id}/workers/workers`. Three options:
 
 - REST: `POST /accounts/<account-id>/workers/workers` with an API token that
   has Workers Scripts Write. Check the body fields in the current API docs.
@@ -258,8 +283,9 @@ create` is gone, and `cf schema --list` shows only GET on
   through this endpoint lets Workers Builds perform the first app deployment.
   Prefer a supported CLI command when the installed version provides one.
 
-- Bootstrap: run `wrangler deploy` once from a logged-in wrangler. It creates
-  the Worker and a first live version. Workers Builds owns every deploy after
+- Bootstrap: run the project's deploy script once from a logged-in CLI
+  (`cf deploy` or `wrangler deploy`). It creates the Worker and a first live
+  version. Workers Builds owns every deploy after
   that. If the repo forbids local deploys, ask first and record this one
   exception in the repo docs.
 
@@ -365,9 +391,10 @@ cf builds workers create --dry-run --body '{
 ```
 
 Drop `--dry-run` to send it after confirmation. The preview deploy command
-runs `wrangler preview` through the `deploy:preview` package script:
-`<pm> run deploy:preview` (with pnpm, `pnpm run deploy:preview`). The wrangler
-config needs a `previews` block. `deploy_command` must run in
+is the `deploy:preview` package script: `<pm> run deploy:preview` (with pnpm,
+`pnpm run deploy:preview`). It runs `cf previews deploy` in a `cf` project and
+`wrangler preview` in a Wrangler project; the Wrangler config then needs a
+`previews` block. `deploy_command` must run in
 non-interactive CI. With pnpm use `pnpm run deploy`, never `pnpm deploy`.
 
 Then read back:
@@ -436,8 +463,8 @@ cf builds triggers create --body '{
 ```
 
 For previews, create a second trigger with `"branch_includes": ["*"]`,
-`"branch_excludes": ["<production-branch>"]` and a deploy command that runs
-`wrangler preview`. On wrangler older than ~4.135, use
+`"branch_excludes": ["<production-branch>"]` and the `deploy:preview` deploy
+command. In a Wrangler project on wrangler older than ~4.135, use
 `wrangler versions upload` instead. Confirm the current trigger limit in the
 docs before writing.
 

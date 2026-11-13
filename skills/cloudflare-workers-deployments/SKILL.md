@@ -1,37 +1,53 @@
 ---
 name: cloudflare-workers-deployments
 description: >
-  Set up, deploy, and troubleshoot Cloudflare Workers projects using Wrangler,
-  Workers Builds Git integrations, custom domains/routes, static assets, and
-  Cloudflare Access. Use this skill whenever the user mentions Cloudflare
-  Workers deployment, Workers Builds, GitHub-connected or GitLab-connected
-  Workers, Wrangler static assets, Worker custom domains, build branches,
-  preview builds, build watch paths, monorepo Workers Builds, build triggers,
-  build logs, pnpm/npm/yarn/bun deploy commands in Workers Builds, creating a
-  Worker project without deploying locally, or protecting a Worker hostname with
-  Cloudflare Access.
+  Set up, deploy, and troubleshoot Cloudflare Workers projects with the cf CLI
+  (cloudflare.config.ts, cf deploy) or Wrangler, Workers Builds Git
+  integrations, custom domains/routes, static assets, and Cloudflare Access.
+  Use this skill whenever the user mentions Cloudflare Workers deployment, cf
+  deploy, cf builds, cloudflare.config.ts, Workers Builds, GitHub-connected or
+  GitLab-connected Workers, Wrangler deploys or static assets, Worker custom
+  domains, build branches, preview builds, build watch paths, monorepo Workers
+  Builds, build triggers, build logs, pnpm/npm/yarn/bun deploy commands in
+  Workers Builds, creating a Worker project without deploying locally, or
+  protecting a Worker hostname with Cloudflare Access.
 ---
 
 # Cloudflare Workers Deployments
 
 Use this skill for Cloudflare Workers deployment work, especially when the user
-wants the Cloudflare-hosted Git build pipeline rather than a local `wrangler
-deploy`.
+wants the Cloudflare-hosted Git build pipeline rather than a local deploy.
+
+## Two Project Shapes
+
+The project's config file decides the deploy tool. Check it before anything
+else:
+
+- `cloudflare.config.ts` -> a `cf` project. Deploy with `cf deploy` through
+  the package script. Bindings, `domains`, `workersDev` and `previewUrls`
+  live in that file.
+- `wrangler.jsonc` / `wrangler.toml` / `wrangler.json` -> a Wrangler project.
+  Deploy with `wrangler deploy`. Converting it is `cf migrate`, a separate
+  change the user decides on.
+
+Never run `cf dev`, `cf build` or `cf deploy` in a Wrangler project, and
+never add a Wrangler config to a `cf` project. Wrangler stays the tool for
+`wrangler tail` and for setting a single secret in either shape.
 
 ## Operating Rules
 
 - Check current Cloudflare docs or API schema before control-plane changes.
-  Workers Builds and the `cf` CLI move quickly.
-- Discover the CLI surface live; command snapshots here go stale. `cf agent-context`
-  is gone (cf v0.15.0, 2026-10). Use `cf <command> --help`,
-  `cf schema <command>` and `cf schema --list` (method, API path and command
-  for every endpoint).
+  `cf` is in open beta and Workers Builds moves quickly.
+- Discover the CLI surface live; command snapshots here go stale. Use
+  `cf cli search "<task>"`, `cf <command> --help`, `cf schema <command>` and
+  `cf schema --list` (method, API path and command for every endpoint). Keep
+  search queries anonymous: no names, domains or IDs.
 - Run every write command with `--dry-run` first. It prints the exact method,
   URL and JSON body without sending them, so it checks a `--body` payload.
   Exception: skip it for calls whose body carries a secret (for example
   `cf builds tokens create`); dry-run prints the body verbatim.
-- Discover available tools before choosing a path: `cf`, `wrangler`, `jq`,
-  package manager, and whether the Cloudflare dashboard is already configured.
+  `cf deploy --dry-run` is different: it builds and validates locally and
+  needs no credentials.
 - Read existing state first. Do not create duplicate Workers, repo connections,
   build triggers, custom domains, DNS records, or Access applications.
 - Do not echo tokens, deploy hook URLs, raw build logs, or protected response
@@ -42,7 +58,7 @@ deploy`.
   authenticated API client without extracting credentials. See the Worker-create
   reference before using that fallback.
 - Distinguish deployment paths:
-  - `wrangler deploy` publishes from the current machine.
+  - `cf deploy` or `wrangler deploy` publishes from the current machine.
   - Workers Builds runs build/deploy commands inside Cloudflare from Git.
   - `wrangler versions upload` uploads a non-live version, but it does not create
     a brand-new Worker if the Worker does not exist yet.
@@ -62,13 +78,13 @@ Read only the reference needed for the task:
 - `references/workers-builds.md` - create a Worker, connect GitHub, set up
   production and preview builds, trigger builds, inspect logs, verify
   deployments.
-- `references/routing-and-assets.md` - static-assets Worker config, custom
-  domains versus routes, DNS prerequisites, and asset-routing gotchas.
+- `references/routing-and-assets.md` - static-assets config, custom domains
+  versus routes, DNS prerequisites, and asset-routing gotchas.
 - `references/access.md` - protect a hostname with Cloudflare Access and reusable
   policies.
 - `references/troubleshooting.md` - known failures: pnpm workspace/lockfile
   mismatch, `pnpm deploy`, empty Worker projects, missing `previews` block,
-  first-deploy 404s, DNS propagation, stale caches.
+  `cf` in CI, first-deploy 404s, DNS propagation, stale caches.
 
 ## Standard Workflow
 
@@ -77,34 +93,34 @@ Read only the reference needed for the task:
      calls for reauthentication, not a switch to the dashboard.
    - Ask only if needed: local deploy vs Workers Builds, production branch,
      hostname, preview branches, and whether Access should protect the hostname.
-   - If the user says not to deploy locally, do not run `wrangler deploy`.
+   - If the user says not to deploy locally, run no local deploy.
 
 2. Inspect local repo.
-   - Read `package.json`, lockfile, `wrangler.toml`/`wrangler.jsonc`, build
-     output directory, project root, production branch, and existing deploy docs.
+   - Read `package.json`, lockfile, the project config (`cloudflare.config.ts`
+     or Wrangler config), build output, project root, production branch, and
+     existing deploy docs.
    - Derive package manager from lockfiles and `packageManager`; do not assume
      pnpm or `main`.
    - Verify scripts invoke package scripts explicitly. With pnpm, prefer
      `pnpm run deploy` in Workers Builds; `pnpm deploy` can invoke pnpm's built-in
      deploy command instead of the project script.
-   - Prefer repo-pinned `wrangler` as a dev dependency so Cloudflare and local
-     builds use the same Wrangler major/minor.
+   - Pin the deploy CLI (`cf` or `wrangler`) exactly as a dev dependency, so
+     Cloudflare and local builds run the same version.
 
 3. Inspect Cloudflare state.
-   - `cf auth whoami` (also shows the account; `cf context show` is gone in
-     cf v0.15.0)
+   - `cf auth whoami` (also shows the account)
    - `cf workers get <worker-name>` - Worker id (the Builds script tag),
      workers.dev URL and preview URL suffix. A missing Worker returns API error 10007.
    - `cf workers versions list --worker-id <worker-name>`
    - `cf workers deployments list --script-name <worker-name>`
    - `cf builds workers get <worker-tag>` and
      `cf builds triggers list --external-script-id <worker-tag>`
-   - Custom domains: cf v0.15.0 has no domains command; see
+   - Custom domains: `cf` has no domains command; see
      `references/routing-and-assets.md`.
 
 4. Configure Workers Builds.
-   - cf v0.15.0 cannot create a Worker. For a missing Worker, use the REST
-     API or one bootstrap `wrangler deploy`. See `references/workers-builds.md`.
+   - `cf` has no Worker-create command. For a missing Worker, use the REST API
+     or one bootstrap deploy. See `references/workers-builds.md`.
    - When no path is specified, choose by context: interactive with a browser -> hand the user
      the dashboard deep link (it authorises GitHub and creates the build token);
      headless, scripted, or reproducible -> `cf builds workers create`. See

@@ -13,8 +13,9 @@ domains, routes, DNS, or asset-routing behaviour.
 
 ## Static Assets
 
-Start from the existing Wrangler config and framework output. A common
-assets-only Worker uses:
+Start from the existing project config and framework output. In a `cf`
+project on the Vite plugin, `cf build` emits the assets from the framework
+build. A common Wrangler assets-only Worker uses:
 
 ```jsonc
 {
@@ -43,7 +44,7 @@ Do not assume every Worker is assets-only:
 - By default, asset routing can happen before Worker code. If application logic
   must run first, configure that explicitly rather than relying on intuition.
 - Build-time variables in Workers Builds are not runtime Worker variables or
-  secrets. Configure runtime values through Wrangler/Cloudflare Worker settings.
+  secrets. Configure runtime values in the project config or Worker settings.
 
 ## Custom Domains Versus Routes
 
@@ -53,6 +54,18 @@ Choose the routing primitive deliberately:
   choice for a static site or API fully served by the Worker.
 - Routes run a Worker on matching requests for an existing proxied hostname and
   are useful when fronting an external origin.
+
+`cf` custom-domain config, in the `worker` block of `cloudflare.config.ts`.
+`cf deploy` applies it:
+
+```ts
+domains: ["<hostname>"],
+workersDev: true,
+```
+
+Entries can also be `CustomDomain` objects; check that type in the
+[cloudflare.config.ts reference](https://developers.cloudflare.com/cf/projects/cloudflare-config/)
+before writing one.
 
 Wrangler custom-domain config:
 
@@ -92,8 +105,9 @@ Before creating or updating routing:
 cf dns records list --zone <zone-name-or-id> --name <hostname>
 ```
 
-cf v0.15.0 (2026-10) has no command for Worker custom domains or zone Worker
-routes. `cf workers domains list` and `cf workers routes list` are gone, and
+cf 0.15.0 and 1.0.0-beta.28 (2026-11) have no command that reads Worker custom
+domains or zone Worker routes; `cf workers triggers deploy` only applies the
+config's routes. `cf workers domains list` and `cf workers routes list` are gone, and
 no replacement appears in `cf schema --list`. Until one does, read them through
 the REST API with `CF_API_TOKEN` (check paths in the current API docs):
 

@@ -10,6 +10,7 @@ Use this reference for common failures seen while setting up Workers Builds.
 - [`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`](#err_pnpm_lockfile_config_mismatch)
 - [`ERR_PNPM_NOTHING_TO_DEPLOY`](#err_pnpm_nothing_to_deploy)
 - [Missing `previews` Block](#missing-previews-block)
+- [`cf` In Workers Builds](#cf-in-workers-builds)
 - [First Deploy Returns 404](#first-deploy-returns-404)
 - [workers.dev Shows Disabled](#workersdev-shows-disabled)
 - [`Resource not found`](#resource-not-found)
@@ -232,6 +233,25 @@ Fix: add the key. It can be empty:
 
 The next branch build prints preview URLs such as
 `https://<branch>-<worker>.<subdomain>.workers.dev`.
+
+## `cf` In Workers Builds
+
+Open `cf` issues as of 2026-11-13. Check each issue's current state before
+diagnosing a failure that matches it:
+
+- [cloudflare/cf#69](https://github.com/cloudflare/cf/issues/69): `cf deploy`
+  aborts in CI when the Worker was last uploaded through the script API.
+- [cloudflare/cf#564](https://github.com/cloudflare/cf/issues/564): preview
+  builds that run `cf workers versions create` fail on a Worker name mismatch.
+  The `deploy:preview` baseline runs `cf previews deploy` instead.
+- [cloudflare/cf#282](https://github.com/cloudflare/cf/issues/282): no option
+  turns off the automatic PR comments.
+- [cloudflare/cf#532](https://github.com/cloudflare/cf/issues/532):
+  `cf build --mode` fails for TanStack Start.
+
+Run `cf` from the project's dev dependency (`pnpm run deploy`), not a global
+install. `cf init` autoconfig edits files without prompting in CI, so a build
+command must never run `cf init`.
 
 ## First Deploy Returns 404
 
