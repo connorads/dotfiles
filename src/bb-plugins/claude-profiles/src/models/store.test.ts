@@ -38,16 +38,19 @@ test('concurrent stars of the same model occupy one shortcut slot', async () => 
   assert.equal(list[0]?.slot, 1);
 });
 
-test('a saved effort changes without moving the favourite, and null clears it', async () => {
+test('a favourite remembers effort and tier without moving, and null clears them', async () => {
   const { store } = memory();
   await store.add({ name: '', ...setup });
   await store.add({ name: '', ...setup, model: 'model-b', reasoningLevel: 'low' });
-  const [, changed] = await store.setEffort('2', 'xhigh');
-  assert.deepEqual([changed?.id, changed?.slot, changed?.reasoningLevel], ['2', 2, 'xhigh']);
-  const cleared = (await store.setEffort('2', null)).find(f => f.id === '2');
+  const [, changed] = await store.remember('2', { reasoningLevel: 'xhigh', serviceTier: 'fast' });
+  assert.deepEqual([changed?.id, changed?.slot, changed?.reasoningLevel, changed?.serviceTier], ['2', 2, 'xhigh', 'fast']);
+  const kept = (await store.remember('2', { reasoningLevel: 'high' })).find(f => f.id === '2');
+  assert.deepEqual([kept?.reasoningLevel, kept?.serviceTier], ['high', 'fast']);
+  const cleared = (await store.remember('2', { reasoningLevel: null, serviceTier: null })).find(f => f.id === '2');
   assert.equal(cleared?.slot, 2);
   assert.equal('reasoningLevel' in (cleared ?? {}), false);
-  await assert.rejects(store.setEffort('missing', 'low'), /Favourite no longer exists/);
+  assert.equal('serviceTier' in (cleared ?? {}), false);
+  await assert.rejects(store.remember('missing', { reasoningLevel: 'low' }), /Favourite no longer exists/);
 });
 
 test('a list with the same provider and model twice is refused', async () => {

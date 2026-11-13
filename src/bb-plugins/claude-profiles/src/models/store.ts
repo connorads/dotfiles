@@ -1,4 +1,4 @@
-import { listSchema, type Effort, type Favourite, type FavouriteInput } from './contract.ts';
+import { listSchema, type Favourite, type FavouriteInput, type Remembered } from './contract.ts';
 
 export function createStore(
   storage: { get(): Promise<unknown>; set(value: Favourite[]): Promise<void> },
@@ -37,11 +37,17 @@ export function createStore(
     remove(id: string) {
       return mutate(list => { list.splice(find(list, id), 1); return list; });
     },
-    setEffort(id: string, level: Effort | null) {
+    // Undefined keeps a field, null clears it.
+    remember(id: string, values: Remembered) {
       return mutate(list => {
         const index = find(list, id);
-        const { reasoningLevel: _, ...rest } = list[index]!;
-        list[index] = level === null ? rest : { ...rest, reasoningLevel: level };
+        const next: Record<string, unknown> = { ...list[index]! };
+        for (const field of ['reasoningLevel', 'serviceTier'] as const) {
+          const value = values[field];
+          if (value === null) delete next[field];
+          else if (value !== undefined) next[field] = value;
+        }
+        list[index] = next as Favourite;
         return list;
       });
     },

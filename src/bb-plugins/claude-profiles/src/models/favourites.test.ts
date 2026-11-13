@@ -27,27 +27,34 @@ test('cycling wraps and skips unavailable entries while keeping saved order', ()
   assert.equal(nextFavourite(list, selection, 1, () => 'Offline'), null);
 });
 
-test('availability distinguishes catalogue failure, a missing model and an unsupported saved effort', () => {
+test('availability distinguishes catalogue failure and a missing model, and ignores a stale saved effort', () => {
   assert.equal(availability(favourite, catalog), null);
   assert.equal(availability({ ...favourite, reasoningLevel: 'low', serviceTier: 'fast' }, catalog), null);
   assert.equal(availability(favourite, { ...catalog, error: 'Sign in required', models: [] }), 'Sign in required');
   assert.match(availability(favourite, { ...catalog, models: [] }) ?? '', /Model unavailable/);
   assert.match(availability(favourite, { ...catalog, available: false }) ?? '', /Provider unavailable/);
-  assert.equal(availability({ ...favourite, reasoningLevel: 'ultra' }, catalog), 'Saved effort ultra is not available for this model');
+  assert.equal(availability({ ...favourite, reasoningLevel: 'ultra' }, catalog), null);
 });
 
-test('selection uses the saved effort, else the model default, and never the current effort', () => {
+test('selection uses the saved effort when supported, else the model default, and never the current effort', () => {
   assert.deepEqual(planSelection({ ...favourite, reasoningLevel: 'low' }, model), { providerId: 'codex', model: 'model-a', reasoningLevel: 'low' });
   assert.deepEqual(planSelection(favourite, model), { providerId: 'codex', model: 'model-a', reasoningLevel: 'high' });
   assert.deepEqual(planSelection(favourite, { ...model, defaultReasoningEffort: 'low' }), { providerId: 'codex', model: 'model-a', reasoningLevel: 'low' });
-  assert.throws(() => planSelection({ ...favourite, reasoningLevel: 'ultra' }, model), /Saved effort ultra/);
+  assert.deepEqual(planSelection({ ...favourite, reasoningLevel: 'ultra' }, model), { providerId: 'codex', model: 'model-a', reasoningLevel: 'high' });
 });
 
-test('cycling skips a favourite whose saved effort the model does not support', () => {
+test('selection restores a saved tier only when the model still offers it', () => {
+  const fast = { ...model, supportedServiceTiers: [{ id: 'fast' }] };
+  assert.equal(planSelection({ ...favourite, serviceTier: 'fast' }, fast).serviceTier, 'fast');
+  assert.equal(planSelection({ ...favourite, serviceTier: 'fast' }, model).serviceTier, undefined);
+  assert.equal(planSelection(favourite, fast).serviceTier, undefined);
+});
+
+test('cycling keeps a favourite whose saved effort the model no longer supports', () => {
   const unsupported = { ...favourite, id: 'b', slot: 2, model: 'model-b', reasoningLevel: 'ultra' as const };
   const plain = { ...favourite, id: 'c', slot: 3, model: 'model-c' };
   const all = { ...catalog, models: ['model-a', 'model-b', 'model-c'].map(name => ({ ...model, model: name })) };
-  assert.equal(nextFavourite([favourite, unsupported, plain], selection, 1, f => availability(f, all))?.id, 'c');
+  assert.equal(nextFavourite([favourite, unsupported, plain], selection, 1, f => availability(f, all))?.id, 'b');
 });
 
 

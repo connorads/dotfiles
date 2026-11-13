@@ -31,7 +31,7 @@ function renderAccounts(running = false, fail: 'load' | 'switch' | null = null, 
       'favourites.list': () => [],
       'favourites.add': () => [],
       'favourites.remove': () => [],
-      'favourites.setEffort': () => [],
+      'favourites.remember': () => [],
       nextThreadQuota: () => { throw new Error('Unused'); },
       threadAccounts: () => [],
       accounts: () => { if (fail === 'load') throw new Error('Accounts unavailable'); return { supported: true, profiles: [

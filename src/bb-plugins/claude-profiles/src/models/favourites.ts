@@ -19,18 +19,13 @@ export type CatalogModel = {
   sessionOptions?: readonly { id: string; type: string; value: string | boolean; fixed?: boolean }[];
   defaultReasoningEffort: Effort;
   supportedReasoningEfforts: readonly { reasoningEffort: Effort }[];
+  supportedServiceTiers?: readonly { id: string }[] | null;
 };
 export type Catalog = {
   available: boolean;
   error: string | null;
   models: readonly CatalogModel[];
 };
-
-export function effortReason(favourite: Setup, model: CatalogModel): string | null {
-  const saved = favourite.reasoningLevel;
-  if (saved === undefined || model.supportedReasoningEfforts.some(e => e.reasoningEffort === saved)) return null;
-  return `Saved effort ${saved} is not available for this model`;
-}
 
 export function availability(favourite: Setup, catalog: Catalog): string | null {
   if (catalog.error) return catalog.error;
@@ -41,14 +36,17 @@ export function availability(favourite: Setup, catalog: Catalog): string | null 
     const option = model.sessionOptions?.find(option => option.id === 'daybreak' && option.type === 'boolean');
     if ((!option && favourite.daybreak) || (option?.fixed && option.value !== favourite.daybreak)) return 'Daybreak setting is not available for this model';
   }
-  return effortReason(favourite, model);
+  return null;
 }
 
 // The composer's current effort belongs to the last model, so it never carries over.
-export function planSelection(favourite: Setup, model: CatalogModel) {
-  const reason = effortReason(favourite, model);
-  if (reason) throw new Error(reason);
-  return { providerId: favourite.providerId, model: favourite.model, reasoningLevel: favourite.reasoningLevel ?? model.defaultReasoningEffort };
+// A remembered effort or tier the model has dropped falls back to the model default.
+export function planSelection(favourite: Setup, model: CatalogModel): { providerId: string; model: string; reasoningLevel: Effort; serviceTier?: string } {
+  const saved = favourite.reasoningLevel;
+  const reasoningLevel = saved !== undefined && model.supportedReasoningEfforts.some(e => e.reasoningEffort === saved) ? saved : model.defaultReasoningEffort;
+  const tier = favourite.serviceTier;
+  const serviceTier = tier !== undefined && model.supportedServiceTiers?.some(t => t.id === tier) ? tier : undefined;
+  return { providerId: favourite.providerId, model: favourite.model, reasoningLevel, ...(serviceTier ? { serviceTier } : {}) };
 }
 
 export function nextFavourite(

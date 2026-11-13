@@ -52,7 +52,7 @@ Left and Right step the saved effort.
 | Case | Behaviour |
 | --- | --- |
 | Saved effort that the model supports | Selecting the favourite sets that effort. |
-| Saved effort that the model no longer supports | The row is disabled with the reason. Its pill shows **(unavailable)** in amber and stays editable. |
+| Saved effort that the model no longer supports | Selecting the favourite uses the model's default effort. |
 | No saved effort (**Default**) | Selecting the favourite uses the model's default effort, not the composer's current one. |
 | **Now** effort changed | Only this composer changes. Saved efforts stay. |
 

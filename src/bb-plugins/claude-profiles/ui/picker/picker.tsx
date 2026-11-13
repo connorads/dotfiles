@@ -141,7 +141,7 @@ export function ModelPicker({ composer, onClose }: { composer: PluginComposerApi
     }, true);
   }
   function setEffort(favourite: Favourite, effort: Effort | null) {
-    void run(() => rpc.call('favourites.setEffort', { id: favourite.id, reasoningLevel: effort }), true);
+    void run(() => rpc.call('favourites.remember', { id: favourite.id, reasoningLevel: effort }), true);
   }
   const providerName = (id: string) => catalog.find(p => p.providerId === id)?.providerName ?? id;
   const modelOf = (id: string, model: string) => catalog.find(p => p.providerId === id)?.models.find(m => m.model === model);

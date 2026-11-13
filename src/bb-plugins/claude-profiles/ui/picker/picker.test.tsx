@@ -44,7 +44,7 @@ function render(initial = [first, second], error: string | null = null, account?
       'favourites.list': () => saved,
       'favourites.add': input => { saved = [...saved, { ...input, id: 'new', slot: 2 }]; return saved; },
       'favourites.remove': input => { saved = saved.filter(f => f.id !== input.id); return saved; },
-      'favourites.setEffort': input => {
+      'favourites.remember': input => {
         saved = saved.map(f => {
           if (f.id !== input.id) return f;
           const { reasoningLevel: _, ...rest } = f;
@@ -113,7 +113,6 @@ function effortMenu(slot: ReturnType<typeof render>, model: string) {
   fireEvent.click(slot.getByRole('button', { name: new RegExp(`^Saved effort for ${model}:`) }));
   return slot.getByRole('listbox', { name: `Saved effort for ${model}` });
 }
-const optionNames = (listbox: HTMLElement) => within(listbox).getAllByRole('option').map(option => option.textContent);
 
 test('one click applies a saved favourite with its saved effort, without sending or replacing the draft', async () => {
   const slot = render();
@@ -138,22 +137,12 @@ test('a favourite without saved effort applies the model default, not the compos
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('an unsupported saved effort disables the row with its reason and keeps the saved effort editable', async () => {
+test('a saved effort the model no longer supports falls back to the model default', async () => {
   const slot = render([{ ...first, reasoningLevel: 'ultra' }]);
   try {
-    await slot.findByText('Saved effort ultra is not available for this model');
-    const row = slot.getByRole('button', { name: 'Select model-a' });
-    expect(disabled(row)).toBe(true);
-    fireEvent.click(row);
-    expect(slot.inspection.composer.selections).toEqual([]);
-    const pill = slot.getByRole('button', { name: 'Saved effort for model-a: Ultra (unavailable)' });
-    expect(pill.hasAttribute('disabled')).toBe(false);
-    const menu = effortMenu(slot, 'model-a');
-    expect(optionNames(menu)).toEqual(['DefaultHigh', 'High', 'Low', 'Ultra (unavailable)']);
-    expect(within(menu).getByRole('option', { selected: true }).textContent).toBe('Ultra (unavailable)');
-    fireEvent.click(within(menu).getByRole('option', { name: 'Low' }));
-    await waitFor(() => expect(disabled(slot.getByRole('button', { name: 'Select model-a' }))).toBe(false));
-    expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'low' }]);
+    fireEvent.click(await enabledRow(slot, 'Select model-a'));
+    await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('model-a'));
+    expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high');
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -163,8 +152,8 @@ test('the saved effort pill saves the effort without changing the composer', asy
     await enabledRow(slot, 'Select model-a');
     expect(slot.getByRole('button', { name: 'Saved effort for model-b: Low' })).toBeTruthy();
     fireEvent.click(within(effortMenu(slot, 'model-b')).getByRole('option', { name: /^Default/ }));
-    await waitFor(() => expect(calls(slot, 'favourites.setEffort')).toHaveLength(1));
-    expect(calls(slot, 'favourites.setEffort')[0]?.input).toEqual({ id: 'b', reasoningLevel: null });
+    await waitFor(() => expect(calls(slot, 'favourites.remember')).toHaveLength(1));
+    expect(calls(slot, 'favourites.remember')[0]?.input).toEqual({ id: 'b', reasoningLevel: null });
     await slot.findByRole('button', { name: 'Saved effort for model-b: Default' });
     expect(slot.inspection.composer.selections).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
@@ -188,7 +177,7 @@ test('the effort listbox works by keyboard and Escape closes it before the picke
     fireEvent(slot.getByRole('dialog', { name: 'Switch model' }), new Event('cancel', { bubbles: false, cancelable: true }));
     expect(slot.queryByRole('listbox')).toBeNull();
     expect(slot.inspection.composer.focusCount).toBe(1);
-    expect(calls(slot, 'favourites.setEffort')).toEqual([]);
+    expect(calls(slot, 'favourites.remember')).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -197,14 +186,14 @@ test('left and right arrows on a favourite row step its saved effort through Def
   try {
     const row = await enabledRow(slot, 'Select model-b');
     fireEvent.keyDown(row, { key: 'ArrowLeft' });
-    await waitFor(() => expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'b', reasoningLevel: 'high' }]));
+    await waitFor(() => expect(calls(slot, 'favourites.remember').map(call => call.input)).toEqual([{ id: 'b', reasoningLevel: 'high' }]));
     await slot.findByRole('button', { name: 'Saved effort for model-b: High' });
     await enabledRow(slot, 'Select model-b');
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
     await slot.findByRole('button', { name: 'Saved effort for model-b: Default' });
     await enabledRow(slot, 'Select model-b');
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowLeft' });
-    expect(calls(slot, 'favourites.setEffort')).toHaveLength(2);
+    expect(calls(slot, 'favourites.remember')).toHaveLength(2);
     fireEvent.keyDown(slot.getByRole('button', { name: 'Select model-b' }), { key: 'ArrowRight' });
     await slot.findByRole('button', { name: 'Saved effort for model-b: High' });
     expect(slot.inspection.composer.selections).toEqual([]);
@@ -491,7 +480,7 @@ test('the current effort and tier controls update the composer without changing 
     fireEvent.click(within(tier).getByRole('radio', { name: 'Fast' }));
     await waitFor(() => expect(slot.inspection.composer.selection?.serviceTier).toBe('fast'));
     expect(calls(slot, 'favourites.add')).toEqual([]);
-    expect(calls(slot, 'favourites.setEffort')).toEqual([]);
+    expect(calls(slot, 'favourites.remember')).toEqual([]);
     expect(slot.inspection.composer.submits).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
@@ -686,7 +675,7 @@ test('provider default effort does not disable favourites and can be saved and a
     expect(within(menu).getByRole('option', { name: 'minimal' })).toBeTruthy();
     expect(within(menu).getByRole('option', { name: 'thinking' })).toBeTruthy();
     fireEvent.click(within(menu).getByRole('option', { name: 'Provider default' }));
-    await waitFor(() => expect(calls(slot, 'favourites.setEffort').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'default' }]));
+    await waitFor(() => expect(calls(slot, 'favourites.remember').map(call => call.input)).toEqual([{ id: 'a', reasoningLevel: 'default' }]));
     fireEvent.click(await enabledRow(slot, 'Select model-a'));
     await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('default'));
     expect(slot.inspection.composer.submits).toEqual([]);

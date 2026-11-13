@@ -12,6 +12,6 @@ export function registerModels(bb: BbPluginApi) {
     'favourites.list': () => store.list(),
     'favourites.add': input => store.add(input),
     'favourites.remove': input => store.remove(input.id),
-    'favourites.setEffort': input => store.setEffort(input.id, input.reasoningLevel),
+    'favourites.remember': ({ id, ...values }) => store.remember(id, values),
   });
 }

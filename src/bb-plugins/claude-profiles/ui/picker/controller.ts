@@ -74,10 +74,8 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
     const model = options.models.find(m => m.model === favourite.model);
     if (!model) throw new Error('Model unavailable on this machine.');
     const plan = planSelection(favourite, model);
-    const tiers = model.supportedServiceTiers ?? [];
-    const currentTier = composer.selection?.serviceTier;
     const supportsTier = options.providers.find(p => p.id === favourite.providerId)?.capabilities.supportsServiceTier;
-    const serviceTier = supportsTier ? (currentTier && tiers.some(t => t.id === currentTier) ? currentTier : 'default') : undefined;
+    const serviceTier = supportsTier ? plan.serviceTier ?? 'default' : undefined;
     const requested = { ...plan, ...(serviceTier ? { serviceTier } : {}) };
     assertCurrent();
     const programme = favourite.daybreak ?? (model.sessionOptions?.some(option => option.id === 'daybreak') ? false : undefined);

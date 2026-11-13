@@ -24,9 +24,15 @@ export type Favourite = z.infer<typeof favouriteSchema>;
 export const addSchema = setupSchema.omit({ serviceTier: true }).extend({ name: nameSchema }).strict();
 export type FavouriteInput = z.infer<typeof addSchema>;
 
+export const rememberedSchema = z.object({
+  reasoningLevel: effortSchema.nullable().optional(),
+  serviceTier: setupSchema.shape.serviceTier.unwrap().nullable().optional(),
+}).strict();
+export type Remembered = z.infer<typeof rememberedSchema>;
+
 export const modelsContract = defineRpcContract({
   'favourites.list': { input: z.object({}).strict(), output: listSchema },
   'favourites.add': { input: addSchema, output: listSchema },
   'favourites.remove': { input: z.object({ id: z.string() }).strict(), output: listSchema },
-  'favourites.setEffort': { input: z.object({ id: z.string(), reasoningLevel: effortSchema.nullable() }).strict(), output: listSchema },
+  'favourites.remember': { input: rememberedSchema.extend({ id: z.string() }).strict(), output: listSchema },
 });
