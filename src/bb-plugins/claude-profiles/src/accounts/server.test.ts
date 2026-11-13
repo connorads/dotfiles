@@ -168,7 +168,7 @@ test('thread accounts list named bindings and omit Default', async () => {
   await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile: work });
   await bb.storage.kv.set('thread:t2', { hostId: 'h1', profile: { id: 'default', label: 'Default', configDir: null } });
   await bb.storage.kv.set('next-thread-profile', 'personal');
-  assert.deepEqual(await harness.behavior.callRpc('threadAccounts', {}), [{ threadId: 't1', profileId: 'work', label: 'Work' }]);
+  assert.deepEqual(await harness.behavior.callRpc('threadAccounts', {}), [{ threadId: 't1', profileId: 'work', label: 'Work', key: 'W' }]);
 });
 
 test('a fork starts on its source thread\'s account', async () => {

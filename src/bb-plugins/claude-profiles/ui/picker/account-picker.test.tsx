@@ -35,8 +35,8 @@ function renderAccounts(running = false, fail: 'load' | 'switch' | null = null, 
       nextThreadQuota: () => { throw new Error('Unused'); },
       threadAccounts: () => [],
       accounts: () => { if (fail === 'load') throw new Error('Accounts unavailable'); return { supported: true, profiles: [
-        { id: 'default', label: 'Default', configDir: null },
-        { id: 'work', label: 'Work', configDir: '/profiles/work' }], currentId: 'default' }; },
+        { id: 'default', label: 'Default', configDir: null, key: null },
+        { id: 'work', label: 'Work', configDir: '/profiles/work', key: null }], currentId: 'default' }; },
       usage: () => ({ status: 'ok', observedAt: Date.now(), message: null, windows: [
         { id: 'seven_day', label: 'Seven days', usedPercent: 80, cost: null,
           resetsAt: new Date(Date.now() + 7 * 86400000 * 0.8).toISOString() }] }),

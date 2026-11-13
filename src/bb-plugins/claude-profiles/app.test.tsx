@@ -14,8 +14,8 @@ beforeAll(() => {
 afterEach(() => { close(); cleanup(); });
 
 const profiles = [
-  { id: 'default', label: 'Default', configDir: null },
-  { id: 'work', label: 'work', configDir: '/profiles/work' },
+  { id: 'default', label: 'Default', configDir: null, key: null },
+  { id: 'work', label: 'work', configDir: '/profiles/work', key: null },
 ];
 const newThread = { scope: { kind: 'new-thread' as const, projectId: 'project-test' },
   selection: { providerId: 'claude-code', environment: { type: 'host' as const, hostId: 'host-test', workspace: { type: 'personal' as const } } } };
@@ -137,7 +137,7 @@ test('the badge bridge loads thread accounts and reloads when an account changes
   if (!bridge) throw new Error('Missing badge bridge.');
   let label = 'beta';
   const slot = renderSlot<object, typeof rpcContract>({ component: bridge.component }, {}, { rpc: {
-    threadAccounts: () => [{ threadId: 't1', profileId: 'beta', label }],
+    threadAccounts: () => [{ threadId: 't1', profileId: 'beta', label, key: null }],
   } as Partial<PluginRpcTestHandlers<typeof rpcContract>> as PluginRpcTestHandlers<typeof rpcContract> });
   await waitFor(() => expect(getBadges().get('t1')?.label).toBe('beta'));
   label = 'alpha';

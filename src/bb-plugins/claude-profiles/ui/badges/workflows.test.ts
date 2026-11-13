@@ -11,11 +11,11 @@ const preview = (runId: string) => `<div data-timeline-row-id="parent:assistant:
 test('joins each preview to its own worker account, follows switches and cleans up', async () => {
   document.body.innerHTML = preview('wfr_one') + preview('wfr_two');
   setWorkflowLoader(async (_threadId, runId) => [{ label: 'Candidate A', provider: 'claude-code', childThreadId: runId }]);
-  setBadges([{ threadId: 'wfr_one', profileId: 'work', label: 'Work' }, { threadId: 'wfr_two', profileId: 'personal', label: 'Personal' }]);
+  setBadges([{ threadId: 'wfr_one', profileId: 'work', label: 'Work', key: null }, { threadId: 'wfr_two', profileId: 'personal', label: 'Personal', key: null }]);
   dispose = mountWorkflowAccounts(document);
   await settle();
   expect(Array.from(document.querySelectorAll('.cp-workflow-account'), el => el.textContent)).toEqual(['Work', 'Personal']);
-  setBadges([{ threadId: 'wfr_one', profileId: 'personal', label: 'Personal' }]);
+  setBadges([{ threadId: 'wfr_one', profileId: 'personal', label: 'Personal', key: null }]);
   expect(Array.from(document.querySelectorAll('.cp-workflow-account'), el => el.textContent)).toEqual(['Personal']);
   document.body.innerHTML = preview('wfr_one');
   await settle();
@@ -26,7 +26,7 @@ test('joins each preview to its own worker account, follows switches and cleans 
 
 test('omits ambiguous labels, other providers and unavailable run data', async () => {
   document.body.innerHTML = preview('wfr_one') + preview('wfr_two') + preview('wfr_three');
-  setBadges([{ threadId: 'worker', profileId: 'work', label: 'Work' }]);
+  setBadges([{ threadId: 'worker', profileId: 'work', label: 'Work', key: null }]);
   setWorkflowLoader(async (_threadId, runId) => {
     const call = { label: 'Candidate A', provider: 'claude-code', childThreadId: 'worker' };
     if (runId === 'wfr_one') return [call, call];
@@ -44,7 +44,7 @@ test('labels the standalone panel, follows run changes and shares preview accoun
   const resolved: string[] = [];
   setWorkflowPanelContext({ threadId: 'parent', resolve: async (suffix) => { resolved.push(suffix); return `wfr_${suffix}`; } });
   setWorkflowLoader(async (_threadId, runId) => [{ label: 'Candidate A', provider: 'claude-code', childThreadId: runId }]);
-  setBadges([{ threadId: 'wfr_12345678', profileId: 'work', label: 'Work' }, { threadId: 'wfr_87654321', profileId: 'personal', label: 'Personal' }]);
+  setBadges([{ threadId: 'wfr_12345678', profileId: 'work', label: 'Work', key: null }, { threadId: 'wfr_87654321', profileId: 'personal', label: 'Personal', key: null }]);
   document.body.innerHTML = panel('12345678');
   dispose = mountWorkflowAccounts(document);
   await settle();

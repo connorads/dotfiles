@@ -1,6 +1,7 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { accountsContract, hostContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
+import { assignKeys, type AccountKeys } from './src/accounts/keys.ts';
 import { providerEnv } from './src/accounts/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
 import type { Usage } from './src/accounts/quota.ts';
@@ -284,6 +285,16 @@ export default function plugin(bb: BbPluginApi) {
     return { threadId: thread.id, title: source.title, profileId: source.profileId,
       sourceSessionId: source.sessionId, sessionId: identity.data.providerThreadId };
   }
+  async function accountKeys(profiles: readonly Profile[] = []) {
+    const saved = await bb.storage.kv.get<AccountKeys>('account-keys') ?? {};
+    const { keys, changed } = assignKeys(saved, profiles);
+    if (changed) await bb.storage.kv.set('account-keys', keys);
+    return keys;
+  }
+  async function keyed(profiles: readonly Profile[]) {
+    const keys = await accountKeys(profiles);
+    return profiles.map(profile => ({ ...profile, key: keys[profile.id] ?? null }));
+  }
   async function localProfiles() {
     const hostId = await localHostId();
     if (!hostId) return null;
@@ -331,10 +342,10 @@ export default function plugin(bb: BbPluginApi) {
       const unsupported = { supported: false, profiles: [], currentId: 'default' };
       if (threadId === null) {
         const profiles = await localProfiles();
-        return profiles ? { supported: true, profiles, currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default' } : unsupported;
+        return profiles ? { supported: true, profiles: await keyed(profiles), currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default' } : unsupported;
       }
       const account = await threadAccount(threadId);
-      return account ? { supported: true, profiles: account.profiles, currentId: account.currentId } : unsupported;
+      return account ? { supported: true, profiles: await keyed(account.profiles), currentId: account.currentId } : unsupported;
     },
     nextThreadQuota: async ({ profileId }) => {
       const hostId = await localHostId();
@@ -350,8 +361,9 @@ export default function plugin(bb: BbPluginApi) {
     threadAccounts: async () => {
       const selections = await Promise.all((await bb.storage.kv.list('thread:')).map(async entry =>
         [entry.slice('thread:'.length), await bb.storage.kv.get<Selection>(entry)] as const));
+      const keys = await accountKeys(selections.flatMap(([, selected]) => selected?.profile.configDir ? [selected.profile] : []));
       return selections.flatMap(([threadId, selected]) => selected?.profile.configDir
-        ? [{ threadId, profileId: selected.profile.id, label: selected.profile.label }] : []);
+        ? [{ threadId, profileId: selected.profile.id, label: selected.profile.label, key: keys[selected.profile.id] ?? null }] : []);
     },
   });
   bb.rpc.register(usageSourceContract, {

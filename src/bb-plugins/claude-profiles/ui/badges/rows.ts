@@ -27,7 +27,7 @@ export function mountAccountBadges(doc: Document): () => void {
         badge.setAttribute('aria-hidden', 'true');
         icon.append(badge);
       }
-      const letter = account.label.trim().charAt(0).toUpperCase() || '?';
+      const letter = account.key ?? (account.label.trim().charAt(0).toUpperCase() || '?');
       const title = `Claude account: ${account.label}`;
       if (badge.textContent !== letter) badge.textContent = letter;
       if (badge.title !== title) badge.title = title;

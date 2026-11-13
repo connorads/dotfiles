@@ -20,7 +20,7 @@ function TestPicker() {
 
 const first: Favourite = { id: 'a', slot: 1, name: 'Deep', providerId: 'codex', model: 'model-a', reasoningLevel: 'high' };
 const second: Favourite = { ...first, id: 'b', slot: 3, name: 'Quick', model: 'model-b', reasoningLevel: 'low' };
-const profiles = [{ id: 'default', label: 'Default', configDir: null }, { id: 'work', label: 'Work', configDir: '/profiles/work' }];
+const profiles = [{ id: 'default', label: 'Default', configDir: null, key: null }, { id: 'work', label: 'Work', configDir: '/profiles/work', key: null }];
 type Account = { pending?: Promise<{ currentId: string }>; running?: boolean; failSwitch?: boolean; missing?: boolean; newThread?: boolean; queued?: boolean };
 const accountCalls: string[] = [];
 function render(initial = [first, second], error: string | null = null, account?: Account, selection: Partial<ComposerSelection> & { models?: string[]; catalogueDefault?: boolean; programme?: { value: boolean; fixed?: boolean; thread?: boolean; refuse?: boolean } } = {}) {

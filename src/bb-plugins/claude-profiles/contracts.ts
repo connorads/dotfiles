@@ -11,7 +11,10 @@ export const profileSchema = z.object({ id: z.string(), label: z.string(), confi
 export type Profile = z.infer<typeof profileSchema>;
 export const selectionSchema = z.object({ hostId: z.string(), profile: profileSchema });
 export type Selection = z.infer<typeof selectionSchema>;
-export const threadAccountSchema = z.object({ threadId: z.string(), profileId: z.string(), label: z.string() });
+export const threadAccountSchema = z.object({ threadId: z.string(), profileId: z.string(), label: z.string(), key: z.string().nullable() });
+// A keyed profile carries its stable picker and badge letter.
+export const keyedProfileSchema = profileSchema.extend({ key: z.string().nullable() });
+export type KeyedProfile = z.infer<typeof keyedProfileSchema>;
 export type ThreadAccount = z.infer<typeof threadAccountSchema>;
 const rootInput = { root: z.string() };
 export const hostContract = defineRpcContract({
@@ -39,7 +42,7 @@ export const hostContract = defineRpcContract({
 // A null thread is the new-thread composer: its choice is remembered and claimed by the next Claude thread's first send.
 export const accountsContract = defineRpcContract({
   accounts: { input: z.object({ threadId: z.string().nullable() }), output: z.object({
-    supported: z.boolean(), profiles: z.array(profileSchema), currentId: z.string(),
+    supported: z.boolean(), profiles: z.array(keyedProfileSchema), currentId: z.string(),
   }) },
   choose: { input: z.object({ threadId: z.string().nullable(), profileId: z.string() }), output: z.object({ currentId: z.string() }) },
   usage: { input: z.object({ threadId: z.string(), profileId: z.string(), refresh: z.boolean() }), output: usageSchema },

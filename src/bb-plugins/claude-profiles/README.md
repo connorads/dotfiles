@@ -188,9 +188,11 @@ or sent-message editors and does not change the remembered account.
 **Default** means the thread has no named account. It uses the native default
 configuration.
 
-In the sidebar, a Claude thread on a named account shows the account's initial
-on its Claude icon. Each account keeps one colour. Hover over the row's icon for
-the account name. Threads on Default show no initial. The badge decorates BB's
+In the sidebar, a Claude thread on a named account shows the account's letter
+on its Claude icon. Each account keeps one letter and one colour. The letter is
+the first letter of its name that no earlier account holds, so a new account
+never changes an existing letter. Hover over the row's icon for the account
+name. Threads on Default show no letter. The badge decorates BB's
 own thread list by DOM selector, so a BB markup change can hide it; see
 [SDK frictions](../docs/sdk-frictions.md).
 
