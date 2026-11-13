@@ -62,6 +62,32 @@ directory and record `git rev-parse HEAD`. Keep existing tag/branch pins unless 
 user asks to change them. All skills from a group use that same checkout, including
 any explicitly authorised companion skills.
 
+### Report held tag pins
+
+A tag pin refreshes to the same bytes, so a newer release never appears in the
+diff. Before preparing, list each tag-pinned source whose upstream has a newer
+tag with the same prefix:
+
+```bash
+cd ~/.config/skills/vendor
+find . -name skills-lock.json -not -path './manual/*' -exec \
+  jq -r '.skills[] | select(.ref) | "\(.source)\t\(.ref)"' {} + | sort -u |
+while IFS=$'\t' read -r src ref; do
+  prefix=${ref%%[0-9]*}
+  newest=$(git ls-remote --tags --refs "https://github.com/$src" "refs/tags/${prefix}*" |
+    sed 's|.*refs/tags/||' | grep -E "^${prefix}[0-9]+(\.[0-9]+)*$" | sort -V | tail -1)
+  [ -n "$newest" ] && [ "$newest" != "$ref" ] && echo "$src $ref -> $newest"
+done
+```
+
+Report every held pin with its newest tag and that tag's date. Move a pin only
+when the user asks. A moved pin follows the same prepare, patch and review steps.
+Prefer the newest tag at least four days old, matching the package quarantine.
+
+Some tags name a release of a mise-pinned CLI that the skill documents, such as
+`rea-agents-<version>` and `"npm:rea-agents"`. `mise lock --bump` skips exact
+pins, so neither pin moves alone. Bump both to the same release in one commit.
+
 Check out each recorded skill directory completely, including supporting files.
 Compare its contents with the Git tree. For a root-level `SKILL.md`, disable sparse
 checkout or use a full checkout: cone-mode `sparse-checkout set .` omits subfolders.
