@@ -43,6 +43,8 @@ export const hostContract = defineRpcContract({
 export const accountsContract = defineRpcContract({
   accounts: { input: z.object({ threadId: z.string().nullable() }), output: z.object({
     supported: z.boolean(), profiles: z.array(keyedProfileSchema), currentId: z.string(),
+    // An account chosen during a turn; it applies when the thread is next idle.
+    pendingId: z.string().nullable(),
   }) },
   choose: { input: z.object({ threadId: z.string().nullable(), profileId: z.string() }), output: z.object({ currentId: z.string() }) },
   usage: { input: z.object({ threadId: z.string(), profileId: z.string(), refresh: z.boolean() }), output: usageSchema },

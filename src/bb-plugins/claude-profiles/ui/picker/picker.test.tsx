@@ -55,7 +55,7 @@ function render(initial = [first, second], error: string | null = null, account?
       accounts: () => {
         accountCalls.push('accounts');
         if (account?.missing) throw new Error('Could not list Claude accounts');
-        return { supported: true, profiles, currentId };
+        return { supported: true, profiles, currentId, pendingId: null };
       },
       choose: input => {
         accountCalls.push('choose');

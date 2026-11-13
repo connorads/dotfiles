@@ -53,7 +53,7 @@ async function render(composer: Composer, rpc: Partial<PluginRpcTestHandlers<typ
 }
 
 test('the status shows the remembered account in a new-thread Claude composer', async () => {
-  const { slot } = await render(newThread, { accounts: () => ({ supported: true, profiles, currentId: 'work' }) });
+  const { slot } = await render(newThread, { accounts: () => ({ supported: true, profiles, currentId: 'work', pendingId: null }) });
   expect((await slot.findByRole('button', { name: /Claude account/ })).textContent).toBe('work');
   expect(slot.inspection.rpcCalls.find(call => call.method === 'accounts')?.input).toEqual({ threadId: null });
 });
@@ -110,7 +110,7 @@ test('Alt+A in a queued editor cannot change the new-thread account', async () =
 
 test('a Claude handoff explains account limits without changing the source or remembered account', async () => {
   const { slot } = await render(thread, {
-    accounts: () => ({ supported: false, profiles: [], currentId: 'default' }),
+    accounts: () => ({ supported: false, profiles: [], currentId: 'default', pendingId: null }),
   });
   fireEvent.click(slot.getByTestId('run-switcher'));
   await slot.findByText(/New Claude threads use your remembered account/);
@@ -123,7 +123,7 @@ test('a Claude handoff explains account limits without changing the source or re
 
 test('the model picker explains the same Claude handoff limitation', async () => {
   const { slot } = await render(thread, {
-    accounts: () => ({ supported: false, profiles: [], currentId: 'default' }),
+    accounts: () => ({ supported: false, profiles: [], currentId: 'default', pendingId: null }),
   });
   fireEvent.click(slot.getByRole('button', { name: 'Switch model' }));
   await slot.findByText(/New Claude threads use your remembered account/);

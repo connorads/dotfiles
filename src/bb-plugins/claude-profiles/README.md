@@ -388,6 +388,15 @@ A new thread has no session to copy. Its first send passes BB's
 binds the thread by the new-thread rule, resolving the profile on the thread's
 host. A missing profile on that host rejects the send.
 
+An account chosen through `choose` while a turn runs or messages wait is stored
+as pending. Choosing the current account again cancels it. The switch runs when
+the thread's runtime is next idle. A steer into the running turn stays on the
+old account. A message that would start the next turn first waits with
+**Moving to <account>…** while the transfer runs beside the dispatch hook, then
+proceeds on the new account. The hook never holds BB's server-wide dispatch
+lock for the transfer. A failed transfer refuses that message once with the
+reason and leaves the thread on its old account.
+
 A switch starts a new prompt cache on the target account, so the next request
 re-sends the whole conversation uncached. When [Cache Hits](../cache-hits/README.md)
 is enabled, the switch marks its chip cold.

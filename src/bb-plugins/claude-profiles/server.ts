@@ -51,8 +51,8 @@ export default function plugin(bb: BbPluginApi) {
     const environment = await bb.sdk.environments.get({ environmentId: thread.environmentId });
     return { thread, environment, config: await settings.get() };
   }
-  function requireIdle(thread: Awaited<ReturnType<typeof bb.sdk.threads.get>>) {
-    if (!['idle', 'error'].includes(thread.status) || thread.activeBackgroundAgentCount || thread.queuedMessageCount) {
+  function requireIdle(thread: Awaited<ReturnType<typeof bb.sdk.threads.get>>, allowQueued = false) {
+    if (!['idle', 'error'].includes(thread.status) || thread.activeBackgroundAgentCount || (!allowQueued && thread.queuedMessageCount)) {
       throw new Error('Finish or stop the turn and clear queued messages before switching profiles.');
     }
   }
@@ -151,7 +151,58 @@ export default function plugin(bb: BbPluginApi) {
     await bb.storage.kv.set(guardKey(threadId), { ...guard, notice: null });
     return guard.notice;
   }
+  // A switch chosen during a turn waits here until the runtime is idle.
+  type Pending = { profileId: string; label: string; error: string | null };
+  const pendingKey = (threadId: string) => `pending:${threadId}`;
+  const applying = new Set<string>();
+  const runtimeIdle = (thread: { status: string; activeBackgroundAgentCount?: number | null }) =>
+    ['idle', 'error'].includes(thread.status) && !thread.activeBackgroundAgentCount;
+  async function queueSwitch(threadId: string, profileId: string) {
+    const thread = await bb.sdk.threads.get({ threadId });
+    if (runtimeIdle(thread) && !thread.queuedMessageCount) {
+      await bb.storage.kv.delete(pendingKey(threadId));
+      return (await select(threadId, profileId)).profile.id;
+    }
+    const current = (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default';
+    if (profileId === current) await bb.storage.kv.delete(pendingKey(threadId));
+    else {
+      const { environment, config } = await context(threadId);
+      const profiles = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
+      const profile = profiles.find(value => value.id === profileId);
+      if (!profile) throw new Error('Profile does not exist.');
+      await bb.storage.kv.set(pendingKey(threadId), { profileId, label: profile.label, error: null } satisfies Pending);
+    }
+    bb.realtime.publish('profiles-changed', { threadId });
+    return current;
+  }
+  async function applyPending(threadId: string) {
+    const pending = await bb.storage.kv.get<Pending>(pendingKey(threadId));
+    if (!pending || pending.error || applying.has(threadId) || switching.has(threadId)) return;
+    if (!runtimeIdle(await bb.sdk.threads.get({ threadId }))) return;
+    applying.add(threadId);
+    try {
+      await select(threadId, pending.profileId, true);
+      await bb.storage.kv.delete(pendingKey(threadId));
+    } catch (error) {
+      await bb.storage.kv.set(pendingKey(threadId), { ...pending, error: error instanceof Error ? error.message : String(error) } satisfies Pending);
+    } finally {
+      applying.delete(threadId);
+      void bb.experimental_hooks.recheck('message.dispatch');
+    }
+  }
   bb.experimental_hooks.on('message.dispatch', async input => {
+    if (input.thread.providerId === 'claude-code' && input.attempt === 'start-turn') {
+      const pending = await bb.storage.kv.get<Pending>(pendingKey(input.thread.id));
+      if (pending?.error) {
+        await bb.storage.kv.delete(pendingKey(input.thread.id));
+        return { action: 'reject', message: `Could not move to ${pending.label}: ${pending.error}` };
+      }
+      if (pending) {
+        // Never hold the server-wide hook lock for the transfer; run it beside the hook.
+        void applyPending(input.thread.id);
+        return { action: 'wait', reason: `Moving to ${pending.label}…`, sendAt: Date.now() + 2000 };
+      }
+    }
     if (input.thread.providerId === 'claude-code' && (connectors.changing || switching.has(input.thread.id))) return { action: 'reject', message: 'Claude session settings are changing. Send your message after they finish.' };
     if (input.thread.providerId === 'claude-code' && input.thread.status === 'pending') {
       try {
@@ -176,6 +227,7 @@ export default function plugin(bb: BbPluginApi) {
   });
   bb.events.on('experimental_thread.events', async ({ thread }) => {
     if (thread.providerId !== 'claude-code') return;
+    await applyPending(thread.id).catch(error => bb.log.warn(`Pending account switch failed: ${String(error)}`));
     await connectors.settle(thread.id).catch(error => bb.log.warn(`Connector restart review failed: ${error instanceof Error ? error.message : String(error)}`));
     await settleStage(thread).catch(error => bb.log.warn(`Could not remove the fork stage for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
     await review(thread.id).catch(error => bb.log.warn(`Claude profile review failed for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
@@ -219,12 +271,12 @@ export default function plugin(bb: BbPluginApi) {
       bb.log.warn(`Could not mark the prompt cache cold for ${threadId}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  async function select(threadId: string, profileId: string): Promise<Selection> {
+  async function select(threadId: string, profileId: string, allowQueued = false): Promise<Selection> {
     if (connectors.changing || switching.has(threadId)) throw new Error('Claude session settings are changing.');
     switching.add(threadId);
     try {
       const { thread, environment, config } = await context(threadId);
-      requireIdle(thread);
+      requireIdle(thread, allowQueued);
       const profiles = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
       const profile = profiles.find(value => value.id === profileId);
       if (!profile) throw new Error('Profile does not exist.');
@@ -243,7 +295,7 @@ export default function plugin(bb: BbPluginApi) {
       const sourceDir = directoryEntry && typeof directoryEntry.value === 'string'
         ? directoryEntry.value || null : selected?.profile.configDir ?? null;
       await bb.sdk.threads.stop({ threadId });
-      requireIdle(await bb.sdk.threads.get({ threadId }));
+      requireIdle(await bb.sdk.threads.get({ threadId }), allowQueued);
       await connectors.invalidate(threadId);
       if (identity?.type === 'thread/identity') {
         await host.call('transfer', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
@@ -339,13 +391,14 @@ export default function plugin(bb: BbPluginApi) {
   });
   bb.rpc.register(accountsContract, {
     accounts: async ({ threadId }) => {
-      const unsupported = { supported: false, profiles: [], currentId: 'default' };
+      const unsupported = { supported: false, profiles: [], currentId: 'default', pendingId: null };
       if (threadId === null) {
         const profiles = await localProfiles();
-        return profiles ? { supported: true, profiles: await keyed(profiles), currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default' } : unsupported;
+        return profiles ? { supported: true, profiles: await keyed(profiles), currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default', pendingId: null } : unsupported;
       }
       const account = await threadAccount(threadId);
-      return account ? { supported: true, profiles: await keyed(account.profiles), currentId: account.currentId } : unsupported;
+      const pending = await bb.storage.kv.get<Pending>(pendingKey(threadId));
+      return account ? { supported: true, profiles: await keyed(account.profiles), currentId: account.currentId, pendingId: pending?.profileId ?? null } : unsupported;
     },
     nextThreadQuota: async ({ profileId }) => {
       const hostId = await localHostId();
@@ -353,7 +406,7 @@ export default function plugin(bb: BbPluginApi) {
       return hostUsage(hostId, await settings.get(), profileId, false);
     },
     choose: async ({ threadId, profileId }) => {
-      if (threadId !== null) return { currentId: (await select(threadId, profileId)).profile.id };
+      if (threadId !== null) return { currentId: await queueSwitch(threadId, profileId) };
       await chooseNext(profileId);
       return { currentId: profileId };
     },
