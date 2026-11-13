@@ -3,7 +3,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { usageContract, type LoginMethod } from './contract.ts';
 import { createUsageReader, type UsagePorts } from './overview.ts';
 
-type AccountPorts = Pick<UsagePorts, 'resetCredits' | 'claudeAccount' | 'claudeResource'> & {
+type AccountPorts = Pick<UsagePorts, 'resetCredits' | 'claudeResets' | 'claudeAccount' | 'claudeResource'> & {
   amp: (refresh: boolean) => Promise<AmpOverview>;
   login: (hostId: string, accountId: string, method?: LoginMethod) => Promise<{ terminalId: string }>;
 };

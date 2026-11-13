@@ -2,6 +2,7 @@ import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { ampOverviewSchema } from './amp-reading.ts';
 import { resetCreditsSchema } from './reset-credits.ts';
+import { claudeResetsSchema } from './claude-resets.ts';
 
 const cost = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() }).nullable();
 export const sourceWindowSchema = z.object({ label: z.string(), usedPercent: z.number(), resetsAt: z.string().nullable(), cost });
@@ -37,9 +38,11 @@ export const inspectionSchema = z.object({
   snapshot: snapshotSchema,
   readings: z.array(z.object({ accountId: z.string(), observedAt: z.number().nonnegative().nullable() })),
   resetCredits: z.array(z.object({ hostId: z.string(), reading: resetCreditsSchema })),
+  claudeResets: z.array(z.object({ accountId: z.string(), reading: claudeResetsSchema })),
 });
 export const usageHostContract = defineRpcContract({
   resetCredits: { input: z.object({ refresh: z.boolean() }), output: resetCreditsSchema },
+  claudeResets: { input: z.object({ root: z.string(), profileId: z.string(), refresh: z.boolean() }), output: claudeResetsSchema },
 });
 export const loginMethodSchema = z.enum(['device', 'browser']);
 export type LoginMethod = z.infer<typeof loginMethodSchema>;

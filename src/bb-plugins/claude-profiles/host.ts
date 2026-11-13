@@ -13,6 +13,7 @@ import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
 import { collectGrokUsage } from './src/accounts/usage/grok.ts';
 import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
+import { collectClaudeResets, readClaudeResets } from './src/accounts/usage/claude-resets-host.ts';
 
 function rootPath(root: string) {
   const path = root.startsWith('~/') ? join(homedir(), root.slice(2)) : root;
@@ -96,5 +97,11 @@ export default experimental_defineHostEntry({
     ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
+    claudeResets: async (input, { signal }) => {
+      await profile(input.root, input.profileId);
+      if (input.profileId !== 'default' && rootPath(input.root) !== join(homedir(), '.claude-profiles/code'))
+        return { status: 'unavailable' as const, message: 'Reset collection requires the standard Claude profile root.' };
+      return readClaudeResets(homedir(), input.profileId, input.refresh, () => collectClaudeResets(homedir(), input.profileId, signal));
+    },
   },
 });

@@ -219,7 +219,10 @@ one row: its bar, use and time to reset, or its run-out time when use will
 outlast it. Hover over that text for the full reset time. **Refresh** requests
 fresh readings. A light sweep marks pending requests. Changed figures roll into
 place with their bar fills when readings arrive. Reduced motion disables these
-animations. Codex reset credits show beneath the Codex accounts.
+animations. Saved resets show beneath their account's quota rows. Claude groups
+them by reset type and expiry; Codex groups its reset credits by expiry. Deadlines
+within three days show in amber. Hover over an expiry for its date and local time.
+Held Claude resets stay visible when they are paused or cannot be used yet.
 
 A Claude profile row shows the account email and plan cached in the profile's
 `.claude.json`. Team seats read as Team Standard or Team Premium with the
@@ -407,6 +410,17 @@ refreshes missing readings or readings at least five minutes old. The open
 overlay checks every five minutes. Collection runs
 `~/.config/zsh/functions/codex-usage` with its cache, lock and backoff rules.
 No tmux session is required. The plugin does not read credentials or redeem credits.
+
+Claude saved resets come from `~/.cache/claude-usage.json` and
+`~/.cache/claude-usage-<profile>.json`. The same five-minute refresh rules call
+`~/.config/zsh/functions/claude-usage`, which owns credentials, locks and backoff.
+Named profiles require the standard `~/.claude-profiles/code` root for reset
+collection. Quota readings support the configured profile root independently.
+The collector requests `cedar_ember=1` with the installed CLI's
+`claude-cli/<version> (external, cli)` User-Agent. The API requires that format
+to report reset grants; a client refusal stays unavailable rather than zero.
+Fable grants return weekly Fable usage and refill the session allowance. Weekly,
+full and five-hour resets keep their own labels. Redemption stays in Claude.
 
 ## CLI
 

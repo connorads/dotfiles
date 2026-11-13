@@ -6,6 +6,7 @@ import type { Measurement } from '../usage-source.ts';
 import { sourceSnapshotSchema, type Account, type Header, type Inspection, type Snapshot, type SourceSnapshot, type UsageWindow } from './contract.ts';
 import type { Period } from './pace.ts';
 import type { ResetCredits } from './reset-credits.ts';
+import type { ClaudeResets } from './claude-resets.ts';
 
 const ownPluginId = 'claude-profiles';
 const profileLocatorSchema = z.tuple([z.string(), z.string(), z.string()]);
@@ -71,6 +72,7 @@ export interface UsagePorts {
   getEnvironment(input: { environmentId: string }): Promise<{ hostId: string }>;
   listProviders(): Promise<{ id: string; displayName: string }[]>;
   resetCredits(hostId: string, refresh: boolean): Promise<ResetCredits>;
+  claudeResets(hostId: string, profileId: string, refresh: boolean): Promise<ClaudeResets>;
   /** The profile a Claude thread runs on and its quota, or null before the thread has an environment. */
   claudeAccount(threadId: string): Promise<{ label: string; usage: Usage } | null>;
   /** This plugin's own `provider-usage.v1.getResource`, read without an RPC round trip to itself. */
@@ -142,7 +144,20 @@ export function createUsageReader(ports: UsagePorts) {
       const profile = source ? observations.find(value => value.accountId === source.id)?.observedAt ?? null : native;
       return { accountId: account.id, observedAt: native === null || profile === null ? null : Math.min(native, profile) };
     }));
-    return { snapshot, readings, resetCredits };
+    const claudeResets = await Promise.all(snapshot.machines.flatMap(machine => machine.providers
+      .filter(account => account.providerId === 'claude-code').map(async account => {
+        const locator = account.id.startsWith('claude-profiles:') ? profileLocatorSchema.safeParse(resourceLocator(account)) : null;
+        const profileId = locator?.success ? locator.data[2] : 'default';
+        let reading: ClaudeResets;
+        if (machine.status === 'disconnected') reading = { status: 'unavailable', message: 'Machine is offline.' };
+        else if (account.usage?.status !== 'ok') reading = { status: 'unavailable', message: 'Sign in to read saved resets.' };
+        else {
+          try { reading = await ports.claudeResets(machine.id, profileId, refresh); }
+          catch { reading = { status: 'unavailable', message: 'Claude resets could not be read from this machine.' }; }
+        }
+        return { accountId: account.id, reading };
+      })));
+    return { snapshot, readings, resetCredits, claudeResets };
   }
   async function header(threadId: string): Promise<Header> {
     const thread = await ports.getThread({ threadId });

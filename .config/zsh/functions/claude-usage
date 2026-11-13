@@ -194,10 +194,10 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
     if curl -sS --max-time 8 \
         -D "$hdr" \
         -o "$body" \
-        "https://api.anthropic.com/api/oauth/usage" \
+        "https://api.anthropic.com/api/oauth/usage?cedar_ember=1" \
         -H "Authorization: Bearer $token" \
         -H "anthropic-beta: oauth-2025-04-20" \
-        -H "User-Agent: claude-code/${claude_ver:-unknown}"; then
+        -H "User-Agent: claude-cli/${claude_ver:-unknown} (external, cli)"; then
         http_code=$(awk 'BEGIN{IGNORECASE=1} /^HTTP/{code=$2} END{print code+0}' "$hdr")
         retry_after=$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {print $2; exit}' "$hdr" | tr -d '\r')
         resp=$(<"$body")

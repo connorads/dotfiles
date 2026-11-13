@@ -316,6 +316,8 @@ export default function plugin(bb: BbPluginApi) {
       profiles: (hostId, root) => host.call('profiles', { root }, { hostId }) }),
     amp: refresh => amp.read(refresh),
     resetCredits: (hostId, refresh) => host.call('resetCredits', { refresh }, { hostId, timeoutMs: 30_000 }),
+    claudeResets: async (hostId, profileId, refresh) => host.call('claudeResets',
+      { root: (await settings.get()).profileRoot, profileId, refresh }, { hostId, timeoutMs: 30_000 }),
     claudeAccount: async threadId => {
       const account = await threadAccount(threadId);
       if (!account) return null;

@@ -129,6 +129,7 @@
 .au-reading { margin: 10px 0 0; font-size: 12px; color: var(--au-subtle); line-height: 1.5; overflow-wrap: anywhere; }
 .au-reading[data-stale] { color: var(--warning); }
 .au-resets { margin-top: 10px; }
+.au-reset-availability { display: block; font-size: 11px; color: var(--au-subtle); }
 .au-resets-held { display: flex; align-items: center; gap: 8px; color: var(--au-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .au-pips { display: flex; gap: 3px; }
 .au-pips > span { width: 6px; height: 6px; border-radius: 999px; background: var(--au-fill); }

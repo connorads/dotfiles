@@ -22,6 +22,7 @@ const snapshot: Snapshot = { machines: [{ id: 'host-one', displayName: 'Laptop',
 ] }] };
 
 const inspect = (value: Snapshot = snapshot): Inspection => ({ snapshot: value,
+  claudeResets: [],
   readings: value.machines.flatMap(machine => machine.providers.map(account => ({ accountId: account.id, observedAt: NOW.getTime() }))),
   resetCredits: [{ hostId: 'host-one', reading: { status: 'ok', accountLabel: 'cli@example.com',
     observedAt: NOW.getTime() - 90_000, held: 3, usable: 0, unknownExpiryCount: 1,
@@ -162,6 +163,39 @@ test('reset credits hide the CLI login when it is the account shown', async () =
   act(() => openUsage());
   const table = await slot.findByRole('table', { name: 'Codex reset credits' });
   expect(table.textContent).not.toContain('CLI login');
+});
+
+test('Claude reset types sit under their own account with expiry warnings and held availability', async () => {
+  const app = await load();
+  const value = structuredClone(inspect());
+  value.claudeResets = [{ accountId: 'Claude:Work', reading: { status: 'ok', observedAt: NOW.getTime(), groups: [
+    { label: 'Weekly reset', count: 1, usable: 1, expiresAt: hoursFromNow(48), paused: false },
+    { label: 'Fable reset', count: 3, usable: 0, expiresAt: hoursFromNow(400), paused: false },
+  ] } }];
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => value } });
+  act(() => openUsage());
+  const table = await slot.findByRole('table', { name: 'Claude saved resets' });
+  expect(table.closest('section')?.getAttribute('aria-label')).toBe('Claude · Work');
+  expect(slot.getByRole('row', { name: /^Weekly reset: 1 saved\. Expires in 2d 0h/ }).querySelector('[data-tone="warning"]')).toBeTruthy();
+  expect(slot.getByRole('row', { name: /^Fable reset: 3 saved/ }).textContent).toContain('0 usable now');
+  expect(table.querySelectorAll('.au-pips > span')).toHaveLength(4);
+  expect(table.querySelector('[title*="Returns weekly Fable usage"]')).toBeTruthy();
+  expect(slot.getAllByRole('table', { name: 'Claude saved resets' })).toHaveLength(1);
+});
+
+test('Claude distinguishes unavailable reset data from a known empty balance', async () => {
+  const app = await load();
+  const value = structuredClone(inspect());
+  value.claudeResets = [
+    { accountId: 'Claude:Work', reading: { status: 'ok', observedAt: NOW.getTime(), groups: [] } },
+    { accountId: 'Claude:Spare', reading: { status: 'unavailable', message: 'Machine is offline.' } },
+  ];
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => value } });
+  act(() => openUsage());
+  const table = await slot.findByRole('table', { name: 'Claude saved resets' });
+  expect(table.textContent).toContain('Machine is offline.');
+  expect(table.closest('section')?.getAttribute('aria-label')).toBe('Claude · Spare');
+  expect(table.textContent).not.toContain('0 saved');
 });
 
 test('a signed-out Codex login shows one heading, a warning and a quiet stale note', async () => {

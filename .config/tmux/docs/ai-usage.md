@@ -78,8 +78,10 @@ Codex's usage-limit-reset credits (`rate_limit_reset_credits`) render as a
 `Resets` line reporting both what the account holds and what is spendable now
 (`applicable_available_count`); nothing is emitted at zero. It goes through the
 always-render `standing` list, not `alerts`, which is sliced to three - ranked by
-severity, so a red is never dropped for a yellow. Claude's `/api/oauth/usage`
-carries no reset-credit field, so this stays Codex-only.
+severity, so a red is never dropped for a yellow. The terminal `Resets` line
+shows Codex credits only. The Claude collector also caches saved grants from
+`/api/oauth/usage?cedar_ember=1` for
+[Agent Switcher's usage overlay](../../../src/bb-plugins/claude-profiles/README.md#usage).
 
 When resets are held, `codex-usage` fetches
 `GET /backend-api/wham/rate-limit-reset-credits` and stores the response in the

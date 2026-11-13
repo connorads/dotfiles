@@ -10,7 +10,8 @@ const snapshot: SourceSnapshot = { machines: [{ id: 'host-one', displayName: 'La
 
 const unused = async () => { throw new Error('Unexpected port call'); };
 const ports: Omit<UsagePorts, 'callRpc'> = {
-  getThread: unused, getEnvironment: unused, listProviders: unused, resetCredits: unused, claudeAccount: unused, claudeResource: unused,
+  getThread: unused, getEnvironment: unused, listProviders: unused, resetCredits: unused,
+  claudeResets: unused, claudeAccount: unused, claudeResource: unused,
 };
 type Call = Parameters<UsagePorts['callRpc']>[0];
 // Each test answers with its own data; the parse keeps the schema boundary the real RPC applies.
@@ -71,6 +72,27 @@ const claude = (id: string, accountLabel: string | null, usage: unknown) => ({ i
   displayName: 'Claude Code', logoUrl: null, icon: null, strings: { iconTint: null }, signInHint: 'Sign in', expiredHint: 'Sign in again', usage });
 const window = (label: string, usedPercent: number, cost: { usedUsdCents: number; limitUsdCents: number } | null = null) =>
   ({ label, usedPercent, resetsAt: '2026-10-19T00:00:00Z', cost });
+
+test('Claude resets follow the folded Default and named accounts and isolate failures', async () => {
+  const calls: unknown[] = [];
+  const source = { machines: [{ ...snapshot.machines[0], providers: [
+    claude('provider-claude-code:["host-one","claude-code"]', null, { status: 'ok', accountEmail: null, planLabel: null, windows: [] }),
+    claude('claude-profiles:["host-one","~/.claude-profiles/code","default"]', null, { status: 'ok', accountEmail: null, planLabel: null, windows: [] }),
+    claude('claude-profiles:["host-one","~/.claude-profiles/code","team"]', null, { status: 'ok', accountEmail: null, planLabel: null, windows: [] }),
+  ] }] };
+  const reader = createUsageReader({ ...ports, callRpc: answer(() => source),
+    claudeResets: async (hostId, profileId, refresh) => {
+      calls.push([hostId, profileId, refresh]);
+      if (profileId === 'team') throw new Error('Disconnected');
+      return { status: 'ok', observedAt: 123, groups: [{ label: 'Weekly reset', count: 1, usable: 1, expiresAt: null, paused: false }] };
+    },
+  });
+  const value = await reader.inspection(true);
+  assert.deepEqual(calls, [['host-one', 'default', true], ['host-one', 'team', true]]);
+  assert.deepEqual(value.claudeResets.map(value => [value.accountId, value.reading.status]), [
+    [source.machines[0]!.providers[0]!.id, 'ok'], [source.machines[0]!.providers[2]!.id, 'unavailable'],
+  ]);
+});
 
 test('inspection reads this plugin\'s own profile resources in process, not over RPC', async () => {
   const resource = '["host-one","~/.claude-profiles","work"]';

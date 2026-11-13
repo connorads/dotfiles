@@ -11,6 +11,36 @@ setup() {
   mkdir -p "$HOME/.cache"
 }
 
+@test "requests saved resets with the native CLI User-Agent and preserves extra usage" {
+  mkdir -p "$HOME/.claude"
+  printf '%s\n' '{"claudeAiOauth":{"accessToken":"fixture-token"}}' >"$HOME/.claude/.credentials.json"
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo '2.1.322 (Claude Code)'
+EOF
+  write_stub curl <<'EOF'
+#!/usr/bin/env bash
+hdr='' out='' prev='' url='' ua=''
+for arg in "$@"; do
+  case "$prev" in
+    -D) hdr="$arg" ;;
+    -o) out="$arg" ;;
+    -H) [[ "$arg" == User-Agent:* ]] && ua="$arg" ;;
+  esac
+  [[ "$arg" == https://* ]] && url="$arg"
+  prev="$arg"
+done
+[[ "$url" == 'https://api.anthropic.com/api/oauth/usage?cedar_ember=1' ]] || exit 7
+[[ "$ua" == 'User-Agent: claude-cli/2.1.322 (external, cli)' ]] || exit 7
+printf 'HTTP/1.1 200 OK\r\n\r\n' >"$hdr"
+printf '%s\n' '{"seven_day":{"utilization":12},"cedar_ember":{"eligible":true,"grants":[]},"extra_usage":{"is_enabled":true,"utilization":5}}' >"$out"
+EOF
+  run_zsh_function "$CLAUDE_USAGE"
+  [ "$status" -eq 0 ]
+  run jq -c '[.cedar_ember.eligible, .extra_usage.utilization]' "$HOME/.cache/claude-usage.json"
+  [ "$output" = '[true,5]' ]
+}
+
 # Seed the meta file: next_retry_at fail_count last_success_at
 seed_meta() {
   jq -n --argjson n "$1" --argjson f "$2" --argjson s "$3" \

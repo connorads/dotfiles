@@ -10,6 +10,7 @@ import type { rpcContract } from '../../contracts.ts';
 import type { Account, Inspection, UsageWindow } from '../../src/accounts/usage/contract.ts';
 import { duration, expiryClock, percent, readingAge, readingState, viewWindow, type ReadingState, type WindowView } from '../../src/accounts/usage/format.ts';
 import type { ResetCredits } from '../../src/accounts/usage/reset-credits.ts';
+import type { ClaudeResets } from '../../src/accounts/usage/claude-resets.ts';
 import { closeUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts';
 import { useNow } from './use-now.ts';
 import './usage.css';
@@ -43,8 +44,8 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now, observedAt, resetCredits, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
-  resetCredits: ResetCredits | null; hostId: string; connected: boolean }) {
+function AccountBlock({ account, now, observedAt, resetCredits, claudeResets, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
+  resetCredits: ResetCredits | null; claudeResets: ClaudeResets | null; hostId: string; connected: boolean }) {
   const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
@@ -83,10 +84,52 @@ function AccountBlock({ account, now, observedAt, resetCredits, hostId, connecte
       </div>}
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
+    {claudeResets && usage?.status === 'ok' && <ClaudeResetRows reading={claudeResets} now={now} />}
     {usage?.status === 'ok' && reading !== 'fresh' && <p className="au-reading" data-stale={reading === 'stale' || undefined} title={observedAt === null ? undefined : new Date(observedAt).toLocaleString()}>
       {readingAge(observedAt, now)}{reading === 'stale' && ' · refresh needed'}
     </p>}
   </section>;
+}
+
+function ResetCount({ count }: { count: number }) {
+  return <span className="au-resets-held" role="cell">
+    {count <= 12 && <span className="au-pips" aria-hidden="true">{Array.from({ length: count }, (_, index) => <span key={index} />)}</span>}
+    <span>{count} saved</span>
+  </span>;
+}
+
+function ClaudeResetRows({ reading, now }: { reading: ClaudeResets; now: Date }) {
+  if (reading.status === 'ok' && reading.groups.length === 0 && !reading.message) return null;
+  const stale = reading.status === 'ok' && now.getTime() - reading.observedAt >= 15 * 60_000;
+  return <div role="table" aria-label="Claude saved resets" className="au-rows au-resets">
+    {reading.status === 'unavailable' ? <div className="au-row" role="row">
+      <span className="au-row-label" role="rowheader">Saved resets</span>
+      <span className="au-resets-note" role="cell">{reading.message}</span>
+    </div> : <>
+      {reading.groups.map(group => {
+        const deadline = group.expiresAt === null ? null : new Date(group.expiresAt);
+        const expired = deadline !== null && deadline <= now;
+        const soon = deadline !== null && deadline.getTime() - now.getTime() <= 3 * 86_400_000;
+        const detail = deadline === null ? 'Expiry unavailable' : expired ? 'Expiry passed'
+          : `Expires in ${duration(deadline.getTime() - now.getTime())}`;
+        const availability = group.paused ? 'Paused' : group.usable < group.count ? `${group.usable} usable now` : null;
+        const title = [deadline && expiryClock(deadline), availability,
+          group.label === 'Fable reset' && 'Returns weekly Fable usage and refills the session limit.'].filter(Boolean).join(' · ');
+        return <div className="au-row" role="row" key={JSON.stringify([group.label, group.expiresAt, group.paused])}
+          aria-label={`${group.label}: ${group.count} saved. ${detail}.${availability ? ` ${availability}.` : ''}`}>
+          <span className="au-row-label" role="rowheader" title={title}>{group.label}</span>
+          <ResetCount count={group.count} />
+          <span role="cell" />
+          <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={title}>
+            {detail}{availability && <span className="au-reset-availability">{availability}</span>}
+          </span>
+        </div>;
+      })}
+      {(stale || reading.message) && <p className="au-resets-note au-resets-foot" data-stale={stale || undefined}>
+        {[stale && `${readingAge(reading.observedAt, now)} · refresh needed`, reading.message].filter(Boolean).join(' · ')}
+      </p>}
+    </>}
+  </div>;
 }
 
 function CreditResets({ reading, now, accountEmail, signedOut }: { reading: ResetCredits; now: Date; accountEmail: string | null; signedOut: boolean }) {
@@ -108,16 +151,12 @@ function CreditResets({ reading, now, accountEmail, signedOut }: { reading: Rese
   // One expiry date is already the row's detail; a list only earns space when it adds dates.
   const listed = reading.expiries.length > 1 || (reading.expiries.length > 0 && reading.unknownExpiryCount > 0);
   const source = reading.accountLabel !== null && reading.accountLabel !== accountEmail ? reading.accountLabel : null;
-  const pips = reading.held <= 12 ? Array.from({ length: reading.held }, (_, index) => index) : null;
   const plural = (count: number) => `${count} ${count === 1 ? 'reset' : 'resets'}`;
   return <div role="table" aria-label="Codex reset credits" className="au-rows au-resets">
     <div className="au-row" role="row" aria-label={`Reset credits: ${reading.held} saved.${
       next && deadline ? ` ${next}, ${expiryClock(deadline)}.` : ''}`}>
       <span className="au-row-label" role="rowheader">Reset credits</span>
-      <span className="au-resets-held" role="cell">
-        {pips && <span className="au-pips" aria-hidden="true">{pips.map(index => <span key={index} />)}</span>}
-        <span>{reading.held} saved</span>
-      </span>
+      <ResetCount count={reading.held} />
       <span role="cell" />
       <span className="au-row-detail" role="cell" data-tone={expired || soon ? 'warning' : undefined} title={deadline ? expiryClock(deadline) : undefined}>
         {listed ? <button type="button" className="au-resets-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)}>
@@ -149,8 +188,8 @@ function CreditResets({ reading, now, accountEmail, signedOut }: { reading: Rese
   </div>;
 }
 
-function ProviderGroup({ accounts, now, readings, resetCredits, hostId, connected }: { accounts: Account[]; now: Date;
-  readings: Inspection['readings']; resetCredits: ResetCredits | null; hostId: string; connected: boolean }) {
+function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, hostId, connected }: { accounts: Account[]; now: Date;
+  readings: Inspection['readings']; resetCredits: ResetCredits | null; claudeResets: Inspection['claudeResets']; hostId: string; connected: boolean }) {
   const [first] = accounts;
   if (!first) return null;
   return <section className="au-provider" aria-label={first.displayName}>
@@ -162,6 +201,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits, hostId, connecte
     {/* Reset credits belong to the CLI login, which is the machine's one Codex account. */}
     <div className="au-provider-card">{accounts.map(account => <AccountBlock key={account.id} account={account} now={now} hostId={hostId} connected={connected}
       observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null}
+      claudeResets={claudeResets.find(reading => reading.accountId === account.id)?.reading ?? null}
       resetCredits={account === first && first.providerId === 'codex' ? resetCredits : null} />)}
     </div>
   </section>;
@@ -265,6 +305,7 @@ export function UsageOverlay() {
           {machine.error && <p className="au-notice" data-tone="warning" role="status"><Icon name="AlertTriangle" className="size-3.5" />{machine.error} Some figures may be out of date.</p>}
           {byProvider(machine.providers).map(accounts => <ProviderGroup key={accounts[0]!.providerId} accounts={accounts} now={now}
             hostId={machine.id} connected={machine.status === 'connected'}
+            claudeResets={inspection?.claudeResets ?? []}
             readings={inspection?.readings ?? []} resetCredits={inspection?.resetCredits.find(value => value.hostId === machine.id)?.reading ?? null} />)}
         </section>)}
         {(snapshot || error) && <AmpUsage value={amp} message={ampMessage} loading={ampLoading} now={now} />}
