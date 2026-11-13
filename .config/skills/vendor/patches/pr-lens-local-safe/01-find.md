@@ -1,11 +1,11 @@
 ---
 name: pr-lens
-description: "WHAT: Draws a code change or part of a codebase as an animated architecture or data-flow diagram, on its own or in a pull request. WHEN: asked to diagram, visualise or explain a change or a system, or when a pull request should carry a diagram. KEYWORDS: PR Lens, diagram, architecture, data flow, visualise, visualize, pull request"
+description: "WHAT: Draws a code change or part of a codebase as an animated architecture, data-flow or data-model diagram, on its own or in a pull request. WHEN: asked to diagram, visualise or explain a change, a system or a schema change, or when a pull request should carry a diagram. KEYWORDS: PR Lens, diagram, architecture, data flow, data model, schema, ERD, visualise, visualize, pull request"
 ---
 
 # PR Lens
 
-Animated architecture and data-flow diagrams for code changes and codebases. The agent writes one JSON document, and PR Lens draws it.
+Animated architecture, data-flow and data-model diagrams for code changes and codebases. The agent writes one JSON document, and PR Lens draws it.
 
 Run: `npx @coldtea/pr-lens-cli@latest <command>`. Nothing to install first.
 

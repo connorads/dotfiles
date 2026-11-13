@@ -1,0 +1,1 @@
+`create-video` also installs the dependencies. If dependency installation fails, run `pnpm install` with the existing install-script protections. Ask before allow-listing a package that requires a build script.
