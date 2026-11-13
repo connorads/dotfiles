@@ -101,6 +101,8 @@ Global store pruning leaves installed dependency trees intact. Group candidates
 by owning project so dormant installations can be reviewed together.
 Before removing dependencies, inspect editable patches and local links.
 Preserve unfinished edits and verify retained patch files can reproduce applied changes.
+Check installed CLI shims, enabled plugins and retained hooks before classifying
+dependencies as unused.
 
 Prefer the project's native clean command. Check activity before cleaning a
 build tree; forcing a concurrent rebuild is disruption even when files are
@@ -118,6 +120,9 @@ For stores outside the global prune, inspect `storeDir` in
 `pnpm --dir /private/tmp --store-dir <root> store path` resolves the intended
 layout before `store prune`. An installed pnpm major can append a different
 layout version. Store size is not unreferenced size.
+A successful pnpm prune can skip shared-store cleanup when no project references
+are found. Check installed-version behaviour before classifying retained content;
+an empty reference set can mean unknown ownership.
 
 For checkout removal, inspect clean status, ignored files, ownership and branch
 tips. A clean checkout or idle thread does not establish completed work.
@@ -208,6 +213,11 @@ Lima disk after VM deletion; inspect `LIMA_HOME=~/.colima/_lima limactl disk lis
 Resolve the installed Lima binary if it is not on PATH. Delete only an approved,
 unreferenced disk through its manager.
 
+Check Colima guest discard support and the Docker filesystem mount before trimming
+already-free blocks with `colima ssh -- sudo fstrim -v /var/lib/docker`.
+Measure host recovery separately from reported trimmed bytes.
+Compare container, image and volume inventories before and after.
+
 Check usage rather than bundle timestamps before proposing app removal. Null
 Spotlight last-used data means unknown. An absent desktop bundle does not prove
 its CLI is unused. Declaratively managed Homebrew apps return after uninstall;
@@ -285,7 +295,12 @@ not a successful cleanup. Keep movement receipts and report pending reclaim.
 ## Verify, report and continue
 
 Check each approved path, the actual cache root and deliberately retained work.
+If a cache path returns, compare recorded device/inode identities and Trash receipts.
+Report new growth separately from removal of the approved instance.
 A non-zero batch command can still remove some targets; inspect them individually.
+Save each cleaner's exit status and output before verification. A removed cache
+root can mean successful cleanup; a denied probe remains unknown.
+A verification failure does not justify rerunning cleanup.
 Keep chat concise and link a private detailed receipt. Record per-target outcomes,
 retained work, recovery cost and native cleaner output. For package pruning,
 capture package names and versions before pruning when the tool omits them.
