@@ -53,8 +53,18 @@ Inspect:
 Rehearse with `pnpm run deploy --dry-run`; it builds and validates without
 credentials. Pin `workersDev: true` and `previewUrls: true` in the `worker`
 block of `cloudflare.config.ts` for the same reason as the Wrangler keys below.
-Whether Workers Builds runs `cf previews deploy` as its preview command is
-unverified; the docs name only Wrangler commands (2026-11).
+Workers Builds runs both scripts, although its docs name only Wrangler
+commands. Verified 2026-11-13 with cf 1.0.0-beta.28:
+
+- The production trigger ran `pnpm run deploy` (`cf deploy`) from the
+  project's `cf` dev dependency.
+- A push to a branch ran `pnpm run deploy:preview` (`cf previews deploy`). It
+  published `https://<branch>-<worker-name>.<subdomain>.workers.dev` and a
+  version URL without changing the live deployment.
+- The build command can be empty: `cf deploy` builds.
+- A `cf` project needs no `previews` block.
+- `cf builds repos config-autofill get` reports `"deploy_tool": "cf"` for the
+  repo.
 
 Wrangler static-assets baseline:
 
@@ -285,7 +295,7 @@ fields match the REST API, so the JSON bodies in this file work verbatim as
 
 - Bootstrap: run the project's deploy script once from a logged-in CLI
   (`cf deploy` or `wrangler deploy`). It creates the Worker and a first live
-  version. Workers Builds owns every deploy after
+  version (`cf deploy` verified 2026-11-13). Workers Builds owns every deploy after
   that. If the repo forbids local deploys, ask first and record this one
   exception in the repo docs.
 
@@ -404,7 +414,7 @@ cf builds workers get <worker-tag>
 cf builds triggers list --external-script-id <worker-tag>
 ```
 
-`previews_enabled` is unreliable (2026-10). It read back `false` after create,
+`previews_enabled` is unreliable (2026-10, again 2026-11). It read back `false` after create,
 and again after `cf builds workers update <worker-tag> --body
 '{"previews_enabled":true}'`. Non-production branch builds still ran and
 produced preview URLs. Do not trust the flag; push a test branch and check
