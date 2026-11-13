@@ -7,7 +7,7 @@
 - `argent` (Software Mansion) — a capable alternative controller; check its license for your use.
 - `web-preview-only` — browser preview with no programmatic control.
 
-All four types include a web preview. Before setting `--max-idle-time-minutes`, follow [Session lifetime](../SKILL.md#session-lifetime); browser-preview activity does not reset the timer.
+All four types include a web preview. Before setting `--max-idle-time-minutes`, follow [Session lifetime](../SKILL.md#session-lifetime); watching the preview, and browser input on Android, do not reset the timer.
 
 ## Appium
 
@@ -137,4 +137,3 @@ MCP config file location: `.cursor/mcp.json` (Cursor), `.claude/mcp.json` (Claud
 **Known issues:**
 - `argent init --help` launches an interactive wizard regardless of the flag — use `--yes` to skip it, or read the package source for non-interactive flags.
 - Re-running `argent link` against an already-linked URL **without `--yes`** reports "Already linked. No changes." and keeps the old token — every call then fails with `401 Unauthorized`. Always pass `--yes` (as above) so a rotated token is actually written.
-
