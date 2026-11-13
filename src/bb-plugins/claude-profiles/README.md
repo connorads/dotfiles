@@ -388,6 +388,8 @@ is enabled, the switch marks its chip cold.
 Switching copies only the native session transcript. It leaves credentials,
 settings and unrelated sessions separate. Returning to a profile advances its
 older transcript only when its contents are an exact prefix of the current one.
+Claude rewrites workflow state files whole, so the switch replaces a differing
+`workflows/*.json` only when the parent transcript has grown past the target's.
 Conflicting history, symlink paths and transcripts above 64 MiB cause refusal.
 Source transcripts remain intact. Transcript files can contain conversation
 content and tool results, so the target profile receives that content.

@@ -77,7 +77,13 @@ function equal(left: Snapshot, right: Snapshot) {
     return content === null ? other === null : other !== null && other !== undefined && same(content, other);
   });
 }
-async function changes(source: Snapshot, target: Snapshot, sourceProject: string) {
+async function changes(source: Snapshot, target: Snapshot, sourceProject: string, sessionId: string) {
+  // Claude rewrites workflow state files whole. The loop below proves the source parent log extends the
+  // target's, so a strictly longer one means the source holds every target turn and its state is newer.
+  const sourceMain = source.get(`${sessionId}.jsonl`);
+  const targetMain = target.get(`${sessionId}.jsonl`);
+  const advanced = !!sourceMain && !!targetMain && sourceMain.size > targetMain.size;
+  const workflowState = new RegExp(`^${sessionId}/workflows/[^/]+\\.json$`);
   for (const [path, previous] of target) {
     const content = source.get(path);
     if (content === undefined || (previous === null) !== (content === null)) {
@@ -88,7 +94,7 @@ async function changes(source: Snapshot, target: Snapshot, sourceProject: string
         previous.size <= content.size &&
         (previous.size === 0 || previous.lastByte === 10) &&
         same(await fingerprint(join(sourceProject, path), previous.size), previous);
-      if (!extendsLog) throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
+      if (!extendsLog && !(advanced && workflowState.test(path))) throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
     }
   }
   return [...source].filter(([path, content]) => {
@@ -123,7 +129,7 @@ export async function transferSession(source: string, target: string, sessionId:
   const targetProject = join(target, 'projects', project);
   await directory(targetProject, true);
   const previous = await snapshot(targetProject, sessionId);
-  const pending = await changes(content, previous, sourceProject);
+  const pending = await changes(content, previous, sourceProject, sessionId);
   const temporary = join(targetProject, `.${sessionId}-${randomUUID()}.tmp`);
   await directory(temporary, true);
   const staged: string[] = [];

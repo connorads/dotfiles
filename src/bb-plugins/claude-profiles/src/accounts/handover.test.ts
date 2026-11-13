@@ -209,3 +209,22 @@ for (const location of ['source', 'target'] as const) {
     await assert.rejects(readFile(f.destination), { code: 'ENOENT' });
   });
 }
+
+test('replaces older workflow state when the parent transcript has advanced', async () => {
+  const f = await fixture();
+  await sidecar(f.source, 'workflows/wf_run.json', '{"status":"running"}');
+  await transferSession(f.source, f.target, sessionId);
+  await writeFile(f.file, '{"message":"remember me"}\n{"message":"workflow done"}\n');
+  await sidecar(f.source, 'workflows/wf_run.json', '{"status":"completed"}');
+  await transferSession(f.source, f.target, sessionId);
+  assert.equal(await readFile(join(f.target, 'projects', 'workspace', sessionId, 'workflows/wf_run.json'), 'utf8'), '{"status":"completed"}');
+  assert.equal(await readFile(f.destination, 'utf8'), await readFile(f.file, 'utf8'));
+});
+test('refuses differing workflow state when the parent transcript has not advanced', async () => {
+  const f = await fixture();
+  await sidecar(f.source, 'workflows/wf_run.json', '{"status":"source"}');
+  await transferSession(f.source, f.target, sessionId);
+  const target = await sidecar(f.target, 'workflows/wf_run.json', '{"status":"target"}');
+  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal(await readFile(target, 'utf8'), '{"status":"target"}');
+});
