@@ -49,12 +49,13 @@ export function mountTimestamps(doc: Document): () => void {
       const day = today ? 'Today' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
       const clock = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
       const label = `${day} · ${clock}`;
+      const name = `Conversation ${previous === null ? 'starts' : 'resumes'}`;
       // Guard writes because this script observes its own DOM changes.
-      if (time.textContent !== label || time.dateTime !== iso) {
+      if (time.textContent !== label || time.dateTime !== iso || !time.getAttribute('aria-label')?.startsWith(name)) {
         time.dateTime = iso;
         time.title = date.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' });
         time.textContent = label;
-        time.setAttribute('aria-label', `Conversation resumes ${time.title}`);
+        time.setAttribute('aria-label', `${name} ${time.title}`);
       }
       if (column.firstChild !== time) column.prepend(time);
     }

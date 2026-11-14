@@ -3,7 +3,7 @@ import { afterEach, expect, it } from 'vitest';
 import { act, waitFor } from '@testing-library/react';
 import { loadPluginApp, renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { useSdk } from '@get-bb/plugin-sdk/app';
-import { getTimes, setTimes, setWanted } from './store';
+import { getTimes, onTimes, setTimes, setWanted } from './store';
 
 let slot: RenderedSlot | undefined;
 afterEach(() => { slot?.lifecycle.unmount(); slot = undefined; setTimes([]); setWanted(new Set()); });
@@ -96,4 +96,25 @@ it('reads a predecessor even when the rendered message already has a time', asyn
   });
   await waitFor(() => expect(getTimes().get('thread:new')?.previousTimestamp).toBe(1000));
   expect(slot.inspection.sdkCalls).toHaveLength(2);
+});
+
+it('keeps the confirmed start of history across refreshes without rereading older pages', async () => {
+  setWanted(new Set(['thread:old', 'thread:new']));
+  let latest = [message('thread:new', 2000)];
+  const app = await loadPluginApp(() => import('./app'));
+  const starts: (number | null | undefined)[] = [];
+  slot = renderSlot(app.appOverlays[0], {}, {
+    context: { threadId: 'thread' },
+    sdk: { threads: { timeline: async args => args.beforeAnchorId
+      ? page([message('thread:old', 1000)])
+      : page(latest, { anchorId: 'cursor', anchorSeq: 5 }) } },
+  });
+  await waitFor(() => expect(getTimes().get('thread:old')?.previousTimestamp).toBeNull());
+  const stop = onTimes(() => { starts.push(getTimes().get('thread:old')?.previousTimestamp); });
+  latest = [...latest, message('thread:newer', 3000)];
+  act(() => { setWanted(new Set(['thread:old', 'thread:new', 'thread:newer'])); });
+  await waitFor(() => expect(getTimes().get('thread:newer')?.previousTimestamp).toBe(2000), { timeout: 1500 });
+  stop();
+  expect(starts).toEqual([null]);
+  expect(slot.inspection.sdkCalls).toHaveLength(3);
 });

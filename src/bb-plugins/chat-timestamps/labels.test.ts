@@ -74,3 +74,19 @@ it('places exact times after native actions even without a known gap, and cleans
   expect(actions.querySelector('time')).toBeNull();
   expect(actions.querySelector('button')?.textContent).toBe('Replacement');
 });
+
+it('names the start of history apart from a resumed conversation', () => {
+  const start = new Date(2026, 9, 19, 12).getTime();
+  document.body.innerHTML = ['first', 'later'].map(id => `<div data-timeline-row-id="${id}"><div data-message-column>${id}</div></div>`).join('');
+  setTimes([
+    { id: 'first', timestamp: start, previousTimestamp: null, role: 'user' },
+    { id: 'later', timestamp: start + 3600000, previousTimestamp: start, role: 'user' },
+  ]);
+  dispose = mountTimestamps(document);
+  const name = (id: string) => document.querySelector(`[data-timeline-row-id="${id}"] .bb-message-time`)?.getAttribute('aria-label');
+  expect(name('first')).toMatch(/^Conversation starts /);
+  expect(name('later')).toMatch(/^Conversation resumes /);
+  // A marker that becomes the start of history after an older page loads is renamed.
+  setTimes([{ id: 'later', timestamp: start + 3600000, previousTimestamp: null, role: 'user' }]);
+  expect(name('later')).toMatch(/^Conversation starts /);
+});

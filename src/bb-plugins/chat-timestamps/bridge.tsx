@@ -29,6 +29,8 @@ export function TimestampBridge() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let loading = false;
     let dirty = false;
+    // History only grows at the latest end, so a reached start stays the start across refreshes.
+    let reachedStart = false;
     async function load() {
       timer = undefined;
       if (loading) { dirty = true; return; }
@@ -44,10 +46,11 @@ export function TimestampBridge() {
           if (controller.signal.aborted) return;
           collect(page.rows, times);
           cursor = page.timelinePage.olderCursor;
+          if (!cursor) reachedStart = true;
           const ordered = [...times.values()].sort((a, b) => a.sequence - b.sequence);
           for (let index = 0; index < ordered.length; index++) {
             // Only a complete history boundary establishes the first message.
-            ordered[index].previousTimestamp = index > 0 ? ordered[index - 1].timestamp : cursor ? undefined : null;
+            ordered[index].previousTimestamp = index > 0 ? ordered[index - 1].timestamp : reachedStart ? null : undefined;
           }
           setTimes(ordered);
         } while (cursor && missing());
