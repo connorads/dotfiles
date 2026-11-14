@@ -104,8 +104,19 @@ same key can change consent again; existing process caches need separate checks.
 - [Brave privacy controls](https://support.brave.app/hc/en-us/articles/360017989132-How-do-I-change-my-Privacy-Settings)
 - [Discord improvement data](https://support.discord.com/hc/en-us/articles/21864805694999-Data-Used-to-Improve-Discord)
 
-Amp and Droid opt-outs remain unverified. Droid's customer-exporter settings
-do not disable its vendor collector.
+Amp's vendor telemetry opt-out remains unverified.
+
+## Droid consent
+
+[Droid's user settings](../.factory/settings.json) set `telemetry.enabled=false`.
+The installed 0.251.0 resolver applies this consent to Factory logs, traces and metrics.
+[Factory's release notes](https://docs.factory.com/changelog/release-notes) describe complete CLI opt-out support from 0.238.0.
+The [settings reference](https://docs.factory.com/droid-cli/settings) defines the user settings location.
+
+`~/.factory/settings.local.json` can override this value. An explicit organisation
+`telemetry.enabled` policy takes precedence over user consent. Customer OpenTelemetry
+exporter settings do not control the vendor collector. Stored consent does not
+establish the state of an existing Droid process.
 
 ## Additional CLI collectors
 
