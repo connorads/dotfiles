@@ -24,6 +24,12 @@
       "sourceType": "github",
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
       "computedHash": "0cd9d8fa2c724b5e08f3f7482009a25bd4259ee6971b21809f3a6ff64ffd93bb"
+    },
+    "next-partial-prefetching-optimizer": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-partial-prefetching-optimizer/SKILL.md",
+      "computedHash": "375524a581dd70fa1e595699b82f4a554cf2c1c25833efd32fbeabfdb24d5719"
     }
   }
 }
