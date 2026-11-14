@@ -124,6 +124,11 @@ A successful pnpm prune can skip shared-store cleanup when no project references
 are found. Check installed-version behaviour before classifying retained content;
 an empty reference set can mean unknown ownership.
 
+If native pruning leaves a large download cache, assess full cache eviction
+separately. Confirm installed tools and projects remain usable without that
+root, including linked dependencies. Include redownload costs and lost offline
+installs in the cache eviction proposal.
+
 For checkout removal, inspect clean status, ignored files, ownership and branch
 tips. A clean checkout or idle thread does not establish completed work.
 `git worktree remove` retains branches, but local deletion rules still apply.
@@ -144,6 +149,9 @@ output on each search; a previously protected thread may now be archived.
 Read the run's harness to distinguish disposable fixture databases from real
 application records. Select intermediate evidence separately from final
 reports, harnesses and source. Retain exact private manifests for approved batches.
+
+Measure source fixtures and copied test outputs separately. Sparse inputs can
+occupy no disk blocks while their copies consume gigabytes of real allocation.
 
 `cleanup --target claude-temp --dry-run --json` covers inactive UUID session
 scratch, not every ad-hoc directory beneath `/private/tmp/claude-<uid>`.
@@ -189,6 +197,10 @@ downloads beneath `~/.local/share/mise/downloads`; `mise cache clear` does not
 cover that data directory. Check installed symlink targets before treating an
 archive-named directory as a download. Embedded `node_modules/.mise` belongs
 to the installed tool; use mise's lifecycle rather than removing it by hand.
+
+Inspect optional toolchain components, including offline documentation,
+separately from whole versions. Use the manager's component lifecycle and
+preserve required compilers, standard libraries and pinned versions.
 
 Preserve aube's virtual-store root. Native pruning of one layout does not
 classify legacy entries. For remaining candidates, trace installed tool and
