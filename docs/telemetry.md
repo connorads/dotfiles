@@ -104,7 +104,8 @@ same key can change consent again; existing process caches need separate checks.
 - [Brave privacy controls](https://support.brave.app/hc/en-us/articles/360017989132-How-do-I-change-my-Privacy-Settings)
 - [Discord improvement data](https://support.discord.com/hc/en-us/articles/21864805694999-Data-Used-to-Improve-Discord)
 
-Amp's vendor telemetry opt-out remains unverified.
+Amp's vendor telemetry opt-out remains unverified. Its
+[settings schema](https://ampcode.com/cli-settings.schema.json) exposes no telemetry control.
 
 ## Droid consent
 
@@ -117,6 +118,15 @@ The [settings reference](https://docs.factory.com/droid-cli/settings) defines th
 `telemetry.enabled` policy takes precedence over user consent. Customer OpenTelemetry
 exporter settings do not control the vendor collector. Stored consent does not
 establish the state of an existing Droid process.
+
+## Varlock consent
+
+Varlock 1.24.0 honours the shared `DO_NOT_TRACK=1` control. Its telemetry debug
+output reports `telemetry opted out - env var` and `track (disabled)`.
+The [official telemetry guide](https://varlock.dev/guides/telemetry/) also documents
+`varlock telemetry disable`. This saves native consent in
+`~/.config/varlock/config.json`, independently of environment inheritance.
+The file remains untracked because it also stores an anonymous identifier.
 
 ## Additional CLI collectors
 
@@ -147,9 +157,8 @@ EAS analytics has a separate collector from Expo CLI.
 Vercel's agent plugin has a separate daily collector from its CLI. It requires
 the plugin-specific control; the generic opt-outs and `VERCEL_TELEMETRY_DISABLED`
 do not disable it. Its setup helper reports disabled when this control is inherited.
-The installed cf 0.15.0 resolver reads its environment control before stored consent.
-Its reviewed dispatcher prepares payloads and prints debug output; transmission remains unverified.
-The declaration is a defensive gate. Invoked tools retain independent controls.
+The installed cf 1.0.0-beta.28 resolver honours `CF_SEND_TELEMETRY`, the Wrangler
+metrics control and `DO_NOT_TRACK`. Invoked tools retain independent controls.
 These variables require inheritance before startup. Existing processes can retain
 earlier values. Support in older installed copies requires separate verification.
 
@@ -221,7 +230,7 @@ The macOS daemon and Chromebook userspace service declare `--no-logs-no-support`
 in [darwin-shared.nix](../.config/nix/modules/darwin-shared.nix) and
 [linux-tailscale.nix](../.config/nix/modules/linux-tailscale.nix).
 [Tailscale documents this opt-out](https://tailscale.com/docs/features/logging)
-for its open-source macOS daemon. It suppresses client log uploads and limits
+for its open-source clients. It suppresses client log uploads and limits
 support that requires those logs. Required control-plane requests and server
 audit logs remain separate.
 
@@ -230,6 +239,37 @@ host configuration during a maintenance window. Check installed launch arguments
 the running process and connectivity through `ts` after activation. Declaration
 evaluation does not establish a running daemon's consent. Other Linux system
 daemons have separate configuration owners.
+
+## Desktop collectors with separate controls
+
+| Application | Available control | Limit |
+| --- | --- | --- |
+| Zoom | Account Data & Privacy: disable Optional Diagnostic Data and Personalised Experiences | Required diagnostics remain separate |
+| Teams personal | Settings > Privacy: disable Extended diagnostics data | Work and school policies have separate owners |
+| Obsidian | No additional telemetry switch | Its privacy policy states that the app collects no telemetry |
+| Etcher | Disable Anonymously report errors to balena.io | The 2.1.9 switch does not gate Sentry startup |
+
+[Zoom's consent guide](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0057779),
+[Teams personal diagnostics](https://support.microsoft.com/en-us/teams/personal/files-search/diagnostic-data-in-microsoft-teams-personal)
+and [Obsidian's privacy policy](https://obsidian.md/privacy) define these controls.
+Account and UI controls require read-back during normal application use.
+
+Etcher stores `errorReporting=false` in
+`~/Library/Application Support/balenaEtcher/config.json`. Edit its native config
+only while Etcher is closed. Preserve other keys. Its
+[settings loader](https://github.com/balena-io/etcher/blob/v2.1.9/lib/gui/app/models/settings.ts)
+uses Electron's application data directory.
+The [reporting module](https://github.com/balena-io/etcher/blob/v2.1.9/lib/gui/app/modules/analytics.ts)
+checks this setting before explicit exception uploads. Both
+[main startup](https://github.com/balena-io/etcher/blob/v2.1.9/lib/gui/etcher.ts) and
+[renderer startup](https://github.com/balena-io/etcher/blob/v2.1.9/lib/gui/app/app.ts)
+initialise Sentry regardless of consent. Their event filters anonymise events;
+they do not reject them. The saved switch reduces reporting but does not
+establish a complete opt-out from automatic SDK reporting.
+
+Raycast, Slack desktop, Figma, Notion and OneDrive have no verified native
+telemetry opt-out in this audit. Website cookie consent and model-training
+controls do not establish desktop reporting consent.
 
 ## Desktop policy delivery
 
