@@ -83,8 +83,17 @@ function useTasks(projectId: string, sourceId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const latest = useRef(0);
+  // A late caller, such as a source save that answers after a project switch,
+  // must not read the previous selection into the current page.
+  const selection = useRef('');
+  selection.current = `${projectId}\n${sourceId}`;
   const refresh = useCallback(async () => {
-    if (!projectId || document.visibilityState === 'hidden') return;
+    if (
+      !projectId ||
+      selection.current !== `${projectId}\n${sourceId}` ||
+      document.visibilityState === 'hidden'
+    )
+      return;
     const request = ++latest.current;
     setLoading(true);
     try {
@@ -92,7 +101,10 @@ function useTasks(projectId: string, sourceId: string | null) {
       if (request !== latest.current) return;
       if (next.error) {
         setError(next.error);
-        setSnapshot((previous) => previous ?? next);
+        // Keep the last good read only while it is of the same task file.
+        setSnapshot((previous) =>
+          previous?.taskFile === next.taskFile ? previous : next,
+        );
       } else {
         setSnapshot(next);
         setError(null);
@@ -356,20 +368,39 @@ function SourceForm({
   const [value, setValue] = useState(taskFile);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
   return (
     <form
       className="rt-source-form"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        onClose();
+      }}
       onSubmit={async (event) => {
         event.preventDefault();
+        const path = value.trim();
+        if (!path) {
+          setError('Enter a relative .md path, such as TODO.md.');
+          return;
+        }
         setPending(true);
+        setError(null);
         try {
-          await rpc.call('configure', { projectId, taskFile: value });
+          await rpc.call('configure', { projectId, taskFile: path });
+          if (!mounted.current) return;
           onSaved();
           onClose();
         } catch (cause) {
-          setError(message(cause));
+          if (mounted.current) setError(message(cause));
         } finally {
-          setPending(false);
+          if (mounted.current) setPending(false);
         }
       }}
     >
@@ -399,6 +430,8 @@ function TasksPage() {
   const context = useBbContext();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [projectsAttempt, setProjectsAttempt] = useState(0);
   const [projectId, setProjectId] = useState('');
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
@@ -415,6 +448,7 @@ function TasksPage() {
       (result) => {
         if (!active) return;
         setProjects(result.projects);
+        setProjectsLoaded(true);
         const saved = localStorage.getItem('repo-tasks:project');
         const initial =
           result.projects.find((p) => p.id === context.projectId) ??
@@ -429,7 +463,7 @@ function TasksPage() {
     return () => {
       active = false;
     };
-  }, [rpc, context.projectId]);
+  }, [rpc, context.projectId, projectsAttempt]);
   const project = projects.find((p) => p.id === projectId);
   const tasks = snapshot?.tasks ?? [];
   const filtered = tasks.filter(
@@ -492,6 +526,32 @@ function TasksPage() {
         ),
     }))
     .filter((group) => view === 'board' || group.tasks.length);
+  const taskFile = snapshot?.taskFile ?? 'TODO.md';
+  const empty = !projectId
+    ? projectsError
+      ? { title: 'Projects did not load', hint: 'Try again to reload them.' }
+      : projectsLoaded
+        ? {
+            title: 'No projects to read',
+            hint: 'Add a project in BB to see its task file here.',
+          }
+        : { title: 'Loading projects…', hint: '' }
+    : tasks.length
+      ? {
+          title: 'No matching tasks',
+          hint: 'Try another client or clear your search.',
+        }
+      : error
+        ? {
+            title: 'Choose a readable task file',
+            hint: 'Use Source to select the project’s Markdown task list.',
+          }
+        : snapshot
+          ? {
+              title: 'No open tasks',
+              hint: `Open tasks in ${taskFile} appear here.`,
+            }
+          : { title: 'Reading your task file…', hint: '' };
   const fresh = snapshot?.readAt
     ? new Date(snapshot.readAt).toLocaleTimeString([], {
         hour: '2-digit',
@@ -640,7 +700,7 @@ function TasksPage() {
               <SourceForm
                 key={projectId}
                 projectId={projectId}
-                taskFile={snapshot?.taskFile ?? 'TODO.md'}
+                taskFile={taskFile}
                 onSaved={() => {
                   setSelected(null);
                   void refresh();
@@ -654,9 +714,20 @@ function TasksPage() {
                   ? 'Showing the last successful read. '
                   : ''}
                 {error ?? projectsError}
-                <button onClick={() => setSourceOpen(true)}>
-                  Choose source
-                </button>
+                {projectId ? (
+                  <button onClick={() => setSourceOpen(true)}>
+                    Choose source
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setProjectsError(null);
+                      setProjectsAttempt((n) => n + 1);
+                    }}
+                  >
+                    Try again
+                  </button>
+                )}
               </div>
             )}
             {snapshot?.reviewed && (
@@ -704,18 +775,8 @@ function TasksPage() {
                 {!filtered.length && (
                   <div className="rt-empty">
                     <Glyph name="inbox" />
-                    <h2>
-                      {loading
-                        ? 'Reading your task file…'
-                        : error
-                          ? 'Choose a readable task file'
-                          : 'No matching tasks'}
-                    </h2>
-                    <p>
-                      {error
-                        ? 'Use Source to select the project’s Markdown task list.'
-                        : 'Try another client or clear your search.'}
-                    </p>
+                    <h2>{empty.title}</h2>
+                    {empty.hint && <p>{empty.hint}</p>}
                   </div>
                 )}
               </div>
@@ -723,7 +784,7 @@ function TasksPage() {
             <footer className="rt-footer">
               <button onClick={() => setSourceOpen(!sourceOpen)}>
                 <Glyph name="source" />
-                {snapshot?.taskFile ?? 'TODO.md'}
+                {taskFile}
               </button>
               <span>
                 {filtered.length} shown{fresh && ` · Read ${fresh}`}

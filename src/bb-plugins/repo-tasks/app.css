@@ -364,8 +364,10 @@
   flex-wrap: wrap;
 }
 .rt-area {
+  min-width: 0;
   color: var(--rt-muted);
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 .rt-separator {
   opacity: 0.55;
@@ -521,6 +523,8 @@
   margin-bottom: 50px;
 }
 .rt-eyebrow {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -532,6 +536,7 @@
   line-height: 1.5;
   font-weight: 580;
   outline: 0;
+  overflow-wrap: anywhere;
 }
 .rt-properties {
   display: grid;
@@ -665,6 +670,9 @@
   color: var(--rt-muted);
   line-height: 1.6;
 }
+.rt-source-form p[role='alert'] {
+  color: var(--destructive);
+}
 .rt-spin {
   animation: rt-spin 1.5s linear infinite;
 }
@@ -717,18 +725,18 @@
   .rt-date:empty {
     display: none;
   }
+  .rt-toolbar h1 {
+    font-size: 20px;
+  }
+}
+/* Below this width a side-by-side detail leaves the list too narrow to read. */
+@container repo-tasks (max-width: 900px) {
   .rt-detail {
     position: absolute;
     inset: 0 0 0 auto;
     z-index: 10;
     width: min(440px, 100%);
     box-shadow: -16px 0 50px #00000018;
-  }
-  .rt-app {
-    position: relative;
-  }
-  .rt-toolbar h1 {
-    font-size: 20px;
   }
 }
 @container repo-tasks (max-width: 480px) {
@@ -756,7 +764,7 @@
   }
   .rt-nav-items {
     flex-direction: row;
-    margin: 36px 0 0;
+    margin: 0;
     gap: 2px;
     width: 100%;
     display: grid;
@@ -776,8 +784,18 @@
   .rt-nav-items small {
     font-size: 12px;
   }
+  /* Toolbar, filters and list scroll as one, so the list is not squeezed below them. */
+  .rt-workspace {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
   .rt-main {
+    min-height: 100%;
     padding: 16px 14px 0;
+  }
+  .rt-scroll {
+    flex: 1 0 auto;
+    overflow: auto hidden;
   }
   .rt-toolbar {
     flex-direction: row;
