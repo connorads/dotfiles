@@ -9,7 +9,9 @@ import type { rpcContract } from './contracts.ts';
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  Element.prototype.scrollIntoView = function () { scrolledTo.push(this.getAttribute('aria-label') ?? ''); };
 });
+const scrolledTo: string[] = [];
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const atlas = { fullName: 'acme/atlas', description: 'Synthetic application', visibility: 'private' };
 const compass = { fullName: 'acme/compass', description: 'Synthetic library', visibility: 'public' };
@@ -209,4 +211,49 @@ test('a sidebar refresh timeout preserves the prompt and reports the ready proje
   expect(slot.inspection.composer.selections).toEqual([]);
   expect(slot.inspection.composer.submits).toEqual([]);
   expect(slot.inspection.navigateCalls).toEqual([]);
+});
+
+test('a repository chosen before setup loads takes the suggested destination once it arrives', async () => {
+  let finishInit: ((value: { defaultRoot: string; existing: { repository: string; projectId: string; path: string }[] }) => void) | undefined;
+  const init = new Promise<{ defaultRoot: string; existing: { repository: string; projectId: string; path: string }[] }>(resolve => { finishInit = resolve; });
+  const { slot } = await render({ rpc: { init: () => init } });
+  fireEvent.click(slot.getByRole('button', { name: 'Palette launcher' }));
+  const search = await slot.findByRole('combobox', { name: 'Find a repository' });
+  fireEvent.change(search, { target: { value: 'acme/atlas' } });
+  fireEvent.keyDown(search, { key: 'Enter' });
+  const destination = slot.getByRole('textbox', { name: 'Destination' }) as HTMLInputElement;
+  expect(destination.value).toBe('');
+  expect((slot.getByRole('button', { name: 'Clone and open' }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => { finishInit?.({ defaultRoot: '/tmp/repos', existing: [{ repository: 'acme/atlas', projectId: 'proj-atlas', path: '/tmp/group/atlas' }] }); });
+  await waitFor(() => expect(destination.value).toBe('/tmp/group/atlas'));
+  expect((slot.getByRole('button', { name: 'Open existing project' }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+test('arrow keys keep the highlighted repository scrolled into view', async () => {
+  const { slot } = await render();
+  fireEvent.click(slot.getByRole('button', { name: 'Palette launcher' }));
+  await slot.findByRole('option', { name: 'acme/compass' });
+  scrolledTo.length = 0;
+  fireEvent.keyDown(slot.getByRole('combobox', { name: 'Find a repository' }), { key: 'ArrowDown' });
+  await waitFor(() => expect(scrolledTo).toEqual(['acme/compass']));
+});
+
+test('retrying after a sidebar refresh timeout switches the draft without opening the repository again', async () => {
+  const projects: PluginSidebarProject[] = [];
+  const { slot, rerender } = await render({ projects });
+  fireEvent.click(slot.getByRole('button', { name: 'Composer launcher' }));
+  fireEvent.click(await slot.findByRole('option', { name: 'acme/atlas' }));
+  vi.useFakeTimers();
+  fireEvent.click(slot.getByRole('button', { name: 'Clone and open' }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+  vi.useRealTimers();
+  expect(slot.getByRole('alert').textContent).toContain('Try opening again.');
+  projects.push({ id: 'proj-atlas', name: 'atlas', isPersonal: false, href: '/projects/proj-atlas', settingsHref: '/projects/proj-atlas/settings' });
+  rerender();
+  fireEvent.click(slot.getByRole('button', { name: 'Retry opening' }));
+  await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
+  expect(slot.inspection.rpcCalls.filter(call => call.method === 'open')).toHaveLength(1);
+  expect(slot.inspection.composer.selection?.projectId).toBe('proj-atlas');
+  expect(slot.inspection.composer.text).toBe('Analyse this repository');
+  expect(slot.inspection.composer.submits).toEqual([]);
 });

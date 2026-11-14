@@ -22,7 +22,8 @@ function launch(context: Omit<Launch, 'returnFocus'>) {
 function close() { launched = null; listeners.forEach(listener => listener()); }
 function message(cause: unknown) { return cause instanceof Error ? cause.message : String(cause); }
 type Existing = { repository: string; projectId: string; path: string };
-type Operation = { kind: 'idle' } | { kind: 'busy'; stage: 'checkout' | 'project' | 'composer' } | { kind: 'error'; stage: 'clone' | 'register' | 'composer'; message: string };
+type Operation = { kind: 'idle' } | { kind: 'busy'; stage: 'checkout' | 'project' | 'composer' } | { kind: 'error'; stage: 'clone' | 'register'; message: string }
+  | { kind: 'error'; stage: 'composer'; message: string; projectId: string };
 
 function Picker({ request }: { request: Launch }) {
   const rpc = useRpc<typeof rpcContract>();
@@ -51,7 +52,8 @@ function Picker({ request }: { request: Launch }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const [destination, setDestination] = useState('');
+  // null keeps the suggested destination, which follows init when it arrives after selection.
+  const [editedDestination, setDestination] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -103,9 +105,13 @@ function Picker({ request }: { request: Launch }) {
   }
   const visible = matches.slice(0, 100);
   const active = visible.find(repo => repo.fullName === highlighted) ?? visible[0];
+  const activeIndex = active ? visible.indexOf(active) : -1;
+  const selectedProject = existing.find(project => project.repository.toLowerCase() === selected?.toLowerCase());
+  const destination = editedDestination ?? (selected === null ? '' : selectedProject?.path ?? (root ? `${root}/${selected.split('/')[1]}` : ''));
   const registered = existing.find(project => project.repository.toLowerCase() === selected?.toLowerCase() && project.path === destination);
   const canOpen = selected !== null && destination.trim() !== '' && root !== '' && !busy;
-  const retryOpening = operation.kind === 'error' && operation.stage === 'register';
+  const retryOpening = operation.kind === 'error' && operation.stage !== 'clone';
+  const keptCheckout = operation.kind === 'error' && operation.stage === 'register';
 
   function dismiss() {
     if (busy) return;
@@ -115,15 +121,17 @@ function Picker({ request }: { request: Launch }) {
   useEffect(() => {
     if (focusDestination.current) { destinationInput.current?.focus(); focusDestination.current = false; }
   }, [selected]);
+  useEffect(() => {
+    if (activeIndex >= 0) document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView({ block: 'nearest' });
+  }, [listId, activeIndex]);
   function select(repo: Repository, focus = false) {
     if (focus) {
       if (destinationInput.current) destinationInput.current.focus();
       else focusDestination.current = true;
     }
-    const project = existing.find(candidate => candidate.repository.toLowerCase() === repo.fullName.toLowerCase());
     setSelected(repo.fullName);
     setHighlighted(repo.fullName);
-    setDestination(project?.path ?? `${root}/${repo.fullName.split('/')[1]}`);
+    setDestination(null);
     setOperation({ kind: 'idle' });
   }
   function keyboard(event: KeyboardEvent<HTMLDialogElement>) {
@@ -158,9 +166,10 @@ function Picker({ request }: { request: Launch }) {
   }
   async function open() {
     if (!canOpen || !selected) return;
-    setOperation({ kind: 'busy', stage: 'checkout' });
     let projectId: string;
-    try {
+    if (operation.kind === 'error' && operation.stage === 'composer') projectId = operation.projectId;
+    else try {
+      setOperation({ kind: 'busy', stage: 'checkout' });
       const result = await rpc.call('open', { repository: selected, destination });
       if (!mounted.current) return;
       if (!result.ok) {
@@ -189,15 +198,15 @@ function Picker({ request }: { request: Launch }) {
         navigate.toCompose({ projectId, focusPrompt: true });
       }
     } catch (cause) {
-      if (mounted.current) setOperation({ kind: 'error', stage: 'composer', message: `Project ready. ${message(cause)}` });
+      if (mounted.current) setOperation({ kind: 'error', stage: 'composer', projectId, message: `Project ready. ${message(cause)}` });
     }
   }
 
   return <dialog ref={dialog} className="clone-dialog" aria-label="Clone repository" onCancel={event => { event.preventDefault(); dismiss(); }} onKeyDown={keyboard}>
     <header className="clone-header"><h2>Clone repository</h2><button type="button" onClick={dismiss} disabled={busy} aria-label="Close clone repository">Close <kbd>esc</kbd></button></header>
     <label className="clone-search">Repository<input ref={search} type="search" value={query} disabled={busy} aria-label="Find a repository"
-      placeholder="Search your repositories or paste owner/repo" role="combobox" aria-expanded={true} aria-controls={listId}
-      aria-activedescendant={active ? `${listId}-${visible.indexOf(active)}` : undefined}
+      placeholder="Search or paste owner/repo" role="combobox" aria-expanded={true} aria-controls={listId}
+      aria-activedescendant={active ? `${listId}-${activeIndex}` : undefined}
       onChange={event => { setQuery(event.target.value); setHighlighted(null); }} /></label>
     <div className="clone-content">
       <div className="clone-results" id={listId} role="listbox" aria-label="Repositories">
@@ -225,7 +234,7 @@ function Picker({ request }: { request: Launch }) {
         </> : <p className="clone-empty">Select a repository to check its destination.</p>}
         {operation.kind === 'busy' && <p role="status">{operation.stage === 'checkout' ? 'Cloning or opening the checkout, then creating its BB project…'
           : operation.stage === 'project' ? 'Waiting for BB’s project list…' : 'Switching the composer to this project…'}</p>}
-        {operation.kind === 'error' && <div role="alert"><p>{operation.message}</p>{retryOpening && <p>The checkout is kept. Retry opening without cloning again.</p>}</div>}
+        {operation.kind === 'error' && <div role="alert"><p>{operation.message}</p>{keptCheckout && <p>The checkout is kept. Retry opening without cloning again.</p>}</div>}
       </section>
     </div>
     <footer className="clone-footer">

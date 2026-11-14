@@ -31,6 +31,7 @@ The existing `ghcl` shell command stays independent.
 
 Existing folders must be exact checkouts with a matching GitHub origin.
 A failed project registration keeps the checkout. **Retry opening** reuses it.
+When BB's project list does not refresh in time, **Retry opening** switches the draft without opening the repository again.
 No prompt is sent, dependencies installed or project setup scripts run.
 
 Run `bb clone-repository status` to check Mac host execution and GitHub discovery.
