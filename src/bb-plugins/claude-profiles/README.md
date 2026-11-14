@@ -431,6 +431,8 @@ bb claude-profiles import SESSION_ID|TMUX_PANE
 bb claude-profiles next [PROFILE]
 ```
 
+`switch` queues the account while a turn runs, as the switcher does, and prints
+`currentId` and `pendingId`.
 `overview` and `header` print the usage overlay and header data as JSON.
 `next` prints the remembered new-thread account and the profiles on the
 connected machine. With `PROFILE`, it first sets that account, as the switcher does

@@ -155,11 +155,16 @@ export default function plugin(bb: BbPluginApi) {
   type Pending = { profileId: string; label: string; error: string | null };
   const pendingKey = (threadId: string) => `pending:${threadId}`;
   const applying = new Set<string>();
-  const runtimeIdle = (thread: { status: string; activeBackgroundAgentCount?: number | null }) =>
-    ['idle', 'error'].includes(thread.status) && !thread.activeBackgroundAgentCount;
+  // BB can still report idle while a turn starts on a warm runtime, so the latest turn event decides too.
+  async function turnOpen(threadId: string) {
+    const [latest] = await bb.sdk.threads.events.list({ threadId, types: ['turn/started', 'turn/completed'], order: 'desc', limit: '1' });
+    return latest?.type === 'turn/started';
+  }
+  const quiet = async (threadId: string, thread: { status: string; activeBackgroundAgentCount?: number | null }) =>
+    ['idle', 'error'].includes(thread.status) && !thread.activeBackgroundAgentCount && !await turnOpen(threadId);
   async function queueSwitch(threadId: string, profileId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
-    if (runtimeIdle(thread) && !thread.queuedMessageCount) {
+    if (await quiet(threadId, thread) && !thread.queuedMessageCount) {
       await bb.storage.kv.delete(pendingKey(threadId));
       return (await select(threadId, profileId)).profile.id;
     }
@@ -178,7 +183,7 @@ export default function plugin(bb: BbPluginApi) {
   async function applyPending(threadId: string) {
     const pending = await bb.storage.kv.get<Pending>(pendingKey(threadId));
     if (!pending || pending.error || applying.has(threadId) || switching.has(threadId)) return;
-    if (!runtimeIdle(await bb.sdk.threads.get({ threadId }))) return;
+    if (!await quiet(threadId, await bb.sdk.threads.get({ threadId }))) return;
     applying.add(threadId);
     try {
       await select(threadId, pending.profileId, true);
@@ -480,7 +485,10 @@ export default function plugin(bb: BbPluginApi) {
           if (profileId) throw new Error('list takes only a thread ID.');
           const { environment, config } = await context(threadId);
           value = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
-        } else if (command === 'switch' && profileId) value = await select(threadId, profileId);
+        } else if (command === 'switch' && profileId) {
+          const currentId = await queueSwitch(threadId, profileId);
+          value = { currentId, pendingId: (await bb.storage.kv.get<Pending>(pendingKey(threadId)))?.profileId ?? null };
+        }
         else if (command === 'usage' && profileId) value = await usage(threadId, profileId, true);
         else throw new Error('Unknown command. Use list, switch or usage.');
         return { exitCode: 0, stdout: JSON.stringify(value, null, 2) + '\n' };

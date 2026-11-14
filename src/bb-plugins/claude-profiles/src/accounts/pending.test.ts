@@ -6,7 +6,7 @@ import plugin from '../../server.ts';
 const summit = { id: 'summit', label: 'Summit', configDir: '/profiles/summit' };
 const trove = { id: 'trove', label: 'Trove', configDir: '/profiles/trove' };
 
-async function setup(options: { transfer?: () => Promise<void> } = {}) {
+async function setup(options: { transfer?: () => Promise<void>; turnOpen?: () => boolean } = {}) {
   const thread = makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'active', environmentId: 'e1', queuedMessageCount: 0 });
   const stops: unknown[] = [];
   const transfers: unknown[] = [];
@@ -15,7 +15,9 @@ async function setup(options: { transfer?: () => Promise<void> } = {}) {
       threads: {
         get: async () => ({ ...thread }),
         stop: async () => { stops.push(thread.id); return thread; },
-        events: { list: async (args: { types: string[] }) => args.types.includes('thread/identity')
+        events: { list: async (args: { types: string[] }) => args.types.includes('turn/started')
+          ? [{ type: options.turnOpen?.() ? 'turn/started' : 'turn/completed', seq: 9, threadId: 't1', data: {} }]
+          : args.types.includes('thread/identity')
           ? [{ type: 'thread/identity', seq: 3, threadId: 't1', data: { providerThreadId: 'session-1' } }]
           : [{ type: 'provider.env-resolved', seq: 7, threadId: 't1', data: { entries: [
             { name: 'CLAUDE_CONFIG_DIR', source: { plugin: 'claude-profiles' }, value: summit.configDir },
@@ -143,4 +145,18 @@ test('a send during a manual switch waits instead of failing', async () => {
   release();
   await switching;
   assert.deepEqual(await dispatch('start-turn'), { action: 'proceed' });
+});
+
+test('a turn that has started while BB still reports idle queues the switch instead of stopping the turn', async () => {
+  let open = true;
+  const { harness, thread, transfers, stops, bound, finishTurn } = await setup({ turnOpen: () => open });
+  thread.status = 'idle';
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'summit' });
+  await harness.behavior.emitThreadEvent('experimental_thread.events', { thread: { ...thread }, sequence: 9 });
+  assert.equal(transfers.length, 0);
+  assert.equal(stops.length, 0);
+  open = false;
+  await finishTurn();
+  assert.equal(transfers.length, 1);
+  assert.equal(await bound(), 'trove');
 });
