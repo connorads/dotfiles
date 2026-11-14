@@ -23,6 +23,7 @@ export function ContextInspectorView(props: ContextInspectorViewProps) {
 }
 function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUnavailable, savedIntroduction, onExportPatch, inventory, inventoryError, controls, native }: ContextInspectorViewProps) {
   const [tab, setTab] = useState<'recorded' | 'sources' | 'future'>('recorded');
+  const [sourceQuery, setSourceQuery] = useState('');
   const [introduction, setIntroduction] = useState(() => {
     const current = previewIntroduction(ownerText, false);
     return current.ok ? current.previous ?? savedIntroduction ?? true : savedIntroduction ?? true;
@@ -39,7 +40,7 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
         <span>{usage ? 'tokens in this session' : 'Session overview'}</span>
         {percent !== undefined && <span className="ci-pill">{Math.round(percent)}% used</span>}</div>
       {capacityKnown && <meter className="ci-meter" aria-label="Recorded token usage" min={0} max={usage.modelContextWindow} value={Math.min(usage.usedTokens, usage.modelContextWindow)} />}
-      <div className="ci-capacity">{usage ? <><span>{usage.usedTokens.toLocaleString('en-GB')} / {usage.modelContextWindow.toLocaleString('en-GB')} tokens</span><span>{usage.estimated ? 'Estimated' : 'Reported'} usage</span></> : <span>No usage report available</span>}</div>
+      <div className="ci-capacity">{usage ? <><span>{capacityKnown ? `${usage.usedTokens.toLocaleString('en-GB')} / ${usage.modelContextWindow.toLocaleString('en-GB')} tokens` : `${usage.usedTokens.toLocaleString('en-GB')} tokens, window size unknown`}</span><span>{usage.estimated ? 'Estimated' : 'Reported'} usage</span></> : <span>No usage report available</span>}</div>
     </header>
     {synthetic && <p className="ci-fixture">Synthetic fixture. Values are for rendering tests.</p>}
     <nav className="ci-tabs" aria-label="Context views">
@@ -52,8 +53,9 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
       onKeyDown={event => {
         if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.stopPropagation();
       }}>
+    {/* The native panel stays mounted on other tabs so its report and pending read survive a tab change. */}
+    {native && <div hidden={tab !== 'recorded'}>{native}</div>}
     {tab === 'recorded' ? <div aria-label="Recorded context">
-      {native}
       {observation.kind === 'recorded' && observation.snapshot && <div className="ci-section-heading"><h3>Context breakdown</h3><span>Share of context window</span></div>}
       {observation.kind === 'recorded' && observation.snapshot ? <>
         <div className="ci-categories">{observation.snapshot.categories.map((category, index) => <div className="ci-category" key={`${category.id}-${index}`}>
@@ -72,7 +74,7 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
       </div>}
 
       {observation.kind === 'recorded' && observation.snapshot && <p className="ci-note">Category labels do not prove that a specific file, skill or plugin entered this session.</p>}
-    </div> : tab === 'sources' ? <SourceInventory inventory={inventory} error={inventoryError} /> : <div aria-label="Future owner preview">
+    </div> : tab === 'sources' ? <SourceInventory inventory={inventory} error={inventoryError} query={sourceQuery} onQueryChange={setSourceQuery} /> : <div aria-label="Future owner preview">
       <div className="ci-section-heading"><h3>Future sessions</h3><span>Patch preview only</span></div>
       <p className="ci-intro">Review a change to your declarative configuration, then export it for Git.</p>
       <div className="ci-setting"><label><span><strong>BB Guide introduction</strong><small>Include BB guidance when a session starts.</small></span>
@@ -100,8 +102,7 @@ function InspectorTarget({ target, state, ownerText, synthetic = false, ownerUna
   </section>;
 }
 
-function SourceInventory({ inventory, error }: Pick<ContextInspectorViewProps, 'inventory'> & { error?: string }) {
-  const [query, setQuery] = useState('');
+function SourceInventory({ inventory, error, query, onQueryChange }: Pick<ContextInspectorViewProps, 'inventory'> & { error?: string; query: string; onQueryChange: (query: string) => void }) {
   const rows = inventory?.rows ?? [];
   const groups = new Map<string, typeof rows>();
   for (const row of rows) {
@@ -113,7 +114,7 @@ function SourceInventory({ inventory, error }: Pick<ContextInspectorViewProps, '
   return <div aria-label="Current source inventory">
     <div className="ci-section-heading"><h3>Plugin sources</h3><span>Current registrations</span></div>
     <p className="ci-intro">Available tools and skills, grouped by the plugin that supplies them.</p>
-    <input className="ci-search" type="search" aria-label="Filter sources" placeholder="Filter plugins, tools and skills…" value={query} onChange={event => setQuery(event.target.value)} />
+    <input className="ci-search" type="search" aria-label="Filter sources" placeholder="Filter plugins, tools and skills…" value={query} onChange={event => onQueryChange(event.target.value)} />
     {error && <p className="ci-alert" role="status">{error}</p>}
     {[...groups].map(([pluginId, items]) => <details className="ci-source-group" key={pluginId} open={query ? true : undefined}>
       <summary><span className="ci-source-name">{pluginId}</span><span className="ci-source-count">{items.filter(row => row.kind === 'agent-tool').length} {items.filter(row => row.kind === 'agent-tool').length === 1 ? 'tool' : 'tools'} · {items.filter(row => row.kind === 'skill').length} {items.filter(row => row.kind === 'skill').length === 1 ? 'skill' : 'skills'}</span><span className="ci-pill" data-disabled={!items[0]?.enabled}>{items[0]?.enabled ? 'Enabled' : 'Disabled'}</span></summary>

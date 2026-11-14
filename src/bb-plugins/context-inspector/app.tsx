@@ -35,26 +35,30 @@ function nativeBinding(trigger: HTMLElement) {
   return [...composerBindings.values()].filter(value => value.threadId === binding.threadId).length === 1 ? binding : null;
 }
 
-export function NativePanel({ threadId }: { threadId: string }) {
+export function NativePanel({ threadId, revision }: { threadId: string; revision: number }) {
   const rpc = useRpc<typeof rpcContract>();
   const [data, setData] = useState<{ providerId: string | null; tracingEnabled: boolean; report: NativeResult } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
   const generation = useRef(0);
   const read = async (collect: boolean) => {
     const id = ++generation.current;
     setLoading(true);
     try {
       const value = await rpc.call('native', { threadId, collect });
-      if (id === generation.current) setData(value);
+      if (id === generation.current) { setData(value); setFailed(false); }
     } catch {
-      if (id === generation.current) setData(previous => ({ providerId: previous?.providerId ?? null, tracingEnabled: previous?.tracingEnabled ?? false, report: { kind: 'unavailable', reason: 'Native context read failed.' } }));
+      if (id === generation.current) {
+        setFailed(true);
+        setData(previous => ({ providerId: previous?.providerId ?? null, tracingEnabled: previous?.tracingEnabled ?? false, report: { kind: 'unavailable', reason: 'Native context read failed.' } }));
+      }
     } finally { if (id === generation.current) setLoading(false); }
   };
+  // Each Refresh re-reads native state without blanking the shown report first.
   useEffect(() => {
-    setData(null);
     void read(false);
     return () => { generation.current++; };
-  }, [threadId, rpc]);
+  }, [threadId, rpc, revision]);
   async function change(operation: 'tracing' | 'purge', enabled?: boolean) {
     const id = ++generation.current;
     setLoading(true);
@@ -70,7 +74,8 @@ export function NativePanel({ threadId }: { threadId: string }) {
     } finally { if (id === generation.current) setLoading(false); }
   }
   return <NativeCosts report={data?.report ?? null} provider={data?.providerId ?? undefined} tracingEnabled={data?.tracingEnabled}
-    loading={loading} onCollect={() => { void read(true); }} onTracingChange={enabled => { void change('tracing', enabled); }} onPurge={() => { void change('purge'); }} />;
+    loading={loading} onCollect={() => { void read(true); }} onRetry={failed ? () => { void read(false); } : undefined}
+    onTracingChange={enabled => { void change('tracing', enabled); }} onPurge={() => { void change('purge'); }} />;
 }
 type InventoryRow = { pluginId: string; enabled: boolean; kind: string; id: string; label: string };
 type Inventory = { rows: InventoryRow[]; truncated: boolean };
@@ -88,6 +93,14 @@ export function inventoryRows(plugins: Awaited<ReturnType<PluginBrowserBbSdk['pl
       kind: capability.kind, id: capability.id.slice(0, 160), label: capability.label.slice(0, 160) });
   }
   return { rows, truncated: count > rows.length };
+}
+
+const readTimeoutMs = 10_000;
+/** A read that never settles becomes a failure, so the other reads still render and Refresh can retry. */
+function settleWithin<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expiry = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Read timed out.')), readTimeoutMs); });
+  return Promise.race([promise, expiry]).finally(() => clearTimeout(timer));
 }
 
 function exportPatch(patch: string) {
@@ -136,15 +149,15 @@ export function InspectorPopup() {
     const abort = new AbortController();
     let active = true;
     async function read() {
-      const thread = await sdk.threads.get({ threadId: selectedThreadId, signal: abort.signal });
-      const environment = thread.environmentId ? await sdk.environments.get({ environmentId: thread.environmentId, signal: abort.signal }) : null;
+      const thread = await settleWithin(sdk.threads.get({ threadId: selectedThreadId, signal: abort.signal }));
+      const environment = thread.environmentId ? await settleWithin(sdk.environments.get({ environmentId: thread.environmentId, signal: abort.signal })) : null;
       const target: Target = { threadId: thread.id, hostId: environment?.hostId ?? 'Unknown' };
       const [context, owner, settings, inventory, identities] = await Promise.allSettled([
-        sdk.threads.context({ threadId: thread.id, signal: abort.signal }),
-        rpc.call('owner', { threadId: thread.id }),
-        sdk.plugins.getSettings({ pluginId: 'bb-guide', signal: abort.signal }),
-        sdk.plugins.list({ signal: abort.signal }).then(inventoryRows),
-        sdk.threads.events.list({ threadId: thread.id, types: ['thread/identity', 'thread/context/cleared'], order: 'desc', limit: '1', signal: abort.signal }),
+        settleWithin(sdk.threads.context({ threadId: thread.id, signal: abort.signal })),
+        settleWithin(rpc.call('owner', { threadId: thread.id })),
+        settleWithin(sdk.plugins.getSettings({ pluginId: 'bb-guide', signal: abort.signal })),
+        settleWithin(sdk.plugins.list({ signal: abort.signal }).then(inventoryRows)),
+        settleWithin(sdk.threads.events.list({ threadId: thread.id, types: ['thread/identity', 'thread/context/cleared'], order: 'desc', limit: '1', signal: abort.signal })),
       ]);
       if (!active) return;
       const identity = identities.status === 'fulfilled' ? identities.value[0] : undefined;
@@ -166,16 +179,18 @@ export function InspectorPopup() {
     void read().catch(() => { if (active) setResult({ threadId, revision, error: 'Selected thread read failed.' }); });
     return () => { active = false; abort.abort(); };
   }, [threadId, sdk, rpc, revision]);
-  const current = result?.threadId === threadId && result.revision === revision ? result : null;
+  // Refresh keeps the shown result, and with it the tab, draft and filter, until the new read settles.
+  const current = result?.threadId === threadId ? result : null;
+  const refreshing = current !== null && current.revision !== revision;
   const data = current?.data;
-  const controls = <><button className="ci-icon-button" type="button" aria-label="Refresh recorded data" title="Refresh recorded data" onClick={() => setRevision(value => value + 1)}><Icon name="RefreshCw" /></button><button className="ci-icon-button" type="button" aria-label="Close" title="Close" onClick={() => composer.experimental_closePopup()}><Icon name="X" /></button></>;
-  return <div className="ci-popup" ref={popupRef}>
+  const controls = <>{refreshing && <span className="ci-refreshing" role="status">Refreshing</span>}<button className="ci-icon-button" type="button" aria-label="Refresh recorded data" title="Refresh recorded data" onClick={() => setRevision(value => value + 1)}><Icon name="RefreshCw" /></button><button className="ci-icon-button" type="button" aria-label="Close" title="Close" onClick={() => composer.experimental_closePopup()}><Icon name="X" /></button></>;
+  return <div className="ci-popup" ref={popupRef} aria-busy={refreshing || undefined}>
     {!data && <header className="ci-loading-header"><strong>Context inspector</strong><span className="ci-spacer" />{controls}</header>}
     {!threadId ? <p>Select an existing thread.</p> : current?.error ? <p role="alert">{current.error}</p> : !data ? <p role="status">Loading selected thread.</p> : <>
       <ContextInspectorView target={data.target} state={data.state} ownerText={data.owner.kind === 'available' ? data.owner.text : ''}
         ownerUnavailable={data.owner.kind === 'unavailable' ? data.owner.reason : data.settings.error}
         savedIntroduction={data.settings.value} onExportPatch={exportPatch} inventory={data.inventory} inventoryError={data.inventoryError}
-        controls={controls} native={<NativePanel key={data.target.threadId} threadId={data.target.threadId} />} />
+        controls={controls} native={<NativePanel key={data.target.threadId} threadId={data.target.threadId} revision={revision} />} />
     </>}
   </div>;
 }

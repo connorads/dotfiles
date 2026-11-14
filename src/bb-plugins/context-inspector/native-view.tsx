@@ -9,6 +9,8 @@ export interface NativeCostsProps {
   tracingEnabled?: boolean;
   onTracingChange?: (enabled: boolean) => void;
   onPurge?: () => void;
+  /** Offered after a failed read when no provider action is available to retry with. */
+  onRetry?: () => void;
 }
 const tokens = (value: number) => value.toLocaleString('en-GB');
 type Category = NativeReport['categories'][number];
@@ -16,7 +18,7 @@ function CategoryCosts({ category }: { category: Category }) {
   const entries = [...category.entries].sort((a, b) => b.tokens - a.tokens);
   const difference = category.tokens - entries.reduce((sum, entry) => sum + entry.tokens, 0);
   const sourceKind = category.kind === 'used' || category.kind === 'deferred';
-  const discrepancy = !sourceKind ? null : difference > 0 ? `${tokens(difference)} tokens without source detail.`
+  const discrepancy = !sourceKind || entries.length === 0 ? null : difference > 0 ? `${tokens(difference)} tokens without source detail.`
     : difference < 0 ? `Source estimates exceed this total by ${tokens(-difference)} tokens. Values remain independently reported.` : null;
   const heading = <><span>{category.label}</span><span className="ci-native-count">{tokens(category.tokens)} <small>tokens</small></span></>;
   return <div className="ci-native-category">
@@ -27,7 +29,7 @@ function CategoryCosts({ category }: { category: Category }) {
   </div>;
 }
 
-export function NativeCosts({ report, loading = false, onCollect, provider, tracingEnabled = false, onTracingChange, onPurge }: NativeCostsProps) {
+export function NativeCosts({ report, loading = false, onCollect, provider, tracingEnabled = false, onTracingChange, onPurge, onRetry }: NativeCostsProps) {
   const available = report?.kind === 'available' ? report : null;
   const currentProvider = provider ?? available?.provider;
   const used = available?.categories.filter(category => category.kind === 'used') ?? [];
@@ -37,7 +39,8 @@ export function NativeCosts({ report, loading = false, onCollect, provider, trac
   const validDate = captured && Number.isFinite(captured.getTime());
   return <section className="ci-native" aria-label="Native source costs" aria-busy={loading}>
     <div className="ci-native-heading"><h3>Native source costs</h3>
-      {onCollect && (currentProvider === 'codex' || currentProvider === 'claude-code') && <button type="button" disabled={loading} onClick={onCollect}>{currentProvider === 'codex' ? 'Read latest request' : 'Read native summary'}</button>}
+      {onCollect && (currentProvider === 'codex' || currentProvider === 'claude-code') ? <button type="button" disabled={loading} onClick={onCollect}>{currentProvider === 'codex' ? 'Read latest request' : 'Read native summary'}</button>
+        : onRetry && <button type="button" disabled={loading} onClick={onRetry}>Try again</button>}
     </div>
     {currentProvider === 'codex' && onTracingChange && <div className="ci-native-recording">
       <label><span>Record future Codex requests</span><input type="checkbox" checked={tracingEnabled} disabled={loading} onChange={event => onTracingChange(event.target.checked)} /></label>

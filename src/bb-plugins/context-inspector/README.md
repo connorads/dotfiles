@@ -3,7 +3,7 @@
 Context Inspector shows recorded session usage, current plugin capabilities and
 a reviewable future configuration edit. Its interfaces are private and changeable.
 
-Open the existing context meter and choose **Inspect source costs**, or choose **+ → Inspect context** in an existing thread's composer. Refresh reads recorded data. Native diagnostics require an explicit action.
+Open the existing context meter and choose **Inspect source costs**, or choose **+ → Inspect context** in an existing thread's composer. Refresh reads recorded data and keeps the open tab, Configure draft and Sources filter. A read that does not settle within 10 seconds shows as unavailable. Native diagnostics require an explicit action. A native report and a pending native read survive tab changes.
 
 **Overview** leads with usage and available category bars. **Sources** groups
 current registrations by plugin and filters by plugin, label or capability ID.

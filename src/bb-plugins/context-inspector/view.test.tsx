@@ -2,7 +2,8 @@
 import { afterEach, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ContextInspectorView, FixtureContextInspector } from './view';
-import { fixtures, fixtureTarget, fixtureOwner } from './fixtures';
+import { useState } from 'react';
+import { fixtures, fixtureTarget, fixtureOwner, fixtureInventory } from './fixtures';
 afterEach(cleanup);
 
 it('switches between recorded evidence and future preview without changing counts', () => {
@@ -100,4 +101,26 @@ it('keeps scroll input inside the popup without cancelling native scrolling', ()
   expect(fireEvent.mouseDown(content)).toBe(true);
   expect(fireEvent.wheel(content, { deltaY: 300 })).toBe(true);
   expect(prevented).toEqual([]);
+});
+
+it('keeps the native panel and the source filter across tab changes', () => {
+  let mounts = 0;
+  function Native() { useState(() => { mounts++; }); return <p>Native panel</p>; }
+  render(<ContextInspectorView target={fixtureTarget} state={fixtures['Count only']} ownerText={fixtureOwner} inventory={fixtureInventory} native={<Native />} />);
+  fireEvent.click(screen.getByRole('button', { name: /Sources/ }));
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Filter sources' }), { target: { value: 'interface' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+  fireEvent.click(screen.getByRole('button', { name: /Sources/ }));
+  expect((screen.getByRole('searchbox', { name: 'Filter sources' }) as HTMLInputElement).value).toBe('interface');
+  fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+  expect(screen.getByText('Native panel')).toBeTruthy();
+  expect(mounts).toBe(1);
+});
+it('states an unknown window size instead of a zero denominator', () => {
+  const state = structuredClone(fixtures['Count only']);
+  if (state.kind !== 'recorded' || !state.observation.context.usage) throw new Error('Expected usage');
+  state.observation.context.usage.modelContextWindow = 0;
+  render(<ContextInspectorView target={fixtureTarget} state={state} ownerText={fixtureOwner} />);
+  expect(screen.getByText('12,000 tokens, window size unknown')).toBeTruthy();
+  expect(screen.queryByText(/\/ 0 tokens/)).toBeNull();
 });

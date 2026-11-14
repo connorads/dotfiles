@@ -63,3 +63,18 @@ test('unavailable result is explicit and contains no invented estimate', () => {
   expect(screen.getByRole('status').textContent).toBe('No captured request for this session.');
   expect(screen.queryByText('Estimated material')).toBeNull();
 });
+test('offers a retry after a failed read with no provider action', () => {
+  const retry = vi.fn();
+  render(<NativeCosts report={{ kind: 'unavailable', reason: 'Native context read failed.' }} onCollect={vi.fn()} onRetry={retry} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(retry).toHaveBeenCalledOnce();
+});
+test('keeps the provider action instead of a second retry button', () => {
+  render(<NativeCosts report={{ kind: 'unavailable', reason: 'Native context read failed.' }} provider="claude-code" onCollect={vi.fn()} onRetry={vi.fn()} />);
+  expect(screen.getByRole('button', { name: 'Read native summary' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+});
+test('adds no missing-detail note to a category that reports no sources', () => {
+  render(<NativeCosts report={report} />);
+  expect(screen.queryByText(/without source detail/)).toBeNull();
+});

@@ -12,7 +12,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 const usage = (usedTokens: number) => ({ usage: { usedTokens, modelContextWindow: 1000, estimated: false } });
-function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = false) {
+function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = false, hangInventory = false) {
   let contextReads = 0;
   const { sdk } = createFakeSdk({ pluginId: 'context-inspector', overrides: {
       threads: { get: ({ threadId }) => ({ id: threadId, environmentId: 'environment-synthetic' }), events: { list: () => [] },
@@ -21,7 +21,7 @@ function setup(firstContext?: Promise<ReturnType<typeof usage>>, anchored = fals
           return threadId === 'thread-first' && firstContext && contextReads === 1 ? firstContext : usage(222);
         } },
       environments: { get: () => ({ hostId: 'host-synthetic' }) },
-      plugins: { list: async () => ({ plugins: [{ id: 'synthetic-owner', enabled: true, capabilities: [
+      plugins: { list: async () => hangInventory ? new Promise<never>(() => {}) : ({ plugins: [{ id: 'synthetic-owner', enabled: true, capabilities: [
         { kind: 'agent-tool', id: 'synthetic-tool', label: 'Synthetic tool', detail: 'Do not display this body.' },
         { kind: 'skill', id: 'synthetic-skill', label: 'Synthetic skill', detail: null },
       ] }] }), getSettings: () => ({ schema: { introduction: { type: 'boolean' } }, values: { introduction: true } }) },
@@ -101,4 +101,28 @@ test('caps an anchored popup at the space above the composer and responds to res
   bottom = 180;
   fireEvent(window, new Event('resize'));
   expect(popup?.style.getPropertyValue('--ci-max-height')).toBe('168px');
+});
+
+test('refresh keeps the open tab while the new read settles', async () => {
+  const slot = setup();
+  await slot.findByText('thread-first');
+  fireEvent.click(slot.getByRole('button', { name: 'Configure' }));
+  fireEvent.click(slot.getByRole('button', { name: 'Refresh recorded data' }));
+  expect(slot.getByText('Refreshing')).toBeTruthy();
+  expect(slot.getByRole('checkbox')).toBeTruthy();
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(slot.queryByText('Refreshing')).toBeNull();
+  expect(slot.getByRole('button', { name: 'Configure' }).getAttribute('aria-pressed')).toBe('true');
+});
+test('a read that never settles fails alone instead of holding the popup on loading', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const slot = setup(undefined, false, true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(9_000); });
+    expect(slot.getByText('Loading selected thread.')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_500); });
+    expect(slot.getByText(/222 \/ 1,000 tokens/)).toBeTruthy();
+    fireEvent.click(slot.getByRole('button', { name: /Sources/ }));
+    expect(slot.getByText('Current inventory read failed.')).toBeTruthy();
+  } finally { vi.useRealTimers(); }
 });
