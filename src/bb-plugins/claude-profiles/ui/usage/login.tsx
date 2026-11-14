@@ -24,6 +24,8 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
   const [method, setMethod] = useState<LoginMethod>('device');
   const [message, setMessage] = useState(`Opening ${name} sign-in…`);
   const [error, setError] = useState<string | null>(null);
+  // A refused terminal is not a failed sign-in: the login keeps running and Show terminal clears this.
+  const [hidden, setHidden] = useState(false);
   const [canCheck, setCanCheck] = useState(false);
   const [checking, setChecking] = useState(false);
   const generation = useRef(0);
@@ -58,6 +60,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setError(null);
+    setHidden(false);
     setCanCheck(false);
     setChecking(false);
     setTerminalId(null);
@@ -68,9 +71,9 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         const { terminalId: id } = await rpc.call('usage.login', codex ? { ...target, method } : target);
         if (!alive) return;
         setTerminalId(id);
-        if (!await navigation.current.experimental_openTerminal({ terminalId: id }))
-          throw new Error('BB could not show the sign-in terminal. Use Show terminal to try again.');
+        const shown = await navigation.current.experimental_openTerminal({ terminalId: id });
         if (!alive) return;
+        setHidden(!shown);
         setMessage(opencode ? 'Open the link in the terminal on any device and enter the code.'
           : !codex ? `Complete ${name} sign-in in the terminal and browser.`
           : method === 'device' ? 'Open the link in the terminal on any device and enter the code.'
@@ -80,6 +83,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
             const terminal = await sdk.terminals.get({ terminalId: id });
             if (!alive) return;
             if (terminal.status === 'exited') {
+              setHidden(false);
               if (terminal.exitCode !== 0) throw new Error('Sign-in did not finish. Check the terminal, then try again.');
               setMessage(opencode ? 'Authorisation completed. Checking Go usage…' : 'Signed in. Refreshing usage…');
               if (opencode) {
@@ -103,7 +107,9 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         }
         void check();
       } catch (cause) {
-        if (alive) setError(cause instanceof Error ? cause.message : 'Could not start sign-in.');
+        if (!alive) return;
+        setMessage(`${name} sign-in did not start.`);
+        setError(cause instanceof Error ? cause.message : 'Could not start sign-in.');
       }
     }
     void start();
@@ -122,6 +128,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     <p role="status">{message}</p>
     {codex && method === 'device' && <p className="au-login-hint">
       Device codes need device code sign-in turned on in ChatGPT security settings.</p>}
+    {hidden && <p role="alert">BB could not show the sign-in terminal. Use Show terminal to try again.</p>}
     {error && <p role="alert">{error}</p>}
     <div className="au-login-actions">
       {canCheck && <button type="button" className="au-login-button" disabled={checking}
@@ -129,6 +136,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
       {opencode && canCheck && <a className="au-login-button" href="https://opencode.ai/console" target="_blank" rel="noreferrer">Open Go usage in Console</a>}
       {terminalId && <button type="button" className="au-login-button" onClick={() => {
         void navigate.experimental_openTerminal({ terminalId }).then(shown => {
+          setHidden(false);
           if (!shown) setError('The terminal has exited or is unavailable. Try signing in again.');
         }).catch(() => setError('BB could not show the sign-in terminal.'));
       }}>Show terminal</button>}

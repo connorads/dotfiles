@@ -75,8 +75,14 @@ test('the account row appears only for Claude with more than one account', () =>
 
 test('the switcher opens beside its chip and stays inside the window', () => {
   const viewport = { width: 1280, height: 860 };
-  expect(placement({ top: 800, bottom: 824, left: 500 }, viewport)).toEqual({ left: 500, bottom: 68 });
-  expect(placement({ top: 150, bottom: 174, left: 900 }, viewport)).toEqual({ left: 848, top: 182 });
-  expect(placement({ top: 150, bottom: 174, left: 2 }, viewport)).toEqual({ left: 12, top: 182 });
+  expect(placement({ top: 800, bottom: 824, left: 500 }, viewport)).toEqual({ left: 500, bottom: 68, maxHeight: 560 });
+  expect(placement({ top: 150, bottom: 174, left: 900 }, viewport)).toEqual({ left: 848, top: 182, maxHeight: 560 });
+  expect(placement({ top: 150, bottom: 174, left: 2 }, viewport)).toEqual({ left: 12, top: 182, maxHeight: 560 });
   expect(placement(null, viewport)).toBeNull();
+});
+
+test('a chip near the middle of a short window caps the switcher to the room on its side', () => {
+  const viewport = { width: 1280, height: 600 };
+  expect(placement({ top: 340, bottom: 364, left: 500 }, viewport)).toEqual({ left: 500, bottom: 268, maxHeight: 320 });
+  expect(placement({ top: 250, bottom: 274, left: 500 }, viewport)).toEqual({ left: 500, top: 282, maxHeight: 306 });
 });

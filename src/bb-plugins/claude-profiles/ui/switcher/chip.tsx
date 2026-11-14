@@ -49,11 +49,11 @@ export function Chip() {
   return <button type="button" className="sw-chip" ref={element => registerAnchor(composer.key, element)} onClick={() => open(composer)}
     aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${account ? `, ${account.label} account` : ''}`} title="Switch model (⌘⇧M)">
     <Glyph providerId={providerId} />
-    <span>{name}</span>
+    <span className="sw-chip-name">{name}</span>
     {(effort || fast) && <span className="sw-muted">{[effort, fast ? 'fast' : null].filter(Boolean).join(' · ')}</span>}
     {account && <><span className="sw-sep" aria-hidden="true" />
       <span className="sw-key" aria-hidden="true">{account.key ?? '?'}</span>
-      <span className="sw-muted">{account.label}{accounts?.pendingId ? ' · next turn' : ''}</span></>}
+      <span className="sw-muted sw-chip-account">{account.label}{accounts?.pendingId ? ' · next turn' : ''}</span></>}
     {stillOn && <span className="sw-warn">connectors still on</span>}
   </button>;
 }

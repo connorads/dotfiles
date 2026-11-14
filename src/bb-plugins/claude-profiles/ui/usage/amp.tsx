@@ -12,6 +12,7 @@ export function AmpUsage({ value, message, loading, now }: {
     <h3 className="au-provider-heading"><BrandIcon brand="amp" />Amp</h3>
     {loading && !value && <p className="au-reading">Checking Amp…</p>}
     {message && <p className="au-account-message">{message}</p>}
+    {!loading && !message && value?.machines.length === 0 && <p className="au-reading">No machine reported Amp usage.</p>}
     {value?.machines.map(machine => {
       const reading = machine.reading;
       const presentation = reading.status === 'ok' ? presentAmpUsage(reading.text) : null;

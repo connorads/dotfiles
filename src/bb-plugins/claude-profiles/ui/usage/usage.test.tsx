@@ -321,6 +321,14 @@ test('Amp presents a clear account, remaining balance and credit settings link',
   expect(slot.getByRole('link', { name: 'Manage credits' }).getAttribute('href')).toBe('https://ampcode.com/settings');
 });
 
+test('Amp with no reporting machine says so under its heading', async () => {
+  const app = await load();
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect(), 'usage.amp': async () => ({ machines: [] }) } });
+  act(() => openUsage());
+  const amp = await slot.findByRole('region', { name: 'Amp usage' });
+  await waitFor(() => expect(amp.textContent).toContain('No machine reported Amp usage.'));
+});
+
 for (const first of ['amp', 'quotas'] as const) {
   test(`loading stays coordinated when ${first} finishes first`, async () => {
     const app = await load();
@@ -495,6 +503,38 @@ for (const success of [true, false]) test(`sign-in ${success ? 'success refreshe
   expect(slot.inspection.navigateCalls).toContainEqual({ method: 'experimental_openTerminal', options: { terminalId: 'login-terminal' } });
 });
 
+
+test('a sign-in that cannot start says so instead of still opening', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => { throw new Error('Machine offline'); } }, openTerminal: () => true,
+  });
+  expect((await slot.findByRole('alert')).textContent).toBe('Machine offline');
+  expect(slot.getByRole('status').textContent).toBe('Claude sign-in did not start.');
+  expect(slot.getByRole('button', { name: 'Try again' })).toBeTruthy();
+});
+
+test('a refused terminal still finishes sign-in once Show terminal opens it', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  let shown = false;
+  let status: 'running' | 'exited' = 'running';
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }), 'usage.inspection': async () => inspect() },
+    sdk: { terminals: { get: async () => status === 'exited' ? terminal(0) : { ...terminal(0), status, exitCode: null, closeReason: null } } },
+    openTerminal: () => shown,
+  });
+  expect((await slot.findByRole('alert')).textContent).toContain('BB could not show the sign-in terminal');
+  expect(slot.getByRole('status').textContent).toBe('Complete Claude sign-in in the terminal and browser.');
+  shown = true;
+  fireEvent.click(slot.getByRole('button', { name: 'Show terminal' }));
+  await waitFor(() => expect(slot.queryByRole('alert')).toBeNull());
+  status = 'exited';
+  await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'), { timeout: 3000 });
+});
 
 test('a usage refresh failure after sign-in does not offer another login', async () => {
   const app = await load();

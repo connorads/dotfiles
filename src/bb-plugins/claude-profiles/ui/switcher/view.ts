@@ -102,7 +102,10 @@ export function stepEffort(levels: readonly Effort[], current: Effort | null, di
 export function placement(anchor: { top: number; bottom: number; left: number } | null, viewport: { width: number; height: number }, width = 420, gap = 8) {
   if (!anchor) return null;
   const left = Math.max(12, Math.min(anchor.left, viewport.width - width - 12));
-  return anchor.top > viewport.height / 2 ? { left, bottom: viewport.height - anchor.top + gap } : { left, top: anchor.bottom + gap };
+  // The dialog scrolls inside the room on its side, so its last rows never sit past the window edge.
+  const cap = (room: number) => Math.min(560, Math.floor(viewport.height * 0.8), room - 12);
+  return anchor.top > viewport.height / 2 ? { left, bottom: viewport.height - anchor.top + gap, maxHeight: cap(anchor.top - gap) }
+    : { left, top: anchor.bottom + gap, maxHeight: cap(viewport.height - anchor.bottom - gap) };
 }
 
 export type Tone = 'normal' | 'warning' | 'critical' | 'unknown';
