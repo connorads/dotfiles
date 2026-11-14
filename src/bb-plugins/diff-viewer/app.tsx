@@ -61,7 +61,8 @@ function DiffPanelContent({ threadId, review }: PluginThreadPanelProps & { revie
   const target = useMemo(() => review ? { target: review.target } : {}, [review]);
   const [kind, setKind] = useState<ScopeKind>(() => review?.scope.kind ?? lastScope.get(threadId) ?? 'uncommitted');
   const [commit, setCommit] = useState<string | null>(review?.scope.kind === 'unpushed' ? review.scope.commit : null);
-  const [result, setResult] = useState<LoadResult | null>(null);
+  /** The last successful load and the scope it was for. */
+  const [loaded, setLoaded] = useState<{ scope: Scope; result: LoadResult } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<DiffViewMode>(readView);
@@ -87,19 +88,23 @@ function DiffPanelContent({ threadId, review }: PluginThreadPanelProps & { revie
       if (request === latest.current) printed.current = print;
       const next = await rpc.call('load', { threadId, ...target, scope });
       if (request !== latest.current) return;
-      setResult(next);
+      setLoaded({ scope, result: next });
       setError(null);
       // Whole-file fetches belong to the previous load; files the reader expanded fetch again.
       setFetched(new Map());
     } catch (cause) {
-      if (request === latest.current) setError(message(cause));
+      if (request === latest.current) {
+        setError(message(cause));
+        // The shown diff no longer matches any fingerprint, so the next check retries the load.
+        printed.current = null;
+      }
     } finally {
       if (request === latest.current) { setLoading(false); settled.current = request; }
     }
   }, [rpc, threadId, target, scope]);
 
   useEffect(() => { lastScope.set(threadId, kind); }, [threadId, kind]);
-  useEffect(() => { setResult(null); void reload(); }, [reload]);
+  useEffect(() => { void reload(); }, [reload]);
   useEffect(() => {
     // Reload only when the fingerprint moved; skip while a load or another check is in flight.
     const check = async () => {
@@ -126,7 +131,13 @@ function DiffPanelContent({ threadId, review }: PluginThreadPanelProps & { revie
     if (document.activeElement === document.body) rootRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // A load for another scope is not shown: its files would read as this scope's.
+  const result = loaded?.scope === scope ? loaded.result : null;
   const repo = result && result.kind !== 'none' ? result : null;
+  // Checkout name and branch do not depend on the scope, so they stay while another scope loads.
+  const checkout = loaded && loaded.result.kind !== 'none' ? loaded.result : null;
+  // Picking a commit keeps the list in place (and its scroll) while that commit loads.
+  const commits = kind === 'unpushed' && loaded?.scope.kind === 'unpushed' && checkout?.view.ok ? checkout.view.commits : null;
   const files = repo?.view.ok ? repo.view.files : [];
   const isCollapsed = useCallback((file: FileDiff) => collapsed.get(file.path) ?? defaultCollapsed(file), [collapsed]);
   const spec = repo?.view.ok ? repo.view.spec : null;
@@ -194,33 +205,40 @@ function DiffPanelContent({ threadId, review }: PluginThreadPanelProps & { revie
         {scopes.map(option => <button type="button" role="tab" key={option.kind} aria-selected={kind === option.kind} title={option.hint}
           onClick={() => { setKind(option.kind); setCommit(null); }}>{option.label}</button>)}
       </div>
-      <span className="dv-spacer" />
-      {repo?.view.ok && <span className="dv-summary">{files.length} {files.length === 1 ? 'file' : 'files'} <Counts {...sum} /></span>}
-      <button type="button" className="dv-icon-button" onClick={flipView} aria-pressed={view === 'split'}
-        title={view === 'split' ? 'Unified view (s)' : 'Split view (s)'} aria-label="Toggle split view">
-        <Icon name={view === 'split' ? 'Rows2' : 'Columns2'} className="dv-icon" />
-      </button>
-      <button type="button" className="dv-icon-button" onClick={toggleAll} disabled={files.length === 0}
-        title={anyOpen ? 'Collapse all (Shift+X)' : 'Expand all (Shift+X)'} aria-label={anyOpen ? 'Collapse all' : 'Expand all'}>
-        <Icon name={anyOpen ? 'ChevronsUp' : 'ChevronsDown'} className="dv-icon" />
-      </button>
-      <button type="button" className="dv-icon-button" onClick={() => void reload()} title="Refresh (r)" aria-label="Refresh" data-busy={loading || undefined}>
-        <Icon name="ArrowReloadHorizontal" className="dv-icon" />
-      </button>
+      <div className="dv-tools">
+        {repo?.view.ok && <span className="dv-summary">{files.length} {files.length === 1 ? 'file' : 'files'} <Counts {...sum} /></span>}
+        <div className="dv-actions">
+          <button type="button" className="dv-icon-button" onClick={flipView} aria-pressed={view === 'split'}
+            title={view === 'split' ? 'Unified view (s)' : 'Split view (s)'} aria-label="Toggle split view">
+            <Icon name={view === 'split' ? 'Rows2' : 'Columns2'} className="dv-icon" />
+          </button>
+          <button type="button" className="dv-icon-button" onClick={toggleAll} disabled={files.length === 0}
+            title={anyOpen ? 'Collapse all (Shift+X)' : 'Expand all (Shift+X)'} aria-label={anyOpen ? 'Collapse all' : 'Expand all'}>
+            <Icon name={anyOpen ? 'ChevronsUp' : 'ChevronsDown'} className="dv-icon" />
+          </button>
+          <button type="button" className="dv-icon-button" onClick={() => void reload()} title="Refresh (r)" aria-label="Refresh"
+            data-busy={loading || undefined} aria-busy={loading}>
+            <Icon name="ArrowReloadHorizontal" className="dv-icon" />
+          </button>
+        </div>
+      </div>
     </div>
-    {repo && <div className="dv-context">
-      <span className="dv-repo">{review?.target.path ?? repo.name}{repo.branch && <span className="dv-muted"> · {repo.branch}</span>}</span>
-      {repo.view.ok && <span className="dv-muted dv-label" title={repo.view.label}>{repo.view.label}</span>}
+    {checkout && <div className="dv-context">
+      <span className="dv-repo">{review?.target.path ?? checkout.name}{checkout.branch && <span className="dv-muted"> · {checkout.branch}</span>}</span>
+      {repo?.view.ok && <span className="dv-muted dv-label" title={repo.view.label}>{repo.view.label}</span>}
     </div>}
     {repo?.view.ok && repo.view.note && <p className="dv-note">{repo.view.note}</p>}
-    {error && <p role="alert" className="dv-note dv-error">{error}</p>}
+    {error && <p role="alert" className="dv-note dv-error">
+      {result ? 'Refresh failed. Showing the last loaded changes.' : 'Could not load changes.'} {error}{' '}
+      <button type="button" className="dv-link" onClick={() => void reload()} disabled={loading}>Retry</button>
+    </p>}
 
     <div ref={scrollRef} className="dv-scroll">
+      {commits && commits.length > 0 && <CommitList commits={commits} selected={commit} onSelect={setCommit} />}
       {result === null ? !error && <p className="dv-blank">Loading changes…</p>
         : result.kind === 'none' ? <p className="dv-blank">This thread's checkout is not a git work tree.</p>
         : !result.view.ok ? <p className="dv-blank">{result.view.message}</p>
         : <>
-          {result.view.commits && result.view.commits.length > 0 && <CommitList commits={result.view.commits} selected={commit} onSelect={setCommit} />}
           {files.length === 0 ? <p className="dv-blank">No changes.</p> : <>
             <FileIndex files={files} onJump={path => {
               const file = files.find(f => f.path === path);
@@ -265,7 +283,9 @@ function ReviewOpener({ threadId }: PluginThreadHeaderActionProps) {
     window.addEventListener(openReviewEvent, open);
     return () => window.removeEventListener(openReviewEvent, open);
   }, [navigate, threadId]);
-  return error ? <div className="dv-open-error" role="alert">{error} <button onClick={() => setError(null)}>Dismiss</button></div> : null;
+  return error ? <div className="dv-open-error" role="alert">
+    <span>{error}</span> <button type="button" className="dv-link" onClick={() => setError(null)}>Dismiss</button>
+  </div> : null;
 }
 
 export default definePluginApp(app => {

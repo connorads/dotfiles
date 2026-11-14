@@ -64,6 +64,10 @@ fingerprint changed. The fingerprint is a hash of `git status --porcelain=v2
 commits, new files and further edits to a modified file. A refresh keeps the
 scroll position, collapse choices and any "Show all" expansions.
 
+A failed load shows an alert with Retry. After a failed refresh the last loaded
+changes stay, and the alert says so. The next fingerprint check retries the
+load. Picking a commit keeps the commit list in place while that commit loads.
+
 ## How it works
 
 ```mermaid

@@ -10,8 +10,7 @@
 }
 
 /* Toolbar: fixed above the scroll, so file headers can stick to the scroll's top. */
-.dv-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px 6px; }
-.dv-spacer { flex: 1; }
+.dv-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; padding: 8px 12px 6px; }
 .dv-scopes { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--muted); }
 .dv-scopes button {
   height: 24px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
@@ -19,7 +18,10 @@
 }
 .dv-scopes button:hover { color: var(--foreground); }
 .dv-scopes button[aria-selected="true"] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
-.dv-summary { display: inline-flex; gap: 6px; align-items: baseline; color: var(--muted-foreground); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Summary and buttons fill the rest of the row, right-aligned; the buttons wrap only as one group. */
+.dv-tools { flex: 1 1 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px 8px; min-height: 28px; }
+.dv-actions { display: inline-flex; gap: 2px; }
+.dv-summary { display: inline-flex; gap: 6px; align-items: baseline; line-height: 28px; color: var(--muted-foreground); font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dv-icon-button {
   display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0;
   border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); cursor: pointer;
@@ -29,12 +31,16 @@
 .dv-icon-button[data-busy] .dv-icon { animation: dv-spin .8s linear infinite; }
 .dv-icon { width: 15px; height: 15px; }
 @keyframes dv-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .dv-icon-button[data-busy] .dv-icon { animation: none; opacity: .5; } }
+@media (prefers-reduced-motion: reduce) {
+  .dv-icon-button[data-busy] { background: var(--muted); }
+  .dv-icon-button[data-busy] .dv-icon { animation: none; opacity: .5; }
+}
 :is(.dv-scopes button, .dv-icon-button, .dv-index-row, .dv-commit, .dv-file-toggle, .dv-link):focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 
-.dv-context { display: flex; align-items: baseline; gap: 8px; padding: 0 14px 6px; font-size: var(--text-xs, 12px); min-width: 0; }
-.dv-repo { font-weight: 600; white-space: nowrap; }
-.dv-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono, monospace); }
+/* A long checkout path wraps, so the branch and range label stay visible. */
+.dv-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 14px 6px; font-size: var(--text-xs, 12px); min-width: 0; }
+.dv-repo { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.dv-label { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono, monospace); }
 .dv-muted { color: var(--muted-foreground); }
 .dv-note { margin: 0 12px 6px; padding: 6px 10px; border-radius: 6px; background: var(--muted); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .dv-error { color: var(--destructive-text, var(--destructive)); }
@@ -84,7 +90,8 @@
 .dv-tag { flex: none; padding: 1px 6px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); font-size: 11px; }
 
 /* Files: cards in one scroll, each header sticky while its diff passes. */
-.dv-files { display: grid; gap: 10px; }
+/* minmax(0, 1fr): a wide diff line scrolls inside its file, not the whole list. */
+.dv-files { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .dv-file { border: 1px solid var(--border); border-radius: 8px; overflow: clip; background: var(--background); }
 .dv-file-header { position: sticky; top: 0; z-index: 2; background: var(--background); border-bottom: 1px solid transparent; }
 .dv-file:not([data-collapsed]) .dv-file-header { border-bottom-color: var(--border-hairline, var(--border)); }
@@ -95,9 +102,10 @@
 .dv-file-toggle:hover { background: var(--state-hover); }
 .dv-file-toggle .dv-path:last-of-type { flex: 1; color: var(--foreground); }
 .dv-chevron { flex: none; width: 14px; height: 14px; color: var(--muted-foreground); }
-.dv-diff { display: block; }
+.dv-diff { display: block; overflow-x: auto; }
 .dv-notice { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 10px 12px; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .dv-link { padding: 0; border: 0; background: none; color: var(--foreground); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.dv-link:disabled { opacity: .5; cursor: default; }
 
 @media (pointer: coarse) {
   .dv-scopes button { min-height: 44px; }
@@ -106,4 +114,9 @@
 
 .dv-chat-review { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
 .dv-chat-review:focus-visible { outline: 2px solid var(--primary); }
-.dv-open-error { position: fixed; bottom: 24px; right: 24px; z-index: 1000; padding: 12px; background: var(--background); color: var(--foreground); border: 1px solid var(--border); }
+.dv-open-error {
+  position: fixed; bottom: 16px; right: 16px; z-index: 1000; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+  max-width: min(360px, calc(100vw - 32px)); padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--popover, var(--background)); color: var(--popover-foreground, var(--foreground));
+  font: var(--text-sm, 13px)/1.45 var(--font-sans); box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+}

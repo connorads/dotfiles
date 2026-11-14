@@ -81,7 +81,7 @@ export const FileCard = memo(function FileCard({ file, collapsed, view, fetched,
     </header>
     {!collapsed && <div className="dv-file-body">
       {body === 'loading' ? <Notice>Loading diff…</Notice>
-        : 'error' in body ? <Notice><span className="dv-error">{body.error}</span>
+        : 'error' in body ? <Notice><span className="dv-error">Could not load this diff. {body.error}</span>
           <button type="button" className="dv-link" onClick={() => onFetch(file)}>Retry</button></Notice>
         : body.kind === 'patch' ? <>
           <Diff patch={body.patch} path={file.path} view={view} overflow="scroll" className="dv-diff" />
