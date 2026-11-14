@@ -11,8 +11,9 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 /** instant: opened by keyboard, so it appears without an entrance. */
 export type Open = { anchor: Anchor; instant: boolean } | null;
 
-interface State { view: CaffeineView | null; open: Open }
-let state: State = { view: null, open: null };
+/** readError: why the last state read failed, shown while there is no view to show instead. */
+interface State { view: CaffeineView | null; open: Open; readError: string | null }
+let state: State = { view: null, open: null, readError: null };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -27,9 +28,10 @@ export function rpc(): Rpc {
 
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
-/** A failed read keeps the last view; the next signal or refocus corrects it. */
+/** A failed read keeps the last view; the next signal, refocus or open corrects it. */
 export async function refresh() {
-  try { set({ view: await rpc().call('state', {}) }); } catch { /* host unreachable: keep the last view */ }
+  if (state.readError) set({ readError: null });
+  try { set({ view: await rpc().call('state', {}), readError: null }); } catch (cause) { set({ readError: message(cause) }); }
 }
 export function receiveView(payload: unknown) { set({ view: payload as CaffeineView }); }
 
@@ -46,6 +48,12 @@ export function toggle(via: 'pointer' | 'keyboard', from?: HTMLElement) {
   void refresh();
 }
 export function close() { set({ open: null }); }
+
+/** An action that failed after its popover closed: the next popover opens showing it. */
+let missed: string | null = null;
+export function missError(reason: string) { missed = reason; }
+export const peekMissed = () => missed;
+export function clearMissed() { missed = null; }
 
 export function useNow(intervalMs: number, active = true) {
   const [now, setNow] = useState(() => Date.now());

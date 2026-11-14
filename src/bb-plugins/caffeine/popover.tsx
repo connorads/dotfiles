@@ -4,7 +4,7 @@ import type { Details, CaffeineView, ActionResult } from './src/domain.ts';
 import { GRACE_MS } from './src/agents.ts';
 import { clockAt, durationLabel, EXTEND_OPTIONS, longDuration, remainingFraction, START_OPTIONS, untilLabel } from './src/format.ts';
 import { keyAction, rowId, type Action, type Screen } from './src/keys.ts';
-import { message, rpc, useNow, visibleChip, type Anchor } from './store.ts';
+import { clearMissed, message, missError, peekMissed, rpc, useNow, visibleChip, type Anchor } from './store.ts';
 
 const UNSUPPORTED: Record<Extract<CaffeineView, { kind: 'unsupported' }>['reason'], string> = {
   'not-macos': 'Keep awake works only on macOS.',
@@ -76,13 +76,17 @@ function Recovery({ onClear }: { onClear: () => void }) {
   </section>;
 }
 
-export function CaffeinePopover({ view, anchor, instant, onClose }: {
-  view: CaffeineView | null; anchor: Anchor; instant: boolean; onClose: () => void;
+export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
+  view: CaffeineView | null; readError: string | null; anchor: Anchor; instant: boolean; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [picker, setPicker] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(peekMissed);
+  useEffect(() => { clearMissed(); }, []);
+  /** False once closed: an action that fails after that leaves its reason for the next popover. */
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [pending, setPending] = useState(false);
   /** The row that needs a second press: a lid session on battery. */
   const [armed, setArmed] = useState<string | null>(null);
@@ -137,13 +141,14 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
     setPending(true);
     setError(null);
     setArmed(null);
+    const fail = (reason: string) => mounted.current ? setError(reason) : missError(reason);
     try {
       const result = await call();
-      if (!result.ok) setError(result.reason);
+      if (!result.ok) fail(result.reason);
       else if (closeOnSuccess) onClose();
       else loadDetails();
     } catch (cause) {
-      setError(message(cause));
+      fail(message(cause));
     } finally {
       setPending(false);
     }
@@ -199,7 +204,9 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
   let body: ReactNode;
   let footnote: string;
   if (!view) {
-    body = <Header tone="off" glyph="☼" title="Keep awake" tag="…"><p className="cf-line cf-muted">Reading this Mac's state…</p></Header>;
+    body = <Header tone="off" glyph="☼" title="Keep awake" tag={readError ? 'UNKNOWN' : '…'}>
+      <p className="cf-line cf-muted">{readError ? "Could not read this Mac's state. Close and reopen to try again." : "Reading this Mac's state…"}</p>
+    </Header>;
     footnote = '';
   } else if (view.kind === 'unsupported') {
     body = <Header tone="off" glyph="☼" title="Keep awake" tag="UNAVAILABLE"><p className="cf-line">{UNSUPPORTED[view.reason]}</p></Header>;
@@ -217,7 +224,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
           const id = rowId({ kind: 'startLid', secs });
           return <Row key={secs} id={id} keycap={String(index + 1)} armed={armed === id} disabled={pending}
             label={armed === id ? (onBattery ? 'Press again to start on battery' : 'Press again to start, power unknown') : durationLabel(secs)}
-            aside={untilLabel(now + secs * 1000)} onClick={() => dispatch({ kind: 'startLid', secs })} />;
+            aside={untilLabel(now + secs * 1000, now)} onClick={() => dispatch({ kind: 'startLid', secs })} />;
         })}
       </section>
     </>;
@@ -233,7 +240,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
         <Row id={rowId({ kind: 'start', secs: 0 })} keycap="i" label="Indefinitely" aside="∞" disabled={pending}
           onClick={() => dispatch({ kind: 'start', secs: 0 })} />
         {START_OPTIONS.map((secs, index) => <Row key={secs} id={rowId({ kind: 'start', secs })} keycap={String(index + 1)} disabled={pending}
-          label={durationLabel(secs)} aside={untilLabel(now + secs * 1000)} onClick={() => dispatch({ kind: 'start', secs })} />)}
+          label={durationLabel(secs)} aside={untilLabel(now + secs * 1000, now)} onClick={() => dispatch({ kind: 'start', secs })} />)}
         <Row id="agents" keycap="a" label="While agents run" aside={busy} disabled={pending}
           sub="Stays on while threads on this Mac run, then 5 min after the last one stops."
           onClick={() => dispatch({ kind: 'agents' })} />
@@ -249,10 +256,10 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
     const deadline = view.deadline;
     body = <>
       <Header tone={lid ? 'lid' : 'on'} glyph={lid ? '✷' : '☼'} title="Keep awake" tag={lid ? 'ON-LID' : 'ON'}>
-        <p className="cf-line cf-strong">{deadline === null ? 'Indefinitely' : `${longDuration((deadline - now) / 1000)} left · ${untilLabel(deadline)}`}</p>
+        <p className="cf-line cf-strong">{deadline === null ? 'Indefinitely' : `${longDuration((deadline - now) / 1000)} left · ${untilLabel(deadline, now)}`}</p>
         {deadline !== null && <Meter fraction={remainingFraction(now, view.startedAt, deadline)} label="Time left" />}
         {lid
-          ? <p className="cf-line cf-muted">You can close the lid. This Mac cannot sleep at all. It self-clears at {clockAt(deadline!)} and normal sleep returns.</p>
+          ? <p className="cf-line cf-muted">You can close the lid. This Mac cannot sleep at all. It self-clears at {clockAt(deadline!, now)} and normal sleep returns.</p>
           : <p className="cf-line cf-muted">System sleep is held; displays still sleep. Closing the lid still sleeps the Mac.</p>}
       </Header>
       {lid && onBattery && <p className="cf-banner" role="note">On battery. Extending keeps it draining, and a closed shell runs hot.</p>}
@@ -261,7 +268,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
           const id = rowId({ kind: 'extend', add });
           return <Row key={add} id={id} keycap={String(index + 1)} armed={armed === id} disabled={pending}
             label={armed === id ? (onBattery ? 'Press again to extend on battery' : 'Press again to extend, power unknown') : `+${durationLabel(add)}`}
-            aside={untilLabel(deadline + add * 1000)} onClick={() => dispatch({ kind: 'extend', add })} />;
+            aside={untilLabel(deadline + add * 1000, now)} onClick={() => dispatch({ kind: 'extend', add })} />;
         })}
         <Row id="off" keycap="o" label="Turn off" disabled={pending} onClick={() => dispatch({ kind: 'off' })} />
       </section>
@@ -274,7 +281,9 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
       <Header tone="on" glyph="☼" title="Keep awake" tag="WHILE AGENTS RUN">
         {grace !== null
           ? <>
-            <p className="cf-line cf-strong">No agents running. Stops in {longDuration((grace - now) / 1000)}, at {clockAt(grace)}.</p>
+            <p className="cf-line cf-strong">{grace - now >= 1_000
+              ? `No agents running. Stops in ${longDuration((grace - now) / 1000)}, at ${clockAt(grace, now)}.`
+              : 'No agents running. Stopping now.'}</p>
             <Meter fraction={Math.min(1, Math.max(0, (grace - now) / GRACE_MS))} label="Grace period left" />
           </>
           : view.busy !== null
@@ -292,6 +301,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
     footnote = 'Starting or changing keep-awake by hand ends agents mode.';
   }
 
+  const shownError = error ?? (view ? null : readError);
   const keys = screen.kind === 'unsupported'
     ? <><kbd>q</kbd> close</>
     : <><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
@@ -303,7 +313,7 @@ export function CaffeinePopover({ view, anchor, instant, onClose }: {
       if (action) dispatch(action);
     }}>
     {body}
-    {error && <p className="cf-error" role="status">{error}</p>}
+    {shownError && <p className="cf-error" role="status">{shownError}</p>}
     <footer className="cf-footer">
       {footnote && <span>{footnote}</span>}
       <span className="cf-keys">{keys}</span>

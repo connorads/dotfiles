@@ -22,8 +22,8 @@ function Overlay() {
     window.addEventListener('focus', focus);
     return () => window.removeEventListener('focus', focus);
   }, []);
-  const { view, open } = useCaffeine();
-  return open ? <CaffeinePopover view={view} anchor={open.anchor} instant={open.instant} onClose={close} /> : null;
+  const { view, readError, open } = useCaffeine();
+  return open ? <CaffeinePopover view={view} readError={readError} anchor={open.anchor} instant={open.instant} onClose={close} /> : null;
 }
 
 export default definePluginApp(app => {

@@ -24,13 +24,16 @@ export function longDuration(secs: number): string {
   return `${s}s`;
 }
 
-/** Local wall-clock HH:MM, the answer to "until when". */
-export function clockAt(ms: number): string {
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** Local wall-clock HH:MM, the answer to "until when"; a time on another day than `now` leads with its weekday. */
+export function clockAt(ms: number, now: number): string {
   const date = new Date(ms);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return date.toDateString() === new Date(now).toDateString() ? time : `${WEEKDAYS[date.getDay()]} ${time}`;
 }
 
-export const untilLabel = (ms: number) => `until ${clockAt(ms)}`;
+export const untilLabel = (ms: number, now: number) => `until ${clockAt(ms, now)}`;
 
 export function durationLabel(secs: number): string {
   if (secs < 3600) return `${Math.round(secs / 60)} minutes`;
@@ -60,17 +63,17 @@ export function chipFace(view: CaffeineView, now: number): ChipFace | null {
       if (view.deadline === null) return { tone: 'on', glyph: '☼', token: '∞', title: 'Keeping this Mac awake indefinitely' };
       return {
         tone: 'on', glyph: '☼', token: humanAge(secsUntil(view.deadline, now)),
-        title: `Keeping this Mac awake for ${humanAge(secsUntil(view.deadline, now))}, ${untilLabel(view.deadline)}`,
+        title: `Keeping this Mac awake for ${humanAge(secsUntil(view.deadline, now))}, ${untilLabel(view.deadline, now)}`,
       };
     case 'lid':
       return {
         tone: 'lid', glyph: '✷', token: humanAge(secsUntil(view.deadline, now)),
-        title: `You can close the lid. This Mac cannot sleep for ${humanAge(secsUntil(view.deadline, now))}, ${untilLabel(view.deadline)}`,
+        title: `You can close the lid. This Mac cannot sleep for ${humanAge(secsUntil(view.deadline, now))}, ${untilLabel(view.deadline, now)}`,
       };
     case 'agents':
       if (view.graceUntil !== null) {
         const left = humanAge(secsUntil(view.graceUntil, now));
-        return { tone: 'on', glyph: '☼', token: `A·${left}`, title: `No agents running. Keep-awake stops in ${left}, at ${clockAt(view.graceUntil)}` };
+        return { tone: 'on', glyph: '☼', token: `A·${left}`, title: `No agents running. Keep-awake stops in ${left}, at ${clockAt(view.graceUntil, now)}` };
       }
       if (view.busy !== null) {
         const agents = view.busy === 1 ? '1 agent runs' : `${view.busy} agents run`;

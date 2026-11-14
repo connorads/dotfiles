@@ -16,9 +16,11 @@ the chip is hidden, including on the new-thread screen.
 | While agents run | `o` off · `c` clear a stuck flag |
 | Everywhere | `↑` `↓` `j` `k` move · `Enter` or `Space` choose · `q` or `Esc` close |
 
-Every timed row shows the time it ends. A start, extend or off closes the
-popover, and the chip appearing or going is the confirmation. An error stays on
-screen.
+Every timed row shows the time it ends, with the weekday when that is not
+today. A start, extend or off closes the popover, and the chip appearing or
+going is the confirmation. An error stays on screen. If the popover was closed
+before the action failed, the next popover opens with the error. If BB cannot
+read the Mac's state, the popover says so; reopening it reads again.
 
 The chip hides while keep-awake is off, like the tmux pill:
 

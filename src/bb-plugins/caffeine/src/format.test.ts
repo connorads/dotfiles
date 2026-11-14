@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chipFace, clockAt, durationLabel, humanAge, longDuration, remainingFraction } from './format.ts';
+import { chipFace, clockAt, durationLabel, humanAge, longDuration, remainingFraction, untilLabel } from './format.ts';
 
 test('humanAge matches caffeine_human_age, flooring each unit', () => {
   // The matrix from caffeine-lib.bats, so the chip and the tmux pill never disagree.
@@ -15,9 +15,17 @@ test('longDuration gives two units above an hour', () => {
   assert.equal(longDuration(40), '40s');
 });
 
-test('clockAt is local HH:MM', () => {
-  assert.equal(clockAt(new Date(2026, 9, 12, 9, 5).getTime()), '09:05');
-  assert.equal(clockAt(new Date(2026, 9, 12, 22, 2).getTime()), '22:02');
+test('clockAt is local HH:MM on the same day', () => {
+  const morning = new Date(2026, 9, 12, 8, 0).getTime();
+  assert.equal(clockAt(new Date(2026, 9, 12, 9, 5).getTime(), morning), '09:05');
+  assert.equal(clockAt(new Date(2026, 9, 12, 22, 2).getTime(), morning), '22:02');
+});
+
+test('clockAt names the weekday when the time falls on another day', () => {
+  const lateMon = new Date(2026, 9, 12, 23, 50).getTime();
+  assert.equal(clockAt(new Date(2026, 9, 13, 0, 20).getTime(), lateMon), 'Tue 00:20');
+  assert.equal(clockAt(new Date(2026, 9, 15, 10, 37).getTime(), lateMon), 'Thu 10:37');
+  assert.equal(untilLabel(new Date(2026, 9, 13, 7, 50).getTime(), lateMon), 'until Tue 07:50');
 });
 
 test('durationLabel reads like the tmux picker', () => {
@@ -50,4 +58,9 @@ test('chip faces follow the tmux pill', () => {
   assert.deepEqual(chipFace({ kind: 'agents', busy: null, graceUntil: now + 4 * min + 30_000, leaseDeadline: now + 60 * min }, now),
     { tone: 'on', glyph: '☼', token: 'A·4m', title: 'No agents running. Keep-awake stops in 4m, at 14:36' });
   assert.equal(chipFace({ kind: 'agents', busy: null, graceUntil: null, leaseDeadline: null }, now)?.token, 'A');
+});
+
+test('chip title dates a deadline on another day', () => {
+  assert.equal(chipFace({ kind: 'on', deadline: now + 3 * 24 * 60 * min, startedAt: now }, now)?.title,
+    'Keeping this Mac awake for 3d, until Thu 14:32');
 });

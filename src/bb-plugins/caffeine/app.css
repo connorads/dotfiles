@@ -80,7 +80,8 @@
 .cf-battery { color: var(--warning-text, var(--warning)); }
 /* Armed for a second press: the row says what the next press does. */
 .cf-row[data-armed] { background: color-mix(in oklch, var(--warning) 14%, transparent); }
-.cf-row[data-armed] .cf-row-label { color: var(--warning-text, var(--warning)); }
+/* It wraps rather than clip, as the instruction is the point of the row. */
+.cf-row[data-armed] .cf-row-label { color: var(--warning-text, var(--warning)); white-space: normal; text-wrap: pretty; }
 
 .cf-recovery .cf-row { align-items: start; }
 .cf-recovery .cf-row-label { color: var(--cf-lid-ink); font-weight: 600; }
