@@ -1,6 +1,17 @@
-.lazygit-error {
-  position: fixed; right: 16px; bottom: 16px; z-index: 50; max-width: 360px; margin: 0; padding: 8px 12px;
-  border: 1px solid color-mix(in oklch, var(--destructive) 45%, var(--border)); border-radius: 8px;
-  background: var(--popover); color: var(--destructive-text); font: var(--text-xs, 12px)/1.4 var(--font-sans);
+.lazygit-notice {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50; max-width: min(360px, calc(100vw - 32px)); margin: 0; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--popover); color: var(--muted-foreground); font: var(--text-xs, 12px)/1.4 var(--font-sans);
   box-shadow: 0 8px 20px -8px rgb(0 0 0 / .3);
 }
+.lazygit-error {
+  display: flex; align-items: flex-start; gap: 8px; padding-right: 4px;
+  border-color: color-mix(in oklch, var(--destructive) 45%, var(--border)); color: var(--destructive-text);
+}
+.lazygit-error p { margin: 0; min-width: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.lazygit-dismiss {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin: -4px 0; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); font: 16px/1 var(--font-sans); cursor: pointer;
+}
+.lazygit-dismiss:hover { background: var(--accent); color: var(--foreground); }
+.lazygit-dismiss:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }

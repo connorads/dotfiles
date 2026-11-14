@@ -16,7 +16,10 @@ Git Glance `l` → selected checkout → terminal scoped to thread and checkout 
 
 `bb lazygit open <thread-id>` creates or reuses the same terminal and returns its
 ID. The shortcut and the Git Glance key also bring that terminal into view.
-Failures show in a notice at the bottom right for six seconds.
+When several opens overlap, only the latest one shows its terminal or its error.
+An open that takes longer than a second shows an opening status at the bottom right.
+Failures show there in a notice for six seconds. Hover or focus holds the notice; its
+close button dismisses it.
 Selected-checkout terminals show the full path in their title. Paths pass as
 literal process arguments. Selecting another checkout preserves existing terminals
 and leaves the agent's working directory unchanged.
