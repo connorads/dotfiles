@@ -1,20 +1,20 @@
-## Set up (on hold)
+## 1. Install (on hold)
 
 {{marker}}
 
-raea is not installed on this machine. Do not install it. Do not run the `raea.io` installer, `cargo build`,
-`cargo install` or `mise use` for raea. If the user asks for raea work, tell them it is on hold and why.
+raea is not installed on this machine. Do not install it. Do not run the `raea.io` installers (`curl … | sh` or
+`irm … | iex`), `raea skills install`, `cargo build`, `cargo install` or `mise use` for raea. If the user asks for raea
+work, tell them it is on hold and why.
 
-Why: the release binaries (reviewed at `v0.1.0-canary.2`, 2026-11-05) are built on the maintainer's machine, not in
-CI. They have ad-hoc code signatures, no notarisation and no build provenance attestation. The published SHA-256 only
-proves that the download equals the upload. Static checks found nothing malicious, but nothing ties the binary to the
-public source.
+Why: the hold was set at `v0.1.0-canary.2` (2026-11-05), whose release binaries were built on the maintainer's
+machine with no build provenance. From `v0.1.0` (2026-11-09), GitHub Actions builds the release assets and attests
+them. Nobody has verified those attestations here yet.
 
 Before you lift the hold:
 
-1. Confirm that GitHub Actions builds the release assets and attests them:
-   `gh attestation verify <tarball> -R shinyobjectz/raea` must pass.
-2. Pin the version in mise as `"github:shinyobjectz/raea" = "<version>"`. Do not use the official installer. It
-   copies skills into `~/.claude/skills`, outside the reviewed catalogue.
+1. Verify the release tarball: `gh attestation verify <tarball> -R shinyobjectz/raea` must pass.
+2. Pin the version in mise as `"github:shinyobjectz/raea" = "<version>"`. Do not use the official installer or
+   `raea skills install`. They copy this skill into agent folders and add hooks and MCP servers, outside the reviewed
+   catalogue.
 3. Run the first render with network access blocked.
-4. Remove the `raea-install-hold` and `raea-bevy-install-hold` skill patches.
+4. Remove the `raea-install-hold` and `raea-tripo-cli-hold` skill patches.

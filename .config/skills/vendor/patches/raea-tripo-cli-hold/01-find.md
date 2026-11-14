@@ -1,0 +1,1 @@
+- Meshes on Tripo (`npm install -g tripo-cli`, then `TRIPO_API_KEY=tsk_…` in ~/.raea/env or `tripo login`; every user

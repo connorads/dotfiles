@@ -1,0 +1,6 @@
+{
+  "reason": "Tripo's CLI is not provisioned here; agents must not npm-install it or ask for its key.",
+  "files": [
+    ".agents/skills/raea/motion/gen.md"
+  ]
+}

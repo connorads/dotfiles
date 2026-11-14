@@ -267,18 +267,10 @@
       "computedHash": "a75125179c03d8d9944400c92ff07385f065126d40a525ef0d6b3cc591859ecf"
     },
     "raea": {
-      "source": "shinyobjectz/raea",
-      "ref": "v0.1.0-canary.2",
+      "source": "shinyobjectz/raea-skills",
       "sourceType": "github",
-      "skillPath": "sdk/skills/raea/SKILL.md",
-      "computedHash": "35671a131714e1300557f61998f4f3c9f3c5fb8e2595e3aea556115dff672054"
-    },
-    "raea-bevy": {
-      "source": "shinyobjectz/raea",
-      "ref": "v0.1.0-canary.2",
-      "sourceType": "github",
-      "skillPath": "sdk/skills/raea-bevy/SKILL.md",
-      "computedHash": "d32e73e02635765591891fbfb153893525aa5c967ccfe6af3e8e53753a130ffc"
+      "skillPath": "skills/raea/SKILL.md",
+      "computedHash": "65a37c19c56fdce876ffefc13762e7acf6a083f8fecaa08943f8e35613ec903d"
     },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",

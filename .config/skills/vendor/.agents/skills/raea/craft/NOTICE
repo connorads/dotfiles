@@ -1,0 +1,26 @@
+raea craft guides
+=================
+
+raea's craft system (docs/craft-system.md) follows the method of Impeccable, a design skill for web and native
+interfaces:
+
+  Impeccable
+  https://github.com/pbakaus/impeccable
+  Copyright Paul Bakaus and contributors
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not use these files except in
+  compliance with the License. You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software distributed under the License is
+  distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+What raea took: the order of work (context, shaping questions, a direction someone approved, a floor read before
+every edit, then evidence), modes that say what success looks like, directions dealt from a larger set, short
+guides for refinement moves, and critiques ranked P0-P3 that a polish pass works through. raea's guides are
+written for video, motion, 3D and games. This NOTICE is the only place in the guides that names the source.
+
+Written new by raea (2026-10-24), following the method without copying its text:
+  ROUTER.md, floor.md, rubric.md, modes/*.md (pitch, explain, story, play, tool), verbs/*.md (critique, polish,
+  quieter, bolder, distill, clarify, retime, recut, regrade, remix, harden; on 2026-11-05 layout, typeset, animate,
+  delight, adapt, optimize, extract, generate)
+
+raea's own, adapting nothing: motion.md and motion/, bevy.md and bevy/ (see bevy/NOTICE).

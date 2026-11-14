@@ -1,0 +1,5 @@
+raea's Bevy skills library (sdk/guides/craft/bevy.md and bevy/*.md, copied into the raea skill's 3D topic files in raea-skills (skills/skills/raea/3d/)) is written for
+raea/3d. No text was copied from other packs. Its layout (a short router, one file per topic, each with a
+checked example and a list of common mistakes) follows EnzeD/r3f-skills (no license stated; cited, not copied),
+chrisgliddon/bevy-skills (MIT) and gamedev-skills' bevy-ecs (Apache-2.0). Bevy API facts come from Bevy's own v0.19.1
+examples and migration guides (MIT OR Apache-2.0). The survey with links is in sdk/raea/docs/bevy-coverage.md.
