@@ -2,7 +2,7 @@ import { definePluginApp } from '@get-bb/plugin-sdk/app';
 import { AccountStatus, isClaude, openAccount } from './ui/account-status.tsx';
 import { command, CommandOwner, Overlay } from './ui/picker/picker.tsx';
 import { Trigger } from './ui/picker/trigger.tsx';
-import { open as openPicker } from './ui/picker/store.ts';
+import { open as openPicker } from './ui/switcher/store.ts';
 import { ThreadUsage } from './ui/usage/badge.tsx';
 import { UsageOverlay } from './ui/usage/overlay.tsx';
 import { openUsage } from './ui/usage/overlay-store.ts';

@@ -5,7 +5,7 @@ import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers, RenderSlotOptions } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { rpcContract } from './contracts.ts';
-import { close, openedState } from './ui/picker/store.ts';
+import { close, openedState } from './ui/switcher/store.ts';
 
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };

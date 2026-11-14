@@ -6,7 +6,7 @@ import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
 import { Trigger } from './trigger.tsx';
-import { close, openedState } from './store.ts';
+import { close, openedState } from '../switcher/store.ts';
 import type { rpcContract } from '../../contracts.ts';
 import type { Favourite } from '../../src/models/contract.ts';
 

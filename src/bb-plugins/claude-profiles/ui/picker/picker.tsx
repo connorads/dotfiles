@@ -11,9 +11,9 @@ import { AccountPicker } from './account-picker.tsx';
 import { AccountMenu } from './account-menu.tsx';
 import { AccountConnectors } from './connectors.tsx';
 import { effortLabel, EffortPill, Segmented } from './controls.tsx';
-import { createController, type Controller } from './controller.ts';
+import { createController, type Controller } from '../switcher/controller.ts';
 import { closeInnermostPopover } from './popover.tsx';
-import { close, open, openedState, subscribe } from './store.ts';
+import { close, open, openedState, subscribe } from '../switcher/store.ts';
 import { SwitchStatus } from './switch-status.tsx';
 import './picker.css';
 

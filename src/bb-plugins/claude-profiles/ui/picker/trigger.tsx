@@ -6,7 +6,7 @@ import { effortSchema, type Favourite } from '../../src/models/contract.ts';
 import { capture, matches } from '../../src/models/favourites.ts';
 import { effortLabel } from './controls.tsx';
 import { useController } from './picker.tsx';
-import { open, subscribeSelection } from './store.ts';
+import { open, subscribeSelection } from '../switcher/store.ts';
 
 /** Star toggle for the composer's current model beside the picker chevron, drawn as one control. */
 export function Trigger() {

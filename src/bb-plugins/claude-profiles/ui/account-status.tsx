@@ -3,7 +3,7 @@ import { useComposer, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import type { ConnectorState } from '../src/accounts/connectors-contract.ts';
 import type { rpcContract, Profile } from '../contracts.ts';
-import { open } from './picker/store.ts';
+import { open } from './switcher/store.ts';
 import './account-status.css';
 
 // The new-thread composer can switch provider, so the status shows only while Claude Code is selected.
