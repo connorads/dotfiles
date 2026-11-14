@@ -61,6 +61,8 @@
 .ck-picker textarea {
   margin: 8px 12px;
   min-height: 120px;
+  /* Grows with the prompt; the picker's max-height caps it and it scrolls beyond that. */
+  field-sizing: content;
   resize: vertical;
   padding: 8px;
   border: 1px solid color-mix(in oklab, var(--ink, #fff) 18%, transparent);

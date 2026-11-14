@@ -56,6 +56,8 @@ function escape(event: KeyboardEvent) {
   }
 }
 
+const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
+
 const firstLine = (text: string) => text.split('\n').find(line => line.trim() !== '')?.trim() ?? '(no text)';
 
 // BB serves at most 100 events per request.
@@ -89,27 +91,38 @@ function RewindPicker() {
   const list = useRef<HTMLOListElement>(null);
   const origin = useRef<HTMLElement | null>(null);
   const load = useRef(0);
+  // A fork whose open failed. Retrying the same prompt opens it rather than forking again.
+  const forked = useRef<{ seq: number; id: string } | null>(null);
   const prompt = prompts?.[index];
   const count = prompts?.length ?? 0;
+  const loadFailed = prompts === null && error !== null;
+
+  const reload = useCallback(() => {
+    if (!threadId) return;
+    // Only the latest load lands, so the list never holds another load's prompts.
+    const token = ++load.current;
+    setError(null);
+    setPrompts(null);
+    loadPrompts(sdk, threadId)
+      .then(found => { if (token === load.current) { setPrompts(found); setIndex(found.length - 1); } })
+      .catch((cause: unknown) => { if (token === load.current) setError(message(cause)); });
+  }, [sdk, threadId]);
 
   useEffect(() => {
     const open = () => {
       if (!threadId) return;
       origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      // Only the latest open's load lands, so the list never holds another load's prompts.
-      const token = ++load.current;
-      setError(null);
-      setPrompts(null);
+      forked.current = null;
       setView({ kind: 'list' });
-      loadPrompts(sdk, threadId)
-        .then(found => { if (token === load.current) { setPrompts(found); setIndex(found.length - 1); } })
-        .catch((cause: unknown) => { if (token === load.current) setError(String(cause)); });
+      reload();
     };
     window.addEventListener(REWIND_EVENT, open);
     return () => window.removeEventListener(REWIND_EVENT, open);
-  }, [sdk, threadId]);
+  }, [reload, threadId]);
 
   const close = useCallback(() => { setView({ kind: 'closed' }); setBusy(false); }, []);
+  // An action error belongs to the view it came from.
+  const show = useCallback((next: View) => { setView(next); setError(null); }, []);
 
   useEffect(() => {
     if (view.kind === 'closed') { origin.current?.focus(); origin.current = null; }
@@ -119,7 +132,7 @@ function RewindPicker() {
   const run = useCallback(async (action: () => Promise<unknown>) => {
     setBusy(true); setError(null);
     try { await action(); close(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
+    catch (cause) { setError(message(cause)); setBusy(false); }
   }, [close]);
 
   const rewind = useCallback((draft: string) => {
@@ -133,8 +146,12 @@ function RewindPicker() {
   const fork = useCallback(() => {
     if (!threadId || !prompt) return;
     void run(async () => {
-      const forked = await sdk.threads.fork({ sourceThreadId: threadId, sourceSeqEnd: prompt.seq });
-      await sdk.threads.open({ threadId: forked.id, file: null });
+      if (forked.current?.seq !== prompt.seq) {
+        const { id } = await sdk.threads.fork({ sourceThreadId: threadId, sourceSeqEnd: prompt.seq });
+        forked.current = { seq: prompt.seq, id };
+      }
+      try { await sdk.threads.open({ threadId: forked.current.id, file: null }); }
+      catch (cause) { throw new Error(`The fork exists but did not open: ${message(cause)} Fork again to open it.`); }
     });
   }, [prompt, run, sdk, threadId]);
 
@@ -150,19 +167,21 @@ function RewindPicker() {
       if (busy) return;
       if (move !== 0) setIndex(i => Math.min(Math.max(i + move, 0), count - 1));
       else if (event.key === 'Escape') close();
-      else if (event.key === 'Enter' && prompt) setView({ kind: 'edit', draft: prompt.text });
+      else if (event.key === 'Enter' && loadFailed) reload();
+      else if (event.key === 'Enter' && prompt) show({ kind: 'edit', draft: prompt.text });
       else if (event.key === 'f') fork();
     };
     document.addEventListener('keydown', keydown, true);
     return () => document.removeEventListener('keydown', keydown, true);
-  }, [busy, close, count, fork, prompt, view.kind]);
+  }, [busy, close, count, fork, loadFailed, prompt, reload, show, view.kind]);
 
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
   }, [index, view.kind]);
 
   if (view.kind === 'closed') return null;
-  return <div className="ck-backdrop" onMouseDown={close}>
+  // A pending rewind or fork still lands after the picker closes, so it stays open until the action settles.
+  return <div className="ck-backdrop" onMouseDown={() => { if (!busy) close(); }}>
     <div className="ck-picker" role="dialog" aria-label="Rewind" aria-modal="true" onMouseDown={e => e.stopPropagation()}>
       <header>Rewind{prompt && view.kind === 'edit' ? ` from message ${index + 1}` : ''}</header>
       {view.kind === 'list'
@@ -171,7 +190,7 @@ function RewindPicker() {
           if (event.key === 'q' || event.key === 'Q') { event.preventDefault(); event.stopPropagation(); close(); }
         }}>
           {prompts?.map((p, i) => <li key={p.seq} role="option" aria-selected={i === index}
-            onMouseEnter={() => setIndex(i)} onClick={() => { setIndex(i); setView({ kind: 'edit', draft: p.text }); }}>
+            onMouseEnter={() => setIndex(i)} onClick={() => { setIndex(i); show({ kind: 'edit', draft: p.text }); }}>
             <span className="ck-num">{i + 1}</span><span className="ck-text">{firstLine(p.text)}</span>
           </li>)}
           {!error && (prompts === null ? <li className="ck-empty">Loading…</li>
@@ -182,23 +201,28 @@ function RewindPicker() {
           onKeyDown={e => {
             e.stopPropagation();
             if (e.nativeEvent.isComposing) return;
-            if (e.key === 'Escape') { e.preventDefault(); setView({ kind: 'list' }); }
+            if (e.key === 'Escape') { e.preventDefault(); show({ kind: 'list' }); }
             else if (e.key === 'Enter' && !e.shiftKey && !e.altKey) { e.preventDefault(); rewind(view.draft); }
             else if (e.key === 'Enter' && e.altKey) { e.preventDefault(); document.execCommand('insertText', false, '\n'); }
           }} />}
       {error && <p className="ck-error" role="alert">{error}</p>}
       <div className="ck-actions">
         {view.kind === 'list' ? <>
-          <button type="button" disabled={busy || !prompt} onClick={() => prompt && setView({ kind: 'edit', draft: prompt.text })}>Edit and rewind</button>
-          <button type="button" disabled={busy || !prompt} onClick={fork}>Fork</button>
+          {loadFailed
+            ? <button type="button" onClick={reload}>Try again</button>
+            : <>
+              <button type="button" disabled={busy || !prompt} onClick={() => prompt && show({ kind: 'edit', draft: prompt.text })}>Edit and rewind</button>
+              <button type="button" disabled={busy || !prompt} onClick={fork}>Fork</button>
+            </>}
         </> : <>
           <button type="button" disabled={busy || view.draft.trim() === ''} onClick={() => rewind(view.draft)}>Rewind</button>
-          <button type="button" disabled={busy} onClick={() => setView({ kind: 'list' })}>Back</button>
+          <button type="button" disabled={busy} onClick={() => show({ kind: 'list' })}>Back</button>
         </>}
         <button type="button" disabled={busy} onClick={close}>Close</button>
       </div>
       <footer>{view.kind === 'list'
-        ? '↑↓/jk move · Home/End ends · Enter edit and rewind · f fork from here · Q/Esc close'
+        ? busy ? 'Forking…' : loadFailed ? 'Enter try again · Q/Esc close'
+          : '↑↓/jk move · Home/End ends · Enter edit and rewind · f fork from here · Q/Esc close'
         : busy ? 'Rewinding…' : 'Enter rewind · Alt/Shift+Enter newline · Esc back'}</footer>
     </div>
   </div>;

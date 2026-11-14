@@ -31,6 +31,12 @@ Esc Esc -> list of your messages -> Enter -> edit -> Enter -> thread rewinds
 | Esc | Close | Back to the list |
 | Q | Close | Type Q |
 
+If the list fails to load, Enter or **Try again** reloads it. While a rewind
+or fork is pending the picker stays open, with Escape, Close and the backdrop
+ignored, because the action still lands after a close. If a fork is created
+but fails to open, forking the same message again opens that fork rather than
+creating a second one.
+
 Rewinding calls `threads.editMessage`. BB removes the selected turn and every
 later turn, then runs the edited text. Workspace files stay as they are. The
 anchor is the event sequence of the prompt's `client/turn/requested` event.

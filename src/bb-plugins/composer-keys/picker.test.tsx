@@ -17,16 +17,22 @@ async function listEvents(args: { afterSeq?: string; limit?: string }) {
   return history.filter(row => row.seq > Number(args.afterSeq ?? -1)).slice(0, Number(args.limit ?? PAGE_LIMIT));
 }
 
-async function render(list: typeof listEvents = listEvents) {
+type Outcome = (args: unknown) => Promise<unknown>;
+
+async function render(list: typeof listEvents = listEvents, outcomes: Partial<Record<'editMessage' | 'fork' | 'open', Outcome>> = {}) {
   const calls: { method: string; args: unknown }[] = [];
   const app = await loadPluginApp(() => import('./app.tsx'));
+  const recorded = (method: 'editMessage' | 'fork' | 'open', fallback: unknown) => async (args: unknown) => {
+    calls.push({ method, args });
+    return outcomes[method] ? outcomes[method](args) : fallback;
+  };
   slot = renderSlot(app.appOverlays[0]!, {}, {
     context: { threadId: 't1', projectId: 'p1' },
     sdk: { threads: {
       events: { list },
-      editMessage: async (args: unknown) => { calls.push({ method: 'editMessage', args }); return { ok: true, operationId: 'op', requestSequence: 9 }; },
-      fork: async (args: unknown) => { calls.push({ method: 'fork', args }); return { id: 'fork1' }; },
-      open: async (args: unknown) => { calls.push({ method: 'open', args }); return {}; },
+      editMessage: recorded('editMessage', { ok: true, operationId: 'op', requestSequence: 9 }),
+      fork: recorded('fork', { id: 'fork1' }),
+      open: recorded('open', {}),
     } } as never,
   });
   // An idle, empty composer that blurs itself on Escape, like BB's.
@@ -145,4 +151,75 @@ test('touch controls rewind the tapped prompt rather than the previous selection
   fireEvent.click(Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Rewind')!);
   await waitFor(() => expect(calls.some(call => call.method === 'editMessage')).toBe(true));
   expect(calls.find(call => call.method === 'editMessage')?.args).toMatchObject({ expectedRequestSequence: 4, input: [{ type: 'text', text: 'Changed prompt' }] });
+});
+
+const dialog = () => document.querySelector('[role="dialog"][aria-label="Rewind"]');
+const alertText = () => document.querySelector('[role="alert"]')?.textContent ?? null;
+const footer = () => dialog()?.querySelector('footer')?.textContent;
+
+test('clicking the backdrop during a pending rewind keeps the picker open', async () => {
+  const { editor } = await render(listEvents, { editMessage: () => new Promise(() => {}) });
+  await openPicker(editor);
+  await key(document.body, 'Enter');
+  const box = await waitFor(() => document.querySelector<HTMLTextAreaElement>('[role="dialog"] textarea')!);
+  await key(box, 'Enter');
+  await waitFor(() => expect(footer()).toBe('Rewinding…'));
+  fireEvent.mouseDown(document.querySelector('.ck-backdrop')!);
+  expect(dialog()).not.toBeNull();
+});
+
+test('a pending fork says Forking… and ignores backdrop clicks', async () => {
+  const { editor } = await render(listEvents, { fork: () => new Promise(() => {}) });
+  await openPicker(editor);
+  await key(document.body, 'f');
+  await waitFor(() => expect(footer()).toBe('Forking…'));
+  fireEvent.mouseDown(document.querySelector('.ck-backdrop')!);
+  expect(dialog()).not.toBeNull();
+});
+
+test('retrying after the fork could not be opened opens the same fork instead of forking again', async () => {
+  let opens = 0;
+  const { calls, editor } = await render(listEvents, { open: async () => { if (++opens === 1) throw new Error('Could not open thread fork1.'); return {}; } });
+  await openPicker(editor);
+  await key(document.body, 'f');
+  await waitFor(() => expect(alertText()).toBe('The fork exists but did not open: Could not open thread fork1. Fork again to open it.'));
+  await key(document.body, 'f');
+  await waitFor(() => expect(dialog()).toBeNull());
+  expect(calls.map(c => c.method)).toEqual(['fork', 'open', 'open']);
+  expect(calls[2]!.args).toMatchObject({ threadId: 'fork1' });
+});
+
+test('forking a different prompt after an open failure creates a new fork', async () => {
+  let opens = 0;
+  const { calls, editor } = await render(listEvents, { open: async () => { if (++opens === 1) throw new Error('Could not open thread fork1.'); return {}; } });
+  await openPicker(editor);
+  await key(document.body, 'f');
+  await waitFor(() => expect(alertText()).not.toBeNull());
+  await key(document.body, 'Home');
+  await key(document.body, 'f');
+  await waitFor(() => expect(dialog()).toBeNull());
+  expect(calls.map(c => c.method)).toEqual(['fork', 'open', 'fork', 'open']);
+  expect(calls[2]!.args).toMatchObject({ sourceSeqEnd: 4 });
+});
+
+test('going back to the list after a failed rewind clears the rewind error', async () => {
+  const { editor } = await render(listEvents, { editMessage: async () => { throw new Error('Thread is running.'); } });
+  await openPicker(editor);
+  await key(document.body, 'Enter');
+  const box = await waitFor(() => document.querySelector<HTMLTextAreaElement>('[role="dialog"] textarea')!);
+  await key(box, 'Enter');
+  await waitFor(() => expect(alertText()).toBe('Thread is running.'));
+  await key(document.querySelector('[role="dialog"] textarea')!, 'Escape');
+  expect(alertText()).toBeNull();
+});
+
+test('a failed load shows the reason and Enter tries again', async () => {
+  let attempts = 0;
+  const { editor } = await render(async args => { if (++attempts === 1) throw new Error('HTTP 500: Thread event store unavailable'); return listEvents(args); });
+  await openPicker(editor, 'HTTP 500');
+  expect(alertText()).toBe('HTTP 500: Thread event store unavailable');
+  expect(footer()).toBe('Enter try again · Q/Esc close');
+  await key(document.body, 'Enter');
+  await waitFor(() => expect(selected()).toContain('second prompt'));
+  expect(alertText()).toBeNull();
 });
