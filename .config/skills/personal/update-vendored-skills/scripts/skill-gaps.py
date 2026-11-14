@@ -100,10 +100,13 @@ def upstream_skills(checkout: Path) -> list[PurePosixPath]:
 
 def references(text: str, name: str) -> bool:
     n = re.escape(name)
-    # A bare `name` is too loose: short names such as `pr` appear as plain
-    # code, and a false hit would re-ask the same exclusion on every pass.
     # URLs are links to upstream files, not instructions to load a skill.
     text = re.sub(r"https?://\S+", "", text)
+    # A hyphenated name is distinctive, so any mention counts. A one-word
+    # name such as `pr` also appears as plain code, and a false hit would
+    # re-ask the same exclusion on every pass, so it needs an explicit form.
+    if "-" in name:
+        return re.search(rf"(?<![\w-]){n}(?![\w-])", text) is not None
     pattern = rf"([\s(`]/{n}\b|\b{n}`? (sub-?)?skills?\b|skills?/{n}\b)"
     return re.search(pattern, text) is not None
 

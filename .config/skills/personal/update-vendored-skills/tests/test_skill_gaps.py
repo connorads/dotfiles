@@ -121,6 +121,9 @@ def test_scan_reraises_an_exclusion_a_vendored_skill_names(tmp_path):
 def test_references_ignores_the_name_as_plain_text_or_code():
     assert not sg.references("then implement the change", "implement")
     assert not sg.references("with `mr` in place of `pr`", "pr")
+    assert sg.references("build for React Native (that's `animate-expo`)", "animate-expo")
+    assert sg.references("for React Native use animate-expo.", "animate-expo")
+    assert not sg.references("see animate-expo-extra", "animate-expo")
     assert sg.references("use /implement next", "implement")
     assert sg.references("Is the `triage` skill installed?", "triage")
     assert sg.references("see skills/triage/SKILL.md", "triage")
