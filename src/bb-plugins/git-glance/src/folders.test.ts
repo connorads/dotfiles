@@ -11,9 +11,11 @@ test('browsing marks repository roots and supports nested folders', async () => 
   mkdirSync(repo); fixtureGit(repo, 'init', '-q');
   mkdirSync(join(repo, 'src'));
   mkdirSync(join(base, 'group'));
+  mkdirSync(join(base, '.cache'));
+  mkdirSync(join(base, '.config-repo')); fixtureGit(join(base, '.config-repo'), 'init', '-q');
   writeFileSync(join(base, 'file'), 'x');
   const result = await browseFolders(base, '.');
-  assert.deepEqual(result.folders, [{ name: 'app', repository: true }, { name: 'group', repository: false }]);
+  assert.deepEqual(result.folders, [{ name: '.config-repo', repository: true }, { name: 'app', repository: true }, { name: 'group', repository: false }]);
   assert.equal((await browseFolders(base, 'app')).repository, true);
   assert.equal((await browseFolders(base, 'app/src')).repository, false);
   assert.equal(await selectFolder(base, 'app/src'), repo);
@@ -72,12 +74,13 @@ test('repository search finds nested repositories and stops below each one', asy
   mkdirSync(join(base, 'web/packages/inner'), { recursive: true }); fixtureGit(join(base, 'web/packages/inner'), 'init', '-q');
   mkdirSync(join(base, 'node_modules/dep'), { recursive: true }); fixtureGit(join(base, 'node_modules/dep'), 'init', '-q');
   mkdirSync(join(base, '.cache/hidden'), { recursive: true }); fixtureGit(join(base, '.cache/hidden'), 'init', '-q');
+  mkdirSync(join(base, 'services/.github')); fixtureGit(join(base, 'services/.github'), 'init', '-q');
   const outside = tempDir(); fixtureGit(outside, 'init', '-q');
   symlinkSync(outside, join(base, 'linked'));
   assert.deepEqual(await findRepositories(base, '.'), {
-    repositories: ['clients/acme/portal', 'services/api', 'services/billing', 'web'], truncated: false,
+    repositories: ['clients/acme/portal', 'services/.github', 'services/api', 'services/billing', 'web'], truncated: false,
   });
-  assert.deepEqual(await findRepositories(base, 'services'), { repositories: ['api', 'billing'], truncated: false });
+  assert.deepEqual(await findRepositories(base, 'services'), { repositories: ['.github', 'api', 'billing'], truncated: false });
   assert.equal(await selectFolder(base, 'clients/acme/portal'), join(base, 'clients/acme/portal'));
   await assert.rejects(findRepositories(base, 'linked'), /outside/);
 });

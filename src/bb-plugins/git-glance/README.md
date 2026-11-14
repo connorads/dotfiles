@@ -149,7 +149,7 @@ The repository name in Git status opens the same browser.
 
 - Search finds repositories in subfolders of the displayed folder, up to four levels down.
   Name matches rank above path matches. `Enter` selects the top match; `↑`/`↓` move between rows.
-- The search skips hidden folders, symlinks, `node_modules` and `Library`, and never enters a repository.
+- The search skips symlinks, `node_modules` and `Library`, and never enters a repository or a hidden folder.
   It stops after 1,000 repositories or 50,000 folders, and then says so.
 - With an empty search, the browser lists the current folder's immediate subfolders.
 - Git rows select a repository. Their arrow browses inside it.
@@ -161,6 +161,7 @@ The repository name in Git status opens the same browser.
 - The selected path appears above the branch. Selection waits for running Git
   operations to finish. Stale actions fail instead of targeting another repo.
 - Browsing stays inside the checkout and omits symlink directories and `.git`.
+  Browsing and search show a hidden folder only when it is a repository, such as `.github`.
 - Browse a repository with its row's arrow to list its registered checkouts and worktrees.
   Each entry shows its branch and full path. Detached worktrees show **Detached HEAD**.
 - Worktree selection can reach outside the thread checkout. Git must register the

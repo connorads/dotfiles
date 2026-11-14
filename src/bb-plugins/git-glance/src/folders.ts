@@ -58,7 +58,9 @@ export async function browseFolders(base: string, path: string) {
     const child = join(target, entry.name);
     const hasGit = await access(join(child, '.git')).then(() => true, () => false);
     const repo = hasGit ? await resolveRepo(child) : null;
-    folders.push({ name: entry.name, repository: repo?.cwd === child });
+    const repository = repo?.cwd === child;
+    // Dot-folders are tool state unless they are a repository, such as `.github`.
+    if (repository || !entry.name.startsWith('.')) folders.push({ name: entry.name, repository });
   }
   const repo = await resolveRepo(target);
   return { root: target, path: rel, repository: repo?.cwd === target, folders,
@@ -68,18 +70,18 @@ export async function browseFolders(base: string, path: string) {
 const SKIPPED = new Set(['node_modules', 'Library']);
 const isRepository = (path: string) => access(join(path, '.git')).then(() => true, () => false);
 
-/** Visible subfolders of `rel` under `root`, sorted, as paths relative to `root`. */
+/** Subfolders of `rel` under `root`, sorted, as paths relative to `root`. */
 async function subfolders(root: string, rel: string) {
   const entries = await readdir(join(root, rel), { withFileTypes: true }).catch(() => []);
   return entries
-    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.') && !SKIPPED.has(entry.name))
-    .map(entry => rel ? `${rel}/${entry.name}` : entry.name)
-    .sort((a, b) => a.localeCompare(b));
+    .filter(entry => entry.isDirectory() && entry.name !== '.git' && !SKIPPED.has(entry.name))
+    .map(entry => ({ path: rel ? `${rel}/${entry.name}` : entry.name, hidden: entry.name.startsWith('.') }))
+    .sort((a, b) => a.path.localeCompare(b.path));
 }
 
 /**
  * Lists repository roots below a folder, relative to it. The walk is breadth first and
- * never enters a repository, hidden folder or symlink. Depth is a fixed boundary;
+ * never enters a repository, hidden folder or symlink; a hidden repository still counts. Depth is a fixed boundary;
  * `truncated` reports only the result or folder budget running out.
  */
 export async function findRepositories(base: string, path: string, { depth = 4, limit = 1000, folders = 50_000 } = {}) {
@@ -91,9 +93,9 @@ export async function findRepositories(base: string, path: string, { depth = 4, 
     const next: string[] = [];
     for (const parent of level) {
       if (++visited > folders) return { repositories: repositories.sort(), truncated: true };
-      for (const rel of await subfolders(target, parent)) {
+      for (const { path: rel, hidden } of await subfolders(target, parent)) {
         const repository = await isRepository(join(target, rel));
-        if (!repository && at < depth) next.push(rel);
+        if (!repository && !hidden && at < depth) next.push(rel);
         if (repository && repositories.push(rel) >= limit) return { repositories: repositories.sort(), truncated: true };
       }
     }
