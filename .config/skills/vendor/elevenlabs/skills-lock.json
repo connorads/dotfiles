@@ -13,6 +13,12 @@
       "skillPath": "music/SKILL.md",
       "computedHash": "f5307770bacfea37e8fb49aa1d5588d6af15dfdcec8a23d4bac781a0c26685de"
     },
+    "realtime": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "realtime/SKILL.md",
+      "computedHash": "930e40ebd1b17dd2bf4f723ee598c81daca92f32a43d10ab77184fb38c23b30e"
+    },
     "sound-effects": {
       "source": "elevenlabs/skills",
       "sourceType": "github",

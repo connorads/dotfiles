@@ -1,0 +1,4 @@
+{
+  "onboarding": "Downloads the ElevenLabs CLI and writes project credentials; local patches route agents to the existing credential workflow instead.",
+  "setup-api-key": "Hand-configures API keys; local patches route agents to the existing credential workflow instead."
+}

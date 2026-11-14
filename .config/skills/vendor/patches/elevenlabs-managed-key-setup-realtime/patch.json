@@ -1,0 +1,6 @@
+{
+  "reason": "ElevenLabs uses existing credential delivery; a missing key is reported instead of routed to the excluded upstream key-setup skill.",
+  "files": [
+    "elevenlabs/.agents/skills/realtime/SKILL.md"
+  ]
+}
