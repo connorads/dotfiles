@@ -1,18 +1,21 @@
 .bb-external-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: -0.15em;
   margin-left: 0.2em;
   padding: 2px;
-  border: 0;
   border-radius: 3px;
-  background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
+  white-space: nowrap;
+}
+/* An inline box with a word joiner, so the icon cannot wrap away from the link's last word. */
+.bb-external-link::before {
+  content: '\2060';
+  padding-left: 13px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
 }
 .bb-external-link:hover { color: var(--primary); }
-.bb-external-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bb-external-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .bb-file-preview-original { display: none !important; }
 .bb-destination-icon {
   fill: none;
@@ -22,6 +25,7 @@
   stroke-linejoin: round;
 }
 
+/* Vertical padding on an inline box enlarges the tap area without spreading the lines apart. */
 @media (pointer: coarse) {
-  .bb-external-link { min-width: 44px; min-height: 44px; margin-inline: 4px; vertical-align: middle; }
+  .bb-external-link { padding: 0.45em 0.5em; margin-left: 0; }
 }
