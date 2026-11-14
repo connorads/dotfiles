@@ -205,6 +205,13 @@
       "skillPath": "skills/marimo-notebook/SKILL.md",
       "computedHash": "d843af038a49245369d9a91b8dda531a0d58882bc06623604b673cb144588edd"
     },
+    "megacave": {
+      "source": "JuliusBrussee/caveman",
+      "ref": "v4.1.0",
+      "sourceType": "github",
+      "skillPath": "skills/megacave/SKILL.md",
+      "computedHash": "60da384ce09cedf553e2b6dfe4669ffb4e53f34c3df8ce2c8012a32e06f8e187"
+    },
     "merge-risk": {
       "source": "warpdotdev/common-skills",
       "sourceType": "github",
@@ -329,6 +336,13 @@
       "sourceType": "github",
       "skillPath": "skills/typesafe-ai/SKILL.md",
       "computedHash": "15e077333436b1e63e526c7c7559202816f4848dabefd3aa3d4c91988fd181b5"
+    },
+    "ultracave": {
+      "source": "JuliusBrussee/caveman",
+      "ref": "v4.1.0",
+      "sourceType": "github",
+      "skillPath": "skills/ultracave/SKILL.md",
+      "computedHash": "d2e5de7e5e664e95c0c93ea0fb84c6b78a4bb2351c71964c453a8a35c63869eb"
     },
     "untangle-codebase": {
       "source": "caldoai/skills",
