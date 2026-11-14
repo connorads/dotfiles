@@ -17,6 +17,8 @@ History starts when the plugin loads. It follows file-tab visits, drops closed
 tabs and clears when the app route changes or the plugin reloads. It selects
 existing native tabs, which retain BB's own file scroll state. Visiting another
 file after going back drops forward history. Duplicate filenames remain distinct.
+Keyboard focus stays on the controls after each step, moving to the other button
+at either end.
 
 The plugin uses a content script because the SDK exposes no native file-history
 controller or header slot. It depends on the thread panel's DOM markers, active

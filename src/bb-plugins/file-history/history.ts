@@ -22,8 +22,20 @@ export function mountFileHistory(doc: Document): () => void {
     const index = history.index + direction;
     const tab = history.entries[index];
     if (!tab?.isConnected) return;
+    const pressed = direction < 0 ? history.back : history.forward;
+    const refocus = history.controls.contains(doc.activeElement);
     history.index = index;
     tab.click();
+    // A tab switch can re-render the preview header, detaching the focused control.
+    // Restore focus after the switch settles so keyboard users can keep stepping.
+    if (refocus) setTimeout(() => restoreFocus(history, pressed));
+  };
+
+  const restoreFocus = (history: PanelHistory, pressed: HTMLButtonElement) => {
+    const focus = doc.activeElement;
+    if (!history.controls.isConnected || (focus && focus !== doc.body && !history.controls.contains(focus))) return;
+    const target = pressed.disabled ? (pressed === history.back ? history.forward : history.back) : pressed;
+    if (!target.disabled) target.focus();
   };
 
   const createHistory = (): PanelHistory => {

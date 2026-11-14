@@ -129,3 +129,28 @@ it('reattaches controls after a preview redraw and ignores hidden or non-file pa
   aside?.dispatchEvent(outsidePreview);
   expect(outsidePreview.defaultPrevented).toBe(false);
 });
+
+it('keeps keyboard focus on the controls when the preview header re-renders', async () => {
+  const { tabs, path, visit, control } = fixture();
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => {
+      const header = path.parentElement?.parentElement;
+      const fresh = document.createElement('div');
+      if (path.parentElement) fresh.append(path.parentElement);
+      header?.replaceWith(fresh);
+    });
+  }
+  await visit(0);
+  dispose = mountFileHistory(document);
+  await visit(1);
+  await visit(2);
+  control('Previous file').focus();
+  control('Previous file').click();
+  await settle();
+  expect(tabs[1]?.getAttribute('aria-pressed')).toBe('true');
+  expect(document.activeElement).toBe(control('Previous file'));
+  control('Previous file').click();
+  await settle();
+  expect(tabs[0]?.getAttribute('aria-pressed')).toBe('true');
+  expect(document.activeElement).toBe(control('Next file'));
+});
