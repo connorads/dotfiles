@@ -21,6 +21,7 @@
   "machine-health": true,
   "message-drafts": false,
   "mobile-home-spacing": true,
+  "nix-mise-environment": true,
   "patch-health": true,
   "preferences": true,
   "repo-tasks": true,

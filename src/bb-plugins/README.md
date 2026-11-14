@@ -201,6 +201,11 @@ It keeps session evidence separate from current inventory and changes no setting
 connections. BB signs in once per connection, and each thread picks which
 connection it uses, so no agent needs its own MCP config.
 
+## Codex tool paths
+
+[Nix Mise Environment](nix-mise-environment/README.md) gives Codex threads this
+Mac's login-shell Nix setup and mise shims, so per-directory tool versions resolve.
+
 ## AWS profiles
 
 [AWS](aws/README.md) picks the Granted profile a thread may use with `⌥W`. BB
