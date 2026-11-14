@@ -124,3 +124,6 @@ def test_references_ignores_the_name_as_plain_text_or_code():
     assert sg.references("use /implement next", "implement")
     assert sg.references("Is the `triage` skill installed?", "triage")
     assert sg.references("see skills/triage/SKILL.md", "triage")
+    assert not sg.references(
+        "[guide](https://github.com/o/r/blob/abc/skills/triage/ref.md)", "triage"
+    )

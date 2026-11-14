@@ -102,6 +102,8 @@ def references(text: str, name: str) -> bool:
     n = re.escape(name)
     # A bare `name` is too loose: short names such as `pr` appear as plain
     # code, and a false hit would re-ask the same exclusion on every pass.
+    # URLs are links to upstream files, not instructions to load a skill.
+    text = re.sub(r"https?://\S+", "", text)
     pattern = rf"([\s(`]/{n}\b|\b{n}`? (sub-?)?skills?\b|skills?/{n}\b)"
     return re.search(pattern, text) is not None
 
