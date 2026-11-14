@@ -15,11 +15,17 @@ interface State {
   threads: ReadonlyMap<string, ThreadView & { projectId: string }>;
   drafts: ReadonlyMap<string, DraftView>;
   connectors: ReadonlyMap<string, Connectors>;
+  /** Why the last `state` load failed, until one succeeds. */
+  stateError: string | null;
+  /** Thread and draft choices whose last load failed, keyed by `loadKey`, until one loads. */
+  loadErrors: ReadonlyMap<string, { target: Target; error: string }>;
   /** The new-thread composer on screen, for the keyboard command. */
   draftProject: string | null;
   open: Open;
 }
-let state: State = { view: null, threads: new Map(), drafts: new Map(), connectors: new Map(), draftProject: null, open: null };
+let state: State = {
+  view: null, threads: new Map(), drafts: new Map(), connectors: new Map(), stateError: null, loadErrors: new Map(), draftProject: null, open: null,
+};
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(l => l()); };
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
@@ -34,23 +40,40 @@ export function rpc(): Rpc {
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
 export async function refresh() {
-  try { set({ view: await rpc().call('state', null) }); } catch { /* keep the last view */ }
-  await Promise.all([
-    ...[...state.threads.values()].map(t => loadThread(t.threadId, t.projectId)),
-    ...[...state.drafts.keys()].map(loadDraft),
+  // A failed reload keeps the last view; screens show the error only while there is no view.
+  try { set({ view: await rpc().call('state', null), stateError: null }); } catch (cause) { set({ stateError: message(cause) }); }
+  const targets = new Map<string, Target>([
+    ...[...state.loadErrors].map(([key, failed]) => [key, failed.target] as const),
+    ...[...state.threads.values()].map(t => { const target: Target = { kind: 'thread', threadId: t.threadId, projectId: t.projectId }; return [loadKey(target), target] as const; }),
+    ...[...state.drafts.keys()].map(projectId => { const target: Target = { kind: 'draft', projectId }; return [loadKey(target), target] as const; }),
   ]);
+  await Promise.all([...targets.values()].map(t => t.kind === 'thread' ? loadThread(t.threadId, t.projectId) : loadDraft(t.projectId)));
 }
 
+/** One key per thread or new-thread draft. */
+const threadKey = (threadId: string) => `thread:${threadId}`;
+export const loadKey = (target: Target) => target.kind === 'thread' ? threadKey(target.threadId) : `draft:${target.projectId}`;
+function loadResult(target: Target, error: string | null): Partial<State> {
+  const key = loadKey(target);
+  if (error === null && !state.loadErrors.has(key)) return {};
+  const loadErrors = new Map(state.loadErrors);
+  if (error === null) loadErrors.delete(key); else loadErrors.set(key, { target, error });
+  return { loadErrors };
+}
+
+/** Errors are kept in `loadErrors`, not thrown; the last loaded value stays. */
 export async function loadThread(threadId: string, projectId: string) {
+  const target: Target = { kind: 'thread', threadId, projectId };
   try {
     const view = await rpc().call('thread', { threadId, projectId });
-    set({ threads: new Map(state.threads).set(threadId, { ...view, projectId }) });
-  } catch { /* keep the last value */ }
+    set({ threads: new Map(state.threads).set(threadId, { ...view, projectId }), ...loadResult(target, null) });
+  } catch (cause) { set(loadResult(target, message(cause))); }
 }
 
 export async function loadDraft(projectId: string) {
-  try { set({ drafts: new Map(state.drafts).set(projectId, await rpc().call('draft', { projectId })) }); }
-  catch { /* keep the last value */ }
+  const target: Target = { kind: 'draft', projectId };
+  try { set({ drafts: new Map(state.drafts).set(projectId, await rpc().call('draft', { projectId })), ...loadResult(target, null) }); }
+  catch (cause) { set(loadResult(target, message(cause))); }
 }
 export function setDraftProject(projectId: string | null) { set({ draftProject: projectId }); }
 
@@ -99,7 +122,7 @@ export function close() { set({ open: null }); }
 /** For the keyboard command: the thread view it was invoked from, else the new-thread composer. */
 export function targetFor(threadId: string | null): Target | null {
   if (threadId) {
-    const known = state.threads.get(threadId);
+    const known = state.threads.get(threadId) ?? state.loadErrors.get(threadKey(threadId))?.target;
     return known ? { kind: 'thread', threadId, projectId: known.projectId } : null;
   }
   return state.draftProject ? { kind: 'draft', projectId: state.draftProject } : null;

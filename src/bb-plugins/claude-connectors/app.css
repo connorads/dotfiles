@@ -9,6 +9,7 @@
 .cc-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
 .cc-error { color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
 .cc-pad { margin: 0; padding: 0 14px 8px; }
+.cc-empty.cc-error { color: var(--destructive-text, var(--destructive)); }
 
 .cc-rows { display: grid; padding: 4px; }
 .cc-row {
@@ -19,6 +20,8 @@
 .cc-row:hover, .cc-row:focus { background: var(--state-hover, var(--accent)); outline: none; }
 .cc-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 .cc-row[aria-pressed="true"] .cc-row-label { font-weight: 600; }
+.cc-row[aria-disabled="true"], .cc-link[aria-disabled="true"], .cc-seg[aria-busy="true"] button { cursor: progress; }
+.cc-seg[aria-busy="true"] { opacity: .6; }
 .cc-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-check { color: var(--brand, var(--primary)); }
 .cc-row kbd, .cc-keys kbd, .cc-link kbd {
