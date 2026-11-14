@@ -73,6 +73,7 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     if (event.key === 'ArrowDown' || event.key === 'j') move(1);
     else if (event.key === 'ArrowUp' || event.key === 'k') move(-1);
     else if (event.key === 'r' || event.key === 'R') { event.preventDefault(); void renew(threadId); }
+    else if (event.key === 'o' && repo) { event.preventDefault(); setFolders(true); }
     else if (event.key === '+' || event.key === '_') { event.preventDefault(); if ((event.key === '+') !== zoomed) zoom('keyboard'); }
     else if (event.key === 'c' && repo && !event.repeat) {
       event.preventDefault();

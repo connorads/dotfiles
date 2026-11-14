@@ -25,7 +25,7 @@ On the New thread screen, `Alt+G` opens the pop-up for the picked project's
 default checkout. That screen shows no chip.
 
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
-`⇧P` pushes, `f` fetches, `b` switches branch, `R` resynchronises, `l` opens
+`⇧P` pushes, `f` fetches, `b` switches branch, `o` chooses a repository, `R` resynchronises, `l` opens
 lazygit, and `q` or `esc` closes. On a file row `d` arms discard and a second `d` confirms; on a
 file row `Space` stages or unstages the complete file; on a
 stash row `a` applies and `g` pops.
@@ -149,6 +149,9 @@ The repository name in Git status opens the same browser.
 
 - Search finds repositories in subfolders of the displayed folder, up to four levels down.
   Name matches rank above path matches. `Enter` selects the top match; `↑`/`↓` move between rows.
+- `→` on a folder or repository row opens it. `←`, or `Backspace` in an empty search,
+  goes up one folder and focuses the row just left. Inside a repository, `Enter` on an
+  empty search uses it.
 - The search skips symlinks, `node_modules` and `Library`, and never enters a repository or a hidden folder.
   It stops after 1,000 repositories or 50,000 folders, and then says so.
 - With an empty search, the browser lists the current folder's immediate subfolders.

@@ -35,14 +35,27 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
   }, [rpc, threadId]);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  /** The folder just left by going up, so its row takes focus once the parent lists. */
+  const cameFrom = useRef<string | null>(null);
   useEffect(() => {
     let live = true;
     setListing(null); setNested(null); setQuery(''); setError(null);
     rpc.call('folders', { threadId, path }).then(result => { if (live) setListing(result); }, cause => { if (live) setError(message(cause)); });
     rpc.call('repositories', { threadId, path }).then(result => { if (live) setNested(result); }, () => { if (live) setNested({ repositories: [], truncated: true }); });
-    search.current?.focus();
+    if (cameFrom.current === null) search.current?.focus();
     return () => { live = false; };
   }, [rpc, threadId, path]);
+  useEffect(() => {
+    if (!listing || cameFrom.current === null) return;
+    const rows = Array.from(list.current?.querySelectorAll<HTMLElement>('[data-browse]') ?? []);
+    (rows.find(row => row.dataset.browse === cameFrom.current) ?? search.current)?.focus();
+    cameFrom.current = null;
+  }, [listing]);
+  const up = () => {
+    if (path === '.') return;
+    cameFrom.current = path;
+    setPath(parts.length > 1 ? parts.slice(0, -1).join('/') : '.');
+  };
   const select = async (next: string | null, worktree?: string) => {
     setBusy(true); setError(null);
     try { await rpc.call('select', { threadId, path: next, ...worktree === undefined ? {} : { worktree } }); onSelected(); }
@@ -67,10 +80,16 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const rows = Array.from(list.current?.querySelectorAll<HTMLElement>('[data-row]') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
-    if (event.target === search.current && event.key === 'Enter') {
+    const inSearch = event.target === search.current;
+    const browse = rows[current]?.dataset.browse;
+    if (inSearch && event.key === 'Enter') {
       event.preventDefault();
       if (searching && matches[0]) void select(join(matches[0]));
       else rows[0]?.click();
+    } else if (event.key === 'ArrowRight' && browse !== undefined) {
+      event.preventDefault(); setPath(browse);
+    } else if ((event.key === 'ArrowLeft' && (!inSearch || !query)) || (event.key === 'Backspace' && inSearch && !query)) {
+      event.preventDefault(); up();
     } else if (event.key === 'ArrowDown') {
       event.preventDefault(); rows[Math.min(rows.length - 1, current + 1)]?.focus();
     } else if (event.key === 'ArrowUp' && current >= 0) {
@@ -96,11 +115,11 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
     {error && <p className="gg-note gg-danger" role="alert">{error}</p>}
     {listing ? <div ref={list} className="gg-folder-results">
       <p className="gg-folder-path">{listing.root}</p>
-      {listing.repository && !searching && <button type="button" className="gg-ghost" disabled={busy} onClick={() => void select(path)}>Use this repository</button>}
+      {listing.repository && !searching && <button type="button" data-row className="gg-ghost" disabled={busy} onClick={() => void select(path)}>Use this repository</button>}
       {searching && <>
         <ul className="gg-folder-list" aria-label="Repositories">
           {matches.map((match, index) => <li key={match}>
-            <button type="button" data-row disabled={busy} onClick={() => void select(join(match))}>
+            <button type="button" data-row data-browse={join(match)} disabled={busy} onClick={() => void select(join(match))}>
               <Icon name="FolderGit" className="size-4" /><PathLabel path={match} />
               <span className="gg-spacer" />{index === 0 && <kbd className="gg-tag">↵</kbd>}
             </button>
@@ -115,7 +134,7 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
         <h3 className="gg-eyebrow">Recent</h3>
         <ul className="gg-folder-list" aria-label="Recent repositories">
           {recent.map((pick, index) => <li key={`${pick.path}\0${pick.worktree ?? ''}`}>
-            <button type="button" data-row disabled={busy} title={pick.worktree} onClick={() => void select(pick.path, pick.worktree)}>
+            <button type="button" data-row data-browse={pick.worktree === undefined ? pick.path : undefined} disabled={busy} title={pick.worktree} onClick={() => void select(pick.path, pick.worktree)}>
               <Icon name="Clock" className="size-4" /><PathLabel path={pick.worktree ?? pick.path} />
               <span className="gg-spacer" />{index === 0 && <kbd className="gg-tag">↵</kbd>}
             </button>
@@ -137,7 +156,7 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
         {folders.map(folder => {
           const next = join(folder.name);
           return <li key={folder.name}>
-            <button type="button" data-row disabled={busy} onClick={() => folder.repository ? void select(next) : setPath(next)}>
+            <button type="button" data-row data-browse={next} disabled={busy} onClick={() => folder.repository ? void select(next) : setPath(next)}>
               <Icon name={folder.repository ? 'FolderGit' : 'Folder'} className="size-4" /><span>{folder.name}</span>
               <span className="gg-spacer" />{folder.repository ? <span className="gg-tag">Git</span> : <Icon name="ChevronRight" className="size-3" />}
             </button>
@@ -149,6 +168,6 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
         && <p className="gg-note">{searching ? 'No matching repositories, folders or worktrees.' : 'No subfolders or worktrees.'}</p>}
     </div> : !error && <p className="gg-note" role="status">Reading folders…</p>}
     <footer>{!embedded && <button type="button" className="gg-ghost" disabled={busy} onClick={() => void select(null)}>Use thread checkout</button>}
-      <span className="gg-note">Search finds repositories in subfolders. The thread folder stays unchanged.</span></footer>
+      <span className="gg-note"><kbd>↵</kbd> select · <kbd>→</kbd> open · <kbd>←</kbd> up. The thread folder stays unchanged.</span></footer>
   </section>;
 }
