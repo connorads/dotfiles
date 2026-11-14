@@ -22,6 +22,8 @@ export function setSource(value: Source | null) {
 export const QUIET_WARN_MS = 2 * 60_000;
 export const QUIET_STALL_MS = 10 * 60_000;
 const REFRESH_MS = 5_000;
+// A read that has not settled by then counts as failed, so the next poll can retry it.
+const REQUEST_TIMEOUT_MS = 15_000;
 // Copies the Workflows plugin's finished-call duration span so the timer lines up with it.
 const DURATION_CLASS = 'min-w-9 whitespace-nowrap text-right text-xs tabular-nums text-subtle-foreground';
 
@@ -42,33 +44,54 @@ function setAttr(el: HTMLElement, name: string, value: string | null) {
   else if (el.getAttribute(name) !== value) el.setAttribute(name, value);
 }
 
-type Entry<T> = { value: T; pending: boolean };
+// `failed` marks that the latest read failed; `value` keeps the last good result.
+type Entry<T> = { value: T; pending: boolean; failed: boolean };
+type Decoration = { row: HTMLElement; live: HTMLElement; details: HTMLDetailsElement };
 
 // Workflow rows carry no call IDs, so rows join to run data by unique label, as in claude-profiles.
 export function mountWorkflowTimers(doc: Document, now: () => number = Date.now): () => void {
   const controller = new AbortController();
   const runs = new Map<string, Entry<Call[]>>();
   const activity = new Map<string, Entry<number | null>>();
-  const added = new Set<HTMLElement>();
-  const disclosures = new Map<HTMLElement, HTMLDetailsElement>();
+  // Keyed by run and label, so a disclosure keeps its open state and focus when BB re-renders the row.
+  const decorations = new Map<string, Decoration>();
 
-  function refresh<T>(map: Map<string, Entry<T>>, key: string, initial: T, load: (s: Source) => Promise<T>) {
+  function refresh<T>(map: Map<string, Entry<T>>, key: string, initial: T, load: (s: Source, signal: AbortSignal) => Promise<T>) {
     if (!source) return;
     let entry = map.get(key);
-    if (!entry) { entry = { value: initial, pending: false }; map.set(key, entry); }
+    if (!entry) { entry = { value: initial, pending: false, failed: false }; map.set(key, entry); }
     if (entry.pending) return;
     entry.pending = true;
     const target = entry;
-    void load(source).then(value => { target.value = value; }, () => {}).finally(() => {
+    const request = new AbortController();
+    const stop = () => request.abort();
+    controller.signal.addEventListener('abort', stop);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => { request.abort(); reject(new Error('Timed out')); }, REQUEST_TIMEOUT_MS);
+    });
+    void Promise.race([load(source, request.signal), timeout]).then(
+      value => { target.value = value; target.failed = false; },
+      () => { target.failed = true; },
+    ).finally(() => {
+      clearTimeout(timer);
+      controller.signal.removeEventListener('abort', stop);
       target.pending = false;
       if (!controller.signal.aborted) sync();
     });
   }
 
+  function remove(decoration: Decoration) {
+    // Focus inside a vanishing disclosure would fall to the page body; keep it on the agent row.
+    if (decoration.details.contains(doc.activeElement) && decoration.row.isConnected) decoration.row.focus();
+    decoration.live.remove();
+    decoration.details.remove();
+  }
+
   function sync() {
     if (controller.signal.aborted) return;
     const at = now();
-    const wanted = new Set<HTMLElement>();
+    const wanted = new Set<string>();
     const seenRuns = new Set<string>();
     const seenThreads = new Set<string>();
     for (const section of Array.from(doc.querySelectorAll<HTMLElement>('[data-bb-plugin="workflows"] section[aria-label="Workflow"][title]'))) {
@@ -77,61 +100,69 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
       if (!runId || !threadId) continue;
       const key = `${threadId}:${runId}`;
       seenRuns.add(key);
-      if (!runs.has(key)) refresh(runs, key, [], s => s.calls(threadId, runId, controller.signal));
+      if (!runs.has(key)) refresh(runs, key, [], (s, signal) => s.calls(threadId, runId, signal));
       const calls = runs.get(key)?.value ?? [];
-      for (const row of Array.from(section.querySelectorAll<HTMLElement>('button'))) {
+      const rows = Array.from(section.querySelectorAll<HTMLElement>('button')).flatMap(row => {
         const label = row.querySelector<HTMLElement>(':scope > span[title]')?.title;
         const metadata = row.querySelector<HTMLElement>(':scope > span.ml-auto');
-        if (!label || !metadata) continue;
+        return label && metadata ? [{ row, label, metadata }] : [];
+      });
+      for (const { row, label, metadata } of rows) {
+        if (rows.filter(other => other.label === label).length > 1) continue;
         const matches = calls.filter(call => call.label === label);
         const call = matches.length === 1 ? matches[0] : undefined;
         // A native duration means the row already shows the finished time.
         const native = Array.from(metadata.children).some(el => el.classList.contains('tabular-nums') && !el.classList.contains('wt-live'));
         if (!call || call.status !== 'running' || call.startedAt === null || native) continue;
         let lastAt: number | null = null;
+        let readFailed = false;
         if (call.childThreadId) {
           const childId = call.childThreadId;
           seenThreads.add(childId);
-          if (!activity.has(childId)) refresh(activity, childId, null, s => s.lastActivity(childId, controller.signal));
+          if (!activity.has(childId)) refresh(activity, childId, null, (s, signal) => s.lastActivity(childId, signal));
           lastAt = activity.get(childId)?.value ?? null;
+          readFailed = activity.get(childId)?.failed ?? false;
         }
-        const level = lastAt === null ? null : quietLevel(at - lastAt);
-        let live = metadata.querySelector<HTMLElement>(':scope > .wt-live');
-        if (!live) {
-          live = doc.createElement('span');
+        // Without any event time a failed read must not look like a healthy worker.
+        const level = lastAt === null ? (readFailed ? 'unknown' : null) : quietLevel(at - lastAt);
+        const id = `${key}|${label}`;
+        let decoration = decorations.get(id);
+        if (!decoration) {
+          const live = doc.createElement('span');
           live.className = 'wt-live tabular-nums';
           const quiet = doc.createElement('span');
           quiet.className = 'wt-quiet';
           const elapsed = doc.createElement('span');
           elapsed.className = `wt-elapsed ${DURATION_CLASS}`;
           live.append(quiet, elapsed);
-          metadata.append(live);
-        }
-        setText(live.querySelector<HTMLElement>('.wt-elapsed')!, formatElapsed(at - call.startedAt));
-        setText(live.querySelector<HTMLElement>('.wt-quiet')!, level && lastAt !== null ? `quiet ${Math.floor((at - lastAt) / 60_000)}m` : '');
-        setAttr(live, 'data-quiet', level);
-        const timing = `Started ${clock(call.startedAt)}${lastAt === null ? '' : ` · last thread event ${clock(lastAt)}`}`;
-        setAttr(live, 'title', timing);
-        let details = disclosures.get(live);
-        if (!details) {
-          details = doc.createElement('details');
+          const details = doc.createElement('details');
           details.className = 'wt-details';
           const summary = doc.createElement('summary');
           summary.textContent = `Timing details for ${label}`;
-          const description = doc.createElement('p');
-          details.append(summary, description);
-          row.after(details);
-          disclosures.set(live, details);
+          details.append(summary, doc.createElement('p'));
+          decoration = { row, live, details };
+          decorations.set(id, decoration);
         }
+        const { live, details } = decoration;
+        decoration.row = row;
+        if (live.parentElement !== metadata) metadata.append(live);
         if (details.previousElementSibling !== row) row.after(details);
+        setText(live.querySelector<HTMLElement>('.wt-elapsed')!, formatElapsed(at - call.startedAt));
+        const quietText = level === 'unknown' ? 'quiet ?' : level && lastAt !== null ? `quiet ${Math.floor((at - lastAt) / 60_000)}m` : '';
+        setText(live.querySelector<HTMLElement>('.wt-quiet')!, quietText);
+        setAttr(live, 'data-quiet', level);
+        const event = lastAt === null
+          ? (readFailed ? ' · last thread event could not be read, retrying' : '')
+          : ` · last thread event ${clock(lastAt)}${readFailed ? ' (latest read failed, retrying)' : ''}`;
+        const timing = `Started ${clock(call.startedAt)}${event}`;
+        setAttr(live, 'title', timing);
         setText(details.querySelector('p')!, timing);
-        wanted.add(live);
-        added.add(live);
+        wanted.add(id);
       }
     }
     for (const key of runs.keys()) if (!seenRuns.has(key)) runs.delete(key);
     for (const key of activity.keys()) if (!seenThreads.has(key)) activity.delete(key);
-    for (const live of added) if (!wanted.has(live)) { live.remove(); disclosures.get(live)?.remove(); disclosures.delete(live); added.delete(live); }
+    for (const [id, decoration] of decorations) if (!wanted.has(id)) { remove(decoration); decorations.delete(id); }
   }
 
   const observer = new MutationObserver(sync);
@@ -143,9 +174,9 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
     if (doc.visibilityState === 'hidden') return;
     for (const key of runs.keys()) {
       const [threadId, runId] = key.split(':');
-      refresh(runs, key, [], s => s.calls(threadId, runId, controller.signal));
+      refresh(runs, key, [], (s, signal) => s.calls(threadId, runId, signal));
     }
-    for (const childId of activity.keys()) refresh(activity, childId, null, s => s.lastActivity(childId, controller.signal));
+    for (const childId of activity.keys()) refresh(activity, childId, null, (s, signal) => s.lastActivity(childId, signal));
   }, REFRESH_MS);
   return () => {
     controller.abort();
@@ -153,9 +184,7 @@ export function mountWorkflowTimers(doc: Document, now: () => number = Date.now)
     clearInterval(poll);
     observer.disconnect();
     listeners.delete(sync);
-    for (const live of added) live.remove();
-    for (const details of disclosures.values()) details.remove();
-    disclosures.clear();
-    added.clear();
+    for (const { live, details } of decorations.values()) { live.remove(); details.remove(); }
+    decorations.clear();
   };
 }

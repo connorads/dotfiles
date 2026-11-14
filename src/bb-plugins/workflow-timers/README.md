@@ -7,6 +7,7 @@ finished agents, so a stalled agent looks the same as a slow one.
 Each running row gets a live elapsed timer in the slot where the finished
 duration appears. When the worker thread records no event for two minutes, an
 amber `quiet Nm` label appears before the timer. It turns red at ten minutes.
+If the worker's events cannot be read, a muted `quiet ?` stands in until a read succeeds.
 Open **Timing details** below a running row for its exact start and latest event times.
 The disclosure supports touch and keyboard. Hovering the timer shows the same times.
 A long silent command, such as a test suite, also reads as quiet.
@@ -24,7 +25,9 @@ The bridge reads each run's calls through the Workflows plugin's
 `workflowRunView` RPC. That view has no live activity time. The call's stored
 activity time changes only when the call starts, retries or finishes. The bridge
 therefore reads the latest event on the worker's child thread instead. Both
-refresh every five seconds; the timer ticks every second.
+refresh every five seconds; the timer ticks every second. A read that has not
+settled after 15 seconds counts as failed and is retried at the next refresh.
+A failed read keeps the last good value.
 
 Rows carry no call IDs. The content script joins a row to its call by label and
 omits rows whose label repeats in the run. It decorates only the inline chat

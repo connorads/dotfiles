@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { formatElapsed, mountWorkflowTimers, setSource, type Call } from './timers';
 
 let dispose: (() => void) | undefined;
-afterEach(() => { dispose?.(); dispose = undefined; setSource(null); document.body.replaceChildren(); });
+afterEach(() => { dispose?.(); dispose = undefined; setSource(null); document.body.replaceChildren(); vi.useRealTimers(); });
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const NOW = 10_000_000;
 const row = (label: string, duration = '') => `<button><span title="${label}">${label}</span><span class="ml-auto"><span title="claude-code · opus">claude-code · opus</span>${duration}</span></button>`;
@@ -71,4 +71,62 @@ test('provides native keyboard and touch disclosure outside the workflow row but
   expect(details?.closest('button')).toBeNull();
   dispose!(); dispose = undefined;
   expect(document.querySelector('details')).toBeNull();
+});
+
+test('marks quiet time unknown when the worker event read fails instead of looking healthy', async () => {
+  document.body.innerHTML = preview(row('P6'));
+  setSource({ calls: async () => [call('P6')], lastActivity: async () => { throw new Error('offline'); } });
+  dispose = mountWorkflowTimers(document, () => NOW);
+  await settle(); await settle();
+  const [live] = timers();
+  expect(live.dataset.quiet).toBe('unknown');
+  expect(live.querySelector('.wt-quiet')?.textContent).toBe('quiet ?');
+  expect(document.querySelector('details p')?.textContent).toMatch(/last thread event could not be read, retrying$/);
+});
+
+test('retries a read that never settles', async () => {
+  vi.useFakeTimers();
+  document.body.innerHTML = preview(row('P6'));
+  let reads = 0;
+  setSource({ calls: async () => [call('P6')], lastActivity: () => { reads += 1; return reads === 1 ? new Promise(() => {}) : Promise.resolve(NOW - 19 * 60_000); } });
+  dispose = mountWorkflowTimers(document, () => NOW);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(reads).toBe(1);
+  await vi.advanceTimersByTimeAsync(20_000);
+  expect(reads).toBe(2);
+  expect(timers()[0].querySelector('.wt-quiet')?.textContent).toBe('quiet 19m');
+});
+
+test('keeps an open disclosure and its focus when the row is re-rendered', async () => {
+  document.body.innerHTML = preview(row('P6'));
+  mount([call('P6')], { thr_P6: NOW - 20_000 });
+  await settle();
+  const details = document.querySelector('details')!;
+  details.open = true;
+  details.querySelector('summary')!.focus();
+  const old = document.querySelector('section button')!;
+  old.replaceWith(Object.assign(document.createElement('div'), { innerHTML: row('P6') }).firstElementChild!);
+  await settle();
+  expect(document.querySelector('details')).toBe(details);
+  expect(details.open).toBe(true);
+  expect(document.activeElement).toBe(details.querySelector('summary'));
+  expect(details.previousElementSibling?.querySelector('.wt-live')).not.toBeNull();
+});
+
+test('moves focus to the agent row when its open disclosure goes away on finish', async () => {
+  document.body.innerHTML = preview(row('P6'));
+  mount([call('P6')], { thr_P6: NOW - 20_000 });
+  await settle();
+  document.querySelector('summary')!.focus();
+  document.querySelector('span.ml-auto')!.insertAdjacentHTML('beforeend', '<span class="tabular-nums">25m03s</span>');
+  await settle();
+  expect(document.querySelector('details')).toBeNull();
+  expect(document.activeElement).toBe(document.querySelector('section button'));
+});
+
+test('omits rows whose label repeats in the rendered preview', async () => {
+  document.body.innerHTML = preview(row('P6') + row('P6'));
+  mount([call('P6')]);
+  await settle();
+  expect(timers()).toEqual([]);
 });
