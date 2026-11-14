@@ -67,6 +67,12 @@
       "skillPath": "skills/make-interfaces-feel-better/SKILL.md",
       "computedHash": "c8b15b529e088a318b2d3c17f0a97e15a7b1ce9ddab8bbdf9209e6ab7315cbde"
     },
+    "state-machine": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/state-machine/SKILL.md",
+      "computedHash": "f5b8d15d09ad91de8ad969fc6314f3e45a3cc625e0ea8046f109add9e86a33eb"
+    },
     "variant": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
