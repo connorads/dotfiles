@@ -27,6 +27,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### No way to hide only the native model picker
+
+- Found: 2026-11-13, claude-profiles, SDK 0.6.132
+- Wanted: a plugin model control replaces BB's model, effort and mode trigger in the stock composer.
+- Gap: `ComposerCustomization` offers actions, banners, plusMenu, sendMenu, richText and
+  `experimental_popups`, with no option for `executionControls`. Only `experimental_composer`
+  can omit them, and it replaces the whole input box.
+- Workaround: a content script adds one CSS rule matched to the trigger's accessible name
+  ([hide-native.ts](../claude-profiles/ui/switcher/hide-native.ts)).
+- Ask: `app.composer.customize({ executionControls: 'hidden' })`, or a slot that replaces them.
+- Status: open
+- Category: sdk-gap
+- Evidence: [ADR 0004](adr/0004-one-switcher-for-model-and-account.md)
+
 ### Native chat components cannot select an independent server
 
 - Found: 2026-10-30, SDK 0.6.49, packaged desktop 0.48.0

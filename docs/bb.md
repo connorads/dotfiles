@@ -19,8 +19,14 @@ Do not disable reconciliation to make a settings edit persist.
 
 ## Agent usage
 
-The custom **Agent Switcher** plugin (`claude-profiles`) owns the usage badge and
-`⌘⇧A` overlay. Read its [guide](../src/bb-plugins/claude-profiles/README.md#usage).
+The custom **Agent Switcher** plugin (`claude-profiles`) owns the model and
+account switcher, the usage badge and the `⌘⇧A` overlay. Read its
+[guide](../src/bb-plugins/claude-profiles/README.md#switcher).
+
+`⌘⇧M` opens the switcher and `Alt+1-9` select favourites. BB's own
+`modelPicker.*` shortcuts are unbound on mac through live keyboard overrides,
+not [preferences.json](../.config/bb/preferences.json), which accepts only thread
+navigation commands. Reapply them after `bb settings keyboard reset`.
 The built-in `bb--provider-usage` plugin collects quota sources for Agent
 Switcher.
 
@@ -39,7 +45,7 @@ Claude Code from fetching connectors attached to the selected Claude account.
 It leaves separately configured MCP servers and Executor connections available.
 
 [Agent Switcher](../src/bb-plugins/claude-profiles/README.md#account-connectors)
-owns the global block, saved-account preferences and thread restrictions. Its
+owns saved-account preferences and thread restrictions. Its
 provider environment contribution applies the combined policy over the machine
 default. Accounts start off. If the plugin is unavailable or its contribution fails, a new
 Claude process uses the global off value.
