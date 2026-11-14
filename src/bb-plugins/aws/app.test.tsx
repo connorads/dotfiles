@@ -82,3 +82,53 @@ it('rejects a malformed region before calling the server', async () => {
   expect(overlay.rpcCalls.some(c => c.method === 'setChoice')).toBe(false);
   act(() => { void command.run({ threadId: 't3' } as never); });
 });
+
+it('shows a failed load with a retry instead of loading forever', async () => {
+  const h = handlers();
+  let fail = true;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { ...h.rpc, state: () => { if (fail) throw new Error('offline'); return state; } } });
+  act(() => { void command.run({ threadId: 't4' } as never); });
+  expect((await overlay.findByRole('alert')).textContent).toContain('Could not load AWS profiles: offline');
+  fail = false;
+  fireEvent.click(overlay.getByRole('button', { name: 'Retry' }));
+  await overlay.findByRole('button', { name: /acme-dev/ });
+  expect(overlay.queryByRole('alert')).toBeNull();
+  act(() => { void command.run({ threadId: 't4' } as never); });
+});
+
+it('shows a failed sign-in request as an alert', async () => {
+  const h = handlers();
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { ...h.rpc, signIn: () => { throw new Error('host unreachable'); } } });
+  act(() => { void command.run({ threadId: 't5' } as never); });
+  fireEvent.click(await overlay.findByRole('button', { name: /acme-prod/ }));
+  fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
+  expect((await overlay.findByRole('alert')).textContent).toContain('host unreachable');
+  act(() => { void command.run({ threadId: 't5' } as never); });
+});
+
+it('saves one choice at a time', async () => {
+  const h = handlers();
+  let finish = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, setChoice: (input: unknown) => new Promise(resolve => { finish = () => resolve(h.rpc.setChoice(input)); }) },
+  });
+  act(() => { void command.run({ threadId: 't6' } as never); });
+  fireEvent.click(await overlay.findByRole('button', { name: /acme-dev/ }));
+  await waitFor(() => expect(overlay.getByRole('button', { name: /Off/ })).toHaveProperty('disabled', true));
+  fireEvent.click(overlay.getByRole('button', { name: /Off/ }));
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  expect(overlay.rpcCalls.filter(c => c.method === 'setChoice')).toHaveLength(1);
+  act(() => finish());
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+});
+
+it('opens on the current choice, so Enter keeps it', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't7' } as never); });
+  await overlay.findByRole('button', { name: /acme-dev/ });
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'setChoice')?.input)
+    .toEqual({ threadId: 't7', choice: { profile: 'acme-dev', region: null } }));
+});

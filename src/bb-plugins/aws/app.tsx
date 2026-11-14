@@ -15,16 +15,24 @@ function Overlay() {
   const rpc = useRpc<typeof rpcContract>();
   const [state, setState] = useState<StateView | null>(null);
   const [thread, setThread] = useState<ThreadView | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  /** Never rejects: a failed load shows in the picker with a retry. */
   const refresh = useCallback(async () => {
     if (!threadId) return;
-    const [nextState, nextThread] = await Promise.all([rpc.call('state', null), rpc.call('thread', { threadId })]);
-    setState(nextState);
-    setThread(nextThread);
+    try {
+      const [nextState, nextThread] = await Promise.all([rpc.call('state', null), rpc.call('thread', { threadId })]);
+      setState(nextState);
+      setThread(nextThread);
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : String(cause));
+    }
   }, [rpc, threadId]);
   useRealtime(CHANGED, () => { void refresh(); });
-  useEffect(() => { setState(null); setThread(null); void refresh(); }, [refresh]);
+  useEffect(() => { setState(null); setThread(null); setLoadError(null); void refresh(); }, [refresh]);
   if (!threadId) return null;
-  return <AwsPicker rpc={rpc} threadId={threadId} state={state} thread={thread} refresh={refresh} onClose={() => setOpen(null)} />;
+  return <AwsPicker rpc={rpc} threadId={threadId} state={state} thread={thread} loadError={loadError}
+    refresh={refresh} onClose={() => setOpen(null)} />;
 }
 
 export default definePluginApp(app => {
