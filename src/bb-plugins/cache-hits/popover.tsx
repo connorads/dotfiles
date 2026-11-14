@@ -93,11 +93,13 @@ function Chart({ history }: { history: HistoryEntry[] }) {
       <ol className="ch-bars" aria-label="Prompt tokens per request">
         {history.map((entry, index) => {
           const height = (value: number) => `${(value / max) * 100}%`;
-          const rest = Math.max(0, entry.prompt - entry.read - entry.write);
+          // Codex and Pi report no writes, so a miss re-sends its lost tokens as uncached input.
+          const fresh = entry.miss ? Math.max(entry.write, entry.miss.tokens) : entry.write;
+          const rest = Math.max(0, entry.prompt - entry.read - fresh);
           return <li key={`${entry.at}-${index}`} title={describeEntry(entry)} aria-label={describeEntry(entry)}
             data-miss={entry.miss ? entry.miss.cause : undefined} data-reset={entry.afterReset || undefined}>
             <i data-part="rest" style={{ height: height(rest) }} />
-            <i data-part={entry.miss ? 'miss' : 'write'} style={{ height: height(entry.write) }} />
+            <i data-part={entry.miss ? 'miss' : 'write'} style={{ height: height(fresh) }} />
             <i data-part="read" style={{ height: height(entry.read) }} />
           </li>;
         })}

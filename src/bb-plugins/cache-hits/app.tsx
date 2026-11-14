@@ -32,7 +32,13 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   const [open, setOpen] = useState(false);
   // The clicked button, so focus and placement follow the chip in this pane even when a split shows the same thread.
   const chip = useRef<HTMLButtonElement | null>(null);
-  const load = useCallback(() => { rpc.call('thread', { threadId }).then(setState, () => setState(null)); }, [rpc, threadId]);
+  // Only the newest call may set state: a slow reply for an earlier call, or for the thread this pane showed
+  // before, would otherwise overwrite it. A failed refresh keeps the last state, whose countdown stays true.
+  const latest = useRef(0);
+  const load = useCallback(() => {
+    const call = ++latest.current;
+    rpc.call('thread', { threadId }).then(next => { if (call === latest.current) setState(next); }, () => {});
+  }, [rpc, threadId]);
   useEffect(() => { setState(null); setOpen(false); load(); }, [load]);
   useRealtime('cache-changed', (payload: unknown) => {
     if ((payload as { threadId?: unknown } | null)?.threadId === threadId) load();
@@ -45,7 +51,11 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
     return () => clearInterval(timer);
   }, [expiry]);
   const view = state && warmth(state, now);
-  if (!state || !view) return null;
+  if (!state || !view) {
+    // A chip hidden by compaction must not reopen its popover when the next request brings it back.
+    if (open) setOpen(false);
+    return null;
+  }
   const summary = describe(state, now);
   // Codex reports no lifetime, so its value is the hit rate; Claude's is the time left.
   const value = view.left === null ? percent(view.ratio) : view.left <= 0 ? 'cold' : countdown(expiry! - now);

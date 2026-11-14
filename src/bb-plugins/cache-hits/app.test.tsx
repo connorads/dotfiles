@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeAll, test, expect } from 'vitest';
-import { fireEvent } from '@testing-library/react';
+import { act, fireEvent } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
@@ -107,5 +107,88 @@ test('Claude: a click opens the countdown, rebuild cost, per-request chart and r
     expect(slot.getByRole('status').textContent).not.toContain('miss:');
     fireEvent.click(chip);
     expect(slot.queryByRole('dialog')).toBe(null);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+function claudeState(at: number, extra: Partial<CacheState> = {}): CacheState {
+  return { ...initialState(), ttlMs: hour, prompt: 182593, read: 180933,
+    last: { at, prompt: 182593, read: 180933, write: 1658, ttlMs: hour, model: null },
+    history: [{ at, prompt: 182593, read: 180933, write: 1658, miss: null, afterReset: false }], ...extra };
+}
+const tick = () => new Promise(resolve => setTimeout(resolve, 20));
+
+test('a late reply for the previous thread never shows on the thread the pane switched to', async () => {
+  const at = Date.now() - 60_000;
+  const codex: CacheState = { ...initialState(), prompt: 100000, read: 65000,
+    last: { at, prompt: 100000, read: 65000, write: 0, ttlMs: null, model: null } };
+  let release: (state: CacheState) => void = () => {};
+  let calls = 0;
+  const slot = await render(input => input.threadId === 'thread-other' ? codex
+    : calls++ === 0 ? claudeState(at) : new Promise<CacheState>(resolve => { release = resolve; }));
+  try {
+    expect((await slot.findByRole('button')).textContent).toMatch(/^5[89]m$/);
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    const app = await loadPluginApp(() => import('./app.tsx'));
+    const Component = app.threadHeaderActions[0]!.component;
+    slot.lifecycle.rerender(<Component {...props} threadId="thread-other" />);
+    await tick();
+    expect(slot.getByRole('button').textContent).toBe('65%');
+    await act(async () => { release(claudeState(at)); await tick(); });
+    expect(slot.getByRole('button').textContent).toBe('65%');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a failed refresh keeps the chip, the open popover and the chosen request', async () => {
+  const at = Date.now() - 60_000;
+  const history = [
+    { at: at - hour, prompt: 90000, read: 0, write: 90000, miss: null, afterReset: false },
+    { at, prompt: 182593, read: 180933, write: 1658, miss: null, afterReset: false },
+  ];
+  let calls = 0;
+  const slot = await render(() => { if (calls++ === 0) return claudeState(at, { history }); throw new Error('Sync store unavailable'); });
+  try {
+    fireEvent.click(await slot.findByRole('button'));
+    const picker = await slot.findByRole('combobox', { name: 'Request details' });
+    fireEvent.change(picker, { target: { value: '0' } });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await tick();
+    expect(slot.getByRole('button', { name: /^Prompt cache/ }).textContent).toMatch(/^5[89]m$/);
+    expect(slot.getByRole('dialog', { name: 'Prompt cache' })).toBeTruthy();
+    expect(slot.getByRole('status').textContent).toContain('90k prompt');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('after compaction hides an open popover, the next request brings back the chip with the popover closed', async () => {
+  const at = Date.now() - 60_000;
+  const states = [claudeState(at), { ...claudeState(at), last: null }, claudeState(at + 30_000)];
+  let calls = 0;
+  const slot = await render(() => states[Math.min(calls++, states.length - 1)]!);
+  try {
+    fireEvent.click(await slot.findByRole('button'));
+    await slot.findByRole('dialog', { name: 'Prompt cache' });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await tick();
+    expect(slot.queryByRole('button')).toBe(null);
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await tick();
+    expect(slot.getByRole('button').getAttribute('aria-expanded')).toBe('false');
+    expect(slot.queryByRole('dialog')).toBe(null);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Codex: a miss bar draws its re-sent tokens in red, though Codex reports no writes', async () => {
+  const at = Date.now() - 60_000;
+  const slot = await render(() => ({ ...initialState(), prompt: 220000, read: 130000, misses: 1, missedTokens: 60000,
+    last: { at, prompt: 120000, read: 60000, write: 0, ttlMs: null, model: null },
+    lastMiss: { at, tokens: 60000, idleMs: 600_000, cause: 'idle' },
+    history: [
+      { at: at - 600_000, prompt: 100000, read: 70000, write: 0, miss: null, afterReset: false },
+      { at, prompt: 120000, read: 60000, write: 0, miss: { tokens: 40000, idleMs: 600_000, cause: 'idle' }, afterReset: false },
+    ] }));
+  try {
+    fireEvent.click(await slot.findByRole('button'));
+    const bar = (await slot.findByRole('dialog')).querySelector<HTMLElement>('.ch-bars > li[data-miss]')!;
+    const height = (part: string) => bar.querySelector<HTMLElement>(`[data-part="${part}"]`)!.style.height;
+    expect([height('miss'), height('rest'), height('read')]).toEqual([`${(40000 / 120000) * 100}%`, `${(20000 / 120000) * 100}%`, `${(60000 / 120000) * 100}%`]);
   } finally { slot.lifecycle.unmount(); }
 });
