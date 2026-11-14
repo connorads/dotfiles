@@ -17,6 +17,50 @@
         "alt": true,
         "shift": true
       }
+    },
+    {
+      "command": "modelPicker.toggle",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleModel",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleModelBackward",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleProvider",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleProviderBackward",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleReasoning",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "modelPicker.cycleReasoningBackward",
+      "platform": "mac",
+      "shortcut": null
+    },
+    {
+      "command": "plugin:claude-profiles/open-switcher",
+      "platform": "mac",
+      "shortcut": {
+        "key": "m",
+        "mod": true,
+        "shift": true
+      }
     }
   ]
 }

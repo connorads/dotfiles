@@ -23,10 +23,9 @@ The custom **Agent Switcher** plugin (`claude-profiles`) owns the model and
 account switcher, the usage badge and the `⌘⇧A` overlay. Read its
 [guide](../src/bb-plugins/claude-profiles/README.md#switcher).
 
-`⌘⇧M` opens the switcher and `Alt+1-9` select favourites. BB's own
-`modelPicker.*` shortcuts are unbound on mac through live keyboard overrides,
-not [preferences.json](../.config/bb/preferences.json), which accepts only thread
-navigation commands. Reapply them after `bb settings keyboard reset`.
+`⌘⇧M` opens the switcher and `Alt+1-9` select favourites.
+[preferences.json](../.config/bb/preferences.json) unbinds BB's own
+`modelPicker.*` shortcuts on mac and binds `⌘⇧M` to the switcher.
 The built-in `bb--provider-usage` plugin collects quota sources for Agent
 Switcher.
 
