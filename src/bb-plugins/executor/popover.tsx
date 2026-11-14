@@ -3,7 +3,7 @@ import { ChipPopover } from '@bb-plugins/chip';
 import { AddForm, looksLikeMcpUrl } from './add-form.tsx';
 import type { ConnectionView, StateView } from './contracts.ts';
 import { SignInPanel } from './sign-in.tsx';
-import { choose, message, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
+import { choose, message, refresh, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
 
 type Row = { id: string; keycap: string; choice: Choice; label: ReactNode; aside?: ReactNode; connection?: ConnectionView };
 
@@ -11,8 +11,9 @@ function rowsFor(view: StateView): Row[] {
   const fallback = view.connections.find(c => c.isDefault);
   return [
     { id: 'default', keycap: 'd', choice: { kind: 'default' }, label: 'Default', aside: fallback?.name ?? 'none' },
-    ...view.connections.slice(0, 9).map((connection, index): Row => ({
-      id: `c:${connection.id}`, keycap: String(index + 1), choice: { kind: 'connection', id: connection.id },
+    // Keys 1-9 reach the first nine; later connections are still rows, picked by arrows or pointer.
+    ...view.connections.map((connection, index): Row => ({
+      id: `c:${connection.id}`, keycap: index < 9 ? String(index + 1) : '', choice: { kind: 'connection', id: connection.id },
       label: connection.name, connection,
       aside: connection.status === 'signed-in' ? undefined : connection.status === 'signing-in' ? 'signing in' : 'sign in',
     })),
@@ -23,11 +24,14 @@ function rowsFor(view: StateView): Row[] {
 const sameChoice = (a: Choice, b: Choice | undefined) =>
   a.kind === (b?.kind ?? 'default') && (a.kind !== 'connection' || (b?.kind === 'connection' && b.id === a.id));
 
-export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClose }: {
-  view: StateView | null; threadId: string | null; choice: Choice | undefined; anchor: Anchor; instant: boolean; onClose: () => void;
+export function ExecutorPopover({ view, loadError, threadId, choice, anchor, instant, onClose }: {
+  view: StateView | null; loadError: string | null; threadId: string | null; choice: Choice | undefined;
+  anchor: Anchor; instant: boolean; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // The row whose save is in flight; further picks wait for it so one press sends one request.
+  const [pending, setPending] = useState<string | null>(null);
   const rows = view ? rowsFor(view) : [];
   const current = rows.find(row => sameChoice(row.choice, choice))?.id ?? 'default';
   const signIns = view?.signIns ?? [];
@@ -40,10 +44,15 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
     setAdding(url);
   }
 
+  // The add form closes on success, so a later failure is reported by the popover.
   async function added(id: string) {
     setAdding(null);
-    await choose(threadId, { kind: 'connection', id });
-    await rpc().call('signIn', { id, method: 'browser' });
+    try {
+      await choose(threadId, { kind: 'connection', id });
+      await rpc().call('signIn', { id, method: 'browser' });
+    } catch (cause) {
+      setError(message(cause));
+    }
   }
 
   // Row ids are fixed words or connection slugs ([a-z0-9-]), so the selector needs no escaping.
@@ -59,7 +68,9 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
   }, [view, current, focusRow]);
 
   async function pick(row: Row) {
+    if (pending) return;
     setError(null);
+    setPending(row.id);
     try {
       await choose(threadId, row.choice);
       if (row.connection && row.connection.status === 'signed-out') {
@@ -69,6 +80,8 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
       onClose();
     } catch (cause) {
       setError(message(cause));
+    } finally {
+      setPending(null);
     }
   }
 
@@ -103,15 +116,21 @@ export function ExecutorPopover({ view, threadId, choice, anchor, instant, onClo
       <h2>Executor connection</h2>
       <span className="ex-muted">{threadId ? 'for this thread' : 'before the first message'}</span>
     </header>
-    {!view ? <p className="ex-empty">Loading…</p>
+    {!view ? loadError
+        ? <div className="ex-empty ex-load-failed" role="alert">
+          <span>Could not load connections. {loadError}</span>
+          <button type="button" className="ex-button" onClick={() => void refresh()}>Try again</button>
+        </div>
+        : <p className="ex-empty">Loading…</p>
       : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one from Executor's Connect page.</p>
       : <section className="ex-rows" aria-label="Connections">
         {rows.map(row => <button key={row.id} type="button" className="ex-row" data-row={row.id}
-          aria-pressed={row.id === current} onClick={() => void pick(row)}>
-          <kbd>{row.keycap}</kbd>
+          aria-pressed={row.id === current} aria-busy={row.id === pending || undefined}
+          aria-disabled={pending !== null && row.id !== pending ? true : undefined} onClick={() => void pick(row)}>
+          {row.keycap ? <kbd>{row.keycap}</kbd> : <span aria-hidden />}
           <span className="ex-row-label">{row.label}</span>
           <span className="ex-row-aside" data-warn={row.connection && row.connection.status !== 'signed-in' ? '' : undefined}>
-            {row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
+            {row.id === pending ? 'saving…' : row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
           </span>
         </button>)}
         {!showAdd && <button type="button" className="ex-row" data-row="add" onClick={() => openAdd()}>

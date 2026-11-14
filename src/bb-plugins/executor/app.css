@@ -12,6 +12,7 @@
 .ex-header h2 { flex: 1; margin: 0; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
 .ex-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .ex-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
+.ex-load-failed { display: grid; justify-items: start; gap: 8px; color: var(--destructive-text, var(--destructive)); text-wrap: pretty; }
 
 .ex-rows { display: grid; padding: 4px; }
 .ex-row {
@@ -21,7 +22,7 @@
 }
 .ex-row:hover:not(:disabled), .ex-row:focus { background: var(--state-hover); outline: none; }
 .ex-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
-.ex-row:disabled { opacity: .55; cursor: default; }
+.ex-row:disabled, .ex-row[aria-disabled="true"] { opacity: .55; cursor: default; }
 .ex-row[aria-pressed="true"] .ex-row-label { font-weight: 600; }
 .ex-row kbd, .ex-keys kbd {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;

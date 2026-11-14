@@ -3,7 +3,7 @@ import { Button } from './components/ui/button.tsx';
 import { Input } from './components/ui/input.tsx';
 import type { ConnectionView, SignInView } from './contracts.ts';
 import { SignInPanel } from './sign-in.tsx';
-import { message, rpc, useExecutor } from './store.ts';
+import { message, refresh, rpc, useExecutor } from './store.ts';
 
 const STATUS: Record<ConnectionView['status'], string> = {
   'signed-in': 'Signed in',
@@ -12,13 +12,17 @@ const STATUS: Record<ConnectionView['status'], string> = {
 };
 
 export function ExecutorSettings() {
-  const { view } = useExecutor();
+  const { view, loadError } = useExecutor();
   const [error, setError] = useState<string | null>(null);
   const run = (work: Promise<unknown>) => {
     setError(null);
     work.catch(cause => setError(message(cause)));
   };
 
+  if (!view && loadError) return <div className="flex flex-wrap items-center gap-2" role="alert">
+    <p className="text-sm text-destructive">Could not load connections. {loadError}</p>
+    <Button size="sm" variant="ghost" onClick={() => void refresh()}>Try again</Button>
+  </div>;
   if (!view) return <p className="text-sm text-muted-foreground" role="status">Loading connections…</p>;
 
   return <div className="w-full space-y-5">
@@ -36,7 +40,7 @@ export function ExecutorSettings() {
       ? <p className="text-sm text-muted-foreground">No connections yet.</p>
       : <ul className="space-y-1" aria-label="Connections">
         {view.connections.map(connection => <ConnectionRow key={connection.id} connection={connection}
-          signIn={view.signIns.find(s => s.id === connection.id)} error={view.errors[connection.id]} run={run} />)}
+          signIn={view.signIns.find(s => s.id === connection.id)} error={view.errors[connection.id]} />)}
       </ul>}
 
     <AddConnection run={run} />
@@ -44,15 +48,23 @@ export function ExecutorSettings() {
   </div>;
 }
 
-function ConnectionRow({ connection, signIn, error, run }: {
+/** One action at a time per row: buttons wait while a request is in flight, and its failure shows in the row. */
+function ConnectionRow({ connection, signIn, error }: {
   connection: ConnectionView;
   signIn: SignInView | undefined;
   error: string | undefined;
-  run: (work: Promise<unknown>) => void;
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const run = (work: () => Promise<unknown>) => {
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
+    work().catch(cause => setFailure(message(cause))).finally(() => setBusy(false));
+  };
   const id = { id: connection.id };
-  return <li className="rounded-md px-2 py-2 hover:bg-accent/50">
+  return <li className="rounded-md px-2 py-2 hover:bg-accent/50" aria-busy={busy || undefined}>
     <div className="ex-connection">
       <div className="ex-connection-name min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -65,23 +77,24 @@ function ConnectionRow({ connection, signIn, error, run }: {
       </div>
       {connection.status === 'signed-out' &&
         <>
-          <Button size="sm" onClick={() => run(rpc().call('signIn', { ...id, method: 'browser' }))}>Sign in</Button>
-          <Button size="sm" variant="ghost"
-            onClick={() => run(rpc().call('signIn', { ...id, method: 'device' }))}>Use a code</Button>
+          <Button size="sm" disabled={busy} onClick={() => run(() => rpc().call('signIn', { ...id, method: 'browser' }))}>Sign in</Button>
+          <Button size="sm" variant="ghost" disabled={busy}
+            onClick={() => run(() => rpc().call('signIn', { ...id, method: 'device' }))}>Use a code</Button>
         </>}
       {connection.status === 'signed-in' &&
-        <Button size="sm" variant="ghost" onClick={() => run(rpc().call('signOut', id))}>Sign out</Button>}
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => rpc().call('signOut', id))}>Sign out</Button>}
       {!connection.isDefault &&
-        <Button size="sm" variant="ghost" onClick={() => run(rpc().call('setDefault', id))}>Make default</Button>}
-      <Button size="sm" variant={confirmRemove ? 'destructive' : 'ghost'}
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => rpc().call('setDefault', id))}>Make default</Button>}
+      <Button size="sm" variant={confirmRemove ? 'destructive' : 'ghost'} disabled={busy}
         onBlur={() => setConfirmRemove(false)}
         onClick={() => {
           if (!confirmRemove) { setConfirmRemove(true); return; }
-          run(rpc().call('remove', id));
+          run(() => rpc().call('remove', id));
         }}>{confirmRemove ? 'Confirm remove' : 'Remove'}</Button>
     </div>
     {signIn && <SignInPanel signIn={signIn} name={connection.name} />}
     {error && <p className="mt-1 text-xs text-destructive" role="alert">{error}</p>}
+    {failure && <p className="mt-1 text-xs text-destructive" role="alert">{failure}</p>}
   </li>;
 }
 

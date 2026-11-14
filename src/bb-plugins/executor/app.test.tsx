@@ -26,6 +26,28 @@ function stateOf(partial: Partial<StateView>): StateView {
   return { connections: [], signIns: [], errors: {}, toolsReady: true, ...partial };
 }
 
+// The store is shared by the whole file, so these run before any read succeeds.
+it('popover: a failed state read says why instead of loading forever', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => { throw new Error('Executor plugin server is not responding.'); }, threadChoice: () => ({ kind: 'default' }) },
+  });
+  act(() => toggle('t-failed', 'keyboard'));
+  const alert = await overlay.findByRole('alert');
+  expect(alert.textContent).toContain('Executor plugin server is not responding.');
+  expect(overlay.getByRole('button', { name: 'Try again' })).toBeTruthy();
+});
+
+it('settings: a failed state read says why and loads again on Try again', async () => {
+  let fail = true;
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: { state: () => { if (fail) throw new Error('Executor plugin server is not responding.'); return stateOf({}); } },
+  });
+  expect((await slot.findByRole('alert')).textContent).toContain('Executor plugin server is not responding.');
+  fail = false;
+  fireEvent.click(slot.getByRole('button', { name: 'Try again' }));
+  expect(await slot.findByText('No connections yet.')).toBeTruthy();
+});
+
 it('settings: adds a connection, then starts its sign-in', async () => {
   let view = stateOf({});
   const slot = renderSlot(app.settingsSections[0]!, {}, {
@@ -253,4 +275,88 @@ it('popover: shows the add form when there are no connections and keeps it open 
   expect((await overlay.findByRole('alert')).textContent).toBe('That is not an Executor MCP URL. It ends in /mcp.');
   expect(overlay.rpcCalls.find(c => c.method === 'add')?.input).toEqual({ name: 'Connection 1', url: 'https://example.com' });
   expect(overlay.getByRole('form', { name: 'Add connection' })).toBeTruthy();
+});
+
+it('popover: a failed save puts the chip back on the saved connection', async () => {
+  const handlers = {
+    state: () => two,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => { throw new Error('Could not save the choice.'); },
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-fail', isCompactViewport: false } as never, { rpc: handlers });
+  await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle('t-fail', 'keyboard'));
+  fireEvent.keyDown(await overlay.findByRole('dialog'), { key: 'o' });
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not save the choice.');
+  expect(await chip.findByRole('button', { name: 'Executor: Coding (default)' })).toBeTruthy();
+  expect(overlay.getByRole('button', { name: /Default/ }).getAttribute('aria-pressed')).toBe('true');
+});
+
+it('popover: one pick at a time while the save is in flight', async () => {
+  let finish: (value: null) => void = () => {};
+  const handlers = {
+    state: () => two,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => new Promise<null>(resolve => { finish = resolve; }),
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-pending', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(dialog, { key: 'o' });
+  fireEvent.keyDown(dialog, { key: 'o' });
+  fireEvent.keyDown(dialog, { key: '1' });
+  await waitFor(() => expect(overlay.getByRole('button', { name: /Off/ }).getAttribute('aria-busy')).toBe('true'));
+  expect(overlay.rpcCalls.filter(c => c.method === 'setThreadChoice')).toHaveLength(1);
+  await act(async () => finish(null));
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+});
+
+it('popover: a sign-in failure after adding stays on screen', async () => {
+  let view = two;
+  const handlers = {
+    state: () => view,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => null,
+    add: () => {
+      view = stateOf({ connections: [...two.connections, connection('connection-3', 'Connection 3', { status: 'signed-out' })] });
+      return { ok: true, id: 'connection-3' };
+    },
+    signIn: () => { throw new Error('Executor sign-in is unavailable.'); },
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-add-fail', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  fireEvent.change(await overlay.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Executor sign-in is unavailable.');
+});
+
+it('popover: connections past the ninth are rows without a key', async () => {
+  const eleven = stateOf({ connections: Array.from({ length: 11 }, (_, i) => connection(`c${i + 1}`, `Conn ${i + 1}`, { isDefault: i === 0 })) });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { state: () => eleven, threadChoice: () => ({ kind: 'default' }) } });
+  act(() => toggle('t-eleven', 'keyboard'));
+  const eleventh = await overlay.findByRole('button', { name: /Conn 11/ });
+  expect(eleventh.querySelector('kbd')).toBeNull();
+  expect(overlay.getByRole('button', { name: /Conn 9/ }).querySelector('kbd')?.textContent).toBe('9');
+});
+
+it('settings: a row waits for its request and shows its failure in the row', async () => {
+  let finish: (cause: Error) => void = () => {};
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: { state: () => two, signIn: () => new Promise((_, reject) => { finish = reject; }) },
+  });
+  const signIn = await slot.findByRole('button', { name: 'Sign in' });
+  fireEvent.click(signIn);
+  fireEvent.click(signIn);
+  expect(slot.rpcCalls.filter(c => c.method === 'signIn')).toHaveLength(1);
+  expect((signIn as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => finish(new Error('Executor sign-in is unavailable.')));
+  const alert = await slot.findByRole('alert');
+  expect(alert.textContent).toBe('Executor sign-in is unavailable.');
+  expect(alert.closest('li')?.textContent).toContain('Ops');
+  expect((signIn as HTMLButtonElement).disabled).toBe(false);
 });

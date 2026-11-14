@@ -12,6 +12,7 @@ export function SignInPanel({ signIn, name }: { signIn: SignInView; name: string
   const now = useNow(1_000);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   return <div className="ex-signin" role="group" aria-label={`Sign in to ${name}`}>
     {signIn.kind === 'browser'
       ? <p className="ex-signin-line">Finish signing in to {name} in your browser. BB picks it up when you approve.</p>
@@ -26,8 +27,10 @@ export function SignInPanel({ signIn, name }: { signIn: SignInView; name: string
       {signIn.kind === 'device' && <button type="button" className="ex-button" onClick={() => {
         void experimental_copyToClipboard({ text: signIn.userCode }).then(setCopied);
       }}>{copied ? 'Copied' : 'Copy code'}</button>}
-      <button type="button" className="ex-button" onClick={() => {
-        rpc().call('cancelSignIn', { id: signIn.id }).catch(cause => setError(message(cause)));
+      <button type="button" className="ex-button" disabled={cancelling} onClick={() => {
+        setCancelling(true);
+        setError(null);
+        rpc().call('cancelSignIn', { id: signIn.id }).catch(cause => setError(message(cause))).finally(() => setCancelling(false));
       }}>Cancel</button>
       <span className="ex-muted" aria-label="Expires in">{countdown(signIn.expiresAt, now)}</span>
     </div>

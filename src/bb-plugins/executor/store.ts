@@ -10,8 +10,9 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 /** instant: opened by keyboard, so it appears without an entrance. */
 export type Open = { threadId: string | null; anchor: Anchor; instant: boolean } | null;
 
-interface State { view: StateView | null; choices: ReadonlyMap<string, Choice>; draft: Choice; open: Open }
-let state: State = { view: null, choices: new Map(), draft: { kind: 'default' }, open: null };
+/** loadError: why the last state read failed; shown only while there is no view to keep. */
+interface State { view: StateView | null; loadError: string | null; choices: ReadonlyMap<string, Choice>; draft: Choice; open: Open }
+let state: State = { view: null, loadError: null, choices: new Map(), draft: { kind: 'default' }, open: null };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -26,9 +27,10 @@ export function rpc(): Rpc {
 
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
-/** A failed read keeps the last view; the next signal or refocus corrects it. */
+/** A failed read keeps the last view; the next signal, refocus or retry corrects it. */
 export async function refresh() {
-  try { set({ view: await rpc().call('state', null) }); } catch { /* server unreachable: keep the last view */ }
+  if (state.loadError) set({ loadError: null });
+  try { set({ view: await rpc().call('state', null), loadError: null }); } catch (cause) { set({ loadError: message(cause) }); }
 }
 
 export async function loadChoice(threadId: string) {
@@ -40,8 +42,19 @@ export async function loadChoice(threadId: string) {
 
 export async function choose(threadId: string | null, choice: Choice) {
   if (!threadId) { set({ draft: choice }); return; }
+  const previous = state.choices.get(threadId);
   set({ choices: new Map(state.choices).set(threadId, choice) });
-  await rpc().call('setThreadChoice', { threadId, choice });
+  try {
+    await rpc().call('setThreadChoice', { threadId, choice });
+  } catch (cause) {
+    // The server kept the old choice, so the chip must name it again unless a later pick replaced this one.
+    if (state.choices.get(threadId) === choice) {
+      const choices = new Map(state.choices);
+      if (previous) choices.set(threadId, previous); else choices.delete(threadId);
+      set({ choices });
+    }
+    throw cause;
+  }
 }
 
 export function resetDraft() { set({ draft: { kind: 'default' } }); }
