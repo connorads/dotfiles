@@ -113,6 +113,29 @@ status. Compare prepared files with the checkout using the CLI's copy exclusions
 unexpected file stops the bucket. Preserve authorised local attribution copies,
 such as Impeccable's `LICENSE` and `NOTICE.md`, before final review.
 
+### Report new upstream skills
+
+Each set records every upstream skill once: vendored in `skills-lock.json`, or
+skipped in `skills-exclude.json` with a reason. Scan each set against the
+checkouts from this step:
+
+```bash
+gaps=~/.config/skills/personal/update-vendored-skills/scripts/skill-gaps.py
+python3 "$gaps" scan ~/.config/skills/vendor/<set> \
+  --checkout <owner/repo>=<checkout dir>   # one per source in the set's lock
+```
+
+The scan reads only the folders the set already vendors from. Do not scan the
+unsorted bucket. Report each finding and do not act on it:
+
+- `candidate`: a new skill. Ask the user to vendor or exclude it.
+- `stale-exclusion`: the skill left upstream. Delete the entry in this refresh.
+- `referenced-exclusion`: a vendored skill names an excluded one. Ask again.
+
+A candidate the user vendors follows the add procedure and this review. A skip
+goes into the set's `skills-exclude.json` in the set's refresh commit. An
+undecided candidate stays out of both files, so the next pass reports it again.
+
 ### Preserve lockfile provenance
 
 The temporary CLI entry has `sourceType: local`. Build the candidate lockfile from

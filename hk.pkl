@@ -654,6 +654,17 @@ local fast_steps = new Mapping<String, Step> {
         check = "zsh .config/zsh/functions/patch/skill-patch check"
     }
 
+    // A set's skills-exclude.json records skip decisions so update passes
+    // do not re-ask them. A name that is also in the lock contradicts itself.
+    ["vendored-skill-exclusions"] {
+        glob = List(
+            ".config/skills/vendor/*/skills-exclude.json",
+            ".config/skills/vendor/*/skills-lock.json",
+            ".config/skills/personal/update-vendored-skills/scripts/skill-gaps.py"
+        )
+        check = "python3 .config/skills/personal/update-vendored-skills/scripts/skill-gaps.py check .config/skills/vendor"
+    }
+
     ["codex-config-trust"] {
         glob = List(".codex/config.toml")
         check = "git show :{{files}} | rg -q '^\\[projects\\.' && { echo '.codex/config.toml contains staged machine-local [projects.*] trust state' >&2; exit 1; } || exit 0"

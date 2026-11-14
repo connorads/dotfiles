@@ -1,0 +1,4 @@
+{
+  "ponytail-gain": "Benchmark scoreboard that reads upstream plugin hooks, which are not vendored.",
+  "ponytail-help": "Command list for the upstream plugin, which is not vendored."
+}

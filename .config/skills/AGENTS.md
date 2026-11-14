@@ -131,6 +131,13 @@ Name a set for the **repo it came from, not the org**, wherever the org publishe
 than one: `vercel-labs-agent-skills`, not `vercel-labs`, because six other
 `vercel-labs/*` sources stay in the bucket and a bare org name would promise all seven.
 
+A set records every upstream skill beside its vendored ones exactly once. It is
+either in `skills-lock.json` or in `skills-exclude.json` with the reason it was
+skipped. The update workflow's `skill-gaps.py scan` reports only skills in neither
+file, so a decision is asked once. An exclusion is asked again only when it leaves
+upstream (delete it) or a vendored skill starts naming it. The
+`vendored-skill-exclusions` hk step rejects a name in both files and an empty reason.
+
 The **manual** skills are a bucket regardless of count: they share only provenance (no
 upstream, no lockfile, refreshed individually), so they never become a set.
 
@@ -180,6 +187,7 @@ above) are curation calls.
     <set>/                 vendored SET = one skills-CLI project dir per cohesive group · skl source '<set>'
       .agents/skills/<name>/  real CLI-cloned files (CLI-managed, project scope)
       skills-lock.json     the set's own lockfile (reviewed update workflow)
+      skills-exclude.json  upstream skills skipped on purpose: name -> reason
     .agents/skills/<name>/ unsorted bucket: real CLI-cloned singletons (project scope) · skl source 'vendor'
     skills-lock.json       the unsorted bucket's lockfile (reviewed update workflow)
     manual/<name>/         manual bucket: manually-vendored skills (no upstream, no lock) · skl source 'manual'
@@ -454,9 +462,9 @@ procedure before replacing vetted content.
   package-runner downloads and self-updates. Native analysis requires an existing engine.
 
 - `ponytail` is a set of four skills from `DietrichGebert/ponytail` (MIT): the core
-  mode, `ponytail-review`, `ponytail-audit` and `ponytail-debt`. Upstream's `ponytail-gain`
-  (benchmark scoreboard) and `ponytail-help` (plugin command list) are not vendored, nor
-  are its hooks, MCP server or per-host adapters. The skills read no hook state, so they
+  mode, `ponytail-review`, `ponytail-audit` and `ponytail-debt`. Its skipped skills are in
+  `vendor/ponytail/skills-exclude.json`. Its hooks, MCP server and per-host adapters are
+  not vendored either. The skills read no hook state, so they
   work alone. `LICENSE` sits at the set root for attribution.
 
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
