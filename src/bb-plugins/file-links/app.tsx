@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { definePluginApp, useBbNavigate, useSdk, useRpc, type PluginFileOpenerProps } from '@get-bb/plugin-sdk/app';
 import { parseLink, resolveLink, type Link, type Match } from './resolver';
 import { documentContext, fileLookup } from './sdk';
@@ -24,13 +24,21 @@ function Preview({path,source,Original}: PluginFileOpenerProps) {
 
   function dismiss() {
     request.current?.abort();
+    request.current = null;
     dialog.current?.close();
     setState({kind:'idle'});
     anchor.current?.focus();
   }
   function open(match:Match,hostId:string,location:Link['location']) {
+    dialog.current?.close();
     const opened = navigate.experimental_openFilePreview({target:{kind:'host',hostId,path:match.path},location});
     setState(opened ? {kind:'idle'} : {kind:'message',text:'This view could not open the file.'});
+    if (!opened) anchor.current?.focus();
+  }
+  function escape(event:KeyboardEvent<HTMLDivElement>) {
+    if (event.key!=='Escape' || (state.kind!=='finding' && state.kind!=='message')) return;
+    event.preventDefault();
+    dismiss();
   }
   async function follow(event:MouseEvent<HTMLDivElement>) {
     if (event.button!==0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
@@ -43,10 +51,14 @@ function Preview({path,source,Original}: PluginFileOpenerProps) {
     const link = href && parseLink(href);
     if (!link) return;
     event.preventDefault(); event.stopPropagation();
+    // A repeat click on the link already being looked up keeps that lookup.
+    if (request.current && anchor.current===clicked) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     anchor.current = clicked;
+    // Safari does not focus a clicked link; Escape and refocus need it focused.
+    clicked.focus({preventScroll:true});
     setState({kind:'finding'});
     try {
       const context = await documentContext(sdk,source,path,controller.signal);
@@ -65,9 +77,11 @@ function Preview({path,source,Original}: PluginFileOpenerProps) {
       }
     } catch {
       if (!controller.signal.aborted) setState({kind:'message',text:'Could not check the file. Try again when the workspace is available.'});
+    } finally {
+      if (request.current===controller) request.current = null;
     }
   }
-  return <div className="fl-preview" onClickCapture={follow}>
+  return <div className="fl-preview" onClickCapture={follow} onKeyDown={escape}>
     {(state.kind==='finding' || state.kind==='message') && <div className="fl-status">
       <span role="status">{state.kind==='finding' ? 'Finding file...' : state.text}</span>
       <button type="button" onClick={dismiss}>{state.kind==='finding' ? 'Cancel' : 'Dismiss'}</button>

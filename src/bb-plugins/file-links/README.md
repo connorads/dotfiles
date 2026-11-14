@@ -20,8 +20,10 @@ flowchart LR
   visible threads in the current project on the same host.
 - Duplicate matches open a keyboard-accessible chooser. Escape cancels and
   returns focus to the original link.
-- Cancel stops a pending lookup. Changing documents or disabling the plugin
-  aborts it. Failed or incomplete searches open nothing.
+- Cancel or Escape stops a pending lookup; Escape also dismisses a message.
+  Repeat clicks on the link being looked up keep the pending lookup. Changing
+  documents or disabling the plugin aborts it. Failed or incomplete searches
+  open nothing.
 - Web links, editor links, downloads, modifier clicks and unsupported anchors
   retain BB's handling. Line-number fragments retain their requested range.
 
