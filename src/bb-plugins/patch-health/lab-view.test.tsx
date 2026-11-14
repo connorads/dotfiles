@@ -61,3 +61,14 @@ test('a stopped lab offers a fresh rehearsal after recovery', () => {
   expect(view.getByRole('button', { name: 'Test again' })).toBeTruthy();
   expect(view.queryByRole('button', { name: 'Stop test copy' })).toBeNull();
 });
+test('a refused action shows its reason with one refresh instead of blaming the connection', () => {
+  const view = render({ kind: 'unavailable', reason: 'Rehearsal changed. Refresh before continuing.' });
+  expect(view.getByText('Rehearsal changed. Refresh before continuing.').closest('details')?.open).toBe(true);
+  expect(view.queryByText(/Check your connection/)).toBeNull();
+  expect(view.getAllByRole('button', { name: 'Refresh' })).toHaveLength(1);
+});
+test('a sent action reports progress while its button is disabled', () => {
+  const view = render(sample('ready'), { pending: true });
+  expect(view.getByRole('button', { name: 'Run test' }).hasAttribute('disabled')).toBe(true);
+  expect(view.getByRole('status').textContent).toBe('Working…');
+});

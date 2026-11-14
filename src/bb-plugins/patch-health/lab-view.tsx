@@ -18,7 +18,9 @@ export function LabView({ state, pending, error, onPrepare, onRun, onReconcile, 
     : lab?.phase === 'stopped' ? 'The test copy has stopped'
     : lab?.phase === 'blocked' ? 'The test could not finish'
     : 'Test the fixes without changing your BB';
-  const description = unavailable ? 'Check your connection, then select Refresh.'
+  const refused = error === null && state?.kind === 'unavailable';
+  const description = refused ? 'See the reason in Test details, then select Refresh.'
+    : unavailable ? 'Check your connection, then select Refresh.'
     : finished ? 'Your current BB has not changed. You do not need to restart anything.'
     : active ? 'Your BB stays running. You can close this window and check back later.'
     : lab?.phase === 'ready' ? 'The fixes are prepared in a separate copy of BB. Run the test when you are ready.'
@@ -33,13 +35,14 @@ export function LabView({ state, pending, error, onPrepare, onRun, onReconcile, 
     <h3 role={active ? 'status' : undefined}>{title}</h3>
     <p role={unavailable ? 'alert' : undefined}>{description}</p>
     {finished && <p>Installing the fixes in your BB is the next step. That is not available here yet.</p>}
-    {!finished && <div className="ph-next-actions">
+    {(unavailable || !finished) && <div className="ph-next-actions">
       {unavailable ? <button type="button" disabled={pending} onClick={onRefresh}>Refresh</button>
         : lab?.phase === 'ready' ? <button type="button" disabled={blocked} onClick={() => onRun(lab.id, lab.revision)}>Run test</button>
           : lab?.phase === 'interrupted' ? <button type="button" disabled={blocked} onClick={() => onReconcile(lab.id, lab.revision)}>Stop test copy</button>
             : !active && prepareButton()}
+      {pending && state && !unavailable && !active && <span role="status">Working…</span>}
     </div>}
-    {(lab || unavailable) && <details><summary>Test details</summary>
+    {(lab || unavailable) && <details open={refused}><summary>Test details</summary>
       {(error || state?.kind === 'unavailable') && <p>{error ?? (state?.kind === 'unavailable' ? state.reason : '')}</p>}
       {lab && <>
         <dl>
@@ -52,10 +55,10 @@ export function LabView({ state, pending, error, onPrepare, onRun, onReconcile, 
         <ol>{lab.events.map((event, index) => <li key={`${index}-${event}`}>{event}</li>)}</ol>
         <p>Test ID: <code>{lab.id}</code></p><p>Test files: <code>{lab.root}</code></p>
       </>}
-      <div className="ph-next-actions">
+      {!unavailable && <div className="ph-next-actions">
         {finished && prepareButton()}
         <button type="button" disabled={pending} onClick={onRefresh}>Refresh</button>
-      </div>
+      </div>}
     </details>}
   </section>;
 }
