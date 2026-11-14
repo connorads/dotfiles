@@ -7,10 +7,13 @@ import { count, shortModel, usd } from './src/format.ts';
 import { PeriodSwitch, UsagePage } from './page.tsx';
 import './app.css';
 
+/** A thread whose only models are missing from the price file has no estimate, not a $0 one. */
+const unpriced = (view: ThreadView) => view.usd === 0 && view.unpricedTokens > 0;
+
 export function describeThread(view: ThreadView): string {
   const { parts } = view;
   return [
-    `${usd(view.usd)} at API prices · ${count(view.requests)} requests`,
+    `${unpriced(view) ? 'No list price' : `${usd(view.usd)} at API prices`} · ${count(view.requests)} requests`,
     `Cache read ${usd(parts.cacheRead)} · cache write ${usd(parts.cacheWrite)} · input ${usd(parts.input)} · output ${usd(parts.output)}`,
     ...view.models.slice(0, 4).map(model => `${shortModel(model.model)}: ${model.priced ? usd(model.usd) : 'no list price'}`),
     'Click for the breakdown',
@@ -28,7 +31,7 @@ function CostChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps
   const summary = describeThread(view);
   return <Chip className="cost-chip" icon={<Icon name="cost/coins" />} aria-label={`Thread cost. ${summary}`} title={summary}
     onClick={() => navigate.toPluginPanel('usage', { subPath: `thread/${threadId}` })}>
-    {!isCompactViewport && <ChipValue>{usd(view.usd)}</ChipValue>}
+    {!isCompactViewport && <ChipValue>{unpriced(view) ? 'no price' : usd(view.usd)}</ChipValue>}
   </Chip>;
 }
 

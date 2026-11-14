@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import type { DayCost } from './src/report.ts';
 import { providers, type Provider } from './src/records.ts';
 import { dayLabel, dayShort, niceTicks, providerName, usd, usdShort } from './src/format.ts';
@@ -16,6 +16,19 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
   const labelEvery = days.length > 45 ? 14 : days.length > 10 ? 7 : 1;
   const present = providers.filter(provider => days.some(day => (day.byProvider[provider] ?? 0) > 0));
   const shown = active === null ? null : days[active]!;
+  // One tab stop for the whole chart: the last focused column, else today. Arrow keys, Home and End move between days.
+  const [stop, setStop] = useState<number | null>(null);
+  const tabStop = stop !== null && stop < days.length ? stop : days.length - 1;
+  const move = (event: KeyboardEvent<HTMLOListElement>) => {
+    const columns = Array.from(event.currentTarget.children);
+    const from = columns.indexOf(event.target as Element);
+    const step = ({ ArrowLeft: -1, ArrowRight: 1 } as Record<string, number>)[event.key];
+    const target = event.key === 'Home' ? 0 : event.key === 'End' ? days.length - 1
+      : step === undefined || from < 0 ? null : Math.min(days.length - 1, Math.max(0, from + step));
+    if (target === null) return;
+    event.preventDefault();
+    (columns[target] as HTMLElement | undefined)?.focus();
+  };
   return <figure className="cost-chart" aria-label={`Daily cost over ${days.length} days, stacked by provider`}>
     <figcaption className="cost-legend">
       {present.map(provider => <span key={provider} data-provider={provider}>{providerName[provider]}</span>)}
@@ -24,12 +37,12 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
       <ol className="cost-grid" aria-hidden>
         {[...ticks].reverse().map(tick => <li key={tick}><span>{usdShort(tick)}</span></li>)}
       </ol>
-      <ol className="cost-columns" data-dense={days.length > 45 || undefined}>
+      <ol className="cost-columns" data-dense={days.length > 45 || undefined} onKeyDown={move}>
         {days.map((day, index) => {
           const segments = present.map(provider => [provider, day.byProvider[provider] ?? 0] as const).filter(([, value]) => value > 0);
           return <li key={day.day} data-today={day.day === today || undefined} data-active={active === index || undefined}
-            tabIndex={0} aria-label={`${dayLabel(day.day)}: ${usd(day.usd)}`}
-            onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onBlur={() => setActive(null)}>
+            tabIndex={index === tabStop ? 0 : -1} aria-label={`${dayLabel(day.day)}: ${usd(day.usd)}`}
+            onMouseEnter={() => setActive(index)} onFocus={() => { setActive(index); setStop(index); }} onBlur={() => setActive(null)}>
             <span className="cost-stack" style={{ height: `${day.usd / top * 100}%` }}>
               {segments.map(([provider, value]) =>
                 <i key={provider} data-provider={provider} style={{ flexGrow: value / day.usd }} />)}

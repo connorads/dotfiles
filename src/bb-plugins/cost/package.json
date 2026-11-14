@@ -24,8 +24,9 @@
     ]
   },
   "scripts": {
-    "test": "pnpm test:core",
+    "test": "pnpm test:core && pnpm test:ui",
     "test:core": "node --experimental-strip-types --no-warnings --test src/*.test.ts",
+    "test:ui": "vitest run app.test.tsx",
     "typecheck": "tsc --noEmit",
     "build": "bb plugin build",
     "dev": "bb plugin dev"

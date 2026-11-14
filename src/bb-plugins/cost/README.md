@@ -9,7 +9,10 @@ Subscription plans do not bill these amounts. The figures show usage in API term
   Click it to open the Usage page at that thread.
 - The **Usage** page in the navigation rail shows the last 7, 30 or 90 days. Pick the period in the page header.
   - A summary: the total, this month against your plans, the daily average, requests and the unpriced share.
-  - Daily columns stacked by provider. Hover over or focus a column for its split.
+  - While a new period or grouping loads, the previous figures stay, dimmed and labelled with their own period.
+    A failed load keeps them on screen with a **Retry** button.
+  - Daily columns stacked by provider. Hover over or focus a column for its split. The chart is one tab stop;
+    the arrow keys, Home and End move between days.
   - **Threads**: each BB thread, and each directory used outside BB, such as a terminal CLI session.
   - **Projects**: BB projects with their threads. Usage outside BB joins the project whose checkout contains its directory.
     The deepest checkout wins. Checkouts two segments deep or shallower, such as a home directory, never match.

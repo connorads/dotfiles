@@ -4,6 +4,7 @@ import type { rpcContract } from './contracts.ts';
 import { byLength, byProvider, histogram, stats, type InsightPoint, type Metric } from './src/insights.ts';
 import { count, percent, providerName, tokens, usd, usdShort } from './src/format.ts';
 import { providers } from './src/records.ts';
+import { Retry } from './retry.tsx';
 
 const metrics: { id: Metric; label: string; unit: string }[] = [
   { id: 'requests', label: 'Requests', unit: 'model requests' },
@@ -14,13 +15,23 @@ const metrics: { id: Metric; label: string; unit: string }[] = [
 /** Thread-level analysis: how cost spreads across threads, and how it grows with length. */
 export function Insights({ days, grouped }: { days: 7 | 30 | 90; grouped: boolean }) {
   const rpc = useRpc<typeof rpcContract>();
-  const [points, setPoints] = useState<InsightPoint[] | null>(null);
+  // Points with the window they cover, so another period's points never show under this one.
+  const [loaded, setLoaded] = useState<{ key: string; points: InsightPoint[] } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>('requests');
-  const load = useCallback(() => { rpc.call('insights', { days, group: grouped }).then(value => setPoints(value.points), () => setPoints([])); },
-    [rpc, days, grouped]);
-  useEffect(load, [load]);
+  const key = `${days}:${grouped}`;
+  const latest = useRef(0);
+  const load = useCallback(() => {
+    const request = ++latest.current;
+    return rpc.call('insights', { days, group: grouped }).then(
+      value => { if (request === latest.current) { setLoaded({ key, points: value.points }); setFailed(null); } },
+      () => { if (request === latest.current) setFailed(key); });
+  }, [rpc, days, grouped, key]);
+  useEffect(() => { void load(); }, [load]);
   useRealtime('usage-changed', load);
+  const points = loaded?.key === key ? loaded.points : null;
   const summary = useMemo(() => points && stats(points.map(point => point.usd)), [points]);
+  if (failed === key && !points) return <div className="cost-blank" role="alert">Insights could not load. <Retry onRetry={load} /></div>;
   if (!points || !summary) return <p className="cost-blank">Loading…</p>;
   if (!points.length) return <p className="cost-blank">No BB threads used a model in this period.</p>;
   const unit = metrics.find(value => value.id === metric)!;
