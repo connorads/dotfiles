@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useComposer, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import type { KeyedProfile, rpcContract } from '../../contracts.ts';
 import type { ConnectorState } from '../../src/accounts/connectors-contract.ts';
-import { open, subscribeSelection } from './store.ts';
+import { open, registerAnchor, subscribeSelection } from './store.ts';
 import { Glyph, useController } from './switcher.tsx';
 import './switcher.css';
 
@@ -46,7 +46,7 @@ export function Chip() {
   const shownId = accounts?.pendingId ?? accounts?.currentId;
   const account = accounts && accounts.profiles.length > 1 ? accounts.profiles.find(profile => profile.id === shownId) : undefined;
   const stillOn = connectors && !connectors.enabled && connectors.launch === 'on';
-  return <button type="button" className="sw-chip" onClick={() => open(composer)}
+  return <button type="button" className="sw-chip" ref={element => registerAnchor(composer.key, element)} onClick={() => open(composer)}
     aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${account ? `, ${account.label} account` : ''}`} title="Switch model (⌘⇧M)">
     <Glyph providerId={providerId} />
     <span>{name}</span>

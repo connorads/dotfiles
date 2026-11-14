@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { accountChips, quickRows, ring, searchGroups, stepEffort, type ProviderCatalog } from './view.ts';
+import { accountChips, placement, quickRows, ring, searchGroups, stepEffort, type ProviderCatalog } from './view.ts';
 
 const efforts = (...levels: string[]) => levels.map(reasoningEffort => ({ reasoningEffort }));
 const catalog: ProviderCatalog[] = [
@@ -71,4 +71,12 @@ test('the account row appears only for Claude with more than one account', () =>
   expect(accountChips('claude-code', { ...accounts, profiles: profiles.slice(0, 1) }, {})).toEqual([]);
   expect(accountChips('claude-code', { ...accounts, pendingId: 'trove' }, { trove: true })
     .map(c => [c.profile.key, c.selected, c.pending, c.connectors])).toEqual([['S', false, false, false], ['T', true, true, true]]);
+});
+
+test('the switcher opens beside its chip and stays inside the window', () => {
+  const viewport = { width: 1280, height: 860 };
+  expect(placement({ top: 800, bottom: 824, left: 500 }, viewport)).toEqual({ left: 500, bottom: 68 });
+  expect(placement({ top: 150, bottom: 174, left: 900 }, viewport)).toEqual({ left: 848, top: 182 });
+  expect(placement({ top: 150, bottom: 174, left: 2 }, viewport)).toEqual({ left: 12, top: 182 });
+  expect(placement(null, viewport)).toBeNull();
 });

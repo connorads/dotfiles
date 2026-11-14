@@ -98,6 +98,13 @@ export function stepEffort(levels: readonly Effort[], current: Effort | null, di
   return next ?? null;
 }
 
+// Opens above a chip in the lower half of the window and below one in the upper half, inside the window.
+export function placement(anchor: { top: number; bottom: number; left: number } | null, viewport: { width: number; height: number }, width = 420, gap = 8) {
+  if (!anchor) return null;
+  const left = Math.max(12, Math.min(anchor.left, viewport.width - width - 12));
+  return anchor.top > viewport.height / 2 ? { left, bottom: viewport.height - anchor.top + gap } : { left, top: anchor.bottom + gap };
+}
+
 export type Tone = 'normal' | 'warning' | 'critical' | 'unknown';
 export function ring(usage: Usage | undefined): { percent: number | null; tone: Tone; label: string } {
   if (!usage || usage.status !== 'ok' || !usage.windows.length) return { percent: null, tone: 'unknown', label: usage?.message ?? 'Usage unavailable' };

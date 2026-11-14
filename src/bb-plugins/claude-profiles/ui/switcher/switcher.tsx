@@ -6,8 +6,8 @@ import type { KeyedProfile, rpcContract } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { createController, type Controller } from './controller.ts';
-import { close, open, openedState, subscribe } from './store.ts';
-import { accountChips, modelOf, quickRows, ring, searchGroups, stepEffort, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
+import { close, open, openedState, subscribe, type Anchor } from './store.ts';
+import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
 import './switcher.css';
 
 type Accounts = { supported: boolean; profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
@@ -45,7 +45,7 @@ export function Overlay() {
   const composer = composers.find(candidate => candidate.key === opened?.key);
   useEffect(() => { if (opened && !composer) close(); }, [opened, composer]);
   if (!composer) return null;
-  return <Switcher key={composer.key} composer={composer} onClose={() => { close(); composer.focus(); }} />;
+  return <Switcher key={composer.key} composer={composer} anchor={opened?.anchor ?? null} onClose={() => { close(); composer.focus(); }} />;
 }
 
 const GLYPHS: Record<string, string> = { 'claude-code': '✳', codex: '◎', 'acp-opencode': 'O', pi: 'π' };
@@ -72,7 +72,7 @@ export function AccountBadge({ chip, usage }: { chip: Pick<AccountChip, 'profile
   </span>;
 }
 
-export function Switcher({ composer, onClose }: { composer: PluginComposerApi; onClose: () => void }) {
+export function Switcher({ composer, onClose, anchor = null }: { composer: PluginComposerApi; onClose: () => void; anchor?: Anchor | null }) {
   const own = useController(composer);
   const controller = controllers.get(composer.key) ?? own;
   const rpc = useRpc<typeof rpcContract>();
@@ -272,7 +272,8 @@ export function Switcher({ composer, onClose }: { composer: PluginComposerApi; o
   }
 
   const offset = (group: number) => groups.slice(0, group).reduce((total, g) => total + g.results.length, 0);
-  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" aria-label="Switch model" aria-busy={busy || loading} onKeyDown={keyboard}
+  const position = placement(anchor, { width: window.innerWidth, height: window.innerHeight });
+  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} style={position ?? undefined} aria-label="Switch model" aria-busy={busy || loading} onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); }}
     onPointerDown={event => { if (event.target === event.currentTarget && !working.current) onClose(); }}>
     {view === 'quick' ? <>

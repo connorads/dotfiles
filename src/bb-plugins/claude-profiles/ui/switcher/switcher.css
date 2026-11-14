@@ -2,6 +2,7 @@
   margin: auto auto min(18vh, 160px); padding: 6px; overflow: auto; color: var(--popover-foreground, var(--foreground));
   background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; font-size: 13.5px;
   box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; outline: none; scrollbar-width: none; }
+.sw-dialog[data-anchored] { position: fixed; margin: 0; inset: auto; }
 .sw-dialog[open] { animation: sw-enter 140ms var(--sw-ease); }
 .sw-dialog::backdrop { background: #0000003d; }
 @keyframes sw-enter { from { opacity: 0; transform: translateY(6px) scale(.985); } }
