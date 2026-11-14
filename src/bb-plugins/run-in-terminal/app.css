@@ -1,6 +1,20 @@
-.run-in-terminal-error {
-  position: fixed; right: 16px; bottom: 16px; z-index: 50; max-width: 360px; margin: 0; padding: 8px 12px;
-  border: 1px solid color-mix(in oklch, var(--destructive) 45%, var(--border)); border-radius: 8px;
-  background: var(--popover); color: var(--destructive-text); font: var(--text-xs, 12px)/1.4 var(--font-sans);
-  box-shadow: 0 8px 20px -8px rgb(0 0 0 / .3);
+.run-in-terminal-notice {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50; box-sizing: border-box; max-width: min(360px, calc(100vw - 32px));
+  display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--popover); color: var(--muted-foreground); font: var(--text-xs, 12px)/1.4 var(--font-sans);
+  overflow-wrap: anywhere; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .3);
 }
+.run-in-terminal-notice:has(.run-in-terminal-error) {
+  padding-right: 6px; border-color: color-mix(in oklch, var(--destructive) 45%, var(--border));
+}
+/* Fast pastes finish before this shows, so a successful paste does not flash a notice. */
+.run-in-terminal-pending { animation: run-in-terminal-show 0s linear .4s both; }
+@keyframes run-in-terminal-show { from { visibility: hidden; } to { visibility: visible; } }
+.run-in-terminal-error { flex: 1; min-width: 0; margin: 0; color: var(--destructive-text); }
+.run-in-terminal-dismiss {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin: -4px 0; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); cursor: pointer;
+}
+.run-in-terminal-dismiss:hover { background: var(--state-hover, var(--muted)); color: var(--foreground); }
+.run-in-terminal-dismiss:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }

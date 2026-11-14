@@ -18,6 +18,11 @@ and exported variables carry over between pastes. A new terminal gets the text
 after its shell draws the first prompt. The paste is bracketed, so the shell
 shows multi-line text as one editable buffer instead of running each line.
 
+A notice in the bottom-right corner reads "Pasting into the Commands terminal…"
+while a slow paste is in flight. Further clicks in that thread are ignored until
+it finishes, so the buffer never holds the same commands twice. A failed paste
+shows an error there instead; it closes with its close button or after 6 s.
+
 BB has no plugin slot on code fences, so the button cannot sit beside a
 fence's copy button.
 
