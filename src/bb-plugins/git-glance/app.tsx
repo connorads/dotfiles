@@ -62,7 +62,7 @@ function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const files = repo ? new Set(repo.changes.map(c => c.path)).size + repo.hidden : 0;
   const fetchFailed = fetch.failure !== null || fetchRequestError !== null;
   const danger = repo && (repo.operation || repo.changes.some(c => c.area === 'conflicted'));
-  const branch = repo ? repo.branch.head ?? repo.branch.oid?.slice(0, 7) ?? 'unborn' : 'Choose repo';
+  const branch = repo ? repo.branch.head ?? repo.branch.oid?.slice(0, 7) ?? 'unborn' : error ? 'Git unavailable' : 'Choose repo';
   const label = repo
     ? [`Git: ${branch}`, repo.branch.ahead && `${repo.branch.ahead} to push`, repo.branch.behind && `${repo.branch.behind} to pull`,
       files ? `${files} changed` : 'clean', repo.remotes.length > 0 && (fetchFailed ? 'Fetch failed. Counts use cached remote data.' : 'Counts use cached remote data. Open to check the remote.')].filter(Boolean).join(', ')

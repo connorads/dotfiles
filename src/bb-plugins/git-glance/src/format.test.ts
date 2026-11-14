@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { age, diffBlocks, freshKeys, splitPath } from './format.ts';
+import { age, diffBlocks, freshKeys, plural, splitPath } from './format.ts';
 
 test('age shortens recent times and dates older ones', () => {
   const now = Date.UTC(2026, 9, 11, 12);
@@ -27,4 +27,9 @@ test('fresh keys are those added or changed since the previous render, never on 
   const next = new Map([['a', '1/0'], ['b', '2/0'], ['c', '0/1']]);
   assert.deepEqual([...freshKeys(null, next)], []);
   assert.deepEqual([...freshKeys(new Map([['a', '1/0'], ['b', '1/0']]), next)], ['b', 'c']);
+});
+
+test('plural takes an irregular plural form', () => {
+  assert.deepEqual([plural(1, 'file'), plural(2, 'file')], ['1 file', '2 files']);
+  assert.deepEqual([plural(1, 'stash', 'stashes'), plural(2, 'stash', 'stashes')], ['1 stash', '2 stashes']);
 });

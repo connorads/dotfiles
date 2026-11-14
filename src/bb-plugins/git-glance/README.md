@@ -127,6 +127,8 @@ flowchart LR
   operations and clears after a successful fetch.
 - **Watching files** describes local file and ref updates, separately from remote checks.
 - One operation runs per checkout. Click the running button to cancel it.
+  An action requested while another runs starts nothing; the pop-up names the
+  running operation, and the commit form keeps the draft for another try.
 - Git never prompts. Credential helpers and a running ssh-agent work; anything
   that needs a prompt fails with a hint to authenticate in a terminal.
 

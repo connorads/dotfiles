@@ -6,8 +6,9 @@ import { subjectProject } from './contracts.ts';
 import { fetchRequestFailed, renew, useRepo } from './repo-store.ts';
 import { FolderPicker } from './folder-picker.tsx';
 import { RepoView } from './repo-view.tsx';
-import { available } from './sync-bar.tsx';
+import { available, describe } from './sync-bar.tsx';
 import { message, Zoomed } from './ui.tsx';
+import { refusedBy } from './src/ops.ts';
 
 export type Anchor = { top: number; right: number; bottom: number; left: number } | null;
 
@@ -51,7 +52,14 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   const runOp = useCallback((request: OpRequest) => {
     if (!state.root) return Promise.resolve(false);
     setActionError(null);
-    return rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).then(() => true, cause => {
+    return rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).then(({ op }) => {
+      const blocker = refusedBy(op, request);
+      if (blocker) {
+        setActionError(`${describe(blocker.request).name} is running. Try again when it finishes.`);
+        return false;
+      }
+      return true;
+    }, cause => {
       if (request.kind === 'fetch') fetchRequestFailed(threadId, state.root!, cause);
       else setActionError(message(cause));
       return false;

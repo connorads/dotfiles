@@ -29,7 +29,7 @@ export function CommitList({ commits, threadId, now, copied, onCopy, fresh, stam
         <span className="gg-subject">{commit.subject}</span>
         {commit.refs.map(ref => <span key={`${ref.kind}:${ref.name}`} className="gg-ref" data-kind={ref.kind}
           style={ref.kind === 'head' ? { '--gg-ref': laneColour(row.lane) } as React.CSSProperties : undefined}>
-          <Icon name={ref.kind === 'tag' ? 'Pin' : ref.kind === 'remote' ? 'Cloud' : 'GitBranch'} className="size-3" />{ref.name}
+          <Icon name={ref.kind === 'tag' ? 'Pin' : ref.kind === 'remote' ? 'Cloud' : 'GitBranch'} className="size-3" /><span className="gg-ref-name">{ref.name}</span>
         </span>)}
         <span className="gg-meta">
           {copied === commit.sha ? <span className="gg-copied"><Icon name="Check" className="size-3" />Copied</span>

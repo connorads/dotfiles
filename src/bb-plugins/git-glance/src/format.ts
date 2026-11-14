@@ -29,7 +29,7 @@ export function splitPath(path: string): { dir: string; name: string } {
   return slash < 0 ? { dir: '', name: path } : { dir: trimmed.slice(0, slash + 1), name: path.slice(slash + 1) };
 }
 
-export function plural(count: number, word: string) { return `${count} ${word}${count === 1 ? '' : 's'}`; }
+export function plural(count: number, word: string, many = `${word}s`) { return `${count} ${count === 1 ? word : many}`; }
 
 /**
  * Keys whose value is new or different since the previous render, for a one-off

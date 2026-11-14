@@ -135,14 +135,14 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
           onClick={event => onPicker(picker !== 'closed' ? 'closed' : event.detail === 0 ? 'keyboard' : 'pointer')} title="Switch branch (b)">
           <h2>{branch.head ?? 'Detached HEAD'}</h2><Icon name="ChevronDown" className="gg-branch-chevron" />
         </button>
-        {branch.upstream && <span className="gg-upstream"><Icon name="ArrowRight" className="size-3" />{branch.upstream}</span>}
+        {branch.upstream && <span className="gg-upstream" title={branch.upstream}><Icon name="ArrowRight" className="size-3" /><span className="gg-upstream-name">{branch.upstream}</span></span>}
         {picker !== 'closed' && <BranchPicker threadId={threadId} instant={picker === 'keyboard'} onSwitch={onRun} onClose={() => onPicker('closed')} />}
       </div>
       <div className="gg-facts">
         <SyncBar repo={repo} op={op} fetched={fetched} onSync={kind => onRun({ kind })} onCancel={onCancel} />
         {!branch.upstream && branch.head && repo.remotes.length > 0 && <Fact tone="quiet" icon="CloudOff" title="No upstream branch">Not published</Fact>}
         {branch.ahead > 0 && branch.behind > 0 && <Fact tone="behind" icon="AlertTriangle" title="Local and remote both have new commits">Diverged</Fact>}
-        {repo.stashes.length > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stashes.length, 'stash')}</Fact>}
+        {repo.stashes.length > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stashes.length, 'stash', 'stashes')}</Fact>}
         {branch.oid && <button type="button" className="gg-fact gg-sha" data-tone="quiet" onClick={() => copy(branch.oid!)} title="Copy HEAD sha">
           <CopyIcon done={copied === branch.oid} />{copied === branch.oid ? 'Copied' : branch.oid.slice(0, 7)}
         </button>}

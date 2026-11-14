@@ -1,6 +1,6 @@
 // One operation per checkout at a time. Transitions are pure: callers pass
 // the current state and get the next one, or null when the event does not apply.
-import type { OpState } from '../contracts.ts';
+import type { OpRequest, OpState } from '../contracts.ts';
 import type { Failure, Progress } from './remote.ts';
 
 export type { OpState };
@@ -31,4 +31,14 @@ export function finish(current: OpState | null, id: string, result: { ok: true; 
   const { progress: _, status: __, ...base } = current;
   return result.ok ? { ...base, status: 'succeeded', summary: result.summary, finishedAt: now }
     : { ...base, status: 'failed', failure: result.failure, finishedAt: now };
+}
+
+/**
+ * The operation that kept `request` from starting, from the op `run` returned. While one
+ * operation runs, `run` starts nothing and returns the running one. The parsed request
+ * comes back with its own field order, so fields are compared sorted.
+ */
+export function refusedBy(returned: OpState | null, request: OpRequest): OpState | null {
+  const fields = (value: OpRequest) => JSON.stringify(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+  return returned && fields(returned.request) !== fields(request) ? returned : null;
 }
