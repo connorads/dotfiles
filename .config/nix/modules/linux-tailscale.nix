@@ -12,7 +12,7 @@
     };
 
     Service = {
-      ExecStart = "${pkgs.tailscale}/bin/tailscaled --tun=userspace-networking --state=%S/tailscale/tailscaled.state --socket=%t/tailscale/tailscaled.sock";
+      ExecStart = "${pkgs.tailscale}/bin/tailscaled --no-logs-no-support --tun=userspace-networking --state=%S/tailscale/tailscaled.state --socket=%t/tailscale/tailscaled.sock";
       Restart = "on-failure";
       RestartSec = 5;
       RuntimeDirectory = "tailscale";
