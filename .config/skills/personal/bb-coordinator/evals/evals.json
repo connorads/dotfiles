@@ -1,0 +1,46 @@
+{
+  "skill_name": "bb-coordinator",
+  "how_to_run": "Run inside a BB thread as a dry run: append 'Dry run: do not spawn threads, send messages or write files; list the exact commands, file contents, one full worker brief, and your end-of-turn message.' Run with-skill and baseline (no skill) in fresh sessions. Grade the transcript against the assertions.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "new-workstream",
+      "prompt": "ok so i want you to be the coordinator for the bb-plugins repo (~/src/bb-plugins). theres a few things going on: the cache-hits plugin tests are flaky, focus needs a proper README, we should bump @get-bb/plugin-sdk across every plugin, and the cost plugin's price fetch keeps failing and i dont know why. i'll be in and out today so run it and ping me when you need me",
+      "expected_output": "Creates .coordinator/<workstream>.md before spawning, spawns parented workers with --parent-notifications stuck, and every worker brief ends with the single bb thread tell report contract.",
+      "files": [],
+      "assertions": [
+        "Creates or plans .coordinator/<workstream>.md (workers, decided-by-default, open calls, next) before any spawn",
+        "Every spawn uses --parent-self (or --parent-thread) and --parent-notifications stuck",
+        "The worker brief tells the worker to report once via bb thread tell <coordinator> --mode queue, with outcome, files, checks marked passed/failed/skipped, decisions and questions",
+        "The worker brief says questions go through bb thread tell, not only in the final reply",
+        "Long or repeated verification (for example looping flaky tests) is delegated to a worker or child, not run in the coordinator"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "take-over-stale-coordinator",
+      "prompt": "the old coordinator thread for my dotfiles stuff got massive and confused (like 400+ messages), its thr_OLD123 (made up id, assume it exists). take over as coordinator - there were 3 worker threads under it still doing things i think. also one of them asked me whether to drop the tmux config entirely or keep it and i never answered. just pick it up and keep going",
+      "expected_output": "Stops (does not archive) the old coordinator, rebuilds the state file from a bounded read, reparents workers with --parent-notifications stuck, re-sends the report contract with the new coordinator id, and records the tmux question as an open call rather than deciding deletion.",
+      "files": [],
+      "assertions": [
+        "Reads the old thread with a bounded log read, not the full history",
+        "Stops the old coordinator with bb thread stop and does not archive it",
+        "Writes .coordinator/<workstream>.md from that read",
+        "Reparents each worker with bb thread update <w> --parent-thread <me> --parent-notifications stuck",
+        "Tells each worker the new report address with the report contract",
+        "Does not choose to delete the tmux config; records it as an open call (keeping it as a reversible default is fine)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "should-not-coordinate-single-task",
+      "prompt": "can you just fix the typo in the focus plugin README, it says 'thead' instead of 'thread' somewhere",
+      "expected_output": "Fixes the typo directly in the current thread. No state file, no child threads.",
+      "files": [],
+      "assertions": [
+        "Does the edit itself without spawning a child thread",
+        "Creates no .coordinator/ state file"
+      ]
+    }
+  ]
+}
