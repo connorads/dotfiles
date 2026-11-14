@@ -1,0 +1,9 @@
+{
+  "ask-matt": "Router over the whole upstream repo; assumes every skill is installed.",
+  "chief-of-staff": "In progress upstream.",
+  "claude-handoff": "Overlaps the vendored handoff skill.",
+  "loop-me": "In progress upstream.",
+  "pr": "PR-body template; overlaps humanlayer show-me, which it credits, and personal pr-before-after.",
+  "setup-ts-deep-modules": "Overlaps the authored architecture and typescript skills.",
+  "software-factory": "In progress upstream."
+}

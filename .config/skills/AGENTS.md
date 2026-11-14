@@ -120,8 +120,8 @@ What the flat bucket costs, and what a set buys:
 - **A group cannot travel.** `skl install <set>/` copies a whole cohesive group into a
   matching-stack repo; scattered through the bucket there is nothing to name.
 - **A group cannot be topped up.** `setup-matt-pocock-skills` tells the agent to run it
-  before the other engineering skills and names `triage`, `to-tickets` and `to-spec` -
-  none of them vendored, so a referenced flow dead-ends.
+  before the other engineering skills and names `triage`, `to-tickets` and `to-spec`.
+  A named skill left unvendored dead-ends that flow; a set's scan reports it.
 
 A set may hold entries from several `owner/repo` sources: the reviewed update workflow
 records a Git revision per `(source, ref)`, so `jakubkrehel` refreshes its twelfth entry from
