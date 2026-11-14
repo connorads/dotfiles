@@ -1,8 +1,13 @@
 .skl-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
-.skl-actions button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--foreground); }
+.skl-actions button, .skl-button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--foreground); }
 .skl-actions button:disabled { opacity: .5; }
+.skl-ref { display: flex; flex: 0 1 auto; min-width: 0; white-space: nowrap; }
+.skl-ref > span { overflow: hidden; text-overflow: ellipsis; }
+.skl-ref-source { flex: 0 1000 auto; min-width: 2.5em; }
+.skl-ref-name { flex: none; max-width: calc(100% - 2.5em); }
+.skl-description { flex: 1 1 0; min-width: 0; }
 @media (pointer: coarse) {
-  .skl-actions button { min-height: 44px; }
+  .skl-actions button, .skl-button { min-height: 44px; }
   #skl-rows [role="option"] { min-height: 44px; align-items: center; }
   #skl-rows input[type="checkbox"] { width: 44px; height: 44px; flex: none; margin: 0; }
 }

@@ -18,20 +18,27 @@ function SklPopup() {
   const rpc = useRpc<typeof rpcContract>();
   const threadId = composer.scope.kind === 'new-thread' ? null : composer.scope.threadId;
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState(initialState);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<readonly string[] | null>(null);
-  const [preview, setPreview] = useState<{ ref: string; text: string } | null>(null);
+  const [preview, setPreview] = useState<{ ref: string; text: string; failed: boolean } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let live = true;
     rpc.call('catalogue', { threadId })
       .then(next => { if (live) setCatalogue(next); })
-      .catch(cause => { if (live) setNotice({ tone: 'error', text: message(cause) }); });
+      .catch(cause => { if (live) setCatalogueError(message(cause)); });
     return () => { live = false; };
-  }, [rpc, threadId]);
+  }, [rpc, threadId, attempt]);
+
+  const retryCatalogue = () => {
+    setCatalogueError(null);
+    setAttempt(previous => previous + 1);
+  };
 
   const all = catalogue?.rows ?? [];
   const visible = useMemo(() => filterRows(all, state.query), [all, state.query]);
@@ -43,8 +50,8 @@ function SklPopup() {
     const ref = current.ref;
     const timer = setTimeout(() => {
       rpc.call('preview', { hostId: catalogue.hostId, ref })
-        .then(({ text }) => { if (live) setPreview({ ref, text }); })
-        .catch(cause => { if (live) setPreview({ ref, text: message(cause) }); });
+        .then(({ text }) => { if (live) setPreview({ ref, text, failed: false }); })
+        .catch(cause => { if (live) setPreview({ ref, text: message(cause), failed: true }); });
     }, 80);
     return () => { live = false; clearTimeout(timer); };
   }, [rpc, catalogue, current, state.preview, preview?.ref]);
@@ -78,6 +85,7 @@ function SklPopup() {
     }
     if (action === 'copy') {
       setBusy(true);
+      setNotice(null);
       try {
         const { text } = await rpc.call('pointers', { hostId: catalogue.hostId, refs: [...refs] });
         if (await experimental_copyToClipboard({ text })) composer.experimental_closePopup();
@@ -101,6 +109,11 @@ function SklPopup() {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // Enter that commits an IME composition must not load the cursor row.
     if (event.nativeEvent.isComposing) return;
+    if (catalogueError && event.key === 'Enter') {
+      event.preventDefault();
+      retryCatalogue();
+      return;
+    }
     if (confirming) {
       event.preventDefault();
       if (event.key === 'y' || event.key === 'Y') void install(confirming);
@@ -119,6 +132,9 @@ function SklPopup() {
 
   const marked = new Set(state.marked);
   const chosen = chosenRefs(state, visible, all);
+  const shown = new Set(visible.map(row => row.ref));
+  const hidden = state.marked.filter(ref => !shown.has(ref)).length;
+  const currentPreview = preview && current && preview.ref === current.ref ? preview : null;
 
   return (
     <div className="flex w-full flex-col text-sm" onKeyDown={event => {
@@ -134,14 +150,20 @@ function SklPopup() {
           autoFocus
           aria-label="Filter skills"
           aria-controls="skl-rows"
-          placeholder={catalogue ? `Filter ${all.filter(row => row.kind === 'skill').length} skills` : 'Loading skl catalogue…'}
+          placeholder={catalogue ? `Filter ${all.filter(row => row.kind === 'skill').length} skills` : catalogueError ? 'skl catalogue unavailable' : 'Loading skl catalogue…'}
           value={state.query}
           onChange={event => setState(previous => setQuery(previous, event.target.value))}
           onKeyDown={handleKeyDown}
           className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
         />
-        {state.marked.length > 0 ? <span className="text-xs text-muted-foreground">{state.marked.length} marked</span> : null}
+        {state.marked.length > 0 ? <span className="text-xs text-muted-foreground">{state.marked.length} marked{hidden > 0 ? `, ${hidden} hidden` : ''}</span> : null}
       </div>
+      {catalogueError ? (
+        <div role="alert" className="flex items-start gap-2 border-b border-border px-3 py-2 text-xs">
+          <span className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-destructive">{catalogueError}</span>
+          <button type="button" className="skl-button" onClick={retryCatalogue}>Retry</button>
+        </div>
+      ) : null}
       {confirming ? (
         <div role="alert" className="border-b border-border px-3 py-2 text-xs text-foreground">
           Install whole group{groupRefs(confirming).length > 1 ? 's' : ''} {groupRefs(confirming).join(' ')} into this thread's project?
@@ -150,7 +172,7 @@ function SklPopup() {
       ) : null}
       {notice ? (
         <div role={notice.tone === 'error' ? 'alert' : 'status'}
-          className={`max-h-24 overflow-y-auto whitespace-pre-wrap border-b border-border px-3 py-2 font-mono text-xs ${notice.tone === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+          className={`max-h-24 overflow-y-auto whitespace-pre-wrap break-words border-b border-border px-3 py-2 font-mono text-xs ${notice.tone === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
           {notice.text}
         </div>
       ) : null}
@@ -162,17 +184,22 @@ function SklPopup() {
             return (
               <div key={row.ref} role="option" aria-selected={selected}
                 tabIndex={-1}
+                title={row.kind === 'skill' && row.description ? `${row.ref}\n${row.description}` : row.ref}
                 className={`flex cursor-default items-baseline gap-2 rounded px-2 py-1 ${selected ? 'bg-state-active' : 'hover:bg-state-hover'}`}
                 onMouseDown={event => event.preventDefault()}
                 onClick={() => setState(previous => ({ ...previous, cursor: index }))}
                 onDoubleClick={() => void run('load', [row.ref])}>
                 <input type="checkbox" aria-label={`Mark ${row.ref}`} checked={marked.has(row.ref)} onClick={event => event.stopPropagation()} onChange={() => setState(previous => ({ ...previous, marked: marked.has(row.ref) ? previous.marked.filter(ref => ref !== row.ref) : [...previous.marked, row.ref] }))} />
                 {row.kind === 'folder' ? (
-                  <span className="min-w-0 truncate font-medium text-foreground">{row.ref} <span className="text-xs text-muted-foreground">({row.count})</span></span>
+                  <>
+                    <span className="min-w-0 truncate font-medium text-foreground">{row.ref}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">({row.count})</span>
+                  </>
                 ) : (
                   <>
-                    <span className="min-w-0 max-w-full shrink-0 truncate text-foreground">{row.ref}</span>
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">{row.description}</span>
+                    {/* The name outlives the source when space runs out: rows of one long source must stay distinct. */}
+                    <span className="skl-ref text-foreground"><span className="skl-ref-source">{row.source}/</span><span className="skl-ref-name">{row.name}</span></span>
+                    <span className="skl-description truncate text-xs text-muted-foreground">{row.description}</span>
                   </>
                 )}
               </div>
@@ -181,8 +208,9 @@ function SklPopup() {
           {catalogue && visible.length === 0 ? <div className="px-2 py-1 text-xs text-muted-foreground">No skill matches.</div> : null}
         </div>
         {state.preview ? (
-          <pre className="min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs text-foreground">
-            {preview && current && preview.ref === current.ref ? preview.text : 'Loading preview…'}
+          <pre role={currentPreview?.failed ? 'alert' : undefined}
+            className={`min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs ${currentPreview?.failed ? 'text-destructive' : 'text-foreground'}`}>
+            {currentPreview ? currentPreview.text : 'Loading preview…'}
           </pre>
         ) : null}
       </div>

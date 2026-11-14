@@ -19,8 +19,9 @@ Q closes the focused pop-up outside text fields. Esc also dismisses it.
 - Type `@` and part of a skill name to pick from the **Skills (skl)** mention
   menu. A bare `@` lists no skills, because file mentions share it.
 
-Use row checkboxes to mark skills. The footer offers Load, Copy, Install,
-Preview and Close. Group installation has explicit Install group and Cancel
+Use row checkboxes to mark skills. Marks survive filtering, and the header
+counts the marked rows the filter hides. The footer offers Load, Copy, Install,
+Preview and Close. A failed catalogue load shows skl's error with Retry. Group installation has explicit Install group and Cancel
 buttons. Compact previews stack below the list.
 
 Picker keys follow the tmux `skl-pick` fzf binds:
@@ -29,7 +30,7 @@ Picker keys follow the tmux `skl-pick` fzf binds:
 | --- | --- |
 | `tab` / `shift-tab` | Mark the row and move down / up. |
 | `↑` `↓`, `ctrl-n` `ctrl-p`, `ctrl-j` `ctrl-k` | Move. |
-| `enter` | Insert one pill per marked row, or for the cursor row, then close. A folder row gives one group pill. |
+| `enter` | Insert one pill per marked row, or for the cursor row, then close. A folder row gives one group pill. After a failed catalogue load, retry it. |
 | `ctrl-y` | Copy the joined pointers, as `skl load --copy` does. skl records them as BB loads. |
 | `alt-i` | Install into the thread's checkout with `skl install --stdin`. A folder row asks `y / N` first. |
 | `ctrl-/` | Toggle the preview pane (`skl preview`). |
