@@ -1,6 +1,6 @@
 import { experimental_defineHostEntry } from '@get-bb/plugin-sdk';
 import { hostContract, hostSignals, type OpRequest } from './contracts.ts';
-import { browseFolders, resolveCheckout, selectFolder } from './src/folders.ts';
+import { browseFolders, findRepositories, resolveCheckout, selectFolder } from './src/folders.ts';
 import { createMonitor, type Monitor } from './src/monitor.ts';
 import { commitDetail, diff, resolveRepo, type Repo } from './src/repo.ts';
 import { listBranches, switchBranch } from './src/branches.ts';
@@ -49,6 +49,7 @@ export default experimental_defineHostEntry({
         signal: AbortSignal.any([context.signal, context.lifecycle.signal]) });
     },
     folders: ({ root, path }) => browseFolders(root, path),
+    repositories: ({ root, path }) => findRepositories(root, path),
     select: async ({ root, path, worktree }) => ({ root: await selectFolder(root, path, worktree) }),
     watch: async ({ root }, context) => {
       let monitor = monitors.get(root);

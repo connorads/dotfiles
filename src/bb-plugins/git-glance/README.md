@@ -143,11 +143,15 @@ with progress, a result line and cancel.
 
 ## Repository discovery
 
-When the checkout has no repository, the header chip offers **Choose repo**.
-**Choose repository** opens a folder browser rooted at the thread checkout.
+When the checkout has no repository, the header chip offers **Choose repo**, and
+the pop-up opens straight to a folder browser rooted at the thread checkout.
 The repository name in Git status opens the same browser.
 
-- Search filters the current folder's immediate subfolders.
+- Search finds repositories in subfolders of the displayed folder, up to four levels down.
+  Name matches rank above path matches. `Enter` selects the top match; `↑`/`↓` move between rows.
+- The search skips hidden folders, symlinks, `node_modules` and `Library`, and never enters a repository.
+  It stops after 1,000 repositories or 50,000 folders, and then says so.
+- With an empty search, the browser lists the current folder's immediate subfolders.
 - Git rows select a repository. Their arrow browses inside it.
 - Ordinary folders open for deeper browsing. Breadcrumbs return to an ancestor.
 - **Use this repository** selects the displayed folder's repository.

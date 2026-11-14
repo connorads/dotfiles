@@ -119,6 +119,8 @@ const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
   folders: z.array(z.object({ name: z.string(), repository: z.boolean() })),
   worktrees: z.array(z.object({ path: root, branch: z.string().nullable() })) });
 export type FolderList = z.infer<typeof folderList>;
+const repositoryList = z.object({ repositories: z.array(z.string()), truncated: z.boolean() });
+export type RepositoryList = z.infer<typeof repositoryList>;
 
 export const reviewSchema = z.object({ head: z.string().nullable(), index: z.string(), count: z.number(), blocked: z.string().nullable(), draftKey: z.string() });
 export type CommitReview = z.infer<typeof reviewSchema>;
@@ -130,6 +132,7 @@ export const hostContract = defineRpcContract({
   checkout: { input: z.object({ root }), output: z.object({ root }) },
   generateMessage: { input: z.object({ root, ...draftInput, model: z.string().min(1).max(200), executable: z.string().min(1).max(4096) }), output: draftOutput },
   folders: { input: z.object({ root, path: z.string() }), output: folderList },
+  repositories: { input: z.object({ root, path: z.string() }), output: repositoryList },
   select: { input: z.object({ root, path: z.string(), worktree: root.optional() }), output: z.object({ root }) },
   /** Start watching (idempotent) and return the current snapshot. */
   watch: { input: z.object({ root }), output: snapshotSchema },
@@ -163,6 +166,7 @@ export const rpcContract = defineRpcContract({
   generateMessage: { input: z.object({ ...thread, ...draftInput, requestId: z.string().min(1).max(100) }), output: draftOutput },
   cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
+  repositories: { input: z.object({ ...thread, path: z.string() }), output: repositoryList },
   select: { input: z.object({ ...thread, path: z.string().nullable(), worktree: root.optional() }), output: z.object({}) },
   watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable(), fetch: fetchHealthSchema }) },
   unwatch: { input: z.object(holder), output: z.object({}) },

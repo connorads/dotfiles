@@ -90,18 +90,20 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   }
 
   const repo = state.snapshot?.kind === 'none' ? null : state.snapshot;
+  const selected = () => {
+    opened.current = false; setPicker('closed'); setDismissed(null); setActionError(null);
+    void renew(threadId).then(() => setFolders(false));
+  };
   return <ChipPopover ref={dialog} className="gg-dialog" panelClassName="gg-panel" aria-label="Git status" onKeyDown={keyboard}
     trigger={() => chip(threadId)} anchor={anchor} width={640} instant={instant} place={zoomed ? placeZoomed : undefined}
     data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose}>
-    {folders ? <FolderPicker threadId={threadId} onClose={() => setFolders(false)} onSelected={() => {
-      opened.current = false; setPicker('closed'); setDismissed(null); setActionError(null);
-      void renew(threadId).then(() => setFolders(false));
-    }} /> : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={actionError}
+    {folders ? <FolderPicker threadId={threadId} onClose={() => setFolders(false)} onSelected={selected} />
+      : state.snapshot?.kind === 'none' && !state.error ? <FolderPicker threadId={threadId} embedded={!state.selected} onSelected={selected} />
+      : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={actionError}
       dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
       picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
       : <div className="gg-blank">
         {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span><button type="button" className="gg-ghost" onClick={() => setFolders(true)}>Choose repository</button></>
-          : state.snapshot?.kind === 'none' ? <><Icon name="FolderUnknown" className="gg-blank-icon" /><strong>Not a git repository</strong><span>This thread's checkout has no repository.</span><button type="button" className="gg-ghost" onClick={() => setFolders(true)}>Choose repository</button></>
           : <><span className="gg-spinner" /><span>Reading repository…</span></>}
       </div>}
   </ChipPopover>;

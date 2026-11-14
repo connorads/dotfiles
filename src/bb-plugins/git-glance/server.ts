@@ -188,6 +188,11 @@ export default function plugin(bb: BbPluginApi) {
       if (!base) throw new Error('This thread has no checkout.');
       return host.call('folders', { root: base.root, path }, { hostId: base.hostId, timeoutMs: 30_000 });
     },
+    repositories: async ({ threadId, path }) => {
+      const base = await environment(threadId);
+      if (!base) throw new Error('This thread has no checkout.');
+      return host.call('repositories', { root: base.root, path }, { hostId: base.hostId, timeoutMs: 30_000 });
+    },
     select: async ({ threadId, path, worktree }) => {
       if (selecting.has(threadId)) throw new Error('Repository selection is already running.');
       selecting.add(threadId);

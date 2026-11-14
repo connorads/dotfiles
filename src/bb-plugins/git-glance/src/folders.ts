@@ -64,3 +64,40 @@ export async function browseFolders(base: string, path: string) {
   return { root: target, path: rel, repository: repo?.cwd === target, folders,
     worktrees: repo?.cwd === target && repo.kind === 'repo' ? await worktrees(repo) : [] };
 }
+
+const SKIPPED = new Set(['node_modules', 'Library']);
+const isRepository = (path: string) => access(join(path, '.git')).then(() => true, () => false);
+
+/** Visible subfolders of `rel` under `root`, sorted, as paths relative to `root`. */
+async function subfolders(root: string, rel: string) {
+  const entries = await readdir(join(root, rel), { withFileTypes: true }).catch(() => []);
+  return entries
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.') && !SKIPPED.has(entry.name))
+    .map(entry => rel ? `${rel}/${entry.name}` : entry.name)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Lists repository roots below a folder, relative to it. The walk is breadth first and
+ * never enters a repository, hidden folder or symlink. Depth is a fixed boundary;
+ * `truncated` reports only the result or folder budget running out.
+ */
+export async function findRepositories(base: string, path: string, { depth = 4, limit = 1000, folders = 50_000 } = {}) {
+  const { target } = await folder(base, path);
+  const repositories: string[] = [];
+  let visited = 0;
+  let level = [''];
+  for (let at = 1; level.length; at++) {
+    const next: string[] = [];
+    for (const parent of level) {
+      if (++visited > folders) return { repositories: repositories.sort(), truncated: true };
+      for (const rel of await subfolders(target, parent)) {
+        const repository = await isRepository(join(target, rel));
+        if (!repository && at < depth) next.push(rel);
+        if (repository && repositories.push(rel) >= limit) return { repositories: repositories.sort(), truncated: true };
+      }
+    }
+    level = next;
+  }
+  return { repositories: repositories.sort(), truncated: false };
+}

@@ -424,6 +424,8 @@
 .gg-folder-search:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 .gg-folder-path { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; margin: 0; }
 .gg-worktree-path { display: block; }
+.gg-folder-results { display: flex; flex-direction: column; gap: 8px; }
+.gg-folder-parent { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; }
 .gg-folder-list { max-height: 340px; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
 .gg-folder-list li { display: flex; }
 .gg-folder-list button { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 5px; text-align: left; }

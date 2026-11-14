@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixtureGit, tempDir } from './test-git.ts';
-import { browseFolders, resolveCheckout, selectFolder } from './folders.ts';
+import { browseFolders, findRepositories, resolveCheckout, selectFolder } from './folders.ts';
 
 test('browsing marks repository roots and supports nested folders', async () => {
   const base = tempDir();
@@ -62,4 +62,31 @@ test('repository browsing lists external worktrees and selection verifies member
   await assert.rejects(selectFolder(base, 'app', detached), /registered worktree/);
   mkdirSync(detached); fixtureGit(detached, 'init', '-q');
   await assert.rejects(selectFolder(base, 'app', detached), /another repository/);
+});
+
+test('repository search finds nested repositories and stops below each one', async () => {
+  const base = tempDir();
+  for (const path of ['web', 'services/api', 'services/billing', 'clients/acme/portal']) {
+    mkdirSync(join(base, path), { recursive: true }); fixtureGit(join(base, path), 'init', '-q');
+  }
+  mkdirSync(join(base, 'web/packages/inner'), { recursive: true }); fixtureGit(join(base, 'web/packages/inner'), 'init', '-q');
+  mkdirSync(join(base, 'node_modules/dep'), { recursive: true }); fixtureGit(join(base, 'node_modules/dep'), 'init', '-q');
+  mkdirSync(join(base, '.cache/hidden'), { recursive: true }); fixtureGit(join(base, '.cache/hidden'), 'init', '-q');
+  const outside = tempDir(); fixtureGit(outside, 'init', '-q');
+  symlinkSync(outside, join(base, 'linked'));
+  assert.deepEqual(await findRepositories(base, '.'), {
+    repositories: ['clients/acme/portal', 'services/api', 'services/billing', 'web'], truncated: false,
+  });
+  assert.deepEqual(await findRepositories(base, 'services'), { repositories: ['api', 'billing'], truncated: false });
+  assert.equal(await selectFolder(base, 'clients/acme/portal'), join(base, 'clients/acme/portal'));
+  await assert.rejects(findRepositories(base, 'linked'), /outside/);
+});
+
+test('repository search stops at four levels and reports exhausted budgets', async () => {
+  const base = tempDir();
+  for (const path of ['a/b/c/four', 'a/b/c/d/five']) { mkdirSync(join(base, path), { recursive: true }); fixtureGit(join(base, path), 'init', '-q'); }
+  assert.deepEqual(await findRepositories(base, '.'), { repositories: ['a/b/c/four'], truncated: false });
+  for (const name of ['one', 'two', 'three']) { mkdirSync(join(base, name)); fixtureGit(join(base, name), 'init', '-q'); }
+  assert.deepEqual(await findRepositories(base, '.', { limit: 2 }), { repositories: ['one', 'three'], truncated: true });
+  assert.deepEqual(await findRepositories(base, '.', { folders: 1 }), { repositories: ['one', 'three', 'two'], truncated: true });
 });
