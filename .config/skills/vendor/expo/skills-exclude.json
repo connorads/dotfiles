@@ -1,0 +1,3 @@
+{
+  "expo-overview": "Routes every Expo command through an unpinned npx @expo/agent-cli@latest; vendored expo skills already link its launch guide at a pinned revision."
+}
