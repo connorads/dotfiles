@@ -3,6 +3,7 @@ import { Chip } from './ui/switcher/chip.tsx';
 import { ConnectorSettings } from './ui/switcher/settings.tsx';
 import { command, CommandOwner, Overlay } from './ui/switcher/switcher.tsx';
 import { open as openSwitcher } from './ui/switcher/store.ts';
+import { hideNativePicker } from './ui/switcher/hide-native.ts';
 import { ThreadUsage } from './ui/usage/badge.tsx';
 import { UsageOverlay } from './ui/usage/overlay.tsx';
 import { openUsage } from './ui/usage/overlay-store.ts';
@@ -32,5 +33,6 @@ export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'account-badges', component: BadgeBridge });
   app.contentScripts.register({ id: 'workflow-accounts', mount: () => mountWorkflowAccounts(document) });
   app.contentScripts.register({ id: 'account-badges', mount: () => mountAccountBadges(document) });
+  app.contentScripts.register({ id: 'hide-native-picker', mount: () => hideNativePicker(document) });
   app.commands.register({ id: 'show-usage', title: 'Show agent usage', defaultShortcut: { key: 'a', mod: true, shift: true }, run: openUsage });
 });

@@ -17,6 +17,12 @@ in the composer's plus menu. The switcher opens on the focused composer, in a
 thread or a new-thread composer. It changes the next turn and keeps the draft.
 It never sends a prompt. Queued-message editors cannot open it.
 
+The plugin hides BB's own model, effort and mode trigger in the composer, so
+the chip is the only model control. No SDK slot hides just that trigger, so a
+content script adds one CSS rule matched to BB 0.49's composer markup. A BB
+markup change brings the native trigger back beside the chip; it hides nothing
+else. Disabling the plugin removes the rule.
+
 ```text
  1  ◎ Sol            ●○○
  2  ✳ Opus           ●●○   ✓

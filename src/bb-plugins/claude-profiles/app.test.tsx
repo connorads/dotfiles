@@ -116,5 +116,5 @@ test('the badge bridge loads thread accounts and reloads when an account changes
   label = 'alpha';
   await slot.behavior.emitRealtime('profiles-changed', { threadId: 't1' });
   await waitFor(() => expect(getBadges().get('t1')?.label).toBe('alpha'));
-  expect(app.contentScripts.map(script => script.id)).toContain('account-badges');
+  expect(app.contentScripts.map(script => script.id)).toEqual(expect.arrayContaining(['account-badges', 'hide-native-picker']));
 });
