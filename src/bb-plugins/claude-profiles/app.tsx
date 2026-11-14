@@ -5,6 +5,7 @@ import { command, CommandOwner, Overlay } from './ui/switcher/switcher.tsx';
 import { open as openSwitcher } from './ui/switcher/store.ts';
 import { hideNativePicker } from './ui/switcher/hide-native.ts';
 import { ThreadUsage } from './ui/usage/badge.tsx';
+import { registerThreadHeaderChip } from '@bb-plugins/chip/header';
 import { UsageOverlay } from './ui/usage/overlay.tsx';
 import { openUsage } from './ui/usage/overlay-store.ts';
 import { LoginPage } from './ui/usage/login.tsx';
@@ -28,7 +29,7 @@ export default definePluginApp(app => {
   for (let slot = 1; slot <= 9; slot++) app.composer.experimental_registerCommand({ id: `select-favourite-${slot}`,
     title: `Select favourite model ${slot}`, defaultShortcut: { key: String(slot), alt: true },
     run: ({ composer }) => command(composer, controller => controller.select(slot)) });
-  app.slots.experimental_threadHeaderAction({ id: 'usage', title: 'Usage', component: ThreadUsage });
+  registerThreadHeaderChip(app, { id: 'usage', title: 'Usage', component: ThreadUsage });
   app.slots.experimental_appOverlay({ id: 'usage-overview', component: UsageOverlay });
   app.slots.experimental_appOverlay({ id: 'account-badges', component: BadgeBridge });
   app.contentScripts.register({ id: 'workflow-accounts', mount: () => mountWorkflowAccounts(document) });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { experimental_useSidebarThreads, useRpc, type PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk/app';
+import { experimental_useSidebarThreads, useRpc } from '@get-bb/plugin-sdk/app';
+import type { ThreadHeaderChipProps } from '@bb-plugins/chip/header';
 import { Chip, ChipValue } from '@bb-plugins/chip';
 import { Icon } from '../components/ui/icon.tsx';
 import type { rpcContract } from '../../contracts.ts';
@@ -31,7 +32,7 @@ function headerTitle(header: Header | null, error: string | null, now: Date): st
     .filter(Boolean).join('\n');
 }
 
-export function ThreadUsage({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
+export function ThreadUsage({ threadId, isCompactViewport }: ThreadHeaderChipProps) {
   const rpc = useRpc<typeof rpcContract>();
   const threads = experimental_useSidebarThreads();
   const thread = threads.threads.find(value => value.id === threadId);

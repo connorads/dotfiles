@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
-import type { PluginCommandRegistration } from '@get-bb/plugin-sdk/app';
+import type { PluginCommandContext, PluginCommandRegistration } from '@get-bb/plugin-sdk/app';
 import { usageContract } from '../../src/accounts/usage/contract.ts';
 import { closeUsage, openUsage } from './overlay-store.ts';
 import type { Header, Inspection, Snapshot } from '../../src/accounts/usage/contract.ts';
@@ -132,7 +132,7 @@ test('the rebindable usage command opens the overlay', async () => {
   expect(command.defaultShortcut).toMatchObject({ key: 'a', mod: true, shift: true });
   expect(badge(app).title).toBe('Usage');
   const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect() } });
-  await act(async () => { await command.run({ threadId: null, projectId: null, openPanel: () => false }); });
+  await act(async () => { await command.run({ threadId: null, projectId: null, experimental_panel: {} as PluginCommandContext['experimental_panel'] }); });
   expect(await slot.findByRole('dialog', { name: 'Agent usage' })).toBeTruthy();
 });
 

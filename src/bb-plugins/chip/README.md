@@ -28,6 +28,22 @@ At pane widths up to 600 px, header actions occupy one horizontally scrollable
 row below the title. Coarse-pointer chips have separate 44 px targets. Swiping
 and keyboard focus reveal actions beyond the visible row.
 
+## Thread header slot
+
+`registerThreadHeaderChip` from `@bb-plugins/chip/header` registers a chip in the
+thread header:
+
+```tsx
+registerThreadHeaderChip(app, { id: 'usage', title: 'Usage', component: ThreadUsage });
+```
+
+BB 0.48 retired `experimental_threadHeaderAction` from the SDK types but still
+renders it. Its replacement, a header thread action, draws only a text button.
+The helper keeps chips on the retired slot without a cast in each plugin. Move
+chips to header thread actions once they can draw a toned badge
+([get-bb/bb#7217](https://github.com/get-bb/bb/pull/7217)), or when BB removes
+the slot.
+
 ## ChipPopover
 
 A chip that opens a pop-up renders it with `ChipPopover`. The reasons are in

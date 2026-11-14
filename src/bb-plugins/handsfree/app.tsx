@@ -3,6 +3,7 @@ import {
   definePluginApp, experimental_useSidebarThreads,
   useBbContext, useBbNavigate, useComposer, useComposers, useRealtime, useRpc, useSdk, useSettings, useSidebarSplitLayout,
 } from '@get-bb/plugin-sdk/app';
+import { registerThreadHeaderChip } from '@bb-plugins/chip/header';
 import { requestSchema, type Candidate, type Command, type Kind, type Reply } from './contracts.ts';
 import type { rpcContract } from './rpc.ts';
 import type { ArchiveTarget } from './archive.ts';
@@ -633,6 +634,6 @@ function VoiceCard() {
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'voice', component: VoiceCard });
-  app.slots.experimental_threadHeaderAction({ id: 'voice', title: 'Voice monitor', component: VoiceHeader });
+  registerThreadHeaderChip(app, { id: 'voice', title: 'Voice monitor', component: VoiceHeader });
   app.composer.customize({ id: 'voice', scopes: ['new-thread'], actions: [{ id: 'voice', component: VoiceHeader }] });
 });

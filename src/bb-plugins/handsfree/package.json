@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "engines": {
-    "bb": ">=0.46",
-    "bbPluginSdk": ">=0.6.49"
+    "bb": ">=0.49",
+    "bbPluginSdk": ">=0.6.132"
   },
   "bb": {
     "name": "Handsfree",
@@ -35,7 +35,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "0.6.49",
+    "@get-bb/plugin-sdk": "0.6.132",
     "@testing-library/react": "catalog:",
     "@types/better-sqlite3": "catalog:",
     "@types/bun": "1.4.2",

@@ -1,7 +1,7 @@
 import type { PluginBrowserBbSdk, PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { z } from 'zod';
 import { listSchema } from '../claude-profiles/src/models/contract.ts';
-import { createController } from '../claude-profiles/ui/picker/controller.ts';
+import { createController } from '../claude-profiles/ui/switcher/controller.ts';
 
 const accountsSchema = z.object({ supported: z.boolean(), currentId: z.string(),
   profiles: z.array(z.object({ id: z.string(), label: z.string() })) });

@@ -2,7 +2,8 @@ import type { useSdk } from '@get-bb/plugin-sdk/app';
 import { z } from 'zod';
 
 type Sdk = ReturnType<typeof useSdk>;
-type Page = Awaited<ReturnType<Sdk['threads']['timeline']>>;
+// A read without `afterTag` returns a full page; ReturnType sees only the last overload's union.
+type Page = Extract<Awaited<ReturnType<Sdk['threads']['timeline']>>, { timelinePage: unknown }>;
 
 function collect(rows: Page['rows'], ids: Set<string>) {
   for (const row of rows) {
@@ -23,7 +24,7 @@ export async function resolvePanelRun(sdk: Sdk, threadId: string, suffix: string
   const ids = new Set<string>();
   let cursor: Page['timelinePage']['olderCursor'] = null;
   do {
-    const page = await sdk.threads.timeline({ threadId, signal, deferContent: 'false',
+    const page: Page = await sdk.threads.timeline({ threadId, signal, deferContent: 'false',
       includeNestedRows: 'true', segmentLimit: '5',
       ...(cursor ? { beforeAnchorId: cursor.anchorId, beforeAnchorSeq: String(cursor.anchorSeq) } : {}),
     });

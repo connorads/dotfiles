@@ -12,10 +12,10 @@ import { makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 
 const thread = (id: string, extra: Partial<PluginSidebarThread> = {}): PluginSidebarThread => ({
   id, projectId: 'p1', title: id, titleFallback: null, displayTitle: id,
-  parentThreadId: null, lifecycleOwnerThreadId: null, sourceThreadId: null, sectionId: null,
+  parentThreadId: null, parentNotifications: 'auto', lifecycleOwnerThreadId: null, sourceThreadId: null, sectionId: null,
   originKind: null, originPluginId: null, providerId: 'codex', status: 'idle', runtimeStatus: 'idle',
   queuedWork: 'none', hasPendingInteraction: false,
-  activity: { workflows: 0, backgroundAgents: 0, backgroundCommands: 0, planMode: 0, goals: 0 },
+  activity: { workflows: 0, backgroundAgents: 0, backgroundCommands: 0, planMode: 0 },
   indicator: 'none', indicatorLabel: null, isUnread: false, isPinned: false, pinnedAt: null,
   pinSortKey: null, isArchived: false, archivedAt: null, href: '/', isHidden: false,
   environment: null, host: { id: 'h1', name: 'Mac' }, createdAt: 1, updatedAt: 1,
@@ -84,7 +84,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
           })), permissionCeiling: 'auto', selectedOnlyModels: [], modelLoadError: null,
           models: (providerId === 'claude-code' ? ['sonnet'] : ['new-model', 'other-model']).map(model => ({
             id: model, model, displayName: model === 'new-model' ? 'New model' : model, description: '', isDefault: false,
-            defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }],
+            defaultReasoningEffort: 'medium', reasoningDiscovery: 'known' as const, supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }],
           })),
         }),
       },
@@ -96,9 +96,9 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
       providers: { models: async () => ({
         modelLoadError: null, permissionCeiling: 'full', providers: [], selectedOnlyModels: [],
         models: [{ id: 'new-model', model: 'new-model', displayName: 'New model', description: '',
-          defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false },
+          defaultReasoningEffort: 'medium', reasoningDiscovery: 'known' as const, supportedReasoningEfforts: [], isDefault: false },
           { id: 'other-model', model: 'other-model', displayName: 'Other model', description: '',
-            defaultReasoningEffort: 'medium', supportedReasoningEfforts: [], isDefault: false }],
+            defaultReasoningEffort: 'medium', reasoningDiscovery: 'known' as const, supportedReasoningEfforts: [], isDefault: false }],
       }) },
       ...options.sdk,
     },
@@ -228,7 +228,7 @@ test('next unread excludes the current thread, read replies, archived or hidden 
     thread('archived', { isUnread: true, isArchived: true }),
     thread('hidden', { isUnread: true, isHidden: true }),
     thread('running', { isUnread: true, status: 'active', runtimeStatus: 'active' }),
-    thread('background', { isUnread: true, activity: { workflows: 0, backgroundAgents: 1, backgroundCommands: 0, planMode: 0, goals: 0 } }),
+    thread('background', { isUnread: true, activity: { workflows: 0, backgroundAgents: 1, backgroundCommands: 0, planMode: 0 } }),
     thread('queued', { isUnread: true, queuedWork: 'waiting' }),
   ]);
   expect(await view.command({ action: 'unread' })).toMatchObject({ ok: true, outcome: 'empty' });

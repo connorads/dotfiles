@@ -240,6 +240,8 @@ export default function plugin(bb: BbPluginApi) {
     await review(thread.id).catch(error => bb.log.warn(`Claude profile review failed for ${thread.id}: ${error instanceof Error ? error.message : String(error)}`));
   });
   bb.providers.experimental_contributeEnv('claude-code', async input => {
+    // A launch outside a thread has no account binding, like a Default thread.
+    if (input.threadId === null) return [];
     const selected = await bb.storage.kv.get<Selection>(key(input.threadId));
     const accountEnv = selected?.hostId === input.hostId ? providerEnv(selected.profile.configDir) : [];
     // A ccp launch materialises the profile from ~/.claude; BB launches skip ccp, so the same step runs here.
