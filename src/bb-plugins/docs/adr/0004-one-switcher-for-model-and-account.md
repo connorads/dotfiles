@@ -53,7 +53,7 @@ setting that changes rarely.
 
 - A BB markup change shows the native trigger again beside the chip. The CSS
   rule hides nothing else.
-- BB's `modelPicker.*` shortcuts are unbound through live keyboard overrides.
+- The preferences file unbinds BB's `modelPicker.*` shortcuts and binds `⌘⇧M` to the switcher.
 - New-thread drafts still set Daybreak through BB's native picker, which the
   hide removes; Daybreak applies after the first message.
 - Remove the CSS rule when BB offers a slot that hides only the native trigger.
