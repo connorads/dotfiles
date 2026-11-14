@@ -2,7 +2,9 @@
 
 This headless plugin applies `~/.config/bb/preferences.json` through BB's public SDK.
 The file lives on the BB server machine and wins over UI edits to its shortcuts.
-Only `thread.previous` and `thread.next` are supported.
+Entries name a BB command, such as `modelPicker.toggle`, or a plugin command as
+`plugin:<plugin-id>/<command-id>`. BB's settings API rejects unknown commands, so
+a typo fails the apply and leaves existing shortcuts unchanged.
 
 ```mermaid
 flowchart LR

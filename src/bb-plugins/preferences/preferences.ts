@@ -9,9 +9,13 @@ const shortcut = z.object({
   control: z.boolean().default(false), alt: z.boolean().default(false),
   shift: z.boolean().default(false),
 }).strict();
+// BB's settings API holds the exact list of command IDs and rejects unknown ones, so a
+// typo fails the apply. The pattern only rejects names that cannot be a command.
+const command = z.string()
+  .regex(/^(?:[A-Za-z]+(?:\.[A-Za-z]+)+|plugin:[a-z0-9-]+\/[A-Za-z0-9-]+)$/) as unknown as z.ZodType<Overrides[number]['command']>;
 const preferences = z.object({
   keyboard: z.array(z.object({
-    command: z.enum(['thread.previous', 'thread.next']),
+    command,
     platform: z.enum(['mac', 'windows', 'linux']).optional(),
     shortcut: shortcut.nullable(),
   }).strict()),

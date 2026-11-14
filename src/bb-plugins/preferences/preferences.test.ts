@@ -18,6 +18,20 @@ test('file overrides only matching command and platform', () => {
   assert.deepEqual(mergePreferences(result, desired, desired), result);
 });
 
+test('built-in and plugin commands can be managed, including disabling one', () => {
+  const parsed = parsePreferences({ keyboard: [
+    { command: 'modelPicker.toggle', platform: 'mac', shortcut: null },
+    { command: 'plugin:claude-profiles/open-switcher', platform: 'mac', shortcut: { key: 'm', mod: true, shift: true } },
+  ] }).keyboard;
+  assert.deepEqual(parsed.map(entry => entry.command), ['modelPicker.toggle', 'plugin:claude-profiles/open-switcher']);
+});
+
+test('command names must look like a BB or plugin command', () => {
+  for (const command of ['', 'toggle', 'plugin:claude-profiles', 'plugin:/open', 'model picker.toggle']) {
+    assert.throws(() => parsePreferences({ keyboard: [{ command, shortcut: null }] }), /Invalid/, command);
+  }
+});
+
 test('reject invalid and duplicate entries before applying', () => {
   assert.throws(() => parsePreferences({ keyboard: [{ command: 'thread.next', shortcut: { key: 'L', typo: true } }] }));
   assert.throws(() => parsePreferences({ keyboard: [
