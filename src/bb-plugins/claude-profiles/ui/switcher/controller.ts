@@ -1,7 +1,7 @@
 import type { PluginBrowserBbSdk, PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { effortSchema, type Favourite, type Setup } from '../../src/models/contract.ts';
 import { selectionChanged } from './store.ts';
-import { availability, matches, nextFavourite, planSelection } from '../../src/models/favourites.ts';
+import { availability, matches, planSelection } from '../../src/models/favourites.ts';
 
 export function createController(composer: PluginComposerApi, sdk: PluginBrowserBbSdk, rpc: {
   call(method: 'favourites.list', input: Record<string, never>): Promise<Favourite[]>;
@@ -116,17 +116,6 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
         const favourite = (await rpc.call('favourites.list', {})).find(f => f.slot === slot);
         if (!favourite) throw new Error(`Favourite ${slot} is empty. Save a selection in the favourites menu.`);
         await applyChecked(favourite);
-        composer.focus();
-      });
-    },
-    cycle(direction: -1 | 1) {
-      return exclusive(async () => {
-        const list = await rpc.call('favourites.list', {});
-        if (!list.length) throw new Error('Save a model favourite before cycling.');
-        const reasons = await statuses(list);
-        const next = nextFavourite(list, { ...composer.selection, daybreak: await daybreak() }, direction, favourite => reasons.get(favourite.id) ?? null);
-        if (!next) throw new Error('No favourites are available on this machine. Open the favourites menu for details.');
-        await applyChecked(next);
         composer.focus();
       });
     },

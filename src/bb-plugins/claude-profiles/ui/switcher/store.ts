@@ -8,6 +8,8 @@ let opened: Opened | null = null;
 const notify = () => listeners.forEach(listener => listener());
 
 export function open(composer: PluginComposerApi, options: { focus?: Focus } = {}) {
+  // Queued-message editors cannot change a thread's model or account.
+  if (composer.scope.kind !== 'thread' && composer.scope.kind !== 'new-thread') return;
   opened = { key: composer.key, focus: options.focus ?? 'search' }; notify();
 }
 export function close() { opened = null; notify(); }

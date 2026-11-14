@@ -1,7 +1,7 @@
 # Agent Switcher for BB
 
 Choose the model, its effort and the Claude Code account for a thread from one
-picker. Keep the native conversation when switching accounts. Show each
+switcher. Keep the native conversation when switching accounts. Show each
 account's quota in the thread header and in an all-account overlay.
 
 The plugin ID is `claude-profiles`, so its CLI is `bb claude-profiles`. BB
@@ -10,70 +10,81 @@ records why it absorbs Model Favourites and Agent Usage.
 
 ## Use
 
-### Picker
+### Switcher
 
-Press **Alt+F**, click the chevron beside the prompt star, or choose **Switch
-model** in the composer's plus menu. The picker opens on the focused composer, in a thread
-or a new-thread composer. It changes the next turn and keeps the draft. It never
-sends a prompt.
+Press **⌘⇧M**, click the model chip in the composer, or choose **Switch model**
+in the composer's plus menu. The switcher opens on the focused composer, in a
+thread or a new-thread composer. It changes the next turn and keeps the draft.
+It never sends a prompt. Queued-message editors cannot open it.
 
-This picker works with standard BB. BB's native model selector remains visible
-alongside the plugin controls.
+```text
+ 1  ◎ Sol            ●○○
+ 2  ✳ Opus           ●●○   ✓
+ 3  O DeepSeek Flash ●○○
+ ────────────────────────
+  (S) Summit  (T) Trove  ...   account row, Claude only
+ ────────────────────────
+  ⌕ All models            /
+```
 
-The **OpenCode Go** chip filters to Go subscription routes from OpenCode's model
-catalogue. A current Go model opens this filter automatically. Rows and the
-current selection label Go separately from OpenAI accounts and OpenCode Free.
-The catalogue does not verify account access; Go plan and workspace settings apply.
+| Key | Action |
+| --- | --- |
+| **1-9** | Use that favourite |
+| **Up / Down** | Use the next or previous favourite |
+| **Left / Right** | Lower or raise the effort |
+| A letter | Use the account with that letter |
+| **⌘S** | Star or unstar the current model |
+| **/** | Search every model |
+| **Enter** or **Escape** | Close |
 
-1. Search by model or provider. Filter with the chips under the search field:
-   **All**, **Favourites** or one provider.
-2. Click a model to select it. Click its star to save or remove it as a
-   favourite. The star shows on hover or focus until the model is a favourite.
-3. Set the effort and tier for this turn in the **Now** strip. It shows the
-   current model and only the efforts and tiers that model supports.
-4. Choose the Claude account in the **Claude account** menu. It shows while
-   Claude Code is the selected provider.
+Each row shows its slot, provider, name and effort as dots, one per level the
+model supports. **auto** means the model's default effort. A model supplied
+by an unavailable provider is dimmed; hover over it for the reason.
 
-The list shows **Favourites** first, then one section per provider. A
-favourite row shows its slot number and its saved effort. The selected row has
-a check. An unavailable row is dimmed and shows the reason.
+The current model leads the list when it is not a favourite. It shows **⌘S to
+keep**. **Fast** and **Daybreak** appear on the current row only when its
+model offers them.
+
+The account row shows when the current provider has more than one account.
+Each account shows its letter inside a ring. The ring fills with the fullest
+allowance window. It turns amber at 70% and red at 90%. Hover for each window.
+**⌁** marks an account whose connectors are on.
+
+#### Search
+
+Type to filter by model, provider or route, such as **OpenCode Go**. **Up /
+Down** moves, **Enter** uses the highlighted model and **⌘S** stars it.
+**Escape** returns to the favourites. A provider whose catalogue fails shows
+only when you search for its name. The catalogue does not verify account
+access; Go plan and workspace settings apply.
 
 ### Favourites and effort
 
-The star beside the prompt shows whether the current model is a favourite. It
-is filled gold when it is. Click it to save the current model with the current
-effort, or to remove it. Its tooltip names the model and effort.
-
 Up to nine favourites fit in numbered slots. Removing one leaves the other slot
-numbers unchanged. Each favourite has a **Saved effort** pill. Click it to choose
-**Default** or an effort the model supports. With a favourite row focused,
-Left and Right step the saved effort.
+numbers unchanged. **Alt+1-9** uses a favourite without opening the switcher.
+
+A favourite remembers the last effort and tier used with it. Changing either
+while a favourite is current saves it to that favourite.
 
 | Case | Behaviour |
 | --- | --- |
-| Saved effort that the model supports | Selecting the favourite sets that effort. |
-| Saved effort that the model no longer supports | Selecting the favourite uses the model's default effort. |
-| No saved effort (**Default**) | Selecting the favourite uses the model's default effort, not the composer's current one. |
-| **Now** effort changed | Only this composer changes. Saved efforts stay. |
+| Remembered effort that the model supports | Selecting the favourite sets that effort. |
+| Remembered effort that the model no longer supports | Selecting the favourite uses the model's default effort. |
+| No remembered effort | Selecting the favourite uses the model's default effort, not the composer's current one. |
+| Remembered **Fast** the model no longer offers | Selecting the favourite uses the default tier. |
 
-Cycling skips disabled favourites. A favourite whose provider is unavailable on
-this machine stays visible with a reason. Favourites persist in plugin storage
-and update across open views.
+Favourites persist in plugin storage and update across open views.
 
 ### Daybreak
 
 Search **Daybreak** to find the models that advertise the programme. Each result
 names the model and **Daybreak**. Selecting it sets the model and programme for
-the next turn. Models that require Daybreak off have no Daybreak result.
-
-The **Now** strip shows the thread's Daybreak choice, including a pending choice
-for the next turn. Use **Off / On** to change it. A model that fixes the setting
-shows why it cannot change. Standard model results select Daybreak off.
+the next turn. Models that require Daybreak off have no Daybreak result. In a
+thread, the **Daybreak** toggle on the current row switches the programme.
 
 A favourite saves its Daybreak setting with the model. Standard and Daybreak
-choices for the same model can occupy separate slots. The saved effort belongs
-to each choice. Selecting a favourite checks that its model supports its saved
-programme before changing the thread.
+choices for the same model can occupy separate slots. Selecting a favourite
+checks that its model supports its saved programme before changing the thread.
 
 BB's composer SDK cannot read or set session options before thread creation.
 New-thread drafts use BB's native model picker for Daybreak. Save and apply
@@ -88,7 +99,7 @@ Executor keeps its own connection control.
 
 | Control | Choices | Where |
 | --- | --- | --- |
-| Account | Off / On | The account picker (**Alt+A**) |
+| Account | Off / On | **Claude account connectors** in Agent Switcher's settings |
 | Thread | Use account setting / Off | `bb claude-profiles connectors THREAD` |
 
 A thread can restrict access but cannot enable an account that is off.
@@ -135,49 +146,33 @@ bb claude-profiles connectors THREAD off
 
 ### Accounts
 
-Press **Alt+A** or click the account name in the composer to open the account
-picker. It opens with the current account focused. Press **1-9** to select an
-account, or use **Up / Down** and **Enter**. **Escape** returns to the draft.
-Numbers follow the account list order, not quota rankings.
-
-Each account groups its name, connector switch and usage on one surface.
-**Left / Right** moves between the account and its connector switch.
-**Up / Down** keeps the same control on the adjacent account.
-**C** toggles connectors for the focused account. **Space** toggles a focused switch.
-Saving connector preferences keeps focus in place.
-
-Each account shows usage, elapsed time and reset times for its allowance windows.
-The filled bar marks allowance used. The vertical line marks time elapsed.
-Pace compares usage with even spending across the window. Stale readings are
-striped and omit pace projections. **Refresh** reloads readings; new-thread
-readings use the host's quota cache. Failed switches keep the picker open with
-the refusal. Successful switches confirm the account and return focus to the
-draft without changing the model or effort.
+Press the account's letter in the switcher, or click it. Letters stay with
+their accounts; see the sidebar badges below.
 
 A thread reads quota on its own machine. A new-thread draft reads it on the
-connected machine that lists its accounts. Account comparison remains available
-during a turn; switching requires an idle thread with no queued messages.
+connected machine that lists its accounts.
 
 New thread:
 
-1. Click the account status, or run **Switch Claude account** with the caret in the composer.
-2. Choose an account with its number or **Up / Down** and **Enter**.
-3. Send the first message. The thread starts on that account.
+1. Open the switcher and press the account's letter.
+2. Send the first message. The thread starts on that account.
 
-The new-thread choice is remembered, like the model picker. A new Claude thread
-starts on it until you choose another, unless another thread starts it. See the
+The new-thread choice is remembered. A new Claude thread starts on it until
+you choose another, unless another thread starts it. See the
 [new-thread rule](#new-thread-rule).
 
 Existing thread:
 
-1. Finish or stop the turn. Clear queued messages. Account switching is disabled during a turn.
-2. Press **Alt+A** and choose an account.
-3. Send the next message. Claude resumes the same native conversation.
+1. Open the switcher and press the account's letter.
+2. Send the next message. Claude resumes the same native conversation.
+
+During a turn the account shows **next turn**. The switch runs when the turn
+ends. Choosing the current account again cancels it. The next message waits
+with **Moving to <account>…** until the conversation transfers.
 
 Account selection in a cross-provider handoff is unavailable before its first
-message. The picker explains this limit. New Claude threads use the remembered
-account; switch accounts after the first message. Alt+A does nothing in queued
-or sent-message editors and does not change the remembered account.
+message. The switcher says so. New Claude threads use the remembered account;
+switch accounts after the first message.
 
 **Default** means the thread has no named account. It uses the native default
 configuration.
@@ -282,24 +277,14 @@ Balances have no invented percentage or pace projection.
 
 | Action | Shortcut |
 | --- | --- |
-| Open model picker | Alt+F |
-| Next favourite | Alt+Shift+F |
-| Previous favourite | Assign in BB keyboard settings |
-| Select favourite 1-9 | Assign in BB keyboard settings |
-| Open account picker | Alt+A |
+| Open the switcher | ⌘⇧M |
+| Use favourite 1-9 | Alt+1-9 |
 | Show usage | ⌘⇧A |
 
-Inside the picker:
-
-| Action | Key |
-| --- | --- |
-| Move between models | Up / Down |
-| Select the focused model or first search result | Enter |
-| Select a favourite slot | 1-9 in empty search or on a model row |
-| Step the focused favourite's saved effort | Left / Right |
-| Star or unstar the focused model | ⌘S or Ctrl+S |
-| Close the open effort or account menu | Escape |
-| Close and return to the composer | Escape, or Q outside text fields |
+BB's own model picker also defaults to ⌘⇧M. A default that conflicts stays
+unbound, so the dotfiles BB preferences unbind BB's model picker shortcuts and
+bind ⌘⇧M to the switcher. Keys inside the switcher are listed under
+[Switcher](#switcher).
 
 ## New-thread rule
 
@@ -345,7 +330,7 @@ sequenceDiagram
 
 The plugin has two modules. `src/accounts/` owns bindings, routing, the guard,
 transcript handover, quota and usage. `src/models/` owns favourites and their
-saved effort. The picker and the usage overlay in `ui/` own no data. They call
+saved effort. The switcher and the usage overlay in `ui/` own no data. They call
 the modules through the plugin's typed RPC.
 
 The server owns thread selection and checks BB state. The host worker owns local
@@ -448,7 +433,7 @@ bb claude-profiles next [PROFILE]
 
 `overview` and `header` print the usage overlay and header data as JSON.
 `next` prints the remembered new-thread account and the profiles on the
-connected machine. With `PROFILE`, it first sets that account, as Alt+A does
+connected machine. With `PROFILE`, it first sets that account, as the switcher does
 in a new-thread composer. Agents use it before a workflow run whose origin
 cannot pass on an account.
 
@@ -474,7 +459,7 @@ the error names the stub thread. Archive it and retry.
 
 ## Scope
 
-The new-thread picker lists profiles from the first connected host. The first
+The new-thread switcher lists profiles from the first connected host. The first
 send resolves the choice on the thread's own host. A switch copies the parent
 transcript and its session directory, including subagent history and tool results.
 Existing JSONL files must match or extend the target at a complete line boundary.
@@ -546,5 +531,5 @@ build first, copy the plugin to a new `$TMPDIR` directory and build there.
 
 Tests cover transcript copying, return switching, conflicts, symlinks, subagent
 continuation, quota parsing, control requests, cancellation, the new-thread rule,
-favourites with saved effort and Daybreak, the picker and the usage views.
+favourites with saved effort and Daybreak, the switcher and the usage views.
 The disposable live proof is documented in [SPIKE.md](./SPIKE.md).

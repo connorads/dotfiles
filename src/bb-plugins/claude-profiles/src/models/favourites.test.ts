@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { availability, capture, matches, nextFavourite, planSelection } from './favourites.ts';
+import { availability, capture, matches, planSelection } from './favourites.ts';
 
 const selection = { providerId: 'codex', model: 'model-a', reasoningLevel: 'high' as const, serviceTier: 'fast', permissionMode: 'full' as const };
 const favourite = { id: 'a', slot: 1, name: 'Deep', ...capture(selection) };
@@ -15,16 +15,6 @@ test('favourites capture only provider and model', () => {
 test('favourites match the model independently of effort and tier', () => {
   assert.equal(matches(favourite, selection), true);
   assert.equal(matches(favourite, { ...selection, reasoningLevel: 'low', serviceTier: 'default' }), true);
-});
-
-test('cycling wraps and skips unavailable entries while keeping saved order', () => {
-  const other = { ...favourite, id: 'b', slot: 3, model: 'model-b' };
-  const last = { ...favourite, id: 'c', slot: 5, model: 'model-c' };
-  const list = [favourite, other, last];
-  assert.equal(nextFavourite(list, selection, 1, f => f.id === 'b' ? 'Missing model' : null)?.id, 'c');
-  assert.equal(nextFavourite(list, selection, -1, () => null)?.id, 'c');
-  assert.equal(nextFavourite(list, { ...selection, model: 'custom' }, 1, () => null)?.id, 'a');
-  assert.equal(nextFavourite(list, selection, 1, () => 'Offline'), null);
 });
 
 test('availability distinguishes catalogue failure and a missing model, and ignores a stale saved effort', () => {
@@ -49,14 +39,6 @@ test('selection restores a saved tier only when the model still offers it', () =
   assert.equal(planSelection({ ...favourite, serviceTier: 'fast' }, model).serviceTier, undefined);
   assert.equal(planSelection(favourite, fast).serviceTier, undefined);
 });
-
-test('cycling keeps a favourite whose saved effort the model no longer supports', () => {
-  const unsupported = { ...favourite, id: 'b', slot: 2, model: 'model-b', reasoningLevel: 'ultra' as const };
-  const plain = { ...favourite, id: 'c', slot: 3, model: 'model-c' };
-  const all = { ...catalog, models: ['model-a', 'model-b', 'model-c'].map(name => ({ ...model, model: name })) };
-  assert.equal(nextFavourite([favourite, unsupported, plain], selection, 1, f => availability(f, all))?.id, 'b');
-});
-
 
 test('Daybreak favourites capture and match the chosen programme separately from the model', () => {
   const saved = capture(selection, true);

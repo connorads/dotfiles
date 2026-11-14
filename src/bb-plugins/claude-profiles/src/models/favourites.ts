@@ -1,5 +1,5 @@
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
-import { setupSchema, type Effort, type Favourite, type Setup } from './contract.ts';
+import { setupSchema, type Effort, type Setup } from './contract.ts';
 
 export function capture(selection: ComposerSelection | null, daybreak?: boolean): Setup {
   if (!selection?.providerId || !selection.model) throw new Error('Choose a model before saving a favourite.');
@@ -47,19 +47,4 @@ export function planSelection(favourite: Setup, model: CatalogModel): { provider
   const tier = favourite.serviceTier;
   const serviceTier = tier !== undefined && model.supportedServiceTiers?.some(t => t.id === tier) ? tier : undefined;
   return { providerId: favourite.providerId, model: favourite.model, reasoningLevel, ...(serviceTier ? { serviceTier } : {}) };
-}
-
-export function nextFavourite(
-  favourites: readonly Favourite[], selection: (ComposerSelection & { daybreak?: boolean }) | null, direction: -1 | 1,
-  unavailable: (favourite: Favourite) => string | null,
-): Favourite | null {
-  const ordered = [...favourites].sort((a, b) => a.slot - b.slot);
-  const current = ordered.findIndex(f => matches(f, selection, selection?.daybreak));
-  const start = current === -1 ? (direction === 1 ? -1 : 0) : current;
-  for (let step = 1; step <= ordered.length; step++) {
-    const index = (start + direction * step + ordered.length) % ordered.length;
-    const favourite = ordered[index];
-    if (favourite && !unavailable(favourite)) return favourite;
-  }
-  return null;
 }
