@@ -21,7 +21,7 @@ export function ProcessRows({ processes, busy, onEnd }: { processes: AppProcess[
               if (detail) { detail.open = false; detail.querySelector('summary')?.focus(); }
               if (proc.started) void onEnd(proc.pid, proc.command, proc.started);
             }}>Stop process</button>
-            <button type="button" onClick={event => {
+            <button type="button" data-mh-cancel onClick={event => {
               const detail = event.currentTarget.closest('details');
               if (detail) { detail.open = false; detail.querySelector('summary')?.focus(); }
             }}>Cancel</button>

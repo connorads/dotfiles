@@ -56,7 +56,9 @@ The view includes at most 50 groups, ranked by footprint, even without a footpri
 Missing ages, directories and listeners remain unknown. No services expire automatically.
 
 Memory, threads, services and apps need macOS. Linux shows vitals only.
-Press `r` to refresh and `Esc` to close. `Q` closes outside text fields.
+Press `r` to refresh and `Esc` to close. `Esc` first backs out of an open Stop
+or Hibernate confirmation. `Q` closes outside text fields. Ticks, expanded rows
+and confirmations stay put when you switch views.
 
 ## Hibernate
 
@@ -86,7 +88,8 @@ descendant. The telegram channel's `bun server.ts` is one such server.
 
 After the stops, the server polls the machine every 750 ms for up to 6 s. Each
 thread reports `hibernated`, `stopped but still running`, `refused` or
-`failed`. Ticking more than one thread asks for confirmation.
+`failed`. Ticking more than one thread asks for confirmation. If the call
+fails, the ticks stay for a retry.
 
 ### Unverified: does a stop free the Claude process?
 
