@@ -55,15 +55,16 @@ export interface Forked { id: string; title: string | null }
 /** Shows a fork in a side panel tab; false when BB has no side panel to open. */
 export type OpenPanel = (fork: Forked) => boolean;
 
-export async function forkThread(sdk: ForkSdk, plan: ForkPlan): Promise<Forked[]> {
+/** Appends each fork to `forks` as soon as BB makes it, so a caller can report forks made before a failure. */
+export async function forkThread(sdk: ForkSdk, plan: ForkPlan, forks: Forked[] = []): Promise<Forked[]> {
   const environment = plan.worktree ? await worktreeOnSourceMachine(sdk, plan.sourceThreadId) : undefined;
-  const forks: Forked[] = [];
   for (let index = 0; index < (plan.count ?? 1); index++) {
     const forked = await sdk.threads.fork({
       sourceThreadId: plan.sourceThreadId,
       ...(plan.sourceSeqEnd === undefined ? {} : { sourceSeqEnd: plan.sourceSeqEnd }),
       ...(environment ? { environment } : {}),
     });
+    forks.push({ id: forked.id, title: forked.title });
     if (plan.model) {
       await sdk.threads.update({
         threadId: forked.id,
@@ -77,7 +78,6 @@ export async function forkThread(sdk: ForkSdk, plan: ForkPlan): Promise<Forked[]
     // One pane can show one thread, so further switch forks stay in the sidebar.
     const split = plan.placement === 'switch' ? (index === 0 ? 'replace' : null) : plan.placement === 'sidebar' ? null : plan.placement;
     if (split) await sdk.threads.open({ threadId: forked.id, split, file: null });
-    forks.push({ id: forked.id, title: forked.title });
   }
   return forks;
 }
@@ -145,11 +145,16 @@ export function createForker() {
       if (!sdk) return show({ kind: 'error', message: 'Fork is still loading. Try again.' });
       busy = true;
       show({ kind: 'busy' });
+      const forks: Forked[] = [];
       try {
-        const message = doneMessage(plan, await forkThread(sdk, plan), openPanel);
+        const message = doneMessage(plan, await forkThread(sdk, plan, forks), openPanel);
         show(message ? { kind: 'info', message } : null);
       } catch (cause) {
-        show({ kind: 'error', message: cause instanceof Error ? cause.message : String(cause) });
+        // A fork BB already made is kept; saying so stops a retry from duplicating it.
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        const total = plan.count ?? 1;
+        const made = forks.length === 0 ? 'Fork failed' : total > 1 ? `Made ${forks.length} of ${total} forks, then failed` : 'Made the fork, then failed';
+        show({ kind: 'error', message: `${made}: ${reason}` });
       } finally {
         busy = false;
       }

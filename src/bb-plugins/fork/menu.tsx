@@ -90,6 +90,8 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
   };
   const copyCommand = () => onCopy(forkCommand({ sourceThreadId: source.threadId, sourceSeqEnd: source.sourceSeqEnd, worktree }), 'fork command');
   const copyId = () => onCopy(source.threadId, 'thread id');
+  // A failed load is retried each time the model step opens.
+  const openModels = () => { setModelError(null); setStep({ kind: 'model' }); };
   const pickModel = (entry: Model, effort: ReasoningLevel | null) => {
     setModel({ model: entry.model, label: effort ? `${entry.label} · ${effort}` : entry.label, ...(effort ? { reasoningLevel: effort } : {}) });
     setStep({ kind: 'main' });
@@ -120,7 +122,7 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
     else if (event.key === 'Enter' && !onRow) { handled(); run('switch'); }
     else if (digit !== null && digit <= MAX_COUNT) { handled(); setCount(digit); }
     else if (event.key === 'w') { handled(); setWorktree(on => !on); }
-    else if (event.key === 'm') { handled(); setStep({ kind: 'model' }); }
+    else if (event.key === 'm') { handled(); openModels(); }
     else if (event.key === 'p') { handled(); setStep({ kind: 'prompt' }); }
     else if (event.key === 'c') { handled(); copyCommand(); }
     else if (event.key === 'y') { handled(); copyId(); }
@@ -149,7 +151,7 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
         <div className="fork-menu-group">
           <Row keys="2–8" label="Fork count" detail={count > 1 ? `×${count}` : '×1'} onPick={() => setCount(n => n >= MAX_COUNT ? 1 : n + 1)} />
           <Row keys="w" label="New worktree" detail={worktree ? 'on' : 'off'} onPick={() => setWorktree(on => !on)} />
-          <Row keys="m" label="Model" detail={model?.label ?? 'same'} onPick={() => setStep({ kind: 'model' })} />
+          <Row keys="m" label="Model" detail={model?.label ?? 'same'} onPick={openModels} />
           <Row keys="p" label="First prompt" detail={prompt.trim() ? 'set' : 'none'} onPick={() => setStep({ kind: 'prompt' })} />
         </div>
         <div className="fork-menu-group">
@@ -159,13 +161,17 @@ export function ForkMenu({ source, returnFocus, onRun, onCopy, onClose }: Props)
       </>;
       break;
     case 'model':
-      body = modelError ? <p role="alert" className="fork-menu-note">Models failed to load: {modelError}</p>
-        : !models ? <p role="status" className="fork-menu-note">Loading models…</p>
-        : <div className="fork-menu-group">
-          {models.slice(0, 9).map((entry, index) =>
-            <Row key={entry.model} keys={String(index + 1)} label={entry.label} onPick={() => setStep({ kind: 'effort', model: entry })} />)}
+      // Keep the source model stays as a row while loading or after a failure, so focus and the x key stay in the menu.
+      body = <>
+        {modelError ? <p role="alert" className="fork-menu-note">Models failed to load: {modelError}</p>
+          : !models ? <p role="status" className="fork-menu-note">Loading models…</p>
+          : null}
+        <div className="fork-menu-group">
+          {models && !modelError ? models.map((entry, index) =>
+            <Row key={entry.model} keys={index < 9 ? String(index + 1) : ''} label={entry.label} onPick={() => setStep({ kind: 'effort', model: entry })} />) : null}
           <Row keys="x" label="Keep the source model" onPick={() => { setModel(null); setStep({ kind: 'main' }); }} />
-        </div>;
+        </div>
+      </>;
       break;
     case 'effort':
       body = <div className="fork-menu-group">

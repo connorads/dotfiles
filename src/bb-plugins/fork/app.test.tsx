@@ -316,3 +316,59 @@ test('the menu opens centred near the top, not under the focused composer', asyn
   expect(document.activeElement).toBe(composer);
   composer.remove();
 });
+
+test('a failed model load keeps x in reach and loads again when the model step reopens', async () => {
+  const calls: Call[] = [];
+  const sdk = fakeSdk(calls);
+  let failures = 1;
+  sdk.providers.models = async () => {
+    calls.push({ method: 'models', args: null });
+    if (failures-- > 0) throw new Error('directory timed out');
+    return models;
+  };
+  const app = await load(sdk);
+  const dialog = await openMenu(app);
+  await press('m');
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Models failed to load: directory timed out'));
+  expect(document.activeElement?.textContent).toContain('Keep the source model');
+  await act(async () => { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); });
+  await press('m');
+  await waitFor(() => expect(screen.getByText('Fable')).toBeTruthy());
+  expect(screen.queryByRole('alert')).toBeNull();
+  await press('x');
+  expect(screen.getByText('Switch to fork')).toBeTruthy();
+});
+
+test('models past the ninth are listed and can be picked', async () => {
+  const sdk = fakeSdk([]);
+  const many = Array.from({ length: 11 }, (_, i) => ({ ...models.models[0]!, model: `m${i + 1}`, displayName: `Model ${i + 1}` }));
+  sdk.providers.models = async () => ({ modelLoadError: null, models: many });
+  const app = await load(sdk);
+  await openMenu(app);
+  await press('m');
+  await waitFor(() => expect(screen.getByText('Model 11')).toBeTruthy());
+  await act(async () => { fireEvent.click(screen.getByText('Model 11')); });
+  await act(async () => { (document.activeElement as HTMLButtonElement).click(); });
+  expect(screen.getByRole('dialog').querySelector('header')?.textContent).toContain('Model 11 · high');
+});
+
+test('a fork run that fails partway says how many forks were made', async () => {
+  const calls: Call[] = [];
+  let n = 0;
+  const app = await load(fakeSdk(calls, async () => {
+    if (++n === 2) throw new Error('provider cannot fork mid-turn');
+    return { id: `fork${n}`, title: null };
+  }));
+  await openMenu(app);
+  await press('3');
+  await press('|');
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Made 1 of 3 forks, then failed: provider cannot fork mid-turn'));
+});
+
+test('a refused copy reads as a copy failure', async () => {
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } });
+  const app = await load(fakeSdk([]));
+  await openMenu(app);
+  await press('y');
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Copy failed: denied'));
+});

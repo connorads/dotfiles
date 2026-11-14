@@ -45,6 +45,7 @@ Commands and message actions get no SDK client. An app overlay lends them its
 `useSdk()` client, hosts the menu, and shows progress and failures, which BB
 would only log. The menu uses the shared [Chip](../chip/README.md) popover.
 One fork runs at a time, so a repeated key press does not fork twice.
+When a run fails after BB made some forks, the notice says how many were made.
 
 Run `pnpm test`, `pnpm typecheck`, and `pnpm build` from this directory.
 

@@ -75,7 +75,7 @@ export default definePluginApp(app => {
       {!notice ? null
         : notice.kind === 'busy' ? <p role="status" className="fork-notice">Forking…</p>
         : notice.kind === 'info' ? <p role="status" className="fork-notice">{notice.message}</p>
-        : <p role="alert" className="fork-notice fork-notice-error">Fork failed: {notice.message}</p>}
+        : <p role="alert" className="fork-notice fork-notice-error">{notice.message}</p>}
     </>;
   }
   app.slots.experimental_appOverlay({ id: 'notices', component: Overlay });
