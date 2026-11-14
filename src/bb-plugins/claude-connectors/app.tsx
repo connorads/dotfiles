@@ -41,7 +41,7 @@ export default definePluginApp(app => {
   app.slots.settingsSection({ id: 'connectors', component: Settings });
   app.composer.customize({ id: 'connectors', scopes: ['new-thread'], actions: [{ id: 'connectors', component: DraftChip }] });
   app.commands.register({
-    id: 'toggle', title: 'Choose Claude connectors', defaultShortcut: { key: 'k', alt: true, shift: true },
+    id: 'toggle', title: 'Choose Claude connectors', defaultShortcut: { key: 'e', alt: true, shift: true },
     run: ({ threadId }) => toggle(targetFor(threadId ?? null), 'keyboard'),
   });
 });
