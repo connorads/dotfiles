@@ -1333,6 +1333,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: app-bug
 - Evidence: bundled automations/dist/server.js (recordAutomationFailure), automations/dist/app.js (Paused group), push-notifications/dist/server.js (thread.failed subscription).
 
+### Automation retries start duplicates of a recovered turn
+
+- Found: 2026-11-12, bundled automations plugin, Codex provider, BB 0.45.0
+- Wanted: one live run per scheduled automation, even when a provider stream drops and recovers.
+- Gap: a Codex stream error ("workspace routing discovery failed") records the run as failed. `recordAutomationFailure` then schedules a backoff retry. Codex falls back from WebSockets to HTTPS and continues the same turn. The single-flight index only covers `running` rows, so retries start while the first thread still works. Three live runs started in three minutes, then the automation paused after three consecutive failures.
+- Workaround: the KB writer-session helper lets only one scheduled run queue; later runs exit as skipped.
+- Ask: settle a run as failed only when its thread is idle or errored at turn end, or have the retry check that the previous run's thread is idle.
+- Status: open
+- Category: app-bug
+- Evidence: bundled automations/dist/server.js (`recordAutomationFailure`, `automationRetryDelayMs`, `automation_runs_single_flight_idx`), @thread:thr_kmetfeqvjm, KB commit bce360e4.
+
 ### Loaded patch identity is unavailable to plugins
 
 - Found: 2026-11-07, Patch Health research, BB 0.48.1.
