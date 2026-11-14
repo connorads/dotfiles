@@ -76,7 +76,7 @@ flowchart LR
   BB scans visible home-directory folders, skips generated and system folders,
   and stops below repositories. Hidden folders and nested repositories are outside its coverage.
   Activity, depth, result and time limits also apply. This scan creates no BB projects.
-- Recent checkout paths live only in BB's private plugin key-value app data.
+- Recent checkout paths and recent picks live only in BB's private plugin key-value app data.
   No path inventory or commit index is written into a repository.
 - Lookup checks at most 128 known paths and 128 newly discovered paths with four concurrent Git processes.
   Each path has a two-second Git deadline; each search batch has a five-second deadline.
@@ -152,6 +152,8 @@ The repository name in Git status opens the same browser.
 - The search skips symlinks, `node_modules` and `Library`, and never enters a repository or a hidden folder.
   It stops after 1,000 repositories or 50,000 folders, and then says so.
 - With an empty search, the browser lists the current folder's immediate subfolders.
+- At the thread folder, an empty search lists the last eight picks under **Recent**, so `Enter` reopens the latest.
+  Every thread on the same checkout shares the list. A recent pick reruns the same checks as a new one.
 - Git rows select a repository. Their arrow browses inside it.
 - Ordinary folders open for deeper browsing. Breadcrumbs return to an ancestor.
 - **Use this repository** selects the displayed folder's repository.

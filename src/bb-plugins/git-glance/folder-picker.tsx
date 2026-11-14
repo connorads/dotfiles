@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { FolderList, RepositoryList, rpcContract } from './contracts.ts';
+import type { Pick } from './src/recent-picks.ts';
 import { rankRepositories } from './src/repo-search.ts';
 import { message } from './ui.tsx';
 
 const SHOWN = 50;
+
+/** A repository path with its parent folders muted and its name emphasised. */
+function PathLabel({ path }: { path: string }) {
+  const slash = path.lastIndexOf('/');
+  return <span>{slash >= 0 && <span className="gg-folder-parent">{path.slice(0, slash + 1)}</span>}<strong>{path.slice(slash + 1)}</strong></span>;
+}
 
 /**
  * Browses and searches the thread checkout for a repository. As the empty state
@@ -20,6 +27,12 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recent, setRecent] = useState<Pick[]>([]);
+  useEffect(() => {
+    let live = true;
+    rpc.call('recentPicks', { threadId }).then(result => { if (live) setRecent(result.picks); }, () => {});
+    return () => { live = false; };
+  }, [rpc, threadId]);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -46,6 +59,7 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
   // While searching, repositories come from the nested scan; plain folders stay browsable.
   const folders = listing?.folders.filter(folder => folder.name.toLowerCase().includes(needle) && !(searching && folder.repository)) ?? [];
   const count = nested?.repositories.length ?? 0;
+  const showRecent = !searching && path === '.' && recent.length > 0;
   const placeholder = !nested ? 'Find a repository…' : `Search ${count}${nested.truncated ? '+' : ''} ${count === 1 ? 'repository' : 'repositories'}…`;
 
   function keys(event: React.KeyboardEvent<HTMLElement>) {
@@ -85,21 +99,28 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
       {listing.repository && !searching && <button type="button" className="gg-ghost" disabled={busy} onClick={() => void select(path)}>Use this repository</button>}
       {searching && <>
         <ul className="gg-folder-list" aria-label="Repositories">
-          {matches.map((match, index) => {
-            const slash = match.lastIndexOf('/');
-            return <li key={match}>
-              <button type="button" data-row disabled={busy} onClick={() => void select(join(match))}>
-                <Icon name="FolderGit" className="size-4" />
-                <span>{slash >= 0 && <span className="gg-folder-parent">{match.slice(0, slash + 1)}</span>}<strong>{match.slice(slash + 1)}</strong></span>
-                <span className="gg-spacer" />{index === 0 && <kbd className="gg-tag">↵</kbd>}
-              </button>
-              <button type="button" disabled={busy} aria-label={`Browse ${match} and worktrees`} title="Browse folders and worktrees" onClick={() => setPath(join(match))}><Icon name="ChevronRight" className="size-3" /></button>
-            </li>;
-          })}
+          {matches.map((match, index) => <li key={match}>
+            <button type="button" data-row disabled={busy} onClick={() => void select(join(match))}>
+              <Icon name="FolderGit" className="size-4" /><PathLabel path={match} />
+              <span className="gg-spacer" />{index === 0 && <kbd className="gg-tag">↵</kbd>}
+            </button>
+            <button type="button" disabled={busy} aria-label={`Browse ${match} and worktrees`} title="Browse folders and worktrees" onClick={() => setPath(join(match))}><Icon name="ChevronRight" className="size-3" /></button>
+          </li>)}
         </ul>
         {ranked.length > SHOWN && <p className="gg-note">{ranked.length - SHOWN} more. Type more to narrow the list.</p>}
         {!nested && <p className="gg-note" role="status">Searching subfolders…</p>}
         {nested?.truncated && <p className="gg-note">Search stopped at its size limit. Open a folder to search inside it.</p>}
+      </>}
+      {showRecent && <>
+        <h3 className="gg-eyebrow">Recent</h3>
+        <ul className="gg-folder-list" aria-label="Recent repositories">
+          {recent.map((pick, index) => <li key={`${pick.path}\0${pick.worktree ?? ''}`}>
+            <button type="button" data-row disabled={busy} title={pick.worktree} onClick={() => void select(pick.path, pick.worktree)}>
+              <Icon name="Clock" className="size-4" /><PathLabel path={pick.worktree ?? pick.path} />
+              <span className="gg-spacer" />{index === 0 && <kbd className="gg-tag">↵</kbd>}
+            </button>
+          </li>)}
+        </ul>
       </>}
       {worktrees.length > 0 && <>
         <h3 className="gg-eyebrow">Checkouts and worktrees</h3>
@@ -111,7 +132,7 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
           </li>)}
         </ul>
       </>}
-      {searching && folders.length > 0 && <h3 className="gg-eyebrow">Folders</h3>}
+      {(searching || showRecent) && folders.length > 0 && <h3 className="gg-eyebrow">Folders</h3>}
       <ul className="gg-folder-list" aria-label="Subfolders">
         {folders.map(folder => {
           const next = join(folder.name);

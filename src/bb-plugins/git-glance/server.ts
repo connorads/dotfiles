@@ -4,6 +4,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { hostContract, hostSignals, rpcContract, subjectProject, type FetchHealth, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
 import { checkoutKey, createLeases, type Checkout } from './src/leases.ts';
 import { finish, progress, start, type OpState } from './src/ops.ts';
+import { addPick, parsePicks, type Pick } from './src/recent-picks.ts';
 
 /** Windows renew every 30 seconds; two missed renewals end the lease. */
 const leaseTtlMs = 75_000;
@@ -50,6 +51,12 @@ export default function plugin(bb: BbPluginApi) {
     const paths = await known(target.hostId);
     if (paths[0] !== target.root) await bb.storage.kv.set(knownKey(target.hostId),
       [target.root, ...paths.filter(path => path !== target.root)].slice(0, 64));
+  }
+  // Shared by every thread on the same base checkout, such as one project folder.
+  const picksKey = (base: Checkout) => `recent-picks:${base.hostId}:${base.root}`;
+  const recentPicks = async (base: Checkout) => parsePicks(await bb.storage.kv.get(picksKey(base)));
+  async function rememberPick(base: Checkout, pick: Pick) {
+    await bb.storage.kv.set(picksKey(base), addPick(await recentPicks(base), pick));
   }
   async function checkout(threadId: string): Promise<Checkout | null> {
     const base = await environment(threadId);
@@ -188,6 +195,10 @@ export default function plugin(bb: BbPluginApi) {
       if (!base) throw new Error('This thread has no checkout.');
       return host.call('folders', { root: base.root, path }, { hostId: base.hostId, timeoutMs: 30_000 });
     },
+    recentPicks: async ({ threadId }) => {
+      const base = await environment(threadId);
+      return { picks: base ? await recentPicks(base) : [] };
+    },
     repositories: async ({ threadId, path }) => {
       const base = await environment(threadId);
       if (!base) throw new Error('This thread has no checkout.');
@@ -202,6 +213,7 @@ export default function plugin(bb: BbPluginApi) {
         const previous = await required(threadId);
         if (ops.get(checkoutKey(previous))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
         const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path, ...worktree === undefined ? {} : { worktree } }, { hostId: base.hostId })) };
+        if (path !== null) await rememberPick(base, worktree === undefined ? { path } : { path, worktree });
         return await remember(threadId, base, target);
       } finally { selecting.delete(threadId); }
     },

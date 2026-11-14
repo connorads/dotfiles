@@ -1,5 +1,6 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
+import { pickSchema } from './src/recent-picks.ts';
 
 const area = z.enum(['conflicted', 'staged', 'unstaged', 'untracked']);
 const change = z.object({
@@ -167,6 +168,7 @@ export const rpcContract = defineRpcContract({
   cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
   repositories: { input: z.object({ ...thread, path: z.string() }), output: repositoryList },
+  recentPicks: { input: z.object(thread), output: z.object({ picks: z.array(pickSchema) }) },
   select: { input: z.object({ ...thread, path: z.string().nullable(), worktree: root.optional() }), output: z.object({}) },
   watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable(), fetch: fetchHealthSchema }) },
   unwatch: { input: z.object(holder), output: z.object({}) },
