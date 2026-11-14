@@ -1,0 +1,17 @@
+{
+  "check-compiler-errors": "Cursor team-kit compiler check chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "fix-ci": "Cursor team-kit CI fixing chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "fix-merge-conflicts": "Cursor team-kit conflict resolution chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "get-pr-comments": "Cursor team-kit PR comment fetch chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "loop-on-ci": "Cursor team-kit CI loop chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "make-pr-easy-to-review": "Cursor team-kit PR tidy-up chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "new-branch-and-pr": "Cursor team-kit branch and PR creation chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "pr-review-canvas": "Cursor team-kit PR walkthrough page chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "review-and-ship": "Cursor team-kit review and ship chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "run-smoke-tests": "Cursor team-kit smoke-test runner chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "thermo-nuclear-code-quality-review": "Already vendored in the unsorted bucket from cursor/plugins.",
+  "thermos": "Needs Cursor plugin subagent types that are not available here.",
+  "weekly-review": "Cursor team-kit commit digest chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "what-did-i-get-done": "Cursor team-kit commit digest chore; overlaps tstack, visual-pr, pr-lens and merge-risk.",
+  "workflow-from-chats": "Reads Cursor chat history, which is not used here."
+}
