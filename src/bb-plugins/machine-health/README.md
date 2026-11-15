@@ -58,7 +58,11 @@ Missing ages, directories and listeners remain unknown. No services expire autom
 Memory, threads, services and apps need macOS. Linux shows vitals only.
 Press `r` to refresh and `Esc` to close. `Esc` first backs out of an open Stop
 or Hibernate confirmation. `Q` closes outside text fields. Ticks, expanded rows
-and confirmations stay put when you switch views.
+and confirmations stay put when you switch views. One Stop or Hibernate runs
+at a time. Its outcome shows below the views and takes focus when the control
+that started it has gone. Closing the dialog does not cancel it. Reopened in
+the same thread, the dialog shows it still running, or its outcome until the
+next close.
 
 ## Hibernate
 

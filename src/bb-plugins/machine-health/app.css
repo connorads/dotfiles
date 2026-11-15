@@ -1,7 +1,8 @@
 /* Tones follow BB's theme tokens; glyphs and figures carry each state without colour too. */
 :root {
   --mh-ok: var(--diff-added, oklch(77% .17 163));
-  --mh-warn: var(--attention, oklch(80% .15 80));
+  /* A text token: --attention is a fill and reads at about 2.4:1 on the light background. */
+  --mh-warn: var(--warning-text, oklch(55% .14 50));
   --mh-critical: var(--destructive-text, oklch(65% .19 22));
 }
 [data-tone="ok"] { --mh-tone: var(--muted-foreground); }
@@ -23,6 +24,8 @@
 @container page-header (max-width: 900px) {
   .mh-chip { gap: 6px; }
   .mh-chip .mh-label, .mh-chip .mh-value { display: none; }
+  /* Offline has no icon; its word is the whole chip. */
+  .mh-chip .mh-metric[data-metric="offline"] .mh-value { display: inline; }
 }
 .mh-machine-row {
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; min-height: 28px; padding: 4px 8px;
@@ -84,6 +87,11 @@
 .mh-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
 .mh-confirm { display: inline-flex; gap: 6px; align-items: center; }
 .mh-result { margin: 0; }
+.mh-outcome { display: grid; gap: 6px; }
+.mh-outcome:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+.mh-view:focus { outline: none; }
+.mh-app > .mh-name::before { content: '›' / ''; display: inline-block; width: 12px; margin-right: 4px; color: var(--muted-foreground); text-align: center; }
+.mh-app[aria-expanded="true"] > .mh-name::before { transform: rotate(90deg); }
 .mh-result p, .mh-result ul { margin: 0; }
 .mh-result ul { padding-left: 18px; color: var(--muted-foreground); }
 .mh-error { margin: 0; color: var(--destructive-text); }
@@ -120,7 +128,7 @@
 .mh-diagnostics[open] > summary { margin-bottom: 12px; }
 .mh-diagnostics > .mh-rows { margin-top: 16px; }
 .mh-panel .mh-views { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.mh-panel .mh-views button { border: 0; padding: 6px 12px; color: var(--muted-foreground); }
+.mh-panel .mh-views button:not(.mh-link) { border: 0; padding: 6px 12px; color: var(--muted-foreground); }
 .mh-panel .mh-views button[aria-pressed="true"] { color: var(--foreground); background: var(--accent); }
 .mh-views button > span { margin-left: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .mh-view { min-height: 120px; }
