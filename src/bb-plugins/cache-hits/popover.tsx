@@ -72,42 +72,62 @@ function describeEntry(entry: HistoryEntry) {
   return parts.join('\n');
 }
 
+/** Uncached input drawn grey: the prompt less its reads and its fresh or re-sent tokens. */
+function split(entry: HistoryEntry) {
+  // Codex and Pi report no writes, so a miss re-sends its lost tokens as uncached input.
+  const fresh = entry.miss ? Math.max(entry.write, entry.miss.tokens) : entry.write;
+  return { fresh, rest: Math.max(0, entry.prompt - entry.read - fresh) };
+}
+
 /** One column per request: cached reads at the base, fresh writes above, red when the write re-sent a lost cache. */
 function Chart({ history }: { history: HistoryEntry[] }) {
+  // The chosen request by its time, not its place: at the 48-request cap each new request shifts every index.
   const [selected, setSelected] = useState<number | null>(null);
   if (history.length === 0) return <p className="ch-empty">The chart fills in as this thread sends requests.</p>;
-  const selectedIndex = Math.min(selected ?? history.length - 1, history.length - 1);
+  const found = selected === null ? -1 : history.findIndex(entry => entry.at === selected);
+  const selectedIndex = found === -1 ? history.length - 1 : found;
   const selectedEntry = history[selectedIndex]!;
   const max = Math.max(1, ...history.map(entry => entry.prompt));
   const first = history[0]!;
   const last = history.at(-1)!;
+  // The legend names only the parts some bar draws: Codex and Pi never write, and a warm Claude thread has no grey.
+  const parts = history.map(entry => ({ entry, ...split(entry) }));
+  const legend = [
+    ['read', 'cached', parts.some(({ entry }) => entry.read > 0)],
+    ['write', 'written', parts.some(({ entry, fresh }) => !entry.miss && fresh > 0)],
+    ['miss', 're-sent', parts.some(({ entry }) => entry.miss)],
+    ['rest', 'uncached', parts.some(({ rest }) => rest > 0)],
+  ] as const;
+  // Bars stop growing at 14 px, so the time axis ends where the last bar ends.
+  const resets = history.filter(entry => entry.afterReset).length;
+  const span = history.length * 16 - 2 + resets * 4;
   return <figure className="ch-chart">
     <figcaption>
       <span>Last {history.length} request{history.length === 1 ? '' : 's'}</span>
       <span className="ch-legend">
-        <span data-part="read">cached</span><span data-part="write">written</span><span data-part="miss">re-sent</span>
+        {legend.filter(([, , shown]) => shown).map(([part, label]) => <span key={part} data-part={part}>{label}</span>)}
       </span>
     </figcaption>
-    <div className="ch-plot">
-      <span className="ch-axis-y" aria-hidden="true">{tokens(max)}</span>
-      <ol className="ch-bars" aria-label="Prompt tokens per request">
-        {history.map((entry, index) => {
-          const height = (value: number) => `${(value / max) * 100}%`;
-          // Codex and Pi report no writes, so a miss re-sends its lost tokens as uncached input.
-          const fresh = entry.miss ? Math.max(entry.write, entry.miss.tokens) : entry.write;
-          const rest = Math.max(0, entry.prompt - entry.read - fresh);
-          return <li key={`${entry.at}-${index}`} title={describeEntry(entry)} aria-label={describeEntry(entry)}
-            data-miss={entry.miss ? entry.miss.cause : undefined} data-reset={entry.afterReset || undefined}>
-            <i data-part="rest" style={{ height: height(rest) }} />
-            <i data-part={entry.miss ? 'miss' : 'write'} style={{ height: height(fresh) }} />
-            <i data-part="read" style={{ height: height(entry.read) }} />
-          </li>;
-        })}
-      </ol>
+    <div className="ch-track" style={{ maxWidth: span }}>
+      <div className="ch-plot">
+        <span className="ch-axis-y" aria-hidden="true">{tokens(max)}</span>
+        <ol className="ch-bars" aria-label="Prompt tokens per request">
+          {parts.map(({ entry, fresh, rest }, index) => {
+            const height = (value: number) => `${(value / max) * 100}%`;
+            return <li key={`${entry.at}-${index}`} title={describeEntry(entry)} aria-label={describeEntry(entry)}
+              data-miss={entry.miss ? entry.miss.cause : undefined} data-reset={entry.afterReset || undefined}
+              data-selected={index === selectedIndex || undefined}>
+              <i data-part="rest" style={{ height: height(rest) }} />
+              <i data-part={entry.miss ? 'miss' : 'write'} style={{ height: height(fresh) }} />
+              <i data-part="read" style={{ height: height(entry.read) }} />
+            </li>;
+          })}
+        </ol>
+      </div>
+      <div className="ch-axis-x" aria-hidden="true"><span>{timeOfDay(first.at)}</span>{history.length > 1 && <span>{timeOfDay(last.at)}</span>}</div>
     </div>
-    <div className="ch-axis-x" aria-hidden="true"><span>{timeOfDay(first.at)}</span><span>{timeOfDay(last.at)}</span></div>
     <label className="ch-request-picker">Request details
-      <select value={selectedIndex} onChange={event => setSelected(Number(event.target.value))}>
+      <select value={selectedIndex} onChange={event => setSelected(history[Number(event.target.value)]?.at ?? null)}>
         {history.map((entry, index) => <option key={`${entry.at}-${index}`} value={index}>
           Request {index + 1} - {timeOfDay(entry.at)}
         </option>)}

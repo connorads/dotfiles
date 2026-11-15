@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeAll, test, expect } from 'vitest';
+import { afterEach, beforeAll, test, expect, vi } from 'vitest';
 import { act, fireEvent } from '@testing-library/react';
 import { loadPluginApp, renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
@@ -11,6 +11,7 @@ beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
 });
+afterEach(() => { vi.useRealTimers(); });
 
 const props = { threadId: 'thread-test', projectId: 'project-test', isCompactViewport: false };
 const hour = 3_600_000;
@@ -51,7 +52,7 @@ test('Claude: shows cold and the rebuild size once the lifetime has passed', asy
   try {
     const chip = await slot.findByRole('button');
     expect(chip.textContent).toBe('cold');
-    expect(chip.getAttribute('title')).toMatch(/^Cache expired 60m ago; the next request rebuilds 183k\n/);
+    expect(chip.getAttribute('title')).toMatch(/^Cache expired 1h 0m ago; the next request rebuilds 183k\n/);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -190,5 +191,75 @@ test('Codex: a miss bar draws its re-sent tokens in red, though Codex reports no
     const bar = (await slot.findByRole('dialog')).querySelector<HTMLElement>('.ch-bars > li[data-miss]')!;
     const height = (part: string) => bar.querySelector<HTMLElement>(`[data-part="${part}"]`)!.style.height;
     expect([height('miss'), height('rest'), height('read')]).toEqual([`${(40000 / 120000) * 100}%`, `${(20000 / 120000) * 100}%`, `${(60000 / 120000) * 100}%`]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a failed refresh is tried again, so the chip catches up with the request that triggered it', async () => {
+  const at = Date.now() - 60_000;
+  let calls = 0;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (calls === 2) throw new Error('Sync store unavailable');
+    return claudeState(at, { invalidatedAt: Date.now() - 1000 });
+  });
+  try {
+    expect((await slot.findByRole('button')).textContent).toMatch(/^5[89]m$/);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toBe(2);
+    expect(slot.getByRole('button').textContent).toMatch(/^5[89]m$/);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(calls).toBe(3);
+    expect(slot.getByRole('button').textContent).toBe('cold');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a failed first load is tried again, so one transient failure does not hide the chip', async () => {
+  const at = Date.now() - 60_000;
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  let calls = 0;
+  const slot = await render(() => { if (calls++ === 0) throw new Error('Sync store unavailable'); return claudeState(at); });
+  try {
+    await act(async () => { await Promise.resolve(); });
+    expect(slot.queryByRole('button')).toBe(null);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(calls).toBe(2);
+    expect(slot.getByRole('button').textContent).toMatch(/^5[89]m$/);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Request details keeps the chosen request when a refresh at the history cap drops the oldest one', async () => {
+  const at = Date.now() - 60_000;
+  const entry = (minutesAgo: number, prompt: number) => ({ at: at - minutesAgo * 60_000, prompt, read: prompt - 1000, write: 1000, miss: null, afterReset: false });
+  const before = [entry(30, 50000), entry(20, 60000), entry(10, 70000)];
+  const after = [...before.slice(1), entry(0, 80000)];
+  let calls = 0;
+  const slot = await render(() => claudeState(at, { history: calls++ === 0 ? before : after }));
+  try {
+    fireEvent.click(await slot.findByRole('button'));
+    fireEvent.change(await slot.findByRole('combobox', { name: 'Request details' }), { target: { value: '1' } });
+    expect(slot.getByRole('status').textContent).toContain('60k prompt');
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await tick();
+    expect(slot.getByRole('status').textContent).toContain('60k prompt');
+    expect(slot.getByRole('combobox', { name: 'Request details' })).toHaveProperty('value', '0');
+    expect(slot.getByRole('dialog').querySelectorAll('.ch-bars > li[data-selected]')).toHaveLength(1);
+    expect(slot.getByRole('dialog').querySelector('.ch-bars > li')?.hasAttribute('data-selected')).toBe(true);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Codex: the chart legend names uncached input and leaves out writes Codex never reports', async () => {
+  const at = Date.now() - 60_000;
+  const slot = await render(() => ({ ...initialState(), prompt: 220000, read: 130000,
+    last: { at, prompt: 120000, read: 60000, write: 0, ttlMs: null, model: null },
+    history: [
+      { at: at - 600_000, prompt: 100000, read: 70000, write: 0, miss: null, afterReset: false },
+      { at, prompt: 120000, read: 60000, write: 0, miss: { tokens: 40000, idleMs: 600_000, cause: 'idle' }, afterReset: false },
+    ] }));
+  try {
+    fireEvent.click(await slot.findByRole('button'));
+    expect((await slot.findByRole('dialog')).querySelector('.ch-legend')?.textContent).toBe('cachedre-sentuncached');
   } finally { slot.lifecycle.unmount(); }
 });

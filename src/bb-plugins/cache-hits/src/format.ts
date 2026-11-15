@@ -2,7 +2,9 @@ import type { MissCause } from './cache.ts';
 
 export function tokens(value: number) {
   if (value < 1000) return String(value);
-  return value < 10000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value / 1000)}k`;
+  if (value < 10_000) return `${(value / 1000).toFixed(1)}k`;
+  if (value < 999_500) return `${Math.round(value / 1000)}k`;
+  return value < 9_950_000 ? `${(value / 1_000_000).toFixed(1)}M` : `${Math.round(value / 1_000_000)}M`;
 }
 export const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 export function clock(ms: number) {

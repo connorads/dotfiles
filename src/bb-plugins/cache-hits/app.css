@@ -8,10 +8,12 @@
   --ch-rest: var(--muted-foreground);
 }
 .bbp-popover-panel.ch-panel { gap: 14px; overflow: auto; padding: 14px 16px 16px; }
+/* The panel scrolls when short; without this its flex column squeezes the stats box and clips its figures. */
+.ch-panel > * { flex: none; }
 .ch-panel h3 { margin: 0 0 6px; font-size: var(--text-xs, 12px); font-weight: 500; color: var(--muted-foreground); }
 
 .ch-status { display: grid; gap: 8px; }
-.ch-status[data-level="ok"] { --ch-tone: var(--success); }
+.ch-status[data-level="ok"] { --ch-tone: var(--success-foreground); }
 .ch-status[data-level="warn"] { --ch-tone: var(--warning-text); }
 .ch-status[data-level="danger"] { --ch-tone: var(--destructive-text); }
 .ch-headline { display: flex; align-items: baseline; gap: 8px; color: var(--muted-foreground); }
@@ -24,7 +26,7 @@
 .ch-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--ch-tone); transition: width 1s linear; }
 
 .ch-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--border); }
-.ch-stat { display: grid; gap: 2px; padding: 8px 10px; background: var(--popover); }
+.ch-stat { display: grid; align-content: start; gap: 2px; padding: 8px 10px; background: var(--popover); }
 .ch-stat dt { color: var(--muted-foreground); font-size: 11px; }
 .ch-stat dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ch-stat dd.ch-sub { color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
@@ -38,6 +40,8 @@
 [data-part="miss"] { --ch-part: var(--ch-miss); }
 [data-part="rest"] { --ch-part: var(--ch-rest); }
 
+/* Wide enough for both axis times when a short history keeps the bars narrow. */
+.ch-track { display: grid; gap: 6px; min-width: 96px; }
 .ch-plot { position: relative; padding-top: 14px; }
 .ch-axis-y { position: absolute; top: 0; left: 0; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
 .ch-bars {
@@ -47,12 +51,13 @@
 }
 .ch-bars > li { display: flex; flex: 1 1 0; flex-direction: column; justify-content: flex-end; min-width: 2px; max-width: 14px; height: 100%; border-radius: 2px 2px 0 0; overflow: hidden; cursor: default; }
 .ch-bars > li:hover { filter: brightness(1.25); }
+.ch-bars > li[data-selected] { outline: 1.5px solid var(--foreground); outline-offset: 1px; }
 .ch-bars > li > i { display: block; flex: none; background: var(--ch-part); }
-.ch-bars > li > i[data-part="rest"] { opacity: .5; }
-.ch-bars > li > i[data-part="read"] { opacity: .75; }
+.ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before { opacity: .5; }
+.ch-bars > li > i[data-part="read"], .ch-legend > [data-part="read"]::before { opacity: .75; }
 /* Compaction shrinks the prompt on purpose: a gap before the bar marks the new baseline. */
 .ch-bars > li[data-reset] { margin-left: 4px; box-shadow: -3px 0 0 -1px color-mix(in oklch, var(--foreground) 30%, transparent); }
-.ch-axis-x { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ch-axis-x { display: flex; justify-content: space-between; gap: 8px; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
 .ch-empty { margin: 0; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 
 .ch-misses ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }

@@ -4,7 +4,7 @@ import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract } from './contracts.ts';
 import { expiresAt, hitRatio, type CacheState } from './src/cache.ts';
-import { clock, countdown, lifetime, missReason, percent, tokens } from './src/format.ts';
+import { clock, countdown, gap, lifetime, missReason, percent, tokens } from './src/format.ts';
 import { CachePopover, warmth } from './popover.tsx';
 import './app.css';
 
@@ -15,7 +15,7 @@ function describe(state: CacheState, now: number) {
   if (expiry !== null && state.ttlMs !== null) lines.push(expiry > now
     ? `Cache expires in ${clock(expiry - now)} (${lifetime(state.ttlMs)} lifetime)`
     : expiry === state.invalidatedAt ? `Claude account switched; the next request rebuilds ${rebuild}`
-    : `Cache expired ${Math.round((now - expiry) / 60_000)}m ago; the next request rebuilds ${rebuild}`);
+    : `Cache expired ${gap(now - expiry)} ago; the next request rebuilds ${rebuild}`);
   if (state.last) lines.push(`Last request: ${percent(hitRatio(state.last.read, state.last.prompt) ?? 0)} cached `
     + `(read ${tokens(state.last.read)}, wrote ${tokens(state.last.write)} of ${tokens(state.last.prompt)})`);
   const thread = hitRatio(state.read, state.prompt);
@@ -25,6 +25,9 @@ function describe(state: CacheState, now: number) {
   return lines.join('\n');
 }
 
+/** Waits before each retry of a failed `thread` call; after the last, the next `cache-changed` loads again. */
+const RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000];
+
 function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const rpc = useRpc<typeof rpcContract>();
   const [state, setState] = useState<CacheState | null>(null);
@@ -33,13 +36,22 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   // The clicked button, so focus and placement follow the chip in this pane even when a split shows the same thread.
   const chip = useRef<HTMLButtonElement | null>(null);
   // Only the newest call may set state: a slow reply for an earlier call, or for the thread this pane showed
-  // before, would otherwise overwrite it. A failed refresh keeps the last state, whose countdown stays true.
+  // before, would otherwise overwrite it. A failed call keeps the last state on screen and tries again: each
+  // call follows a change on the server, so the kept state is out of date until one succeeds.
   const latest = useRef(0);
+  const retry = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const load = useCallback(() => {
+    clearTimeout(retry.current);
     const call = ++latest.current;
-    rpc.call('thread', { threadId }).then(next => { if (call === latest.current) setState(next); }, () => {});
+    const attempt = (failures: number) => rpc.call('thread', { threadId }).then(next => { if (call === latest.current) setState(next); }, () => {
+      if (call === latest.current && failures < RETRY_DELAYS_MS.length) retry.current = setTimeout(() => attempt(failures + 1), RETRY_DELAYS_MS[failures]);
+    });
+    void attempt(0);
   }, [rpc, threadId]);
-  useEffect(() => { setState(null); setOpen(false); load(); }, [load]);
+  useEffect(() => {
+    setState(null); setOpen(false); load();
+    return () => clearTimeout(retry.current);
+  }, [load]);
   useRealtime('cache-changed', (payload: unknown) => {
     if ((payload as { threadId?: unknown } | null)?.threadId === threadId) load();
   });
