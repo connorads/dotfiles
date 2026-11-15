@@ -143,8 +143,8 @@ it('picks the highlighted row with Enter after a mouse pick, as focus stays in t
   act(() => { void command.run({ threadId: 't8' } as never); });
   const filter = overlay.getByLabelText('Filter profiles');
   const prod = await overlay.findByRole('option', { name: /acme-prod/ });
+  // A tap or a quick click reaches the row in one pointer event.
   fireEvent.mouseMove(prod, { clientX: 10, clientY: 10 });
-  fireEvent.mouseMove(prod, { clientX: 12, clientY: 14 });
   expect(fireEvent.mouseDown(prod)).toBe(false);
   fireEvent.click(prod);
   await overlay.findByRole('button', { name: 'Sign in with Granted' });
@@ -446,4 +446,40 @@ it('announces the sign-in box that appears after choosing a profile that needs o
   fireEvent.click(await overlay.findByRole('option', { name: /acme-prod/ }));
   await waitFor(() => expect(status!.textContent).toContain('This profile needs a sign-in.'));
   act(() => { void command.run({ threadId: 't26' } as never); });
+});
+
+it('retries the clicked row with Enter after a failed save, however the pointer reached it', async () => {
+  const h = handlers();
+  let fail = true;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, setChoice: (input: unknown) => { if (fail) throw new Error('offline'); return h.rpc.setChoice(input); } },
+  });
+  act(() => { void command.run({ threadId: 't27' } as never); });
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-dev/ }));
+  await overlay.findByRole('alert');
+  expect(overlay.getByRole('option', { selected: true }).textContent).toContain('acme-dev');
+  fail = false;
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+});
+
+it('keeps focus on Retry when a retry after a config error fails, so Enter cannot pick a row', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
+  let fail = false;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, state: () => { if (fail) throw new Error('offline'); return { profiles: [], error: 'Could not read ~/.aws/config: EACCES' }; } },
+  });
+  act(() => { void command.run({ threadId: 't28' } as never); });
+  await overlay.findByRole('alert');
+  fail = true;
+  const retry = overlay.getByRole('button', { name: 'Retry' });
+  retry.focus();
+  fireEvent.click(retry);
+  await waitFor(() => expect(overlay.getByRole('alert').textContent).toBe('Could not refresh AWS profiles: offline'));
+  expect(document.activeElement).toBe(overlay.getByRole('button', { name: 'Retry' }));
+  fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
+  expect(overlay.rpcCalls.filter(c => c.method === 'setChoice')).toHaveLength(0);
+  expect(h.current()).toEqual({ profile: 'acme-dev', region: null });
+  act(() => { void command.run({ threadId: 't28' } as never); });
 });

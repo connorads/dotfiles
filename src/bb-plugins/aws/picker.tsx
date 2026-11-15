@@ -203,15 +203,18 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
     {!state ? loadError ? problem(`${retries ? 'Still could not' : 'Could not'} load AWS profiles: ${loadError}`)
         : <p className="aws-empty" role="status">Loading…</p>
       : <>
-        {/* A failed refresh says more about the list than the error it loaded with, so only one alert shows. */}
-        {state.error && !loadError && problem(state.error)}
+        {/* A failed refresh says more about the list than the error it loaded with, so only one alert shows.
+            It takes the same place, so a focused Retry stays mounted and keeps focus. */}
+        {state.error && problem(loadError ? `Could not refresh AWS profiles: ${loadError}` : state.error)}
         {/* Rows never take focus: it stays in the filter, which points at the active row, so Enter
             always picks the highlighted row and a disabled row cannot drop focus. */}
         <div ref={list} id={listId} className="aws-rows" role="listbox" aria-label="Profiles" aria-busy={saving ? true : undefined}>
           {rows.map((row, i) => <button key={row.profile ?? 'off'} id={rowId(i)} type="button" role="option" tabIndex={-1}
             className="aws-row" data-active={i === index ? '' : undefined} aria-selected={i === index}
             aria-current={row.profile === current || undefined} disabled={!!saving}
-            onMouseDown={event => event.preventDefault()} onMouseMove={event => hover(event, i)} onClick={() => void pick(row)}>
+            onMouseDown={event => event.preventDefault()} onMouseMove={event => hover(event, i)}
+            // A tap or quick click can arrive without a hover, so the clicked row becomes the highlighted one.
+            onClick={() => { setIndex(i); void pick(row); }}>
             <span className="aws-row-label" title={row.label}>{row.label}</span>
             <span className="aws-row-aside" data-warn={row.warn && saving?.profile !== row.profile ? '' : undefined}>
               {saving?.profile === row.profile ? 'saving…' : row.aside}{row.profile === current && ' ✓'}
@@ -231,7 +234,7 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
       </p>}
     </div>
     {error && <p ref={errorRef} className="aws-error" role="alert">{error}</p>}
-    {state && loadError && !error && problem(`Could not refresh AWS profiles: ${loadError}`)}
+    {state && !state.error && loadError && !error && problem(`Could not refresh AWS profiles: ${loadError}`)}
     <footer className="aws-footer">
       <span className="aws-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
       <span>Applies to this thread's next AWS call. Agents cannot sign in.</span>
