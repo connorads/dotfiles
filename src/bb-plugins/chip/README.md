@@ -15,6 +15,8 @@ import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 - `Chip` is a button. Pass `expanded` only when it opens a dialog.
 - `tone` is `warn` or `danger`. It tints the border, and `danger` the text too.
 - `ChipValue` is the one figure in foreground colour. Other text stays muted.
+- A chip is at most 256 px wide, BB's header slot cap. A longer `ChipValue`
+  ends in an ellipsis.
 - `ChipDot` is a 6 px status dot (`ok`, `warn` or `danger`) with an optional count.
 - Without a pop-up or with several icons, put the `bbp-chip` classes on your own
   element and import the package for its CSS.
@@ -63,8 +65,9 @@ import { ChipPopover } from '@bb-plugins/chip';
 - It sits 8 px under the chip, right edges aligned, and stays on screen. It
   follows `trigger()` on resize; `anchor` is the fallback, and `null` centres it.
   `place` replaces this for a second layout, such as git-glance's zoom.
-- A press on the backdrop closes it. Escape calls `onEscape`, or `onClose` if
-  there is none. Put sub-screen exits such as "back" or "cancel rename" in
+- A press on the backdrop closes it when released, so the tap does not reach
+  what lies under the backdrop, such as the chip. Escape calls `onEscape`, or
+  `onClose` if there is none. Put sub-screen exits such as "back" or "cancel rename" in
   `onEscape`.
 - Keys other than Escape stop at the popover, so BB's global shortcuts ignore
   them. Your `onKeyDown` still gets every key; plugin shortcuts live there.
@@ -73,9 +76,9 @@ import { ChipPopover } from '@bb-plugins/chip';
   motion skips it always.
 - The panel uses `--popover`, `--popover-foreground`, `--border`, a 14 px
   radius and `--shadow-color`. It is a flex column, capped at
-  `min(720px, 100vh - 80px)`, with `overflow: hidden`.
+  `min(720px, 100vh - 80px)`, and scrolls when its content is taller.
 - Stylesheets are global, so override a panel rule with both classes, for
-  example `.bbp-popover-panel.cf-panel { overflow: auto; }`. A single class
+  example `.bbp-popover-panel.sg-panel { max-height: 70vh; }`. A single class
   loses to whichever plugin's copy of `popover.css` loads last.
 
 After a change here, run `pnpm build:chip` from the workspace root to rebuild

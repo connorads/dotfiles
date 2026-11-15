@@ -15,6 +15,13 @@ function placeUnder(anchor: ChipAnchor, width: number): PopoverPlacement {
   return { width: w, top: anchor.bottom + 8, left, origin: `${anchor.right - left}px 0` };
 }
 
+/** A pointer event on the dialog itself, outside its box: the ::backdrop. */
+function onBackdrop(event: { target: EventTarget; currentTarget: HTMLDialogElement; clientX: number; clientY: number }) {
+  if (event.target !== event.currentTarget) return false;
+  const box = event.currentTarget.getBoundingClientRect();
+  return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+}
+
 type ChipPopoverProps = Omit<DialogHTMLAttributes<HTMLDialogElement>, 'open' | 'style' | 'onCancel' | 'onPointerDown'> & {
   ref?: Ref<HTMLDialogElement>;
   'aria-label': string;
@@ -39,8 +46,9 @@ type ChipPopoverProps = Omit<DialogHTMLAttributes<HTMLDialogElement>, 'open' | '
  * which BB does not derive from showModal(). Other keys stop here so BB's global shortcuts
  * ignore them; Escape goes on to the dialog's cancel.
  */
-export function ChipPopover({ ref, trigger, anchor, width, instant, place, panelClassName, onClose, onEscape, onKeyDown, className, children, ...dialog }: ChipPopoverProps) {
+export function ChipPopover({ ref, trigger, anchor, width, instant, place, panelClassName, onClose, onEscape, onKeyDown, onClick, className, children, ...dialog }: ChipPopoverProps) {
   const element = useRef<HTMLDialogElement>(null);
+  const pressedBackdrop = useRef(false);
   useImperativeHandle(ref, () => element.current!, []);
   useLayoutEffect(() => {
     const node = element.current;
@@ -69,10 +77,13 @@ export function ChipPopover({ ref, trigger, anchor, width, instant, place, panel
       onKeyDown?.(event);
     }}
     onCancel={event => { event.preventDefault(); (onEscape ?? onClose)(); }}
-    onPointerDown={event => {
-      if (event.target !== event.currentTarget) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
+    // Close on the backdrop click, not the press: closing on press lets the rest of a tap land on whatever lies
+    // under the backdrop, such as the chip, which then reopens the popover.
+    onPointerDown={event => { pressedBackdrop.current = onBackdrop(event); }}
+    onClick={event => {
+      onClick?.(event);
+      if (pressedBackdrop.current && onBackdrop(event)) onClose();
+      pressedBackdrop.current = false;
     }}>
     <div className={panelClassName ? `bbp-popover-panel ${panelClassName}` : 'bbp-popover-panel'}>{children}</div>
   </dialog>;

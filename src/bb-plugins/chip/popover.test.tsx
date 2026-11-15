@@ -66,11 +66,33 @@ test('a press on the backdrop closes; a press on the popover does not', () => {
   const { dialog, onClose } = popover();
   dialog.getBoundingClientRect = () => DOMRect.fromRect({ x: 180, y: 48, width: 320, height: 200 });
   // jsdom has no PointerEvent; a MouseEvent of the same type carries the coordinates.
-  const press = (x: number, y: number) => fireEvent(dialog, new MouseEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  const at = (x: number, y: number) => ({ bubbles: true, clientX: x, clientY: y });
+  const press = (x: number, y: number) => {
+    fireEvent(dialog, new MouseEvent('pointerdown', at(x, y)));
+    fireEvent.click(dialog, at(x, y));
+  };
   press(300, 100);
   expect(onClose).not.toHaveBeenCalled();
   press(10, 10);
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+test('a backdrop press closes on release, so the tap does not reach what lies under the backdrop', () => {
+  const { dialog, onClose } = popover();
+  dialog.getBoundingClientRect = () => DOMRect.fromRect({ x: 180, y: 48, width: 320, height: 200 });
+  const at = (x: number, y: number) => ({ bubbles: true, clientX: x, clientY: y });
+  fireEvent(dialog, new MouseEvent('pointerdown', at(10, 10)));
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(dialog, at(10, 10));
+  expect(onClose).toHaveBeenCalledOnce();
+});
+
+test('a drag from inside the popover that ends on the backdrop does not close it', () => {
+  const { dialog, onClose } = popover();
+  dialog.getBoundingClientRect = () => DOMRect.fromRect({ x: 180, y: 48, width: 320, height: 200 });
+  fireEvent(dialog, new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 100 }));
+  fireEvent.click(dialog, { bubbles: true, clientX: 10, clientY: 10 });
+  expect(onClose).not.toHaveBeenCalled();
 });
 
 test('closing returns focus to the chip, unless an action moved it elsewhere', () => {

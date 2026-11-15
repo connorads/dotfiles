@@ -1,7 +1,8 @@
 /* Thread-header chip: the one anatomy every bb-plugins header action shares.
-   BB caps each header slot at 256px and does not clip it; a wider chip spills over its neighbour. */
+   BB caps each header slot at 256px and does not clip it. The slot's plugin root sizes to its content, so a
+   percentage cap never binds; a fixed 256px cap ends a long value in an ellipsis instead of spilling over its neighbour. */
 .bbp-chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 100%; padding: 0 9px;
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; max-width: 256px; padding: 0 9px;
   border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted-foreground);
   font: 500 var(--text-xs, 12px)/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
   transition: background-color .15s, color .15s, border-color .15s, transform .16s cubic-bezier(.23, 1, .32, 1);
