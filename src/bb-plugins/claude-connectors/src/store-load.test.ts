@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { loadConnectors, loadThread, refresh, setClient, snapshot, type Rpc } from '../store.ts';
+import { loadConnectors, loadThread, refresh, setClient, setProjectDefault, snapshot, type Rpc } from '../store.ts';
 
 // A fake server: `failing` names the methods that reject; every call is logged.
 const calls: string[] = [];
 const failing = new Set<string>();
 const connectorErrors = new Map<string, string>();
+const hanging = new Set<string>();
 setClient({
   call: async (method: string, input: { profile?: string }) => {
     calls.push(input?.profile ? `${method}:${input.profile}` : method);
     if (failing.has(method)) throw new Error(`down: ${method}`);
+    if (hanging.has(method)) return new Promise(() => {});
+    if (method === 'setProject') return null;
     if (method === 'state') return { profiles: ['personal'], defaultChoice: 'personal', projects: [] };
     if (method === 'thread') return { threadId: 'thr_test01', own: null, resolved: { profile: 'personal', source: 'default' } };
     if (method === 'connectors') {
@@ -46,4 +49,18 @@ test('refresh retries a thread whose load failed, and a success clears the error
   await refresh();
   assert.equal(snapshot().loadErrors.has('thread:thr_test01'), false);
   assert.equal(snapshot().threads.get('thr_test01')?.resolved.profile, 'personal');
+});
+
+test('a project default save does not wait for a failed connector list to be fetched again', async () => {
+  connectorErrors.set('lab', 'Not signed in.');
+  await loadConnectors('lab');
+  assert.equal((snapshot().connectors.get('lab') as { error: string }).error, 'Not signed in.');
+  hanging.add('connectors');
+  calls.length = 0;
+  const saved = await Promise.race([
+    setProjectDefault('prj_test01', 'personal').then(() => 'saved'),
+    new Promise(resolve => setTimeout(resolve, 500, 'waiting')),
+  ]);
+  assert.equal(saved, 'saved');
+  assert.deepEqual(calls.filter(c => c.startsWith('connectors')), []);
 });

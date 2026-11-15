@@ -9,6 +9,13 @@ const HOVER_REST = 150;
 /** The save row for `p`, which names the profile being made the project default. */
 const DEFAULT_ROW = 'default:';
 
+/** Names the change a failed save tried to make, from its save row. */
+function failedChange(row: string, inheritedFrom: string) {
+  if (row.startsWith(DEFAULT_ROW)) return `Could not make ${row.slice(DEFAULT_ROW.length)} this project's default.`;
+  if (row.startsWith('p:')) return `Could not switch to ${row.slice(2)}.`;
+  return row === 'inherit' ? `Could not switch to the ${inheritedFrom}.` : 'Could not turn connectors off.';
+}
+
 export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
   const { view, threads, drafts, connectors, stateError, loadErrors, saves } = useConnectors();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -31,7 +38,12 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
   const inherited = project?.choice ?? view?.defaultChoice ?? 'off';
   const inheritedFrom = project?.choice ? 'project default' : 'global default';
   const profiles = view?.profiles ?? [];
-  const [focused, setFocused] = useState<string | null>(resolved?.profile ?? null);
+  /** The focused row; the profile it names is derived on each render, so it follows a changed default. */
+  const [focusedRow, setFocusedRow] = useState<string | null>(null);
+  const profileOf = (id: string) => id.startsWith('p:') ? id.slice(2) : id === 'inherit' && inherited !== 'off' ? inherited : null;
+  const focused = focusedRow === null ? resolved?.profile ?? null : profileOf(focusedRow);
+  /** Rows are drawn for the keyboard after a key press and for the pointer after it moves, so one row reads as the target. */
+  const rowsBox = useRef<HTMLElement>(null);
 
   useEffect(() => { profiles.forEach(p => void loadConnectors(p)); }, [profiles.join('|')]);
 
@@ -66,8 +78,14 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
 
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
+    clearTimeout(hover.current);
+    rowsBox.current?.setAttribute('data-keys', '');
     const index = rows.findIndex(r => r.id === (event.target as HTMLElement).dataset['row']);
-    const move = (step: number) => { const next = rows[(Math.max(index, 0) + step + rows.length) % rows.length]; if (next) focusRow(next.id); };
+    // From outside the rows, down enters at the first row and up at the last.
+    const move = (step: number) => {
+      const next = index < 0 ? rows[step > 0 ? 0 : rows.length - 1] : rows[(index + step + rows.length) % rows.length];
+      if (next) focusRow(next.id);
+    };
     if (event.key === 'ArrowDown' || event.key === 'j') { event.preventDefault(); move(1); return; }
     if (event.key === 'ArrowUp' || event.key === 'k') { event.preventDefault(); move(-1); return; }
     if (event.key === 'p') { event.preventDefault(); makeProjectDefault(); return; }
@@ -88,11 +106,11 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
     {!view ? stateError ? <p className="cc-empty cc-error" role="alert">Could not load profiles. {stateError} <Retry /></p>
         : <p className="cc-empty">Loading…</p>
       : profiles.length === 0 ? <p className="cc-empty">No Claude profiles found. Check the profile root in Settings → Claude Connectors.</p>
-      : <section className="cc-rows" aria-label="Profiles">
+      : <section ref={rowsBox} className="cc-rows" aria-label="Profiles" onMouseMove={() => rowsBox.current?.removeAttribute('data-keys')}>
         {loadError && <p className="cc-error cc-pad" role="alert">Could not load {target.kind === 'thread' ? "this thread's" : "the new thread's"} choice. {loadError}</p>}
         {rows.map(row => <button key={row.id} type="button" className="cc-row" data-row={row.id} aria-pressed={row.id === pressed}
           aria-disabled={saving !== null || undefined} aria-busy={saving === row.id || undefined}
-          onFocus={() => setFocused(row.id.startsWith('p:') ? row.value : row.value === 'inherit' && inherited !== 'off' ? inherited : null)}
+          onFocus={() => setFocusedRow(row.id)}
           onMouseEnter={event => {
             const el = event.currentTarget;
             clearTimeout(hover.current);
@@ -107,11 +125,11 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
       </section>}
     {focused && view && <section className="cc-preview" aria-label={`${focused} connectors`}>
       {preview === undefined || preview === 'loading' ? <span className="cc-muted">Loading {focused}'s connectors…</span>
-        : preview.error ? <span className="cc-error">{preview.error}</span>
+        : preview.error ? <span className="cc-error">{preview.error} <Retry /></span>
         : <>{preview.list.slice(0, PREVIEW).map(name => <span key={name} className="cc-tag">{name}</span>)}
           {preview.list.length > PREVIEW && <span className="cc-muted">+{preview.list.length - PREVIEW} more</span>}</>}
     </section>}
-    {error && <p className="cc-error cc-pad cc-save-error" role="alert">Could not save the change. {error}</p>}
+    {error && pending && <p className="cc-error cc-pad cc-save-error" role="alert">{failedChange(pending.row, inheritedFrom)} {error}</p>}
     <footer className="cc-footer">
       {profiles.length > 0 && <span className="cc-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
       {projectDefaultTarget && <button type="button" className="cc-link" onClick={makeProjectDefault}

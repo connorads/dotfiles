@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ToolRow } from './contracts.ts';
 import { Retry } from './retry.tsx';
-import { loadConnectors, message, refresh, rpc, setProjectDefault, useConnectors } from './store.ts';
+import { loadConnectors, message, reloadChoices, rpc, setProjectDefault, useConnectors } from './store.ts';
 
 /** One profile's connector, so saves and errors stay with the list they were made in. */
 const sourceKey = (profile: string, connector: string) => JSON.stringify([profile, connector]);
@@ -9,10 +9,14 @@ const toolKey = (source: string, tool: string) => JSON.stringify([source, tool])
 
 function ProfileSelect({ value, onChange, inherit, label, busy }: { value: string; onChange: (v: string) => void; inherit?: string; label: string; busy: boolean }) {
   const { view } = useConnectors();
+  const profiles = view?.profiles ?? [];
+  // A stored profile whose directory is gone still applies, so the select names it rather than falling back to "Off".
+  const missing = value !== 'off' && value !== 'inherit' && !profiles.includes(value);
   return <select className="cc-select" aria-label={label} value={value} aria-busy={busy || undefined} onChange={e => onChange(e.target.value)}>
     {inherit && <option value="inherit">{inherit}</option>}
     <option value="off">Off</option>
-    {(view?.profiles ?? []).map(p => <option key={p} value={p}>{p}</option>)}
+    {profiles.map(p => <option key={p} value={p}>{p}</option>)}
+    {missing && <option value={value}>{value} (not found)</option>}
   </select>;
 }
 
@@ -116,24 +120,24 @@ function Tools() {
 
 export function ConnectorsSettings() {
   const { view, stateError } = useConnectors();
-  /** The last failed default change: `where` is 'global' or a project id, so the error shows by its control. */
-  const [error, setError] = useState<{ where: string; text: string } | null>(null);
+  /** Failed default changes by `where` ('global' or a project id), each shown by its control until that control changes again. */
+  const [errors, setErrors] = useState<ReadonlyMap<string, string>>(new Map());
   /** Default changes in flight by `where`, with the value being saved; the select shows it and ignores further changes. */
   const [saving, setSaving] = useState<ReadonlyMap<string, string>>(new Map());
   const busy = useRef(new Set<string>());
   async function run(where: string, value: string, task: () => Promise<unknown>) {
     if (busy.current.has(where)) return;
     busy.current.add(where);
-    setError(e => e?.where === where ? null : e);
+    setErrors(e => { const next = new Map(e); next.delete(where); return next; });
     setSaving(s => new Map(s).set(where, value));
-    try { await task(); } catch (cause) { setError({ where, text: message(cause) }); }
+    try { await task(); } catch (cause) { setErrors(e => new Map(e).set(where, message(cause))); }
     finally {
       busy.current.delete(where);
       setSaving(s => { const next = new Map(s); next.delete(where); return next; });
     }
   }
-  const errorAt = (where: string, what: string) => error?.where === where
-    ? <p className="cc-error cc-field-error" role="alert">Could not change {what}. {error.text}</p> : null;
+  const errorAt = (where: string, what: string) => errors.has(where)
+    ? <p className="cc-error cc-field-error" role="alert">Could not change {what}. {errors.get(where)}</p> : null;
   if (!view) return stateError
     ? <p className="cc-error" role="alert">Could not load Claude connectors. {stateError} <Retry /></p>
     : <p className="cc-muted">Loading…</p>;
@@ -144,7 +148,7 @@ export function ConnectorsSettings() {
       <p className="cc-muted">Threads use their own pick first, then their project's default, then this.</p>
       <div className="cc-toolbar">
         <ProfileSelect label="Global default" value={saving.get('global') ?? view.defaultChoice} busy={saving.has('global')}
-          onChange={value => void run('global', value, async () => { await rpc().call('setDefault', { value }); await refresh(); })} />
+          onChange={value => void run('global', value, async () => { await rpc().call('setDefault', { value }); await reloadChoices(); })} />
         <span className="cc-muted">{view.profiles.length ? `Profiles from ${view.profiles.join(', ')}` : 'No profiles found'}</span>
       </div>
       {errorAt('global', 'the global default')}
@@ -154,7 +158,7 @@ export function ConnectorsSettings() {
       {projects.length === 0 ? <p className="cc-muted">No projects yet.</p> : <table className="cc-table">
         <thead><tr><th>Project</th><th>Connectors</th></tr></thead>
         <tbody>{projects.map(p => <tr key={p.id}>
-          <td>{p.name}{errorAt(p.id, `${p.name}'s default`)}</td>
+          <td>{p.name}{errorAt(p.id, `the default for ${p.name}`)}</td>
           <td><ProfileSelect label={`${p.name} default`} value={saving.get(p.id) ?? p.choice ?? 'inherit'} busy={saving.has(p.id)}
             inherit={`Global default (${view.defaultChoice})`}
             onChange={value => void run(p.id, value, () => setProjectDefault(p.id, value))} /></td>

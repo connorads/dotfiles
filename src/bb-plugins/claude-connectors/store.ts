@@ -45,7 +45,15 @@ export function rpc(): Rpc {
 }
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
+/** Reloads profiles, defaults and every shown choice, and fetches failed connector lists again. */
 export async function refresh() {
+  // A failed connector list is fetched again, so signing in to the profile and coming back clears it.
+  const failed = [...state.connectors].filter(([, c]) => c !== 'loading' && c.error !== null).map(([profile]) => profile);
+  await Promise.all([reloadChoices(), ...failed.map(profile => loadConnectors(profile))]);
+}
+
+/** Reloads profiles, defaults and every shown thread and draft choice; a save waits for this, not for connector lists. */
+export async function reloadChoices() {
   // A failed reload keeps the last view; screens show the error only while there is no view.
   try { set({ view: await rpc().call('state', null), stateError: null }); } catch (cause) { set({ stateError: message(cause) }); }
   const targets = new Map<string, Target>([
@@ -53,12 +61,7 @@ export async function refresh() {
     ...[...state.threads.values()].map(t => { const target: Target = { kind: 'thread', threadId: t.threadId, projectId: t.projectId }; return [loadKey(target), target] as const; }),
     ...[...state.drafts.keys()].map(projectId => { const target: Target = { kind: 'draft', projectId }; return [loadKey(target), target] as const; }),
   ]);
-  // A failed connector list is fetched again, so signing in to the profile and coming back clears it.
-  const failed = [...state.connectors].filter(([, c]) => c !== 'loading' && c.error !== null).map(([profile]) => profile);
-  await Promise.all([
-    ...[...targets.values()].map(t => t.kind === 'thread' ? loadThread(t.threadId, t.projectId) : loadDraft(t.projectId)),
-    ...failed.map(profile => loadConnectors(profile)),
-  ]);
+  await Promise.all([...targets.values()].map(t => t.kind === 'thread' ? loadThread(t.threadId, t.projectId) : loadDraft(t.projectId)));
 }
 
 /** One key per thread or new-thread draft. */
@@ -128,7 +131,7 @@ export async function save(target: Target, row: string, task: () => Promise<unkn
 
 export async function setProjectDefault(projectId: string, value: string) {
   await rpc().call('setProject', { projectId, value });
-  await refresh();
+  await reloadChoices();
 }
 
 const chipSelector = '[data-cc-chip]';

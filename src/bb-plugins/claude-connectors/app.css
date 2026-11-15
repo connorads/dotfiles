@@ -19,14 +19,19 @@
   transition: background-color .12s;
 }
 .cc-row:hover, .cc-row:focus { background: var(--state-hover, var(--accent)); outline: none; }
-/* Under the pointer only the hovered row is filled; the focus ring still marks keyboard focus. */
-.cc-rows:hover .cc-row:focus:not(:hover) { background: transparent; }
 .cc-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+/* One row reads as the target: the hovered row while the pointer moves, the focused row after a key press. */
+.cc-rows:not([data-keys]):hover .cc-row:focus:not(:hover) { background: transparent; outline: none; }
+.cc-rows[data-keys] .cc-row:hover:not(:focus) { background: transparent; }
+.cc-rows > .cc-pad { padding: 4px 10px 8px; }
 .cc-row[aria-pressed="true"] .cc-row-label { font-weight: 600; }
 .cc-row[aria-disabled="true"], .cc-link[aria-disabled="true"], .cc-seg[aria-busy="true"] button, .cc-select[aria-busy="true"] { cursor: progress; }
 .cc-seg[aria-busy="true"], .cc-select[aria-busy="true"] { opacity: .6; }
+/* During a save only the saving row keeps full strength; the others wait. */
+.cc-row[aria-disabled="true"]:not([aria-busy="true"]) { opacity: .6; }
 .cc-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-check { color: var(--brand, var(--primary)); }
+.cc-link kbd { margin-right: 2px; vertical-align: middle; }
 .cc-row kbd, .cc-keys kbd, .cc-link kbd {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
   border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
@@ -38,8 +43,9 @@
 
 .cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-keys { display: flex; align-items: center; gap: 4px; }
+/* Inline-block, not flex: a flex item would carry the underline into the keycap. */
 .cc-link {
-  display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary));
+  display: inline-block; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary));
   font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
 }
 
@@ -73,4 +79,6 @@
 /* Touch: 44 px targets, as the shared chip has. */
 @media (pointer: coarse) {
   .cc-row, .cc-link, .cc-seg button { min-height: 44px; }
+  .cc-select, .cc-input { height: 44px; }
+  .cc-link { padding-block: 12px; }
 }

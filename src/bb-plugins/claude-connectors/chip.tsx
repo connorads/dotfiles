@@ -3,7 +3,7 @@ import { experimental_ProviderIcon as ProviderIcon, experimental_useProviders as
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { ResolvedView } from './contracts.ts';
-import { loadDraft, loadKey, loadThread, setDraftProject, sourceLabel, toggle, useConnectors, type Target } from './store.ts';
+import { loadConnectors, loadDraft, loadKey, loadThread, setDraftProject, sourceLabel, toggle, useConnectors, type Target } from './store.ts';
 
 /** BB's own Claude Code mark, so the chip matches the provider picker. */
 function ClaudeMark() {
@@ -20,12 +20,18 @@ function describe(resolved: ResolvedView | undefined, error: string | undefined,
 }
 
 function ConnectorsChip({ target, resolved, compact }: { target: Target; resolved: ResolvedView | undefined; compact: boolean }) {
-  const { open, loadErrors, saves } = useConnectors();
+  const { open, loadErrors, saves, connectors } = useConnectors();
   const error = loadErrors.get(loadKey(target))?.error;
   const saveError = saves.get(loadKey(target))?.error;
+  const profile = resolved?.profile ?? null;
+  // The thread gets no connector tools when its profile cannot list them, so the chip warns.
+  useEffect(() => { if (profile) void loadConnectors(profile); }, [profile]);
+  const list = profile ? connectors.get(profile) : undefined;
+  const unavailable = list && list !== 'loading' ? list.error : null;
   const described = describe(resolved, error, target.kind);
-  const label = saveError ? `${described.label}. The last change was not saved. ${saveError}` : described.label;
-  const warn = (!resolved && error) || saveError;
+  const label = [described.label, unavailable && `Its connectors are not available. ${unavailable}`, saveError && `The last change was not saved. ${saveError}`]
+    .filter(Boolean).join('. ');
+  const warn = (!resolved && error) || saveError || unavailable;
   const isOpen = open !== null && JSON.stringify(open.target) === JSON.stringify(target);
   // The dot keeps a warning visible when a narrow header hides the value.
   return <Chip data-cc-chip expanded={isOpen} aria-label={label} title={`${label} (⌥⇧E)`} tone={warn ? 'warn' : undefined}
