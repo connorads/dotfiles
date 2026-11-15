@@ -4,7 +4,7 @@ import type { Details, CaffeineView, ActionResult } from './src/domain.ts';
 import { GRACE_MS } from './src/agents.ts';
 import { clockAt, durationLabel, EXTEND_OPTIONS, longDuration, remainingFraction, START_OPTIONS, untilLabel } from './src/format.ts';
 import { keyAction, rowId, type Action, type Screen } from './src/keys.ts';
-import { clearMissed, message, missError, peekMissed, rpc, useNow, visibleChip, type Anchor } from './store.ts';
+import { act, dismissError, message, rpc, useNow, visibleChip, type ActionError, type ActionLabel, type Anchor } from './store.ts';
 
 const UNSUPPORTED: Record<Extract<CaffeineView, { kind: 'unsupported' }>['reason'], string> = {
   'not-macos': 'Keep awake works only on macOS.',
@@ -35,12 +35,13 @@ function initialRow(screen: Screen): string | null {
   }
 }
 
+/** disabled is aria-only: a disabled button drops focus to <body>, outside the popover's keys. dispatch ignores the click. */
 function Row({ id, keycap, label, aside, sub, tone, armed, disabled, onClick }: {
   id: string; keycap: string; label: ReactNode; aside?: ReactNode; sub?: string; tone?: 'lid' | 'warn';
   armed?: boolean; disabled?: boolean; onClick: () => void;
 }) {
   return <button type="button" className="cf-row" data-row={id} data-tone={tone} data-armed={armed || undefined}
-    disabled={disabled} onClick={onClick}>
+    aria-disabled={disabled || undefined} onClick={onClick}>
     <kbd>{keycap}</kbd>
     <span className="cf-row-main">
       <span className="cf-row-label">{label}</span>
@@ -76,18 +77,24 @@ function Recovery({ onClear }: { onClear: () => void }) {
   </section>;
 }
 
-export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
-  view: CaffeineView | null; readError: string | null; anchor: Anchor; instant: boolean; onClose: () => void;
+const LABELS = {
+  start: { doing: 'Starting keep-awake', failed: 'Start' },
+  startLid: { doing: 'Starting lid mode', failed: 'Lid start' },
+  extend: { doing: 'Extending', failed: 'Extend' },
+  agents: { doing: 'Starting agents mode', failed: 'Agents mode' },
+  off: { doing: 'Turning off', failed: 'Turn off' },
+  clear: { doing: 'Clearing the sleep flag', failed: 'Clear' },
+} satisfies Record<string, ActionLabel>;
+
+export function CaffeinePopover({ view, readError, pending, actionError, anchor, instant, onClose }: {
+  view: CaffeineView | null; readError: string | null; pending: ActionLabel | null; actionError: ActionError | null;
+  anchor: Anchor; instant: boolean; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [picker, setPicker] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
-  const [error, setError] = useState<string | null>(peekMissed);
-  useEffect(() => { clearMissed(); }, []);
-  /** False once closed: an action that fails after that leaves its reason for the next popover. */
-  const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const [pending, setPending] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const waiting = pending !== null;
   /** The row that needs a second press: a lid session on battery. */
   const [armed, setArmed] = useState<string | null>(null);
   const now = useNow(1_000);
@@ -99,7 +106,7 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
   const onMains = details?.onBattery === false;
 
   const loadDetails = useCallback(() => {
-    rpc().call('details', {}).then(setDetails, cause => setError(message(cause)));
+    rpc().call('details', {}).then(detail => { setDetails(detail); setDetailsError(null); }, cause => setDetailsError(message(cause)));
   }, []);
 
   useEffect(() => { loadDetails(); }, [loadDetails]);
@@ -126,32 +133,18 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
   }, [screenKey, focusRow]);
   /** The row an action came from, so focus can return to it once the action settles. */
   const actedFrom = useRef<string | null>(null);
-  // A pending action disables every row and a cleared flag unmounts its row;
-  // either drops focus to <body>, outside the dialog's key handler. Put it back.
+  // A cleared flag unmounts its row, which drops focus to <body>, outside the dialog's key handler. Put it back.
   useEffect(() => {
     const element = dialog.current;
-    if (pending || !element || element.contains(document.activeElement)) return;
+    if (!element || element.contains(document.activeElement)) return;
     const from = actedFrom.current;
     focusRow(from && element.querySelector(`[data-row="${CSS.escape(from)}"]`) ? from : initial);
   });
 
-  async function perform(call: () => Promise<ActionResult>, closeOnSuccess = true) {
-    if (pending) return;
+  async function perform(label: ActionLabel, call: () => Promise<ActionResult>, closeOnSuccess = true) {
     actedFrom.current = (document.activeElement as HTMLElement | null)?.dataset?.row ?? null;
-    setPending(true);
-    setError(null);
     setArmed(null);
-    const fail = (reason: string) => mounted.current ? setError(reason) : missError(reason);
-    try {
-      const result = await call();
-      if (!result.ok) fail(result.reason);
-      else if (closeOnSuccess) onClose();
-      else loadDetails();
-    } catch (cause) {
-      fail(message(cause));
-    } finally {
-      setPending(false);
-    }
+    if (await act(label, call, closeOnSuccess) && !closeOnSuccess) loadDetails();
   }
 
   /** Lid sessions take a second press unless on mains; declining costs a running session nothing. */
@@ -163,22 +156,24 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
   }
 
   function dispatch(action: Action) {
+    // One action at a time: while one runs, only moving, going back and closing work.
+    if (waiting && action.kind !== 'close' && action.kind !== 'focus' && action.kind !== 'back') return;
     switch (action.kind) {
       case 'close': onClose(); return;
       case 'back': returnTo.current = 'lidPicker'; setPicker(false); return;
       case 'focus': focusRow(action.row); return;
-      case 'lidPicker': setError(null); setPicker(true); return;
-      case 'start': void perform(() => rpc().call('start', { secs: action.secs })); return;
+      case 'lidPicker': dismissError(); setPicker(true); return;
+      case 'start': void perform(LABELS.start, () => rpc().call('start', { secs: action.secs })); return;
       case 'startLid':
-        if (confirmed(rowId(action))) void perform(() => rpc().call('startLid', { secs: action.secs }));
+        if (confirmed(rowId(action))) void perform(LABELS.startLid, () => rpc().call('startLid', { secs: action.secs }));
         return;
       case 'extend':
         if (view?.kind === 'lid' && !confirmed(rowId(action))) return;
-        void perform(() => rpc().call('extend', { add: action.add }));
+        void perform(LABELS.extend, () => rpc().call('extend', { add: action.add }));
         return;
-      case 'agents': void perform(() => rpc().call('startAgents', {})); return;
-      case 'off': void perform(() => rpc().call('stop', {})); return;
-      case 'clear': void perform(() => rpc().call('clearSleepDisabled', {}), false); return;
+      case 'agents': void perform(LABELS.agents, () => rpc().call('startAgents', {})); return;
+      case 'off': void perform(LABELS.off, () => rpc().call('stop', {})); return;
+      case 'clear': void perform(LABELS.clear, () => rpc().call('clearSleepDisabled', {}), false); return;
     }
   }
 
@@ -222,7 +217,7 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
       <section className="cf-section">
         {START_OPTIONS.map((secs, index) => {
           const id = rowId({ kind: 'startLid', secs });
-          return <Row key={secs} id={id} keycap={String(index + 1)} armed={armed === id} disabled={pending}
+          return <Row key={secs} id={id} keycap={String(index + 1)} armed={armed === id} disabled={waiting}
             label={armed === id ? (onBattery ? 'Press again to start on battery' : 'Press again to start, power unknown') : durationLabel(secs)}
             aside={untilLabel(now + secs * 1000, now)} onClick={() => dispatch({ kind: 'startLid', secs })} />;
         })}
@@ -237,14 +232,14 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
         <p className="cf-line cf-muted">This Mac sleeps on its normal schedule.</p>
       </Header>
       <section className="cf-section">
-        <Row id={rowId({ kind: 'start', secs: 0 })} keycap="i" label="Indefinitely" aside="∞" disabled={pending}
+        <Row id={rowId({ kind: 'start', secs: 0 })} keycap="i" label="Indefinitely" aside="∞" disabled={waiting}
           onClick={() => dispatch({ kind: 'start', secs: 0 })} />
-        {START_OPTIONS.map((secs, index) => <Row key={secs} id={rowId({ kind: 'start', secs })} keycap={String(index + 1)} disabled={pending}
+        {START_OPTIONS.map((secs, index) => <Row key={secs} id={rowId({ kind: 'start', secs })} keycap={String(index + 1)} disabled={waiting}
           label={durationLabel(secs)} aside={untilLabel(now + secs * 1000, now)} onClick={() => dispatch({ kind: 'start', secs })} />)}
-        <Row id="agents" keycap="a" label="While agents run" aside={busy} disabled={pending}
+        <Row id="agents" keycap="a" label="While agents run" aside={busy} disabled={waiting}
           sub="Stays on while threads on this Mac run, then 5 min after the last one stops."
           onClick={() => dispatch({ kind: 'agents' })} />
-        <Row id="lidPicker" keycap="l" tone="lid" disabled={pending}
+        <Row id="lidPicker" keycap="l" tone="lid" disabled={waiting}
           label={<>Lid closed <span className="cf-glyph" data-tone="lid" aria-hidden>✷</span></>}
           aside={<>{power}<span className="cf-chevron" aria-hidden>›</span></>} onClick={() => dispatch({ kind: 'lidPicker' })} />
       </section>
@@ -266,11 +261,11 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
       <section className="cf-section">
         {deadline !== null && EXTEND_OPTIONS.map((add, index) => {
           const id = rowId({ kind: 'extend', add });
-          return <Row key={add} id={id} keycap={String(index + 1)} armed={armed === id} disabled={pending}
+          return <Row key={add} id={id} keycap={String(index + 1)} armed={armed === id} disabled={waiting}
             label={armed === id ? (onBattery ? 'Press again to extend on battery' : 'Press again to extend, power unknown') : `+${durationLabel(add)}`}
             aside={untilLabel(deadline + add * 1000, now)} onClick={() => dispatch({ kind: 'extend', add })} />;
         })}
-        <Row id="off" keycap="o" label="Turn off" disabled={pending} onClick={() => dispatch({ kind: 'off' })} />
+        <Row id="off" keycap="o" label="Turn off" disabled={waiting} onClick={() => dispatch({ kind: 'off' })} />
       </section>
       {!lid && stuck && <Recovery onClear={() => dispatch({ kind: 'clear' })} />}
     </>;
@@ -294,18 +289,21 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
           : <p className="cf-line cf-muted">Counting agents on this Mac…</p>}
       </Header>
       <section className="cf-section">
-        <Row id="off" keycap="o" label="Turn off" disabled={pending} onClick={() => dispatch({ kind: 'off' })} />
+        <Row id="off" keycap="o" label="Turn off" disabled={waiting} onClick={() => dispatch({ kind: 'off' })} />
       </section>
       {stuck && <Recovery onClear={() => dispatch({ kind: 'clear' })} />}
     </>;
     footnote = 'Starting or changing keep-awake by hand ends agents mode.';
   }
 
-  const shownError = error ?? (view ? null : readError);
+  const failure = actionError && (actionError.missed
+    ? `${actionError.label.failed} failed at ${clockAt(actionError.at, now)}: ${actionError.reason}`
+    : actionError.reason);
+  const shownError = failure ?? detailsError ?? (view ? null : readError);
   const keys = screen.kind === 'unsupported'
     ? <><kbd>q</kbd> close</>
-    : <><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
-  return <ChipPopover ref={dialog} className="cf-dialog cf-root" panelClassName="cf-panel" aria-label="Keep awake" aria-busy={pending || undefined}
+    : <><span className="cf-pair"><kbd>↑</kbd><kbd>↓</kbd></span> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
+  return <ChipPopover ref={dialog} className="cf-dialog cf-root" panelClassName="cf-panel" aria-label="Keep awake" aria-busy={waiting || undefined}
     onKeyDown={keyboard} trigger={visibleChip} anchor={anchor} width={320} instant={instant} data-tone={tone} onClose={onClose}
     onEscape={() => {
       if (armed) { setArmed(null); return; }
@@ -313,7 +311,10 @@ export function CaffeinePopover({ view, readError, anchor, instant, onClose }: {
       if (action) dispatch(action);
     }}>
     {body}
-    {shownError && <p className="cf-error" role="status">{shownError}</p>}
+    {/* One live region, present from the first render, so a later error or status is announced. */}
+    <div role="status">
+      {pending ? <p className="cf-pending">{pending.doing}…</p> : shownError && <p className="cf-error">{shownError}</p>}
+    </div>
     <footer className="cf-footer">
       {footnote && <span>{footnote}</span>}
       <span className="cf-keys">{keys}</span>

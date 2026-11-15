@@ -18,9 +18,13 @@ the chip is hidden, including on the new-thread screen.
 
 Every timed row shows the time it ends, with the weekday when that is not
 today. A start, extend or off closes the popover, and the chip appearing or
-going is the confirmation. An error stays on screen. If the popover was closed
-before the action failed, the next popover opens with the error. If BB cannot
-read the Mac's state, the popover says so; reopening it reads again.
+going is the confirmation. While an action runs, the popover says what it is
+waiting for and takes no second action, even after a close and reopen. A
+popover opened meanwhile stays open when that action succeeds. An error stays
+on screen. If no popover was open when the action failed, the next popover
+opens with what failed and at what time. If BB cannot read the Mac's state and
+has no earlier reading, the popover says so; reopening it reads again. With an
+earlier reading, it shows that one.
 
 The chip hides while keep-awake is off, like the tmux pill:
 

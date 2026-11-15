@@ -60,10 +60,10 @@
   border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
   transition: background-color .12s, transform .16s var(--cf-ease);
 }
-.cf-row:hover:not(:disabled), .cf-row:focus { background: var(--state-hover); outline: none; }
+.cf-row:hover:not([aria-disabled]), .cf-row:focus { background: var(--state-hover); outline: none; }
 .cf-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
-.cf-row:active:not(:disabled) { transform: scale(.985); }
-.cf-row:disabled { opacity: .55; cursor: default; }
+.cf-row:active:not([aria-disabled]) { transform: scale(.985); }
+.cf-row[aria-disabled] { opacity: .55; cursor: default; }
 .cf-row kbd, .cf-keys kbd {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px;
   border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
@@ -93,7 +93,9 @@
   border: 1px solid color-mix(in oklch, var(--warning) 35%, transparent);
 }
 .cf-banner code { font-family: var(--font-mono); }
-.cf-error { margin: 0; padding: 8px 14px; color: var(--destructive-text); font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
+.cf-error, .cf-pending { margin: 0; padding: 8px 14px; font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
+.cf-error { color: var(--destructive-text); }
+.cf-pending { color: var(--muted-foreground); }
 
 .cf-footer {
   display: grid; gap: 2px; padding: 8px 14px;
@@ -102,10 +104,16 @@
 }
 /* Keycaps as in git-glance's footer. */
 .cf-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; }
-.cf-keys kbd + kbd { margin-left: -2px; }
-.cf-keys kbd:not(:first-child):not(kbd + kbd) { margin-left: 4px; }
+/* Wider before a key than after it, so each label reads with the key before it. */
+.cf-pair { display: inline-flex; gap: 2px; }
+.cf-keys > kbd:not(:first-child) { margin-left: 4px; }
+
+/* Touch: rows at the 44 px target the chip itself uses under a coarse pointer. */
+@media (pointer: coarse) {
+  .cf-row { min-height: 44px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .cf-row, .cf-meter i { transition: none; }
-  .cf-row:active:not(:disabled) { transform: none; }
+  .cf-row:active:not([aria-disabled]) { transform: none; }
 }

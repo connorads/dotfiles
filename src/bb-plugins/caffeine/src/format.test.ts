@@ -64,3 +64,8 @@ test('chip title dates a deadline on another day', () => {
   assert.equal(chipFace({ kind: 'on', deadline: now + 3 * 24 * 60 * min, startedAt: now }, now)?.title,
     'Keeping this Mac awake for 3d, until Thu 14:32');
 });
+
+test('chip title names no past clock time once grace has run out', () => {
+  assert.deepEqual(chipFace({ kind: 'agents', busy: null, graceUntil: now - 30_000, leaseDeadline: now + 60 * min }, now),
+    { tone: 'on', glyph: '☼', token: 'A·0s', title: 'No agents running. Keep-awake is stopping now' });
+});

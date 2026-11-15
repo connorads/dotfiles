@@ -73,7 +73,11 @@ export function chipFace(view: CaffeineView, now: number): ChipFace | null {
     case 'agents':
       if (view.graceUntil !== null) {
         const left = humanAge(secsUntil(view.graceUntil, now));
-        return { tone: 'on', glyph: '☼', token: `A·${left}`, title: `No agents running. Keep-awake stops in ${left}, at ${clockAt(view.graceUntil, now)}` };
+        // Under a second left the clock time is already past, so the title says what happens instead.
+        const title = view.graceUntil - now >= 1_000
+          ? `No agents running. Keep-awake stops in ${left}, at ${clockAt(view.graceUntil, now)}`
+          : 'No agents running. Keep-awake is stopping now';
+        return { tone: 'on', glyph: '☼', token: `A·${left}`, title };
       }
       if (view.busy !== null) {
         const agents = view.busy === 1 ? '1 agent runs' : `${view.busy} agents run`;
