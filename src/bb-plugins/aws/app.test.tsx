@@ -143,7 +143,8 @@ it('picks the highlighted row with Enter after a mouse pick, as focus stays in t
   act(() => { void command.run({ threadId: 't8' } as never); });
   const filter = overlay.getByLabelText('Filter profiles');
   const prod = await overlay.findByRole('option', { name: /acme-prod/ });
-  fireEvent.mouseEnter(prod);
+  fireEvent.mouseMove(prod, { clientX: 10, clientY: 10 });
+  fireEvent.mouseMove(prod, { clientX: 12, clientY: 14 });
   expect(fireEvent.mouseDown(prod)).toBe(false);
   fireEvent.click(prod);
   await overlay.findByRole('button', { name: 'Sign in with Granted' });
@@ -311,4 +312,138 @@ it('shows when credentials were last used only for the current profile', async (
   await waitFor(() => expect(dialog.querySelector('.aws-header')?.textContent).toContain('acme-dev · eu-west-1'));
   expect(dialog.querySelector('.aws-header')?.textContent).not.toContain('used');
   act(() => { void command.run({ threadId: 't18' } as never); });
+});
+
+it('moves the highlight only when the pointer moves, not when the list moves under a still pointer', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't19' } as never); });
+  const prod = await overlay.findByRole('option', { name: /acme-prod/ });
+  fireEvent.mouseEnter(prod);
+  fireEvent.mouseMove(prod, { clientX: 40, clientY: 80 });
+  fireEvent.mouseMove(prod, { clientX: 40, clientY: 80 });
+  expect(overlay.getByRole('option', { selected: true }).textContent).toContain('acme-dev');
+  fireEvent.mouseMove(prod, { clientX: 41, clientY: 80 });
+  expect(overlay.getByRole('option', { selected: true }).textContent).toContain('acme-prod');
+  act(() => { void command.run({ threadId: 't19' } as never); });
+});
+
+it('keeps a region typed while the profiles load', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: 'eu-central-1' } });
+  let release = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, thread: () => new Promise(resolve => { release = () => resolve(h.rpc.thread()); }) },
+  });
+  act(() => { void command.run({ threadId: 't20' } as never); });
+  await overlay.findByRole('dialog', { name: 'AWS profile' });
+  const region = overlay.getByLabelText('Region override') as HTMLInputElement;
+  fireEvent.change(region, { target: { value: 'us-west-2' } });
+  await act(async () => release());
+  await overlay.findByRole('option', { name: /acme-dev/ });
+  expect(region.value).toBe('us-west-2');
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: 'us-west-2' }));
+});
+
+it('unlocks the rows after a failed save, so a second pick can succeed', async () => {
+  const h = handlers();
+  let fail = true;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, setChoice: (input: unknown) => { if (fail) throw new Error('offline'); return h.rpc.setChoice(input); } },
+  });
+  act(() => { void command.run({ threadId: 't21' } as never); });
+  const dialog = await overlay.findByRole('dialog', { name: 'AWS profile' });
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-dev/ }));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not save the choice: offline');
+  const dev = overlay.getByRole('option', { name: /acme-dev/ });
+  expect(dev).toHaveProperty('disabled', false);
+  expect(overlay.getByRole('listbox').getAttribute('aria-busy')).toBeNull();
+  fail = false;
+  fireEvent.click(dev);
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+  await waitFor(() => expect(dialog.isConnected).toBe(false));
+});
+
+it('sends one sign-in and one retry however often they are pressed', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-prod/ReadOnly', region: null } });
+  let finishSignIn = () => {};
+  let failState = false;
+  let releaseState = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      ...h.rpc,
+      state: () => failState ? new Promise((_, reject) => { releaseState = () => reject(new Error('offline')); }) : state,
+      signIn: () => new Promise(resolve => { finishSignIn = () => resolve({ ok: true }); }),
+    },
+  });
+  act(() => { void command.run({ threadId: 't22' } as never); });
+  const signIn = await overlay.findByRole('button', { name: 'Sign in with Granted' });
+  fireEvent.click(signIn);
+  fireEvent.click(signIn);
+  fireEvent.keyDown(signIn, { key: 'Enter' });
+  fireEvent.click(signIn);
+  expect(overlay.rpcCalls.filter(c => c.method === 'signIn')).toHaveLength(1);
+  failState = true;
+  await act(async () => finishSignIn());
+  await act(async () => releaseState());
+  const retry = await overlay.findByRole('button', { name: 'Retry' });
+  const before = overlay.rpcCalls.filter(c => c.method === 'state').length;
+  fireEvent.click(retry);
+  fireEvent.click(retry);
+  expect(overlay.rpcCalls.filter(c => c.method === 'state')).toHaveLength(before + 1);
+  await act(async () => releaseState());
+  act(() => { void command.run({ threadId: 't22' } as never); });
+});
+
+it('drops a load that fails after close, so the next picker shows no stale alert', async () => {
+  const h = handlers();
+  let reject = () => {};
+  let first = true;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      ...h.rpc,
+      state: () => {
+        if (!first) return state;
+        first = false;
+        return new Promise((_, fail) => { reject = () => fail(new Error('offline')); });
+      },
+    },
+  });
+  act(() => { void command.run({ threadId: 't23' } as never); });
+  await overlay.findByRole('dialog', { name: 'AWS profile' });
+  act(() => { void command.run({ threadId: 't23' } as never); });
+  act(() => { void command.run({ threadId: 't24' } as never); });
+  await overlay.findByRole('option', { name: /acme-dev/ });
+  await act(async () => reject());
+  expect(overlay.queryByRole('alert')).toBeNull();
+  act(() => { void command.run({ threadId: 't24' } as never); });
+});
+
+it('shows one alert when a refresh fails after a config error', async () => {
+  const h = handlers();
+  let fail = false;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, state: () => { if (fail) throw new Error('offline'); return { profiles: [], error: 'Could not read ~/.aws/config: EACCES' }; } },
+  });
+  act(() => { void command.run({ threadId: 't25' } as never); });
+  expect((await overlay.findByRole('alert')).textContent).toContain('EACCES');
+  fail = true;
+  fireEvent.click(overlay.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(overlay.getByRole('alert').textContent).toBe('Could not refresh AWS profiles: offline'));
+  expect(overlay.getAllByRole('button', { name: 'Retry' })).toHaveLength(1);
+  act(() => { void command.run({ threadId: 't25' } as never); });
+});
+
+it('announces the sign-in box that appears after choosing a profile that needs one', async () => {
+  const h = handlers();
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't26' } as never); });
+  const status = (await overlay.findAllByRole('status')).find(node => !node.textContent);
+  expect(status).toBeTruthy();
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-prod/ }));
+  await waitFor(() => expect(status!.textContent).toContain('This profile needs a sign-in.'));
+  act(() => { void command.run({ threadId: 't26' } as never); });
 });

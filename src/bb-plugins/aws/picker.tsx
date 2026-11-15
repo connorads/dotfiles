@@ -52,11 +52,18 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   const placed = useRef(false);
   /** Set by a keyboard move, so the active row scrolls into view; a mouse hover does not scroll. */
   const follow = useRef(false);
+  /** Where the pointer last was. A list that scrolls under a still pointer sends mouse events too; only a real move hovers. */
+  const pointer = useRef<string | null>(null);
+  /** Set once the person edits the region, so a load that lands later cannot overwrite what they typed. */
+  const regionEdited = useRef(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const rows = useMemo(() => state ? rowsFor(state, filter) : [], [state, filter]);
   const current = thread?.choice.profile ?? null;
   const reveal = (i: number) => list.current?.querySelectorAll('.aws-row')[i]?.scrollIntoView?.({ block: 'nearest' });
 
-  useEffect(() => { setRegion(thread?.choice.region ?? ''); }, [thread?.choice.region]);
+  useEffect(() => { if (!regionEdited.current) setRegion(thread?.choice.region ?? ''); }, [thread?.choice.region]);
+  // The message can render below the fold of a short window, under the button that caused it.
+  useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: 'nearest' }); }, [error]);
   useEffect(() => { setIndex(i => Math.min(i, Math.max(rows.length - 1, 0))); }, [rows.length]);
   useEffect(() => {
     alive.current = true;
@@ -111,7 +118,7 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
       const result = await rpc.call('signIn', { profile });
       if (!result.ok) setError(result.message);
     } catch (cause) {
-      setError(message(cause));
+      setError(`Could not start the sign-in: ${message(cause)}`);
     } finally {
       setSigningIn(false);
     }
@@ -153,6 +160,12 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   // aria-disabled, not disabled: a disabled button drops focus out of the dialog.
   // A mouse press keeps focus in the filter, as for rows, so Enter afterwards picks the highlighted row.
   const keepFocus = (event: MouseEvent) => event.preventDefault();
+  const hover = (event: MouseEvent, i: number) => {
+    const at = `${event.clientX},${event.clientY}`;
+    const moved = pointer.current !== null && pointer.current !== at;
+    pointer.current = at;
+    if (moved) setIndex(i);
+  };
   const retryButton = <button type="button" aria-disabled={retrying || undefined} onMouseDown={keepFocus} onClick={() => void retry()}>
     {retrying ? 'Retrying…' : 'Retry'}
   </button>;
@@ -184,20 +197,21 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
         }} />
       <input className="aws-input aws-region" placeholder="region (profile's)" aria-label="Region override"
         aria-invalid={regionError ? true : undefined} aria-describedby={regionError ? regionErrorId : undefined}
-        value={region} onChange={event => { setRegion(event.target.value); setRegionError(null); }} />
+        value={region} onChange={event => { regionEdited.current = true; setRegion(event.target.value); setRegionError(null); }} />
     </div>
     {regionError && <p id={regionErrorId} className="aws-error aws-region-error" role="alert">{regionError}</p>}
     {!state ? loadError ? problem(`${retries ? 'Still could not' : 'Could not'} load AWS profiles: ${loadError}`)
         : <p className="aws-empty" role="status">Loading…</p>
       : <>
-        {state.error && problem(state.error)}
+        {/* A failed refresh says more about the list than the error it loaded with, so only one alert shows. */}
+        {state.error && !loadError && problem(state.error)}
         {/* Rows never take focus: it stays in the filter, which points at the active row, so Enter
             always picks the highlighted row and a disabled row cannot drop focus. */}
         <div ref={list} id={listId} className="aws-rows" role="listbox" aria-label="Profiles" aria-busy={saving ? true : undefined}>
           {rows.map((row, i) => <button key={row.profile ?? 'off'} id={rowId(i)} type="button" role="option" tabIndex={-1}
             className="aws-row" data-active={i === index ? '' : undefined} aria-selected={i === index}
             aria-current={row.profile === current || undefined} disabled={!!saving}
-            onMouseDown={event => event.preventDefault()} onMouseEnter={() => setIndex(i)} onClick={() => void pick(row)}>
+            onMouseDown={event => event.preventDefault()} onMouseMove={event => hover(event, i)} onClick={() => void pick(row)}>
             <span className="aws-row-label" title={row.label}>{row.label}</span>
             <span className="aws-row-aside" data-warn={row.warn && saving?.profile !== row.profile ? '' : undefined}>
               {saving?.profile === row.profile ? 'saving…' : row.aside}{row.profile === current && ' ✓'}
@@ -207,13 +221,16 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
         {rows.length === 0 && state.profiles.length > 0 && <p className="aws-empty">No profile matches.</p>}
         {!state.error && state.profiles.length === 0 && <p className="aws-empty">No profiles in the AWS config file.</p>}
       </>}
-    {selected && selected.status !== 'ok' && <p className="aws-signin">
-      This profile needs a sign-in.{' '}
-      <button type="button" aria-disabled={waiting || undefined} onMouseDown={keepFocus} onClick={() => void signIn(selected.name)}>
-        {waiting ? 'Waiting for browser…' : 'Sign in with Granted'}
-      </button>
-    </p>}
-    {error && <p className="aws-error" role="alert">{error}</p>}
+    {/* Always present, so a screen reader hears the box appear after choosing a profile that needs a sign-in. */}
+    <div role="status">
+      {selected && selected.status !== 'ok' && <p className="aws-signin">
+        {waiting ? 'Finish the sign-in in your browser.' : 'This profile needs a sign-in.'}{' '}
+        <button type="button" aria-disabled={waiting || undefined} onMouseDown={keepFocus} onClick={() => void signIn(selected.name)}>
+          {waiting ? 'Waiting for browser…' : 'Sign in with Granted'}
+        </button>
+      </p>}
+    </div>
+    {error && <p ref={errorRef} className="aws-error" role="alert">{error}</p>}
     {state && loadError && !error && problem(`Could not refresh AWS profiles: ${loadError}`)}
     <footer className="aws-footer">
       <span className="aws-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>

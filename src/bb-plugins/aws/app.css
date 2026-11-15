@@ -12,10 +12,13 @@
   .bbp-popover-panel.aws-panel { --aws-row: 44px; }
   .aws-keys { display: none; }
   .aws-panel .aws-signin button, .aws-panel .aws-problem button { height: var(--aws-row); }
-  .aws-panel .aws-input { min-width: 160px; font-size: 16px; }
+  .aws-panel .aws-input { flex: 1 0 192px; height: var(--aws-row); font-size: 16px; }
   /* The region field keeps its whole placeholder at 16 px, so on phones the two fields stack. */
   .aws-panel .aws-fields { flex-wrap: wrap; }
-  .aws-panel .aws-region { flex: 1 0 192px; }
+  /* No hover shows a title on touch, and the role at the end of a name tells siblings apart: wrap, never cut. */
+  .aws-panel .aws-row-label { white-space: normal; overflow-wrap: anywhere; }
+  /* A grid list sizes each row before its label wraps, so wrapped rows would overlap. */
+  .aws-panel .aws-rows { display: block; }
 }
 /* Sizes follow BB's text tokens, which grow on phones, so names never read smaller than the text beside them. */
 
