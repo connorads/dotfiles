@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type DialogHTMLAttributes, type ReactNode, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type DialogHTMLAttributes, type ReactNode, type Ref } from 'react';
 import './popover.css';
 
 /** Where the chip sat when the popover opened. Null centres the popover near the top. */
@@ -53,7 +53,14 @@ export function ChipPopover({ ref, trigger, anchor, width, instant, place, panel
   useLayoutEffect(() => {
     const node = element.current;
     node?.showModal();
+    // A focused control that unmounts, such as a sub-screen's input, drops focus to <body>, where keys miss the
+    // key guard and the plugin's shortcuts. Keep focus on the dialog instead.
+    const keepFocus = new MutationObserver(() => {
+      if (node?.open && (!document.activeElement || document.activeElement === document.body)) node.focus({ preventScroll: true });
+    });
+    if (node) keepFocus.observe(node, { childList: true, subtree: true });
     return () => {
+      keepFocus.disconnect();
       // Return focus only from the popover: an action that moved it elsewhere keeps it there.
       const active = document.activeElement;
       const restore = !active || active === document.body || (node?.contains(active) ?? false);
@@ -69,9 +76,10 @@ export function ChipPopover({ ref, trigger, anchor, width, instant, place, panel
   }, []);
   const position = place?.() ?? placeUnder(trigger()?.getBoundingClientRect() ?? anchor, width);
 
-  return <dialog {...dialog} ref={element} className={className ? `bbp-popover ${className}` : 'bbp-popover'} aria-modal="true"
+  return <dialog tabIndex={-1} {...dialog} ref={element} className={className ? `bbp-popover ${className}` : 'bbp-popover'} aria-modal="true"
     data-instant={instant || undefined}
-    style={{ top: position.top, left: position.left, width: position.width, transformOrigin: position.origin }}
+    style={{ top: position.top, left: position.left, width: position.width, transformOrigin: position.origin,
+      '--bbp-popover-top': `${position.top}px` } as CSSProperties}
     onKeyDown={event => {
       if (event.key !== 'Escape') event.stopPropagation();
       onKeyDown?.(event);

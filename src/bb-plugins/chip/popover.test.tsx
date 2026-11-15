@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { ChipPopover } from './chip.tsx';
@@ -29,6 +30,8 @@ test('sits 8 px under the chip with its right edge on the chip', () => {
   expect(dialog.style.top).toBe('48px');
   expect(dialog.style.left).toBe('180px');
   expect(dialog.style.width).toBe('320px');
+  // The panel's height cap starts from here, so a lower chip cannot push the panel's end off screen.
+  expect(dialog.style.getPropertyValue('--bbp-popover-top')).toBe('48px');
 });
 
 test('without a chip it centres near the top', () => {
@@ -93,6 +96,41 @@ test('a drag from inside the popover that ends on the backdrop does not close it
   fireEvent(dialog, new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 100 }));
   fireEvent.click(dialog, { bubbles: true, clientX: 10, clientY: 10 });
   expect(onClose).not.toHaveBeenCalled();
+});
+
+test('a drag from the backdrop that ends inside the popover does not close it', () => {
+  const { dialog, onClose } = popover();
+  dialog.getBoundingClientRect = () => DOMRect.fromRect({ x: 180, y: 48, width: 320, height: 200 });
+  fireEvent(dialog, new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+  fireEvent.click(dialog, { bubbles: true, clientX: 300, clientY: 100 });
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test("the plugin's own click handler still runs", () => {
+  const onClick = vi.fn();
+  const { getByRole } = popover({ onClick });
+  fireEvent.click(getByRole('button', { name: 'Row' }));
+  expect(onClick).toHaveBeenCalledOnce();
+});
+
+test('when the focused control unmounts, focus stays in the popover and keys still stop there', async () => {
+  function SubScreen() {
+    const [renaming, setRenaming] = useState(true);
+    return <ChipPopover aria-label="Garden notes" trigger={() => null} anchor={null} width={320} onClose={() => {}}>
+      {renaming ? <button type="button" onClick={() => setRenaming(false)}>Back</button> : <p>List</p>}
+    </ChipPopover>;
+  }
+  const { getByRole } = render(<SubScreen />);
+  const back = getByRole('button', { name: 'Back' });
+  back.focus();
+  fireEvent.click(back);
+  await vi.waitFor(() => expect(document.activeElement).toBe(getByRole('dialog', { name: 'Garden notes' })));
+  const seen: string[] = [];
+  const outside = (event: KeyboardEvent) => seen.push(event.key);
+  document.addEventListener('keydown', outside);
+  fireEvent.keyDown(document.activeElement!, { key: 'j' });
+  document.removeEventListener('keydown', outside);
+  expect(seen).toEqual([]);
 });
 
 test('closing returns focus to the chip, unless an action moved it elsewhere', () => {

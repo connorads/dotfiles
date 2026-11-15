@@ -11,15 +11,16 @@
 .bbp-chip:hover, .bbp-chip[aria-expanded="true"] { background: var(--state-hover); color: var(--foreground); }
 .bbp-chip[aria-expanded="true"] { border-color: var(--border-hairline); }
 .bbp-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.bbp-chip[data-tone="warn"] { border-color: color-mix(in oklch, var(--warning) 45%, var(--border)); }
-.bbp-chip[data-tone="danger"] { color: var(--destructive-text); border-color: color-mix(in oklch, var(--destructive) 45%, var(--border)); }
+/* Mix in oklab: --border is grey with hue 0, and an oklch mix pulls the status hue halfway to red. */
+.bbp-chip[data-tone="warn"] { border-color: color-mix(in oklab, var(--warning) 45%, var(--border)); }
+.bbp-chip[data-tone="danger"] { color: var(--destructive-text); border-color: color-mix(in oklab, var(--destructive) 45%, var(--border)); }
 
 .bbp-chip-icon { display: inline-flex; flex: none; width: 14px; height: 14px; }
 .bbp-chip-icon > * { width: 14px; height: 14px; }
 .bbp-chip-value { overflow: hidden; text-overflow: ellipsis; color: var(--foreground); }
 .bbp-chip[data-tone="danger"] .bbp-chip-value { color: inherit; }
 
-.bbp-chip-dot { display: inline-flex; align-items: center; gap: 4px; color: var(--success); }
+.bbp-chip-dot { display: inline-flex; align-items: center; gap: 4px; color: var(--success-foreground, var(--success)); }
 .bbp-chip-dot[data-tone="warn"] { color: var(--warning-text); }
 .bbp-chip-dot[data-tone="danger"] { color: var(--destructive-text); }
 .bbp-chip-dot > i {

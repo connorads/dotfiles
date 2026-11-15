@@ -65,18 +65,26 @@ import { ChipPopover } from '@bb-plugins/chip';
 - It sits 8 px under the chip, right edges aligned, and stays on screen. It
   follows `trigger()` on resize; `anchor` is the fallback, and `null` centres it.
   `place` replaces this for a second layout, such as git-glance's zoom.
-- A press on the backdrop closes it when released, so the tap does not reach
-  what lies under the backdrop, such as the chip. Escape calls `onEscape`, or
-  `onClose` if there is none. Put sub-screen exits such as "back" or "cancel rename" in
-  `onEscape`.
+- A press on the backdrop calls `onClose` when released, so the tap does not
+  reach what lies under the backdrop, such as the chip. Escape calls `onEscape`,
+  or `onClose` if there is none. Put sub-screen exits such as "back" or "cancel
+  rename" in `onEscape`. The popover stays open until you unmount it, so an
+  `onClose` can keep it open while a form has unsaved input.
 - Keys other than Escape stop at the popover, so BB's global shortcuts ignore
   them. Your `onKeyDown` still gets every key; plugin shortcuts live there.
+- When the focused control unmounts, such as a sub-screen's input, focus moves
+  to the dialog, so keys still reach the key guard and your `onKeyDown`.
 - On close, focus returns to `trigger()`, unless an action moved focus outside.
 - `instant` skips the entrance, for a popover opened by a shortcut. Reduced
   motion skips it always.
 - The panel uses `--popover`, `--popover-foreground`, `--border`, a 14 px
   radius and `--shadow-color`. It is a flex column, capped at
-  `min(720px, 100vh - 80px)`, and scrolls when its content is taller.
+  `min(720px, 100vh - 80px)` and 12 px above the bottom of the window, and
+  scrolls when its content is taller.
+- As flex items, the panel's children shrink before the panel scrolls. A child
+  with `overflow: hidden` or `auto` can shrink to nothing. Give a child that must
+  keep its height `flex: none`. For a fixed header over a scrolling list, give
+  the list `min-height: 0; overflow-y: auto` instead.
 - Stylesheets are global, so override a panel rule with both classes, for
   example `.bbp-popover-panel.sg-panel { max-height: 70vh; }`. A single class
   loses to whichever plugin's copy of `popover.css` loads last.
