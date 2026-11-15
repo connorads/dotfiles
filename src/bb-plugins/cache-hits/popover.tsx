@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { DotTone } from '@bb-plugins/chip';
 import { expiresAt, hitRatio, type CacheState, type HistoryEntry } from './src/cache.ts';
-import { clock, gap, lifetime, missReason, percent, timeOfDay, tokens, writeMultiplier } from './src/format.ts';
+import { clock, gap, lifetime, missReason, percent, staleNote, timeOfDay, tokens, writeMultiplier } from './src/format.ts';
 
 export type Warmth = {
   /** Share of the lifetime left, or null when the provider reports none (Codex, Pi). */
@@ -17,7 +17,8 @@ export function warmth(state: CacheState, now: number): Warmth | null {
   if (ratio === null) return null;
   const expiry = expiresAt(state);
   // The dot shows cache warmth when the provider reports a lifetime, otherwise the last hit rate.
-  const left = expiry === null || state.ttlMs === null ? null : Math.max(0, (expiry - now) / state.ttlMs);
+  // Clock skew can stamp the last request a few seconds ahead of this machine, so the share is capped at 1.
+  const left = expiry === null || state.ttlMs === null ? null : Math.min(1, Math.max(0, (expiry - now) / state.ttlMs));
   const [fraction, ok, warn] = left === null ? [ratio, 0.8, 0.5] : [left, 0.5, 0.2];
   return { left, ratio, level: fraction > ok ? 'ok' : fraction > warn ? 'warn' : 'danger' };
 }
@@ -37,7 +38,7 @@ function Status({ state, now, view }: { state: CacheState; now: number; view: Wa
     <p className="ch-note">The next request rewrites <b>{tokens(rebuild)}</b> tokens at {writeMultiplier(state.ttlMs)}× the input price.</p>
   </header>;
   return <header className="ch-status" data-level={view.level}>
-    {/* Clock skew can put the last request a few seconds ahead of this machine; time left never shows above the lifetime. */}
+    {/* Time left never shows above the lifetime, as in `warmth`. */}
     <div className="ch-headline"><strong>{clock(Math.min(expiry - now, state.ttlMs))}</strong><span>left of {ttl} · cold at {timeOfDay(expiry)}</span></div>
     <Meter fraction={view.left} label="Cache lifetime left" />
     <p className="ch-note">Each request resets the {ttl} clock. Going cold rewrites <b>{tokens(rebuild)}</b> at {writeMultiplier(state.ttlMs)}× the input price.</p>
@@ -55,14 +56,17 @@ function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: Re
   return <div className="ch-stat"><dt>{label}</dt><dd>{value}</dd>{sub && <dd className="ch-sub">{sub}</dd>}</div>;
 }
 
+/** Keeps each figure on the line of the word it belongs to when a narrow stat cell wraps. */
+const NBSP = '\u00a0';
+
 function Stats({ state }: { state: CacheState }) {
   const thread = hitRatio(state.read, state.prompt);
   const last = state.last;
   return <dl className="ch-stats">
-    <Stat label="Thread" value={thread === null ? '–' : percent(thread)} sub={`${tokens(state.read)} of ${tokens(state.prompt)} cached`} />
+    <Stat label="Thread" value={thread === null ? '–' : percent(thread)} sub={`${tokens(state.read)} of ${tokens(state.prompt)}${NBSP}cached`} />
     <Stat label="Last request" value={last ? percent(hitRatio(last.read, last.prompt) ?? 0) : '–'}
-      sub={last && `read ${tokens(last.read)} · wrote ${tokens(last.write)}`} />
-    <Stat label="Misses" value={state.misses} sub={state.misses ? `${tokens(state.missedTokens)} re-sent` : 'none yet'} />
+      sub={last && `read${NBSP}${tokens(last.read)} · wrote${NBSP}${tokens(last.write)}`} />
+    <Stat label="Misses" value={state.misses} sub={state.misses ? `${tokens(state.missedTokens)}${NBSP}re-sent` : 'none yet'} />
   </dl>;
 }
 
@@ -151,10 +155,11 @@ function Misses({ history }: { history: HistoryEntry[] }) {
   </section>;
 }
 
-export function CachePopover({ state, now, view, trigger, onClose }: {
-  state: CacheState; now: number; view: Warmth; trigger: () => HTMLElement | null; onClose: () => void;
+export function CachePopover({ state, now, view, stale, trigger, onClose }: {
+  state: CacheState; now: number; view: Warmth; stale: number | null; trigger: () => HTMLElement | null; onClose: () => void;
 }) {
   return <ChipPopover aria-label="Prompt cache" panelClassName="ch-panel" trigger={trigger} anchor={null} width={380} onClose={onClose}>
+    {stale !== null && <p className="ch-stale-note">{staleNote(stale)}. These figures may be out of date.</p>}
     <Status state={state} now={now} view={view} />
     <Stats state={state} />
     <Chart history={state.history} />

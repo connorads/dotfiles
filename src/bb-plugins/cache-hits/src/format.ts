@@ -2,7 +2,7 @@ import type { MissCause } from './cache.ts';
 
 export function tokens(value: number) {
   if (value < 1000) return String(value);
-  if (value < 10_000) return `${(value / 1000).toFixed(1)}k`;
+  if (value < 9_950) return `${(value / 1000).toFixed(1)}k`;
   if (value < 999_500) return `${Math.round(value / 1000)}k`;
   return value < 9_950_000 ? `${(value / 1_000_000).toFixed(1)}M` : `${Math.round(value / 1_000_000)}M`;
 }
@@ -22,6 +22,8 @@ export function gap(ms: number) {
   return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 export const timeOfDay = (at: number) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+/** Shown while the newest load has failed; `updated` is when the figures on screen arrived. */
+export const staleNote = (updated: number) => `Not updated since ${timeOfDay(updated)}: the last refresh failed`;
 /**
  * Anthropic bills cache writes at 1.25x base input for the 5-minute lifetime and 2x for the 1-hour one.
  * Read prices vary by model (0.1x or less), so only the write rate is quoted.

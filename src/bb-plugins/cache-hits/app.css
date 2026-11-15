@@ -1,5 +1,8 @@
 /* Chip anatomy from @bb-plugins/chip; the pop-up shell is its ChipPopover. */
 .ch-cold > i { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+/* Figures kept after a failed refresh: the value and dot fade, and the tooltip says when they arrived. */
+.cache-hits[data-stale] .bbp-chip-value { color: var(--muted-foreground); }
+.cache-hits[data-stale] .bbp-chip-dot { opacity: .5; }
 
 .ch-panel {
   --ch-read: var(--success);
@@ -20,6 +23,7 @@
 .ch-headline strong {
   color: var(--ch-tone); font-size: 22px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.01em;
 }
+.ch-stale-note { margin: 0; padding: 6px 8px; border: 1px solid color-mix(in oklab, var(--warning) 45%, var(--border)); border-radius: 6px; color: var(--warning-text); font-size: var(--text-xs, 12px); }
 .ch-note { margin: 0; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .ch-note b { color: var(--foreground); font-weight: 500; }
 .ch-meter { display: block; height: 4px; border-radius: 2px; background: color-mix(in oklch, var(--foreground) 10%, transparent); overflow: hidden; }
@@ -29,7 +33,8 @@
 .ch-stat { display: grid; align-content: start; gap: 2px; padding: 8px 10px; background: var(--popover); }
 .ch-stat dt { color: var(--muted-foreground); font-size: 11px; }
 .ch-stat dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ch-stat dd.ch-sub { color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+/* Proportional figures: tabular ones widen the hyphen in "re-sent". */
+.ch-stat dd.ch-sub { color: var(--muted-foreground); font-size: 11px; font-weight: 400; font-variant-numeric: normal; }
 
 .ch-chart { display: grid; gap: 6px; margin: 0; }
 .ch-chart figcaption { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
@@ -53,8 +58,9 @@
 .ch-bars > li:hover { filter: brightness(1.25); }
 .ch-bars > li[data-selected] { outline: 1.5px solid var(--foreground); outline-offset: 1px; }
 .ch-bars > li > i { display: block; flex: none; background: var(--ch-part); }
-.ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before { opacity: .5; }
-.ch-bars > li > i[data-part="read"], .ch-legend > [data-part="read"]::before { opacity: .75; }
+/* Cached and uncached differ in lightness too, not only hue, so they stay apart in greyscale. */
+.ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before { opacity: .3; }
+.ch-bars > li > i[data-part="read"], .ch-legend > [data-part="read"]::before { opacity: .9; }
 /* Hue alone does not tell parts apart (red and green match in lightness in dark), so a panel-coloured line
    separates stacked parts and the re-sent part is striped. */
 .ch-bars > li > i:not(:last-child) { box-shadow: inset 0 -1px 0 var(--popover); }

@@ -313,3 +313,79 @@ test('the chip name starts with the time it shows, so voice control can target i
     expect(await slot.findByRole('button', { name: /^Prompt cache cold\. Cache expired/ })).toBeTruthy();
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('while the newest refresh has failed, the chip and popover say the figures are out of date, until a retry succeeds', async () => {
+  const at = Date.now() - 60_000;
+  let calls = 0;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (calls === 2) throw new Error('Sync store unavailable');
+    return claudeState(at, { invalidatedAt: Date.now() - 1000 });
+  });
+  try {
+    const chip = await slot.findByRole('button');
+    expect(chip.hasAttribute('data-stale')).toBe(false);
+    fireEvent.click(chip);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { await Promise.resolve(); });
+    expect(chip.hasAttribute('data-stale')).toBe(true);
+    expect(chip.getAttribute('title')).toMatch(/^Not updated since .+: the last refresh failed\n/);
+    expect(chip.getAttribute('aria-label')).toMatch(/^Prompt cache 5[89]m\. Not updated since/);
+    expect(slot.getByRole('dialog').querySelector('.ch-stale-note')?.textContent).toMatch(/the last refresh failed\. These figures may be out of date\.$/);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(chip.textContent).toBe('cold');
+    expect(chip.hasAttribute('data-stale')).toBe(false);
+    expect(slot.getByRole('dialog').querySelector('.ch-stale-note')).toBe(null);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('on one thread, an older refresh that resolves after a newer one never replaces it', async () => {
+  const at = Date.now() - 60_000;
+  let release: (state: CacheState) => void = () => {};
+  let calls = 0;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (calls === 2) return new Promise<CacheState>(resolve => { release = resolve; });
+    return claudeState(at, { invalidatedAt: Date.now() - 1000 });
+  });
+  try {
+    expect((await slot.findByRole('button')).textContent).toMatch(/^5[89]m$/);
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await tick();
+    expect(slot.getByRole('button').textContent).toBe('cold');
+    await act(async () => { release(claudeState(at)); await tick(); });
+    expect(slot.getByRole('button').textContent).toBe('cold');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a failing refresh is tried again after 2, 4, 8 and 16 seconds, then waits for the next request', async () => {
+  const at = Date.now() - 60_000;
+  let calls = 0;
+  const slot = await render(() => { if (calls++ === 0) return claudeState(at); throw new Error('Sync store unavailable'); });
+  try {
+    await slot.findByRole('button');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { await Promise.resolve(); });
+    const seen: number[] = [];
+    for (const wait of [1_999, 1, 4_000, 8_000, 16_000, 60_000]) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(wait); });
+      seen.push(calls);
+    }
+    expect(seen).toEqual([2, 3, 4, 5, 6, 6]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Claude: the chip value and meter never read above the lifetime when the last request is stamped well ahead of this clock', async () => {
+  const slot = await render(() => claudeState(Date.now() + 90_000));
+  try {
+    const chip = await slot.findByRole('button');
+    expect(chip.textContent).toBe('60m');
+    fireEvent.click(chip);
+    expect((await slot.findByRole('dialog')).querySelector('[role="meter"]')?.getAttribute('aria-valuenow')).toBe('100');
+  } finally { slot.lifecycle.unmount(); }
+});
