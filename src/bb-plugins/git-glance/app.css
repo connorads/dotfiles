@@ -10,6 +10,8 @@
   --gg-lane-3: var(--attention, oklch(80% .15 80));
   --gg-lane-4: oklch(72% .16 350);
   --gg-lane-5: oklch(76% .11 200);
+  /* --attention is a fill colour; as text on the panel it needs more contrast. */
+  --gg-attention-text: color-mix(in oklch, var(--attention) 65%, var(--foreground));
   --gg-add: var(--diff-added, oklch(70% .17 150));
   --gg-del: var(--diff-removed, oklch(65% .19 22));
   /* Emil Kowalski's ease-out: fast start, long settle. */
@@ -19,7 +21,7 @@
 /* Header chip: anatomy from @bb-plugins/chip; only the branch's own marks here. */
 .bbp-chip[data-tone="danger"] .gg-chip-branch { text-transform: capitalize; }
 .gg-chip-ahead { color: var(--gg-lane-0); }
-.gg-chip-behind { color: var(--attention); }
+.gg-chip-behind { color: var(--gg-attention-text); }
 @container page-header (max-width: 900px) { .gg-chip-ahead, .gg-chip-behind { display: none; } }
 
 /* Pop-up shell from @bb-plugins/chip. */
@@ -127,7 +129,7 @@
   border: 1px solid var(--border); background: var(--surface-recessed, transparent); color: var(--muted-foreground);
   font: 500 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums;
 }
-.gg-fact[data-tone="behind"] { color: var(--attention); border-color: color-mix(in oklch, var(--attention) 40%, transparent); background: color-mix(in oklch, var(--attention) 10%, transparent); }
+.gg-fact[data-tone="behind"] { color: var(--gg-attention-text); border-color: color-mix(in oklch, var(--attention) 40%, transparent); background: color-mix(in oklch, var(--attention) 10%, transparent); }
 .gg-sha { font-family: var(--font-mono); cursor: pointer; transition: color .15s, border-color .15s, transform .16s var(--gg-ease); }
 .gg-sha:active { transform: scale(0.96); }
 .gg-swap { display: inline-grid; flex: none; }
@@ -141,6 +143,9 @@
   border: 1px solid var(--surface-destructive-border, color-mix(in oklch, var(--destructive) 40%, transparent));
   background: var(--surface-destructive, color-mix(in oklch, var(--destructive) 12%, transparent)); color: var(--destructive-text);
 }
+.gg-banner[data-tone="info"] { align-items: center; border-color: var(--border); background: var(--surface-recessed, var(--muted)); color: var(--foreground); }
+.gg-banner > span { flex: 1; min-width: 0; }
+.gg-banner > .gg-ghost { flex: none; white-space: nowrap; }
 .gg-banner strong { font-weight: 600; }
 .gg-banner span, .gg-failure-body { text-wrap: pretty; }
 
@@ -154,7 +159,7 @@
   transition: background-color .15s, border-color .15s, color .15s, transform .16s var(--gg-ease);
 }
 .gg-sync[data-tone="ahead"] { --gg-sync: var(--gg-lane-0); }
-.gg-sync[data-tone="behind"] { --gg-sync: var(--attention); }
+.gg-sync[data-tone="behind"] { --gg-sync: var(--gg-attention-text); }
 .gg-sync[data-tone="ahead"]:not(:disabled), .gg-sync[data-tone="behind"]:not(:disabled) {
   border-color: color-mix(in oklch, var(--gg-sync) 45%, transparent); background: color-mix(in oklch, var(--gg-sync) 12%, var(--popover));
 }
@@ -163,6 +168,7 @@
 .gg-sync:disabled { opacity: .45; cursor: default; }
 .gg-sync:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .gg-sync[data-active] { --gg-sync: var(--foreground); border-color: var(--border-hairline); min-width: 92px; }
+.gg-sync[data-active]:disabled { opacity: 1; }
 .gg-sync-count { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--gg-sync); color: var(--popover); font-size: 11px; font-weight: 700; }
 .gg-sync-cancel { width: 12px; height: 12px; margin-left: auto; opacity: .55; }
 .gg-sync[data-active]:hover .gg-sync-cancel { opacity: 1; color: var(--destructive-text); }
@@ -287,19 +293,23 @@
 .gg-subject { flex: 1 1 auto; min-width: 4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gg-ref {
   --gg-ref: var(--muted-foreground);
-  display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; max-width: 160px; height: 20px; padding: 0 7px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; max-width: 160px; height: 20px; padding: 0 7px; border-radius: 6px;
   border: 1px solid color-mix(in oklch, var(--gg-ref) 40%, transparent); color: var(--gg-ref);
   font: 500 11px/1 var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gg-ref > svg, .gg-ref > span:first-child { flex: none; }
-.gg-ref-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* A floor keeps a few characters of every ref readable when the row is tight. */
+.gg-ref-name { min-width: 4ch; overflow: hidden; text-overflow: ellipsis; }
 .gg-ref[data-kind="head"] { background: color-mix(in oklch, var(--gg-ref) 16%, transparent); }
 .gg-ref[data-kind="local"] { --gg-ref: var(--foreground); border-color: var(--border-hairline); }
 .gg-ref[data-kind="remote"] { --gg-ref: var(--subtle-foreground, var(--muted-foreground)); border-style: dashed; }
-.gg-ref[data-kind="tag"] { --gg-ref: var(--attention); }
+.gg-ref[data-kind="tag"] { --gg-ref: var(--gg-attention-text); }
 .gg-meta { display: inline-flex; gap: 10px; flex: none; justify-content: flex-end; min-width: 92px; font: 11.5px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--subtle-foreground, var(--muted-foreground)); }
 .gg-short { opacity: 0; transition: opacity .15s; }
 .gg-commit:hover .gg-short, .gg-commit:focus-visible .gg-short { opacity: 1; }
+/* The split view's detail pane shows the sha; the list's room goes to subjects and refs. */
+.gg-body[data-split] .gg-meta > .gg-short { display: none; }
+.gg-body[data-split] .gg-commit .gg-meta { min-width: 0; }
 .gg-age { min-width: 32px; text-align: right; }
 .gg-copied { display: inline-flex; align-items: center; gap: 4px; color: var(--success); font-family: var(--font-sans); }
 
@@ -402,6 +412,7 @@
   border: 1px solid var(--border); border-bottom-width: 2px; background: var(--popover); color: var(--muted-foreground);
   font: 500 10.5px/1 var(--font-sans);
 }
+.gg-keys > span { white-space: nowrap; }
 .gg-keys kbd + kbd { margin-left: 2px; }
 .gg-ghost kbd { margin-left: 2px; }
 .gg-live { display: inline-flex; align-items: center; gap: 6px; flex: none; font-variant-numeric: tabular-nums; }
@@ -440,6 +451,7 @@
 
 .gg-composer { padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .gg-composer form { display: grid; gap: 8px; }
+.gg-composer form:focus { outline: none; }
 .gg-composer p { margin: 0; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
 .gg-composer textarea { display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: transparent; color: var(--foreground); resize: vertical; }
 .gg-index-action { white-space: nowrap; }
@@ -454,6 +466,12 @@
   .gg-title { flex-wrap: wrap; }
   .gg-upstream { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
   .gg-upstream-name { white-space: normal; }
+  /* The full name wraps beside its icon: touch has no tooltip to read a cut-off name. */
+  .gg-branch { max-width: calc(100% - 26px); text-align: left; }
+  .gg-title h2 { white-space: normal; overflow-wrap: anywhere; }
+  /* The hover-only short sha has no hover on narrow touch panels; its room goes to subjects and refs. */
+  .gg-meta > .gg-short { display: none; }
+  .gg-meta { min-width: 0; }
   .gg-body[data-split] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(120px, 40%) minmax(0, 1fr); }
   .gg-body[data-split] > .gg-list { border-right: 0; border-bottom: 1px solid var(--border); }
 }

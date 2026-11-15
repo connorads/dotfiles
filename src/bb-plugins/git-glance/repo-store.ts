@@ -62,15 +62,31 @@ export function receiveSnapshot(payload: unknown) {
   const { threadIds, root, snapshot } = payload as SnapshotMessage;
   for (const threadId of threadIds ?? []) if (entries.get(threadId)?.holders && entries.get(threadId)?.state.root === root) set(threadId, { snapshot, error: null, updatedAt: Date.now() });
 }
+/** An older operation's late update must not replace a newer one. */
+const stale = (current: OpState | null, op: OpState) => current !== null && current.id !== op.id && current.startedAt > op.startedAt;
+
 export function receiveOp(payload: unknown) {
   const { threadIds, root, op, fetch } = payload as OpMessage;
   for (const threadId of threadIds ?? []) {
     if (entries.get(threadId)?.state.root !== root) continue;
-    const current = entries.get(threadId)?.state.op;
-    // Ignore an older operation's late update once a newer one has started.
-    if (current && current.id !== op.id && current.startedAt > op.startedAt) continue;
+    const current = entries.get(threadId)?.state.op ?? null;
+    if (stale(current, op)) continue;
     if (entries.get(threadId)?.holders) set(threadId, { op, fetch, ...(op.request.kind === 'fetch' && op.status === 'succeeded' ? { fetchRequestError: null } : {}) });
   }
+}
+
+/**
+ * Records the operation `run` reported, the one it started or the one that refused a
+ * request, so the pop-up shows its progress and cancel before its realtime update
+ * arrives. An update already received for the same operation is newer and stays.
+ * Returns false when that update says the operation has already finished.
+ */
+export function reported(threadId: string, root: string, op: OpState) {
+  const item = entries.get(threadId);
+  if (!item?.holders || item.state.root !== root) return true;
+  if (item.state.op?.id === op.id) return item.state.op.status === 'running';
+  if (!stale(item.state.op, op)) set(threadId, { op });
+  return true;
 }
 
 export function fetchRequestFailed(threadId: string, root: string, cause: unknown) {

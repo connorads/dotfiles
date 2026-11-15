@@ -52,8 +52,11 @@ export function available(repo: Repo, op: OpState | null): Availability {
     [kind, { enabled: reason[kind] === null, title: reason[kind] ?? titles[kind] }])) as Availability;
 }
 
-export function SyncBar({ repo, op, fetched, onSync, onCancel }: {
-  repo: Repo; op: OpState | null; fetched: string | null; onSync: (op: OpKind) => void; onCancel: () => void;
+export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
+  repo: Repo; op: OpState | null;
+  /** `op` is a request the server has not answered yet: it shows as running but cannot be cancelled. */
+  starting: boolean;
+  fetched: string | null; onSync: (op: OpKind) => void; onCancel: () => void;
 }) {
   const can = available(repo, op);
   const running = op?.status === 'running' ? op : null;
@@ -61,12 +64,12 @@ export function SyncBar({ repo, op, fetched, onSync, onCancel }: {
   const button = ({ kind, icon, label, count, tone }: { kind: OpKind; icon: string; label: string; count: number | null; tone: string }) => {
     const active = running?.request.kind === kind;
     return <button type="button" className="gg-sync" data-tone={tone} data-active={active || undefined}
-      disabled={!can[kind].enabled && !active} title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
-      onClick={() => active ? onCancel() : onSync(kind)} aria-label={active ? `Cancel ${kind}` : can[kind].title}>
+      disabled={active ? starting : !can[kind].enabled} title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
+      onClick={() => active ? onCancel() : onSync(kind)} aria-label={active ? starting ? `Starting ${kind}` : `Cancel ${kind}` : can[kind].title}>
       {active ? <span className="gg-spinner gg-spinner-sm" /> : <Icon name={icon} className="size-3.5" />}
       <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : describe({ kind }).doing : label}</span>
       {!active && count !== null && count > 0 && <span className="gg-sync-count">{count}</span>}
-      {active && <Icon name="X" className="gg-sync-cancel" />}
+      {active && !starting && <Icon name="X" className="gg-sync-cancel" />}
     </button>;
   };
   return <div className="gg-sync-bar" role="group" aria-label="Sync with remote">

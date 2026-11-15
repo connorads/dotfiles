@@ -3,9 +3,9 @@ import { ChipPopover } from '@bb-plugins/chip';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { OpRequest, rpcContract } from './contracts.ts';
 import { subjectProject } from './contracts.ts';
-import { fetchRequestFailed, renew, useRepo } from './repo-store.ts';
+import { fetchRequestFailed, renew, reported, useRepo } from './repo-store.ts';
 import { FolderPicker } from './folder-picker.tsx';
-import { RepoView } from './repo-view.tsx';
+import { RepoView, type ActionError } from './repo-view.tsx';
 import { available, describe } from './sync-bar.tsx';
 import { message, Zoomed } from './ui.tsx';
 import { refusedBy } from './src/ops.ts';
@@ -35,7 +35,8 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   /** Open branch picker, and how it was opened: a shortcut opens it without motion. */
   const [picker, setPicker] = useState<'closed' | 'pointer' | 'keyboard'>('closed');
   const [folders, setFolders] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  /** A failed or refused action; a refusal holds while the operation that blocked it runs. */
+  const [actionError, setActionError] = useState<ActionError & { blocker?: string } | null>(null);
 
   // Once data arrives: focus the first row for the arrow keys, and fetch so the
   // pull count is current. The server skips the fetch if one ran recently.
@@ -49,23 +50,36 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     }
   }, [state.snapshot, state.root, rpc, threadId]);
   const [dismissed, setDismissed] = useState<string | null>(null);
+  /** A request sent to the server whose reply has not arrived. */
+  const [sending, setSending] = useState<OpRequest | null>(null);
+  const latest = useRef<OpRequest | null>(null);
   const runOp = useCallback((request: OpRequest) => {
-    if (!state.root) return Promise.resolve(false);
+    const root = state.root;
+    if (!root) return Promise.resolve(false);
     setActionError(null);
-    return rpc.call('run', { threadId, root: state.root, request, origin: 'user' }).then(({ op }) => {
+    latest.current = request;
+    setSending(request);
+    const sent = () => { if (latest.current === request) { latest.current = null; setSending(null); } };
+    return rpc.call('run', { threadId, root, request, origin: 'user' }).then(({ op }) => {
+      sent();
       const blocker = refusedBy(op, request);
       if (blocker) {
-        setActionError(`${describe(blocker.request).name} is running. Try again when it finishes.`);
+        const { name } = describe(blocker.request);
+        setActionError(reported(threadId, root, blocker) ? { refused: true, text: `${name} is running. Try again when it finishes.`, blocker: blocker.id } : { refused: true, text: `${name} was running. Try again.` });
         return false;
       }
+      if (op) reported(threadId, root, op);
       return true;
     }, cause => {
-      if (request.kind === 'fetch') fetchRequestFailed(threadId, state.root!, cause);
-      else setActionError(message(cause));
+      sent();
+      if (request.kind === 'fetch') fetchRequestFailed(threadId, root, cause);
+      else setActionError({ refused: false, text: message(cause) });
       return false;
     });
   }, [rpc, threadId, state.root]);
-  const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError(message(cause))); }, [rpc, threadId, state.root]);
+  const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError({ refused: false, text: message(cause) })); }, [rpc, threadId, state.root]);
+  // A refusal holds only while its blocker runs.
+  const shownError = actionError?.blocker && !(state.op?.id === actionError.blocker && state.op.status === 'running') ? null : actionError;
 
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
@@ -94,11 +108,16 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     else if (repo && (event.key === 'P' || event.key === 'p' || event.key === 'f')) {
       const op = event.key === 'P' ? 'push' : event.key === 'p' ? 'pull' : 'fetch';
       event.preventDefault();
-      if (available(repo, state.op)[op].enabled) void runOp({ kind: op });
+      if (!sending && available(repo, state.op)[op].enabled) void runOp({ kind: op });
     }
   }
 
   const repo = state.snapshot?.kind === 'none' ? null : state.snapshot;
+  /** Back to the repository view, with focus on the control that opened the folder browser. */
+  const backToGit = () => {
+    setFolders(false);
+    requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>('[data-folders-trigger]')?.focus({ preventScroll: true }));
+  };
   const selected = () => {
     opened.current = false; setPicker('closed'); setDismissed(null); setActionError(null);
     void renew(threadId).then(() => setFolders(false));
@@ -106,10 +125,10 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   return <ChipPopover ref={dialog} className="gg-dialog" panelClassName="gg-panel" aria-label="Git status" onKeyDown={keyboard}
     trigger={() => chip(threadId)} anchor={anchor} width={640} instant={instant} place={zoomed ? placeZoomed : undefined}
     data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose}>
-    {folders ? <FolderPicker threadId={threadId} onClose={() => setFolders(false)} onSelected={selected} />
+    {folders ? <FolderPicker threadId={threadId} onClose={backToGit} onSelected={selected} />
       : state.snapshot?.kind === 'none' && !state.error ? <FolderPicker threadId={threadId} embedded={!state.selected} onSelected={selected} />
-      : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={actionError}
-      dismissed={dismissed} onDismiss={setDismissed} onRun={runOp} onCancel={cancelOp}
+      : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={shownError}
+      dismissed={dismissed} onDismiss={setDismissed} sending={sending} onRun={runOp} onCancel={cancelOp}
       picker={picker} onPicker={setPicker} onZoom={() => zoom('pointer')} onClose={onClose} /></Zoomed.Provider>
       : <div className="gg-blank">
         {state.error ? <><Icon name="AlertTriangle" className="gg-blank-icon gg-danger" /><strong>Could not read git status</strong><span>{state.error}</span><button type="button" className="gg-ghost" onClick={() => setFolders(true)}>Choose repository</button></>

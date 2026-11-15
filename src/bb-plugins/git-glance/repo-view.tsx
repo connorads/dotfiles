@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { experimental_copyToClipboard, experimental_Icon as Icon, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
-import { rpcContract, type OpRequest, type Repo } from './contracts.ts';
+import { rpcContract, type OpRequest, type OpState, type Repo } from './contracts.ts';
 import { CommitComposer } from './commit-composer.tsx';
 import { BranchPicker } from './branch-picker.tsx';
 import { CommitList, CommitPanel } from './commits.tsx';
@@ -22,10 +22,12 @@ const operationNames: Record<NonNullable<Repo['operation']>, string> = {
 };
 
 type Selection = { kind: 'file'; key: string } | { kind: 'commit'; sha: string } | { kind: 'stash'; sha: string };
+/** An action that failed, or that the server refused because another operation was running. */
+export type ActionError = { text: string; refused: boolean };
 
-export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
-  repo: Repo; threadId: string; state: RepoState; actionError: string | null;
-  dismissed: string | null; onDismiss: (id: string) => void; onRun: (request: OpRequest) => Promise<boolean>; onCancel: () => void;
+export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, sending, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
+  repo: Repo; threadId: string; state: RepoState; actionError: ActionError | null;
+  dismissed: string | null; onDismiss: (id: string) => void; sending: OpRequest | null; onRun: (request: OpRequest) => Promise<boolean>; onCancel: () => void;
   picker: 'closed' | 'pointer' | 'keyboard'; onPicker: (state: 'closed' | 'pointer' | 'keyboard') => void;
   onFolders: () => void; onZoom: () => void; onClose: () => void;
 }) {
@@ -57,6 +59,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     setSelection(first ? { kind: 'file', key: changeKey(first) } : repo.commits[0] ? { kind: 'commit', sha: repo.commits[0].sha } : null);
   }, [zoomed, selection, selectedFile, repo.changes, repo.commits]);
   const [copied, setCopied] = useState<string | null>(null);
+  const branchButton = useRef<HTMLButtonElement>(null);
   const toggle = (key: string) => setCollapsed(previous => {
     const next = new Set(previous);
     if (!next.delete(key)) next.add(key);
@@ -74,7 +77,9 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const files = new Set(repo.changes.map(c => c.path)).size + repo.hidden;
   const conflicts = repo.changes.some(c => c.area === 'conflicted');
   const tone = repo.operation || conflicts ? 'danger' : files > 0 ? 'dirty' : 'clean';
-  const { op } = state;
+  // From a click until the server replies, the request shows as running, so a repeat click cannot send it again.
+  const starting = sending && state.op?.status !== 'running' ? sending : null;
+  const op = useMemo<OpState | null>(() => starting ? { id: '', request: starting, origin: 'user', startedAt: 0, status: 'running', progress: null } : state.op, [starting, state.op]);
   /** Unstaged edits and untracked paths can be discarded; staged and conflicted cannot. */
   const discardAction = (change: Repo['changes'][number]) => {
     const { area, path } = change;
@@ -87,14 +92,18 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       aria-label={`${change.area === 'staged' ? 'Unstage' : 'Stage'} ${change.path}`} title={`${change.area === 'staged' ? 'Unstage' : 'Stage complete file'} ${change.path} (Space)`}
       onClick={() => {
         pendingFile.current = { path: change.path, staged: change.area !== 'staged', before: repo.changes, focus: document.activeElement?.closest('.gg-change') !== null };
-        if (change.area === 'staged') void onRun({ kind: 'unstage', path: change.path });
-        else if (change.area === 'unstaged' || change.area === 'untracked') void onRun({ kind: 'stage', path: change.path, area: change.area });
+        const pending = pendingFile.current;
+        const started = change.area === 'staged' ? onRun({ kind: 'unstage', path: change.path })
+          : change.area === 'unstaged' || change.area === 'untracked' ? onRun({ kind: 'stage', path: change.path, area: change.area }) : null;
+        // An action that never started must not later select a row someone else staged.
+        void started?.then(ok => { if (!ok && pendingFile.current === pending) pendingFile.current = null; });
       }}>{change.area === 'staged' ? '− Unstage' : '+ Stage'}</button>;
   const running = op?.status === 'running' ? op : null;
   const fetched = state.fetch.lastSucceededAt !== null ? age(state.fetch.lastSucceededAt / 1000, now) : null;
   const fetchError = state.fetchRequestError ?? state.fetch.failure?.message ?? null;
   // A user's failure stays until dismissed; a success fades after a few seconds.
-  const failure = op?.status === 'failed' && op.origin === 'user' && op.request.kind !== 'fetch' && dismissed !== op.id ? op : null;
+  // Cancelling is the user's own choice, so it is not reported as a failure.
+  const failure = op?.status === 'failed' && op.origin === 'user' && op.request.kind !== 'fetch' && op.failure.reason !== 'cancelled' && dismissed !== op.id ? op : null;
   const success = op?.status === 'succeeded' && op.origin === 'user' && now - op.finishedAt < 6000 ? op : null;
   const fresh = useFresh(repo);
 
@@ -102,6 +111,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
   const [reviewError, setReviewError] = useState<string | null>(null);
   const openReview = async () => {
     if (!state.root) return;
+    setReviewError(null);
     try {
       const target = await rpc.call('reviewTarget', { threadId, root: state.root });
       const unhandled = window.dispatchEvent(new CustomEvent('diff-viewer:open', { cancelable: true, detail: { threadId, target, scope: { kind: 'uncommitted' } } }));
@@ -110,11 +120,10 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     } catch (cause) { setReviewError(cause instanceof Error ? cause.message : String(cause)); }
   };
   return <>
-    {reviewError && <p role="alert">{reviewError}</p>}
     <header className="gg-header" data-tone={tone}>
       <div className="gg-eyebrow">
         <Icon name={repo.kind === 'dotfiles' ? 'Home' : 'FolderGit'} className="size-3.5" />
-        <button type="button" className="gg-ghost" disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository">{repo.name}<Icon name="ChevronDown" className="size-3" /></button>
+        <button type="button" className="gg-ghost" data-folders-trigger disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository">{repo.name}<Icon name="ChevronDown" className="size-3" /></button>
         {repo.kind === 'dotfiles' && <span className="gg-tag">bare repo</span>}
         <span className="gg-spacer" />
         <button type="button" className="gg-ghost gg-icon-button" onClick={() => void openReview()} disabled={!state.root || threadId.startsWith('project:')} aria-label="Open in Diff Viewer" title="Open in Diff Viewer"><Icon name="FileDiff" className="size-3.5" /></button>
@@ -131,15 +140,15 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       <p className="gg-folder-path" title={state.root ?? undefined}>{state.root}</p>
       <div className="gg-title">
         <Icon name={branch.head ? 'GitBranch' : 'Circle'} className="gg-title-icon" />
-        <button type="button" className="gg-branch" aria-haspopup="dialog" aria-expanded={picker !== 'closed'}
-          onClick={event => onPicker(picker !== 'closed' ? 'closed' : event.detail === 0 ? 'keyboard' : 'pointer')} title="Switch branch (b)">
+        <button ref={branchButton} type="button" className="gg-branch" aria-haspopup="dialog" aria-expanded={picker !== 'closed'}
+          onClick={event => onPicker(picker !== 'closed' ? 'closed' : event.detail === 0 ? 'keyboard' : 'pointer')} title={`${branch.head ?? 'Detached HEAD'}\nSwitch branch (b)`}>
           <h2>{branch.head ?? 'Detached HEAD'}</h2><Icon name="ChevronDown" className="gg-branch-chevron" />
         </button>
         {branch.upstream && <span className="gg-upstream" title={branch.upstream}><Icon name="ArrowRight" className="size-3" /><span className="gg-upstream-name">{branch.upstream}</span></span>}
-        {picker !== 'closed' && <BranchPicker threadId={threadId} instant={picker === 'keyboard'} onSwitch={onRun} onClose={() => onPicker('closed')} />}
+        {picker !== 'closed' && <BranchPicker threadId={threadId} instant={picker === 'keyboard'} onSwitch={onRun} onClose={() => { onPicker('closed'); branchButton.current?.focus({ preventScroll: true }); }} />}
       </div>
       <div className="gg-facts">
-        <SyncBar repo={repo} op={op} fetched={fetched} onSync={kind => onRun({ kind })} onCancel={onCancel} />
+        <SyncBar repo={repo} op={op} starting={starting !== null} fetched={fetched} onSync={kind => onRun({ kind })} onCancel={onCancel} />
         {!branch.upstream && branch.head && repo.remotes.length > 0 && <Fact tone="quiet" icon="CloudOff" title="No upstream branch">Not published</Fact>}
         {branch.ahead > 0 && branch.behind > 0 && <Fact tone="behind" icon="AlertTriangle" title="Local and remote both have new commits">Diverged</Fact>}
         {repo.stashes.length > 0 && <Fact tone="quiet" icon="Archive" title="Stash entries">{plural(repo.stashes.length, 'stash', 'stashes')}</Fact>}
@@ -158,7 +167,10 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       </div>}
       {repo.operation && <div className="gg-banner" role="status"><Icon name="AlertTriangle" className="size-4" />
         <span><strong>{operationNames[repo.operation]} in progress.</strong> Resolve conflicts, then continue or abort in lazygit.</span></div>}
-      {actionError && <div className="gg-banner" role="alert"><Icon name="CircleX" className="size-4" /><span>{actionError}</span></div>}
+      {actionError && <div className="gg-banner" data-tone={actionError.refused ? 'info' : undefined} role="alert">
+        <Icon name={actionError.refused ? 'Clock' : 'CircleX'} className="size-4" /><span>{actionError.text}</span></div>}
+      {reviewError && <div className="gg-banner" role="alert"><Icon name="CircleX" className="size-4" /><span>{reviewError}</span>
+        <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={() => setReviewError(null)}><Icon name="X" className="size-3.5" /></button></div>}
       {failure && <div className="gg-banner gg-failure" role="alert">
         <Icon name="CircleX" className="size-4" />
         <div className="gg-failure-body">
@@ -168,8 +180,8 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={() => onDismiss(failure.id)}><Icon name="X" className="size-3.5" /></button>
       </div>}
       {success && <div className="gg-success" role="status" data-leaving={now - success.finishedAt >= 5000 || undefined}><Icon name="CircleCheck" className="size-4" />{success.summary}</div>}
-      {running?.request.kind === 'create-commit' && <div className="gg-banner" role="status">
-        <span>Running commit hooks and signing…</span><button type="button" className="gg-ghost" onClick={onCancel}>Cancel commit</button>
+      {running?.request.kind === 'create-commit' && <div className="gg-banner" data-tone="info" role="status">
+        <span>Running commit hooks and signing…</span><button type="button" className="gg-ghost" disabled={starting !== null} onClick={onCancel}>Cancel commit</button>
       </div>}
       {running && <div className="gg-progress" role="progressbar" aria-label={`${describe(running.request).name} progress`}
         aria-valuenow={running.progress?.percent ?? undefined} data-indeterminate={running.progress?.percent == null || undefined}>
@@ -179,7 +191,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
 
     <div className="gg-body" data-split={zoomed || undefined}>
       <div className="gg-list">
-      <CommitComposer key={`${threadId}:${state.root}`} threadId={threadId} repository={state.root ?? repo.name} branch={branch.head ?? 'Detached HEAD'} op={op} onRun={onRun} onCancel={onCancel} />
+      <CommitComposer key={`${threadId}:${state.root}`} threadId={threadId} repository={state.root ?? repo.name} branch={branch.head ?? 'Detached HEAD'} op={state.op} onRun={onRun} onCancel={onCancel} />
       {files === 0 ? <div className="gg-clean">
         <span className="gg-clean-mark"><Icon name="Check" className="size-4" /></span>
         <div><strong>Working tree clean</strong><span>Nothing to commit{branch.head ? ` on ${branch.head}` : ''}.</span></div>
@@ -242,13 +254,13 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
             ? <p className="gg-note">An untracked folder. Its files appear once one of them is added.</p>
             : <DiffPane file={selectedFile} source={{ kind: 'work-tree', area: selectedFile.area }} threadId={threadId} fill />}
         </> : selection && selection.kind !== 'file'
-          ? <CommitPanel key={selection.sha} sha={selection.sha} threadId={threadId} now={now} copied={copied} onCopy={copy} lanes={[]} width={0} stash={selection.kind === 'stash'} />
+          ? <CommitPanel key={selection.sha} sha={selection.sha} threadId={threadId} now={now} copied={copied} onCopy={copy} lanes={[]} width={0} stash={selection.kind === 'stash'} titled />
           : <p className="gg-note gg-detail-empty">Select a file, stash or commit.</p>}
       </aside>}
     </div>
 
     <footer className="gg-footer">
-      <span className="gg-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> diff <kbd>Space</kbd> stage/unstage <kbd>c</kbd> commit <kbd>d</kbd> discard twice <kbd>p</kbd> pull <kbd>⇧P</kbd> push <kbd>f</kbd> fetch <kbd>b</kbd> branch <kbd>+</kbd><kbd>_</kbd> {zoomed ? 'shrink' : 'expand'} <kbd>l</kbd> lazygit <kbd>q</kbd> close</span>
+      <span className="gg-keys"><span><kbd>↑</kbd><kbd>↓</kbd> move</span> <span><kbd>↵</kbd> diff</span> <span><kbd>Space</kbd> stage/unstage</span> <span><kbd>c</kbd> commit</span> <span><kbd>d</kbd> discard twice</span> <span><kbd>p</kbd> pull</span> <span><kbd>⇧P</kbd> push</span> <span><kbd>f</kbd> fetch</span> <span><kbd>b</kbd> branch</span> <span><kbd>+</kbd><kbd>_</kbd> {zoomed ? 'shrink' : 'expand'}</span> <span><kbd>l</kbd> lazygit</span> <span><kbd>q</kbd> close</span></span>
       <span className="gg-live" data-state={state.error || fetchError || connection !== 'connected' ? 'error' : running ? 'loading' : 'live'}
         title={state.error ?? fetchError ?? 'Watches local files and refs. Fetch checks the remote.'}>
         <span className="gg-live-dot" key={state.updatedAt ?? 0} />

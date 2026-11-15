@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useRpc } from '@get-bb/plugin-sdk/app';
 import type { Branch, OpRequest, rpcContract } from './contracts.ts';
 import { age } from './src/format.ts';
@@ -13,6 +13,7 @@ export function BranchPicker({ threadId, instant, onSwitch, onClose }: {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const list = useRef<HTMLUListElement>(null);
+  const id = useId();
   const now = Date.now();
   useEffect(() => {
     let live = true;
@@ -46,16 +47,17 @@ export function BranchPicker({ threadId, instant, onSwitch, onClose }: {
   return <div className="gg-picker" data-instant={instant || undefined} role="dialog" aria-label="Switch branch" onKeyDown={keyboard}>
     <div className="gg-picker-search">
       <Icon name="Search" className="size-3.5" />
-      <input autoFocus aria-label="Filter branches" placeholder="Switch to branch…" value={query} onChange={event => setQuery(event.target.value)} />
+      <input autoFocus role="combobox" aria-label="Filter branches" aria-autocomplete="list" aria-controls={`${id}-list`}
+        aria-expanded={shown.length > 0} aria-activedescendant={shown[active] ? `${id}-${active}` : undefined} placeholder="Switch to branch…" value={query} onChange={event => setQuery(event.target.value)} />
       <kbd>esc</kbd>
     </div>
     {branches === null ? <div className="gg-diff-loading" aria-busy><i /><i /><i /></div>
       : !Array.isArray(branches) ? <p className="gg-note gg-danger">{branches.error}</p>
       : shown.length === 0 ? <p className="gg-note">No branch matches “{query}”.</p>
-      : <ul ref={list} className="gg-picker-list" role="listbox" aria-label="Branches">
+      : <ul ref={list} id={`${id}-list`} className="gg-picker-list" role="listbox" aria-label="Branches">
         {shown.map((branch, index) => <li key={`${branch.kind}:${branch.name}`} role="presentation">
           {index === firstRemote && <div className="gg-picker-group">Remote</div>}
-          <button type="button" role="option" aria-selected={index === active} data-active={index === active || undefined}
+          <button type="button" role="option" id={`${id}-${index}`} aria-selected={index === active} data-active={index === active || undefined}
             disabled={branch.current} onMouseEnter={() => setActive(index)} onClick={() => choose(branch)}
             title={branch.current ? 'Current branch' : branch.kind === 'remote' ? `Create ${branch.name.slice(branch.name.indexOf('/') + 1)} tracking ${branch.name}` : `Switch to ${branch.name}`}>
             <Icon name={branch.current ? 'Check' : branch.kind === 'remote' ? 'Cloud' : 'GitBranch'} className="size-3.5" />

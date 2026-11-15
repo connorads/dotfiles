@@ -29,7 +29,7 @@ export function CommitList({ commits, threadId, now, copied, onCopy, fresh, stam
         <span className="gg-subject">{commit.subject}</span>
         {commit.refs.map(ref => <span key={`${ref.kind}:${ref.name}`} className="gg-ref" data-kind={ref.kind}
           style={ref.kind === 'head' ? { '--gg-ref': laneColour(row.lane) } as React.CSSProperties : undefined}>
-          <Icon name={ref.kind === 'tag' ? 'Pin' : ref.kind === 'remote' ? 'Cloud' : 'GitBranch'} className="size-3" /><span className="gg-ref-name">{ref.name}</span>
+          <Icon name={ref.kind === 'tag' ? 'Pin' : ref.kind === 'remote' ? 'Cloud' : 'GitBranch'} className="size-3" /><span className="gg-ref-name" title={ref.name}>{ref.name}</span>
         </span>)}
         <span className="gg-meta">
           {copied === commit.sha ? <span className="gg-copied"><Icon name="Check" className="size-3" />Copied</span>
@@ -50,11 +50,13 @@ export function LaneRails({ lanes, width }: { lanes: number[]; width: number }) 
   </svg>;
 }
 
-export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, stash = false, preview = false }: {
+export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, stash = false, preview = false, titled = preview }: {
   sha: string; threadId: string; now: number; copied: string | null; onCopy: (sha: string) => void; lanes: number[]; width: number;
   /** A stash is a two-parent commit, but calling it a merge would mislead. */
   stash?: boolean;
   preview?: boolean;
+  /** Shows the subject, for panels not under their own list row. */
+  titled?: boolean;
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const [detail, setDetail] = useState<CommitDetail | { error: string } | null>(null);
@@ -74,7 +76,7 @@ export function CommitPanel({ sha, threadId, now, copied, onCopy, lanes, width, 
         : 'error' in detail ? <div role="alert"><p className="gg-note gg-danger">{detail.error}</p>
           {preview && <p className="gg-note">Could not open this commit here. It may need a longer hash or another repository. Open Git status to choose a repository, then click the hash again.</p>}</div>
         : <>
-          {preview && <strong>{detail.subject}</strong>}
+          {titled && <strong>{detail.subject}</strong>}
           {detail.body && <p className="gg-message">{detail.body}</p>}
           <div className="gg-commit-meta">
             <span className="gg-avatar" aria-hidden>{initials(detail.author)}</span>

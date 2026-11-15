@@ -18,6 +18,15 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
   const [generating, setGenerating] = useState(false);
   const generation = useRef<string | null>(null);
   const reviewVersion = useRef(0);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const form = useRef<HTMLFormElement>(null);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  /** Returns focus to the toggle when the form takes it away, so the pop-up's keys keep working. */
+  const restoreFocus = () => {
+    const button = toggle.current;
+    const active = button?.ownerDocument.activeElement;
+    if (button && (!active || active === button.ownerDocument.body || form.current?.contains(active))) button.focus({ preventScroll: true });
+  };
   const invalidate = () => {
     reviewVersion.current++;
     const requestId = generation.current;
@@ -25,10 +34,19 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
     setGenerating(false);
     if (requestId) void rpc.call('cancelMessage', { threadId, requestId }).catch(() => {});
   };
-  const close = () => { invalidate(); setOpen(false); };
+  const close = () => { restoreFocus(); invalidate(); setOpen(false); };
   useEffect(() => () => { invalidate(); }, [threadId, repository]);
   const draftKey = review ? `git-glance:commit:${review.draftKey}` : null;
   const busy = op?.status === 'running';
+  // The form holds focus while the index is read, so typed text never reaches the
+  // pop-up's row keys (d discards); the textarea takes it once it can be edited.
+  useEffect(() => { if (open) form.current?.focus({ preventScroll: true }); }, [open]);
+  useEffect(() => {
+    const area = textarea.current;
+    if (!open || !review || busy || !area || area.disabled) return;
+    const active = area.ownerDocument.activeElement;
+    if (!active || active === area.ownerDocument.body || active === form.current) area.focus({ preventScroll: true });
+  }, [open, review, busy]);
   const refresh = () => {
     invalidate();
     const version = reviewVersion.current;
@@ -48,7 +66,7 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
     const signature = JSON.stringify([op.request.message, op.request.head, op.request.index]);
     const matches = draftKey && localStorage.getItem(`${draftKey}:pending`) === signature;
     if (matches) localStorage.removeItem(`${draftKey}:pending`);
-    if (op.status === 'succeeded' && matches && localStorage.getItem(draftKey) === op.request.message) { localStorage.removeItem(draftKey); setDraft(''); setOpen(false); }
+    if (op.status === 'succeeded' && matches && localStorage.getItem(draftKey) === op.request.message) { localStorage.removeItem(draftKey); setDraft(''); restoreFocus(); setOpen(false); }
     else if (wasSubmitted) refresh();
   }, [op, draftKey]);
   const generate = async () => {
@@ -82,8 +100,8 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
     });
   };
   return <div className="gg-composer">
-    <button type="button" className="gg-ghost" aria-expanded={open} title="Commit staged changes (c)" disabled={busy} onClick={() => { if (open) close(); else { setOpen(true); refresh(); } }}>Commit staged changes</button>
-    {open && <form onSubmit={event => { event.preventDefault(); submit(); }} onKeyDown={event => {
+    <button ref={toggle} type="button" className="gg-ghost" aria-expanded={open} title="Commit staged changes (c)" disabled={busy} onClick={() => { if (open) close(); else { setOpen(true); refresh(); } }}>Commit staged changes</button>
+    {open && <form ref={form} tabIndex={-1} aria-label="Commit staged changes" onSubmit={event => { event.preventDefault(); submit(); }} onKeyDown={event => {
       event.stopPropagation();
       if (event.key === 'Escape') { event.preventDefault(); close(); }
       if (event.key === 'Enter' && event.target instanceof HTMLTextAreaElement && !event.shiftKey && !event.repeat && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); }
@@ -91,7 +109,7 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
       <p>{repository} · {branch} · {review ? `${plural(review.count, 'staged file')}` : 'Reading complete index…'}</p>
       <p>Enter commits. Shift+Enter inserts a newline.</p>
       <p>Commits the complete index, including files staged elsewhere. Unstaged edits stay outside the commit.</p>
-      <label>Commit subject and optional body<textarea autoFocus rows={5} maxLength={65536} value={draft} disabled={busy || !review}
+      <label>Commit subject and optional body<textarea ref={textarea} rows={5} maxLength={65536} value={draft} disabled={busy || !review}
         placeholder={'Subject\n\nOptional body'} onChange={event => { const value = event.target.value; invalidate(); setDraft(value); if (draftKey) localStorage.setItem(draftKey, value); }} /></label>
       {error && <p role="alert">{error}</p>}
       {review?.blocked && <p role="status">{review.blocked}</p>}
