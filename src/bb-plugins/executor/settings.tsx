@@ -13,7 +13,6 @@ const STATUS: Record<ConnectionView['status'], string> = {
 
 export function ExecutorSettings() {
   const { view, loadError } = useExecutor();
-  const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const section = useRef<HTMLDivElement>(null);
   // The row whose action succeeded. Its buttons change with the refreshed state (Sign out becomes Sign in,
@@ -34,11 +33,6 @@ export function ExecutorSettings() {
       ?? section.current?.querySelector<HTMLElement>('input[aria-label="Connection URL"]');
     target?.focus({ preventScroll: true });
   });
-  const run = (work: Promise<unknown>) => {
-    setError(null);
-    work.catch(cause => setError(message(cause)));
-  };
-
   if (!view && loadError) return <div className="flex flex-wrap items-center gap-2" role="alert">
     <p className="text-sm text-destructive">Could not load connections. {loadError}</p>
     <Button size="sm" variant="ghost" aria-disabled={retrying || undefined} onClick={() => {
@@ -68,8 +62,7 @@ export function ExecutorSettings() {
           onDone={() => { done.current = index; }} />)}
       </ul>}
 
-    <AddConnection run={run} count={view.connections.length} />
-    {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+    <AddConnection count={view.connections.length} />
   </div>;
 }
 
@@ -129,28 +122,41 @@ function ConnectionRow({ connection, signIn, error, onDone }: {
   </li>;
 }
 
-/** The name is optional, as in the popover's form: an empty one becomes the next "Connection N". */
-function AddConnection({ run, count }: { run: (work: Promise<unknown>) => void; count: number }) {
+/**
+ * The name is optional, as in the popover's form: an empty one becomes the next "Connection N".
+ * Every outcome shows under the form and clears when the URL changes.
+ */
+function AddConnection({ count }: { count: number }) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fallbackName = `Connection ${count + 1}`;
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy || !url.trim()) return;
     setBusy(true);
     setProblem(null);
-    run(rpc().call('add', { name: name.trim() || fallbackName, url: url.trim() }).then(async result => {
+    const named = name.trim() || fallbackName;
+    try {
+      const result = await rpc().call('add', { name: named, url: url.trim() });
       if (!result.ok) { setProblem(result.message); return; }
       setName('');
       setUrl('');
-      await rpc().call('signIn', { id: result.id, method: 'browser' });
-    }).finally(() => setBusy(false)));
+      try {
+        await rpc().call('signIn', { id: result.id, method: 'browser' });
+      } catch (cause) {
+        setProblem(`${named} was added, but its sign-in did not start. ${message(cause)} Use Sign in on its row.`);
+      }
+    } catch (cause) {
+      setProblem(message(cause));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return <form className="border-t border-border/60 pt-4" onSubmit={submit} aria-label="Add connection">
+  return <form className="border-t border-border/60 pt-4" onSubmit={event => void submit(event)} aria-label="Add connection">
     <h3 className="text-sm font-medium text-foreground">Add connection</h3>
     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
       In Executor, open Connect, create or pick a scoped connection, and copy its MCP URL.
@@ -161,7 +167,7 @@ function AddConnection({ run, count }: { run: (work: Promise<unknown>) => void; 
       <Input aria-label="Connection URL" placeholder="https://mcp.executor.sh/mcp?connection=…" className="min-w-64 flex-1"
         value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
       {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
-      <Button type="submit" size="sm" className="ex-add-submit h-9" aria-disabled={busy || !url.trim() || undefined}>Add and sign in</Button>
+      <Button type="submit" size="sm" className="ex-add-submit h-9" aria-disabled={busy || !url.trim() || undefined}>{busy ? 'Adding…' : 'Add and sign in'}</Button>
     </div>
     {problem && <p className="mt-1 text-xs text-destructive" role="alert">{problem}</p>}
   </form>;

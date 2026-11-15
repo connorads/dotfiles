@@ -15,8 +15,8 @@ export function looksLikeMcpUrl(text: string): boolean {
  * Adds a connection from the popover. The URL comes first because it is the only
  * thing the person has to fetch; the name defaults to the next "Connection N".
  */
-export function AddForm({ initialUrl, count, onAdded }: {
-  initialUrl: string; count: number; onAdded: (id: string) => Promise<void>;
+export function AddForm({ initialUrl, count, onBusy, onAdded }: {
+  initialUrl: string; count: number; onBusy: (busy: boolean) => void; onAdded: (id: string, name: string) => Promise<void>;
 }) {
   const [url, setUrl] = useState(initialUrl);
   const [name, setName] = useState('');
@@ -33,15 +33,18 @@ export function AddForm({ initialUrl, count, onAdded }: {
     event.preventDefault();
     if (busy || !url.trim()) return;
     setBusy(true);
+    onBusy(true);
     setProblem(null);
+    const named = name.trim() || fallbackName;
     try {
-      const result = await rpc().call('add', { name: name.trim() || fallbackName, url: url.trim() });
+      const result = await rpc().call('add', { name: named, url: url.trim() });
       if (!result.ok) { setProblem(result.message); return; }
-      await onAdded(result.id);
+      await onAdded(result.id, named);
     } catch (cause) {
       setProblem(message(cause));
     } finally {
       setBusy(false);
+      onBusy(false);
     }
   }
 
@@ -52,7 +55,7 @@ export function AddForm({ initialUrl, count, onAdded }: {
       <input ref={nameInput} className="ex-input" aria-label="Connection name" placeholder={fallbackName} maxLength={60}
         value={name} onChange={event => setName(event.target.value)} />
       {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
-      <button type="submit" className="ex-button ex-button-primary" aria-disabled={busy || !url.trim() || undefined}>Add and sign in</button>
+      <button type="submit" className="ex-button ex-button-primary" aria-disabled={busy || !url.trim() || undefined}>{busy ? 'Adding…' : 'Add and sign in'}</button>
     </div>
     {problem && <p className="ex-error ex-add-error" role="alert">{problem}</p>}
   </form>;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { experimental_Icon as Icon, useComposer } from '@get-bb/plugin-sdk/app';
 import { Chip, ChipValue } from '@bb-plugins/chip';
-import { draftChoice, message, resetDraft, resolve, toggle, useExecutor } from './store.ts';
+import { draftChoice, message, resetDraft, resolve, statusNote, toggle, useExecutor } from './store.ts';
 
 /** Native submits have no SDK data hook. Capture only this composer's form,
  * then submit through the SDK so dispatch receives the choice atomically. */
@@ -41,10 +41,10 @@ export function DraftConnection() {
     };
   }, [composer]);
   const resolved = resolve(view, draft);
-  const signedOut = resolved.kind === 'connection' && !resolved.signedIn;
+  const signedOut = resolved.kind === 'connection' && resolved.status !== 'signed-in';
   const value = resolved.kind === 'connection' ? resolved.name : resolved.kind === 'off' ? 'Off' : 'None';
   const label = resolved.kind === 'off' ? 'Executor is off for this new thread'
-    : `Executor: ${value}${resolved.kind === 'connection' && resolved.viaDefault ? ' (default)' : ''}${signedOut ? ', signed out' : ''}`;
+    : `Executor: ${value}${resolved.kind === 'connection' && resolved.viaDefault ? ' (default)' : ''}${statusNote(resolved)}`;
   return <span ref={marker} className="ex-draft">
     <Chip data-executor-chip expanded={open?.threadId === null} tone={signedOut ? 'warn' : undefined} aria-label={label} title={`${label} (⌥E)`}
       onClick={event => toggle(null, event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}

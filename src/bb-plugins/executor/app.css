@@ -32,6 +32,7 @@
 .ex-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ex-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .ex-row-aside[data-warn] { color: var(--warning-text, var(--warning)); }
+.ex-row-aside[data-error] { color: var(--destructive-text, var(--destructive)); }
 .ex-check { color: var(--foreground); }
 
 .ex-signin {
@@ -97,3 +98,11 @@
 .ex-input:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
 .ex-button:disabled, .ex-button[aria-disabled="true"] { opacity: .55; cursor: default; }
 .ex-button[aria-disabled="true"]:hover { background: transparent; }
+
+/* Touch: popover rows, buttons and inputs reach the 44 px the Settings rows and the chip use.
+   16 px input text stops mobile browsers zooming into the add form. */
+@media (pointer: coarse) {
+  .ex-row { min-height: 44px; }
+  .ex-button, .ex-input { height: 44px; }
+  .ex-input { font-size: 16px; }
+}

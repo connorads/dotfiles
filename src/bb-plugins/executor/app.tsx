@@ -30,8 +30,9 @@ function useSync() {
 
 function Overlay() {
   useSync();
-  const { view, loadError, choices, draft, open, unsaved } = useExecutor();
+  const { view, loadError, choices, saves, draft, open, unsaved } = useExecutor();
   return open ? <ExecutorPopover view={view} loadError={loadError} threadId={open.threadId} choice={open.threadId ? choices.get(open.threadId) : draft}
+    saving={open.threadId ? saves.get(open.threadId) : undefined}
     unsaved={unsaved && unsaved.threadId === open.threadId ? unsaved.message : null} anchor={open.anchor} instant={open.instant} onClose={close} /> : null;
 }
 
