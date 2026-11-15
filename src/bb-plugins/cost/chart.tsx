@@ -10,12 +10,13 @@ const plotHeight = 168;
  * on a column shows its day and split. The Days table carries every value for readers who cannot use the chart.
  */
 export function DailyChart({ days, today }: { days: readonly DayCost[]; today: string }) {
-  const [active, setActive] = useState<number | null>(null);
+  // The hovered or focused day, by date: a new period's columns never inherit another day's tooltip.
+  const [active, setActive] = useState<string | null>(null);
   const ticks = niceTicks(Math.max(0, ...days.map(day => day.usd)));
   const top = ticks[ticks.length - 1]!;
   const labelEvery = days.length > 45 ? 14 : days.length > 10 ? 7 : 1;
   const present = providers.filter(provider => days.some(day => (day.byProvider[provider] ?? 0) > 0));
-  const shown = active === null ? null : days[active]!;
+  const activeIndex = active === null ? -1 : days.findIndex(day => day.day === active);
   // One tab stop for the whole chart: the last focused day, else today. Arrow keys, Home and End move between days.
   const [stop, setStop] = useState<string | null>(null);
   const kept = stop === null ? -1 : days.findIndex(day => day.day === stop);
@@ -41,9 +42,9 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
       <ol className="cost-columns" data-dense={days.length > 45 || undefined} onKeyDown={move}>
         {days.map((day, index) => {
           const segments = present.map(provider => [provider, day.byProvider[provider] ?? 0] as const).filter(([, value]) => value > 0);
-          return <li key={day.day} data-today={day.day === today || undefined} data-active={active === index || undefined}
+          return <li key={day.day} data-today={day.day === today || undefined} data-active={activeIndex === index || undefined}
             tabIndex={index === tabStop ? 0 : -1} aria-label={`${dayLabel(day.day)}: ${usd(day.usd)}`}
-            onMouseEnter={() => setActive(index)} onFocus={() => { setActive(index); setStop(day.day); }} onBlur={() => setActive(null)}>
+            onMouseEnter={() => setActive(day.day)} onFocus={() => { setActive(day.day); setStop(day.day); }} onBlur={() => setActive(null)}>
             <span className="cost-stack" style={{ height: `${day.usd / top * 100}%` }}>
               {segments.map(([provider, value]) =>
                 <i key={provider} data-provider={provider} style={{ flexGrow: value / day.usd }} />)}
@@ -51,7 +52,7 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
           </li>;
         })}
       </ol>
-      {shown && <Tooltip day={shown} index={active!} total={days.length} present={present} />}
+      {activeIndex >= 0 && <Tooltip day={days[activeIndex]!} index={activeIndex} total={days.length} present={present} />}
     </div>
     <div className="cost-axis-x" aria-hidden>
       {days.map((day, index) => {

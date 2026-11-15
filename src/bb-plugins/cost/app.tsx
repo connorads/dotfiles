@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useBbNavigate, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import { Chip, ChipValue } from '@bb-plugins/chip';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
@@ -24,7 +24,12 @@ function CostChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps
   const rpc = useRpc<typeof rpcContract>();
   const navigate = useBbNavigate();
   const [view, setView] = useState<ThreadView | null>(null);
-  const load = useCallback(() => { rpc.call('thread', { threadId }).then(setView, () => setView(null)); }, [rpc, threadId]);
+  const latest = useRef(0);
+  // Only the newest reply lands, and a failed refresh keeps the last estimate rather than hiding the chip.
+  const load = useCallback(() => {
+    const request = ++latest.current;
+    rpc.call('thread', { threadId }).then(value => { if (request === latest.current) setView(value); }, () => {});
+  }, [rpc, threadId]);
   useEffect(() => { setView(null); load(); }, [load]);
   useRealtime('usage-changed', load);
   if (!view) return null;

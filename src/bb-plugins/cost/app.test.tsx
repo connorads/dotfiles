@@ -196,3 +196,84 @@ test('the chip reads "no price" for a thread whose models have no list price', a
     expect(chip.getAttribute('title')).toMatch(/^No list price · 4 requests\n/);
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('the chart tooltip stays on the focused day when a new period replaces the columns', async () => {
+  const ninety = deferred<SummaryView>();
+  const slot = await usagePage(days => days === 90 ? ninety.promise : Promise.resolve(summary(days)));
+  try {
+    await waitFor(() => expect(slot.container.querySelectorAll('.cost-columns > li')).toHaveLength(30));
+    const last = slot.container.querySelector<HTMLElement>('.cost-columns > li:last-child')!;
+    act(() => last.focus());
+    const tip = () => slot.container.querySelector('.cost-tooltip strong')?.textContent;
+    const before = tip();
+    act(() => setPeriod(90));
+    // Both periods end on the same day, so the focused last day becomes column 90 of 90.
+    const longer = summary(90);
+    await act(async () => ninety.resolve({ ...longer, days: longer.days.map((value, index) => ({ ...value, day: day(index - 60) })), lastDay: day(29) }));
+    const columns = Array.from(slot.container.querySelectorAll('.cost-columns > li'));
+    expect(columns).toHaveLength(90);
+    expect(tip()).toBe(before);
+    expect(columns.findIndex(column => column.hasAttribute('data-active'))).toBe(89);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a retry that fails again says so, and a retry that succeeds leaves focus in the page', async () => {
+  let calls = 0;
+  const slot = await usagePage(async days => {
+    calls += 1;
+    if (calls <= 3) throw new Error('Database busy');
+    return summary(days);
+  });
+  try {
+    const button = await slot.findByRole('button', { name: 'Retry' });
+    act(() => button.focus());
+    fireEvent.click(button);
+    await waitFor(() => expect(slot.getByRole('alert').textContent).toContain('Still failing after 1 retry.'));
+    fireEvent.click(button);
+    await waitFor(() => expect(slot.getByRole('alert').textContent).toContain('Still failing after 2 retries.'));
+    fireEvent.click(button);
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days at API prices'));
+    await waitFor(() => expect(document.activeElement).toBe(slot.container.querySelector('.cost-column')));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a thread card retry that succeeds moves focus to the card', async () => {
+  let fail = true;
+  const view: ThreadView = { ...emptyCost(), usd: 4.2, requests: 3, models: [], pricesAt: null, title: 'Plan the seed catalogue' };
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const slot = renderSlot<PluginNavPanelProps, typeof rpcContract>(app.navPanels[0]!, { subPath: 'thread/thread-test' } as PluginNavPanelProps, {
+    rpc: { summary: ({ days }) => summary(days), progress: () => idle, insights: () => ({ points: [] }), series: () => ({ points: [], requests: 0, growth: null }),
+      thread: () => { if (fail) throw new Error('Database busy'); return view; } },
+  });
+  try {
+    const card = await waitFor(() => { const found = slot.container.querySelector<HTMLElement>('.cost-focus [role="alert"]'); expect(found).not.toBeNull(); return found!; });
+    const button = within(card).getByRole('button', { name: 'Retry' });
+    act(() => button.focus());
+    fail = false;
+    fireEvent.click(button);
+    await slot.findByText('Plan the seed catalogue');
+    await waitFor(() => expect(document.activeElement).toBe(slot.container.querySelector('.cost-focus')));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the chip keeps its estimate when a refresh fails, and an older reply never replaces a newer one', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  const view = (usd: number): ThreadView => ({ ...emptyCost(), usd, requests: 4, models: [], pricesAt: null, title: null });
+  const replies: ReturnType<typeof deferred<ThreadView>>[] = [];
+  const slot = renderSlot<PluginThreadHeaderActionProps, typeof rpcContract>(app.threadHeaderActions[0]!,
+    { threadId: 'thread-test', projectId: 'project-test', isCompactViewport: false },
+    { rpc: { thread: () => { const reply = deferred<ThreadView>(); replies.push(reply); return reply.promise; }, summary: unused, insights: unused, series: unused, progress: unused } });
+  try {
+    await waitFor(() => expect(replies).toHaveLength(1));
+    await act(async () => replies[0]!.resolve(view(4.2)));
+    expect((await slot.findByRole('button')).textContent).toContain('$4.20');
+    await slot.emitRealtime('usage-changed', {});
+    await act(async () => replies[1]!.reject(new Error('Database busy')));
+    expect(slot.getByRole('button').textContent).toContain('$4.20');
+    await slot.emitRealtime('usage-changed', {});
+    await slot.emitRealtime('usage-changed', {});
+    await act(async () => replies[3]!.resolve(view(6.5)));
+    await act(async () => replies[2]!.resolve(view(5.1)));
+    expect(slot.getByRole('button').textContent).toContain('$6.50');
+  } finally { slot.lifecycle.unmount(); }
+});

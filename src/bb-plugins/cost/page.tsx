@@ -95,7 +95,7 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
     <section className="cost-card cost-reveal" style={{ '--i': 2 } as React.CSSProperties}>
       <DailyChart days={data.days} today={data.lastDay} />
     </section>
-    <section className="cost-card cost-reveal" style={{ '--i': 3 } as React.CSSProperties}>
+    <section className="cost-card cost-reveal" style={{ '--i': 3 } as React.CSSProperties} tabIndex={-1} data-retry-home>
       <div className="cost-tabs" role="tablist" aria-label="Breakdown">
         {tabs.map(value => <button key={value.id} type="button" role="tab" aria-selected={tab === value.id}
           onClick={() => setTab(value.id)}>{value.label}</button>)}
@@ -112,7 +112,8 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
 
 // A narrow page header has no room for the sub-thread switch, so the body carries it at the same widths.
 const Shell = ({ children, pending = false }: { children: ReactNode; pending?: boolean }) =>
-  <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}>
+  <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}
+    tabIndex={-1} data-retry-home>
     <div className="cost-group-body"><GroupSwitch /></div>
     {children}
   </div></div>;
@@ -267,7 +268,7 @@ function ProjectTable({ lines }: { lines: readonly ProjectLine[] }) {
 
 function ModelTable({ models }: { models: readonly ModelCost[] }) {
   return <>
-    <div className="cost-mix-legend" aria-hidden>
+    <div className="cost-mix-legend cost-hide-narrow" aria-hidden>
       <span data-part="cacheRead">Cache read</span><span data-part="cacheWrite">Cache write</span>
       <span data-part="input">Input</span><span data-part="output">Output</span>
     </div>
@@ -321,7 +322,7 @@ function FocusedThread({ threadId }: { threadId: string }) {
   useEffect(() => { setView(undefined); setFailed(false); void load(); }, [load]);
   useRealtime('usage-changed', load);
   if (view === undefined && !failed) return null;
-  return <section className="cost-card cost-focus cost-reveal" style={{ '--i': 0 } as React.CSSProperties}>
+  return <section className="cost-card cost-focus cost-reveal" style={{ '--i': 0 } as React.CSSProperties} tabIndex={-1} data-retry-home>
     <header>
       <span className="cost-eyebrow">This thread, all time</span>
       <button type="button" className="cost-close" aria-label="Show all usage" onClick={() => navigate.toPluginPanel('usage', { subPath: '' })}>×</button>
@@ -335,7 +336,7 @@ function FocusedThread({ threadId }: { threadId: string }) {
       <Growth threadId={threadId} />
       <ul className="cost-focus-models">
         {view.models.map(model => <li key={`${model.provider}:${model.model}`}>
-          <span className="cost-mono">{shortModel(model.model)}</span>
+          <span className="cost-mono" title={model.model}>{shortModel(model.model)}</span>
           <span className="cost-muted">{count(model.requests)} {model.requests === 1 ? 'request' : 'requests'}</span>
           <b>{model.priced ? usd(model.usd) : 'no price'}</b>
         </li>)}
