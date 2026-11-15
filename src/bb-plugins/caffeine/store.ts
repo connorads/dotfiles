@@ -8,8 +8,11 @@ import type { ActionResult, CaffeineView } from './src/domain.ts';
 
 export type Rpc = PluginRpcClient<typeof rpcContract>;
 export type Anchor = { top: number; right: number; bottom: number; left: number } | null;
-/** id: one per opening, so an action closes only the popover it came from. instant: opened by keyboard, so it appears without an entrance. */
-export type Open = { id: number; anchor: Anchor; instant: boolean } | null;
+/**
+ * id: one per opening, so an action closes only the popover it came from. instant: opened by keyboard, so it appears without an entrance.
+ * fromChip: the chip opened it, so focus goes back to the chip on close; otherwise to wherever it was, such as the composer.
+ */
+export type Open = { id: number; anchor: Anchor; instant: boolean; fromChip: boolean } | null;
 /** doing: the status line while it runs ("Extending"). failed: names it in a failure read later ("Extend"). */
 export interface ActionLabel { doing: string; failed: string }
 /** missed: it failed while no popover was open, so the reader needs to know what failed and when. */
@@ -54,7 +57,7 @@ export function toggle(via: 'pointer' | 'keyboard', from?: HTMLElement) {
   if (state.open) { close(); return; }
   const box = (from ?? visibleChip())?.getBoundingClientRect();
   opened += 1;
-  set({ open: { id: opened, anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard' } });
+  set({ open: { id: opened, anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard', fromChip: from !== undefined } });
   void refresh();
 }
 /** An action error has been on screen once it reaches a close, so it goes with the popover. */

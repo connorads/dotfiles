@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { Details, CaffeineView, ActionResult } from './src/domain.ts';
 import { GRACE_MS } from './src/agents.ts';
@@ -35,13 +35,16 @@ function initialRow(screen: Screen): string | null {
   }
 }
 
-/** disabled is aria-only: a disabled button drops focus to <body>, outside the popover's keys. dispatch ignores the click. */
+/**
+ * disabled is aria-only: a disabled button drops focus to <body>, outside the popover's keys. dispatch ignores the click.
+ * A double-click is one press, so it cannot pass a second-press confirm on its own.
+ */
 function Row({ id, keycap, label, aside, sub, tone, armed, disabled, onClick }: {
   id: string; keycap: string; label: ReactNode; aside?: ReactNode; sub?: string; tone?: 'lid' | 'warn';
   armed?: boolean; disabled?: boolean; onClick: () => void;
 }) {
   return <button type="button" className="cf-row" data-row={id} data-tone={tone} data-armed={armed || undefined}
-    aria-disabled={disabled || undefined} onClick={onClick}>
+    aria-disabled={disabled || undefined} onClick={event => { if (event.detail < 2) onClick(); }}>
     <kbd>{keycap}</kbd>
     <span className="cf-row-main">
       <span className="cf-row-label">{label}</span>
@@ -58,10 +61,10 @@ function Meter({ fraction, label }: { fraction: number; label: string }) {
   </span>;
 }
 
-function Header({ tone, glyph, title, tag, children }: { tone: Tone; glyph: string; title: string; tag: string; children?: ReactNode }) {
-  return <header className="cf-header" data-tone={tone}>
+function Header({ id, tone, glyph, title, tag, children }: { id: string; tone: Tone; glyph: string; title: string; tag: string; children?: ReactNode }) {
+  return <header id={id} className="cf-header" data-tone={tone}>
     <div className="cf-title">
-      <span className="cf-glyph cf-title-glyph" data-tone={tone}>{glyph}</span>
+      <span className="cf-glyph cf-title-glyph" data-tone={tone} aria-hidden>{glyph}</span>
       <h2>{title}</h2>
       <span className="cf-tag">{tag}</span>
     </div>
@@ -86,11 +89,15 @@ const LABELS = {
   clear: { doing: 'Clearing the sleep flag', failed: 'Clear' },
 } satisfies Record<string, ActionLabel>;
 
-export function CaffeinePopover({ view, readError, pending, actionError, anchor, instant, onClose }: {
+const noChip = () => null;
+
+export function CaffeinePopover({ view, readError, pending, actionError, anchor, instant, fromChip, onClose }: {
   view: CaffeineView | null; readError: string | null; pending: ActionLabel | null; actionError: ActionError | null;
-  anchor: Anchor; instant: boolean; onClose: () => void;
+  anchor: Anchor; instant: boolean; fromChip: boolean; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const headerId = useId();
+  const statusId = useId();
   const [picker, setPicker] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -178,7 +185,13 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   }
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
-    if (event.metaKey || event.ctrlKey || event.altKey || event.key === 'Escape') return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    // Disarm here, before the dialog's cancel: Chromium makes a second Escape cancel with no key between them
+    // uncancelable, so a disarm spent on cancel would make the next Escape close the dialog instead of going back.
+    if (event.key === 'Escape') {
+      if (armed) { event.preventDefault(); setArmed(null); }
+      return;
+    }
     const rows = Array.from(dialog.current?.querySelectorAll<HTMLElement>('[data-row]:not(:disabled)') ?? []);
     const current = rows.indexOf(document.activeElement as HTMLElement);
     const move = (step: number) => {
@@ -188,6 +201,8 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     };
     if (event.key === 'ArrowDown' || event.key === 'j') return move(1);
     if (event.key === 'ArrowUp' || event.key === 'k') return move(-1);
+    // A held key is one press: auto-repeat must not pass a second-press confirm or fire Enter's click again.
+    if (event.repeat) return event.preventDefault();
     if (event.key === 'Enter') return; // the focused row's own click
     const action = keyAction(screen, event.key);
     if (action) event.preventDefault();
@@ -199,16 +214,16 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   let body: ReactNode;
   let footnote: string;
   if (!view) {
-    body = <Header tone="off" glyph="☼" title="Keep awake" tag={readError ? 'UNKNOWN' : '…'}>
+    body = <Header id={headerId} tone="off" glyph="☼" title="Keep awake" tag={readError ? 'UNKNOWN' : '…'}>
       <p className="cf-line cf-muted">{readError ? "Could not read this Mac's state. Close and reopen to try again." : "Reading this Mac's state…"}</p>
     </Header>;
     footnote = '';
   } else if (view.kind === 'unsupported') {
-    body = <Header tone="off" glyph="☼" title="Keep awake" tag="UNAVAILABLE"><p className="cf-line">{UNSUPPORTED[view.reason]}</p></Header>;
+    body = <Header id={headerId} tone="off" glyph="☼" title="Keep awake" tag="UNAVAILABLE"><p className="cf-line">{UNSUPPORTED[view.reason]}</p></Header>;
     footnote = '';
   } else if (screen.kind === 'lid-picker') {
     body = <>
-      <Header tone="lid" glyph="✷" title="Keep awake with the lid closed" tag="LID">
+      <Header id={headerId} tone="lid" glyph="✷" title="Keep awake with the lid closed" tag="LID">
         <p className="cf-line cf-muted">Always timed. Nothing will sleep this Mac, lid or not.</p>
       </Header>
       {onBattery && <p className="cf-banner" role="note">
@@ -225,10 +240,11 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     </>;
     footnote = 'Clears itself at the end, and normal sleep returns.';
   } else if (view.kind === 'off') {
-    const busy = details ? (details.busyNow ? `${details.busyNow} running` : 'none running') : '…';
-    const power = details ? (details.onBattery === true ? <span className="cf-battery">on battery</span> : details.onBattery === false ? 'on mains' : '') : '…';
+    const unread = detailsError ? 'unknown' : '…';
+    const busy = details ? (details.busyNow ? `${details.busyNow} running` : 'none running') : unread;
+    const power = details ? (details.onBattery === true ? <span className="cf-battery">on battery</span> : details.onBattery === false ? 'on mains' : '') : detailsError ? 'power unknown' : '…';
     body = <>
-      <Header tone="off" glyph="☼" title="Keep awake" tag="OFF">
+      <Header id={headerId} tone="off" glyph="☼" title="Keep awake" tag="OFF">
         <p className="cf-line cf-muted">This Mac sleeps on its normal schedule.</p>
       </Header>
       <section className="cf-section">
@@ -250,7 +266,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     const lid = view.kind === 'lid';
     const deadline = view.deadline;
     body = <>
-      <Header tone={lid ? 'lid' : 'on'} glyph={lid ? '✷' : '☼'} title="Keep awake" tag={lid ? 'ON-LID' : 'ON'}>
+      <Header id={headerId} tone={lid ? 'lid' : 'on'} glyph={lid ? '✷' : '☼'} title="Keep awake" tag={lid ? 'ON-LID' : 'ON'}>
         <p className="cf-line cf-strong">{deadline === null ? 'Indefinitely' : `${longDuration((deadline - now) / 1000)} left · ${untilLabel(deadline, now)}`}</p>
         {deadline !== null && <Meter fraction={remainingFraction(now, view.startedAt, deadline)} label="Time left" />}
         {lid
@@ -269,11 +285,11 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
       </section>
       {!lid && stuck && <Recovery onClear={() => dispatch({ kind: 'clear' })} />}
     </>;
-    footnote = lid ? 'Extending restarts the session with the time added.' : 'Extending adds to what is left.';
+    footnote = lid ? 'Extending restarts the session with the time added.' : deadline === null ? '' : 'Extending adds to what is left.';
   } else {
     const grace = view.graceUntil;
     body = <>
-      <Header tone="on" glyph="☼" title="Keep awake" tag="WHILE AGENTS RUN">
+      <Header id={headerId} tone="on" glyph="☼" title="Keep awake" tag="WHILE AGENTS RUN">
         {grace !== null
           ? <>
             <p className="cf-line cf-strong">{grace - now >= 1_000
@@ -298,21 +314,20 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
 
   const failure = actionError && (actionError.missed
     ? `${actionError.label.failed} failed at ${clockAt(actionError.at, now)}: ${actionError.reason}`
-    : actionError.reason);
-  const shownError = failure ?? detailsError ?? (view ? null : readError);
+    : `${actionError.label.failed} failed: ${actionError.reason}`);
+  const shownError = failure ?? (detailsError && `Could not read power and running agents: ${detailsError}`) ?? (view ? null : readError);
   const keys = screen.kind === 'unsupported'
     ? <><kbd>q</kbd> close</>
     : <><span className="cf-pair"><kbd>↑</kbd><kbd>↓</kbd></span> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
   return <ChipPopover ref={dialog} className="cf-dialog cf-root" panelClassName="cf-panel" aria-label="Keep awake" aria-busy={waiting || undefined}
-    onKeyDown={keyboard} trigger={visibleChip} anchor={anchor} width={320} instant={instant} data-tone={tone} onClose={onClose}
+    aria-describedby={`${headerId} ${statusId}`} onKeyDown={keyboard} trigger={fromChip ? visibleChip : noChip} anchor={anchor} width={320} instant={instant} data-tone={tone} onClose={onClose}
     onEscape={() => {
-      if (armed) { setArmed(null); return; }
       const action = keyAction(screen, 'Escape');
       if (action) dispatch(action);
     }}>
     {body}
     {/* One live region, present from the first render, so a later error or status is announced. */}
-    <div role="status">
+    <div role="status" id={statusId}>
       {pending ? <p className="cf-pending">{pending.doing}…</p> : shownError && <p className="cf-error">{shownError}</p>}
     </div>
     <footer className="cf-footer">

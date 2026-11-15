@@ -6,12 +6,13 @@ the BB chip and the tmux pill read one pidfile and always agree.
 ## Use
 
 Press **Alt+K** (rebind it in Settings → Keyboard). The popover opens even when
-the chip is hidden, including on the new-thread screen.
+the chip is hidden, including on the new-thread screen. Closing a popover opened
+this way returns focus to where it was, such as the composer.
 
 | Screen | Keys |
 | --- | --- |
 | Off | `i` indefinitely · `1`-`5` for 30m, 1h, 2h, 4h or 8h · `t` jump to the timed rows · `a` while agents run · `l` lid closed · `c` clear a stuck flag |
-| Lid closed | `1`-`5` start, press twice unless BB knows the Mac is on mains · `Esc` back |
+| Lid closed | `1`-`5` start, press twice unless BB knows the Mac is on mains (a double-click or held key is one press) · `Esc` disarms, then goes back |
 | On | `1`-`4` add 30m, 1h, 2h or 4h to what is left · `+` jump to them · `o` off · `c` clear a stuck flag |
 | While agents run | `o` off · `c` clear a stuck flag |
 | Everywhere | `↑` `↓` `j` `k` move · `Enter` or `Space` choose · `q` or `Esc` close |
@@ -21,8 +22,8 @@ today. A start, extend or off closes the popover, and the chip appearing or
 going is the confirmation. While an action runs, the popover says what it is
 waiting for and takes no second action, even after a close and reopen. A
 popover opened meanwhile stays open when that action succeeds. An error stays
-on screen. If no popover was open when the action failed, the next popover
-opens with what failed and at what time. If BB cannot read the Mac's state and
+on screen and names the action that failed. If no popover was open when the
+action failed, the next popover opens with what failed and at what time. If BB cannot read the Mac's state and
 has no earlier reading, the popover says so; reopening it reads again. With an
 earlier reading, it shows that one.
 
@@ -32,7 +33,7 @@ The chip hides while keep-awake is off, like the tmux pill:
 | --- | --- |
 | peach `☼ ∞` | on until you turn it off; closing the lid still sleeps the Mac |
 | peach `☼ 42m` | on for 42 more minutes |
-| maroon `✷ 42m` | lid mode: the Mac cannot sleep at all, lid included, for 42 minutes |
+| maroon `✷ 42m`, warning border | lid mode: the Mac cannot sleep at all, lid included, for 42 minutes |
 | peach `☼ A2` | held while 2 agents run |
 | peach `☼ A·4m` | no agents running; stops in 4 minutes |
 

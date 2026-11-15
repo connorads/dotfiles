@@ -24,7 +24,7 @@ function Overlay() {
   }, []);
   const { view, readError, pending, actionError, open } = useCaffeine();
   return open ? <CaffeinePopover view={view} readError={readError} pending={pending} actionError={actionError}
-    anchor={open.anchor} instant={open.instant} onClose={close} /> : null;
+    anchor={open.anchor} instant={open.instant} fromChip={open.fromChip} onClose={close} /> : null;
 }
 
 export default definePluginApp(app => {

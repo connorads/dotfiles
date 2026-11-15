@@ -2,7 +2,10 @@ import { Chip, ChipValue } from '@bb-plugins/chip';
 import { chipFace } from './src/format.ts';
 import { toggle, useCaffeine, useNow } from './store.ts';
 
-/** Self-hiding, like the tmux pill: off renders nothing. ⌥K opens the popover either way. */
+/**
+ * Self-hiding, like the tmux pill: off renders nothing. ⌥K opens the popover either way.
+ * Lid mode takes the warn border, which still shows when a narrow header hides the value.
+ */
 export function CaffeineChip() {
   const { view, open } = useCaffeine();
   // 15 s matches the tmux status-interval, so both surfaces tick together.
@@ -10,7 +13,7 @@ export function CaffeineChip() {
   const face = view && chipFace(view, now);
   if (!face) return null;
   return <Chip data-caffeine-chip expanded={open !== null} aria-label={face.title} title={`${face.title} (⌥K)`}
-    className="cf-root"
+    className="cf-root" tone={face.tone === 'lid' ? 'warn' : undefined}
     onClick={event => toggle(event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}
     icon={<span className="cf-glyph" data-tone={face.tone}>{face.glyph}</span>}>
     <ChipValue>{face.token}</ChipValue>

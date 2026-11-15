@@ -1,7 +1,7 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ActionResult } from './domain.ts';
-import { act, close, setClient, snapshot, toggle, type Rpc } from '../store.ts';
+import { act, close, refresh, setClient, snapshot, toggle, type Rpc } from '../store.ts';
 
 // The store reads state on every open; these tests only care about actions.
 setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
@@ -9,6 +9,9 @@ const chip = { getBoundingClientRect: () => ({ top: 0, right: 40, bottom: 28, le
 const label = { doing: 'Extending', failed: 'Extend' };
 const ok: ActionResult = { ok: true };
 const refused: ActionResult = { ok: false, reason: 'Nothing is running to extend.', stoppedPrevious: false };
+
+// A failed test must not leave a popover open for the next one to toggle shut.
+afterEach(() => close());
 
 function deferred() {
   let settle!: (result: ActionResult | Error) => void;
@@ -92,4 +95,29 @@ test('a new action clears the last failure', async () => {
   next.settle(ok);
   await running;
   close();
+});
+
+test('a failed state read is kept until a read succeeds', async () => {
+  const reads: Array<() => Promise<unknown>> = [async () => { throw new Error('host went away'); }, async () => ({ kind: 'off' })];
+  setClient({ call: () => reads.shift()!() } as unknown as Rpc);
+  await refresh();
+  assert.equal(snapshot().readError, 'host went away');
+  await refresh();
+  assert.equal(snapshot().readError, null);
+  assert.deepEqual(snapshot().view, { kind: 'off' });
+  setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
+});
+
+test('only an opening from the chip returns focus to the chip', () => {
+  toggle('keyboard', chip);
+  assert.equal(snapshot().open?.fromChip, true);
+  close();
+  // Alt+K looks for a visible chip to place under; there is none here.
+  Object.assign(globalThis, { document: { querySelectorAll: () => [] } });
+  try {
+    toggle('keyboard');
+    assert.equal(snapshot().open?.fromChip, false, 'Alt+K: focus goes back to where it was');
+  } finally {
+    Reflect.deleteProperty(globalThis, 'document');
+  }
 });
