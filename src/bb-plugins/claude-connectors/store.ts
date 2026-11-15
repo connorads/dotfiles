@@ -9,6 +9,8 @@ export type Target = { kind: 'thread'; threadId: string; projectId: string } | {
 export type Anchor = { top: number; right: number; bottom: number; left: number } | null;
 export type Open = { target: Target; anchor: Anchor; instant: boolean } | null;
 export type Connectors = { list: string[]; error: string | null } | 'loading';
+/** A popover save: `row` names what is saving; `error` is set once it fails. */
+export type Save = { row: string; error: string | null };
 
 interface State {
   view: StateView | null;
@@ -19,17 +21,21 @@ interface State {
   stateError: string | null;
   /** Thread and draft choices whose last load failed, keyed by `loadKey`, until one loads. */
   loadErrors: ReadonlyMap<string, { target: Target; error: string }>;
+  /** Popover saves per `loadKey`, in flight or failed. They outlive the popover, so a reopened
+   *  popover still waits for a save, and a failure after Escape still shows on the chip. */
+  saves: ReadonlyMap<string, Save>;
   /** The new-thread composer on screen, for the keyboard command. */
   draftProject: string | null;
   open: Open;
 }
 let state: State = {
-  view: null, threads: new Map(), drafts: new Map(), connectors: new Map(), stateError: null, loadErrors: new Map(), draftProject: null, open: null,
+  view: null, threads: new Map(), drafts: new Map(), connectors: new Map(), stateError: null, loadErrors: new Map(), saves: new Map(), draftProject: null, open: null,
 };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(l => l()); };
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
-export const useConnectors = () => useSyncExternalStore(subscribe, () => state);
+export const snapshot = () => state;
+export const useConnectors = () => useSyncExternalStore(subscribe, snapshot);
 
 let client: Rpc | null = null;
 export function setClient(rpc: Rpc) { client = rpc; }
@@ -100,6 +106,20 @@ export async function choose(target: Target, value: string) {
   }
 }
 
+/** Runs one popover save per target; false when another is in flight or this one fails. */
+export async function save(target: Target, row: string, task: () => Promise<unknown>): Promise<boolean> {
+  const key = loadKey(target);
+  if (state.saves.get(key)?.error === null) return false;
+  const put = (value: Save | null) => {
+    const saves = new Map(state.saves);
+    if (value) saves.set(key, value); else saves.delete(key);
+    set({ saves });
+  };
+  put({ row, error: null });
+  try { await task(); put(null); return true; }
+  catch (cause) { put({ row, error: message(cause) }); return false; }
+}
+
 export async function setProjectDefault(projectId: string, value: string) {
   await rpc().call('setProject', { projectId, value });
   await refresh();
@@ -117,7 +137,14 @@ export function toggle(target: Target | null, via: 'pointer' | 'keyboard', from?
   set({ open: { target, anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard' } });
   void refresh();
 }
-export function close() { set({ open: null }); }
+/** Closing a popover that showed a failed save dismisses that failure. */
+export function close() {
+  const key = state.open ? loadKey(state.open.target) : null;
+  if (key === null || !state.saves.get(key)?.error) { set({ open: null }); return; }
+  const saves = new Map(state.saves);
+  saves.delete(key);
+  set({ open: null, saves });
+}
 
 /** For the keyboard command: the thread view it was invoked from, else the new-thread composer. */
 export function targetFor(threadId: string | null): Target | null {
@@ -128,5 +155,5 @@ export function targetFor(threadId: string | null): Target | null {
   return state.draftProject ? { kind: 'draft', projectId: state.draftProject } : null;
 }
 
-export const sourceLabel = (source: 'thread' | 'project' | 'default') =>
-  source === 'thread' ? 'this thread' : source === 'project' ? 'project default' : 'global default';
+export const sourceLabel = (source: 'thread' | 'project' | 'default', kind: Target['kind']) =>
+  source === 'thread' ? (kind === 'thread' ? 'this thread' : 'the new thread') : source === 'project' ? 'project default' : 'global default';

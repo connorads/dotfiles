@@ -9,6 +9,7 @@
 .cc-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
 .cc-error { color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
 .cc-pad { margin: 0; padding: 0 14px 8px; }
+.cc-save-error { padding-top: 8px; border-top: 1px solid var(--border-seam, var(--border)); }
 .cc-empty.cc-error { color: var(--destructive-text, var(--destructive)); }
 
 .cc-rows { display: grid; padding: 4px; }
@@ -35,7 +36,7 @@
 
 .cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-keys { display: flex; align-items: center; gap: 4px; }
-.cc-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary)); font: inherit; cursor: pointer; }
+.cc-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary)); font: inherit; text-align: left; cursor: pointer; }
 .cc-link:hover { text-decoration: underline; }
 
 /* Settings */
@@ -48,9 +49,12 @@
   background: var(--background); color: var(--foreground); font: inherit; font-size: 13px;
 }
 .cc-input { min-width: 160px; }
-.cc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cc-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
 .cc-table th { text-align: left; font-weight: 500; color: var(--muted-foreground); font-size: 12px; padding: 4px 0; }
 .cc-table td { padding: 5px 0; border-top: 1px solid var(--border); }
+.cc-table th:last-child { width: 45%; }
+.cc-table td:first-child { padding-right: 8px; overflow-wrap: anywhere; }
+.cc-table .cc-select { width: 100%; max-width: 260px; }
 .cc-tools { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
 .cc-tool { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
 .cc-tool-text { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 2px 8px; min-width: 0; }
@@ -59,4 +63,10 @@
 .cc-badge { justify-self: start; padding: 0 6px; border-radius: 4px; font-size: 10.5px; line-height: 16px; color: var(--warning-text, var(--warning)); border: 1px solid currentColor; }
 .cc-seg { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .cc-seg button { padding: 2px 10px; border: 0; background: none; color: var(--muted-foreground); font: inherit; font-size: 12px; cursor: pointer; }
-.cc-seg button[aria-pressed="true"] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }
+.cc-seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+.cc-tool-error, .cc-field-error { grid-column: 1 / -1; margin: 2px 0 0; }
+
+/* Touch: 44 px targets, as the shared chip has. */
+@media (pointer: coarse) {
+  .cc-row, .cc-link, .cc-seg button { min-height: 44px; }
+}

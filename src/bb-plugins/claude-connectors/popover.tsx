@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
-import { choose, close, loadConnectors, loadKey, message, refresh, setProjectDefault, useConnectors, visibleChip, type Open } from './store.ts';
+import { Retry } from './retry.tsx';
+import { choose, close, loadConnectors, loadKey, save, setProjectDefault, useConnectors, visibleChip, type Open } from './store.ts';
 
 type Row = { id: string; keycap: string; value: string; label: string; aside: string };
 const PREVIEW = 14;
+/** The save row for `p`, which names the profile being made the project default. */
+const DEFAULT_ROW = 'default:';
 
 export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
-  const { view, threads, drafts, connectors, stateError, loadErrors } = useConnectors();
+  const { view, threads, drafts, connectors, stateError, loadErrors, saves } = useConnectors();
   const dialog = useRef<HTMLDialogElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  /** The row being saved, or 'p' for the project default; further picks wait for it. */
-  const [saving, setSaving] = useState<string | null>(null);
-  const busy = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const { target } = open;
+  const pending = saves.get(loadKey(target));
+  /** The row being saved; further picks wait for it, in this popover or a reopened one. */
+  const saving = pending && pending.error === null ? pending.row : null;
+  const error = pending?.error ?? null;
   const current = target.kind === 'thread' ? threads.get(target.threadId) : drafts.get(target.projectId);
   const loadError = current ? undefined : loadErrors.get(loadKey(target))?.error;
   const own = current?.own ?? null;
@@ -29,7 +32,7 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
 
   const count = (profile: string) => {
     const c = connectors.get(profile);
-    return !c || c === 'loading' ? '…' : c.error ? 'not available' : `${c.list.length} connectors`;
+    return !c || c === 'loading' ? '…' : c.error ? 'not available' : `${c.list.length} connector${c.list.length === 1 ? '' : 's'}`;
   };
   const rows: Row[] = [
     ...profiles.map((p, i) => ({ id: `p:${p}`, keycap: i < 9 ? String(i + 1) : '', value: p, label: p, aside: count(p) })),
@@ -48,19 +51,12 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
     focusRow(pressed ?? rows[0]!.id);
   }, [view, current, loadError, pressed, focusRow]);
 
-  async function save(id: string, task: () => Promise<unknown>, after?: () => void) {
-    if (busy.current) return;
-    busy.current = true;
-    setError(null);
-    setSaving(id);
-    try { await task(); if (mounted.current) after?.(); }
-    catch (cause) { if (mounted.current) setError(message(cause)); }
-    finally { busy.current = false; if (mounted.current) setSaving(null); }
+  async function pick(row: Row) {
+    if (await save(target, row.id, () => choose(target, row.value)) && mounted.current) close();
   }
-  const pick = (row: Row) => save(row.id, () => choose(target, row.value), close);
   function makeProjectDefault() {
     const profile = focused ?? resolved?.profile;
-    if (profile) void save('p', () => setProjectDefault(target.projectId, profile));
+    if (profile && profiles.length > 0) void save(target, DEFAULT_ROW + profile, () => setProjectDefault(target.projectId, profile));
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
@@ -75,7 +71,8 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
   }
 
   const preview = focused ? connectors.get(focused) : undefined;
-  const projectDefaultTarget = focused ?? resolved?.profile ?? null;
+  const savingDefault = saving?.startsWith(DEFAULT_ROW) ? saving.slice(DEFAULT_ROW.length) : null;
+  const projectDefaultTarget = profiles.length === 0 ? null : savingDefault ?? focused ?? resolved?.profile ?? null;
 
   return <ChipPopover ref={dialog} aria-label="Claude connectors" trigger={visibleChip} anchor={open.anchor} width={380}
     instant={open.instant} panelClassName="cc-panel" className="cc-dialog" onKeyDown={onKeyDown} onClose={close}>
@@ -83,8 +80,7 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
       <h2>Claude connectors</h2>
       <span className="cc-muted">{target.kind === 'thread' ? 'for this thread' : 'for the new thread'}</span>
     </header>
-    {!view ? stateError ? <p className="cc-empty cc-error" role="alert">Could not load profiles. {stateError}{' '}
-        <button type="button" className="cc-link" onClick={() => void refresh()}>Retry</button></p>
+    {!view ? stateError ? <p className="cc-empty cc-error" role="alert">Could not load profiles. {stateError} <Retry /></p>
         : <p className="cc-empty">Loading…</p>
       : profiles.length === 0 ? <p className="cc-empty">No Claude profiles found. Check the profile root in Settings → Claude Connectors.</p>
       : <section className="cc-rows" aria-label="Profiles">
@@ -92,7 +88,7 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
         {rows.map(row => <button key={row.id} type="button" className="cc-row" data-row={row.id} aria-pressed={row.id === pressed}
           aria-disabled={saving !== null || undefined} aria-busy={saving === row.id || undefined}
           onFocus={() => setFocused(row.id.startsWith('p:') ? row.value : row.value === 'inherit' && inherited !== 'off' ? inherited : null)}
-          onMouseEnter={() => setFocused(row.id.startsWith('p:') ? row.value : row.value === 'inherit' && inherited !== 'off' ? inherited : null)}
+          onMouseEnter={event => event.currentTarget.focus({ preventScroll: true })}
           onClick={() => void pick(row)}>
           {row.keycap ? <kbd>{row.keycap}</kbd> : <span />}
           <span className="cc-row-label">{row.label}</span>
@@ -105,12 +101,12 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
         : <>{preview.list.slice(0, PREVIEW).map(name => <span key={name} className="cc-tag">{name}</span>)}
           {preview.list.length > PREVIEW && <span className="cc-muted">+{preview.list.length - PREVIEW} more</span>}</>}
     </section>}
-    {error && <p className="cc-error cc-pad" role="alert">{error}</p>}
+    {error && <p className="cc-error cc-pad cc-save-error" role="alert">Could not save the change. {error}</p>}
     <footer className="cc-footer">
-      <span className="cc-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
+      {profiles.length > 0 && <span className="cc-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
       {projectDefaultTarget && <button type="button" className="cc-link" onClick={makeProjectDefault}
-        aria-disabled={saving !== null || undefined} aria-busy={saving === 'p' || undefined}>
-        <kbd>p</kbd> {saving === 'p' ? `Making ${projectDefaultTarget} this project's default…`
+        aria-disabled={saving !== null || undefined} aria-busy={savingDefault !== null || undefined}>
+        <kbd>p</kbd> {savingDefault ? `Making ${savingDefault} this project's default…`
           : <>Make {projectDefaultTarget} this project's default{project?.choice === projectDefaultTarget ? ' ✓' : ''}</>}
       </button>}
       <span>{target.kind === 'thread' ? 'A thread that was off gets the tools from its next message.' : 'Applies when you send the first message.'}

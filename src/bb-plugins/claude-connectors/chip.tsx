@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { experimental_ProviderIcon as ProviderIcon, experimental_useProviders as useProviders, useComposer } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
-import { Chip, ChipValue } from '@bb-plugins/chip';
+import { Chip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import type { ResolvedView } from './contracts.ts';
 import { loadDraft, loadKey, loadThread, setDraftProject, sourceLabel, toggle, useConnectors, type Target } from './store.ts';
 
@@ -12,24 +12,29 @@ function ClaudeMark() {
   return <ProviderIcon providerKind="agent" provider={claude} fallback="Puzzle" aria-hidden />;
 }
 
-function describe(resolved: ResolvedView | undefined, error: string | undefined) {
+function describe(resolved: ResolvedView | undefined, error: string | undefined, kind: Target['kind']) {
   if (!resolved && error) return { value: 'Not loaded', label: `Claude connectors: could not load the choice. ${error}` };
   if (!resolved) return { value: '…', label: 'Claude connectors: loading' };
-  if (!resolved.profile) return { value: 'Off', label: `Claude connectors are off (${sourceLabel(resolved.source)})` };
-  return { value: resolved.profile, label: `Claude connectors: ${resolved.profile} (${sourceLabel(resolved.source)})` };
+  if (!resolved.profile) return { value: 'Off', label: `Claude connectors are off (${sourceLabel(resolved.source, kind)})` };
+  return { value: resolved.profile, label: `Claude connectors: ${resolved.profile} (${sourceLabel(resolved.source, kind)})` };
 }
 
 function ConnectorsChip({ target, resolved, compact }: { target: Target; resolved: ResolvedView | undefined; compact: boolean }) {
-  const { open, loadErrors } = useConnectors();
+  const { open, loadErrors, saves } = useConnectors();
   const error = loadErrors.get(loadKey(target))?.error;
-  const { value, label } = describe(resolved, error);
+  const saveError = saves.get(loadKey(target))?.error;
+  const described = describe(resolved, error, target.kind);
+  const label = saveError ? `${described.label}. The last change was not saved. ${saveError}` : described.label;
+  const warn = (!resolved && error) || saveError;
   const isOpen = open !== null && JSON.stringify(open.target) === JSON.stringify(target);
-  return <Chip data-cc-chip expanded={isOpen} aria-label={label} title={`${label} (⌥⇧E)`} tone={!resolved && error ? 'warn' : undefined}
+  // The dot keeps a warning visible when a narrow header hides the value.
+  return <Chip data-cc-chip expanded={isOpen} aria-label={label} title={`${label} (⌥⇧E)`} tone={warn ? 'warn' : undefined}
     onClick={event => toggle(target, event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}
     icon={<ClaudeMark />}>
     {!compact && <ChipValue className={resolved && !resolved.profile ? 'cc-off' : undefined}>
-      {resolved && resolved.source !== 'thread' && resolved.profile ? <>{value}<span className="cc-inherited"> · {resolved.source}</span></> : value}
+      {resolved && resolved.source !== 'thread' && resolved.profile ? <>{described.value}<span className="cc-inherited"> · {resolved.source}</span></> : described.value}
     </ChipValue>}
+    {warn && <ChipDot tone="warn" />}
   </Chip>;
 }
 
