@@ -34,7 +34,7 @@ export function SignInPanel({ signIn, name }: { signIn: SignInView; name: string
         setError(null);
         rpc().call('cancelSignIn', { id: signIn.id }).catch(cause => setError(message(cause))).finally(() => setCancelling(false));
       }}>Cancel</button>
-      <span className="ex-muted" aria-label="Expires in">{countdown(signIn.expiresAt, now)}</span>
+      <span className="ex-muted">Expires in {countdown(signIn.expiresAt, now)}</span>
     </div>
     {error && <p className="ex-error" role="alert">{error}</p>}
   </div>;

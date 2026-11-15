@@ -36,12 +36,14 @@ export async function refresh() {
 
 /** Picks per thread, so a read that started before a pick cannot overwrite it. */
 const picks = new Map<string, number>();
+/** Saves in flight per thread: a read during one would show the old choice as if the pick were undone. */
+const saving = new Map<string, number>();
 
 export async function loadChoice(threadId: string) {
   const pick = picks.get(threadId);
   try {
     const choice = await rpc().call('threadChoice', { threadId });
-    if (picks.get(threadId) !== pick) return;
+    if (picks.get(threadId) !== pick || saving.get(threadId)) return;
     set({ choices: new Map(state.choices).set(threadId, choice) });
   } catch { /* keep the last choice */ }
 }
@@ -49,19 +51,23 @@ export async function loadChoice(threadId: string) {
 export async function choose(threadId: string | null, choice: Choice) {
   if (!threadId) { set({ draft: choice }); return; }
   const previous = state.choices.get(threadId);
-  picks.set(threadId, (picks.get(threadId) ?? 0) + 1);
+  const pick = (picks.get(threadId) ?? 0) + 1;
+  picks.set(threadId, pick);
+  saving.set(threadId, (saving.get(threadId) ?? 0) + 1);
   set({ choices: new Map(state.choices).set(threadId, choice), unsaved: state.unsaved?.threadId === threadId ? null : state.unsaved });
   try {
     await rpc().call('setThreadChoice', { threadId, choice });
   } catch (cause) {
     // The server kept the old choice, so the chip must name it again unless a later pick replaced this one.
     // The failure stays in the store: the popover that made the pick may have closed already.
-    if (state.choices.get(threadId) === choice) {
+    if (picks.get(threadId) === pick) {
       const choices = new Map(state.choices);
       if (previous) choices.set(threadId, previous); else choices.delete(threadId);
       set({ choices, unsaved: { threadId, message: `${switchFailure(choice)} ${message(cause)}` } });
     }
     throw cause;
+  } finally {
+    saving.set(threadId, (saving.get(threadId) ?? 1) - 1);
   }
 }
 

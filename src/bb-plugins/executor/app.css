@@ -40,6 +40,7 @@
 }
 .ex-signin-line { margin: 0; font-size: var(--text-sm, 13px); color: var(--foreground); text-wrap: pretty; }
 .ex-signin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ex-signin .ex-error { padding: 0; }
 .ex-code { padding: 1px 6px; border-radius: 4px; background: var(--muted); font: 600 13px/1.4 var(--font-mono); letter-spacing: .06em; }
 .ex-button {
   display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px;
@@ -71,9 +72,15 @@
 }
 
 .ex-connection-row + .ex-connection-row { border-top: 1px solid var(--border-seam, var(--border)); }
-.ex-connection-row button[aria-disabled="true"] { opacity: .5; cursor: default; }
+.ex-connection-row button[aria-disabled="true"], .ex-add-submit[aria-disabled="true"] { opacity: .5; cursor: default; }
+.ex-connection-row { container-type: inline-size; }
 .ex-connection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ex-connection-name { flex-basis: 180px; }
+/* A narrow row gives the name and the whole URL their own lines, and the actions a line below. */
+@container (max-width: 480px) {
+  .ex-connection-name { flex-basis: 100%; }
+  .ex-connection-url { white-space: normal; overflow-wrap: anywhere; }
+}
 @media (pointer: coarse) {
   .ex-connection button { min-height: 44px; }
 }

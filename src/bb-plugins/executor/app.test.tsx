@@ -454,3 +454,144 @@ it('chip: shows Off in a narrow header', async () => {
   expect((await chip.findByRole('button', { name: 'Executor is off for this thread' })).textContent).toContain('Off');
   overlay.unmount();
 });
+
+it('popover: a save that fails after the popover is reopened still explains why', async () => {
+  let fail: (cause: Error) => void = () => {};
+  const handlers = {
+    state: () => two,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => new Promise((_, reject) => { fail = reject; }),
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-late-reopen', isCompactViewport: false } as never, { rpc: handlers });
+  await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle('t-late-reopen', 'keyboard'));
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: 'o' });
+  act(() => close());
+  // The reopen reads the choice while the save is still in flight; that read must not hide the pick.
+  act(() => toggle('t-late-reopen', 'keyboard'));
+  await waitFor(() => expect(overlay.rpcCalls.filter(c => c.method === 'threadChoice').length).toBeGreaterThan(1));
+  await chip.findByRole('button', { name: 'Executor is off for this thread' });
+  await act(async () => fail(new Error('Could not save the choice.')));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not turn Executor off. Could not save the choice.');
+  const marked = await chip.findByRole('button', { name: 'Executor: Coding (default). Could not turn Executor off. Could not save the choice.' });
+  expect(marked.dataset['tone']).toBe('warn');
+});
+
+it('popover: the save after an add holds the rows, so a key press sends no second save', async () => {
+  let view = two;
+  let finish: (value: null) => void = () => {};
+  const handlers = {
+    state: () => view,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => new Promise<null>(resolve => { finish = resolve; }),
+    add: () => {
+      view = stateOf({ connections: [...two.connections, connection('connection-3', 'Connection 3', { status: 'signed-out' })] });
+      return { ok: true, id: 'connection-3' };
+    },
+    signIn: () => null,
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-add-hold', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  fireEvent.change(await overlay.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  await waitFor(() => expect(overlay.rpcCalls.some(c => c.method === 'setThreadChoice')).toBe(true));
+  await waitFor(() => expect(overlay.getByRole('button', { name: /Coding/, pressed: false }).getAttribute('aria-disabled')).toBe('true'));
+  fireEvent.keyDown(dialog, { key: '1' });
+  expect(overlay.rpcCalls.filter(c => c.method === 'setThreadChoice')).toHaveLength(1);
+  await act(async () => finish(null));
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'connection-3', method: 'browser' }));
+});
+
+it('popover: a failed switch after an add says how to finish', async () => {
+  let view = two;
+  const handlers = {
+    state: () => view,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => { throw new Error('Could not save the choice.'); },
+    add: () => {
+      view = stateOf({ connections: [...two.connections, connection('connection-3', 'Connection 3', { status: 'signed-out' })] });
+      return { ok: true, id: 'connection-3' };
+    },
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-add-switch-fail', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  fireEvent.change(await overlay.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  await waitFor(() => expect(overlay.getAllByRole('alert').map(a => a.textContent))
+    .toContain('The connection was added. Pick it to use it here and start its sign-in.'));
+  expect(overlay.rpcCalls.some(c => c.method === 'signIn')).toBe(false);
+});
+
+it('popover: Escape leaves the add form and keeps the popover open', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }) } });
+  act(() => toggle('t-add-escape', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  await overlay.findByRole('form', { name: 'Add connection' });
+  fireEvent(dialog, new Event('cancel', { cancelable: true }));
+  await waitFor(() => expect(overlay.queryByRole('form', { name: 'Add connection' })).toBeNull());
+  expect(overlay.getByRole('dialog')).toBeTruthy();
+  fireEvent(dialog, new Event('cancel', { cancelable: true }));
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+});
+
+it('popover: an error on a signed-in connection is marked like one on a signed-out connection', async () => {
+  const errors = stateOf({ connections: two.connections, errors: { coding: 'Executor returned 503.', ops: 'Executor returned 401.' } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { state: () => errors, threadChoice: () => ({ kind: 'default' }) } });
+  act(() => toggle('t-errors', 'keyboard'));
+  const coding = await overlay.findByRole('button', { name: /^1 Coding/ });
+  expect(coding.querySelector('.ex-row-aside')?.hasAttribute('data-warn')).toBe(true);
+  expect(overlay.getByRole('button', { name: /^2 Ops/ }).querySelector('.ex-row-aside')?.hasAttribute('data-warn')).toBe(true);
+});
+
+it('settings: Add and sign in waits with aria-disabled and sends one add', async () => {
+  let finish: (value: { ok: true; id: string }) => void = () => {};
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: { state: () => two, add: () => new Promise(resolve => { finish = resolve; }), signIn: () => null },
+  });
+  fireEvent.change(await slot.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_4' } });
+  const submit = slot.getByRole('button', { name: 'Add and sign in' });
+  submit.focus();
+  fireEvent.click(submit);
+  fireEvent.click(submit);
+  expect(slot.rpcCalls.filter(c => c.method === 'add')).toHaveLength(1);
+  expect(submit.hasAttribute('disabled')).toBe(false);
+  expect(submit.getAttribute('aria-disabled')).toBe('true');
+  expect(document.activeElement).toBe(submit);
+  await act(async () => finish({ ok: true, id: 'connection-3' }));
+  await waitFor(() => expect(slot.rpcCalls.some(c => c.method === 'signIn')).toBe(true));
+});
+
+it('settings: after a row action and the refresh, focus stays at that row', async () => {
+  let view = two;
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: {
+      state: () => view,
+      signOut: () => { view = stateOf({ connections: [connection('coding', 'Coding', { isDefault: true, status: 'signed-out' }), two.connections[1]!] }); return null; },
+      remove: () => { view = stateOf({ connections: [two.connections[1]!] }); return null; },
+    },
+  });
+  const signOut = await slot.findByRole('button', { name: 'Sign out' });
+  signOut.focus();
+  fireEvent.click(signOut);
+  await waitFor(() => expect(slot.rpcCalls.some(c => c.method === 'signOut')).toBe(true));
+  await slot.emitRealtime('state', null);
+  await waitFor(() => expect(document.activeElement?.textContent).toBe('Sign in'));
+  expect(document.activeElement?.closest('li')?.textContent).toContain('Coding');
+  const remove = slot.getAllByRole('button', { name: 'Remove' })[0]!;
+  remove.focus();
+  fireEvent.click(remove);
+  fireEvent.click(remove);
+  await waitFor(() => expect(slot.rpcCalls.some(c => c.method === 'remove')).toBe(true));
+  await slot.emitRealtime('state', null);
+  await waitFor(() => expect(document.activeElement?.closest('li')?.textContent).toContain('Ops'));
+});

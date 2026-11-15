@@ -17,7 +17,8 @@ export function ExecutorChip({ threadId, isCompactViewport }: PluginThreadHeader
   const label = (resolved.kind === 'connection'
     ? `Executor: ${resolved.name}${resolved.viaDefault ? ' (default)' : ''}${signedOut ? ', signed out' : ''}`
     : resolved.kind === 'off' ? 'Executor is off for this thread' : 'No Executor connection') + (failed ? `. ${failed}` : '');
-  return <Chip data-executor-chip expanded={open?.threadId === threadId} tone={failed ? 'danger' : signedOut ? 'warn' : undefined}
+  // A failed pick tints only the border and dot: danger tone would also redden the name of the connection that is fine.
+  return <Chip data-executor-chip expanded={open?.threadId === threadId} tone={failed || signedOut ? 'warn' : undefined}
     aria-label={label} title={`${label} (⌥E)`}
     onClick={event => toggle(threadId, event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}
     icon={<Icon name="Plug02" />}>

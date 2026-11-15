@@ -31,6 +31,7 @@ export function AddForm({ initialUrl, count, onAdded }: {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy || !url.trim()) return;
     setBusy(true);
     setProblem(null);
     try {
@@ -50,7 +51,8 @@ export function AddForm({ initialUrl, count, onAdded }: {
     <div className="ex-add-row">
       <input ref={nameInput} className="ex-input" aria-label="Connection name" placeholder={fallbackName} maxLength={60}
         value={name} onChange={event => setName(event.target.value)} />
-      <button type="submit" className="ex-button ex-button-primary" disabled={busy || !url.trim()}>Add and sign in</button>
+      {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
+      <button type="submit" className="ex-button ex-button-primary" aria-disabled={busy || !url.trim() || undefined}>Add and sign in</button>
     </div>
     {problem && <p className="ex-error ex-add-error" role="alert">{problem}</p>}
   </form>;

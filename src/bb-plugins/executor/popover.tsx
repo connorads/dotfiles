@@ -34,7 +34,10 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
   const [retrying, setRetrying] = useState(false);
   // A save outlives a popover closed mid-save; it must not close the next one.
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
   // The row whose save is in flight; further picks wait for it so one press sends one request.
   const [pending, setPending] = useState<string | null>(null);
   const rows = view ? rowsFor(view) : [];
@@ -43,6 +46,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
   // null: closed. A string: open, prefilled with that URL.
   const [adding, setAdding] = useState<string | null>(null);
   const showAdd = adding !== null || view?.connections.length === 0;
+  const hasRows = (view?.connections.length ?? 0) > 0;
 
   function openAdd(url = '') {
     setError(null);
@@ -50,18 +54,24 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
   }
 
   // The add form closes on success, so a later failure is reported by the popover, which says the add itself worked.
+  // The save and sign-in that follow an add hold the rows like any other pick.
   async function added(id: string) {
     setAdding(null);
+    setPending('add');
     try {
-      await choose(threadId, { kind: 'connection', id });
-    } catch {
-      setError('The connection was added. Its sign-in has not started.');
-      return;
-    }
-    try {
-      await rpc().call('signIn', { id, method: 'browser' });
-    } catch (cause) {
-      setError(`The connection was added, but its sign-in did not start. ${message(cause)}`);
+      try {
+        await choose(threadId, { kind: 'connection', id });
+      } catch {
+        setError('The connection was added. Pick it to use it here and start its sign-in.');
+        return;
+      }
+      try {
+        await rpc().call('signIn', { id, method: 'browser' });
+      } catch (cause) {
+        setError(`The connection was added, but its sign-in did not start. ${message(cause)}`);
+      }
+    } finally {
+      setPending(null);
     }
   }
 
@@ -131,7 +141,9 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
   }
 
   return <ChipPopover ref={dialog} aria-label="Executor connection" trigger={visibleChip} anchor={anchor} width={360}
-    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste} onClose={onClose}>
+    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste} onClose={onClose}
+    // Escape leaves the add form first; with no connections the form is the whole popover.
+    onEscape={adding !== null && hasRows ? () => setAdding(null) : undefined}>
     <header className="ex-header">
       <h2>Executor connection</h2>
       <span className="ex-muted">{threadId ? 'for this thread' : 'before the first message'}</span>
@@ -153,7 +165,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
           aria-disabled={pending !== null && row.id !== pending ? true : undefined} onClick={() => void pick(row)}>
           {row.keycap ? <kbd>{row.keycap}</kbd> : <span aria-hidden />}
           <span className="ex-row-label">{row.label}</span>
-          <span className="ex-row-aside" data-warn={row.connection && row.connection.status !== 'signed-in' ? '' : undefined}>
+          <span className="ex-row-aside" data-warn={row.connection && (row.connection.status !== 'signed-in' || view.errors[row.connection.id]) ? '' : undefined}>
             {row.id === pending ? 'saving…' : row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
           </span>
         </button>)}
@@ -171,9 +183,9 @@ export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, an
     {unsaved && <p className="ex-error" role="alert">{unsaved}</p>}
     {error && <p className="ex-error" role="alert">{error}</p>}
     <footer className="ex-footer">
-      <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
+      {hasRows && <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
       <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
-      <span>Sign out, change the default or remove in Settings → Executor.</span>
+      {hasRows && <span>Sign out, change the default or remove in Settings → Executor.</span>}
     </footer>
   </ChipPopover>;
 }

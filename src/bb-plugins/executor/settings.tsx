@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from './components/ui/button.tsx';
 import { Input } from './components/ui/input.tsx';
 import type { ConnectionView, SignInView } from './contracts.ts';
@@ -15,6 +15,25 @@ export function ExecutorSettings() {
   const { view, loadError } = useExecutor();
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const section = useRef<HTMLDivElement>(null);
+  // The row whose action succeeded. Its buttons change with the refreshed state (Sign out becomes Sign in,
+  // Make default goes, a removed row goes), which leaves focus on the page body; put it back at that place in the list.
+  const done = useRef<number | null>(null);
+  useEffect(() => {
+    const at = done.current;
+    if (at === null) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) {
+      if (!section.current?.querySelector('ul')?.contains(active)) done.current = null;
+      return;
+    }
+    done.current = null;
+    const rows = section.current?.querySelectorAll('ul > li');
+    const row = rows?.[Math.min(at, rows.length - 1)];
+    const target = row?.querySelector<HTMLElement>('.ex-signin a') ?? row?.querySelector<HTMLElement>('button')
+      ?? section.current?.querySelector<HTMLElement>('input[aria-label="Connection URL"]');
+    target?.focus({ preventScroll: true });
+  });
   const run = (work: Promise<unknown>) => {
     setError(null);
     work.catch(cause => setError(message(cause)));
@@ -30,7 +49,7 @@ export function ExecutorSettings() {
   </div>;
   if (!view) return <p className="text-sm text-muted-foreground" role="status">Loading connections…</p>;
 
-  return <div className="w-full space-y-5">
+  return <div ref={section} className="w-full space-y-5">
     <div>
       <h3 className="text-sm font-medium text-foreground">Connections</h3>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -44,8 +63,9 @@ export function ExecutorSettings() {
     {view.connections.length === 0
       ? <p className="text-sm text-muted-foreground">No connections yet.</p>
       : <ul aria-label="Connections">
-        {view.connections.map(connection => <ConnectionRow key={connection.id} connection={connection}
-          signIn={view.signIns.find(s => s.id === connection.id)} error={view.errors[connection.id]} />)}
+        {view.connections.map((connection, index) => <ConnectionRow key={connection.id} connection={connection}
+          signIn={view.signIns.find(s => s.id === connection.id)} error={view.errors[connection.id]}
+          onDone={() => { done.current = index; }} />)}
       </ul>}
 
     <AddConnection run={run} count={view.connections.length} />
@@ -57,10 +77,11 @@ export function ExecutorSettings() {
  * One action at a time per row: buttons wait while a request is in flight, and its failure shows in the row.
  * They use aria-disabled, not disabled, because a disabled button drops keyboard focus to the page body.
  */
-function ConnectionRow({ connection, signIn, error }: {
+function ConnectionRow({ connection, signIn, error, onDone }: {
   connection: ConnectionView;
   signIn: SignInView | undefined;
   error: string | undefined;
+  onDone: () => void;
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -69,7 +90,7 @@ function ConnectionRow({ connection, signIn, error }: {
     if (busy) return;
     setBusy(true);
     setFailure(null);
-    work().catch(cause => setFailure(message(cause))).finally(() => setBusy(false));
+    work().then(onDone, cause => setFailure(message(cause))).finally(() => setBusy(false));
   };
   const id = { id: connection.id };
   const waiting = busy || undefined;
@@ -80,7 +101,7 @@ function ConnectionRow({ connection, signIn, error }: {
           <span className="truncate">{connection.name}</span>
           {connection.isDefault && <span className="ex-badge">Default</span>}
         </div>
-        <div className="truncate text-xs text-muted-foreground" title={connection.url}>
+        <div className="ex-connection-url truncate text-xs text-muted-foreground" title={connection.url}>
           <span data-status={connection.status} className="ex-status">{STATUS[connection.status]}</span> · {connection.url}
         </div>
       </div>
@@ -118,6 +139,7 @@ function AddConnection({ run, count }: { run: (work: Promise<unknown>) => void; 
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy || !url.trim()) return;
     setBusy(true);
     setProblem(null);
     run(rpc().call('add', { name: name.trim() || fallbackName, url: url.trim() }).then(async result => {
@@ -138,7 +160,8 @@ function AddConnection({ run, count }: { run: (work: Promise<unknown>) => void; 
         maxLength={60} value={name} onChange={event => setName(event.target.value)} />
       <Input aria-label="Connection URL" placeholder="https://mcp.executor.sh/mcp?connection=…" className="min-w-64 flex-1"
         value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
-      <Button type="submit" size="sm" className="h-9" disabled={busy || !url.trim()}>Add and sign in</Button>
+      {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
+      <Button type="submit" size="sm" className="ex-add-submit h-9" aria-disabled={busy || !url.trim() || undefined}>Add and sign in</Button>
     </div>
     {problem && <p className="mt-1 text-xs text-destructive" role="alert">{problem}</p>}
   </form>;
