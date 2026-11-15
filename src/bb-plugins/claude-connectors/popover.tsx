@@ -5,6 +5,7 @@ import { choose, close, loadConnectors, loadKey, save, setProjectDefault, useCon
 
 type Row = { id: string; keycap: string; value: string; label: string; aside: string };
 const PREVIEW = 14;
+const HOVER_REST = 150;
 /** The save row for `p`, which names the profile being made the project default. */
 const DEFAULT_ROW = 'default:';
 
@@ -12,7 +13,11 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
   const { view, threads, drafts, connectors, stateError, loadErrors, saves } = useConnectors();
   const dialog = useRef<HTMLDialogElement>(null);
   const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  /** Hover focuses a profile row only once the pointer rests on it, so passing over rows on the way to
+   *  the footer link does not change the profile the link names. "Use … default" and "Off" sit between
+   *  the profiles and the link, so hovering them only highlights. */
+  const hover = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; clearTimeout(hover.current); }; }, []);
   const { target } = open;
   const pending = saves.get(loadKey(target));
   /** The row being saved; further picks wait for it, in this popover or a reopened one. */
@@ -88,7 +93,12 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
         {rows.map(row => <button key={row.id} type="button" className="cc-row" data-row={row.id} aria-pressed={row.id === pressed}
           aria-disabled={saving !== null || undefined} aria-busy={saving === row.id || undefined}
           onFocus={() => setFocused(row.id.startsWith('p:') ? row.value : row.value === 'inherit' && inherited !== 'off' ? inherited : null)}
-          onMouseEnter={event => event.currentTarget.focus({ preventScroll: true })}
+          onMouseEnter={event => {
+            const el = event.currentTarget;
+            clearTimeout(hover.current);
+            if (row.id.startsWith('p:')) hover.current = setTimeout(() => el.focus({ preventScroll: true }), HOVER_REST);
+          }}
+          onMouseLeave={() => clearTimeout(hover.current)}
           onClick={() => void pick(row)}>
           {row.keycap ? <kbd>{row.keycap}</kbd> : <span />}
           <span className="cc-row-label">{row.label}</span>

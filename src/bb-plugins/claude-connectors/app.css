@@ -19,10 +19,12 @@
   transition: background-color .12s;
 }
 .cc-row:hover, .cc-row:focus { background: var(--state-hover, var(--accent)); outline: none; }
+/* Under the pointer only the hovered row is filled; the focus ring still marks keyboard focus. */
+.cc-rows:hover .cc-row:focus:not(:hover) { background: transparent; }
 .cc-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 .cc-row[aria-pressed="true"] .cc-row-label { font-weight: 600; }
-.cc-row[aria-disabled="true"], .cc-link[aria-disabled="true"], .cc-seg[aria-busy="true"] button { cursor: progress; }
-.cc-seg[aria-busy="true"] { opacity: .6; }
+.cc-row[aria-disabled="true"], .cc-link[aria-disabled="true"], .cc-seg[aria-busy="true"] button, .cc-select[aria-busy="true"] { cursor: progress; }
+.cc-seg[aria-busy="true"], .cc-select[aria-busy="true"] { opacity: .6; }
 .cc-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-check { color: var(--brand, var(--primary)); }
 .cc-row kbd, .cc-keys kbd, .cc-link kbd {
@@ -36,8 +38,10 @@
 
 .cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-keys { display: flex; align-items: center; gap: 4px; }
-.cc-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary)); font: inherit; text-align: left; cursor: pointer; }
-.cc-link:hover { text-decoration: underline; }
+.cc-link {
+  display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary));
+  font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
 
 /* Settings */
 .cc-settings { display: grid; gap: 16px; }

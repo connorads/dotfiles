@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { refresh } from './store.ts';
 
-/** Reloads profiles once at a time and says so while it runs. */
+/** Reloads profiles and failed connector lists once at a time, and says so while it runs. */
 export function Retry() {
   const [running, setRunning] = useState(false);
   const busy = useRef(false);

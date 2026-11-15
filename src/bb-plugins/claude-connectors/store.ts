@@ -53,7 +53,12 @@ export async function refresh() {
     ...[...state.threads.values()].map(t => { const target: Target = { kind: 'thread', threadId: t.threadId, projectId: t.projectId }; return [loadKey(target), target] as const; }),
     ...[...state.drafts.keys()].map(projectId => { const target: Target = { kind: 'draft', projectId }; return [loadKey(target), target] as const; }),
   ]);
-  await Promise.all([...targets.values()].map(t => t.kind === 'thread' ? loadThread(t.threadId, t.projectId) : loadDraft(t.projectId)));
+  // A failed connector list is fetched again, so signing in to the profile and coming back clears it.
+  const failed = [...state.connectors].filter(([, c]) => c !== 'loading' && c.error !== null).map(([profile]) => profile);
+  await Promise.all([
+    ...[...targets.values()].map(t => t.kind === 'thread' ? loadThread(t.threadId, t.projectId) : loadDraft(t.projectId)),
+    ...failed.map(profile => loadConnectors(profile)),
+  ]);
 }
 
 /** One key per thread or new-thread draft. */
@@ -83,9 +88,10 @@ export async function loadDraft(projectId: string) {
 }
 export function setDraftProject(projectId: string | null) { set({ draftProject: projectId }); }
 
-/** Lazily lists a profile's connectors once per session; errors are shown, not thrown. */
-export async function loadConnectors(profile: string, force = false) {
-  if (!force && state.connectors.has(profile)) return;
+/** Lists a profile's connectors once per session, and again after a failure; errors are shown, not thrown. */
+export async function loadConnectors(profile: string) {
+  const cached = state.connectors.get(profile);
+  if (cached === 'loading' || (cached && cached.error === null)) return;
   set({ connectors: new Map(state.connectors).set(profile, 'loading') });
   try {
     const result = await rpc().call('connectors', { profile });
