@@ -33,37 +33,59 @@ export function PeriodSwitch() {
   </div>;
 }
 
+/** A summary window: the period and whether sub-threads fold into their parents. */
+type UsageWindow = { days: Days; grouped: boolean };
+
+const sameWindow = (a: UsageWindow, b: UsageWindow) => a.days === b.days && a.grouped === b.grouped;
+
+/** "the last 7 days", naming the grouping too when two windows differ only by it. */
+const describe = (span: UsageWindow, withGrouping: boolean) =>
+  `the last ${span.days} days${withGrouping ? span.grouped ? ' with sub-threads' : ' for each thread' : ''}`;
+
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 export function UsagePage({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
   const days = usePeriod();
   const grouped = useGrouped();
+  const wanted: UsageWindow = { days, grouped };
   const [tab, setTab] = useState<Tab>('threads');
   // The summary on screen and the window it covers: a newer period's reply replaces it only when it lands.
-  const [shown, setShown] = useState<{ days: Days; grouped: boolean; view: SummaryView } | null>(null);
+  const [shown, setShown] = useState<UsageWindow & { view: SummaryView } | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // A failure belongs to the window it asked for, so it never speaks for a window picked after it.
+  const [error, setError] = useState<UsageWindow & { message: string } | null>(null);
   const latest = useRef(0);
   const focus = decodeURIComponent(/^thread\/([^/]+)$/.exec(subPath)?.[1] ?? '') || null;
   const load = useCallback(() => {
     // Only the newest request may change the page, so a slow reply for an earlier period never lands last.
     const request = ++latest.current;
+    setError(current => current && sameWindow(current, { days, grouped }) ? current : null);
     rpc.call('progress', {}).then(setProgress, () => {});
     return rpc.call('summary', { days, group: grouped }).then(
       view => { if (request === latest.current) { setShown({ days, grouped, view }); setError(null); } },
-      (reason: unknown) => { if (request === latest.current) setError(reason instanceof Error ? reason.message : String(reason)); });
+      (reason: unknown) => {
+        if (request !== latest.current) return;
+        const message = (reason instanceof Error ? reason.message : String(reason)).replace(/\.+$/, '');
+        setError({ days, grouped, message });
+      });
   }, [rpc, days, grouped]);
   useEffect(() => { void load(); }, [load]);
   useRealtime('usage-changed', load);
 
-  if (!shown) return <Shell>{error
-    ? <div className="cost-blank" role="alert">Usage could not load: {error} <Retry onRetry={load} /></div>
+  const failed = error && sameWindow(error, wanted) ? error : null;
+  if (!shown) return <Shell>{failed
+    ? <div className="cost-blank" role="alert">{sentence(describe(failed, false))} could not load: {failed.message}. <Retry onRetry={load} /></div>
     : <Loading />}</Shell>;
   const data = shown.view;
-  const pending = !error && (shown.days !== days || shown.grouped !== grouped);
-  const failure = error && <LoadError wanted={days} showing={shown.days} error={error} onRetry={load} />;
-  if (!data.firstAt) return <Shell pending={pending}>{failure}<Empty progress={progress} /></Shell>;
+  const pending = !failed && !sameWindow(shown, wanted);
+  const banner = failed
+    ? <LoadError wanted={failed} showing={shown} error={failed.message} onRetry={load} />
+    : pending && <p className="cost-status" role="status">
+      {sentence(describe(wanted, shown.grouped !== grouped))} are loading. Showing {describe(shown, shown.grouped !== grouped)} until then.</p>;
+  if (!data.firstAt) return <Shell pending={pending}>{banner}<Empty progress={progress} /></Shell>;
   return <Shell pending={pending}>
-    {failure}
+    {banner}
     {focus && <FocusedThread threadId={focus} />}
     <Summary data={data} days={shown.days} />
     <section className="cost-card cost-reveal" style={{ '--i': 2 } as React.CSSProperties}>
@@ -77,7 +99,7 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
       {tab === 'threads' && <ThreadTable lines={data.threads} data={data} focus={focus} grouped={shown.grouped} />}
       {tab === 'projects' && <ProjectTable lines={data.projects} />}
       {tab === 'models' && <ModelTable models={data.models} />}
-      {tab === 'insights' && <Insights days={days} grouped={grouped} />}
+      {tab === 'insights' && <Insights days={shown.days} grouped={shown.grouped} />}
       {tab === 'days' && <DayTable data={data} />}
     </section>
     <Footer data={data} progress={progress} />
@@ -87,13 +109,16 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
 const Shell = ({ children, pending = false }: { children: ReactNode; pending?: boolean }) =>
   <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}>{children}</div></div>;
 
-/** A failed reload over data that stays on screen: says which period failed and which one is still shown. */
-const LoadError = ({ wanted, showing, error, onRetry }: { wanted: Days; showing: Days; error: string; onRetry: () => Promise<unknown> }) =>
-  <div className="cost-alert" role="alert">
-    <span>{wanted === showing ? 'Usage could not refresh' : `The last ${wanted} days could not load`}: {error}.
-      {wanted !== showing && ` Showing the last ${showing} days.`}</span>
+/** A failed load over data that stays on screen: says which window failed and which one is still shown. */
+function LoadError({ wanted, showing, error, onRetry }: { wanted: UsageWindow; showing: UsageWindow; error: string; onRetry: () => Promise<unknown> }) {
+  const same = sameWindow(wanted, showing);
+  const withGrouping = wanted.grouped !== showing.grouped;
+  return <div className="cost-alert" role="alert">
+    <span>{same ? 'Usage could not refresh' : `${sentence(describe(wanted, withGrouping))} could not load`}: {error}.
+      {!same && ` Showing ${describe(showing, withGrouping)}.`}</span>
     <Retry onRetry={onRetry} />
   </div>;
+}
 
 function Summary({ data, days }: { data: SummaryView; days: number }) {
   const plans = data.plans.reduce((sum, plan) => sum + plan.usd, 0);
@@ -277,8 +302,14 @@ function FocusedThread({ threadId }: { threadId: string }) {
   const navigate = useBbNavigate();
   const [view, setView] = useState<ThreadView | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
-  const load = useCallback(() =>
-    rpc.call('thread', { threadId }).then(value => { setView(value); setFailed(false); }, () => setFailed(true)), [rpc, threadId]);
+  const latest = useRef(0);
+  // Only the newest request may land, so a slow reply for the previous thread never shows under this one.
+  const load = useCallback(() => {
+    const request = ++latest.current;
+    return rpc.call('thread', { threadId }).then(
+      value => { if (request === latest.current) { setView(value); setFailed(false); } },
+      () => { if (request === latest.current) setFailed(true); });
+  }, [rpc, threadId]);
   useEffect(() => { setView(undefined); setFailed(false); void load(); }, [load]);
   useRealtime('usage-changed', load);
   if (view === undefined && !failed) return null;
@@ -297,7 +328,7 @@ function FocusedThread({ threadId }: { threadId: string }) {
       <ul className="cost-focus-models">
         {view.models.map(model => <li key={`${model.provider}:${model.model}`}>
           <span className="cost-mono">{shortModel(model.model)}</span>
-          <span className="cost-muted">{count(model.requests)} requests</span>
+          <span className="cost-muted">{count(model.requests)} {model.requests === 1 ? 'request' : 'requests'}</span>
           <b>{model.priced ? usd(model.usd) : 'no price'}</b>
         </li>)}
       </ul>

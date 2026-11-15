@@ -16,9 +16,10 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
   const labelEvery = days.length > 45 ? 14 : days.length > 10 ? 7 : 1;
   const present = providers.filter(provider => days.some(day => (day.byProvider[provider] ?? 0) > 0));
   const shown = active === null ? null : days[active]!;
-  // One tab stop for the whole chart: the last focused column, else today. Arrow keys, Home and End move between days.
-  const [stop, setStop] = useState<number | null>(null);
-  const tabStop = stop !== null && stop < days.length ? stop : days.length - 1;
+  // One tab stop for the whole chart: the last focused day, else today. Arrow keys, Home and End move between days.
+  const [stop, setStop] = useState<string | null>(null);
+  const kept = stop === null ? -1 : days.findIndex(day => day.day === stop);
+  const tabStop = kept >= 0 ? kept : days.length - 1;
   const move = (event: KeyboardEvent<HTMLOListElement>) => {
     const columns = Array.from(event.currentTarget.children);
     const from = columns.indexOf(event.target as Element);
@@ -42,7 +43,7 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
           const segments = present.map(provider => [provider, day.byProvider[provider] ?? 0] as const).filter(([, value]) => value > 0);
           return <li key={day.day} data-today={day.day === today || undefined} data-active={active === index || undefined}
             tabIndex={index === tabStop ? 0 : -1} aria-label={`${dayLabel(day.day)}: ${usd(day.usd)}`}
-            onMouseEnter={() => setActive(index)} onFocus={() => { setActive(index); setStop(index); }} onBlur={() => setActive(null)}>
+            onMouseEnter={() => setActive(index)} onFocus={() => { setActive(index); setStop(day.day); }} onBlur={() => setActive(null)}>
             <span className="cost-stack" style={{ height: `${day.usd / top * 100}%` }}>
               {segments.map(([provider, value]) =>
                 <i key={provider} data-provider={provider} style={{ flexGrow: value / day.usd }} />)}

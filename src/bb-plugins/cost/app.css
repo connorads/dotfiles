@@ -17,14 +17,16 @@
 [data-part="cacheWrite"] { --cost-part: color-mix(in oklch, var(--cost-ink) 38%, transparent); }
 [data-part="cacheRead"] { --cost-part: color-mix(in oklch, var(--cost-ink) 18%, transparent); }
 
-/* The padding sits on the column: a container query cannot style the container it measures. */
+/* The padding sits on the column: a container query cannot style the container it measures, so breakpoints count the padding. */
 .cost-page { height: 100%; overflow-y: auto; container: cost / inline-size; }
 .cost-column {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; box-sizing: border-box; width: 100%; max-width: 1080px;
-  margin: 0 auto; padding: 20px 20px 32px; transition: opacity .15s;
+  margin: 0 auto; padding: 20px 20px 32px;
 }
-/* A period or grouping change waits for its reply over the old figures, dimmed. */
-.cost-column[data-pending] { opacity: .55; }
+.cost-column > * { transition: opacity .15s; }
+/* A period or grouping change waits for its reply over the old figures, dimmed; the status line above them stays readable. */
+.cost-column[data-pending] > :not(.cost-status) { opacity: .55; }
+.cost-status { margin: 0; padding: 0 4px; color: var(--foreground); font-size: 13px; }
 .cost-card { padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--card, var(--background)); }
 .cost-muted { color: var(--muted-foreground); }
 .cost-mono { font-family: var(--font-mono); font-size: 12.5px; }
@@ -36,8 +38,8 @@
   background: var(--surface-destructive, var(--card, var(--background))); font-size: 13px; }
 .cost-retry { margin-left: 4px; padding: 3px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--background);
   color: var(--foreground); font: inherit; font-size: 12px; cursor: pointer; }
-.cost-retry:hover:not(:disabled) { background: var(--accent); }
-.cost-retry:disabled { color: var(--muted-foreground); cursor: default; }
+.cost-retry:hover:not([aria-disabled="true"]) { background: var(--accent); }
+.cost-retry[aria-disabled="true"] { color: var(--muted-foreground); cursor: default; }
 .cost-retry:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 
 /* Header period switch */
@@ -171,14 +173,14 @@ button.cost-title:hover { text-decoration: underline; text-decoration-color: col
 @keyframes cost-shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) {
   .cost-reveal, .cost-row, .cost-stack, .cost-share > i, .cost-tooltip, .cost-loading > span { animation: none; }
-  .cost-column { transition: none; }
+  .cost-column > * { transition: none; }
 }
 
-@container cost (max-width: 760px) {
+@container cost (max-width: 800px) {
   .cost-summary { grid-template-columns: 1fr; }
   .cost-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@container cost (max-width: 520px) {
+@container cost (max-width: 560px) {
   .cost-column { padding: 14px 12px 24px; }
   .cost-tabs button { padding: 5px 7px; }
   .cost-hide-narrow { display: none; }
@@ -234,7 +236,14 @@ button.cost-title:hover { text-decoration: underline; text-decoration-color: col
 .cost-growth-area { fill: color-mix(in oklch, var(--foreground) 8%, transparent); }
 .cost-growth-axis { display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: 11px; }
 
-@container cost (max-width: 760px) {
+@container cost (max-width: 800px) {
   .cost-tiles-five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* An odd last tile spans the row, so no empty cell shows the grid's border colour. */
+  .cost-tiles-five > :last-child { grid-column: 1 / -1; }
   .cost-histogram { gap: 4px; }
+}
+/* After the base band rules, which share their specificity: the length-band table fits a 360 px phone. */
+@container cost (max-width: 560px) {
+  .cost-bands .cost-share { min-width: 16px; }
+  .cost-band { gap: 6px; }
 }

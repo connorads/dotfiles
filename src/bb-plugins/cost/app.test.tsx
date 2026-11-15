@@ -95,6 +95,59 @@ test('a first load that fails offers a retry that sends one request while it run
   } finally { slot.lifecycle.unmount(); }
 });
 
+test('after a failed period, picking another says it is loading rather than repeating the old failure', async () => {
+  const seven = deferred<SummaryView>();
+  const slot = await usagePage(async days => {
+    if (days === 90) throw new Error('Database busy.');
+    return days === 7 ? seven.promise : summary(days);
+  });
+  try {
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days at API prices'));
+    act(() => setPeriod(90));
+    expect((await slot.findByRole('alert')).textContent).toContain('The last 90 days could not load: Database busy. Showing the last 30 days.');
+    act(() => setPeriod(7));
+    expect(slot.queryByRole('alert')).toBeNull();
+    expect(slot.getByRole('status').textContent).toBe('The last 7 days are loading. Showing the last 30 days until then.');
+    expect(slot.container.querySelector('.cost-column')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => seven.resolve(summary(7)));
+    expect(eyebrow(slot)).toBe('Last 7 days at API prices');
+    expect(slot.queryByRole('status')).toBeNull();
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('insights follow the period on screen, not one that failed', async () => {
+  const asked: number[] = [];
+  const slot = await usagePage(async days => {
+    if (days === 90) throw new Error('Database busy');
+    return summary(days);
+  }, { insights: ({ days }) => { asked.push(days); return { points: [] }; } });
+  try {
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days at API prices'));
+    act(() => setPeriod(90));
+    await slot.findByRole('alert');
+    fireEvent.click(slot.getByRole('tab', { name: 'Insights' }));
+    await slot.findByText('No BB threads used a model in this period.');
+    expect(asked).toEqual([30]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('retry keeps keyboard focus while it runs and after it fails again', async () => {
+  const again = deferred<SummaryView>();
+  let calls = 0;
+  const slot = await usagePage(() => { calls += 1; return calls === 1 ? Promise.reject(new Error('Database busy')) : again.promise; });
+  try {
+    const button = await slot.findByRole('button', { name: 'Retry' });
+    act(() => button.focus());
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(button);
+    await act(async () => again.reject(new Error('Database busy')));
+    await waitFor(() => expect(button.textContent).toBe('Retry'));
+    expect(document.activeElement).toBe(button);
+    expect(slot.getByRole('alert').textContent).toContain('The last 30 days could not load: Database busy.');
+  } finally { slot.lifecycle.unmount(); }
+});
+
 test('insights that fail say so instead of reporting no threads', async () => {
   const slot = await usagePage(async days => summary(days), { insights: () => { throw new Error('Database busy'); } });
   try {

@@ -13,7 +13,7 @@ const unpriced = (view: ThreadView) => view.usd === 0 && view.unpricedTokens > 0
 export function describeThread(view: ThreadView): string {
   const { parts } = view;
   return [
-    `${unpriced(view) ? 'No list price' : `${usd(view.usd)} at API prices`} · ${count(view.requests)} requests`,
+    `${unpriced(view) ? 'No list price' : `${usd(view.usd)} at API prices`} · ${count(view.requests)} ${view.requests === 1 ? 'request' : 'requests'}`,
     `Cache read ${usd(parts.cacheRead)} · cache write ${usd(parts.cacheWrite)} · input ${usd(parts.input)} · output ${usd(parts.output)}`,
     ...view.models.slice(0, 4).map(model => `${shortModel(model.model)}: ${model.priced ? usd(model.usd) : 'no list price'}`),
     'Click for the breakdown',

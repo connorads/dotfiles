@@ -151,7 +151,7 @@ function Scatter({ points, metric }: { points: readonly InsightPoint[]; metric: 
       style={{ left: x(active[metric]), top: y(active.usd) }} data-edge={x(active[metric]) > width * 0.6 ? 'end' : undefined}>
       <strong>{active.title}</strong>
       <b>{usd(active.usd)}</b>
-      <span data-provider={active.provider}>{providerName[active.provider]}<em>{count(active.requests)} requests</em></span>
+      <span data-provider={active.provider}>{providerName[active.provider]}<em>{count(active.requests)} {active.requests === 1 ? 'request' : 'requests'}</em></span>
       <span className="cost-plain">Turns<em>{count(active.turns)}</em></span>
       <span className="cost-plain">Peak context<em>{tokens(active.peakContext)}</em></span>
       {active.subThreads > 0 && <span className="cost-plain">Sub-threads<em>{active.subThreads}</em></span>}
