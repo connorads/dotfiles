@@ -36,6 +36,24 @@ Before choosing files, check `bb plugin list --json` and
 The **Cost** plugin estimates API-price spend per thread and over time from provider logs.
 Read its [guide](../src/bb-plugins/cost/README.md).
 
+## Antigravity
+
+Mise owns the `agy` binary and its cross-platform lock entry.
+The managed `provider-acp.customAgents` setting registers `acp-antigravity`.
+BB launches `agy acp --process-per-session` so client-supplied HTTP MCP servers work.
+Antigravity keeps the single account's OAuth credentials in its native store.
+
+1. Run `mise install --locked agy` on the machine that runs the BB thread.
+2. Run `agy acp --login` in a terminal on that machine and complete Google sign-in.
+3. Run `bb-plugins apply` to register the managed provider.
+4. Run `bb provider models acp-antigravity --json` to check account model discovery.
+5. Open Agent Switcher with `⌘⇧M`, search **Antigravity** and choose an available model.
+
+The usage overlay has no Antigravity quota collector. Run `/usage` in the native CLI to inspect allowances.
+Separate home directories do not establish separate Keychain credentials.
+This setup uses one account and has no account-switching controls.
+The [ACP guide](https://antigravity.google/docs/ide/extensions/acp) documents transport and sign-in.
+
 ## Claude account connectors
 
 BB's global machine environment sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`.

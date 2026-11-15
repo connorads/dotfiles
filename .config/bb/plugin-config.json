@@ -1,4 +1,7 @@
 {
+  "provider-acp": {
+    "customAgents": "[{\"id\":\"antigravity\",\"displayName\":\"Antigravity\",\"command\":\"agy\",\"args\":[\"acp\",\"--process-per-session\"]}]"
+  },
   "provider-claude-code": {
     "memoryEnabled": false
   },
