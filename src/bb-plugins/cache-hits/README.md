@@ -21,8 +21,8 @@ Click the chip for the detail popover:
   price: 1.25× input for the 5-minute lifetime, 2× for the 1-hour one. Read
   prices vary by model, so the popover does not quote them.
 - Thread, last-request and miss totals.
-- One bar per request for the last 48: cached, written, re-sent on a miss, and
-  uncached input. The legend names only the parts the bars draw. Use Request
+- One bar per request for the last 48: cached, written, re-sent on a miss
+  (striped), and uncached input. The legend names only the parts the bars draw. Use Request
   details to select a request's tokens and miss cause with touch or keyboard;
   an outline marks its bar, and it stays on that request as new ones arrive. A
   gap before a bar marks compaction.

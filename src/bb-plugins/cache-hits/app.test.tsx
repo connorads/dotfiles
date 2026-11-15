@@ -263,3 +263,53 @@ test('Codex: the chart legend names uncached input and leaves out writes Codex n
     expect((await slot.findByRole('dialog')).querySelector('.ch-legend')?.textContent).toBe('cachedre-sentuncached');
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('a refresh in flight at unmount is not tried again after unmount', async () => {
+  const at = Date.now() - 60_000;
+  let fail: (error: Error) => void = () => {};
+  let calls = 0;
+  const slot = await render(() => calls++ === 0 ? claudeState(at) : new Promise<CacheState>((_, reject) => { fail = reject; }));
+  expect((await slot.findByRole('button')).textContent).toMatch(/^5[89]m$/);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+  slot.lifecycle.unmount();
+  fail(new Error('Sync store unavailable'));
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(calls).toBe(2);
+});
+
+test('when a newer refresh fails, a slower earlier refresh that succeeds still updates the chip', async () => {
+  const at = Date.now() - 60_000;
+  let release: (state: CacheState) => void = () => {};
+  let calls = 0;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (calls === 2) return new Promise<CacheState>(resolve => { release = resolve; });
+    throw new Error('Sync store unavailable');
+  });
+  try {
+    expect((await slot.findByRole('button')).textContent).toMatch(/^5[89]m$/);
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { release(claudeState(at, { invalidatedAt: Date.now() - 1000 })); await tick(); });
+    expect(slot.getByRole('button').textContent).toBe('cold');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Claude: time left never reads above the lifetime when the last request is stamped ahead of this clock', async () => {
+  const slot = await render(() => claudeState(Date.now() + 5_000));
+  try {
+    const chip = await slot.findByRole('button');
+    expect(chip.getAttribute('title')).toMatch(/^Cache expires in 1:00:00 \(1h lifetime\)\n/);
+    fireEvent.click(chip);
+    expect((await slot.findByRole('dialog')).querySelector('.ch-headline strong')?.textContent).toBe('1:00:00');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the chip name starts with the time it shows, so voice control can target it', async () => {
+  const slot = await render(() => claudeState(Date.now() - 2 * hour));
+  try {
+    expect(await slot.findByRole('button', { name: /^Prompt cache cold\. Cache expired/ })).toBeTruthy();
+  } finally { slot.lifecycle.unmount(); }
+});

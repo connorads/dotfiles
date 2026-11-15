@@ -55,6 +55,12 @@
 .ch-bars > li > i { display: block; flex: none; background: var(--ch-part); }
 .ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before { opacity: .5; }
 .ch-bars > li > i[data-part="read"], .ch-legend > [data-part="read"]::before { opacity: .75; }
+/* Hue alone does not tell parts apart (red and green match in lightness in dark), so a panel-coloured line
+   separates stacked parts and the re-sent part is striped. */
+.ch-bars > li > i:not(:last-child) { box-shadow: inset 0 -1px 0 var(--popover); }
+.ch-bars > li > i[data-part="miss"], .ch-legend > [data-part="miss"]::before {
+  background: repeating-linear-gradient(135deg, var(--ch-part) 0 2px, color-mix(in oklch, var(--ch-part) 40%, var(--popover)) 2px 3.5px);
+}
 /* Compaction shrinks the prompt on purpose: a gap before the bar marks the new baseline. */
 .ch-bars > li[data-reset] { margin-left: 4px; box-shadow: -3px 0 0 -1px color-mix(in oklch, var(--foreground) 30%, transparent); }
 .ch-axis-x { display: flex; justify-content: space-between; gap: 8px; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }

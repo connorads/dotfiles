@@ -37,7 +37,8 @@ function Status({ state, now, view }: { state: CacheState; now: number; view: Wa
     <p className="ch-note">The next request rewrites <b>{tokens(rebuild)}</b> tokens at {writeMultiplier(state.ttlMs)}× the input price.</p>
   </header>;
   return <header className="ch-status" data-level={view.level}>
-    <div className="ch-headline"><strong>{clock(expiry - now)}</strong><span>left of {ttl} · cold at {timeOfDay(expiry)}</span></div>
+    {/* Clock skew can put the last request a few seconds ahead of this machine; time left never shows above the lifetime. */}
+    <div className="ch-headline"><strong>{clock(Math.min(expiry - now, state.ttlMs))}</strong><span>left of {ttl} · cold at {timeOfDay(expiry)}</span></div>
     <Meter fraction={view.left} label="Cache lifetime left" />
     <p className="ch-note">Each request resets the {ttl} clock. Going cold rewrites <b>{tokens(rebuild)}</b> at {writeMultiplier(state.ttlMs)}× the input price.</p>
   </header>;
@@ -104,7 +105,7 @@ function Chart({ history }: { history: HistoryEntry[] }) {
   return <figure className="ch-chart">
     <figcaption>
       <span>Last {history.length} request{history.length === 1 ? '' : 's'}</span>
-      <span className="ch-legend">
+      <span className="ch-legend" aria-hidden="true">
         {legend.filter(([, , shown]) => shown).map(([part, label]) => <span key={part} data-part={part}>{label}</span>)}
       </span>
     </figcaption>
