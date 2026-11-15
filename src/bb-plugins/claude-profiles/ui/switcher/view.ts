@@ -98,13 +98,13 @@ export function stepEffort(levels: readonly Effort[], current: Effort | null, di
   return next ?? null;
 }
 
-// Opens above a chip in the lower half of the window and below one in the upper half, inside the window.
+// Opens on the side of the chip with more room, inside the window.
 export function placement(anchor: { top: number; bottom: number; left: number } | null, viewport: { width: number; height: number }, width = 420, gap = 8) {
   if (!anchor) return null;
   const left = Math.max(12, Math.min(anchor.left, viewport.width - width - 12));
   // The dialog scrolls inside the room on its side, so its last rows never sit past the window edge.
   const cap = (room: number) => Math.min(560, Math.floor(viewport.height * 0.8), room - 12);
-  return anchor.top > viewport.height / 2 ? { left, bottom: viewport.height - anchor.top + gap, maxHeight: cap(anchor.top - gap) }
+  return anchor.top > viewport.height - anchor.bottom ? { left, bottom: viewport.height - anchor.top + gap, maxHeight: cap(anchor.top - gap) }
     : { left, top: anchor.bottom + gap, maxHeight: cap(viewport.height - anchor.bottom - gap) };
 }
 

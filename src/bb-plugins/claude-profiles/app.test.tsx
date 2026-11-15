@@ -118,3 +118,23 @@ test('the badge bridge loads thread accounts and reloads when an account changes
   await waitFor(() => expect(getBadges().get('t1')?.label).toBe('alpha'));
   expect(app.contentScripts.map(script => script.id)).toEqual(expect.arrayContaining(['account-badges', 'hide-native-picker']));
 });
+
+test('a switcher reopened while an account change runs shows that change and sends no second one', async () => {
+  let release = (_value: { currentId: string }) => {};
+  const { slot } = await render(thread, { choose: () => new Promise<{ currentId: string }>(resolve => { release = resolve; }) });
+  const chip = await slot.findByRole('button', { name: /^Switch model:/ });
+  fireEvent.click(chip);
+  fireEvent.click(await slot.findByRole('button', { name: 'Work' }));
+  await slot.findByText('Switching to Work…');
+  fireEvent.keyDown(slot.getByRole('dialog', { name: 'Switch model' }), { key: 'Escape' });
+  await waitFor(() => expect(slot.queryByRole('dialog', { name: 'Switch model' })).toBeNull());
+  fireEvent.click(chip);
+  const reopened = await slot.findByRole('dialog', { name: 'Switch model' });
+  expect(slot.getByText('Switching to Work…')).toBeTruthy();
+  expect(reopened.getAttribute('aria-busy')).toBe('true');
+  fireEvent.click(await slot.findByRole('button', { name: 'Work' }));
+  fireEvent.keyDown(reopened, { key: 'w' });
+  expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose')).toHaveLength(1);
+  release({ currentId: 'work' });
+  await waitFor(() => expect(slot.queryByText('Switching to Work…')).toBeNull());
+});

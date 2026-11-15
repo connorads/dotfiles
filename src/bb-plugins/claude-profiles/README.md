@@ -41,7 +41,11 @@ else. Disabling the plugin removes the rule.
 | A letter | Use the account with that letter |
 | **⌘S** | Star or unstar the current model |
 | **/** | Search every model |
-| **Enter** or **Escape** | Close, also while a change still runs; a later failure shows as a notification |
+| **Enter** or **Escape** | Close, also while a change still runs; a later failure shows as a notification. **Enter** on a focused button presses it instead |
+
+One change runs at a time per composer. A change that takes a moment dims the
+switcher and names itself, such as **Switching to Trove…**. Reopening the
+switcher while it runs shows the same change and accepts no second one.
 
 Each row shows its slot, provider, name and effort as dots, one per level the
 model supports. **auto** means the model's default effort. A model supplied

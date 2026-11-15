@@ -3,6 +3,13 @@
   background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; font-size: 13.5px;
   box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; outline: none; scrollbar-width: thin; }
 .sw-dialog[data-anchored] { position: fixed; margin: 0; inset: auto; }
+/* Edge shadows show that a height-capped switcher scrolls; overlay scrollbars stay hidden until used. */
+.sw-dialog { --sw-bg: var(--popover, var(--card)); --sw-edge: color-mix(in oklch, var(--foreground) 18%, transparent);
+  background: linear-gradient(var(--sw-bg) 40%, transparent) top / 100% 28px no-repeat local,
+    linear-gradient(transparent, var(--sw-bg) 60%) bottom / 100% 28px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--sw-edge), transparent) top / 100% 12px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--sw-edge), transparent) bottom / 100% 12px no-repeat scroll,
+    var(--sw-bg); }
 .sw-dialog[open] { animation: sw-enter 140ms var(--sw-ease); }
 .sw-dialog::backdrop { background: #0000003d; }
 @keyframes sw-enter { from { opacity: 0; transform: translateY(6px) scale(.985); } }
@@ -68,6 +75,13 @@
 .sw-group { margin: 0; padding: 8px 10px 3px; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
 .sw-empty { margin: 0; padding: 10px; color: var(--muted-foreground); font-size: 12.5px; }
 .sw-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 6px 8px 2px; font-size: 11px; color: var(--muted-foreground); }
+/* A running change dims what it blocks and names itself, so a press that seems ignored is explained. */
+.sw-dialog[data-working] button { cursor: progress; }
+/* Quick changes finish before the delay, so arrow-key stepping does not flicker. */
+.sw-dialog[data-working] :is(.sw-row:not([data-unavailable]), .sw-account:not([data-target]), .sw-search-row) { opacity: .55; transition: opacity 120ms 250ms; }
+.sw-account[data-target] { outline: 1px dashed var(--muted-foreground); outline-offset: -1px; }
+.sw-working { margin: 6px 4px 0; padding: 6px 8px; font-size: 12px; color: var(--muted-foreground); animation: sw-appear 120ms 250ms backwards; }
+@keyframes sw-appear { from { opacity: 0; } }
 .sw-error { margin: 6px 4px 0; padding: 6px 8px; border-radius: 8px; font-size: 12px; color: var(--destructive-text, var(--destructive));
   background: color-mix(in oklch, var(--destructive) 10%, transparent); }
 

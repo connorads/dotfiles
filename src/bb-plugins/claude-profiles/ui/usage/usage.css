@@ -1,6 +1,6 @@
-/* BB's muted-foreground sits a few points from foreground, so secondary text gets its own mix. */
+/* BB's muted-foreground sits a few points from foreground, so secondary text gets its own mix, kept above 4.5:1 contrast. */
 .au-overlay {
-  --au-subtle: color-mix(in oklch, var(--muted-foreground) 64%, transparent);
+  --au-subtle: color-mix(in oklch, var(--muted-foreground) 85%, transparent);
   --au-track: color-mix(in oklch, var(--foreground) 12%, transparent);
   --au-fill: color-mix(in oklch, var(--foreground) 58%, transparent);
   --au-critical-text: color-mix(in oklch, var(--destructive) 70%, var(--foreground));

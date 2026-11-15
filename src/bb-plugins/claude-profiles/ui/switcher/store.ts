@@ -24,6 +24,11 @@ export function open(composer: PluginComposerApi) {
   opened = { key: composer.key, anchor: rect(anchors.get(composer.key)) }; notify();
 }
 export function close() { opened = null; notify(); }
+// A resize moves the chip, so an anchored switcher reads its chip's position again.
+export function reanchor() {
+  if (!opened?.anchor) return;
+  opened = { ...opened, anchor: rect(anchors.get(opened.key)) ?? opened.anchor }; notify();
+}
 export function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function openedState() { return opened; }
 

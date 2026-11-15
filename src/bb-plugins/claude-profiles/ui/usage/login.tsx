@@ -26,6 +26,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
   const [error, setError] = useState<string | null>(null);
   // A refused terminal is not a failed sign-in: the login keeps running and Show terminal clears this.
   const [hidden, setHidden] = useState(false);
+  const [ended, setEnded] = useState(false);
   const [canCheck, setCanCheck] = useState(false);
   const [checking, setChecking] = useState(false);
   const generation = useRef(0);
@@ -61,6 +62,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     setError(null);
     setHidden(false);
+    setEnded(false);
     setCanCheck(false);
     setChecking(false);
     setTerminalId(null);
@@ -84,7 +86,10 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
             if (!alive) return;
             if (terminal.status === 'exited') {
               setHidden(false);
+              setEnded(true);
               if (terminal.exitCode !== 0) throw new Error('Sign-in did not finish. Check the terminal, then try again.');
+              // A finished sign-in has nothing left to show in its terminal.
+              setTerminalId(null);
               setMessage(opencode ? 'Authorisation completed. Checking Go usage…' : 'Signed in. Refreshing usage…');
               if (opencode) {
                 setCanCheck(true);
@@ -104,6 +109,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
           } catch (cause) {
             if (!alive) return;
             setHidden(false);
+            setEnded(true);
             setMessage(`${name} sign-in stopped.`);
             setError(cause instanceof Error ? cause.message : 'Could not check sign-in.');
           }
@@ -131,7 +137,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     <p role="status">{message}</p>
     {codex && method === 'device' && <p className="au-login-hint">
       Device codes need device code sign-in turned on in ChatGPT security settings.</p>}
-    {hidden && <p role="alert">BB could not show the sign-in terminal. Use Show terminal to try again.</p>}
+    {hidden && <p role="alert">{ended ? 'BB could not show the sign-in terminal. It has closed.' : 'BB could not show the sign-in terminal. Use Show terminal to try again.'}</p>}
     {error && <p role="alert">{error}</p>}
     <div className="au-login-actions">
       {canCheck && <button type="button" className="au-login-button" disabled={checking}

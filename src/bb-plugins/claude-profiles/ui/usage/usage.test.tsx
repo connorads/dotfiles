@@ -558,6 +558,27 @@ test('a terminal refused twice keeps the login and ends signed in without a retr
   expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
 });
 
+test('a finished sign-in drops Show terminal and a failed one says its terminal has closed', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const done = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }), 'usage.inspection': async () => inspect() },
+    sdk: { terminals: { get: async () => terminal(0) } }, openTerminal: () => true,
+  });
+  await waitFor(() => expect(done.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'));
+  expect(done.queryByRole('button', { name: 'Show terminal' })).toBeNull();
+  done.lifecycle.unmount();
+  let opens = 0;
+  const failed = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }) },
+    sdk: { terminals: { get: async () => terminal(1) } }, openTerminal: () => opens++ === 0,
+  });
+  await waitFor(() => expect(failed.getByRole('status').textContent).toBe('Claude sign-in stopped.'));
+  fireEvent.click(failed.getByRole('button', { name: 'Show terminal' }));
+  await waitFor(() => expect(failed.getAllByRole('alert').map(alert => alert.textContent)).toContain('BB could not show the sign-in terminal. It has closed.'));
+});
+
 test('a machine disconnect while the terminal is hidden shows one alert', async () => {
   const app = await load();
   const page = app.navPanels.find(panel => panel.id === 'claude-login');

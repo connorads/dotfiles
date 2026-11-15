@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useComposer, useComposers, useRealtime, useRpc, useSdk } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { toast } from 'sonner';
@@ -6,14 +6,18 @@ import type { KeyedProfile, rpcContract } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { createController, type Controller } from './controller.ts';
-import { close, open, openedState, subscribe, type Anchor } from './store.ts';
+import { close, open, openedState, reanchor, subscribe, type Anchor } from './store.ts';
 import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
 import './switcher.css';
 
 type Accounts = { supported: boolean; profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
 const controllers = new Map<string, Controller>();
+// One change at a time per composer, across switcher instances: closing and reopening must not start a second change.
+type Work = { done: Promise<void>; status: string; accountId: string | null };
+const running = new Map<string, Work>();
 const message = (error: unknown) => error instanceof Error ? error.message : 'Could not update the selection.';
 const isTyping = (target: EventTarget | null) => target instanceof HTMLElement && Boolean(target.closest('input, textarea, select'));
+const isButton = (target: EventTarget | null) => target instanceof HTMLElement && Boolean(target.closest('button'));
 
 export function useController(composer: PluginComposerApi) {
   const sdk = useSdk();
@@ -52,11 +56,11 @@ const GLYPHS: Record<string, string> = { 'claude-code': '✳', codex: '◎', 'ac
 export function Glyph({ providerId }: { providerId: string }) {
   return <span className="sw-glyph" data-provider={providerId} aria-hidden="true">{GLYPHS[providerId] ?? providerId.charAt(0).toUpperCase()}</span>;
 }
-function Dots({ levels, effort }: { levels: readonly Effort[]; effort: Effort | null }) {
+function Dots({ id, levels, effort }: { id: string; levels: readonly Effort[]; effort: Effort | null }) {
   if (!levels.length) return null;
-  if (!effort) return <span className="sw-auto">auto</span>;
+  if (!effort) return <span id={id} className="sw-auto" aria-label="Effort auto">auto</span>;
   const filled = levels.indexOf(effort) + 1;
-  return <span className="sw-dots" title={effort} aria-label={`Effort ${effort}`}>{levels.map((level, index) => <i key={level} data-on={index < filled || undefined} />)}</span>;
+  return <span id={id} className="sw-dots" title={effort} aria-label={`Effort ${effort}`}>{levels.map((level, index) => <i key={level} data-on={index < filled || undefined} />)}</span>;
 }
 function PlugIcon() {
   return <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -78,7 +82,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const rpc = useRpc<typeof rpcContract>();
   const dialog = useRef<HTMLDialogElement>(null);
   const search = useRef<HTMLInputElement>(null);
-  const working = useRef(false);
   const mounted = useRef(false);
   const [view, setView] = useState<'quick' | 'search'>('quick');
   const [query, setQuery] = useState('');
@@ -90,11 +93,12 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const [quotas, setQuotas] = useState<Record<string, Usage>>({});
   const [connectors, setConnectors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [work, setWork] = useState<Work | null>(() => running.get(composer.key) ?? null);
   const [error, setError] = useState<string | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const providerId = composer.selection?.providerId;
   const generation = useRef(0);
+  const ids = useId();
 
   const loadModels = useCallback(async () => {
     const request = ++generation.current;
@@ -135,22 +139,37 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   }, []);
   useEffect(() => { if (view === 'search') search.current?.focus(); else dialog.current?.focus(); }, [view]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  // The window size sets the anchored dialog's height cap, so a resize re-measures it.
-  const [, setResized] = useState(0);
+  // A resize moves the chip and changes the room beside it, so the anchored dialog re-measures both.
   useEffect(() => {
-    const resized = () => setResized(count => count + 1);
-    window.addEventListener('resize', resized);
-    return () => window.removeEventListener('resize', resized);
+    window.addEventListener('resize', reanchor);
+    return () => window.removeEventListener('resize', reanchor);
   }, []);
 
   // The switcher can close while work runs, so a late failure becomes a toast instead of a lost alert.
-  async function run(work: () => Promise<unknown>) {
-    if (working.current) return;
-    working.current = true; setBusy(true); setError(null);
-    try { await work(); }
+  async function run(task: () => Promise<unknown>, status = 'Applying…', accountId: string | null = null) {
+    if (running.has(composer.key)) return;
+    let finish = () => {};
+    const entry: Work = { done: new Promise<void>(resolve => { finish = resolve; }), status, accountId };
+    running.set(composer.key, entry); setWork(entry); setError(null);
+    try { await task(); }
     catch (cause) { if (mounted.current) setError(message(cause)); else toast.error(message(cause)); }
-    finally { working.current = false; if (mounted.current) setBusy(false); }
+    finally { running.delete(composer.key); finish(); if (mounted.current) setWork(null); }
   }
+  // A switcher reopened while an earlier one's change runs waits for it, then shows its result.
+  const adopted = useRef(work);
+  useEffect(() => {
+    const earlier = adopted.current;
+    if (!earlier) return;
+    let alive = true;
+    void earlier.done.then(() => {
+      if (!alive) return;
+      adopted.current = null;
+      setWork(current => current === earlier ? null : current);
+      void loadAccounts(); void loadModels();
+    });
+    return () => { alive = false; };
+  }, [loadAccounts, loadModels]);
+  const busy = work !== null;
 
   const current = { providerId, model: composer.selection?.model, reasoningLevel: composer.selection?.reasoningLevel,
     serviceTier: composer.selection?.serviceTier, daybreak };
@@ -170,7 +189,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     const { currentId } = await rpc.call('choose', { threadId, profileId: profile.id });
     await loadAccounts();
     if (currentId !== profile.id && threadId !== null) toast(`${profile.label} from the next turn`);
-  });
+  }, `Switching to ${profile.label}…`, profile.id);
   const star = (setup: Setup, saved: Favourite | undefined) => run(async () => {
     if (saved) await rpc.call('favourites.remove', { id: saved.id });
     else {
@@ -180,7 +199,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         ...(live && current.reasoningLevel ? { reasoningLevel: current.reasoningLevel } : {}) });
     }
     await loadModels();
-  });
+  }, 'Saving favourites…');
   // A dimmed favourite says why instead of ignoring the press; touch has no hover title.
   const pick = (row: Row) => { if (row.reason) setError(row.reason); else void apply(row.setup); };
   const changeEffort = (direction: -1 | 1) => {
@@ -240,7 +259,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       if (key === 'ArrowDown' || key === 'ArrowUp') {
         event.preventDefault();
         setHighlight(index => results.length ? (index + (key === 'ArrowDown' ? 1 : results.length - 1)) % results.length : 0);
-      } else if (key === 'Enter') {
+      } else if (key === 'Enter' && !isButton(event.target)) {
         event.preventDefault();
         const result = results[highlight];
         if (result) void run(async () => { await controller.apply(result.setup); await loadModels(); setView('quick'); setQuery(''); });
@@ -248,7 +267,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       return;
     }
     if (isTyping(event.target)) return;
-    if (key === 'Enter') { event.preventDefault(); onClose(); }
+    if (key === 'Enter') { if (!isButton(event.target)) { event.preventDefault(); onClose(); } }
     else if (key === '/') { event.preventDefault(); setView('search'); setHighlight(0); }
     else if (key === 'ArrowLeft' || key === 'ArrowRight') { event.preventDefault(); changeEffort(key === 'ArrowLeft' ? -1 : 1); }
     else if (key === 'ArrowUp' || key === 'ArrowDown') {
@@ -270,7 +289,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   function quickRow(row: Row) {
     return <li key={row.id} className="sw-row" data-selected={row.selected || undefined} data-unavailable={row.reason ? true : undefined}>
       <button type="button" className="sw-select" aria-current={row.selected || undefined} aria-disabled={Boolean(row.reason) || undefined}
-        aria-label={`${row.slot ? `${row.slot}. ` : ''}${row.name}`} title={row.reason ?? row.provider}
+        aria-label={`${row.slot ? `${row.slot}. ` : ''}${row.name}`} aria-describedby={row.levels.length ? `${ids}-effort-${row.id}` : undefined} title={row.reason ?? row.provider}
         onClick={() => pick(row)}>
         <kbd className="sw-slot" aria-hidden="true">{row.slot ?? ''}</kbd>
         <Glyph providerId={row.providerId} />
@@ -279,14 +298,14 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       </button>
       {row.selected && tiers.length > 0 && <button type="button" className="sw-pill" aria-pressed={Boolean(composer.selection?.serviceTier && composer.selection.serviceTier !== 'default')} onClick={toggleFast}>Fast</button>}
       {row.selected && daybreakOption && !daybreakOption.fixed && composer.scope.kind === 'thread' && <button type="button" className="sw-pill" aria-pressed={Boolean(daybreak)} onClick={toggleDaybreak}>Daybreak</button>}
-      <Dots levels={row.levels} effort={row.effort} />
+      <Dots id={`${ids}-effort-${row.id}`} levels={row.levels} effort={row.effort} />
       <span className="sw-check" aria-hidden="true">{row.selected ? '✓' : ''}</span>
     </li>;
   }
   function searchRow(result: Result, index: number) {
     const saved = favourites.find(f => f.slot === result.slot);
     return <li key={result.id} className="sw-row" data-highlight={index === highlight || undefined}>
-      <button type="button" className="sw-select" aria-label={result.name} onMouseEnter={() => setHighlight(index)}
+      <button type="button" id={`${ids}-${index}`} className="sw-select" aria-label={result.name} onMouseEnter={() => setHighlight(index)}
         onClick={() => { void run(async () => { await controller.apply(result.setup); await loadModels(); setView('quick'); setQuery(''); }); }}>
         <span className="sw-slot" aria-hidden="true" /><Glyph providerId={result.setup.providerId} />
         <span className="sw-name">{result.name}</span>
@@ -299,16 +318,19 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
 
   const offset = (group: number) => groups.slice(0, group).reduce((total, g) => total + g.results.length, 0);
   const position = placement(anchor, { width: window.innerWidth, height: window.innerHeight });
-  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} style={position ?? undefined} aria-label="Switch model" aria-busy={busy || loading} onKeyDown={keyboard}
+  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} style={position ?? undefined} aria-label="Switch model" aria-busy={busy || loading} data-working={busy || undefined} onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); }}
     onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     {view === 'quick' ? <>
       {loading ? <p role="status" className="sw-empty">Loading…</p> : <ul className="sw-list" aria-label="Favourites">{rows.map(quickRow)}</ul>}
       {chips.length > 0 && <div className="sw-accounts" role="group" aria-label="Claude account">
         {chips.map(chip => <button type="button" key={chip.profile.id} className="sw-account" aria-pressed={chip.selected}
-          aria-keyshortcuts={chip.profile.key ?? undefined} aria-label={`${chip.profile.label}${chip.pending ? ', next turn' : ''}${chip.connectors ? ', connectors on' : ''}`}
+          data-target={work?.accountId === chip.profile.id || undefined} aria-keyshortcuts={chip.profile.key ?? undefined}
+          aria-label={`${chip.profile.label}${chip.pending ? ', next turn' : ''}${chip.connectors ? ', connectors on' : ''}`}
+          aria-describedby={`${ids}-quota-${chip.profile.id}`}
           onClick={() => { if (!chip.selected) void chooseAccount(chip.profile); }}>
           <AccountBadge chip={chip} usage={quotas[chip.profile.id]} />
+          <span id={`${ids}-quota-${chip.profile.id}`} hidden>{ring(quotas[chip.profile.id]).label}</span>
           {chip.connectors && <span className="sw-plug" title="Connectors on" aria-hidden="true"><PlugIcon /></span>}
           <span className="sw-account-name">{chip.profile.label}</span>
           {chip.pending && <span className="sw-next">next turn</span>}
@@ -320,9 +342,11 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         <span aria-hidden="true">⌕</span><span>All models</span><kbd>/</kbd></button>
     </> : <>
       <div className="sw-search"><span aria-hidden="true">⌕</span>
-        <input ref={search} aria-label="Search models" placeholder="Search models" value={query} autoComplete="off" spellCheck={false}
+        <input ref={search} role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls={`${ids}-results`}
+          aria-activedescendant={results[highlight] ? `${ids}-${highlight}` : undefined}
+          aria-label="Search models" placeholder="Search models" value={query} autoComplete="off" spellCheck={false}
           onChange={event => { setQuery(event.target.value); setHighlight(0); }} /></div>
-      <div className="sw-results">
+      <div className="sw-results" id={`${ids}-results`}>
         {groups.map((group, groupIndex) => <section key={group.providerId} aria-label={group.provider}>
           <h3 className="sw-group">{group.provider}</h3>
           {group.error ? <p className="sw-empty" title={group.error}>Not available on this machine</p>
@@ -330,8 +354,9 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         </section>)}
         {!groups.length && <p className="sw-empty">No models match.</p>}
       </div>
-      <div className="sw-foot" aria-hidden="true"><span><kbd>↵</kbd> use</span><span><kbd>⌘S</kbd> favourite</span><span><kbd>esc</kbd> back</span></div>
+      <div className="sw-foot" aria-hidden="true">{results.length > 0 && <><span><kbd>↵</kbd> use</span><span><kbd>⌘S</kbd> favourite</span></>}<span><kbd>esc</kbd> back</span></div>
     </>}
+    {work && <p role="status" className="sw-working">{work.status}</p>}
     {error && <p role="alert" className="sw-error">{error}</p>}
   </dialog>;
 }

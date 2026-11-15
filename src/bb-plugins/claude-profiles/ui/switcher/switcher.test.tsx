@@ -34,7 +34,7 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; hangChoose?: boolean; chooseResult?: Promise<never> };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; chooseResult?: Promise<never> };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
@@ -53,7 +53,6 @@ function render(options: Options = {}) {
       accounts: () => options.unsupported ? { supported: false, profiles: [], currentId: 'default', pendingId: null }
         : { supported: true, profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
       choose: input => {
-        if (options.hangChoose) return new Promise(() => {});
         if (options.chooseResult) return options.chooseResult;
         if (options.running) pendingId = input.profileId === currentId ? null : input.profileId;
         else currentId = input.profileId;
@@ -168,14 +167,14 @@ test('slash opens search across providers; Enter uses the highlighted model and 
   try {
     await slot.findByRole('button', { name: '2. Opus' });
     fireEvent.keyDown(dialog(slot), { key: '/' });
-    const input = await slot.findByRole('textbox', { name: 'Search models' });
+    const input = await slot.findByRole('combobox', { name: 'Search models' });
     fireEvent.change(input, { target: { value: 'lun' } });
     await slot.findByRole('button', { name: 'Luna' });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('luna'));
     await slot.findByRole('button', { name: /Luna/ });
     fireEvent.keyDown(dialog(slot), { key: '/' });
-    fireEvent.keyDown(await slot.findByRole('textbox', { name: 'Search models' }), { key: 'Escape' });
+    fireEvent.keyDown(await slot.findByRole('combobox', { name: 'Search models' }), { key: 'Escape' });
     await slot.findByRole('button', { name: 'All models' });
   } finally { slot.lifecycle.unmount(); }
 });
@@ -185,7 +184,7 @@ test('Cmd+S in search stars the highlighted model', async () => {
   try {
     await slot.findByRole('button', { name: '2. Opus' });
     fireEvent.keyDown(dialog(slot), { key: '/' });
-    const input = await slot.findByRole('textbox', { name: 'Search models' });
+    const input = await slot.findByRole('combobox', { name: 'Search models' });
     fireEvent.change(input, { target: { value: 'haiku' } });
     await slot.findByRole('button', { name: 'Haiku' });
     fireEvent.keyDown(input, { key: 's', ctrlKey: true });
@@ -220,7 +219,10 @@ test('Escape and Enter close the switcher', async () => {
 });
 
 test('Escape and a backdrop click still close the switcher while an account switch hangs', async () => {
-  const slot = render({ hangChoose: true });
+  // One change runs per composer across switchers, so the hung change ends before the next test.
+  let release = () => {};
+  const slot = render({ chooseResult: new Promise<never>((_resolve, reject) => { release = () => reject(new Error('Released')); }) });
+  const shown = vi.spyOn(toast, 'error').mockImplementation(() => '');
   try {
     fireEvent.click(await slot.findByRole('button', { name: 'Trove' }));
     await waitFor(() => expect(calls(slot, 'choose')).toHaveLength(1));
@@ -228,6 +230,27 @@ test('Escape and a backdrop click still close the switcher while an account swit
     fireEvent.keyDown(dialog(slot), { key: 'Escape' });
     fireEvent.pointerDown(dialog(slot));
     expect(closed - before).toBe(2);
+  } finally {
+    slot.lifecycle.unmount(); release();
+    await waitFor(() => expect(shown).toHaveBeenCalledWith('Released'));
+    shown.mockRestore();
+  }
+});
+
+test('Enter on a focused button presses it instead of closing the switcher', async () => {
+  const slot = render();
+  try {
+    const trove = await slot.findByRole('button', { name: 'Trove' });
+    const before = closed;
+    expect(fireEvent.keyDown(trove, { key: 'Enter' })).toBe(true);
+    fireEvent.keyDown(dialog(slot), { key: '/' });
+    const input = await slot.findByRole('combobox', { name: 'Search models' });
+    fireEvent.change(input, { target: { value: 'haiku' } });
+    const star = await slot.findByRole('button', { name: 'Favourite Haiku' });
+    expect(fireEvent.keyDown(star, { key: 'Enter' })).toBe(true);
+    expect(closed - before).toBe(0);
+    expect(slot.inspection.composer.selection?.model).toBe('opus');
+    expect(input.getAttribute('aria-activedescendant')).toBe(slot.getByRole('button', { name: 'Haiku' }).id);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -284,7 +307,7 @@ test('search lists Daybreak variants that can be starred directly', async () => 
   try {
     await slot.findByRole('button', { name: '1. Sol' });
     fireEvent.keyDown(dialog(slot), { key: '/' });
-    const input = await slot.findByRole('textbox', { name: 'Search models' });
+    const input = await slot.findByRole('combobox', { name: 'Search models' });
     fireEvent.change(input, { target: { value: 'luna daybreak' } });
     fireEvent.change(input, { target: { value: 'daybreak' } });
     fireEvent.click(await slot.findByRole('button', { name: 'Favourite Luna · Daybreak' }));
