@@ -34,7 +34,11 @@ function Overlay() {
     }
   }, [rpc, threadId]);
   useRealtime(CHANGED, () => { void refresh(); });
-  useEffect(() => { setState(null); setThread(null); setLoadError(null); void refresh(); }, [refresh]);
+  useEffect(() => {
+    setState(null); setThread(null); setLoadError(null); void refresh();
+    // Closing or switching thread drops loads still in flight, so they cannot fill the next picker.
+    return () => { latest.current++; };
+  }, [refresh]);
   if (!threadId) return null;
   return <AwsPicker rpc={rpc} threadId={threadId} state={state} thread={thread} loadError={loadError}
     refresh={refresh} onClose={() => setOpen(null)} />;

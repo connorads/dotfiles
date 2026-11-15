@@ -228,3 +228,87 @@ it('returns the highlight to the current choice when the filter is cleared', asy
   expect(overlay.getByRole('option', { selected: true }).textContent).toContain('acme-prod/ReadOnly');
   act(() => { void command.run({ threadId: 't13' } as never); });
 });
+
+it('does not load for a closed picker when its sign-in ends, so another thread keeps its own choice', async () => {
+  const threads: Record<string, ThreadView> = {
+    t14: { choice: { profile: 'acme-prod/ReadOnly', region: null }, region: null, lastFetch: null },
+    t15: { choice: { profile: 'acme-dev', region: null }, region: 'eu-west-1', lastFetch: null },
+  };
+  let finish = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      ...handlers().rpc,
+      thread: (input: unknown) => threads[(input as { threadId: string }).threadId]!,
+      signIn: () => new Promise(resolve => { finish = () => resolve({ ok: true }); }),
+    },
+  });
+  act(() => { void command.run({ threadId: 't14' } as never); });
+  fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
+  act(() => { void command.run({ threadId: 't14' } as never); });
+  act(() => { void command.run({ threadId: 't15' } as never); });
+  await overlay.findByRole('option', { selected: true, name: /acme-dev/ });
+  await act(async () => finish());
+  const threadCalls = () => overlay.rpcCalls.filter(c => c.method === 'thread').map(c => (c.input as { threadId: string }).threadId);
+  expect(threadCalls()).toEqual(['t14', 't15']);
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'setChoice')?.input)
+    .toEqual({ threadId: 't15', choice: { profile: 'acme-dev', region: null } }));
+});
+
+it('drops a load still running at close, so Enter on reopen keeps the current choice', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
+  let release = () => {};
+  let first = true;
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      ...h.rpc,
+      thread: () => {
+        if (!first) return h.rpc.thread();
+        first = false;
+        return new Promise(resolve => { release = () => resolve(h.rpc.thread()); });
+      },
+    },
+  });
+  act(() => { void command.run({ threadId: 't16' } as never); });
+  await overlay.findByRole('dialog', { name: 'AWS profile' });
+  act(() => { void command.run({ threadId: 't16' } as never); });
+  await act(async () => release());
+  act(() => { void command.run({ threadId: 't16' } as never); });
+  await overlay.findByRole('option', { selected: true, name: /acme-dev/ });
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+});
+
+it('keeps focus in the filter after a click on Sign in, so Enter picks the highlighted row', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-prod/ReadOnly', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't17' } as never); });
+  const signIn = await overlay.findByRole('button', { name: 'Sign in with Granted' });
+  expect(fireEvent.mouseDown(signIn)).toBe(false);
+  fireEvent.click(signIn);
+  await waitFor(() => expect(overlay.rpcCalls.filter(c => c.method === 'signIn')).toHaveLength(1));
+  const filter = overlay.getByLabelText('Filter profiles');
+  fireEvent.keyDown(filter, { key: 'ArrowUp' });
+  fireEvent.keyDown(filter, { key: 'Enter', isComposing: true });
+  expect(overlay.rpcCalls.some(c => c.method === 'setChoice' && (c.input as { choice: { profile: string } }).choice.profile === 'acme-dev')).toBe(false);
+  fireEvent.keyDown(filter, { key: 'Enter' });
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+  expect(overlay.rpcCalls.filter(c => c.method === 'signIn')).toHaveLength(1);
+});
+
+it('shows when credentials were last used only for the current profile', async () => {
+  const h = handlers();
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      ...h.rpc,
+      thread: () => ({ choice: { profile: 'acme-dev', region: null }, region: 'eu-west-1', lastFetch: { profile: 'acme-prod/ReadOnly', at: Date.now() - 5 * 60_000 } }),
+    },
+  });
+  act(() => { void command.run({ threadId: 't18' } as never); });
+  const dialog = await overlay.findByRole('dialog', { name: 'AWS profile' });
+  await waitFor(() => expect(dialog.querySelector('.aws-header')?.textContent).toContain('acme-dev · eu-west-1'));
+  expect(dialog.querySelector('.aws-header')?.textContent).not.toContain('used');
+  act(() => { void command.run({ threadId: 't18' } as never); });
+});

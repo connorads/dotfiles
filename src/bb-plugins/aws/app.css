@@ -7,27 +7,33 @@
 .aws-panel > .aws-rows:has(> .aws-row:nth-of-type(6)) {
   flex-shrink: 1; min-height: calc(var(--aws-row) * 3.5 + 4px); overflow-y: auto; overscroll-behavior: contain;
 }
-/* Touch: 44 px targets, as for chips, and no key hints. */
+/* Touch: 44 px targets, as for chips, and no key hints. Inputs at 16 px, below which iOS zooms on focus. */
 @media (pointer: coarse) {
   .bbp-popover-panel.aws-panel { --aws-row: 44px; }
   .aws-keys { display: none; }
+  .aws-panel .aws-signin button, .aws-panel .aws-problem button { height: var(--aws-row); }
+  .aws-panel .aws-input { min-width: 160px; font-size: 16px; }
+  /* The region field keeps its whole placeholder at 16 px, so on phones the two fields stack. */
+  .aws-panel .aws-fields { flex-wrap: wrap; }
+  .aws-panel .aws-region { flex: 1 0 192px; }
 }
+/* Sizes follow BB's text tokens, which grow on phones, so names never read smaller than the text beside them. */
 
 .aws-header {
   display: flex; align-items: baseline; gap: 8px; padding: 12px 14px;
   border-bottom: 1px solid var(--border-seam, var(--border));
 }
-.aws-header h2 { flex: 1 0 auto; margin: 0; white-space: nowrap; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
+.aws-header h2 { flex: 1 0 auto; margin: 0; white-space: nowrap; font: 600 calc(var(--text-sm, 13px) + 1px)/1.2 var(--font-sans); color: var(--foreground); }
 .aws-muted { min-width: 0; overflow-wrap: anywhere; color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .aws-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
 
 .aws-fields { display: flex; gap: 6px; padding: 8px 12px 4px; }
 .aws-input {
   flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 6px;
-  border: 1px solid var(--border); background: transparent; color: var(--foreground); font: 13px var(--font-sans);
+  border: 1px solid var(--border); background: transparent; color: var(--foreground); font: var(--text-sm, 13px) var(--font-sans);
 }
 .aws-input:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
-.aws-region { flex: 0 0 150px; font-family: var(--font-mono); font-size: 12px; }
+.aws-region { flex: 0 0 150px; font-family: var(--font-mono); font-size: var(--text-xs, 12px); }
 
 .aws-rows { display: grid; padding: 4px; }
 .aws-row {
@@ -37,7 +43,7 @@
 .aws-row[data-active] { background: var(--state-hover); }
 .aws-row:disabled { cursor: progress; }
 .aws-row[aria-current="true"] .aws-row-label { font-weight: 600; }
-.aws-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
+.aws-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: calc(var(--text-xs, 12px) + .5px); }
 .aws-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .aws-row-aside[data-warn] { color: var(--warning-text, var(--warning)); }
 
@@ -47,7 +53,7 @@
 }
 .aws-signin button, .aws-problem button {
   height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent;
-  background: var(--foreground); color: var(--background); font: 500 12px/1 var(--font-sans); cursor: pointer;
+  background: var(--foreground); color: var(--background); font: 500 var(--text-xs, 12px)/1 var(--font-sans); cursor: pointer;
 }
 .aws-signin button[aria-disabled="true"], .aws-problem button[aria-disabled="true"] { opacity: .6; cursor: default; }
 

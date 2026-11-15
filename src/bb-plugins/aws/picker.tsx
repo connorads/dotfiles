@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { PluginRpcClient } from '@get-bb/plugin-sdk/app';
 import type { rpcContract, StateView, ThreadView } from './contracts.ts';
@@ -58,7 +58,11 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
 
   useEffect(() => { setRegion(thread?.choice.region ?? ''); }, [thread?.choice.region]);
   useEffect(() => { setIndex(i => Math.min(i, Math.max(rows.length - 1, 0))); }, [rows.length]);
-  useEffect(() => { input.current?.focus(); return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    alive.current = true;
+    input.current?.focus();
+    return () => { alive.current = false; };
+  }, []);
   // A control that leaves while focused, such as Retry after a load or Sign in after a sign-in, drops focus
   // to the page. Return it to the filter, so arrows and Enter keep working and keys stay in the dialog.
   useEffect(() => {
@@ -93,7 +97,7 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
       if (row.warn) await refresh();
       else onClose();
     } catch (cause) {
-      setError(message(cause));
+      setError(`Could not save the choice: ${message(cause)}`);
     } finally {
       setSaving(null);
     }
@@ -111,13 +115,14 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
     } finally {
       setSigningIn(false);
     }
-    await refresh();
+    // A sign-in can end after the picker closes; a load then would fill the next picker with this one's thread.
+    if (alive.current) await refresh();
   }
 
   async function retry() {
     if (retrying) return;
     setRetrying(true);
-    await refresh();
+    if (alive.current) await refresh();
     setRetrying(false);
     setRetries(n => n + 1);
   }
@@ -128,9 +133,13 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
+    const target = event.target as HTMLElement;
+    // A click on plain text focuses the dialog itself; typing and Enter still belong to the filter.
+    if (target === event.currentTarget) input.current?.focus({ preventScroll: true });
     if (event.key === 'ArrowDown') { event.preventDefault(); move(1); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); move(-1); }
-    else if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') {
+    // Enter on a focused button presses it; an IME's Enter only ends the composition.
+    else if (event.key === 'Enter' && target.tagName !== 'BUTTON' && !event.nativeEvent.isComposing) {
       event.preventDefault();
       const row = rows[index];
       if (row) void pick(row);
@@ -142,7 +151,9 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   const listId = `${ids}-rows`;
   const regionErrorId = `${ids}-region-error`;
   // aria-disabled, not disabled: a disabled button drops focus out of the dialog.
-  const retryButton = <button type="button" aria-disabled={retrying || undefined} onClick={() => void retry()}>
+  // A mouse press keeps focus in the filter, as for rows, so Enter afterwards picks the highlighted row.
+  const keepFocus = (event: MouseEvent) => event.preventDefault();
+  const retryButton = <button type="button" aria-disabled={retrying || undefined} onMouseDown={keepFocus} onClick={() => void retry()}>
     {retrying ? 'Retrying…' : 'Retry'}
   </button>;
   // Keyed by retries, so a retry that fails again redraws the alert and is announced again.
@@ -155,11 +166,14 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
       <h2>AWS profile</h2>
       {thread && <span className="aws-muted">
         {current ? `${current}${thread.region ? ` · ${thread.region}` : ''}` : 'off'}
-        {thread.lastFetch && ` · used ${ago(thread.lastFetch.at, Date.now())}`}
+        {/* A fetch for an earlier profile says nothing about the current one. */}
+        {thread.lastFetch && current && thread.lastFetch.profile === current && ` · used ${ago(thread.lastFetch.at, Date.now())}`}
       </span>}
     </header>
     <div className="aws-fields">
-      <input ref={input} className="aws-input" placeholder="Filter profiles" aria-label="Filter profiles"
+      <input ref={input} className="aws-input" aria-label="Filter profiles"
+        // The count tells a long list from a short one when the cut falls between rows.
+        placeholder={state?.profiles.length ? `Filter ${state.profiles.length} profile${state.profiles.length === 1 ? '' : 's'}` : 'Filter profiles'}
         role="combobox" aria-autocomplete="list" aria-expanded={rows.length > 0} aria-controls={listId}
         aria-activedescendant={rows[index] ? rowId(index) : undefined}
         value={filter} onChange={event => {
@@ -174,7 +188,7 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
     </div>
     {regionError && <p id={regionErrorId} className="aws-error aws-region-error" role="alert">{regionError}</p>}
     {!state ? loadError ? problem(`${retries ? 'Still could not' : 'Could not'} load AWS profiles: ${loadError}`)
-        : <p className="aws-empty">Loading…</p>
+        : <p className="aws-empty" role="status">Loading…</p>
       : <>
         {state.error && problem(state.error)}
         {/* Rows never take focus: it stays in the filter, which points at the active row, so Enter
@@ -184,18 +198,18 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
             className="aws-row" data-active={i === index ? '' : undefined} aria-selected={i === index}
             aria-current={row.profile === current || undefined} disabled={!!saving}
             onMouseDown={event => event.preventDefault()} onMouseEnter={() => setIndex(i)} onClick={() => void pick(row)}>
-            <span className="aws-row-label">{row.label}</span>
+            <span className="aws-row-label" title={row.label}>{row.label}</span>
             <span className="aws-row-aside" data-warn={row.warn && saving?.profile !== row.profile ? '' : undefined}>
               {saving?.profile === row.profile ? 'saving…' : row.aside}{row.profile === current && ' ✓'}
             </span>
           </button>)}
         </div>
-        {rows.length === 0 && <p className="aws-empty">No profile matches.</p>}
+        {rows.length === 0 && state.profiles.length > 0 && <p className="aws-empty">No profile matches.</p>}
         {!state.error && state.profiles.length === 0 && <p className="aws-empty">No profiles in the AWS config file.</p>}
       </>}
     {selected && selected.status !== 'ok' && <p className="aws-signin">
-      {selected.name} needs a sign-in.{' '}
-      <button type="button" aria-disabled={waiting || undefined} onClick={() => void signIn(selected.name)}>
+      This profile needs a sign-in.{' '}
+      <button type="button" aria-disabled={waiting || undefined} onMouseDown={keepFocus} onClick={() => void signIn(selected.name)}>
         {waiting ? 'Waiting for browser…' : 'Sign in with Granted'}
       </button>
     </p>}
