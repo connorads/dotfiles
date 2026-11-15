@@ -14,7 +14,11 @@ beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
 });
-afterEach(cleanup);
+// The open thread is module state that outlives a render, so a test that fails while open must not leave it open.
+afterEach(() => {
+  if (document.querySelector('dialog[open]')) act(() => { void command.run({ threadId: 'close' } as never); });
+  cleanup();
+});
 
 const state: StateView = {
   profiles: [
@@ -50,9 +54,9 @@ it('filters, then picks a profile with Enter', async () => {
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
   act(() => { void command.run({ threadId: 't1' } as never); });
   const dialog = await overlay.findByRole('dialog', { name: 'AWS profile' });
-  await overlay.findByRole('button', { name: /acme-dev/ });
+  await overlay.findByRole('option', { name: /acme-dev/ });
   fireEvent.change(overlay.getByLabelText('Filter profiles'), { target: { value: 'dev' } });
-  expect(overlay.queryByRole('button', { name: /Off/ })).toBeNull();
+  expect(overlay.queryByRole('option', { name: /Off/ })).toBeNull();
   fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
   await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
   await waitFor(() => expect(dialog.isConnected).toBe(false));
@@ -62,9 +66,9 @@ it('sends a region override and offers sign-in for an expired profile', async ()
   const h = handlers();
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
   act(() => { void command.run({ threadId: 't2' } as never); });
-  await overlay.findByRole('button', { name: /acme-prod/ });
+  await overlay.findByRole('option', { name: /acme-prod/ });
   fireEvent.change(overlay.getByLabelText('Region override'), { target: { value: 'us-east-1' } });
-  fireEvent.click(overlay.getByRole('button', { name: /acme-prod/ }));
+  fireEvent.click(overlay.getByRole('option', { name: /acme-prod/ }));
   await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-prod/ReadOnly', region: 'us-east-1' }));
   fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
   await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ profile: 'acme-prod/ReadOnly' }));
@@ -75,9 +79,9 @@ it('rejects a malformed region before calling the server', async () => {
   const h = handlers();
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
   act(() => { void command.run({ threadId: 't3' } as never); });
-  await overlay.findByRole('button', { name: /acme-dev/ });
+  await overlay.findByRole('option', { name: /acme-dev/ });
   fireEvent.change(overlay.getByLabelText('Region override'), { target: { value: 'ireland' } });
-  fireEvent.click(overlay.getByRole('button', { name: /acme-dev/ }));
+  fireEvent.click(overlay.getByRole('option', { name: /acme-dev/ }));
   expect(await overlay.findByRole('alert')).toHaveProperty('textContent', 'ireland is not an AWS region name.');
   expect(overlay.rpcCalls.some(c => c.method === 'setChoice')).toBe(false);
   act(() => { void command.run({ threadId: 't3' } as never); });
@@ -91,7 +95,7 @@ it('shows a failed load with a retry instead of loading forever', async () => {
   expect((await overlay.findByRole('alert')).textContent).toContain('Could not load AWS profiles: offline');
   fail = false;
   fireEvent.click(overlay.getByRole('button', { name: 'Retry' }));
-  await overlay.findByRole('button', { name: /acme-dev/ });
+  await overlay.findByRole('option', { name: /acme-dev/ });
   expect(overlay.queryByRole('alert')).toBeNull();
   act(() => { void command.run({ threadId: 't4' } as never); });
 });
@@ -100,7 +104,7 @@ it('shows a failed sign-in request as an alert', async () => {
   const h = handlers();
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { ...h.rpc, signIn: () => { throw new Error('host unreachable'); } } });
   act(() => { void command.run({ threadId: 't5' } as never); });
-  fireEvent.click(await overlay.findByRole('button', { name: /acme-prod/ }));
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-prod/ }));
   fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
   expect((await overlay.findByRole('alert')).textContent).toContain('host unreachable');
   act(() => { void command.run({ threadId: 't5' } as never); });
@@ -113,9 +117,9 @@ it('saves one choice at a time', async () => {
     rpc: { ...h.rpc, setChoice: (input: unknown) => new Promise(resolve => { finish = () => resolve(h.rpc.setChoice(input)); }) },
   });
   act(() => { void command.run({ threadId: 't6' } as never); });
-  fireEvent.click(await overlay.findByRole('button', { name: /acme-dev/ }));
-  await waitFor(() => expect(overlay.getByRole('button', { name: /Off/ })).toHaveProperty('disabled', true));
-  fireEvent.click(overlay.getByRole('button', { name: /Off/ }));
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-dev/ }));
+  await waitFor(() => expect(overlay.getByRole('option', { name: /Off/ })).toHaveProperty('disabled', true));
+  fireEvent.click(overlay.getByRole('option', { name: /Off/ }));
   fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
   expect(overlay.rpcCalls.filter(c => c.method === 'setChoice')).toHaveLength(1);
   act(() => finish());
@@ -127,8 +131,100 @@ it('opens on the current choice, so Enter keeps it', async () => {
   h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
   act(() => { void command.run({ threadId: 't7' } as never); });
-  await overlay.findByRole('button', { name: /acme-dev/ });
+  await overlay.findByRole('option', { name: /acme-dev/ });
   fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
   await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'setChoice')?.input)
     .toEqual({ threadId: 't7', choice: { profile: 'acme-dev', region: null } }));
+});
+
+it('picks the highlighted row with Enter after a mouse pick, as focus stays in the filter', async () => {
+  const h = handlers();
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't8' } as never); });
+  const filter = overlay.getByLabelText('Filter profiles');
+  const prod = await overlay.findByRole('option', { name: /acme-prod/ });
+  fireEvent.mouseEnter(prod);
+  expect(fireEvent.mouseDown(prod)).toBe(false);
+  fireEvent.click(prod);
+  await overlay.findByRole('button', { name: 'Sign in with Granted' });
+  fireEvent.keyDown(filter, { key: 'ArrowUp' });
+  const active = overlay.getByRole('option', { selected: true });
+  expect(filter.getAttribute('aria-activedescendant')).toBe(active.id);
+  expect(active.textContent).toContain('acme-dev');
+  fireEvent.keyDown(filter, { key: 'Enter' });
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+});
+
+it('does not close a reopened picker when an earlier save ends', async () => {
+  const h = handlers();
+  let finish = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, setChoice: (input: unknown) => new Promise(resolve => { finish = () => resolve(h.rpc.setChoice(input)); }) },
+  });
+  act(() => { void command.run({ threadId: 't9' } as never); });
+  fireEvent.click(await overlay.findByRole('option', { name: /acme-dev/ }));
+  act(() => { void command.run({ threadId: 't9' } as never); });
+  expect(overlay.queryByRole('dialog')).toBeNull();
+  act(() => { void command.run({ threadId: 't9' } as never); });
+  const reopened = await overlay.findByRole('dialog', { name: 'AWS profile' });
+  await act(async () => finish());
+  await waitFor(() => expect(h.current()).toEqual({ profile: 'acme-dev', region: null }));
+  expect(reopened.isConnected).toBe(true);
+  act(() => { void command.run({ threadId: 't9' } as never); });
+});
+
+it('chooses Off despite a malformed region, and clears the region error on edit', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't10' } as never); });
+  const dev = await overlay.findByRole('option', { name: /acme-dev/ });
+  const region = overlay.getByLabelText('Region override');
+  fireEvent.change(region, { target: { value: 'ireland' } });
+  fireEvent.click(dev);
+  expect((await overlay.findByRole('alert')).textContent).toBe('ireland is not an AWS region name.');
+  expect(region.getAttribute('aria-invalid')).toBe('true');
+  fireEvent.change(region, { target: { value: 'irelan' } });
+  expect(overlay.queryByRole('alert')).toBeNull();
+  fireEvent.click(overlay.getByRole('option', { name: /Off/ }));
+  await waitFor(() => expect(h.current()).toEqual({ profile: null, region: null }));
+});
+
+it('keeps Off and a retry when the AWS config cannot be read', async () => {
+  const h = handlers();
+  let error: string | null = 'Could not read ~/.aws/config: EACCES';
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, state: () => error ? { profiles: [], error } : state },
+  });
+  act(() => { void command.run({ threadId: 't11' } as never); });
+  expect((await overlay.findByRole('alert')).textContent).toContain('EACCES');
+  expect(overlay.getByRole('option', { name: /Off/ })).toBeTruthy();
+  error = null;
+  fireEvent.click(overlay.getByRole('button', { name: 'Retry' }));
+  await overlay.findByRole('option', { name: /acme-dev/ });
+  expect(overlay.queryByRole('alert')).toBeNull();
+  act(() => { void command.run({ threadId: 't11' } as never); });
+});
+
+it('says so when a retry fails again', async () => {
+  const h = handlers();
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { ...h.rpc, state: () => { throw new Error('offline'); } } });
+  act(() => { void command.run({ threadId: 't12' } as never); });
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not load AWS profiles: offline');
+  fireEvent.click(overlay.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(overlay.getByRole('alert').textContent).toBe('Still could not load AWS profiles: offline'));
+  act(() => { void command.run({ threadId: 't12' } as never); });
+});
+
+it('returns the highlight to the current choice when the filter is cleared', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-prod/ReadOnly', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: h.rpc });
+  act(() => { void command.run({ threadId: 't13' } as never); });
+  await overlay.findByRole('option', { name: /acme-prod/ });
+  const filter = overlay.getByLabelText('Filter profiles');
+  fireEvent.change(filter, { target: { value: 'a' } });
+  fireEvent.change(filter, { target: { value: '' } });
+  expect(overlay.getByRole('option', { selected: true }).textContent).toContain('acme-prod/ReadOnly');
+  act(() => { void command.run({ threadId: 't13' } as never); });
 });

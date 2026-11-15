@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { definePluginApp, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import { CHANGED, type rpcContract, type StateView, type ThreadView } from './contracts.ts';
 import { AwsPicker } from './picker.tsx';
@@ -16,15 +16,20 @@ function Overlay() {
   const [state, setState] = useState<StateView | null>(null);
   const [thread, setThread] = useState<ThreadView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** Numbers each load, so only the latest one lands: a slow reply for another thread cannot fill the picker. */
+  const latest = useRef(0);
   /** Never rejects: a failed load shows in the picker with a retry. */
   const refresh = useCallback(async () => {
     if (!threadId) return;
+    const load = ++latest.current;
     try {
       const [nextState, nextThread] = await Promise.all([rpc.call('state', null), rpc.call('thread', { threadId })]);
+      if (load !== latest.current) return;
       setState(nextState);
       setThread(nextThread);
       setLoadError(null);
     } catch (cause) {
+      if (load !== latest.current) return;
       setLoadError(cause instanceof Error ? cause.message : String(cause));
     }
   }, [rpc, threadId]);

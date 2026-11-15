@@ -1,9 +1,17 @@
 /* BB theme tokens only. Pop-up shell from @bb-plugins/chip. */
-.bbp-popover-panel.aws-panel { overflow: auto; max-height: 70vh; }
-/* A long row list scrolls on its own, so the filter and footer stay in view. It keeps four rows; when even
-   that does not fit, the whole panel scrolls. */
+/* The popover opens 10% from the top, so it may take the rest of the window less a margin. */
+.bbp-popover-panel.aws-panel { --aws-row: 30px; overflow: auto; max-height: min(720px, calc(90vh - 12px)); }
+/* A long row list scrolls on its own, so the filter, the sign-in box and the footer stay in view. It keeps
+   three and a half rows, the half row showing that it scrolls; when even that does not fit, the whole panel scrolls. */
 .aws-panel > * { flex-shrink: 0; }
-.aws-panel > .aws-rows:has(> .aws-row:nth-of-type(6)) { flex-shrink: 1; min-height: 136px; overflow-y: auto; overscroll-behavior: contain; }
+.aws-panel > .aws-rows:has(> .aws-row:nth-of-type(6)) {
+  flex-shrink: 1; min-height: calc(var(--aws-row) * 3.5 + 4px); overflow-y: auto; overscroll-behavior: contain;
+}
+/* Touch: 44 px targets, as for chips, and no key hints. */
+@media (pointer: coarse) {
+  .bbp-popover-panel.aws-panel { --aws-row: 44px; }
+  .aws-keys { display: none; }
+}
 
 .aws-header {
   display: flex; align-items: baseline; gap: 8px; padding: 12px 14px;
@@ -23,12 +31,12 @@
 
 .aws-rows { display: grid; padding: 4px; }
 .aws-row {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 4px 8px;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: var(--aws-row); padding: 4px 8px;
   border: 0; border-radius: 7px; background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer;
 }
 .aws-row[data-active] { background: var(--state-hover); }
 .aws-row:disabled { cursor: progress; }
-.aws-row[aria-pressed="true"] .aws-row-label { font-weight: 600; }
+.aws-row[aria-current="true"] .aws-row-label { font-weight: 600; }
 .aws-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
 .aws-row-aside { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .aws-row-aside[data-warn] { color: var(--warning-text, var(--warning)); }
@@ -37,13 +45,18 @@
   margin: 8px 12px; padding: 10px 12px; border-radius: 8px; font-size: var(--text-sm, 13px);
   border: 1px solid var(--border); background: var(--surface-recessed, transparent); color: var(--foreground);
 }
-.aws-signin button, .aws-load-error button {
+.aws-signin button, .aws-problem button {
   height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent;
   background: var(--foreground); color: var(--background); font: 500 12px/1 var(--font-sans); cursor: pointer;
 }
-.aws-signin button:disabled, .aws-load-error button:disabled { opacity: .6; cursor: default; }
+.aws-signin button[aria-disabled="true"], .aws-problem button[aria-disabled="true"] { opacity: .6; cursor: default; }
 
 .aws-error { margin: 0; padding: 6px 14px; color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
+.aws-region-error { padding: 2px 12px 0; text-align: right; }
+.aws-input[aria-invalid="true"] { border-color: var(--destructive); }
+.aws-problem { display: flex; align-items: center; gap: 8px; padding: 0 14px 6px 0; }
+.aws-problem .aws-error { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.aws-problem button { flex-shrink: 0; }
 
 .aws-footer {
   display: grid; gap: 4px; padding: 8px 14px;
