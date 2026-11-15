@@ -102,7 +102,10 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
             if (terminal.status === 'disconnected') throw new Error('The sign-in machine disconnected. Reconnect it, then try again.');
             timer = setTimeout(() => { void check(); }, 1000);
           } catch (cause) {
-            if (alive) setError(cause instanceof Error ? cause.message : 'Could not check sign-in.');
+            if (!alive) return;
+            setHidden(false);
+            setMessage(`${name} sign-in stopped.`);
+            setError(cause instanceof Error ? cause.message : 'Could not check sign-in.');
           }
         }
         void check();
@@ -135,10 +138,8 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         onClick={() => { const current = generation.current; void refreshGoAccess(() => generation.current === current); }}>Refresh Go usage</button>}
       {opencode && canCheck && <a className="au-login-button" href="https://opencode.ai/console" target="_blank" rel="noreferrer">Open Go usage in Console</a>}
       {terminalId && <button type="button" className="au-login-button" onClick={() => {
-        void navigate.experimental_openTerminal({ terminalId }).then(shown => {
-          setHidden(false);
-          if (!shown) setError('The terminal has exited or is unavailable. Try signing in again.');
-        }).catch(() => setError('BB could not show the sign-in terminal.'));
+        // A refusal says nothing about the login itself; polling reports an exit or disconnect.
+        void navigate.experimental_openTerminal({ terminalId }).then(shown => setHidden(!shown), () => setHidden(true));
       }}>Show terminal</button>}
       {error && <button type="button" className="au-login-button" onClick={() => setAttempt(value => value + 1)}>Try again</button>}
       {codex && <button type="button" className="au-login-button"

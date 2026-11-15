@@ -43,6 +43,19 @@ test('a second click while a save runs sends no second save', async () => {
     rpc: { accounts: listed(), 'connectors.get': async () => state({}), 'connectors.account.set': () => new Promise(() => {}) } });
   const summit = await slot.findByRole('switch', { name: 'Summit connectors' });
   summit.click(); summit.click();
-  await waitFor(() => expect(summit.hasAttribute('disabled')).toBe(true));
+  await waitFor(() => expect(summit.getAttribute('aria-disabled')).toBe('true'));
+  expect(summit.textContent).toBe('Saving…');
+  slot.getByRole('switch', { name: 'Trove connectors' }).click();
   expect(slot.inspection.rpcCalls.filter(call => call.method === 'connectors.account.set')).toHaveLength(1);
+});
+
+test('a saved change shows On even when the reload after it fails', async () => {
+  let reads = 0;
+  const slot = renderSlot({ component: ConnectorSettings }, {}, {
+    rpc: { accounts: listed(), 'connectors.get': async () => { if (reads++ > 0) throw new Error('Machine offline'); return state({}); },
+      'connectors.account.set': async () => ({ restarted: 0 }) } });
+  const summit = await slot.findByRole('switch', { name: 'Summit connectors' });
+  summit.click();
+  expect((await slot.findByRole('alert')).textContent).toBe('Machine offline');
+  expect(slot.getByRole('switch', { name: 'Summit connectors' }).getAttribute('aria-checked')).toBe('true');
 });

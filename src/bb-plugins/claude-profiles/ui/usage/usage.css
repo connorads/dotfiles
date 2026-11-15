@@ -51,7 +51,7 @@
 .au-account-name { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm, 13px); font-weight: 600; color: var(--foreground); }
 .au-plan { font-size: 11px; font-weight: 500; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--muted-foreground); white-space: nowrap; }
 .au-email { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs, 12px); color: var(--au-subtle); }
-.au-account-message [data-tone="warning"] { color: var(--warning); }
+.au-account-message [data-tone="warning"] { color: var(--warning-text, var(--warning)); }
 .au-account-message { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--text-xs, 12px); color: var(--au-subtle); margin-top: -4px; }
 .au-login-button { padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; color: var(--foreground); font-size: var(--text-xs, 12px); cursor: pointer; white-space: nowrap; }
 .au-login-button:hover:not(:disabled) { background: var(--accent); }
@@ -64,7 +64,7 @@
 .au-login-page .au-login-hint p { margin: 12px 0; }
 .au-login-page [role="status"] { margin-top: 16px; font-size: 14px; }
 .au-login-hint { color: var(--muted-foreground); font-size: var(--text-xs, 12px); margin-top: 8px; }
-.au-login-page [role="alert"] { color: var(--destructive); margin-top: 12px; }
+.au-login-page [role="alert"] { color: var(--destructive-text, var(--destructive)); margin-top: 12px; }
 .au-login-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
 /* Fixed side columns keep bars and figures aligned across accounts, which each own a grid. */
@@ -74,7 +74,7 @@
 .au-row-label { color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .au-row-value { text-align: right; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .au-row-detail { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--au-subtle); font-variant-numeric: tabular-nums; }
-.au-row [data-tone="warning"] { color: var(--warning); }
+.au-row [data-tone="warning"] { color: var(--warning-text, var(--warning)); }
 .au-row [data-tone="critical"] { color: var(--au-critical-text); }
 
 .au-meter { position: relative; display: block; height: 6px; border-radius: 999px; background: var(--au-track); }
@@ -127,7 +127,7 @@
 }
 
 .au-reading { margin: 10px 0 0; font-size: 12px; color: var(--au-subtle); line-height: 1.5; overflow-wrap: anywhere; }
-.au-reading[data-stale] { color: var(--warning); }
+.au-reading[data-stale] { color: var(--warning-text, var(--warning)); }
 .au-resets { margin-top: 10px; }
 .au-reset-availability { display: block; font-size: 11px; color: var(--au-subtle); }
 .au-resets-held { display: flex; align-items: center; gap: 8px; color: var(--au-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -141,7 +141,7 @@
 .au-resets-expiry { color: var(--au-subtle); font-variant-numeric: tabular-nums; }
 .au-resets-note { grid-column: 2 / -1; font-size: var(--text-xs, 12px); color: var(--au-subtle); overflow-wrap: anywhere; }
 .au-resets-foot { grid-column: 1 / -1; margin: 0; }
-.au-resets-note[data-stale] { color: var(--warning); }
+.au-resets-note[data-stale] { color: var(--warning-text, var(--warning)); }
 
 /* Narrow cards put the reading on one line and give the bar the full width below it. */
 @container account (max-width: 440px) {

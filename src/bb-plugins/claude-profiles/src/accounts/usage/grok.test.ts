@@ -11,11 +11,12 @@ async function withCli(mode: string, run: (command: string[], record: string) =>
   const script = join(dir, 'cli.mjs');
   await writeFile(script, `
     import { createInterface } from 'node:readline';
-    import { writeFileSync } from 'node:fs';
+    import { renameSync, writeFileSync } from 'node:fs';
     const requests = [];
-    process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(record)}, JSON.stringify({requests, cwd: process.cwd(), args: process.argv.slice(2), pid: process.pid})); if (${JSON.stringify(mode)} !== 'stubborn') process.exit(0); });
+    const save = () => { writeFileSync(${JSON.stringify(record + '.tmp')}, JSON.stringify({requests, cwd: process.cwd(), args: process.argv.slice(2), pid: process.pid})); renameSync(${JSON.stringify(record + '.tmp')}, ${JSON.stringify(record)}); };
+    process.on('SIGTERM', () => { save(); if (${JSON.stringify(mode)} !== 'stubborn') process.exit(0); });
     createInterface({input:process.stdin}).on('line', line => {
-      const request = JSON.parse(line); requests.push(request);
+      const request = JSON.parse(line); requests.push(request); save();
       if (request.method === 'initialize') process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,result:{protocolVersion:1}})+'\\n');
       else if (${JSON.stringify(mode)} === 'oversize') process.stdout.write('x'.repeat(1_048_577));
       else if (['timeout', 'stubborn'].includes(${JSON.stringify(mode)})) { process.stdout.write(JSON.stringify({jsonrpc:'2.0',method:'notification',params:{}})+'\\n'); }
@@ -25,6 +26,11 @@ async function withCli(mode: string, run: (command: string[], record: string) =>
   `);
   try { await run([process.execPath, script], record); }
   finally { await rm(dir, { recursive: true, force: true }); }
+}
+
+async function readRecord(record: string): Promise<{ requests: { method: string }[] } | null> {
+  try { return JSON.parse(await readFile(record, 'utf8')); }
+  catch { return null; }
 }
 
 test('Grok collects shared quota through ACP without creating a session and reaps the CLI', async () => {
@@ -46,7 +52,8 @@ test('Grok collects shared quota through ACP without creating a session and reap
 for (const mode of ['auth', 'missing', 'timeout', 'stubborn', 'oversize']) {
   test(`Grok reports ${mode} as unavailable and reaps the CLI`, async () => {
     await withCli(mode, async (command, record) => {
-      const result = await collectGrokUsage({ command, timeoutMs: ['timeout', 'stubborn'].includes(mode) ? 200 : 2000 });
+      // The timeout leaves room for a slow CLI start, so the stub has installed its SIGTERM recorder before it is stopped.
+      const result = await collectGrokUsage({ command, timeoutMs: ['timeout', 'stubborn'].includes(mode) ? 3000 : 5000 });
       assert.equal(result.usage.status, 'error');
       assert.equal(result.observedAt, null);
       assert.equal(JSON.stringify(result).includes('secret-token'), false);
@@ -72,13 +79,16 @@ test('Grok preserves reported quota overage', async () => {
 test('Grok cancellation stops and reaps an in-flight CLI', async () => {
   await withCli('timeout', async (command, record) => {
     const controller = new AbortController();
-    const cancel = setTimeout(() => controller.abort(), 200);
-    try {
-      const result = await collectGrokUsage({ command, signal: controller.signal });
-      assert.equal(result.usage.status, 'error');
-      if (result.usage.status === 'error') assert.match(result.usage.message, /cancelled/);
-      const state = JSON.parse(await readFile(record, 'utf8'));
-      assert.throws(() => process.kill(state.pid, 0));
-    } finally { clearTimeout(cancel); }
+    const collecting = collectGrokUsage({ command, signal: controller.signal, timeoutMs: 60_000 });
+    // Cancel only once the billing request is in flight, however slowly the CLI starts.
+    while (!(await readRecord(record))?.requests.some(request => request.method === '_x.ai/billing')) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    controller.abort();
+    const result = await collecting;
+    assert.equal(result.usage.status, 'error');
+    if (result.usage.status === 'error') assert.match(result.usage.message, /cancelled/);
+    const state = JSON.parse(await readFile(record, 'utf8'));
+    assert.throws(() => process.kill(state.pid, 0));
   });
 });

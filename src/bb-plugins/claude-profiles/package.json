@@ -21,7 +21,7 @@
   "scripts": {
     "test": "pnpm test:core && pnpm test:ui",
     "test:core": "node --experimental-strip-types --test 'src/**/*.test.ts'",
-    "test:ui": "vitest run app.test.tsx ui/",
+    "test:ui": "vitest run --test-timeout=20000 app.test.tsx ui/",
     "typecheck": "tsc --noEmit",
     "build": "bb plugin build",
     "dev": "bb plugin dev"

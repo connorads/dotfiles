@@ -79,6 +79,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const dialog = useRef<HTMLDialogElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const working = useRef(false);
+  const mounted = useRef(false);
   const [view, setView] = useState<'quick' | 'search'>('quick');
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -133,13 +134,22 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     return () => { element.close?.(); };
   }, []);
   useEffect(() => { if (view === 'search') search.current?.focus(); else dialog.current?.focus(); }, [view]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  // The window size sets the anchored dialog's height cap, so a resize re-measures it.
+  const [, setResized] = useState(0);
+  useEffect(() => {
+    const resized = () => setResized(count => count + 1);
+    window.addEventListener('resize', resized);
+    return () => window.removeEventListener('resize', resized);
+  }, []);
 
+  // The switcher can close while work runs, so a late failure becomes a toast instead of a lost alert.
   async function run(work: () => Promise<unknown>) {
     if (working.current) return;
     working.current = true; setBusy(true); setError(null);
     try { await work(); }
-    catch (cause) { setError(message(cause)); }
-    finally { working.current = false; setBusy(false); }
+    catch (cause) { if (mounted.current) setError(message(cause)); else toast.error(message(cause)); }
+    finally { working.current = false; if (mounted.current) setBusy(false); }
   }
 
   const current = { providerId, model: composer.selection?.model, reasoningLevel: composer.selection?.reasoningLevel,
@@ -171,6 +181,8 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     }
     await loadModels();
   });
+  // A dimmed favourite says why instead of ignoring the press; touch has no hover title.
+  const pick = (row: Row) => { if (row.reason) setError(row.reason); else void apply(row.setup); };
   const changeEffort = (direction: -1 | 1) => {
     if (!currentModel || !providerId) return;
     const levels = currentModel.supportedReasoningEfforts.map(e => e.reasoningEffort);
@@ -194,6 +206,20 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     void run(async () => { await controller.apply({ providerId, model: currentModel.model, daybreak: !daybreak }); await loadModels(); });
   };
 
+  // Keyboard and letter-key changes land on rows a height-capped dialog may have scrolled out of view.
+  const selectedAccount = chips.find(chip => chip.selected)?.profile.id;
+  const shownAccount = useRef(selectedAccount);
+  useEffect(() => {
+    dialog.current?.querySelector('.sw-row[data-highlight], .sw-row[data-selected]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [view, highlight, currentRow?.id]);
+  useEffect(() => {
+    if (shownAccount.current !== undefined && shownAccount.current !== selectedAccount) {
+      dialog.current?.querySelector('.sw-account[aria-pressed=true]')?.scrollIntoView?.({ block: 'nearest' });
+    }
+    shownAccount.current = selectedAccount;
+  }, [selectedAccount]);
+  useEffect(() => { if (error) dialog.current?.querySelector('.sw-error')?.scrollIntoView?.({ block: 'nearest' }); }, [error]);
+
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
     if (event.nativeEvent.isComposing) return;
@@ -207,7 +233,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (key === 'Escape') {
       event.preventDefault();
-      if (view === 'search') { setView('quick'); setQuery(''); } else if (!working.current) onClose();
+      if (view === 'search') { setView('quick'); setQuery(''); } else onClose();
       return;
     }
     if (view === 'search') {
@@ -222,7 +248,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       return;
     }
     if (isTyping(event.target)) return;
-    if (key === 'Enter') { event.preventDefault(); if (!working.current) onClose(); }
+    if (key === 'Enter') { event.preventDefault(); onClose(); }
     else if (key === '/') { event.preventDefault(); setView('search'); setHighlight(0); }
     else if (key === 'ArrowLeft' || key === 'ArrowRight') { event.preventDefault(); changeEffort(key === 'ArrowLeft' ? -1 : 1); }
     else if (key === 'ArrowUp' || key === 'ArrowDown') {
@@ -234,7 +260,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       if (next) void apply(next.setup);
     } else if (/^[1-9]$/.test(key)) {
       const row = rows.find(candidate => candidate.slot === Number(key));
-      if (row && !row.reason) { event.preventDefault(); void apply(row.setup); }
+      if (row) { event.preventDefault(); pick(row); }
     } else if (/^[a-z]$/i.test(key) && chips.length) {
       const chip = chips.find(candidate => candidate.profile.key === key.toUpperCase());
       if (chip) { event.preventDefault(); if (!chip.selected) void chooseAccount(chip.profile); }
@@ -245,7 +271,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     return <li key={row.id} className="sw-row" data-selected={row.selected || undefined} data-unavailable={row.reason ? true : undefined}>
       <button type="button" className="sw-select" aria-current={row.selected || undefined} aria-disabled={Boolean(row.reason) || undefined}
         aria-label={`${row.slot ? `${row.slot}. ` : ''}${row.name}`} title={row.reason ?? row.provider}
-        onClick={() => { if (!row.reason) void apply(row.setup); }}>
+        onClick={() => pick(row)}>
         <kbd className="sw-slot" aria-hidden="true">{row.slot ?? ''}</kbd>
         <Glyph providerId={row.providerId} />
         <span className="sw-name">{row.name}</span>
@@ -275,7 +301,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const position = placement(anchor, { width: window.innerWidth, height: window.innerHeight });
   return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} style={position ?? undefined} aria-label="Switch model" aria-busy={busy || loading} onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); }}
-    onPointerDown={event => { if (event.target === event.currentTarget && !working.current) onClose(); }}>
+    onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     {view === 'quick' ? <>
       {loading ? <p role="status" className="sw-empty">Loading…</p> : <ul className="sw-list" aria-label="Favourites">{rows.map(quickRow)}</ul>}
       {chips.length > 0 && <div className="sw-accounts" role="group" aria-label="Claude account">

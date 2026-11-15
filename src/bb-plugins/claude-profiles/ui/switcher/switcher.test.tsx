@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { beforeAll, expect, test } from 'vitest';
+import { beforeAll, expect, test, vi } from 'vitest';
 import { fireEvent, waitFor } from '@testing-library/react';
 import { makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 import { renderSlot } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
+import { toast } from 'sonner';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
 import { Switcher } from './switcher.tsx';
@@ -33,7 +34,7 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; hangChoose?: boolean; chooseResult?: Promise<never> };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
@@ -52,6 +53,8 @@ function render(options: Options = {}) {
       accounts: () => options.unsupported ? { supported: false, profiles: [], currentId: 'default', pendingId: null }
         : { supported: true, profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
       choose: input => {
+        if (options.hangChoose) return new Promise(() => {});
+        if (options.chooseResult) return options.chooseResult;
         if (options.running) pendingId = input.profileId === currentId ? null : input.profileId;
         else currentId = input.profileId;
         return { currentId };
@@ -213,6 +216,42 @@ test('Escape and Enter close the switcher', async () => {
     fireEvent.keyDown(dialog(slot), { key: 'Escape' });
     fireEvent.keyDown(dialog(slot), { key: 'Enter' });
     expect(closed - before).toBe(2);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Escape and a backdrop click still close the switcher while an account switch hangs', async () => {
+  const slot = render({ hangChoose: true });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Trove' }));
+    await waitFor(() => expect(calls(slot, 'choose')).toHaveLength(1));
+    const before = closed;
+    fireEvent.keyDown(dialog(slot), { key: 'Escape' });
+    fireEvent.pointerDown(dialog(slot));
+    expect(closed - before).toBe(2);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('an account switch that fails after the switcher closed shows the failure as a toast', async () => {
+  let fail = (_cause: Error) => {};
+  const slot = render({ chooseResult: new Promise<never>((_resolve, reject) => { fail = reject; }) });
+  const shown = vi.spyOn(toast, 'error').mockImplementation(() => '');
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Trove' }));
+    await waitFor(() => expect(calls(slot, 'choose')).toHaveLength(1));
+    slot.lifecycle.unmount();
+    fail(new Error('Trove is signed out'));
+    await waitFor(() => expect(shown).toHaveBeenCalledWith('Trove is signed out'));
+  } finally { shown.mockRestore(); }
+});
+
+test('a dimmed favourite says why when pressed', async () => {
+  const unknown: Favourite = { id: 'c', slot: 3, name: '', providerId: 'pi', model: 'pi-model' };
+  const slot = render({ favourites: [sol, opus, unknown] });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: '3. pi-model' }));
+    expect((await slot.findByRole('alert')).textContent).toBe('Provider unavailable on this machine');
+    fireEvent.keyDown(dialog(slot), { key: '3' });
+    expect(slot.getByRole('alert').textContent).toBe('Provider unavailable on this machine');
   } finally { slot.lifecycle.unmount(); }
 });
 

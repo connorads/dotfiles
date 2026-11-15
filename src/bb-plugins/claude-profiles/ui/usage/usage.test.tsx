@@ -497,6 +497,7 @@ for (const success of [true, false]) test(`sign-in ${success ? 'success refreshe
     expect(refreshes).toEqual([{ refresh: true }]);
   } else {
     expect((await slot.findByRole('alert')).textContent).toContain('Sign-in did not finish');
+    expect(slot.getByRole('status').textContent).toBe('Claude sign-in stopped.');
     expect(refreshes).toEqual([]);
     expect(slot.getByRole('button', { name: 'Try again' })).toBeTruthy();
   }
@@ -534,6 +535,40 @@ test('a refused terminal still finishes sign-in once Show terminal opens it', as
   await waitFor(() => expect(slot.queryByRole('alert')).toBeNull());
   status = 'exited';
   await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'), { timeout: 3000 });
+});
+
+test('a terminal refused twice keeps the login and ends signed in without a retry offer', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  let status: 'running' | 'exited' = 'running';
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }), 'usage.inspection': async () => inspect() },
+    sdk: { terminals: { get: async () => status === 'exited' ? terminal(0) : { ...terminal(0), status, exitCode: null, closeReason: null } } },
+    openTerminal: () => false,
+  });
+  await slot.findByRole('alert');
+  fireEvent.click(slot.getByRole('button', { name: 'Show terminal' }));
+  await waitFor(() => expect(slot.inspection.navigateCalls.filter(call => call.method === 'experimental_openTerminal')).toHaveLength(2));
+  expect(slot.getAllByRole('alert').map(alert => alert.textContent)).toEqual(['BB could not show the sign-in terminal. Use Show terminal to try again.']);
+  expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
+  status = 'exited';
+  await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Signed in. Usage refreshed.'), { timeout: 3000 });
+  expect(slot.queryByRole('alert')).toBeNull();
+  expect(slot.queryByRole('button', { name: 'Try again' })).toBeNull();
+});
+
+test('a machine disconnect while the terminal is hidden shows one alert', async () => {
+  const app = await load();
+  const page = app.navPanels.find(panel => panel.id === 'claude-login');
+  if (!page) throw new Error('Missing sign-in page');
+  const slot = renderSlot(page, { subPath: loginTarget }, {
+    rpc: { 'usage.login': async () => ({ terminalId: 'login-terminal' }) },
+    sdk: { terminals: { get: async () => ({ ...terminal(0), status: 'disconnected' as const, exitCode: null, closeReason: null }) } },
+    openTerminal: () => false,
+  });
+  await waitFor(() => expect(slot.getByRole('status').textContent).toBe('Claude sign-in stopped.'));
+  expect(slot.getAllByRole('alert').map(alert => alert.textContent)).toEqual(['The sign-in machine disconnected. Reconnect it, then try again.']);
 });
 
 test('a usage refresh failure after sign-in does not offer another login', async () => {

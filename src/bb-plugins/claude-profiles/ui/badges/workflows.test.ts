@@ -53,7 +53,8 @@ test('labels the standalone panel, follows run changes and shares preview accoun
   await settle();
   const badges = Array.from(document.querySelectorAll<HTMLElement>('.cp-workflow-account'));
   expect(badges).toHaveLength(2);
-  expect(badges[0].style.color).toBe(badges[1].style.color);
+  expect(badges[0].style.getPropertyValue('--cp-account')).toMatch(/^#/u);
+  expect(badges[0].style.getPropertyValue('--cp-account')).toBe(badges[1].style.getPropertyValue('--cp-account'));
   document.querySelector('[data-detail-scroll-area] > div > .font-mono')!.textContent = '87654321';
   await settle();
   expect(document.querySelector('.cp-workflow-account')?.textContent).toBe('Personal');

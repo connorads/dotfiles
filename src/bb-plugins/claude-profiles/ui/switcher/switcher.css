@@ -1,7 +1,7 @@
 .sw-dialog { --sw-ease: cubic-bezier(0.23, 1, 0.32, 1); width: 420px; max-width: calc(100vw - 24px); max-height: min(560px, 80vh);
   margin: auto auto min(18vh, 160px); padding: 6px; overflow: auto; color: var(--popover-foreground, var(--foreground));
   background: var(--popover, var(--card)); border: 1px solid var(--border); border-radius: 14px; font-size: 13.5px;
-  box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; outline: none; scrollbar-width: none; }
+  box-shadow: 0 24px 64px -12px #0000004d, 0 0 0 1px #0000000a; outline: none; scrollbar-width: thin; }
 .sw-dialog[data-anchored] { position: fixed; margin: 0; inset: auto; }
 .sw-dialog[open] { animation: sw-enter 140ms var(--sw-ease); }
 .sw-dialog::backdrop { background: #0000003d; }
@@ -18,7 +18,7 @@
 .sw-row[data-unavailable] { opacity: .45; }
 .sw-select { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 100%; padding-left: 10px; cursor: pointer; }
 .sw-row[data-unavailable] .sw-select { cursor: default; }
-.sw-slot { width: 12px; padding: 0 !important; border: 0 !important; background: none !important; text-align: center; opacity: .7; }
+.sw-slot { flex: none; width: 12px; padding: 0 !important; border: 0 !important; background: none !important; text-align: center; opacity: .7; }
 .sw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-keep { font-size: 10.5px; color: var(--muted-foreground); border: 1px dashed var(--border); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
 .sw-glyph { width: 16px; height: 16px; border-radius: 5px; display: grid; place-items: center; flex: none; font-size: 10px; font-weight: 700;
@@ -33,12 +33,14 @@
 .sw-auto { font-size: 11.5px; color: var(--muted-foreground); }
 .sw-check { width: 14px; text-align: center; font-size: 12px; color: var(--brand, var(--primary)); }
 .sw-pill { all: unset; font-size: 11px !important; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--border); color: var(--muted-foreground); cursor: pointer; }
-.sw-pill[aria-pressed=true] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
+.sw-pill[aria-pressed=true], .sw-pill[aria-checked=true] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
+.sw-pill[aria-disabled=true] { opacity: .55; cursor: progress; }
 .sw-star { all: unset; width: 18px; text-align: center; color: var(--muted-foreground); cursor: pointer; }
 .sw-star[aria-pressed=true] { color: #e8b339; }
 
-.sw-accounts { display: flex; gap: 4px; margin: 6px 0 0; padding: 6px 2px 2px; border-top: 1px solid var(--border); }
-.sw-account { all: unset; position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px;
+/* Many accounts wrap to a second line rather than cutting every name to a few letters. */
+.sw-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 4px; margin: 6px 0 0; padding: 6px 2px 2px; border-top: 1px solid var(--border); }
+.sw-account { all: unset; position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px;
   padding: 8px 4px 7px; border-radius: 9px; font-size: 11.5px; color: var(--muted-foreground); cursor: pointer; }
 .sw-account:hover, .sw-account[aria-pressed=true] { background: var(--accent); }
 .sw-account[aria-pressed=true] { color: var(--foreground); }
@@ -62,7 +64,7 @@
 .sw-search-row:hover { color: var(--foreground); }
 .sw-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
 .sw-search input { all: unset; flex: 1; color: var(--foreground); }
-.sw-results { max-height: 360px; overflow: auto; scrollbar-width: none; padding-top: 4px; }
+.sw-results { max-height: 360px; overflow: auto; scrollbar-width: thin; padding-top: 4px; }
 .sw-group { margin: 0; padding: 8px 10px 3px; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
 .sw-empty { margin: 0; padding: 10px; color: var(--muted-foreground); font-size: 12.5px; }
 .sw-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 6px 8px 2px; font-size: 11px; color: var(--muted-foreground); }
@@ -75,11 +77,14 @@
 .sw-chip-name, .sw-chip-account { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The account keeps its letter badge, so its name gives way first. */
 .sw-chip-name { flex-shrink: 0; max-width: min(12em, 30vw); }
-.sw-chip-account { min-width: 0; max-width: 10em; flex-shrink: 4; }
+.sw-chip-account { min-width: 0; max-width: 10em; flex-shrink: 100; }
 .sw-chip:hover { background: var(--accent); }
 .sw-chip .sw-muted { color: var(--muted-foreground); }
 .sw-chip .sw-sep { width: 1px; height: 12px; background: var(--border); }
 .sw-chip .sw-warn { color: var(--warning-text, var(--warning)); }
+/* State words stay on the one line; the warning ends in an ellipsis only once the account name is gone. */
+.sw-chip-next { flex: none; margin-left: -4px; white-space: nowrap; }
+.sw-chip .sw-warn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sw-chip .sw-key { position: static; flex: none; width: 14px; height: 14px; font-size: 8.5px; }
 .sw-settings .sw-row { padding-right: 4px; }
 .sw-key-inline { position: static; display: inline-grid; width: 16px; height: 16px; margin-right: 8px; }

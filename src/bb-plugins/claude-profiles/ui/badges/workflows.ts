@@ -91,7 +91,7 @@ export function mountWorkflowAccounts(doc: Document): () => void {
         const title = `Claude account: ${account.label}`;
         if (badge.title !== title) badge.title = title;
         const colour = accountColour(account.profileId);
-        if (badge.style.color !== colour) badge.style.color = colour;
+        if (badge.style.getPropertyValue('--cp-account') !== colour) badge.style.setProperty('--cp-account', colour);
         wanted.add(badge);
         added.add(badge);
       }

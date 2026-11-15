@@ -45,15 +45,18 @@ export function Chip() {
   const fast = composer.selection?.serviceTier && composer.selection.serviceTier !== 'default';
   const shownId = accounts?.pendingId ?? accounts?.currentId;
   const account = accounts && accounts.profiles.length > 1 ? accounts.profiles.find(profile => profile.id === shownId) : undefined;
+  const pending = Boolean(accounts?.pendingId);
   const stillOn = connectors && !connectors.enabled && connectors.launch === 'on';
   return <button type="button" className="sw-chip" ref={element => registerAnchor(composer.key, element)} onClick={() => open(composer)}
-    aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${account ? `, ${account.label} account` : ''}`} title="Switch model (⌘⇧M)">
+    aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${fast ? ', fast' : ''}${account ? `, ${account.label} account${pending ? ' from the next turn' : ''}` : ''}${stillOn ? ', connectors still on' : ''}`}
+    title="Switch model (⌘⇧M)">
     <Glyph providerId={providerId} />
     <span className="sw-chip-name">{name}</span>
     {(effort || fast) && <span className="sw-muted">{[effort, fast ? 'fast' : null].filter(Boolean).join(' · ')}</span>}
     {account && <><span className="sw-sep" aria-hidden="true" />
       <span className="sw-key" aria-hidden="true">{account.key ?? '?'}</span>
-      <span className="sw-muted sw-chip-account">{account.label}{accounts?.pendingId ? ' · next turn' : ''}</span></>}
-    {stillOn && <span className="sw-warn">connectors still on</span>}
+      <span className="sw-muted sw-chip-account">{account.label}</span>
+      {pending && <span className="sw-muted sw-chip-next">· next turn</span>}</>}
+    {stillOn && <span className="sw-warn" title="Connectors still on">connectors still on</span>}
   </button>;
 }

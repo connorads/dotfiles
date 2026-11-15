@@ -41,11 +41,11 @@ else. Disabling the plugin removes the rule.
 | A letter | Use the account with that letter |
 | **⌘S** | Star or unstar the current model |
 | **/** | Search every model |
-| **Enter** or **Escape** | Close |
+| **Enter** or **Escape** | Close, also while a change still runs; a later failure shows as a notification |
 
 Each row shows its slot, provider, name and effort as dots, one per level the
 model supports. **auto** means the model's default effort. A model supplied
-by an unavailable provider is dimmed; hover over it for the reason.
+by an unavailable provider is dimmed; hover over it or press it for the reason.
 
 The current model leads the list when it is not a favourite. It shows **⌘S to
 keep**. **Fast** and **Daybreak** appear on the current row only when its
