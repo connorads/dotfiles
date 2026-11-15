@@ -288,9 +288,12 @@ it('popover: a failed save puts the chip back on the saved connection', async ()
   await chip.findByRole('button', { name: 'Executor: Coding (default)' });
   act(() => toggle('t-fail', 'keyboard'));
   fireEvent.keyDown(await overlay.findByRole('dialog'), { key: 'o' });
-  expect((await overlay.findByRole('alert')).textContent).toBe('Could not save the choice.');
-  expect(await chip.findByRole('button', { name: 'Executor: Coding (default)' })).toBeTruthy();
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not turn Executor off. Could not save the choice.');
+  expect(await chip.findByRole('button', { name: /^Executor: Coding \(default\)\. Could not turn Executor off\./ })).toBeTruthy();
   expect(overlay.getByRole('button', { name: /Default/ }).getAttribute('aria-pressed')).toBe('true');
+  // The rows are free again, so the user can try another pick at once.
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: '1' });
+  await waitFor(() => expect(overlay.rpcCalls.filter(c => c.method === 'setThreadChoice')).toHaveLength(2));
 });
 
 it('popover: one pick at a time while the save is in flight', async () => {
@@ -332,7 +335,7 @@ it('popover: a sign-in failure after adding stays on screen', async () => {
   fireEvent.keyDown(dialog, { key: 'a' });
   fireEvent.change(await overlay.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
   fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
-  expect((await overlay.findByRole('alert')).textContent).toBe('Executor sign-in is unavailable.');
+  expect((await overlay.findByRole('alert')).textContent).toBe('The connection was added, but its sign-in did not start. Executor sign-in is unavailable.');
 });
 
 it('popover: connections past the ninth are rows without a key', async () => {
@@ -353,10 +356,101 @@ it('settings: a row waits for its request and shows its failure in the row', asy
   fireEvent.click(signIn);
   fireEvent.click(signIn);
   expect(slot.rpcCalls.filter(c => c.method === 'signIn')).toHaveLength(1);
-  expect((signIn as HTMLButtonElement).disabled).toBe(true);
+  expect(signIn.getAttribute('aria-disabled')).toBe('true');
   await act(async () => finish(new Error('Executor sign-in is unavailable.')));
   const alert = await slot.findByRole('alert');
   expect(alert.textContent).toBe('Executor sign-in is unavailable.');
   expect(alert.closest('li')?.textContent).toContain('Ops');
-  expect((signIn as HTMLButtonElement).disabled).toBe(false);
+  expect(signIn.hasAttribute('aria-disabled')).toBe(false);
+});
+
+it('popover: a choice read that returns after a pick does not undo it', async () => {
+  let answer: (choice: unknown) => void = () => {};
+  const handlers = {
+    state: () => two,
+    threadChoice: () => new Promise(resolve => { answer = resolve; }),
+    setThreadChoice: () => null,
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-stale', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(dialog, { key: 'o' });
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+  await act(async () => answer({ kind: 'default' }));
+  act(() => toggle('t-stale', 'keyboard'));
+  await waitFor(() => expect(overlay.getByRole('button', { name: /Off/ }).getAttribute('aria-pressed')).toBe('true'));
+});
+
+it('popover: a save that fails after the popover closed marks the chip and explains on reopen', async () => {
+  let fail: (cause: Error) => void = () => {};
+  const handlers = {
+    state: () => two,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => new Promise((_, reject) => { fail = reject; }),
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-late', isCompactViewport: false } as never, { rpc: handlers });
+  await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle('t-late', 'keyboard'));
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: 'o' });
+  act(() => close());
+  await act(async () => fail(new Error('Could not save the choice.')));
+  expect(await chip.findByRole('button', { name: 'Executor: Coding (default). Could not turn Executor off. Could not save the choice.' })).toBeTruthy();
+  act(() => toggle('t-late', 'keyboard'));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not turn Executor off. Could not save the choice.');
+});
+
+it('popover: a save that finishes after the popover closed leaves a reopened popover open', async () => {
+  let finish: (value: null) => void = () => {};
+  const handlers = {
+    state: () => two,
+    threadChoice: () => ({ kind: 'default' }),
+    setThreadChoice: () => new Promise<null>(resolve => { finish = resolve; }),
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  act(() => toggle('t-reopen', 'keyboard'));
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: 'o' });
+  act(() => close());
+  act(() => toggle('t-reopen', 'keyboard'));
+  await overlay.findByRole('dialog');
+  await act(async () => finish(null));
+  expect(overlay.queryByRole('dialog')).toBeTruthy();
+});
+
+it('popover: Cancel sends one request while it waits and keeps focus', async () => {
+  const pending = stateOf({
+    connections: [connection('coding', 'Coding', { status: 'signing-in', isDefault: true })],
+    signIns: [{ kind: 'browser', id: 'coding', url: 'https://app.executor.sh/sign-in', expiresAt: Date.now() + 600_000 }],
+  });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => pending, threadChoice: () => ({ kind: 'default' }), cancelSignIn: () => new Promise(() => {}) },
+  });
+  act(() => toggle('t-cancel', 'keyboard'));
+  const cancel = await overlay.findByRole('button', { name: 'Cancel' });
+  cancel.focus();
+  fireEvent.click(cancel);
+  fireEvent.click(cancel);
+  expect(overlay.rpcCalls.filter(c => c.method === 'cancelSignIn')).toHaveLength(1);
+  expect(cancel.getAttribute('aria-disabled')).toBe('true');
+  expect(document.activeElement).toBe(cancel);
+});
+
+it('settings: adds a connection with no name as the next numbered one', async () => {
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: { state: () => two, add: () => ({ ok: true, id: 'connection-3' }), signIn: () => null },
+  });
+  fireEvent.change(await slot.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.click(slot.getByRole('button', { name: 'Add and sign in' }));
+  await waitFor(() => expect(slot.rpcCalls.find(c => c.method === 'add')?.input).toEqual({ name: 'Connection 3', url: 'https://mcp.executor.sh/mcp?connection=c_3' }));
+});
+
+it('chip: shows Off in a narrow header', async () => {
+  const handlers = { state: () => two, threadChoice: () => ({ kind: 'off' }) };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-narrow-off', isCompactViewport: true } as never, { rpc: handlers });
+  expect((await chip.findByRole('button', { name: 'Executor is off for this thread' })).textContent).toContain('Off');
+  overlay.unmount();
 });

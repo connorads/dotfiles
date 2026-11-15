@@ -15,7 +15,7 @@ function rowsFor(view: StateView): Row[] {
     ...view.connections.map((connection, index): Row => ({
       id: `c:${connection.id}`, keycap: index < 9 ? String(index + 1) : '', choice: { kind: 'connection', id: connection.id },
       label: connection.name, connection,
-      aside: connection.status === 'signed-in' ? undefined : connection.status === 'signing-in' ? 'signing in' : 'sign in',
+      aside: view.errors[connection.id] ? 'error' : connection.status === 'signed-in' ? undefined : connection.status === 'signing-in' ? 'signing in' : 'sign in',
     })),
     { id: 'off', keycap: 'o', choice: { kind: 'off' }, label: 'Off', aside: 'no Executor tools' },
   ];
@@ -24,12 +24,17 @@ function rowsFor(view: StateView): Row[] {
 const sameChoice = (a: Choice, b: Choice | undefined) =>
   a.kind === (b?.kind ?? 'default') && (a.kind !== 'connection' || (b?.kind === 'connection' && b.id === a.id));
 
-export function ExecutorPopover({ view, loadError, threadId, choice, anchor, instant, onClose }: {
-  view: StateView | null; loadError: string | null; threadId: string | null; choice: Choice | undefined;
+/** unsaved: why this thread's last pick failed, which may outlive the popover that made it. */
+export function ExecutorPopover({ view, loadError, threadId, choice, unsaved, anchor, instant, onClose }: {
+  view: StateView | null; loadError: string | null; threadId: string | null; choice: Choice | undefined; unsaved: string | null;
   anchor: Anchor; instant: boolean; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  // A save outlives a popover closed mid-save; it must not close the next one.
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
   // The row whose save is in flight; further picks wait for it so one press sends one request.
   const [pending, setPending] = useState<string | null>(null);
   const rows = view ? rowsFor(view) : [];
@@ -44,14 +49,19 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
     setAdding(url);
   }
 
-  // The add form closes on success, so a later failure is reported by the popover.
+  // The add form closes on success, so a later failure is reported by the popover, which says the add itself worked.
   async function added(id: string) {
     setAdding(null);
     try {
       await choose(threadId, { kind: 'connection', id });
+    } catch {
+      setError('The connection was added. Its sign-in has not started.');
+      return;
+    }
+    try {
       await rpc().call('signIn', { id, method: 'browser' });
     } catch (cause) {
-      setError(message(cause));
+      setError(`The connection was added, but its sign-in did not start. ${message(cause)}`);
     }
   }
 
@@ -66,20 +76,30 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
     focused.current = true;
     focusRow(current);
   }, [view, current, focusRow]);
+  // A control that unmounts while focused, such as the add form after a submit, leaves focus on the page body,
+  // where the popover's keys do not reach. Put it back on a row.
+  useEffect(() => {
+    const node = dialog.current;
+    if (!node?.open || (document.activeElement && document.activeElement !== document.body)) return;
+    (node.querySelector<HTMLElement>(`[data-row="${current}"]`) ?? node.querySelector<HTMLElement>('[data-row]'))?.focus({ preventScroll: true });
+  });
 
   async function pick(row: Row) {
     if (pending) return;
     setError(null);
     setPending(row.id);
     try {
-      await choose(threadId, row.choice);
-      if (row.connection && row.connection.status === 'signed-out') {
-        await rpc().call('signIn', { id: row.connection.id, method: 'browser' });
+      // A failed save reports itself through `unsaved`.
+      try { await choose(threadId, row.choice); } catch { return; }
+      if (row.connection?.status === 'signed-out') {
+        try {
+          await rpc().call('signIn', { id: row.connection.id, method: 'browser' });
+        } catch (cause) {
+          setError(`Could not start sign-in to ${row.connection.name}. ${message(cause)}`);
+        }
         return;
       }
-      onClose();
-    } catch (cause) {
-      setError(message(cause));
+      if (alive.current) onClose();
     } finally {
       setPending(null);
     }
@@ -96,7 +116,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
     };
     if (event.key === 'ArrowDown' || event.key === 'j') { event.preventDefault(); move(1); return; }
     if (event.key === 'ArrowUp' || event.key === 'k') { event.preventDefault(); move(-1); return; }
-    if (event.key === 'a') { event.preventDefault(); openAdd(); return; }
+    if (event.key === 'a') { event.preventDefault(); if (!pending) openAdd(); return; }
     const byKey = rows.find(row => row.keycap === event.key);
     if (byKey) { event.preventDefault(); void pick(byKey); }
   }
@@ -119,7 +139,11 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
     {!view ? loadError
         ? <div className="ex-empty ex-load-failed" role="alert">
           <span>Could not load connections. {loadError}</span>
-          <button type="button" className="ex-button" onClick={() => void refresh()}>Try again</button>
+          <button type="button" className="ex-button" aria-disabled={retrying || undefined} onClick={() => {
+            if (retrying) return;
+            setRetrying(true);
+            void refresh().finally(() => setRetrying(false));
+          }}>{retrying ? 'Trying again…' : 'Try again'}</button>
         </div>
         : <p className="ex-empty">Loading…</p>
       : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one from Executor's Connect page.</p>
@@ -133,7 +157,8 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
             {row.id === pending ? 'saving…' : row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
           </span>
         </button>)}
-        {!showAdd && <button type="button" className="ex-row" data-row="add" onClick={() => openAdd()}>
+        {!showAdd && <button type="button" className="ex-row" data-row="add" aria-disabled={pending !== null || undefined}
+          onClick={() => { if (!pending) openAdd(); }}>
           <kbd>a</kbd><span className="ex-row-label">Add connection…</span><span className="ex-row-aside">or paste a URL</span>
         </button>}
       </section>}
@@ -143,6 +168,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, anchor, ins
     {Object.entries(view?.errors ?? {}).map(([id, text]) => <p key={id} className="ex-error" role="alert">
       {view?.connections.find(c => c.id === id)?.name ?? id}: {text}
     </p>)}
+    {unsaved && <p className="ex-error" role="alert">{unsaved}</p>}
     {error && <p className="ex-error" role="alert">{error}</p>}
     <footer className="ex-footer">
       <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>

@@ -10,9 +10,11 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 /** instant: opened by keyboard, so it appears without an entrance. */
 export type Open = { threadId: string | null; anchor: Anchor; instant: boolean } | null;
 
+/** A thread whose last pick failed after its popover may have closed; cleared when a popover closes or the thread is picked again. */
+export type Unsaved = { threadId: string; message: string } | null;
 /** loadError: why the last state read failed; shown only while there is no view to keep. */
-interface State { view: StateView | null; loadError: string | null; choices: ReadonlyMap<string, Choice>; draft: Choice; open: Open }
-let state: State = { view: null, loadError: null, choices: new Map(), draft: { kind: 'default' }, open: null };
+interface State { view: StateView | null; loadError: string | null; choices: ReadonlyMap<string, Choice>; draft: Choice; open: Open; unsaved: Unsaved }
+let state: State = { view: null, loadError: null, choices: new Map(), draft: { kind: 'default' }, open: null, unsaved: null };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -27,15 +29,19 @@ export function rpc(): Rpc {
 
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
-/** A failed read keeps the last view; the next signal, refocus or retry corrects it. */
+/** A failed read keeps the last view and the last load error, so a retry button stays where it is. */
 export async function refresh() {
-  if (state.loadError) set({ loadError: null });
   try { set({ view: await rpc().call('state', null), loadError: null }); } catch (cause) { set({ loadError: message(cause) }); }
 }
 
+/** Picks per thread, so a read that started before a pick cannot overwrite it. */
+const picks = new Map<string, number>();
+
 export async function loadChoice(threadId: string) {
+  const pick = picks.get(threadId);
   try {
     const choice = await rpc().call('threadChoice', { threadId });
+    if (picks.get(threadId) !== pick) return;
     set({ choices: new Map(state.choices).set(threadId, choice) });
   } catch { /* keep the last choice */ }
 }
@@ -43,18 +49,27 @@ export async function loadChoice(threadId: string) {
 export async function choose(threadId: string | null, choice: Choice) {
   if (!threadId) { set({ draft: choice }); return; }
   const previous = state.choices.get(threadId);
-  set({ choices: new Map(state.choices).set(threadId, choice) });
+  picks.set(threadId, (picks.get(threadId) ?? 0) + 1);
+  set({ choices: new Map(state.choices).set(threadId, choice), unsaved: state.unsaved?.threadId === threadId ? null : state.unsaved });
   try {
     await rpc().call('setThreadChoice', { threadId, choice });
   } catch (cause) {
     // The server kept the old choice, so the chip must name it again unless a later pick replaced this one.
+    // The failure stays in the store: the popover that made the pick may have closed already.
     if (state.choices.get(threadId) === choice) {
       const choices = new Map(state.choices);
       if (previous) choices.set(threadId, previous); else choices.delete(threadId);
-      set({ choices });
+      set({ choices, unsaved: { threadId, message: `${switchFailure(choice)} ${message(cause)}` } });
     }
     throw cause;
   }
+}
+
+function switchFailure(choice: Choice): string {
+  if (choice.kind === 'off') return 'Could not turn Executor off.';
+  if (choice.kind === 'default') return 'Could not switch to the default connection.';
+  const name = state.view?.connections.find(c => c.id === choice.id)?.name;
+  return `Could not switch to ${name ?? 'the new connection'}.`;
 }
 
 export function resetDraft() { set({ draft: { kind: 'default' } }); }
@@ -88,7 +103,7 @@ export function toggle(threadId: string | null, via: 'pointer' | 'keyboard', fro
   void refresh();
   if (threadId) void loadChoice(threadId);
 }
-export function close() { set({ open: null }); }
+export function close() { set({ open: null, unsaved: null }); }
 
 export function useNow(intervalMs: number, active = true) {
   const [now, setNow] = useState(() => Date.now());

@@ -17,7 +17,7 @@ export function SignInPanel({ signIn, name }: { signIn: SignInView; name: string
     {signIn.kind === 'browser'
       ? <p className="ex-signin-line">Finish signing in to {name} in your browser. BB picks it up when you approve.</p>
       : <p className="ex-signin-line">
-        Approve in Executor, then come back. The page should show <code className="ex-code">{signIn.userCode}</code>.
+        To sign in to {name}, approve in Executor, then come back. The page should show <code className="ex-code">{signIn.userCode}</code>.
       </p>}
     <div className="ex-signin-actions">
       <UrlLink className="ex-button ex-button-primary"
@@ -27,7 +27,9 @@ export function SignInPanel({ signIn, name }: { signIn: SignInView; name: string
       {signIn.kind === 'device' && <button type="button" className="ex-button" onClick={() => {
         void experimental_copyToClipboard({ text: signIn.userCode }).then(setCopied);
       }}>{copied ? 'Copied' : 'Copy code'}</button>}
-      <button type="button" className="ex-button" disabled={cancelling} onClick={() => {
+      {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
+      <button type="button" className="ex-button" aria-disabled={cancelling || undefined} onClick={() => {
+        if (cancelling) return;
         setCancelling(true);
         setError(null);
         rpc().call('cancelSignIn', { id: signIn.id }).catch(cause => setError(message(cause))).finally(() => setCancelling(false));

@@ -70,6 +70,8 @@
   .ex-row { transition: none; }
 }
 
+.ex-connection-row + .ex-connection-row { border-top: 1px solid var(--border-seam, var(--border)); }
+.ex-connection-row button[aria-disabled="true"] { opacity: .5; cursor: default; }
 .ex-connection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ex-connection-name { flex-basis: 180px; }
 @media (pointer: coarse) {
@@ -86,4 +88,5 @@
 }
 .ex-input::placeholder { color: var(--muted-foreground); }
 .ex-input:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
-.ex-button:disabled { opacity: .55; cursor: default; }
+.ex-button:disabled, .ex-button[aria-disabled="true"] { opacity: .55; cursor: default; }
+.ex-button[aria-disabled="true"]:hover { background: transparent; }

@@ -14,6 +14,7 @@ const STATUS: Record<ConnectionView['status'], string> = {
 export function ExecutorSettings() {
   const { view, loadError } = useExecutor();
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const run = (work: Promise<unknown>) => {
     setError(null);
     work.catch(cause => setError(message(cause)));
@@ -21,7 +22,11 @@ export function ExecutorSettings() {
 
   if (!view && loadError) return <div className="flex flex-wrap items-center gap-2" role="alert">
     <p className="text-sm text-destructive">Could not load connections. {loadError}</p>
-    <Button size="sm" variant="ghost" onClick={() => void refresh()}>Try again</Button>
+    <Button size="sm" variant="ghost" aria-disabled={retrying || undefined} onClick={() => {
+      if (retrying) return;
+      setRetrying(true);
+      void refresh().finally(() => setRetrying(false));
+    }}>{retrying ? 'Trying again…' : 'Try again'}</Button>
   </div>;
   if (!view) return <p className="text-sm text-muted-foreground" role="status">Loading connections…</p>;
 
@@ -38,17 +43,20 @@ export function ExecutorSettings() {
 
     {view.connections.length === 0
       ? <p className="text-sm text-muted-foreground">No connections yet.</p>
-      : <ul className="space-y-1" aria-label="Connections">
+      : <ul aria-label="Connections">
         {view.connections.map(connection => <ConnectionRow key={connection.id} connection={connection}
           signIn={view.signIns.find(s => s.id === connection.id)} error={view.errors[connection.id]} />)}
       </ul>}
 
-    <AddConnection run={run} />
+    <AddConnection run={run} count={view.connections.length} />
     {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
   </div>;
 }
 
-/** One action at a time per row: buttons wait while a request is in flight, and its failure shows in the row. */
+/**
+ * One action at a time per row: buttons wait while a request is in flight, and its failure shows in the row.
+ * They use aria-disabled, not disabled, because a disabled button drops keyboard focus to the page body.
+ */
 function ConnectionRow({ connection, signIn, error }: {
   connection: ConnectionView;
   signIn: SignInView | undefined;
@@ -64,7 +72,8 @@ function ConnectionRow({ connection, signIn, error }: {
     work().catch(cause => setFailure(message(cause))).finally(() => setBusy(false));
   };
   const id = { id: connection.id };
-  return <li className="rounded-md px-2 py-2 hover:bg-accent/50" aria-busy={busy || undefined}>
+  const waiting = busy || undefined;
+  return <li className="ex-connection-row px-2 py-2 hover:bg-accent/50" aria-busy={waiting}>
     <div className="ex-connection">
       <div className="ex-connection-name min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -77,19 +86,20 @@ function ConnectionRow({ connection, signIn, error }: {
       </div>
       {connection.status === 'signed-out' &&
         <>
-          <Button size="sm" disabled={busy} onClick={() => run(() => rpc().call('signIn', { ...id, method: 'browser' }))}>Sign in</Button>
-          <Button size="sm" variant="ghost" disabled={busy}
+          <Button size="sm" aria-disabled={waiting} onClick={() => run(() => rpc().call('signIn', { ...id, method: 'browser' }))}>Sign in</Button>
+          <Button size="sm" variant="ghost" aria-disabled={waiting}
             onClick={() => run(() => rpc().call('signIn', { ...id, method: 'device' }))}>Use a code</Button>
         </>}
       {connection.status === 'signed-in' &&
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => rpc().call('signOut', id))}>Sign out</Button>}
+        <Button size="sm" variant="ghost" aria-disabled={waiting} onClick={() => run(() => rpc().call('signOut', id))}>Sign out</Button>}
       {!connection.isDefault &&
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => rpc().call('setDefault', id))}>Make default</Button>}
-      <Button size="sm" variant={confirmRemove ? 'destructive' : 'ghost'} disabled={busy}
+        <Button size="sm" variant="ghost" aria-disabled={waiting} onClick={() => run(() => rpc().call('setDefault', id))}>Make default</Button>}
+      <Button size="sm" variant={confirmRemove ? 'destructive' : 'ghost'} aria-disabled={waiting}
         onBlur={() => setConfirmRemove(false)}
         onClick={() => {
+          if (busy) return;
           if (!confirmRemove) { setConfirmRemove(true); return; }
-          run(() => rpc().call('remove', id));
+          run(() => rpc().call('remove', id).finally(() => setConfirmRemove(false)));
         }}>{confirmRemove ? 'Confirm remove' : 'Remove'}</Button>
     </div>
     {signIn && <SignInPanel signIn={signIn} name={connection.name} />}
@@ -98,17 +108,19 @@ function ConnectionRow({ connection, signIn, error }: {
   </li>;
 }
 
-function AddConnection({ run }: { run: (work: Promise<unknown>) => void }) {
+/** The name is optional, as in the popover's form: an empty one becomes the next "Connection N". */
+function AddConnection({ run, count }: { run: (work: Promise<unknown>) => void; count: number }) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const fallbackName = `Connection ${count + 1}`;
 
   function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setProblem(null);
-    run(rpc().call('add', { name: name.trim(), url: url.trim() }).then(async result => {
+    run(rpc().call('add', { name: name.trim() || fallbackName, url: url.trim() }).then(async result => {
       if (!result.ok) { setProblem(result.message); return; }
       setName('');
       setUrl('');
@@ -122,11 +134,11 @@ function AddConnection({ run }: { run: (work: Promise<unknown>) => void }) {
       In Executor, open Connect, create or pick a scoped connection, and copy its MCP URL.
     </p>
     <div className="mt-2 flex flex-wrap gap-2">
-      <Input aria-label="Connection name" placeholder="Name, e.g. Coding" className="w-44 shrink-0" maxLength={60}
-        value={name} onChange={event => setName(event.target.value)} required />
+      <Input aria-label="Connection name" placeholder={fallbackName} className="w-44 shrink-0"
+        maxLength={60} value={name} onChange={event => setName(event.target.value)} />
       <Input aria-label="Connection URL" placeholder="https://mcp.executor.sh/mcp?connection=…" className="min-w-64 flex-1"
         value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
-      <Button type="submit" size="sm" className="h-9" disabled={busy || !name.trim() || !url.trim()}>Add and sign in</Button>
+      <Button type="submit" size="sm" className="h-9" disabled={busy || !url.trim()}>Add and sign in</Button>
     </div>
     {problem && <p className="mt-1 text-xs text-destructive" role="alert">{problem}</p>}
   </form>;

@@ -6,20 +6,23 @@ import { loadChoice, resolve, toggle, useExecutor } from './store.ts';
 
 /** Hidden until a connection exists: ⌥E still opens the pop-up, which says how to add one. */
 export function ExecutorChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
-  const { view, choices, open } = useExecutor();
+  const { view, choices, open, unsaved } = useExecutor();
   useEffect(() => { void loadChoice(threadId); }, [threadId]);
   if (!view || view.connections.length === 0) return null;
   const resolved = resolve(view, choices.get(threadId));
-  const value = resolved.kind === 'connection' ? resolved.name : resolved.kind === 'off' ? 'Off' : 'None';
+  const value = resolved.kind === 'connection' ? resolved.name : 'None';
   const signedOut = resolved.kind === 'connection' && !resolved.signedIn;
-  const label = resolved.kind === 'connection'
+  // A pick that failed after its popover closed: the chip already names the saved connection again, so say why.
+  const failed = unsaved?.threadId === threadId ? unsaved.message : null;
+  const label = (resolved.kind === 'connection'
     ? `Executor: ${resolved.name}${resolved.viaDefault ? ' (default)' : ''}${signedOut ? ', signed out' : ''}`
-    : resolved.kind === 'off' ? 'Executor is off for this thread' : 'No Executor connection';
-  return <Chip data-executor-chip expanded={open?.threadId === threadId} tone={signedOut ? 'warn' : undefined}
+    : resolved.kind === 'off' ? 'Executor is off for this thread' : 'No Executor connection') + (failed ? `. ${failed}` : '');
+  return <Chip data-executor-chip expanded={open?.threadId === threadId} tone={failed ? 'danger' : signedOut ? 'warn' : undefined}
     aria-label={label} title={`${label} (⌥E)`}
     onClick={event => toggle(threadId, event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}
     icon={<Icon name="Plug02" />}>
-    {!isCompactViewport && <ChipValue className={resolved.kind === 'off' ? 'ex-chip-off' : undefined}>{value}</ChipValue>}
-    {signedOut && <ChipDot tone="warn" />}
+    {/* Off stays visible in a narrow header, where every ChipValue hides: an icon alone would look like a live connection. */}
+    {resolved.kind === 'off' ? <span className="ex-chip-off">Off</span> : !isCompactViewport && <ChipValue>{value}</ChipValue>}
+    {failed ? <ChipDot tone="danger" /> : signedOut && <ChipDot tone="warn" />}
   </Chip>;
 }
