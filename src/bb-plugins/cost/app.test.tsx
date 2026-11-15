@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test } from 'vitest';
-import { act, fireEvent, waitFor } from '@testing-library/react';
+import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { loadPluginApp, renderSlot, type PluginRpcTestHandlers } from '@get-bb/plugin-sdk/testing/app';
 import type { PluginNavPanelProps, PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
 import type { rpcContract, SummaryView, ThreadView } from './contracts.ts';
 import { emptyCost } from './src/report.ts';
-import { setPeriod, type Days } from './src/period.ts';
+import { setGrouped, setPeriod, type Days } from './src/period.ts';
 
-afterEach(() => { act(() => setPeriod(30)); });
+afterEach(() => { act(() => { setPeriod(30); setGrouped(false); }); });
 
 const day = (index: number) => new Date(Date.UTC(2026, 2, 1 + index)).toISOString().slice(0, 10);
 
@@ -58,6 +58,19 @@ test('a slow reply for an earlier period does not replace the period picked last
     expect(eyebrow(slot)).toBe('Last 90 days at API prices');
     expect(slot.container.querySelectorAll('.cost-columns > li')).toHaveLength(90);
     expect(slot.container.querySelector('.cost-column')?.hasAttribute('aria-busy')).toBe(false);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the page body offers the sub-thread switch for narrow headers and names the grouping it shows', async () => {
+  const asked: boolean[] = [];
+  const slot = await usagePage(async days => summary(days), { summary: ({ days, group }) => { asked.push(group === true); return summary(days); } });
+  try {
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days at API prices'));
+    const body = slot.getByRole('radiogroup', { name: 'Sub-threads' });
+    fireEvent.click(within(body).getByRole('radio', { name: 'With sub-threads' }));
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days with sub-threads at API prices'));
+    expect(within(body).getByRole('radio', { name: 'With sub-threads' }).getAttribute('aria-checked')).toBe('true');
+    expect(asked).toEqual([false, true]);
   } finally { slot.lifecycle.unmount(); }
 });
 

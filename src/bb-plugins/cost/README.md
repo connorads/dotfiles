@@ -23,6 +23,7 @@ Subscription plans do not bill these amounts. The figures show usage in API term
     cost per request in each length band, and another compares providers.
   - **Days**: every day's figures as a table.
 - The header's **With sub-threads** switch folds each sub-thread into the thread that started it, across every view.
+  When the header is too narrow for it, the switch sits at the top of the page. The period label says when sub-threads are folded in.
 - The thread card plots each request's cost over the thread's life and compares its last tenth of requests with its first.
 - `bb cost backfill` reads all history. `bb cost status` shows progress. The [skill](skills/cost/SKILL.md) lists every command.
 

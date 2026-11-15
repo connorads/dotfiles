@@ -25,7 +25,7 @@
 }
 .cost-column > * { transition: opacity .15s; }
 /* A period or grouping change waits for its reply over the old figures, dimmed; the status line above them stays readable. */
-.cost-column[data-pending] > :not(.cost-status) { opacity: .55; }
+.cost-column[data-pending] > :not(.cost-status, .cost-group-body) { opacity: .55; }
 .cost-status { margin: 0; padding: 0 4px; color: var(--foreground); font-size: 13px; }
 .cost-card { padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--card, var(--background)); }
 .cost-muted { color: var(--muted-foreground); }
@@ -190,6 +190,9 @@ button.cost-title:hover { text-decoration: underline; text-decoration-color: col
 /* Header controls */
 .cost-header-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 @container page-header (max-width: 720px) { .cost-header-controls > :first-child { display: none; } }
+/* The body copy shows from a slightly wider page than the header hides its own, so no width lacks both. */
+.cost-group-body { display: none; }
+@container cost (max-width: 760px) { .cost-group-body { display: flex; } }
 
 /* Insights */
 .cost-insights { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }

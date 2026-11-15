@@ -19,17 +19,21 @@ const tabs: { id: Tab; label: string }[] = [
 /** The page header's controls. The body follows them through the shared store. */
 export function PeriodSwitch() {
   const days = usePeriod();
-  const grouped = useGrouped();
   return <div className="cost-header-controls">
-    <div className="cost-segmented" role="radiogroup" aria-label="Sub-threads"
-      title="Grouped counts each sub-thread's usage toward the thread that started it">
-      <button type="button" role="radio" aria-checked={!grouped} onClick={() => setGrouped(false)}>Each thread</button>
-      <button type="button" role="radio" aria-checked={grouped} onClick={() => setGrouped(true)}>With sub-threads</button>
-    </div>
+    <GroupSwitch />
     <div className="cost-segmented" role="radiogroup" aria-label="Period">
       {periods.map(value => <button key={value} type="button" role="radio" aria-checked={days === value}
         onClick={() => setPeriod(value)}>{value} days</button>)}
     </div>
+  </div>;
+}
+
+function GroupSwitch() {
+  const grouped = useGrouped();
+  return <div className="cost-segmented" role="radiogroup" aria-label="Sub-threads"
+    title="Grouped counts each sub-thread's usage toward the thread that started it">
+    <button type="button" role="radio" aria-checked={!grouped} onClick={() => setGrouped(false)}>Each thread</button>
+    <button type="button" role="radio" aria-checked={grouped} onClick={() => setGrouped(true)}>With sub-threads</button>
   </div>;
 }
 
@@ -75,7 +79,7 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
 
   const failed = error && sameWindow(error, wanted) ? error : null;
   if (!shown) return <Shell>{failed
-    ? <div className="cost-blank" role="alert">{sentence(describe(failed, false))} could not load: {failed.message}. <Retry onRetry={load} /></div>
+    ? <div className="cost-blank" role="alert">{sentence(describe(failed, failed.grouped))} could not load: {failed.message}. <Retry onRetry={load} /></div>
     : <Loading />}</Shell>;
   const data = shown.view;
   const pending = !failed && !sameWindow(shown, wanted);
@@ -87,7 +91,7 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
   return <Shell pending={pending}>
     {banner}
     {focus && <FocusedThread threadId={focus} />}
-    <Summary data={data} days={shown.days} />
+    <Summary data={data} days={shown.days} grouped={shown.grouped} />
     <section className="cost-card cost-reveal" style={{ '--i': 2 } as React.CSSProperties}>
       <DailyChart days={data.days} today={data.lastDay} />
     </section>
@@ -106,8 +110,12 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
   </Shell>;
 }
 
+// A narrow page header has no room for the sub-thread switch, so the body carries it at the same widths.
 const Shell = ({ children, pending = false }: { children: ReactNode; pending?: boolean }) =>
-  <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}>{children}</div></div>;
+  <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}>
+    <div className="cost-group-body"><GroupSwitch /></div>
+    {children}
+  </div></div>;
 
 /** A failed load over data that stays on screen: says which window failed and which one is still shown. */
 function LoadError({ wanted, showing, error, onRetry }: { wanted: UsageWindow; showing: UsageWindow; error: string; onRetry: () => Promise<unknown> }) {
@@ -120,14 +128,14 @@ function LoadError({ wanted, showing, error, onRetry }: { wanted: UsageWindow; s
   </div>;
 }
 
-function Summary({ data, days }: { data: SummaryView; days: number }) {
+function Summary({ data, days, grouped }: { data: SummaryView; days: number; grouped: boolean }) {
   const plans = data.plans.reduce((sum, plan) => sum + plan.usd, 0);
   const allTokens = data.total.tokens.input + data.total.tokens.cacheRead + data.total.tokens.cacheWrite + data.total.tokens.output;
   const unpriced = allTokens ? data.total.unpricedTokens / allTokens : 0;
   const dayCount = data.days.length;
   return <section className="cost-summary cost-reveal" style={{ '--i': 1 } as React.CSSProperties}>
     <div className="cost-hero">
-      <span className="cost-eyebrow">Last {days} days at API prices</span>
+      <span className="cost-eyebrow">Last {days} days{grouped && ' with sub-threads'} at API prices</span>
       <strong>{usd(data.total.usd)}</strong>
       <ProviderSplit byProvider={data.byProvider} total={data.total.usd} />
     </div>
