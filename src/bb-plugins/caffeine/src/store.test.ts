@@ -1,7 +1,7 @@
-import { afterEach, test } from 'node:test';
+import { afterEach, mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ActionResult } from './domain.ts';
-import { act, close, refresh, setClient, snapshot, toggle, type Rpc } from '../store.ts';
+import { act, ACTION_TIMEOUT_MS, close, refresh, setClient, snapshot, toggle, type Rpc } from '../store.ts';
 
 // The store reads state on every open; these tests only care about actions.
 setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
@@ -97,7 +97,30 @@ test('a new action clears the last failure', async () => {
   close();
 });
 
-test('a failed state read is kept until a read succeeds', async () => {
+test('an action with no answer gives up, frees the next action and reads the state again', async () => {
+  const methods: string[] = [];
+  setClient({ call: async (method: string) => { methods.push(method); return { kind: 'off' }; } } as unknown as Rpc);
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    toggle('pointer', chip);
+    methods.length = 0;
+    const hung = act(label, () => new Promise<ActionResult>(() => {}));
+    mock.timers.tick(ACTION_TIMEOUT_MS - 1);
+    await Promise.resolve();
+    assert.deepEqual(snapshot().pending, label, 'still waiting just before the bound');
+    mock.timers.tick(1);
+    assert.equal(await hung, false);
+    assert.equal(snapshot().pending, null);
+    assert.match(snapshot().actionError?.reason ?? '', /^no answer after 75 s/);
+    assert.deepEqual(methods, ['state']);
+    assert.equal(await act(label, async () => ok), true, 'the next action runs');
+  } finally {
+    mock.timers.reset();
+    setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
+  }
+});
+
+test('a failed state read shows until the next read, and a successful read clears it', async () => {
   const reads: Array<() => Promise<unknown>> = [async () => { throw new Error('host went away'); }, async () => ({ kind: 'off' })];
   setClient({ call: () => reads.shift()!() } as unknown as Rpc);
   await refresh();

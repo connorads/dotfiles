@@ -65,24 +65,38 @@ export function close() { set({ open: null, actionError: null }); }
 export function dismissError() { if (state.actionError) set({ actionError: null }); }
 
 /**
+ * How long an action may run before the popover stops waiting for it. Longer than the server's 60 s
+ * host-write timeout, so it fires only when no answer is coming, such as a dropped connection.
+ */
+export const ACTION_TIMEOUT_MS = 75_000;
+class NoAnswer extends Error {}
+
+/**
  * Runs one host action at a time, across every popover. Success closes the popover it came from
  * when closeOnSuccess, and leaves a popover opened since alone. A failure shows in the open popover,
- * or in the next one to open. Resolves true on success.
+ * or in the next one to open. An action with no answer by ACTION_TIMEOUT_MS fails, frees the popover
+ * for the next action and reads the state again. Resolves true on success.
  */
 export async function act(label: ActionLabel, call: () => Promise<ActionResult>, closeOnSuccess = true): Promise<boolean> {
   if (state.pending) return false;
   const from = state.open?.id;
   set({ pending: label, actionError: null });
   const fail = (reason: string) => set({ actionError: { reason, label, at: Date.now(), missed: state.open === null } });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new NoAnswer(`no answer after ${ACTION_TIMEOUT_MS / 1000} s, so its result is unknown.`)), ACTION_TIMEOUT_MS);
+  });
   try {
-    const result = await call();
+    const result = await Promise.race([call(), timeout]);
     if (!result.ok) fail(result.reason);
     else if (closeOnSuccess && from !== undefined && state.open?.id === from) close();
     return result.ok;
   } catch (cause) {
     fail(message(cause));
+    if (cause instanceof NoAnswer) void refresh();
     return false;
   } finally {
+    clearTimeout(timer);
     set({ pending: null });
   }
 }

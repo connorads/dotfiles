@@ -3,6 +3,7 @@ import { ChipPopover } from '@bb-plugins/chip';
 import type { Details, CaffeineView, ActionResult } from './src/domain.ts';
 import { GRACE_MS } from './src/agents.ts';
 import { clockAt, durationLabel, EXTEND_OPTIONS, longDuration, remainingFraction, START_OPTIONS, untilLabel } from './src/format.ts';
+import { ARMED_MS, press, type Armed } from './src/confirm.ts';
 import { keyAction, rowId, type Action, type Screen } from './src/keys.ts';
 import { act, dismissError, message, rpc, useNow, visibleChip, type ActionError, type ActionLabel, type Anchor } from './store.ts';
 
@@ -103,7 +104,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const waiting = pending !== null;
   /** The row that needs a second press: a lid session on battery. */
-  const [armed, setArmed] = useState<string | null>(null);
+  const [armed, setArmed] = useState<Armed | null>(null);
   const now = useNow(1_000);
 
   const stuck = details?.sleepDisabled === true;
@@ -121,7 +122,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   useEffect(() => { if (view?.kind !== 'off') setPicker(false); }, [view?.kind]);
   useEffect(() => {
     if (!armed) return;
-    const id = setTimeout(() => setArmed(null), 4_000);
+    const id = setTimeout(() => setArmed(null), ARMED_MS);
     return () => clearTimeout(id);
   }, [armed]);
 
@@ -130,6 +131,8 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     (row ?? dialog.current?.querySelector<HTMLElement>('[data-row]'))?.focus({ preventScroll: true });
   }, []);
   const screenKey = screen.kind === 'on' ? `on:${screen.timed}` : screen.kind;
+  // An armed row belongs to its screen: a lid session that ends or becomes a normal one needs no confirm.
+  useEffect(() => { setArmed(null); }, [screenKey]);
   /** Where focus goes when a screen opens in place of initialRow: the row the user came back from. */
   const returnTo = useRef<string | null>(null);
   // Keyed on the screen, not the view: the clock ticks every second and must not steal focus back.
@@ -156,8 +159,10 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
 
   /** Lid sessions take a second press unless on mains; declining costs a running session nothing. */
   function confirmed(id: string): boolean {
-    if (onMains || armed === id) return true;
-    setArmed(id);
+    // performance.now: a gap between two presses, so wall-clock changes must not count.
+    const result = press(armed, id, performance.now(), onMains);
+    if (result.go) return true;
+    setArmed(result.armed);
     focusRow(id);
     return false;
   }
@@ -211,6 +216,12 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
 
   const tone: Tone = view?.kind === 'lid' || screen.kind === 'lid-picker' ? 'lid' : view?.kind === 'on' || view?.kind === 'agents' ? 'on' : 'off';
 
+  /** What the armed row's next press does, for the live region: a changed button name is often not announced. */
+  let armedNote: string | null = null;
+  const power = onBattery ? 'on battery. This drains it, and a closed shell runs hot' : 'with the power source unknown';
+  const isArmed = (id: string) => armed?.row === id;
+  /** A stuck flag makes "the Mac sleeps" false, so the header says so instead. */
+  const stuckLine = <p className="cf-line cf-alert">A lid session left this Mac unable to sleep, lid included.</p>;
   let body: ReactNode;
   let footnote: string;
   if (!view) {
@@ -232,8 +243,9 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
       <section className="cf-section">
         {START_OPTIONS.map((secs, index) => {
           const id = rowId({ kind: 'startLid', secs });
-          return <Row key={secs} id={id} keycap={String(index + 1)} armed={armed === id} disabled={waiting}
-            label={armed === id ? (onBattery ? 'Press again to start on battery' : 'Press again to start, power unknown') : durationLabel(secs)}
+          if (isArmed(id)) armedNote = `Press ${index + 1} again to keep this Mac awake with the lid closed for ${durationLabel(secs)}, ${power}.`;
+          return <Row key={secs} id={id} keycap={String(index + 1)} armed={isArmed(id)} disabled={waiting}
+            label={isArmed(id) ? (onBattery ? 'Press again to start on battery' : 'Press again to start, power unknown') : durationLabel(secs)}
             aside={untilLabel(now + secs * 1000, now)} onClick={() => dispatch({ kind: 'startLid', secs })} />;
         })}
       </section>
@@ -245,7 +257,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     const power = details ? (details.onBattery === true ? <span className="cf-battery">on battery</span> : details.onBattery === false ? 'on mains' : '') : detailsError ? 'power unknown' : '…';
     body = <>
       <Header id={headerId} tone="off" glyph="☼" title="Keep awake" tag="OFF">
-        <p className="cf-line cf-muted">This Mac sleeps on its normal schedule.</p>
+        {stuck ? stuckLine : <p className="cf-line cf-muted">This Mac sleeps on its normal schedule.</p>}
       </Header>
       <section className="cf-section">
         <Row id={rowId({ kind: 'start', secs: 0 })} keycap="i" label="Indefinitely" aside="∞" disabled={waiting}
@@ -271,14 +283,17 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
         {deadline !== null && <Meter fraction={remainingFraction(now, view.startedAt, deadline)} label="Time left" />}
         {lid
           ? <p className="cf-line cf-muted">You can close the lid. This Mac cannot sleep at all. It self-clears at {clockAt(deadline!, now)} and normal sleep returns.</p>
+          : stuck
+          ? <><p className="cf-line cf-muted">System sleep is held; displays still sleep.</p>{stuckLine}</>
           : <p className="cf-line cf-muted">System sleep is held; displays still sleep. Closing the lid still sleeps the Mac.</p>}
       </Header>
       {lid && onBattery && <p className="cf-banner" role="note">On battery. Extending keeps it draining, and a closed shell runs hot.</p>}
       <section className="cf-section">
         {deadline !== null && EXTEND_OPTIONS.map((add, index) => {
           const id = rowId({ kind: 'extend', add });
-          return <Row key={add} id={id} keycap={String(index + 1)} armed={armed === id} disabled={waiting}
-            label={armed === id ? (onBattery ? 'Press again to extend on battery' : 'Press again to extend, power unknown') : `+${durationLabel(add)}`}
+          if (isArmed(id)) armedNote = `Press ${index + 1} again to extend lid mode by ${durationLabel(add)}, ${power}.`;
+          return <Row key={add} id={id} keycap={String(index + 1)} armed={isArmed(id)} disabled={waiting}
+            label={isArmed(id) ? (onBattery ? 'Press again to extend on battery' : 'Press again to extend, power unknown') : `+${durationLabel(add)}`}
             aside={untilLabel(deadline + add * 1000, now)} onClick={() => dispatch({ kind: 'extend', add })} />;
         })}
         <Row id="off" keycap="o" label="Turn off" disabled={waiting} onClick={() => dispatch({ kind: 'off' })} />
@@ -329,6 +344,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     {/* One live region, present from the first render, so a later error or status is announced. */}
     <div role="status" id={statusId}>
       {pending ? <p className="cf-pending">{pending.doing}…</p> : shownError && <p className="cf-error">{shownError}</p>}
+      {armedNote && <p className="cf-sr-only">{armedNote}</p>}
     </div>
     <footer className="cf-footer">
       {footnote && <span>{footnote}</span>}

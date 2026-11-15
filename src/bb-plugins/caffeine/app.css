@@ -42,12 +42,14 @@
 .cf-title h2 { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14px/1.2 var(--font-sans); color: var(--foreground); }
 .cf-tag {
   flex: none; padding: 2px 7px; border-radius: 999px; font: 600 10px/1.2 var(--font-sans); letter-spacing: .06em;
-  color: var(--cf-ink); background: color-mix(in oklch, var(--cf-tone) 14%, transparent);
+  color: var(--cf-ink); background: color-mix(in oklch, var(--cf-tone) 10%, transparent);
 }
 .cf-header[data-tone="off"] .cf-tag { color: var(--muted-foreground); background: var(--muted); }
 .cf-line { margin: 0; text-wrap: pretty; }
-.cf-strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* The answer the popover opens for (time left), so it outweighs the muted line under it. */
+.cf-strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
 .cf-muted { color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
+.cf-alert { color: var(--cf-lid-ink); font-size: var(--text-xs, 12px); font-weight: 600; }
 
 .cf-meter { position: relative; display: block; height: 4px; overflow: hidden; border-radius: 2px; background: var(--muted, rgb(127 127 127 / .2)); }
 .cf-meter i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--cf-tone); transition: width .4s var(--cf-ease); }
@@ -79,7 +81,7 @@
 .cf-chevron { font-family: var(--font-sans); font-size: 14px; }
 .cf-battery { color: var(--warning-text, var(--warning)); }
 /* Armed for a second press: the row says what the next press does. */
-.cf-row[data-armed] { background: color-mix(in oklch, var(--warning) 14%, transparent); }
+.cf-row[data-armed] { background: color-mix(in oklch, var(--warning) 12%, transparent); }
 /* It wraps rather than clip, as the instruction is the point of the row. */
 .cf-row[data-armed] .cf-row-label { color: var(--warning-text, var(--warning)); white-space: normal; text-wrap: pretty; }
 
@@ -96,6 +98,7 @@
 .cf-error, .cf-pending { margin: 0; padding: 8px 14px; font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
 .cf-error { color: var(--destructive-text); }
 .cf-pending { color: var(--muted-foreground); }
+.cf-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .cf-footer {
   display: grid; gap: 2px; padding: 8px 14px;
