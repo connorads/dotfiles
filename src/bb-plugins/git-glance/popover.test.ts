@@ -4,7 +4,7 @@ import { act } from 'react';
 import { renderSlot, type RenderedSlot } from '@get-bb/plugin-sdk/testing/app';
 import { GitPopover } from './popover.tsx';
 import type { OpRequest, OpState, Repo, rpcContract } from './contracts.ts';
-import { receiveOp } from './repo-store.ts';
+import { receiveOp, receiveSnapshot } from './repo-store.ts';
 
 const root = '/trees/example';
 const repo: Repo = {
@@ -85,7 +85,8 @@ it('shows a sent request as starting until the server replies, so repeat clicks 
   await waitFor(() => expect(row(view)).toBeTruthy());
   act(() => view.getByRole('button', { name: 'Fetch from the remote (f)' }).click());
   const starting = await view.findByRole('button', { name: 'Starting fetch' });
-  expect((starting as HTMLButtonElement).disabled).toBe(true);
+  // aria-disabled keeps keyboard focus on the button; a disabled button drops it to the page.
+  expect(starting.getAttribute('aria-disabled')).toBe('true');
   act(() => starting.click());
   key(row(view), 'f');
   expect(userRuns()).toBe(1);
@@ -94,4 +95,46 @@ it('shows a sent request as starting until the server replies, so repeat clicks 
   await act(async () => { reply({ op: { ...fetching, id: 'op_user', origin: 'user' } }); });
   const cancel = await view.findByRole('button', { name: 'Cancel fetch' });
   expect((cancel as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('ignores the second click of a double-click on a running action, so a cancelled pull does not start again', async () => {
+  const threadId = crypto.randomUUID();
+  const pulling: OpState = { id: 'op_pull', request: { kind: 'pull' }, origin: 'user', startedAt: 1, status: 'running', progress: null };
+  const behind = { ...repo, branch: { ...repo.branch, behind: 2 } };
+  const run = vi.fn((_input: { origin: 'user' | 'auto' }) => ({ op: null }));
+  const cancelled = () => receiveOp({ threadIds: [threadId], root, op: { ...pulling, status: 'failed', finishedAt: 2, failure: { reason: 'cancelled', message: 'Cancelled' } }, fetch: { lastSucceededAt: null, failure: null } });
+  // The server ends the pull before the second click lands.
+  const cancel = vi.fn(() => { setTimeout(act, 0, cancelled); return {}; });
+  slot = renderSlot<Parameters<typeof GitPopover>[0], Pick<typeof rpcContract, 'watch' | 'unwatch' | 'run' | 'cancel'>>({ component: GitPopover },
+    { threadId, anchor: null, instant: true, onClose: () => {} },
+    { rpc: {
+      watch: () => ({ root, selected: false, snapshot: behind, op: pulling, fetch: { lastSucceededAt: null, failure: null } }),
+      unwatch: () => ({}),
+      run,
+      cancel,
+    } });
+  const view = slot;
+  const pull = await view.findByRole('button', { name: 'Cancel pull' });
+  act(() => pull.click());
+  await waitFor(() => expect(view.getByRole('button', { name: /^Pull 2 commits/ })).toBeTruthy());
+  act(() => view.getByRole('button', { name: /^Pull 2 commits/ }).click());
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(run.mock.calls.filter(([input]) => input.origin === 'user')).toHaveLength(0);
+});
+
+it('moves focus to the next row when the focused row disappears, so the row keys keep working', async () => {
+  const two: Repo = { ...repo, changes: [...repo.changes, { path: 'NOTES.md', origPath: null, area: 'unstaged', code: 'M', added: 1, removed: 0 }] };
+  const threadId = crypto.randomUUID();
+  slot = renderSlot<Parameters<typeof GitPopover>[0], Pick<typeof rpcContract, 'watch' | 'unwatch' | 'run'>>({ component: GitPopover },
+    { threadId, anchor: null, instant: true, onClose: () => {} },
+    { rpc: {
+      watch: () => ({ root, selected: false, snapshot: two, op: null, fetch: { lastSucceededAt: null, failure: null } }),
+      unwatch: () => ({}),
+      run: () => ({ op: null }),
+    } });
+  const view = slot;
+  await waitFor(() => expect(row(view)).toBeTruthy());
+  act(() => row(view).focus());
+  act(() => receiveSnapshot({ threadIds: [threadId], root, snapshot: { ...two, changes: two.changes.slice(1) } }));
+  await waitFor(() => expect(view.baseElement.ownerDocument.activeElement?.getAttribute('data-file-path')).toBe('NOTES.md'));
 });

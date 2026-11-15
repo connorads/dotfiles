@@ -13,6 +13,12 @@ function target(code: HTMLElement): CommitLink | null {
   return threadId ? { threadId, sha } : null;
 }
 
+/** The name starts with the visible text, so each link is told apart and can be named by voice. */
+function label(code: HTMLElement) {
+  const name = `${code.textContent?.trim() ?? ''}, open commit in Git Glance`;
+  if (code.getAttribute('aria-label') !== name) code.setAttribute('aria-label', name);
+}
+
 export function mountCommitLinks(doc: Document, open: (request: CommitLink) => void): () => void {
   const owned = new Map<HTMLElement, () => void>();
   const sync = () => {
@@ -21,7 +27,7 @@ export function mountCommitLinks(doc: Document, open: (request: CommitLink) => v
       if (!candidates.has(code)) { cleanup(); owned.delete(code); }
     }
     for (const code of candidates) {
-      if (owned.has(code)) continue;
+      if (owned.has(code)) { label(code); continue; }
       // Preserve native interactive code if BB adds its own handler in a later version.
       if (code.hasAttribute('role') || code.hasAttribute('tabindex')) continue;
       const original = attributes.map(name => [name, code.getAttribute(name)] as const);
@@ -38,7 +44,7 @@ export function mountCommitLinks(doc: Document, open: (request: CommitLink) => v
       code.setAttribute('role', 'button');
       code.setAttribute('tabindex', '0');
       code.title = 'Open commit in Git Glance';
-      code.setAttribute('aria-label', 'Open commit in Git Glance');
+      label(code);
       code.addEventListener('click', activate);
       code.addEventListener('keydown', activate);
       owned.set(code, () => {

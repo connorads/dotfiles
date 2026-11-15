@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
 import type { FailureReason, OpKind, OpRequest, OpState, Repo } from './contracts.ts';
 import { plural } from './src/format.ts';
@@ -52,6 +53,9 @@ export function available(repo: Repo, op: OpState | null): Availability {
     [kind, { enabled: reason[kind] === null, title: reason[kind] ?? titles[kind] }])) as Availability;
 }
 
+/** How long after a cancel click the same button ignores clicks: covers a double-click and repeated presses. */
+const cancelGuardMs = 1000;
+
 export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
   repo: Repo; op: OpState | null;
   /** `op` is a request the server has not answered yet: it shows as running but cannot be cancelled. */
@@ -61,11 +65,21 @@ export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
   const can = available(repo, op);
   const running = op?.status === 'running' ? op : null;
   const { branch } = repo;
+  /** The last cancel click: a second click of a double-click lands after the op ends and must not start it again. */
+  const cancelled = useRef<{ kind: OpKind; at: number } | null>(null);
   const button = ({ kind, icon, label, count, tone }: { kind: OpKind; icon: string; label: string; count: number | null; tone: string }) => {
     const active = running?.request.kind === kind;
+    // aria-disabled, not disabled, while starting: a disabled button drops keyboard focus to the page.
     return <button type="button" className="gg-sync" data-tone={tone} data-active={active || undefined}
-      disabled={active ? starting : !can[kind].enabled} title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
-      onClick={() => active ? onCancel() : onSync(kind)} aria-label={active ? starting ? `Starting ${kind}` : `Cancel ${kind}` : can[kind].title}>
+      disabled={!active && !can[kind].enabled} aria-disabled={active && starting ? true : undefined}
+      title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
+      onClick={event => {
+        const last = cancelled.current;
+        if ((active && starting) || (last?.kind === kind && event.timeStamp - last.at < cancelGuardMs)) return;
+        if (!active) { onSync(kind); return; }
+        cancelled.current = { kind, at: event.timeStamp };
+        onCancel();
+      }} aria-label={active ? starting ? `Starting ${kind}` : `Cancel ${kind}` : can[kind].title}>
       {active ? <span className="gg-spinner gg-spinner-sm" /> : <Icon name={icon} className="size-3.5" />}
       <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : describe({ kind }).doing : label}</span>
       {!active && count !== null && count > 0 && <span className="gg-sync-count">{count}</span>}

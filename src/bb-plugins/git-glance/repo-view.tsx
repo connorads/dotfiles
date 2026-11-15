@@ -25,9 +25,9 @@ type Selection = { kind: 'file'; key: string } | { kind: 'commit'; sha: string }
 /** An action that failed, or that the server refused because another operation was running. */
 export type ActionError = { text: string; refused: boolean };
 
-export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, sending, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
+export function RepoView({ repo, threadId, state, actionError, dismissed, onDismiss, onDismissAction, sending, onRun, onCancel, picker, onPicker, onZoom, onClose, onFolders }: {
   repo: Repo; threadId: string; state: RepoState; actionError: ActionError | null;
-  dismissed: string | null; onDismiss: (id: string) => void; sending: OpRequest | null; onRun: (request: OpRequest) => Promise<boolean>; onCancel: () => void;
+  dismissed: string | null; onDismiss: (id: string) => void; onDismissAction: () => void; sending: OpRequest | null; onRun: (request: OpRequest) => Promise<boolean>; onCancel: () => void;
   picker: 'closed' | 'pointer' | 'keyboard'; onPicker: (state: 'closed' | 'pointer' | 'keyboard') => void;
   onFolders: () => void; onZoom: () => void; onClose: () => void;
 }) {
@@ -123,7 +123,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
     <header className="gg-header" data-tone={tone}>
       <div className="gg-eyebrow">
         <Icon name={repo.kind === 'dotfiles' ? 'Home' : 'FolderGit'} className="size-3.5" />
-        <button type="button" className="gg-ghost" data-folders-trigger disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository">{repo.name}<Icon name="ChevronDown" className="size-3" /></button>
+        <button type="button" className="gg-ghost" data-folders-trigger disabled={state.op?.status === 'running'} onClick={onFolders} title="Change repository"><span className="gg-repo-name" title={repo.name}>{repo.name}</span><Icon name="ChevronDown" className="size-3" /></button>
         {repo.kind === 'dotfiles' && <span className="gg-tag">bare repo</span>}
         <span className="gg-spacer" />
         <button type="button" className="gg-ghost gg-icon-button" onClick={() => void openReview()} disabled={!state.root || threadId.startsWith('project:')} aria-label="Open in Diff Viewer" title="Open in Diff Viewer"><Icon name="FileDiff" className="size-3.5" /></button>
@@ -166,10 +166,11 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
         </div>
       </div>}
       {repo.operation && <div className="gg-banner" role="status"><Icon name="AlertTriangle" className="size-4" />
-        <span><strong>{operationNames[repo.operation]} in progress.</strong> Resolve conflicts, then continue or abort in lazygit.</span></div>}
+        <span className="gg-banner-text"><strong>{operationNames[repo.operation]} in progress.</strong> Resolve conflicts, then continue or abort in lazygit.</span></div>}
       {actionError && <div className="gg-banner" data-tone={actionError.refused ? 'info' : undefined} role="alert">
-        <Icon name={actionError.refused ? 'Clock' : 'CircleX'} className="size-4" /><span>{actionError.text}</span></div>}
-      {reviewError && <div className="gg-banner" role="alert"><Icon name="CircleX" className="size-4" /><span>{reviewError}</span>
+        <Icon name={actionError.refused ? 'Clock' : 'CircleX'} className="size-4" /><span className="gg-banner-text">{actionError.text}</span>
+        <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={onDismissAction}><Icon name="X" className="size-3.5" /></button></div>}
+      {reviewError && <div className="gg-banner" role="alert"><Icon name="CircleX" className="size-4" /><span className="gg-banner-text">{reviewError}</span>
         <button type="button" className="gg-ghost gg-icon-button" aria-label="Dismiss" onClick={() => setReviewError(null)}><Icon name="X" className="size-3.5" /></button></div>}
       {failure && <div className="gg-banner gg-failure" role="alert">
         <Icon name="CircleX" className="size-4" />
@@ -181,7 +182,7 @@ export function RepoView({ repo, threadId, state, actionError, dismissed, onDism
       </div>}
       {success && <div className="gg-success" role="status" data-leaving={now - success.finishedAt >= 5000 || undefined}><Icon name="CircleCheck" className="size-4" />{success.summary}</div>}
       {running?.request.kind === 'create-commit' && <div className="gg-banner" data-tone="info" role="status">
-        <span>Running commit hooks and signing…</span><button type="button" className="gg-ghost" disabled={starting !== null} onClick={onCancel}>Cancel commit</button>
+        <span className="gg-banner-text">Running commit hooks and signing…</span><button type="button" className="gg-ghost" disabled={starting !== null} onClick={onCancel}>Cancel commit</button>
       </div>}
       {running && <div className="gg-progress" role="progressbar" aria-label={`${describe(running.request).name} progress`}
         aria-valuenow={running.progress?.percent ?? undefined} data-indeterminate={running.progress?.percent == null || undefined}>

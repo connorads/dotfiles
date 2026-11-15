@@ -45,7 +45,11 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
     const area = textarea.current;
     if (!open || !review || busy || !area || area.disabled) return;
     const active = area.ownerDocument.activeElement;
-    if (!active || active === area.ownerDocument.body || active === form.current) area.focus({ preventScroll: true });
+    if (!active || active === area.ownerDocument.body || active === form.current) {
+      area.focus({ preventScroll: true });
+      // A kept draft continues at its end, not before the subject.
+      area.setSelectionRange(area.value.length, area.value.length);
+    }
   }, [open, review, busy]);
   const refresh = () => {
     invalidate();

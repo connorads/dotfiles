@@ -12,15 +12,22 @@
   --gg-lane-5: oklch(76% .11 200);
   /* --attention is a fill colour; as text on the panel it needs more contrast. */
   --gg-attention-text: color-mix(in oklch, var(--attention) 65%, var(--foreground));
+  --gg-ahead-text: var(--gg-lane-0);
   --gg-add: var(--diff-added, oklch(70% .17 150));
   --gg-del: var(--diff-removed, oklch(65% .19 22));
   /* Emil Kowalski's ease-out: fast start, long settle. */
   --gg-ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Light theme: small attention and accent text needs a darker mix to reach 4.5:1 on the panel. */
+:root:not(.dark) {
+  --gg-attention-text: color-mix(in oklch, var(--attention) 45%, var(--foreground));
+  --gg-ahead-text: color-mix(in oklch, var(--gg-lane-0) 80%, var(--foreground));
+}
+
 /* Header chip: anatomy from @bb-plugins/chip; only the branch's own marks here. */
 .bbp-chip[data-tone="danger"] .gg-chip-branch { text-transform: capitalize; }
-.gg-chip-ahead { color: var(--gg-lane-0); }
+.gg-chip-ahead { color: var(--gg-ahead-text); }
 .gg-chip-behind { color: var(--gg-attention-text); }
 @container page-header (max-width: 900px) { .gg-chip-ahead, .gg-chip-behind { display: none; } }
 
@@ -81,6 +88,10 @@
 .gg-ghost:disabled { opacity: .5; cursor: progress; }
 .gg-ghost:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .gg-icon-button { width: 24px; padding: 0; justify-content: center; }
+/* The eyebrow and the repository button shrink, so a long repository name is cut short instead of widening the header. */
+.gg-eyebrow, .gg-eyebrow > [data-folders-trigger] { min-width: 0; }
+.gg-eyebrow > [data-folders-trigger] > :last-child { flex: none; }
+.gg-repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gg-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .gg-title-icon { width: 18px; height: 18px; flex: none; color: var(--gg-tone); }
 .gg-title h2 {
@@ -144,7 +155,7 @@
   background: var(--surface-destructive, color-mix(in oklch, var(--destructive) 12%, transparent)); color: var(--destructive-text);
 }
 .gg-banner[data-tone="info"] { align-items: center; border-color: var(--border); background: var(--surface-recessed, var(--muted)); color: var(--foreground); }
-.gg-banner > span { flex: 1; min-width: 0; }
+.gg-banner-text { flex: 1; min-width: 0; }
 .gg-banner > .gg-ghost { flex: none; white-space: nowrap; }
 .gg-banner strong { font-weight: 600; }
 .gg-banner span, .gg-failure-body { text-wrap: pretty; }
@@ -158,7 +169,7 @@
   font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; cursor: pointer;
   transition: background-color .15s, border-color .15s, color .15s, transform .16s var(--gg-ease);
 }
-.gg-sync[data-tone="ahead"] { --gg-sync: var(--gg-lane-0); }
+.gg-sync[data-tone="ahead"] { --gg-sync: var(--gg-ahead-text); }
 .gg-sync[data-tone="behind"] { --gg-sync: var(--gg-attention-text); }
 .gg-sync[data-tone="ahead"]:not(:disabled), .gg-sync[data-tone="behind"]:not(:disabled) {
   border-color: color-mix(in oklch, var(--gg-sync) 45%, transparent); background: color-mix(in oklch, var(--gg-sync) 12%, var(--popover));
@@ -169,6 +180,8 @@
 .gg-sync:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .gg-sync[data-active] { --gg-sync: var(--foreground); border-color: var(--border-hairline); min-width: 92px; }
 .gg-sync[data-active]:disabled { opacity: 1; }
+.gg-sync[aria-disabled="true"] { cursor: progress; }
+.gg-sync[aria-disabled="true"]:active { transform: none; }
 .gg-sync-count { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--gg-sync); color: var(--popover); font-size: 11px; font-weight: 700; }
 .gg-sync-cancel { width: 12px; height: 12px; margin-left: auto; opacity: .55; }
 .gg-sync[data-active]:hover .gg-sync-cancel { opacity: 1; color: var(--destructive-text); }
@@ -453,6 +466,8 @@
 .gg-composer form { display: grid; gap: 8px; }
 .gg-composer form:focus { outline: none; }
 .gg-composer p { margin: 0; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.gg-composer p[role="alert"] { color: var(--destructive-text); font-weight: 500; }
+.gg-composer p[role="status"] { color: var(--warning-text); font-weight: 500; }
 .gg-composer textarea { display: block; width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: transparent; color: var(--foreground); resize: vertical; }
 .gg-index-action { white-space: nowrap; }
 

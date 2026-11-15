@@ -26,7 +26,7 @@ default checkout. That screen shows no chip.
 
 Keys in the pop-up: `↑`/`↓` or `j`/`k` move, `↵` opens a diff, `p` pulls,
 `⇧P` pushes, `f` fetches, `b` switches branch, `o` chooses a repository, `R` resynchronises, `l` opens
-lazygit, and `q` or `esc` closes. On a file row `d` arms discard and a second `d` confirms; on a
+lazygit, and `q` or `esc` closes. In the branch picker, commit form and folder browser, `esc` goes back to the repository view. On a file row `d` arms discard and a second `d` confirms; on a
 file row `Space` stages or unstages the complete file; on a
 stash row `a` applies and `g` pops.
 

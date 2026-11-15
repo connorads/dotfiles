@@ -5,6 +5,7 @@ import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
 import { projectSubject, rpcContract } from './contracts.ts';
 import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
+import { describe } from './sync-bar.tsx';
 import './app.css';
 import { mountCommitLinks, type CommitLink } from './chat-links.ts';
 import { mountComposerShortcut } from './composer-shortcut.ts';
@@ -61,10 +62,12 @@ function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const repo = data?.kind === 'none' ? null : data;
   const files = repo ? new Set(repo.changes.map(c => c.path)).size + repo.hidden : 0;
   const fetchFailed = fetch.failure !== null || fetchRequestError !== null;
-  const danger = repo && (repo.operation || repo.changes.some(c => c.area === 'conflicted'));
+  const conflicted = repo ? repo.changes.filter(c => c.area === 'conflicted').length : 0;
+  const danger = repo && (repo.operation || conflicted > 0);
   const branch = repo ? repo.branch.head ?? repo.branch.oid?.slice(0, 7) ?? 'unborn' : error ? 'Git unavailable' : 'Choose repo';
   const label = repo
-    ? [`Git: ${branch}`, repo.branch.ahead && `${repo.branch.ahead} to push`, repo.branch.behind && `${repo.branch.behind} to pull`,
+    ? [`Git: ${branch}`, repo.operation && `${repo.operation} in progress`, conflicted > 0 && `${conflicted} conflicted`,
+      op?.status === 'running' && `${describe(op.request).doing}…`, repo.branch.ahead && `${repo.branch.ahead} to push`, repo.branch.behind && `${repo.branch.behind} to pull`,
       files ? `${files} changed` : 'clean', repo.remotes.length > 0 && (fetchFailed ? 'Fetch failed. Counts use cached remote data.' : 'Counts use cached remote data. Open to check the remote.')].filter(Boolean).join(', ')
     : error ? `Git status unavailable: ${error}` : 'Choose a Git repository';
   return <GlanceChip data-git-glance={threadId} expanded={isOpen} tone={error || fetchFailed ? 'warn' : danger ? 'danger' : undefined}

@@ -27,6 +27,12 @@ function target(code: HTMLElement): CheckoutLink | null {
   return checkout && threadId ? { ...checkout, threadId } : null;
 }
 
+/** The name starts with the visible text, so each link is told apart and can be named by voice. */
+function label(code: HTMLElement) {
+  const name = `${code.textContent?.trim() ?? ''}, open checkout in Git Glance`;
+  if (code.getAttribute('aria-label') !== name) code.setAttribute('aria-label', name);
+}
+
 export function mountCheckoutLinks(doc: Document, open: (request: CheckoutLink) => void): () => void {
   const owned = new Map<HTMLElement, () => void>();
   const sync = () => {
@@ -35,7 +41,8 @@ export function mountCheckoutLinks(doc: Document, open: (request: CheckoutLink) 
       if (!candidates.has(code)) { cleanup(); owned.delete(code); }
     }
     for (const code of candidates) {
-      if (owned.has(code) || code.hasAttribute('role') || code.hasAttribute('tabindex')) continue;
+      if (owned.has(code)) { label(code); continue; }
+      if (code.hasAttribute('role') || code.hasAttribute('tabindex')) continue;
       const original = attributes.map(name => [name, code.getAttribute(name)] as const);
       const activate = (event: MouseEvent | KeyboardEvent) => {
         if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
@@ -47,7 +54,8 @@ export function mountCheckoutLinks(doc: Document, open: (request: CheckoutLink) 
       };
       code.classList.add('gg-chat-commit');
       code.setAttribute('role', 'button'); code.setAttribute('tabindex', '0');
-      code.title = 'Open checkout in Git Glance'; code.setAttribute('aria-label', code.title);
+      code.title = 'Open checkout in Git Glance';
+      label(code);
       code.addEventListener('click', activate); code.addEventListener('keydown', activate);
       owned.set(code, () => {
         code.removeEventListener('click', activate); code.removeEventListener('keydown', activate);

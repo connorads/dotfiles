@@ -34,6 +34,7 @@ it('follows streamed edits and row reuse, then restores attributes on disposal',
   code.textContent = 'a12bc345';
   await settle();
   expect(code.title).toContain('Git Glance');
+  expect(code.getAttribute('aria-label')).toBe('a12bc345, open commit in Git Glance');
   document.querySelector('[data-timeline-row-id]')?.setAttribute('data-timeline-row-id', 'thr_next:assistant:2');
   code.click();
   expect(requests).toEqual([{ threadId: 'thr_next', sha: 'a12bc345' }]);
