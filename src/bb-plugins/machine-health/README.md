@@ -16,7 +16,7 @@ enrolled machine at once.
   chip's border takes the worst reading's tone. The tooltip names every reading
   and the memory state.
 - bb caps the header slot at 256 px. The chip clips at that width.
-- A remote machine shows `⇄` and its name.
+- A remote machine shows `⇄` and its name. A compact header keeps `⇄` alone.
 
 | Reading | Warn | Critical |
 | --- | --- | --- |
@@ -59,10 +59,12 @@ Memory, threads, services and apps need macOS. Linux shows vitals only.
 Press `r` to refresh and `Esc` to close. `Esc` first backs out of an open Stop
 or Hibernate confirmation. `Q` closes outside text fields. Ticks, expanded rows
 and confirmations stay put when you switch views. One Stop or Hibernate runs
-at a time. Its outcome shows below the views and takes focus when the control
-that started it has gone. Closing the dialog does not cancel it. Reopened in
-the same thread, the dialog shows it still running, or its outcome until the
-next close.
+at a time per machine, across every thread's dialog in the window; the others
+say so and wait. A running action shows a status line (`Stopping PID 41201…`)
+below the views, which becomes its outcome. That line takes focus when the
+control that started it has gone. Closing the dialog does not cancel it.
+Reopened in the same thread, the dialog shows it still running, or its outcome
+until the next close.
 
 ## Hibernate
 
@@ -93,7 +95,7 @@ descendant. The telegram channel's `bun server.ts` is one such server.
 After the stops, the server polls the machine every 750 ms for up to 6 s. Each
 thread reports `hibernated`, `stopped but still running`, `refused` or
 `failed`. Ticking more than one thread asks for confirmation. If the call
-fails, the ticks stay for a retry.
+fails, the ticks stay for a retry, also when the dialog is closed and reopened.
 
 ### Unverified: does a stop free the Claude process?
 

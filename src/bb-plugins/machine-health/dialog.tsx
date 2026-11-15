@@ -77,10 +77,13 @@ function Apps({ apps, busy, onEnd }: { apps: AppGroup[]; busy: boolean; onEnd: E
   </section>;
 }
 
-function Threads({ threads, busy, hibernating, onHibernate, onOpen }: {
-  threads: ThreadRowData[]; busy: boolean; hibernating: boolean; onHibernate: (ids: string[]) => Promise<boolean>; onOpen: (id: string) => void;
+function Threads({ threads, busy, hibernating, retry, onHibernate, onOpen }: {
+  threads: ThreadRowData[]; busy: boolean; hibernating: boolean; retry: string[] | null;
+  onHibernate: (ids: string[]) => Promise<boolean>; onOpen: (id: string) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // A hibernate that failed, even one started by a dialog since closed, puts its ticks back for a retry.
+  useEffect(() => { if (retry) setSelected(new Set(retry)); }, [retry]);
   const [confirming, setConfirming] = useState(false);
   const action = useRef<HTMLButtonElement>(null);
   const no = useRef<HTMLButtonElement>(null);
@@ -103,15 +106,15 @@ function Threads({ threads, busy, hibernating, onHibernate, onOpen }: {
       {threads.map((row, index) => <li key={row.threadId} className="mh-thread" data-safe={row.refusal === null}>
         <input type="checkbox" aria-label={`Select ${row.title}`} aria-describedby={`${id}-why-${index}`} disabled={row.refusal !== null || busy}
           checked={selected.has(row.threadId)} onChange={() => flip(row.threadId)} />
-        <button type="button" className="mh-link mh-name" onClick={() => onOpen(row.threadId)}>{row.title}</button>
+        <button type="button" className="mh-link mh-name" title={`Open thread: ${row.title}`} onClick={() => onOpen(row.threadId)}>{row.title}</button>
         <span className="mh-mb">{humanMb(row.mb)}</span>
         <span className="mh-why" id={`${id}-why-${index}`} title={row.refusal ?? 'idle'}>{row.refusal ?? 'idle'}</span>
       </li>)}
     </ul>
     <div className="mh-actions">
       {confirming
-        ? <span className="mh-confirm" role="group" aria-labelledby={`${id}-ask`}><span id={`${id}-ask`}>Hibernate {ids.length} threads?</span>
-          <button type="button" disabled={busy} onClick={() => { void run(); }}>Yes</button>
+        ? <span className="mh-confirm" role="group" aria-labelledby={`${id}-ask`}><span id={`${id}-ask`}>Hibernate {threadCount(ids.length)}?</span>
+          <button type="button" disabled={busy || ids.length === 0} onClick={() => { void run(); }}>Yes</button>
           <button type="button" ref={no} data-mh-cancel onClick={cancel}>No</button></span>
         : <button type="button" ref={action} disabled={ids.length === 0 || busy}
           onClick={() => { if (ids.length > 1) setConfirming(true); else void run(); }}>
@@ -129,8 +132,11 @@ type Hibernated = { summary: string; outcomes: Outcome[]; titles: Map<string, st
  * mid-call must not re-arm the action or lose its result. The entry goes when a
  * dialog that has shown the outcome closes.
  */
-type Work = { running: 'hibernate' | 'stop' | null; hibernated: Hibernated | null; status: string | null; error: string | null };
-const idle: Work = { running: null, hibernated: null, status: null, error: null };
+type Work = {
+  running: 'hibernate' | 'stop' | null; hostId: string | null;
+  hibernated: Hibernated | null; status: string | null; error: string | null; retry: string[] | null;
+};
+const idle: Work = { running: null, hostId: null, hibernated: null, status: null, error: null, retry: null };
 const work = new Map<string, Work>();
 const workListeners = new Set<() => void>();
 const subscribeWork = (listener: () => void) => { workListeners.add(listener); return () => { workListeners.delete(listener); }; };
@@ -138,6 +144,10 @@ function setWork(threadId: string, next: Partial<Work>) {
   work.set(threadId, { ...(work.get(threadId) ?? idle), ...next });
   workListeners.forEach(listener => listener());
 }
+/** Stop and Hibernate act on the machine, so a dialog for another thread on it waits too. */
+const runningElsewhere = (hostId: string | undefined, threadId: string) =>
+  hostId !== undefined && [...work].some(([id, entry]) => id !== threadId && entry.running !== null && entry.hostId === hostId);
+const threadCount = (count: number) => `${count} ${count === 1 ? 'thread' : 'threads'}`;
 
 /** The summary line, then one line per thread that was not hibernated, by title. */
 function HibernateResult({ summary, outcomes, titles }: Hibernated) {
@@ -158,11 +168,14 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const navigate = useBbNavigate();
   const [data, setData] = useState<TriageData | null>(null);
   const [triageError, setTriageError] = useState<string | null>(null);
-  const { running, hibernated, status, error } = useSyncExternalStore(subscribeWork, () => work.get(threadId) ?? idle);
+  const { running, hibernated, status, error, retry } = useSyncExternalStore(subscribeWork, () => work.get(threadId) ?? idle);
+  const elsewhere = useSyncExternalStore(subscribeWork, () => runningElsewhere(data?.hostId, threadId));
   const hibernating = running === 'hibernate';
-  const busy = running !== null;
+  const busy = running !== null || elsewhere;
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'services' | 'threads' | 'apps'>('services');
+  // Reopened during or after a hibernate, the dialog starts where its ticks and button are.
+  const [view, setView] = useState<'services' | 'threads' | 'apps'>(() =>
+    work.get(threadId)?.running === 'hibernate' || work.get(threadId)?.retry ? 'threads' : 'services');
   const request = useRef(0);
   const box = useRef<HTMLDialogElement>(null);
   const viewBox = useRef<HTMLDivElement>(null);
@@ -190,17 +203,21 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   // An action started by an earlier, closed dialog refreshes this one when it ends.
   const inherited = useRef(running !== null);
   useEffect(() => { if (inherited.current && !running) { inherited.current = false; refresh(); } }, [running, refresh]);
+  // So does one started from another thread's dialog on this machine.
+  const waited = useRef(false);
+  useEffect(() => { if (elsewhere) waited.current = true; else if (waited.current) { waited.current = false; refresh(); } }, [elsewhere, refresh]);
 
   const shown = hibernated ?? status ?? error;
-  // A new outcome scrolls into view, so a short screen shows it below the lists.
-  useEffect(() => { if (shown) outcome.current?.scrollIntoView({ block: 'nearest' }); }, [shown]);
+  // A new outcome scrolls into view, so a short screen shows it below the lists, also once they load.
+  const listed = data !== null;
+  useEffect(() => { if (shown && listed) outcome.current?.scrollIntoView({ block: 'nearest' }); }, [shown, listed]);
   // An action unmounts or disables the control that started it (Yes, Hibernate, a stopped row).
   // Focus then moves to the views while the call runs, and to its outcome once shown,
-  // so `r`, `q` and Tab keep working from where the user was.
+  // so `r`, `q` and Tab keep working from where the user was. ChipPopover parks lost focus on the dialog itself.
   useEffect(() => {
     if (!rescue.current) return;
     const active = document.activeElement;
-    const lost = !active || active === document.body || active === viewBox.current || active.matches(':disabled');
+    const lost = !active || active === document.body || active === box.current || active === viewBox.current || active.matches(':disabled');
     if (lost && outcome.current) outcome.current.focus();
     else if (lost) viewBox.current?.focus({ preventScroll: true });
     if (!busy && !loading && (!lost || outcome.current)) rescue.current = false;
@@ -209,21 +226,21 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const hibernate = async (threadIds: string[]) => {
     if (!data || busy) return false;
     rescue.current = true;
-    setWork(threadId, { ...idle, running: 'hibernate' });
+    setWork(threadId, { ...idle, running: 'hibernate', hostId: data.hostId, status: `Hibernating ${threadCount(threadIds.length)}…` });
     // Titles from this sample: the refresh after the stops may drop hibernated threads from the list.
     const titles = new Map(data.threads.map(row => [row.threadId, row.title]));
-    try { setWork(threadId, { running: null, hibernated: { ...await rpc.call('hibernate', { hostId: data.hostId, threadIds }), titles } }); return true; }
-    catch (cause) { setWork(threadId, { running: null, error: `Hibernate failed: ${message(cause)}` }); return false; }
+    try { setWork(threadId, { running: null, status: null, hibernated: { ...await rpc.call('hibernate', { hostId: data.hostId, threadIds }), titles } }); return true; }
+    catch (cause) { setWork(threadId, { running: null, status: null, error: `Hibernate failed: ${message(cause)}`, retry: threadIds }); return false; }
     finally { if (alive.current) refresh(); }
   };
   const end = async (pid: number, command: string, started: string) => {
     if (!data || busy) return;
     rescue.current = true;
-    setWork(threadId, { ...idle, running: 'stop' });
+    setWork(threadId, { ...idle, running: 'stop', hostId: data.hostId, status: `Stopping PID ${pid}…` });
     try {
       const outcome = await rpc.call('terminate', { hostId: data.hostId, pid, command, started });
       setWork(threadId, { running: null, status: outcome.ok ? outcome.outcome === 'exited' ? `Process ${pid} exited.` : `Sent SIGTERM to ${pid}; exit was not confirmed.` : outcome.reason });
-    } catch (cause) { setWork(threadId, { running: null, error: `Could not stop PID ${pid}: ${message(cause)}` }); }
+    } catch (cause) { setWork(threadId, { running: null, status: null, error: `Could not stop PID ${pid}: ${message(cause)}` }); }
     finally { if (alive.current) refresh(); }
   };
 
@@ -248,7 +265,7 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
     </header>
     {machineError && <p role="alert" className="mh-error">{machineError}</p>}
     {machine && <dl className="mh-summary">
-      <div><dt>Swap used</dt><dd>{data ? humanMb(data.gauge.swapUsedMb) : '…'}</dd></div>
+      <div><dt>Swap used</dt><dd>{data ? humanMb(data.gauge.swapUsedMb) : triageError ? 'Unavailable' : '…'}</dd></div>
       <div><dt>CPU</dt><dd>{machine.vitals?.cpuPct == null ? 'Unavailable' : `${Math.round(machine.vitals.cpuPct)}%`}</dd></div>
       <div><dt>Disk free</dt><dd>{machine.vitals?.disk ? humanMb(machine.vitals.disk.freeBytes / 1048576) : 'Unavailable'}</dd></div>
     </dl>}
@@ -266,9 +283,10 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
         <button type="button" aria-pressed={view === 'apps'} onClick={() => setView('apps')}>Apps</button>
       </nav>
       {/* Every view stays mounted, so ticks, expanded rows and confirmations survive a view switch. */}
+      {elsewhere && <p role="status" className="mh-empty">A Stop or Hibernate from another thread is running on this machine.</p>}
       <div className="mh-view" ref={viewBox} tabIndex={-1} aria-busy={busy || loading}>
         <div hidden={view !== 'services'}><Services services={data.services} error={data.serviceError} busy={busy || loading} onEnd={end} /></div>
-        <div hidden={view !== 'threads'}><Threads threads={data.threads} busy={busy || loading} hibernating={hibernating} onHibernate={hibernate}
+        <div hidden={view !== 'threads'}><Threads threads={data.threads} busy={busy || loading} hibernating={hibernating} retry={retry} onHibernate={hibernate}
           onOpen={id => { onClose(); navigate.toThread(id); }} /></div>
         <div hidden={view !== 'apps'}><Apps apps={data.apps} busy={busy || loading} onEnd={end} /></div>
       </div>
@@ -280,7 +298,8 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
     </div>}
     <footer className="mh-footer">
       {labelButton}
-      <button type="button" onClick={refresh} disabled={loading || busy}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
+      {/* aria-disabled, not disabled: a disabled button drops keyboard focus, and with it `r` and `q`. */}
+      <button type="button" onClick={() => { if (!loading && !busy) refresh(); }} aria-disabled={loading || busy}>{loading ? 'Refreshing…' : 'Refresh (r)'}</button>
       <button type="button" onClick={onClose}>Close</button>
     </footer>
   </ChipPopover>;

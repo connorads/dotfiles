@@ -75,7 +75,7 @@ function useThreadMachine(threadId: string) {
 /** The machine label only when it adds something: a remote machine, or the footer's list. */
 function Pills({ view, withLabel }: { view: ChipView; withLabel: boolean }) {
   return <>
-    {withLabel && <span className="mh-label">{view.remote && <span aria-label="remote" title="Remote machine">⇄ </span>}{view.label}</span>}
+    {withLabel && <span className="mh-label">{view.remote && <span className="mh-remote" aria-label="remote" title="Remote machine">⇄</span>}<span className="mh-label-text">{view.label}</span></span>}
     {view.segments.map(segment => <span key={segment.key} className="mh-metric" data-metric={segment.key} data-tone={segment.tone} title={segment.title}>
       <MetricIcon metric={segment.key} /><span className="mh-value">{segment.value}</span>
     </span>)}

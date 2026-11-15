@@ -13,6 +13,7 @@ export function ProcessRows({ processes, busy, onEnd }: { processes: AppProcess[
       {proc.owner !== null ? <span className="mh-why">{proc.owner === 'thread' ? 'BB thread' : 'BB infrastructure'}</span>
         : <details className="mh-stop">
           <summary aria-label={`Stop process ${proc.pid}`} aria-disabled={busy || !proc.started}
+            title={proc.started ? undefined : 'Start time unknown, so this process cannot be told apart from a later one with its PID'}
             onClick={event => { if (busy || !proc.started) event.preventDefault(); }}>Stop…</summary>
           <div className="mh-confirm">
             <span>Stop PID {proc.pid}?</span>

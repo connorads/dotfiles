@@ -20,10 +20,14 @@
 .mh-metric[data-tone="warn"], .mh-metric[data-tone="critical"], .mh-metric[data-tone="off"] { color: var(--mh-tone); }
 .mh-icon { width: 13px; height: 13px; flex: none; color: var(--muted-foreground); }
 .mh-metric[data-tone="warn"] .mh-icon, .mh-metric[data-tone="critical"] .mh-icon { color: inherit; }
-.mh-label { overflow: hidden; text-overflow: ellipsis; }
+.mh-label { display: inline-flex; gap: 4px; min-width: 0; }
+/* The remote marker never shrinks; the name takes the cut. */
+.mh-remote { flex: none; }
+.mh-label-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @container page-header (max-width: 900px) {
   .mh-chip { gap: 6px; }
-  .mh-chip .mh-label, .mh-chip .mh-value { display: none; }
+  /* Remote stays a glance reading: the marker shows without its name. */
+  .mh-chip .mh-label-text, .mh-chip .mh-value { display: none; }
   /* Offline has no icon; its word is the whole chip. */
   .mh-chip .mh-metric[data-metric="offline"] .mh-value { display: inline; }
 }
@@ -43,7 +47,7 @@
 .mh-panel button:not(.mh-link):not(.mh-app) {
   padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: transparent; cursor: pointer;
 }
-.mh-panel button:disabled { opacity: .5; cursor: default; }
+.mh-panel button:disabled, .mh-panel button[aria-disabled="true"] { opacity: .5; cursor: default; }
 
 .mh-rows { display: grid; gap: 4px; margin: 0; }
 .mh-rows > div { display: grid; grid-template-columns: 72px 1fr; gap: 10px; }
