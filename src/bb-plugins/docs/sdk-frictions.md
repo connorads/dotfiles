@@ -1415,3 +1415,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Status: open. Native discovery and read-only listing verified without a model request.
 - Category: provider
 - Evidence: Claude Code 2.1.322; [adapter tests](../claude-connectors/src/artifacts.test.ts).
+
+### Provider usage drops explicit quota periods before presentation
+
+- Found: 2026-11-16, Agent Usage, Antigravity CLI 1.5.5.
+- Wanted: Group-specific quota labels with explicit periods for pace and stale-reading calculations.
+- Gap: The built-in Provider usage snapshot drops window `kind` and normalises group-specific labels to generic periods.
+  A live Antigravity source has five distinct windows; the aggregate repeats Weekly and 5-hour without their quota groups.
+- Workaround: Agent Switcher reads the source measurement again during inspection and restores its labels and optional window `kind`.
+  Existing sources without that field retain their label-based period detection.
+- Ask: Preserve window IDs, groups, periods and model membership in the Provider usage snapshot.
+- Status: open; native collection and explicit-period presentation are covered by tests.
+- Category: sdk-gap
+- Evidence: [Antigravity collector](../claude-profiles/src/accounts/usage/antigravity.ts),
+  [inspection tests](../claude-profiles/src/accounts/usage/overview.test.ts).

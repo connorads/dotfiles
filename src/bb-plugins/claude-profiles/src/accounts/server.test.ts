@@ -6,6 +6,35 @@ import { authOverrides } from './claude.ts';
 
 const profile = { id: 'stretch', label: 'stretch', configDir: '/profiles/stretch' };
 
+test('Antigravity inventory selects installed hosts and reads quota through that host', async () => {
+  const calls: string[] = [];
+  const { bb, harness } = createFakePluginHost({
+    sdk: {
+      hosts: { list: async () => [{ id: 'host-a', name: 'Example A', status: 'connected' },
+        { id: 'host-b', name: 'Example B', status: 'connected' }] },
+      providers: { list: async ({ hostId }: { hostId: string }) =>
+        hostId === 'host-a' ? [{ id: 'acp-antigravity', available: true }] : [] },
+    } as never,
+    experimental_callHostRpc: async call => {
+      if (call.method === 'profiles') return [];
+      if (call.method === 'antigravityUsage') {
+        calls.push(call.hostId);
+        return { accountKey: null, observedAt: 123, usage: { status: 'ok', plan: null, planLabel: null, accountEmail: null, windows: [] } };
+      }
+      throw new Error('Unexpected host call');
+    },
+  });
+  try {
+    plugin(bb);
+    const resources = await harness.behavior.callRpc('provider-usage.v1.listResources', {});
+    assert.partialDeepStrictEqual(resources, { resources: [{ providerId: 'acp-grok' }, { providerId: 'acp-grok' },
+      { id: '["antigravity","host-a"]', providerId: 'acp-antigravity' }] });
+    assert.deepEqual(calls, []);
+    await harness.behavior.callRpc('provider-usage.v1.getResource', { resourceId: '["antigravity","host-a"]', refresh: true });
+    assert.deepEqual(calls, ['host-a']);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
 async function setup(launchEntries: { name: string; source: unknown; value: string }[]) {
   const thread = makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'idle', environmentId: 'e1' });
   const stops: unknown[] = [];

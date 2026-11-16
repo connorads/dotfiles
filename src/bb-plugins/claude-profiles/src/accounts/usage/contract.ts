@@ -5,7 +5,8 @@ import { resetCreditsSchema } from './reset-credits.ts';
 import { claudeResetsSchema } from './claude-resets.ts';
 
 const cost = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() }).nullable();
-export const sourceWindowSchema = z.object({ label: z.string(), usedPercent: z.number(), resetsAt: z.string().nullable(), cost });
+export const sourceWindowSchema = z.object({ label: z.string(), usedPercent: z.number(), resetsAt: z.string().nullable(), cost,
+  kind: z.enum(['five-hour', 'daily', 'weekly', 'custom']).optional() });
 export const windowSchema = sourceWindowSchema.extend({ period: z.enum(['five-hour', 'day', 'week', 'month']).nullable() });
 
 function snapshotOf<W extends z.ZodType>(window: W) {

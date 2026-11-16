@@ -12,6 +12,7 @@ import { createLogin } from './src/accounts/usage/login.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
 import { createAmpSource } from './src/accounts/usage/amp-source.ts';
 import { createGrokSource } from './src/accounts/usage/grok-source.ts';
+import { createAntigravitySource } from './src/accounts/usage/antigravity-source.ts';
 import { registerModels } from './src/models/server.ts';
 import { registerConnectors } from './src/accounts/connectors.ts';
 export { rpcContract } from './contracts.ts';
@@ -24,6 +25,7 @@ export default function plugin(bb: BbPluginApi) {
   registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
+  const antigravity = createAntigravitySource(hostId => host.call('antigravityUsage', {}, { hostId, timeoutMs: 30_000 }));
   const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
   const switching = new Set<string>();
   const connectors = registerConnectors(bb, switching, async (threadId, requestedProfileId) => {
@@ -376,6 +378,7 @@ export default function plugin(bb: BbPluginApi) {
       currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default' };
   }
   async function readResource(resourceId: string, refresh: boolean) {
+    if (antigravity.owns(resourceId)) return antigravity.read(resourceId, refresh);
     if (grok.owns(resourceId)) return grok.read(resourceId, refresh);
     const [hostId, root, profileId] = decodeResourceId(resourceId);
     const config = await settings.get();
@@ -396,7 +399,9 @@ export default function plugin(bb: BbPluginApi) {
       return { label: account.profiles.find(value => value.id === account.currentId)?.label ?? 'Default',
         usage: await hostUsage(account.hostId, account.config, account.currentId, false) };
     },
-    claudeResource: readResource,
+    claudeResource: async (id, refresh) => antigravity.owns(id) && !refresh
+      ? antigravity.lastReading(id) ?? readResource(id, refresh)
+      : readResource(id, refresh),
   });
   bb.rpc.register(accountsContract, {
     accounts: async ({ threadId }) => {
@@ -447,10 +452,16 @@ export default function plugin(bb: BbPluginApi) {
           scope: { kind: 'host' as const, hostId: machine.id, hostName: machine.name },
         }));
       }));
-      return { resources: [...groups.flat(), ...grok.resources(hosts)] };
+      const antigravityHosts = (await Promise.all(hosts.map(async machine => {
+        try {
+          const providers = await bb.sdk.providers.list({ hostId: machine.id });
+          return providers.some(provider => provider.id === 'acp-antigravity' && provider.available) ? [machine] : [];
+        } catch { return []; }
+      }))).flat();
+      return { resources: [...groups.flat(), ...grok.resources(hosts), ...antigravity.resources(antigravityHosts)] };
     },
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
-  }, { experimental_discoverable: true, experimental_description: 'Claude profile and Grok quota through native CLI authentication.' });
+  }, { experimental_discoverable: true, experimental_description: 'Claude, Grok and Antigravity quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
     + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off] | next [PROFILE]';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',

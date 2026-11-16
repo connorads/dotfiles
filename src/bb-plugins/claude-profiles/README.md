@@ -276,6 +276,21 @@ Grok quota comes from the native CLI billing extension. Its allowance is shared
 across Grok products. The overlay shows the reported period, use and reset.
 Collection uses native CLI authentication and sends no model prompt.
 
+Antigravity quota comes from `agy --print /usage --output-format json` on the
+account's machine. Native sign-in owns authentication; collection sends no model prompt.
+The overlay preserves each quota group and its five-hour or weekly period.
+Successful readings last two minutes; Refresh bypasses the cache.
+Failed refreshes leave the collector's previous reading visible with an error.
+The CLI omits account identity from this response, so the account has no email label.
+The thread badge has no exhaustion estimate because model-to-quota membership is unavailable.
+
+```mermaid
+flowchart LR
+  CLI[Native Antigravity quota] --> Host[Host collector]
+  Host --> Source[BB usage source]
+  Source --> Overlay[Agent Usage]
+```
+
 Amp presents the native `amp usage` account and credit balances as labelled
 amounts, with a link to credit settings. Unrecognised provider text stays visible.
 The overlay requests Amp and quotas in parallel. Quotas appear as soon as they

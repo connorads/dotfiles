@@ -37,6 +37,7 @@ export const hostContract = defineRpcContract({
   sweepForkStages: { input: z.object({ maxAgeMs: z.number() }), output: z.object({ removed: z.array(z.string()) }) },
   ampUsage: { input: z.object({}), output: ampReadingSchema },
   grokUsage: { input: z.object({}), output: measurementSchema },
+  antigravityUsage: { input: z.object({}), output: measurementSchema },
   ...usageHostContract,
 });
 // A null thread is the new-thread composer: its choice is remembered and claimed by the next Claude thread's first send.
@@ -57,10 +58,10 @@ export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsCon
 export const usageSourceContract = defineRpcContract({
   'provider-usage.v1.listResources': {
     input: z.object({}), output: z.object({ resources: z.array(resourceSchema) }),
-    experimental_description: 'List profile and Grok quota resources on BB hosts without requesting quota.',
+    experimental_description: 'List Claude, Grok and Antigravity quota resources on BB hosts without requesting quota.',
   },
   'provider-usage.v1.getResource': {
     input: z.object({ resourceId: z.string(), refresh: z.boolean() }), output: measurementSchema,
-    experimental_description: 'Read one quota resource through its native CLI. Refresh bypasses the one-minute cache.',
+    experimental_description: 'Read one quota resource through its native CLI. Refresh bypasses its cache.',
   },
 });

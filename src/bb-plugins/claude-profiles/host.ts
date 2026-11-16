@@ -12,6 +12,7 @@ import { adoptSession, isSessionId, locateSession, paneSession } from './src/acc
 import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
 import { collectGrokUsage } from './src/accounts/usage/grok.ts';
+import { collectAntigravityUsage } from './src/accounts/usage/antigravity.ts';
 import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
 import { collectClaudeResets, readClaudeResets } from './src/accounts/usage/claude-resets-host.ts';
 
@@ -96,6 +97,7 @@ export default experimental_defineHostEntry({
     sweepForkStages: async input => ({ removed: await sweepForkStages(join(homedir(), '.claude'), input.maxAgeMs) }),
     ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
+    antigravityUsage: (_input, { signal }) => collectAntigravityUsage({ signal }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
     claudeResets: async (input, { signal }) => {
       await profile(input.root, input.profileId);

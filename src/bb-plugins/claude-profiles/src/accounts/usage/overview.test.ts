@@ -18,6 +18,31 @@ type Call = Parameters<UsagePorts['callRpc']>[0];
 const answer = (respond: (input: Call) => unknown): UsagePorts['callRpc'] =>
   (async (input: Call) => input.outputSchema.parse(respond(input))) as UsagePorts['callRpc'];
 
+test('Antigravity inspection preserves group labels and explicit quota periods', async () => {
+  const resource = '["antigravity","host-one"]';
+  const account = { ...snapshot.machines[0]!.providers[0]!, id: `claude-profiles:${resource}`, providerId: 'acp-antigravity' };
+  const source = { machines: [{ ...snapshot.machines[0], providers: [account] }] };
+  const reader = createUsageReader({ ...ports, callRpc: answer(() => source), claudeResource: async () => ({
+    accountKey: null, observedAt: 123, usage: { status: 'ok', plan: null, accountEmail: null, planLabel: null, windows: [
+      { id: 'example', label: 'Example group · Session', kind: 'five-hour', usedPercent: 25,
+        resetsAt: '2027-01-02T12:00:00Z', model: null, cost: null },
+    ] },
+  }) });
+  const result = await reader.inspection(false);
+  assert.partialDeepStrictEqual(result.snapshot.machines[0]?.providers[0]?.usage,
+    { windows: [{ label: 'Example group · Session', period: 'five-hour', usedPercent: 25 }] });
+});
+
+test('Antigravity header omits exhaustion estimates without verified model membership', async () => {
+  const reader = createUsageReader({ ...ports, callRpc: answer(() => snapshot),
+    getThread: async () => ({ providerId: 'acp-antigravity' }) as Awaited<ReturnType<UsagePorts['getThread']>>,
+    listProviders: async () => [],
+  });
+  const header = await reader.header('thread-example');
+  assert.deepEqual(header.windows, []);
+  assert.match(header.message ?? '', /membership is unavailable/);
+});
+
 test('overview requests every discovered provider through the existing collector and forwards forced refresh', async () => {
   const inputs: Call[] = [];
   const reader = createUsageReader({ ...ports, callRpc: answer(input => { inputs.push(input); return snapshot; }) });

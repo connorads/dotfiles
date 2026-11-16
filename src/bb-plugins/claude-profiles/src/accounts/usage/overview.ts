@@ -21,6 +21,8 @@ const NAMED: [RegExp, string, Period][] = [
 /** Gives every provider's windows one vocabulary and the period that pace needs. */
 function describeWindow(window: Omit<UsageWindow, 'period'>): UsageWindow {
   for (const [pattern, label, period] of NAMED) if (pattern.test(window.label)) return { ...window, label, period };
+  if (window.kind !== undefined) return { ...window,
+    period: window.kind === 'five-hour' ? 'five-hour' : window.kind === 'daily' ? 'day' : window.kind === 'weekly' ? 'week' : null };
   const scoped = /^Weekly · (.+)$/u.exec(window.label);
   if (scoped?.[1]) return { ...window, label: `Weekly · ${scoped[1].charAt(0).toUpperCase()}${scoped[1].slice(1)}`, period: 'week' };
   return { ...window, period: null };
@@ -169,6 +171,8 @@ export function createUsageReader(ports: UsagePorts) {
     const providers = await ports.listProviders();
     const label = providers.find(provider => provider.id === thread.providerId)?.displayName ?? thread.providerId;
     const base = { providerId: thread.providerId, label, accountLabel: null, windows: [] };
+    if (thread.providerId === 'acp-antigravity') return { ...base,
+      message: 'See Agent Usage for quota groups. Model-to-quota membership is unavailable.' };
     const claude = thread.providerId === 'claude-code' ? await ports.claudeAccount(threadId) : null;
     if (claude) {
       const { label: accountLabel, usage } = claude;

@@ -49,7 +49,10 @@ Antigravity keeps the single account's OAuth credentials in its native store.
 4. Run `bb provider models acp-antigravity --json` to check account model discovery.
 5. Open Agent Switcher with `⌘⇧M`, search **Antigravity** and choose an available model.
 
-The usage overlay has no Antigravity quota collector. Run `/usage` in the native CLI to inspect allowances.
+Agent Usage reads Antigravity's native `/usage` JSON without sending a model prompt.
+The overlay shows each quota group, percentage used and reset time.
+Successful readings are cached for two minutes. Refresh requests a fresh reading.
+The thread badge omits exhaustion estimates because the CLI exposes no verified model-to-quota mapping.
 Separate home directories do not establish separate Keychain credentials.
 This setup uses one account and has no account-switching controls.
 The [ACP guide](https://antigravity.google/docs/ide/extensions/acp) documents transport and sign-in.
