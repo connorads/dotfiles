@@ -32,8 +32,9 @@ Threads keep history from the first request after installation.
 
 If loading a thread's cache state fails, the chip keeps what it last showed
 and tries again after 2, 4, 8 and 16 seconds, then on the thread's next
-request. Until a load succeeds, the chip's value and dot fade, and the tooltip
-and popover say when the figures on screen arrived.
+request or when you open the popover. Until a load succeeds, the chip has a
+dashed warning border and a warning-coloured value, and the tooltip and popover
+say when the figures on screen arrived.
 
 ## How it reads usage
 

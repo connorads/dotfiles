@@ -389,3 +389,58 @@ test('Claude: the chip value and meter never read above the lifetime when the la
     expect((await slot.findByRole('dialog')).querySelector('[role="meter"]')?.getAttribute('aria-valuenow')).toBe('100');
   } finally { slot.lifecycle.unmount(); }
 });
+
+test('opening the popover on stale figures loads them again, after the retries have run out', async () => {
+  const at = Date.now() - 60_000;
+  let calls = 0;
+  let healthy = false;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (!healthy) throw new Error('Sync store unavailable');
+    return claudeState(at, { invalidatedAt: Date.now() - 1000 });
+  });
+  try {
+    const chip = await slot.findByRole('button');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(calls).toBe(6);
+    expect(chip.hasAttribute('data-stale')).toBe(true);
+    healthy = true;
+    fireEvent.click(chip);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toBe(7);
+    expect(chip.hasAttribute('data-stale')).toBe(false);
+    expect(slot.getByRole('dialog').querySelector('.ch-headline strong')?.textContent).toBe('Cold');
+    fireEvent.click(chip);
+    fireEvent.click(chip);
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toBe(7);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('figures that arrive while the newest refresh is still pending are not called out of date', async () => {
+  const at = Date.now() - 60_000;
+  let retried: (state: CacheState) => void = () => {};
+  let calls = 0;
+  const slot = await render(() => {
+    calls++;
+    if (calls === 1) return claudeState(at);
+    if (calls === 2) throw new Error('Sync store unavailable');
+    if (calls === 3) return new Promise<CacheState>(resolve => { retried = resolve; });
+    return new Promise<CacheState>(() => {});
+  });
+  try {
+    const chip = await slot.findByRole('button');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(calls).toBe(3);
+    expect(chip.hasAttribute('data-stale')).toBe(true);
+    await slot.emitRealtime('cache-changed', { threadId: 'thread-test' });
+    await act(async () => { retried(claudeState(at, { invalidatedAt: Date.now() - 1000 })); await Promise.resolve(); await Promise.resolve(); });
+    expect(chip.textContent).toBe('cold');
+    expect(chip.hasAttribute('data-stale')).toBe(false);
+  } finally { slot.lifecycle.unmount(); }
+});

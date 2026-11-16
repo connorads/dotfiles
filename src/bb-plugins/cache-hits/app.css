@@ -1,8 +1,9 @@
 /* Chip anatomy from @bb-plugins/chip; the pop-up shell is its ChipPopover. */
 .ch-cold > i { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
-/* Figures kept after a failed refresh: the value and dot fade, and the tooltip says when they arrived. */
-.cache-hits[data-stale] .bbp-chip-value { color: var(--muted-foreground); }
-.cache-hits[data-stale] .bbp-chip-dot { opacity: .5; }
+/* Figures kept after a failed refresh: a dashed warning border shows on compact chips too, and the tooltip
+   says when they arrived. The dot keeps full colour so its tone and miss count stay readable. */
+.cache-hits.bbp-chip[data-stale] { border-style: dashed; border-color: var(--warning-text); }
+.cache-hits.bbp-chip[data-stale] .bbp-chip-value { color: var(--warning-text); }
 
 .ch-panel {
   --ch-read: var(--success);
@@ -58,12 +59,16 @@
 .ch-bars > li:hover { filter: brightness(1.25); }
 .ch-bars > li[data-selected] { outline: 1.5px solid var(--foreground); outline-offset: 1px; }
 .ch-bars > li > i { display: block; flex: none; background: var(--ch-part); }
-/* Cached and uncached differ in lightness too, not only hue, so they stay apart in greyscale. */
-.ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before { opacity: .3; }
+/* Cached and uncached differ in lightness too, not only hue, so they stay apart in greyscale. Uncached is a
+   faint fill inside a full-strength edge, so it keeps 3:1 against the panel in both themes. */
+.ch-bars > li > i[data-part="rest"], .ch-legend > [data-part="rest"]::before {
+  background: color-mix(in oklab, var(--ch-rest) 30%, var(--popover)); box-shadow: inset 0 0 0 1px var(--ch-rest);
+}
 .ch-bars > li > i[data-part="read"], .ch-legend > [data-part="read"]::before { opacity: .9; }
 /* Hue alone does not tell parts apart (red and green match in lightness in dark), so a panel-coloured line
    separates stacked parts and the re-sent part is striped. */
 .ch-bars > li > i:not(:last-child) { box-shadow: inset 0 -1px 0 var(--popover); }
+.ch-bars > li > i[data-part="rest"]:not(:last-child) { box-shadow: inset 0 -1px 0 var(--popover), inset 0 0 0 1px var(--ch-rest); }
 .ch-bars > li > i[data-part="miss"], .ch-legend > [data-part="miss"]::before {
   background: repeating-linear-gradient(135deg, var(--ch-part) 0 2px, color-mix(in oklch, var(--ch-part) 40%, var(--popover)) 2px 3.5px);
 }

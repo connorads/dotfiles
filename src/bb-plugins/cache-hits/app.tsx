@@ -46,6 +46,8 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   // the server, so the kept state is out of date until one succeeds, and the chip marks it stale meanwhile.
   const latest = useRef(0);
   const shown = useRef(0);
+  // The newest call that failed: figures that land while a newer call is still pending are current, not stale.
+  const failed = useRef(0);
   const retry = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const load = useCallback(() => {
     clearTimeout(retry.current);
@@ -55,9 +57,10 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
       const at = Date.now();
       shown.current = call; updated.current = at; setState(next);
       // An older reply that lands while the newest call has failed is still behind that call.
-      setStale(old => call === latest.current || old === null ? null : at);
+      setStale(call !== latest.current && failed.current === latest.current ? at : null);
     }, () => {
       if (call !== latest.current) return;
+      failed.current = call;
       setStale(updated.current);
       if (failures < RETRY_DELAYS_MS.length) retry.current = setTimeout(() => attempt(failures + 1), RETRY_DELAYS_MS[failures]);
     });
@@ -89,7 +92,11 @@ function CacheChip({ threadId, isCompactViewport }: PluginThreadHeaderActionProp
   return <>
     <Chip className="cache-hits" icon={<Icon name="cache-hits/timer" />} expanded={open} aria-label={`Prompt cache ${value}. ${summary}`} title={summary}
       data-stale={stale !== null || undefined}
-      onClick={event => { chip.current = event.currentTarget; setOpen(!open); }}>
+      onClick={event => {
+        chip.current = event.currentTarget; setOpen(!open);
+        // Retries stop after the last delay; opening the popover on stale figures tries once more.
+        if (!open && stale !== null) load();
+      }}>
       {!isCompactViewport && <ChipValue>{value}</ChipValue>}
       <ChipDot tone={view.level} className={view.left !== null && view.left <= 0 ? 'ch-cold' : undefined}>{state.misses > 0 ? state.misses : null}</ChipDot>
     </Chip>
