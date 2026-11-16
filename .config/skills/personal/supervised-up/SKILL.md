@@ -32,7 +32,8 @@ flowchart TD
 ## Start and monitor
 
 1. Check `command -v up dotfiles mise dhk`. Report a missing command before running an update.
-2. Read `~/AGENTS.md`, `~/.config/mise/AGENTS.md` and `~/docs/system-platforms.md`.
+2. Read `~/AGENTS.md`, `~/.config/mise/AGENTS.md`, `~/docs/system-platforms.md`
+   and `~/docs/credentials.md` before running `fnox` or `up`.
    Read the owning subsystem guide before changing its files.
 3. From the home work-tree, record `dotfiles status --short` and both lockfile diffs, including staged changes.
    Preserve unrelated changes. Reconcile a dirty lock before starting a normal update.
