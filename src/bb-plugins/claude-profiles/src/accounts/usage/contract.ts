@@ -53,6 +53,8 @@ export const usageContract = defineRpcContract({
   'usage.amp': { input: z.object({ refresh: z.boolean() }), output: ampOverviewSchema },
   'usage.header': { input: z.object({ threadId: z.string() }), output: headerSchema },
   'usage.inspection': { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },
+  /** The last inspection BB collected, so the overlay can show figures before collection finishes. */
+  'usage.saved': { input: z.object({}), output: inspectionSchema.nullable() },
 });
 export type SourceSnapshot = z.infer<typeof sourceSnapshotSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;

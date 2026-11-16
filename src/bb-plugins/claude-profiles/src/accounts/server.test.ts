@@ -471,3 +471,18 @@ test('the next CLI reads and sets the account new threads start on', async () =>
   assert.match(missing.stderr ?? '', /Profile does not exist/);
   assert.equal(await bb.storage.kv.get('next-thread-profile'), 'work');
 });
+
+test('the last collected inspection is saved for the next overlay open, and an unreadable one is dropped', async () => {
+  const { bb, harness } = createFakePluginHost({
+    sdk: { plugins: { callRpc: async (args: { pluginId: string; outputSchema: { parse(value: unknown): unknown } }) => {
+      if (args.pluginId !== 'bb--provider-usage') throw new Error(`Unexpected RPC to ${args.pluginId}`);
+      return args.outputSchema.parse({ machines: [] });
+    } } } as never,
+  });
+  plugin(bb);
+  assert.equal(await harness.behavior.callRpc('usage.saved', {}), null);
+  const collected = await harness.behavior.callRpc('usage.inspection', { refresh: false });
+  assert.deepEqual(await harness.behavior.callRpc('usage.saved', {}), collected);
+  await bb.storage.kv.set('usage.inspection', { snapshot: 'from an older version' });
+  assert.equal(await harness.behavior.callRpc('usage.saved', {}), null);
+});

@@ -370,6 +370,36 @@ for (const first of ['amp', 'quotas'] as const) {
   });
 }
 
+test('saved figures show while the live reading collects, then give way to it', async () => {
+  const app = await load();
+  let finishQuotas!: (value: Inspection) => void;
+  const live = { machines: [{ ...snapshot.machines[0]!, providers: [snapshot.machines[0]!.providers[1]!] }] };
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.saved': async () => inspect(),
+    'usage.inspection': () => new Promise<Inspection>(resolve => { finishQuotas = resolve; }),
+    'usage.amp': async () => ({ machines: [] }),
+  } });
+  await act(async () => openUsage());
+  expect(slot.getByRole('region', { name: 'Codex · Personal' })).toBeTruthy();
+  expect(slot.getByText('Refreshing…')).toBeTruthy();
+  await act(async () => finishQuotas(inspect(live)));
+  expect(slot.queryByRole('region', { name: 'Codex · Personal' })).toBeNull();
+});
+
+test('a saved reading that arrives after the live one is ignored', async () => {
+  const app = await load();
+  let finishSaved!: (value: Inspection) => void;
+  const live = { machines: [{ ...snapshot.machines[0]!, providers: [snapshot.machines[0]!.providers[1]!] }] };
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.saved': () => new Promise<Inspection>(resolve => { finishSaved = resolve; }),
+    'usage.inspection': async () => inspect(live),
+    'usage.amp': async () => ({ machines: [] }),
+  } });
+  await act(async () => openUsage());
+  await act(async () => finishSaved(inspect()));
+  expect(slot.queryByRole('region', { name: 'Codex · Personal' })).toBeNull();
+});
+
 
 test.each(['expired', 'unauthenticated'] as const)('%s Claude login shows one action and offline accounts retain their CLI hint', async status => {
   const app = await load();

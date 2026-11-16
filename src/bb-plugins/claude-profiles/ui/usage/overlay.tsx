@@ -245,6 +245,7 @@ export function UsageOverlay() {
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
   const mounted = useRef(true);
+  const shown = useRef(false);
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: KeyboardEvent) => {
@@ -266,9 +267,15 @@ export function UsageOverlay() {
     setQuotaLoading(true);
     setAmpLoading(true);
     setAmpMessage(null);
+    let collected = false;
+    // Collection can take seconds when sources are stale, so the first open shows the last saved figures meanwhile.
+    if (!shown.current) void rpc.call('usage.saved', {}).then(saved => {
+      if (saved && !collected && mounted.current) { shown.current = true; setInspection(saved); }
+    }, () => {});
     await Promise.allSettled([
       rpc.call('usage.inspection', { refresh: force }).then(next => {
-        if (mounted.current) setInspection(next);
+        collected = true;
+        if (mounted.current) { shown.current = true; setInspection(next); }
       }).catch(cause => {
         if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
       }).finally(() => { if (mounted.current) setQuotaLoading(false); }),

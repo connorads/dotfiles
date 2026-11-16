@@ -390,6 +390,9 @@ are supported. Recognised billing help is omitted; warnings and unrecognised
 provider text stay visible.
 The overlay requests Amp and quotas in parallel. Quotas appear as soon as they
 are ready; Amp stays below them. The refresh indicator tracks both requests.
+Collection waits for every source older than two minutes, which can take
+several seconds. The plugin saves the last collected quotas, so the first open
+shows them with **Refreshing…** until collection finishes.
 Refresh requests a new reading; a failed refresh retains the previous text with the failure.
 Balances have no invented percentage or pace projection.
 
