@@ -7,8 +7,13 @@ description: Choose which Claude profile's claude.ai connectors (Slack, Snowflak
 
 The `claude_connectors_list` and `claude_connectors_call` tools reach one Claude
 profile's claude.ai connectors. They work on any provider and account. The
-profile resolves in this order: the thread's choice, the project's default,
-then the global default.
+profile resolves in this order: the thread's choice, its owner, the project's
+default, then the global default.
+
+A thread started by another thread, such as a BB workflow worker, uses its
+owner's connectors read-only. The tools answer only during a thread's own turn.
+Do not call them from a background sub-agent or a built-in Workflow worker.
+Call them in the turn, or use a BB workflow for workers that need connectors.
 
 | Command | Effect |
 | --- | --- |

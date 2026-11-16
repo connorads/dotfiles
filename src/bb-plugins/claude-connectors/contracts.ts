@@ -6,7 +6,8 @@ const value = z.string().min(1).max(64);
 
 export const resolvedView = z.object({
   profile: z.string().nullable(),
-  source: z.enum(['thread', 'project', 'default']),
+  source: z.enum(['thread', 'owner', 'project', 'default']),
+  readOnly: z.boolean(),
 });
 export type ResolvedView = z.infer<typeof resolvedView>;
 

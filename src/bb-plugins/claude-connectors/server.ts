@@ -7,7 +7,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { NativeArtifacts } from './src/artifacts.ts';
 import { CHANGED, rpcContract } from './contracts.ts';
-import { isProfileName, OFF, resolveChoice, type Choice } from './src/choice.ts';
+import { isProfileName, OFF, ownerOf, resolveChoice, type Choice, type Resolved } from './src/choice.ts';
 import { policyKey, type Access, type Overrides } from './src/policy.ts';
 import { ConnectorService, UserFacingError, type Run } from './src/service.ts';
 
@@ -42,15 +42,22 @@ export default async function plugin(bb: BbPluginApi) {
   /** A new-thread composer's pick, applied to that project's next thread at its first dispatch. */
   const drafts = new Map<string, Choice>();
   const policies = new Map<string, Overrides>();
+  /** Each started thread's owner, recorded at its first dispatch. */
+  const owners = new Map<string, string>();
   let fallback: Choice | undefined;
   for (const key of await kv.list('thread:')) { const v = await kv.get<Choice>(key); if (v) threads.set(key.slice(7), v); }
   for (const key of await kv.list('project:')) { const v = await kv.get<Choice>(key); if (v) projects.set(key.slice(8), v); }
   for (const key of await kv.list('draft:')) { const v = await kv.get<Choice>(key); if (v) drafts.set(key.slice(6), v); }
   for (const key of await kv.list('policy:')) { const v = await kv.get<Overrides>(key); if (v) policies.set(key.slice(7), v); }
+  for (const key of await kv.list('owner:')) { const v = await kv.get<string>(key); if (v) owners.set(key.slice(6), v); }
   fallback = await kv.get<Choice>('default');
 
-  const resolve = (threadId: string, projectId: string) =>
-    resolveChoice(threads.get(threadId), projects.get(projectId), fallback);
+  const resolve = (threadId: string, projectId: string, seen = new Set<string>()): Resolved => {
+    const ownerId = owners.get(threadId);
+    seen.add(threadId);
+    const owner = ownerId && !seen.has(ownerId) ? resolve(ownerId, projectId, seen) : undefined;
+    return resolveChoice(threads.get(threadId), projects.get(projectId), fallback, owner);
+  };
   const policy = (profile: string) => policies.get(profile) ?? {};
 
   const changed = () => bb.realtime.publish(CHANGED, {});
@@ -87,10 +94,10 @@ export default async function plugin(bb: BbPluginApi) {
     content: [{ type: 'text' as const, text: error instanceof UserFacingError ? error.message : `Claude Connectors error: ${error instanceof Error ? error.message : String(error)}` }],
     isError: true,
   });
-  const profileFor = (threadId: string, projectId: string) => {
-    const resolved = resolve(threadId, projectId);
-    if (!resolved.profile) throw new UserFacingError('Claude connectors are off for this thread. The person can turn them on with `bb claude-connectors use <profile>`.');
-    return resolved.profile;
+  const accessOf = (threadId: string, projectId: string) => {
+    const { profile, readOnly } = resolve(threadId, projectId);
+    if (!profile) throw new UserFacingError('Claude connectors are off for this thread. The person can turn them on with `bb claude-connectors use <profile>`.');
+    return { profile, readOnly };
   };
 
   bb.agents.registerTool({
@@ -100,13 +107,13 @@ export default async function plugin(bb: BbPluginApi) {
     parameters: z.object({ connector: z.string().min(1).optional().describe('Connector name, such as "Slack". Omit to list connectors.') }),
     async execute({ connector }, ctx) {
       try {
-        const profile = profileFor(ctx.threadId, ctx.projectId);
+        const { profile, readOnly } = accessOf(ctx.threadId, ctx.projectId);
         if (!connector) {
           const list = await service.connectors(profile, ctx.signal);
           return bounded({ profile, connectors: list.map(c => c.name), next: 'Call again with `connector` to see its tools.' });
         }
         const found = await service.connector(profile, connector, ctx.signal);
-        const tools = await service.toolViews({ profile, connector: found, overrides: policy(profile), withSchema: true, signal: ctx.signal });
+        const tools = await service.toolViews({ profile, connector: found, overrides: policy(profile), readOnly, withSchema: true, signal: ctx.signal });
         return bounded({ profile, connector: found.name, tools });
       } catch (error) { return failure(error); }
     },
@@ -123,8 +130,8 @@ export default async function plugin(bb: BbPluginApi) {
     }),
     async execute({ connector, tool, arguments: args }, ctx) {
       try {
-        const profile = profileFor(ctx.threadId, ctx.projectId);
-        const result = await service.call({ profile, connector, tool, args, overrides: policy(profile), signal: ctx.signal });
+        const { profile, readOnly } = accessOf(ctx.threadId, ctx.projectId);
+        const result = await service.call({ profile, connector, tool, args, overrides: policy(profile), readOnly, signal: ctx.signal });
         const parsed = z.object({ content: z.array(z.object({ type: z.string(), text: z.string().optional() }).passthrough()), isError: z.boolean().optional() })
           .safeParse(result);
         if (!parsed.success) return bounded(result);
@@ -141,19 +148,25 @@ export default async function plugin(bb: BbPluginApi) {
       tools: ['claude_connectors_list', 'claude_connectors_call'],
       skills: [],
       instructions: `Claude connectors from the "${resolved.profile}" Claude profile are available through claude_connectors_list and claude_connectors_call. `
-        + 'They act as the person in that workspace. Confirm the exact content with the person before any write, such as sending a message.',
+        + 'They act as the person in that workspace. '
+        + (resolved.readOnly ? 'This thread has read-only access from the thread that started it. '
+          : 'Confirm the exact content with the person before any write, such as sending a message. ')
+        + 'These tools answer only during this thread\'s own turn. A background sub-agent or a built-in Workflow worker that outlives the turn gets an error or no reply. '
+        + 'Call them in this turn or from a foreground sub-agent. For workers that need connectors, use a BB workflow: its workers get this thread\'s connectors read-only.',
     };
   });
 
   bb.experimental_hooks.on('message.dispatch', async ctx => {
+    if (ctx.thread.status !== 'pending') return { action: 'proceed' };
+    const owner = ownerOf(ctx.thread);
+    if (owner && !owners.has(ctx.thread.id)) { owners.set(ctx.thread.id, owner); await kv.set(`owner:${ctx.thread.id}`, owner); }
     const draft = drafts.get(ctx.project.id);
-    if (ctx.thread.status !== 'pending' || draft === undefined || threads.has(ctx.thread.id)) return { action: 'proceed' };
+    if (draft === undefined || threads.has(ctx.thread.id)) return { action: 'proceed' };
     drafts.delete(ctx.project.id); await kv.delete(`draft:${ctx.project.id}`);
     await setChoice(threads, 'thread:', ctx.thread.id, draft);
     return { action: 'proceed' };
   });
 
-  const resolvedFor = (own: Choice | undefined, projectId: string) => resolveChoice(own, projects.get(projectId), fallback);
   bb.rpc.register(rpcContract, {
     state: async () => {
       const list = await bb.sdk.projects.list();
@@ -164,10 +177,10 @@ export default async function plugin(bb: BbPluginApi) {
       };
     },
     thread: async ({ threadId, projectId }) =>
-      ({ threadId, own: threads.get(threadId) ?? null, resolved: resolvedFor(threads.get(threadId), projectId) }),
+      ({ threadId, own: threads.get(threadId) ?? null, resolved: resolve(threadId, projectId) }),
     setThread: async ({ threadId, value }) => { await checkProfile(value); await setChoice(threads, 'thread:', threadId, value); return null; },
     draft: async ({ projectId }) =>
-      ({ projectId, own: drafts.get(projectId) ?? null, resolved: resolvedFor(drafts.get(projectId), projectId) }),
+      ({ projectId, own: drafts.get(projectId) ?? null, resolved: resolveChoice(drafts.get(projectId), projects.get(projectId), fallback) }),
     setDraft: async ({ projectId, value }) => { await checkProfile(value); await setChoice(drafts, 'draft:', projectId, value); return null; },
     setProject: async ({ projectId, value }) => { await checkProfile(value); await setChoice(projects, 'project:', projectId, value); return null; },
     setDefault: async ({ value }) => { await checkProfile(value); await setDefault(value); return null; },
@@ -179,7 +192,7 @@ export default async function plugin(bb: BbPluginApi) {
       try {
         await checkProfile(profile);
         const found = await service.connector(profile, connector);
-        return { tools: await service.toolViews({ profile, connector: found, overrides: policy(profile), withSchema: false }), error: null };
+        return { tools: await service.toolViews({ profile, connector: found, overrides: policy(profile), readOnly: false, withSchema: false }), error: null };
       } catch (error) { return { tools: [], error: message(error) }; }
     },
     setAccess: async ({ profile, connector, tool, access }) => { await checkProfile(profile); await setAccess({ profile, connector, tool, access }); return null; },
@@ -231,7 +244,7 @@ export default async function plugin(bb: BbPluginApi) {
             if (ctx.projectId) lines.push(`Project default: ${projects.get(ctx.projectId) ?? 'inherit'}`);
             if (ctx.threadId && ctx.projectId) {
               const r = resolve(ctx.threadId, ctx.projectId);
-              lines.push(`This thread: ${r.profile ?? 'off'} (from ${r.source})`);
+              lines.push(`This thread: ${r.profile ?? 'off'} (from ${r.source}${r.readOnly ? ', read-only' : ''})`);
             }
             return out(lines.join('\n'));
           }
@@ -265,7 +278,7 @@ export default async function plugin(bb: BbPluginApi) {
             const profile = await profileArg();
             if (!argv[0]) throw new UserFacingError(`Usage: ${usage[4]}`);
             const found = await service.connector(profile, argv[0], ctx.signal);
-            const views = await service.toolViews({ profile, connector: found, overrides: policy(profile), withSchema: false, signal: ctx.signal });
+            const views = await service.toolViews({ profile, connector: found, overrides: policy(profile), readOnly: false, withSchema: false, signal: ctx.signal });
             return out(views.map(v => `${v.access === 'allow' ? '✓' : '·'} ${v.name}${v.readOnly ? '' : '  (writes)'}`).join('\n'));
           }
           case 'allow': {

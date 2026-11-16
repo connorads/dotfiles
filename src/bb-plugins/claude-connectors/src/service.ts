@@ -138,23 +138,25 @@ export class ConnectorService {
     return value;
   }
 
-  async toolViews({ profile, connector, overrides, withSchema, signal }:
-    { profile: string; connector: Connector; overrides: Overrides; withSchema: boolean; signal?: AbortSignal }): Promise<ToolView[]> {
+  async toolViews({ profile, connector, overrides, readOnly, withSchema, signal }:
+    { profile: string; connector: Connector; overrides: Overrides; readOnly: boolean; withSchema: boolean; signal?: AbortSignal }): Promise<ToolView[]> {
     return (await this.tools(profile, connector, signal)).map(t => ({
       name: t.name,
       description: (t.description ?? '').slice(0, 300),
       readOnly: t.annotations?.readOnlyHint === true,
-      access: accessFor(connector.name, t, overrides),
+      access: accessFor(connector.name, t, overrides, readOnly),
       ...(withSchema && t.inputSchema ? { inputSchema: t.inputSchema } : {}),
     }));
   }
 
-  async call({ profile, connector: connectorName, tool: toolName, args, overrides, signal }:
-    { profile: string; connector: string; tool: string; args: Record<string, unknown>; overrides: Overrides; signal?: AbortSignal }): Promise<unknown> {
+  async call({ profile, connector: connectorName, tool: toolName, args, overrides, readOnly, signal }:
+    { profile: string; connector: string; tool: string; args: Record<string, unknown>; overrides: Overrides; readOnly: boolean; signal?: AbortSignal }): Promise<unknown> {
     const connector = await this.connector(profile, connectorName, signal);
     const tool = (await this.tools(profile, connector, signal)).find(t => t.name === toolName);
     if (!tool) throw new UserFacingError(`${connector.name} has no tool "${toolName}". Call claude_connectors_list with this connector to see its tools.`);
-    if (accessFor(connector.name, tool, overrides) !== 'allow')
+    if (readOnly && accessFor(connector.name, tool, overrides, false) === 'allow')
+      throw new UserFacingError(`${connector.name}/${toolName} can write. This thread has read-only access from the thread that started it, so that thread must make the call.`);
+    if (accessFor(connector.name, tool, overrides, readOnly) !== 'allow')
       throw new UserFacingError(`${connector.name}/${toolName} is turned off in Claude Connectors. Ask the person to allow it: bb claude-connectors allow "${connector.name}" ${toolName}`);
     if (connector.id === ARTIFACT_CONNECTOR.id && this.deps.artifacts)
       return this.deps.artifacts.call({ profile, tool: toolName, args, signal });

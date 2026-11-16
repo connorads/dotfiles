@@ -24,8 +24,8 @@ flowchart LR
   Proxy --> Connectors[Slack, Snowflake, ...]
 ```
 
-- The profile resolves from the thread's choice, then the project default, then the
-  global default. Choices live in plugin storage.
+- The profile resolves from the thread's choice, then its owner, then the project
+  default, then the global default. Choices live in plugin storage.
 - The token stays on this Mac. The plugin reads Claude Code's Keychain item and never
   refreshes the token itself. When it nears expiry, the plugin runs `claude mcp list`
   in that profile so Claude Code renews it.
@@ -34,6 +34,25 @@ flowchart LR
 - The connector list and the MCP proxy are undocumented Anthropic endpoints. They can
   change without notice. Anthropic's credential policy covers OAuth use outside Claude
   Code, so keep this personal and local.
+
+## Workers
+
+A thread started by another thread uses that thread's connectors, read-only. The
+owner is the parent thread, or the origin thread of a BB workflow run. A worker gets
+what its owner resolves to and never more. Write tools stay with the owner, even
+when allowed for the profile. A pick made on the worker itself replaces this.
+
+```mermaid
+flowchart LR
+  Owner[Owner thread: work] -->|read-only| Worker[BB workflow worker or child thread]
+  Worker -->|read-only| Next[Its own workers]
+  Off[Owner thread: off] --> None[Worker: off]
+```
+
+The tools answer only during a thread's own turn. A Claude Code background sub-agent
+or built-in Workflow worker shares its parent's thread, so its calls fail once that
+turn ends. The agent instruction says to call connectors in the turn, or to use a BB
+workflow. See [SDK frictions](../docs/sdk-frictions.md).
 
 ## Claude Code artefacts
 

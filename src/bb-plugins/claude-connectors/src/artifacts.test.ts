@@ -31,7 +31,7 @@ test('artefacts appear alongside account connectors and expose native schemas', 
   const { service } = harness();
   assert.deepEqual(await service.connectors('work'), [{ id: 'native-artifacts', name: 'Claude Code Artifacts' }]);
   const connector = await service.connector('work', 'Claude Code Artifacts');
-  const tools = await service.toolViews({ profile: 'work', connector, overrides: {}, withSchema: true });
+  const tools = await service.toolViews({ profile: 'work', connector, overrides: {}, readOnly: false, withSchema: true });
   assert.equal(tools[0]?.name, 'Artifact');
   assert.equal(tools[0]?.access, 'off');
   assert.deepEqual(tools[0]?.inputSchema, { type: 'object' });
@@ -39,7 +39,7 @@ test('artefacts appear alongside account connectors and expose native schemas', 
 
 test('artefact calls require permission and stay within the chosen profile', async () => {
   const { service, calls } = harness();
-  const request = { profile: 'work', connector: 'Claude Code Artifacts', tool: 'Artifact', args: { action: 'list' } };
+  const request = { profile: 'work', connector: 'Claude Code Artifacts', tool: 'Artifact', args: { action: 'list' }, readOnly: false };
   await assert.rejects(service.call({ ...request, overrides: {} }), /turned off/);
   assert.ok(!calls.some(c => c.startsWith('call:')));
   assert.deepEqual(await service.call({ ...request, overrides: { 'claude code artifacts/Artifact': 'allow' } }),

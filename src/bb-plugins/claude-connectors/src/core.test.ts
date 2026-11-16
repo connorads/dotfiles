@@ -1,26 +1,44 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { resolveChoice } from './choice.ts';
+import { ownerOf, resolveChoice } from './choice.ts';
 import { parseRpcBody } from './mcp.ts';
 import { accessFor } from './policy.ts';
 import { ConnectorService, UserFacingError, type Run } from './service.ts';
 import { keychainService, parseToken } from './token.ts';
 
 test('a chat pick beats the project default, which beats the global default', () => {
-  assert.deepEqual(resolveChoice('work', 'client', 'home'), { profile: 'work', source: 'thread' });
-  assert.deepEqual(resolveChoice(undefined, 'client', 'home'), { profile: 'client', source: 'project' });
-  assert.deepEqual(resolveChoice(undefined, undefined, 'home'), { profile: 'home', source: 'default' });
-  assert.deepEqual(resolveChoice('off', 'client', 'home'), { profile: null, source: 'thread' });
-  assert.deepEqual(resolveChoice(undefined, undefined, undefined), { profile: null, source: 'default' });
+  assert.deepEqual(resolveChoice('work', 'client', 'home'), { profile: 'work', source: 'thread', readOnly: false });
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home'), { profile: 'client', source: 'project', readOnly: false });
+  assert.deepEqual(resolveChoice(undefined, undefined, 'home'), { profile: 'home', source: 'default', readOnly: false });
+  assert.deepEqual(resolveChoice('off', 'client', 'home'), { profile: null, source: 'thread', readOnly: false });
+  assert.deepEqual(resolveChoice(undefined, undefined, undefined), { profile: null, source: 'default', readOnly: false });
+});
+
+test('a started thread gets its owner\'s access read-only, ahead of the project default', () => {
+  const owner = resolveChoice('work', undefined, undefined);
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home', owner), { profile: 'work', source: 'owner', readOnly: true });
+  const ownerOff = resolveChoice('off', undefined, undefined);
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home', ownerOff), { profile: null, source: 'owner', readOnly: true });
+  assert.deepEqual(resolveChoice('client', undefined, undefined, owner), { profile: 'client', source: 'thread', readOnly: false });
+});
+
+test('the owner is the parent, else the origin of a BB workflow run', () => {
+  const none = { parentThreadId: null, originPluginId: null, lifecycleOwnerThreadId: null };
+  assert.equal(ownerOf(none), null);
+  assert.equal(ownerOf({ ...none, parentThreadId: 'thr_parent' }), 'thr_parent');
+  assert.equal(ownerOf({ ...none, originPluginId: 'workflows', lifecycleOwnerThreadId: 'thr_origin' }), 'thr_origin');
+  assert.equal(ownerOf({ ...none, originPluginId: 'other', lifecycleOwnerThreadId: 'thr_origin' }), null);
 });
 
 test('read-only tools are allowed and writes stay off until allowed', () => {
   const read = { name: 'read_channel', annotations: { readOnlyHint: true } };
   const write = { name: 'send_message' };
-  assert.equal(accessFor('Slack', read, {}), 'allow');
-  assert.equal(accessFor('Slack', write, {}), 'off');
-  assert.equal(accessFor('Slack', write, { 'slack/send_message': 'allow' }), 'allow');
-  assert.equal(accessFor('Slack', read, { 'slack/read_channel': 'off' }), 'off');
+  assert.equal(accessFor('Slack', read, {}, false), 'allow');
+  assert.equal(accessFor('Slack', write, {}, false), 'off');
+  assert.equal(accessFor('Slack', write, { 'slack/send_message': 'allow' }, false), 'allow');
+  assert.equal(accessFor('Slack', read, { 'slack/read_channel': 'off' }, false), 'off');
+  assert.equal(accessFor('Slack', write, { 'slack/send_message': 'allow' }, true), 'off');
+  assert.equal(accessFor('Slack', read, {}, true), 'allow');
 });
 
 test('the Keychain service matches Claude Code for a profile directory', () => {
@@ -77,9 +95,13 @@ test('a write tool is refused until allowed, then called through the proxy', asy
     'tools/list': { tools: [{ name: 'send_message' }] },
     'tools/call': { content: [{ type: 'text', text: 'sent' }] },
   });
-  await assert.rejects(service.call({ profile: 'work', connector: 'slack', tool: 'send_message', args: {}, overrides: {} }), /turned off/);
-  assert.deepEqual(await service.call({ profile: 'work', connector: 'Slack', tool: 'send_message', args: { text: 'hi' }, overrides: { 'slack/send_message': 'allow' } }),
+  await assert.rejects(service.call({ profile: 'work', connector: 'slack', tool: 'send_message', args: {}, overrides: {}, readOnly: false }), /turned off/);
+  assert.deepEqual(await service.call({ profile: 'work', connector: 'Slack', tool: 'send_message', args: { text: 'hi' }, overrides: { 'slack/send_message': 'allow' }, readOnly: false }),
     { content: [{ type: 'text', text: 'sent' }] });
   assert.ok(calls.includes('fetch /v1/mcp/srv_1 tools/call'));
+  const sent = calls.filter(c => c === 'fetch /v1/mcp/srv_1 tools/call').length;
+  await assert.rejects(service.call({ profile: 'work', connector: 'Slack', tool: 'send_message', args: { text: 'hi' }, overrides: { 'slack/send_message': 'allow' }, readOnly: true }),
+    /read-only access from the thread that started it/);
+  assert.equal(calls.filter(c => c === 'fetch /v1/mcp/srv_1 tools/call').length, sent);
   assert.deepEqual(await service.profiles(), ['work']);
 });

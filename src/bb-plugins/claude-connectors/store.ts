@@ -2,7 +2,7 @@
 // section. State arrives by RPC; realtime only says "refetch".
 import { useSyncExternalStore } from 'react';
 import type { PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { DraftView, rpcContract, StateView, ThreadView } from './contracts.ts';
+import type { DraftView, ResolvedView, rpcContract, StateView, ThreadView } from './contracts.ts';
 
 export type Rpc = PluginRpcClient<typeof rpcContract>;
 export type Target = { kind: 'thread'; threadId: string; projectId: string } | { kind: 'draft'; projectId: string };
@@ -164,5 +164,6 @@ export function targetFor(threadId: string | null): Target | null {
   return state.draftProject ? { kind: 'draft', projectId: state.draftProject } : null;
 }
 
-export const sourceLabel = (source: 'thread' | 'project' | 'default', kind: Target['kind']) =>
-  source === 'thread' ? (kind === 'thread' ? 'this thread' : 'the new thread') : source === 'project' ? 'project default' : 'global default';
+export const sourceLabel = (source: ResolvedView['source'], kind: Target['kind']) =>
+  source === 'thread' ? (kind === 'thread' ? 'this thread' : 'the new thread')
+    : source === 'owner' ? 'read-only, from the thread that started it' : source === 'project' ? 'project default' : 'global default';

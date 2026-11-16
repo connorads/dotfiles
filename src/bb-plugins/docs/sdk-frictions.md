@@ -1140,7 +1140,8 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   A call after `turn/completed` returns `Cannot route provider tool call ... because no active turn is known`.
   `turn/completed` also aborts calls in flight. An aborted call sends no result and no error, so the sub-agent waits without limit.
   Native background work outlives the turn that started it.
-- Workaround: none in the plugin. Run connector work in the main agent, a foreground sub-agent, or a BB workflow worker thread.
+- Workaround: the [agent instruction](../claude-connectors/server.ts) says to call connectors in the turn or use a BB workflow.
+  BB workflow workers get their origin thread's connectors read-only.
 - Ask: answer an aborted tool call with an error. Route tool calls while the thread has live background tasks.
 - Status: open
 - Category: app-bug
