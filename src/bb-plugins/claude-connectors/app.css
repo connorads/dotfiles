@@ -38,7 +38,11 @@
   font: 500 10.5px/1 var(--font-mono);
 }
 
-.cc-preview { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 14px 10px; border-top: 1px solid var(--border-seam, var(--border)); }
+/* Fixed height, three tag lines: a focus change must not resize the panel (see popover.tsx). */
+.cc-preview {
+  display: flex; flex: none; flex-wrap: wrap; align-content: flex-start; gap: 4px; box-sizing: border-box; height: 87px; overflow-y: auto;
+  padding: 8px 14px 10px; border-top: 1px solid var(--border-seam, var(--border));
+}
 .cc-tag { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--foreground); font-size: 11.5px; line-height: 18px; }
 
 .cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
@@ -47,7 +51,9 @@
 .cc-link {
   display: inline-block; justify-self: start; padding: 0; border: 0; background: none; color: var(--brand, var(--primary));
   font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
+.cc-link-idle { visibility: hidden; }
 
 /* Settings */
 .cc-settings { display: grid; gap: 16px; }
