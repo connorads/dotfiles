@@ -17,6 +17,9 @@ Before changing local BB configuration or plugins, read `~/docs/bb.md` for maint
 Do not rebuild or fork BB, including bundled plugins, without a new, explicit user decision. Check existing local plugins and pinned bundle patches first.
 Use BB's supplied skills and `bb guide` for platform commands.
 
+For a requested workflow or multi-agent run in BB, use a BB workflow, not the provider's built-in workflow tool.
+BB workflow workers are separate threads that can use plugin tools and appear in the run card.
+
 For BB SDK gaps, app bugs, provider issues and CLI problems, read `~/src/bb-plugins/docs/sdk-frictions.md`.
 Search for an existing entry and extend it rather than adding a duplicate.
 Record the gap, workaround, evidence and smallest upstream request.
