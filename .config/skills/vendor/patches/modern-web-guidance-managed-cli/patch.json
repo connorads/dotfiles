@@ -1,0 +1,6 @@
+{
+  "reason": "Modern Web Guidance uses the mise-owned CLI without telemetry, runtime downloads, forced reporting or broad type casts.",
+  "files": [
+    ".agents/skills/modern-web-guidance/SKILL.md"
+  ]
+}

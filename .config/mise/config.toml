@@ -156,6 +156,7 @@ age = "1"
 "npm:cf" = "1.0.0-beta.28"
 "npm:critique" = "0"
 "npm:deepsec" = "2"
+"npm:modern-web-guidance" = "1"
 "npm:droid" = "0"
 "npm:eas-cli" = "27"
 # Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so

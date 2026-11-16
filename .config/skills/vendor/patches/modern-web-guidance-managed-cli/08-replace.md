@@ -1,0 +1,1 @@
+  - **Types**: Use precise types for newly shipped HTML attributes. Follow the project's type-safety rules; do not use broad `as any` casts.

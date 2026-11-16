@@ -224,6 +224,13 @@
       "skillPath": "skills/minimalist-skill/SKILL.md",
       "computedHash": "1e37c8db6ad1589730a035a0298d125d3bafb4b9207c024d37b7638008aa1874"
     },
+    "modern-web-guidance": {
+      "source": "GoogleChrome/modern-web-guidance",
+      "ref": "v1.0.0",
+      "sourceType": "github",
+      "skillPath": "skills/modern-web-guidance/SKILL.md",
+      "computedHash": "8ea2818acb8fc266fd58123427700e9fe424e03f9913089ee4f3d1b041d72841"
+    },
     "mutation-testing": {
       "source": "citypaul/.dotfiles",
       "sourceType": "github",

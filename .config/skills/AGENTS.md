@@ -447,6 +447,13 @@ procedure before replacing vetted content.
 
 ## Caveats
 
+- `modern-web-guidance` is catalogue-only. Its CLI is mise-owned as
+  `npm:modern-web-guidance` on the 1.x range. The `modern-web-guidance-managed-cli`
+  patch disables telemetry per invocation and removes runtime package downloads,
+  mandatory report sections and broad type casts. Its bundled guides and Apache-2.0
+  `LICENSE` travel with project installations. Refresh the licence from the same
+  upstream revision as the skill.
+
 - `elephant-goldfish-model` bundles shared personas and standards inside each of
   its seven skills. Restore those copies before reapplying patches during a
   refresh. See the [set guide](vendor/elephant-goldfish-model/README.md).

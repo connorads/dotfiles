@@ -20,3 +20,10 @@ condition = "AND"
 paths = ['''^\.t3/userdata/keybindings\.json$''']
 regexTarget = "secret"
 regexes = ['''^(mod|meta|cmd|ctrl|alt|shift)(\+[a-z0-9]+)+$''']
+
+[[allowlists]]
+description = "Modern Web Guidance WebCrypto algorithm names are public identifiers"
+condition = "AND"
+paths = ['''^\.config/skills/vendor/\.agents/skills/modern-web-guidance/guides/security/client-side-encryption\.md$''']
+regexTarget = "secret"
+regexes = ['''^MLKEM768-X25519$''']
