@@ -1,0 +1,11 @@
+#!/bin/zsh
+set -eu
+umask 077
+for mise_path in "$HOME/.nix-profile/bin/mise" "/etc/profiles/per-user/${HOME:t}/bin/mise" /run/current-system/sw/bin/mise /opt/homebrew/bin/mise "$HOME/.local/bin/mise"; do
+	if [[ -x "$mise_path" ]]; then
+		export PATH="${mise_path:h}:$PATH"
+		break
+	fi
+done
+node_path=$(mise -C "$HOME" which node)
+exec "$node_path" --experimental-strip-types "${0:A:h}/../src/accounts/antigravity-cli.ts" "$@"
