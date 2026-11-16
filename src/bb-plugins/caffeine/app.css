@@ -95,9 +95,9 @@
   border: 1px solid color-mix(in oklch, var(--warning) 35%, transparent);
 }
 .cf-banner code { font-family: var(--font-mono); }
-.cf-error, .cf-pending { margin: 0; padding: 8px 14px; font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
+.cf-error, .cf-pending, .cf-notice { margin: 0; padding: 8px 14px; font-size: var(--text-xs, 12px); text-wrap: pretty; border-top: 1px solid var(--border-seam, var(--border)); }
 .cf-error { color: var(--destructive-text); }
-.cf-pending { color: var(--muted-foreground); }
+.cf-pending, .cf-notice { color: var(--muted-foreground); }
 .cf-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .cf-footer {

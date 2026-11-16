@@ -65,10 +65,11 @@ export function close() { set({ open: null, actionError: null }); }
 export function dismissError() { if (state.actionError) set({ actionError: null }); }
 
 /**
- * How long an action may run before the popover stops waiting for it. Longer than the server's 60 s
- * host-write timeout, so it fires only when no answer is coming, such as a dropped connection.
+ * How long an action may run before the popover stops waiting for it. Longer than the server's slowest
+ * bounded action, Turn off: a 20 s state read, then a 60 s host write. So it fires only when no answer
+ * is coming, such as a dropped connection.
  */
-export const ACTION_TIMEOUT_MS = 75_000;
+export const ACTION_TIMEOUT_MS = 90_000;
 class NoAnswer extends Error {}
 
 /**
@@ -84,7 +85,7 @@ export async function act(label: ActionLabel, call: () => Promise<ActionResult>,
   const fail = (reason: string) => set({ actionError: { reason, label, at: Date.now(), missed: state.open === null } });
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new NoAnswer(`no answer after ${ACTION_TIMEOUT_MS / 1000} s, so its result is unknown.`)), ACTION_TIMEOUT_MS);
+    timer = setTimeout(() => reject(new NoAnswer(`no answer after ${ACTION_TIMEOUT_MS / 1000} s. It may still have worked: check the state above before trying again.`)), ACTION_TIMEOUT_MS);
   });
   try {
     const result = await Promise.race([call(), timeout]);

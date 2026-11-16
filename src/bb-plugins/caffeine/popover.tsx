@@ -107,17 +107,36 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   const [armed, setArmed] = useState<Armed | null>(null);
   const now = useNow(1_000);
 
+  /** A success that keeps the popover open has no chip change to confirm it, so the status line says it. */
+  const [notice, setNotice] = useState<string | null>(null);
   const stuck = details?.sleepDisabled === true;
   const screen = screenOf(view, picker, stuck);
   const onBattery = details?.onBattery === true;
   /** Only a known mains reading skips the lid confirm: details may still be loading, or may have failed. */
   const onMains = details?.onBattery === false;
 
+  /** Only the latest reading counts: an older one may answer last. */
+  const reading = useRef(0);
   const loadDetails = useCallback(() => {
-    rpc().call('details', {}).then(detail => { setDetails(detail); setDetailsError(null); }, cause => setDetailsError(message(cause)));
+    const id = ++reading.current;
+    rpc().call('details', {}).then(
+      detail => { if (id === reading.current) { setDetails(detail); setDetailsError(null); } },
+      cause => { if (id === reading.current) setDetailsError(message(cause)); });
   }, []);
 
   useEffect(() => { loadDetails(); }, [loadDetails]);
+  // A session that starts or ends while the popover is open changes the sleep flag and the power facts,
+  // so an earlier reading would claim a stuck flag that has gone, or miss one. Read them again.
+  const kind = view?.kind ?? null;
+  const lastKind = useRef(kind);
+  useEffect(() => {
+    const was = lastKind.current;
+    lastKind.current = kind;
+    if (was === null || was === kind) return;
+    setDetails(null);
+    setDetailsError(null);
+    loadDetails();
+  }, [kind, loadDetails]);
   // Leaving OFF (a start from tmux, say) closes the lid picker with it.
   useEffect(() => { if (view?.kind !== 'off') setPicker(false); }, [view?.kind]);
   useEffect(() => {
@@ -131,8 +150,8 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     (row ?? dialog.current?.querySelector<HTMLElement>('[data-row]'))?.focus({ preventScroll: true });
   }, []);
   const screenKey = screen.kind === 'on' ? `on:${screen.timed}` : screen.kind;
-  // An armed row belongs to its screen: a lid session that ends or becomes a normal one needs no confirm.
-  useEffect(() => { setArmed(null); }, [screenKey]);
+  // An armed row and a notice belong to their screen: a lid session that ends or becomes a normal one needs no confirm.
+  useEffect(() => { setArmed(null); setNotice(null); }, [screenKey]);
   /** Where focus goes when a screen opens in place of initialRow: the row the user came back from. */
   const returnTo = useRef<string | null>(null);
   // Keyed on the screen, not the view: the clock ticks every second and must not steal focus back.
@@ -151,10 +170,15 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     focusRow(from && element.querySelector(`[data-row="${CSS.escape(from)}"]`) ? from : initial);
   });
 
-  async function perform(label: ActionLabel, call: () => Promise<ActionResult>, closeOnSuccess = true) {
+  /** done: keep the popover open on success and say this instead; otherwise success closes it. */
+  async function perform(label: ActionLabel, call: () => Promise<ActionResult>, done?: string) {
     actedFrom.current = (document.activeElement as HTMLElement | null)?.dataset?.row ?? null;
     setArmed(null);
-    if (await act(label, call, closeOnSuccess) && !closeOnSuccess) loadDetails();
+    setNotice(null);
+    if (await act(label, call, done === undefined) && done !== undefined) {
+      setNotice(done);
+      loadDetails();
+    }
   }
 
   /** Lid sessions take a second press unless on mains; declining costs a running session nothing. */
@@ -185,7 +209,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
         return;
       case 'agents': void perform(LABELS.agents, () => rpc().call('startAgents', {})); return;
       case 'off': void perform(LABELS.off, () => rpc().call('stop', {})); return;
-      case 'clear': void perform(LABELS.clear, () => rpc().call('clearSleepDisabled', {}), false); return;
+      case 'clear': void perform(LABELS.clear, () => rpc().call('clearSleepDisabled', {}), 'Sleep flag cleared.'); return;
     }
   }
 
@@ -222,6 +246,8 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   const isArmed = (id: string) => armed?.row === id;
   /** A stuck flag makes "the Mac sleeps" false, so the header says so instead. */
   const stuckLine = <p className="cf-line cf-alert">A lid session left this Mac unable to sleep, lid included.</p>;
+  /** Until the flag is read, no line may claim the Mac sleeps: the flag may be stuck. */
+  const flagUnknown = details === null;
   let body: ReactNode;
   let footnote: string;
   if (!view) {
@@ -257,7 +283,9 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     const power = details ? (details.onBattery === true ? <span className="cf-battery">on battery</span> : details.onBattery === false ? 'on mains' : '') : detailsError ? 'power unknown' : '…';
     body = <>
       <Header id={headerId} tone="off" glyph="☼" title="Keep awake" tag="OFF">
-        {stuck ? stuckLine : <p className="cf-line cf-muted">This Mac sleeps on its normal schedule.</p>}
+        {stuck ? stuckLine : <p className="cf-line cf-muted">{!flagUnknown
+          ? 'This Mac sleeps on its normal schedule.'
+          : detailsError ? 'Unknown whether this Mac can sleep: the sleep flag could not be read.' : 'Checking whether this Mac can sleep…'}</p>}
       </Header>
       <section className="cf-section">
         <Row id={rowId({ kind: 'start', secs: 0 })} keycap="i" label="Indefinitely" aside="∞" disabled={waiting}
@@ -285,7 +313,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
           ? <p className="cf-line cf-muted">You can close the lid. This Mac cannot sleep at all. It self-clears at {clockAt(deadline!, now)} and normal sleep returns.</p>
           : stuck
           ? <><p className="cf-line cf-muted">System sleep is held; displays still sleep.</p>{stuckLine}</>
-          : <p className="cf-line cf-muted">System sleep is held; displays still sleep. Closing the lid still sleeps the Mac.</p>}
+          : <p className="cf-line cf-muted">{`System sleep is held; displays still sleep.${flagUnknown ? '' : ' Closing the lid still sleeps the Mac.'}`}</p>}
       </Header>
       {lid && onBattery && <p className="cf-banner" role="note">On battery. Extending keeps it draining, and a closed shell runs hot.</p>}
       <section className="cf-section">
@@ -330,7 +358,7 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
   const failure = actionError && (actionError.missed
     ? `${actionError.label.failed} failed at ${clockAt(actionError.at, now)}: ${actionError.reason}`
     : `${actionError.label.failed} failed: ${actionError.reason}`);
-  const shownError = failure ?? (detailsError && `Could not read power and running agents: ${detailsError}`) ?? (view ? null : readError);
+  const shownError = failure ?? (detailsError && `Could not read the sleep flag, power and running agents: ${detailsError}`) ?? (view ? null : readError);
   const keys = screen.kind === 'unsupported'
     ? <><kbd>q</kbd> close</>
     : <><span className="cf-pair"><kbd>↑</kbd><kbd>↓</kbd></span> move <kbd>↵</kbd> choose {screen.kind === 'lid-picker' ? <><kbd>esc</kbd> back</> : <><kbd>q</kbd> close</>}</>;
@@ -343,7 +371,9 @@ export function CaffeinePopover({ view, readError, pending, actionError, anchor,
     {body}
     {/* One live region, present from the first render, so a later error or status is announced. */}
     <div role="status" id={statusId}>
-      {pending ? <p className="cf-pending">{pending.doing}…</p> : shownError && <p className="cf-error">{shownError}</p>}
+      {pending ? <p className="cf-pending">{pending.doing}…</p>
+        : shownError ? <p className="cf-error">{shownError}</p>
+        : notice && <p className="cf-notice">{notice}</p>}
       {armedNote && <p className="cf-sr-only">{armedNote}</p>}
     </div>
     <footer className="cf-footer">

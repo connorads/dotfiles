@@ -111,11 +111,25 @@ test('an action with no answer gives up, frees the next action and reads the sta
     mock.timers.tick(1);
     assert.equal(await hung, false);
     assert.equal(snapshot().pending, null);
-    assert.match(snapshot().actionError?.reason ?? '', /^no answer after 75 s/);
+    assert.match(snapshot().actionError?.reason ?? '', new RegExp(`^no answer after ${ACTION_TIMEOUT_MS / 1000} s`));
     assert.deepEqual(methods, ['state']);
     assert.equal(await act(label, async () => ok), true, 'the next action runs');
   } finally {
     mock.timers.reset();
+    setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
+  }
+});
+
+test('a refused or rejected action does not read the state again', async () => {
+  const methods: string[] = [];
+  setClient({ call: async (method: string) => { methods.push(method); return { kind: 'off' }; } } as unknown as Rpc);
+  try {
+    toggle('pointer', chip);
+    methods.length = 0;
+    await act(label, async () => refused);
+    await act(label, async () => { throw new Error('host went away'); });
+    assert.deepEqual(methods, [], 'only an action with no answer leaves the state in doubt');
+  } finally {
     setClient({ call: async () => ({ kind: 'off' }) } as unknown as Rpc);
   }
 });

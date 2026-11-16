@@ -21,13 +21,16 @@ Every timed row shows the time it ends, with the weekday when that is not
 today. A start, extend or off closes the popover, and the chip appearing or
 going is the confirmation. While an action runs, the popover says what it is
 waiting for and takes no second action, even after a close and reopen. An
-action with no answer after 75 s fails as unknown, frees the popover and reads
+action with no answer after 90 s fails as unknown, frees the popover and reads
 the state again. A popover opened meanwhile stays open when that action succeeds. An error stays
 on screen and names the action that failed. If no popover was open when the
 action failed, the next popover opens with what failed and at what time. If BB cannot read the Mac's state and
 has no earlier reading, the popover says so; reopening it reads again. With an
 earlier reading, it shows that one. When a lid session left the kernel flag
-set, the header says this Mac cannot sleep, and `c` clears the flag.
+set, the header says this Mac cannot sleep. `c` clears the flag, keeps the
+popover open and says so. Until the flag is read, the header does not claim the
+Mac sleeps. A session that starts or ends while the popover is open makes it
+read the flag again.
 
 The chip hides while keep-awake is off, like the tmux pill:
 
