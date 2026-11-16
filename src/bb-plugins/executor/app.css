@@ -83,7 +83,7 @@
   .ex-connection-url { white-space: normal; overflow-wrap: anywhere; }
 }
 @media (pointer: coarse) {
-  .ex-connection button { min-height: 44px; }
+  .ex-connection button, .ex-add-submit { min-height: 44px; }
 }
 
 .ex-add { display: grid; gap: 6px; margin: 4px 12px 10px; }

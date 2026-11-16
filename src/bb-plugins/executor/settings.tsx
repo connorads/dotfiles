@@ -156,6 +156,7 @@ function AddConnection({ count }: { count: number }) {
     }
   }
 
+  // Inputs are read-only while the add runs: a success clears them, so edits made meanwhile would be lost.
   return <form className="border-t border-border/60 pt-4" onSubmit={event => void submit(event)} aria-label="Add connection">
     <h3 className="text-sm font-medium text-foreground">Add connection</h3>
     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -163,9 +164,9 @@ function AddConnection({ count }: { count: number }) {
     </p>
     <div className="mt-2 flex flex-wrap gap-2">
       <Input aria-label="Connection name" placeholder={fallbackName} className="w-44 shrink-0"
-        maxLength={60} value={name} onChange={event => setName(event.target.value)} />
+        maxLength={60} readOnly={busy} value={name} onChange={event => setName(event.target.value)} />
       <Input aria-label="Connection URL" placeholder="https://mcp.executor.sh/mcp?connection=…" className="min-w-64 flex-1"
-        value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
+        readOnly={busy} value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
       {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
       <Button type="submit" size="sm" className="ex-add-submit h-9" aria-disabled={busy || !url.trim() || undefined}>{busy ? 'Adding…' : 'Add and sign in'}</Button>
     </div>

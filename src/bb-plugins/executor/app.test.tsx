@@ -735,3 +735,85 @@ it('settings: a failed sign-in after an add says the add worked; an add failure 
   fireEvent.change(urlBox, { target: { value: 'https://mcp.executor.sh/mcp?connection=c_5' } });
   expect(slot.queryByRole('alert')).toBeNull();
 });
+
+it('popover: while an add runs, a click outside keeps the popover and the form shows the failure', async () => {
+  let fail: (cause: Error) => void = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }), add: () => new Promise((_, reject) => { fail = reject; }) },
+  });
+  act(() => toggle('t-add-outside', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  const url = await overlay.findByRole('textbox', { name: 'Connection URL' });
+  fireEvent.change(url, { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  await overlay.findByRole('button', { name: 'Adding…' });
+  expect((url as HTMLInputElement).readOnly).toBe(true);
+  expect(dialog.textContent).not.toContain('esc close');
+  // jsdom has no PointerEvent; a MouseEvent of the same type carries the coordinates.
+  dialog.getBoundingClientRect = () => DOMRect.fromRect({ x: 180, y: 48, width: 320, height: 200 });
+  const clickOutside = () => {
+    fireEvent(dialog, new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    fireEvent.click(dialog, { clientX: 10, clientY: 10 });
+  };
+  clickOutside();
+  expect(overlay.queryByRole('dialog')).toBeTruthy();
+  await act(async () => fail(new Error('Executor refused the connection.')));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Executor refused the connection.');
+  expect((url as HTMLInputElement).readOnly).toBe(false);
+  clickOutside();
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+});
+
+it('popover: a paste while an add runs keeps the running form, so one add is sent', async () => {
+  let finish: (result: { ok: false; message: string }) => void = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }), add: () => new Promise(resolve => { finish = resolve; }) },
+  });
+  act(() => toggle('t-add-paste', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Add connection/ });
+  fireEvent.keyDown(dialog, { key: 'a' });
+  fireEvent.change(await overlay.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  const adding = await overlay.findByRole('button', { name: 'Adding…' });
+  fireEvent.paste(adding, { clipboardData: { getData: () => 'https://mcp.executor.sh/mcp?connection=c_other' } });
+  expect((overlay.getByRole('textbox', { name: 'Connection URL' }) as HTMLInputElement).value).toBe('https://mcp.executor.sh/mcp?connection=c_3');
+  fireEvent.submit(overlay.getByRole('form', { name: 'Add connection' }));
+  await act(async () => finish({ ok: false, message: 'That connection is already added.' }));
+  expect((await overlay.findByRole('alert')).textContent).toBe('That connection is already added.');
+  expect(overlay.rpcCalls.filter(c => c.method === 'add')).toHaveLength(1);
+});
+
+it('popover: a paste while a pick saves does not open the add form', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }), setThreadChoice: () => new Promise(() => {}) },
+  });
+  act(() => toggle('t-pick-paste', 'keyboard'));
+  const dialog = await overlay.findByRole('dialog');
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(dialog, { key: 'o' });
+  fireEvent.paste(dialog, { clipboardData: { getData: () => 'https://mcp.executor.sh/mcp?connection=c_9' } });
+  expect(overlay.queryByRole('form', { name: 'Add connection' })).toBeNull();
+});
+
+it('popover: a failed save falls back to the last connection saved, not the default', async () => {
+  let reads = 0;
+  let saves = 0;
+  // Only the first read answers, so the fallback must come from the save the client saw succeed.
+  const handlers = {
+    state: () => two,
+    threadChoice: () => (++reads === 1 ? { kind: 'default' } : new Promise(() => {})),
+    setThreadChoice: () => { if (++saves > 1) throw new Error('Could not save the choice.'); return null; },
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-fallback', isCompactViewport: false } as never, { rpc: handlers });
+  await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle('t-fallback', 'keyboard'));
+  fireEvent.keyDown(await overlay.findByRole('dialog'), { key: 'o' });
+  await chip.findByRole('button', { name: 'Executor is off for this thread' });
+  act(() => toggle('t-fallback', 'keyboard'));
+  fireEvent.keyDown(await overlay.findByRole('dialog'), { key: '1' });
+  expect(await chip.findByRole('button', { name: /^Executor is off for this thread\. Could not switch to Coding\./ })).toBeTruthy();
+});

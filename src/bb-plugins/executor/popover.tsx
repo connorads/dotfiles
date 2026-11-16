@@ -144,8 +144,9 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   }
 
   // Paste an MCP URL anywhere in the popover to start adding it.
+  // Not while a pick or an add runs: a new add form would replace the running one and its outcome.
   function onPaste(event: ClipboardEvent<HTMLDialogElement>) {
-    if ((event.target as HTMLElement).closest('input')) return;
+    if (busy || (event.target as HTMLElement).closest('input')) return;
     const text = event.clipboardData.getData('text/plain');
     if (!looksLikeMcpUrl(text)) return;
     event.preventDefault();
@@ -153,9 +154,11 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   }
 
   return <ChipPopover ref={dialog} aria-label="Executor connection" trigger={visibleChip} anchor={anchor} width={360}
-    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste} onClose={onClose}
+    instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste}
+    // While the add runs, neither Escape nor a click outside closes the popover: the add cannot be cancelled,
+    // its outcome shows in the form, and the switch that follows it must not land on a pick made after a reopen.
+    onClose={pending === 'add' ? () => {} : onClose}
     // Escape leaves the add form first; with no connections the form is the whole popover.
-    // While the add runs, Escape keeps the form: the add cannot be cancelled, and its outcome shows there.
     onEscape={pending === 'add' ? () => {} : adding !== null && hasRows ? () => setAdding(null) : undefined}>
     <header className="ex-header">
       <h2>Executor connection</h2>
@@ -200,7 +203,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
     {unsaved && <p className="ex-error" role="alert">{unsaved}</p>}
     {error && <p className="ex-error" role="alert">{error}</p>}
     <footer className="ex-footer">
-      {hasRows && <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
+      {hasRows && pending !== 'add' && <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
       <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
       {hasRows && <span>Sign out, change the default or remove in Settings → Executor.</span>}
     </footer>

@@ -48,12 +48,13 @@ export function AddForm({ initialUrl, count, onBusy, onAdded }: {
     }
   }
 
+  // Inputs are read-only while the add runs: it sends the values from the submit, so later edits would be lost.
   return <form className="ex-add" aria-label="Add connection" onSubmit={event => void submit(event)}>
     <input ref={urlInput} className="ex-input" aria-label="Connection URL" placeholder="Paste MCP URL from Executor → Connect"
-      value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
+      readOnly={busy} value={url} onChange={event => { setUrl(event.target.value); setProblem(null); }} required />
     <div className="ex-add-row">
       <input ref={nameInput} className="ex-input" aria-label="Connection name" placeholder={fallbackName} maxLength={60}
-        value={name} onChange={event => setName(event.target.value)} />
+        readOnly={busy} value={name} onChange={event => setName(event.target.value)} />
       {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page body. */}
       <button type="submit" className="ex-button ex-button-primary" aria-disabled={busy || !url.trim() || undefined}>{busy ? 'Adding…' : 'Add and sign in'}</button>
     </div>
