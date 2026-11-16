@@ -1,7 +1,7 @@
 # Agent Switcher for BB
 
-Choose the model, its effort and the Claude Code account for a thread from one
-switcher. Keep the native conversation when switching accounts. Show each
+Choose the model, its effort and the Claude or Antigravity account for a thread from one
+switcher. Claude account changes keep the native conversation. Show each
 account's quota in the thread header and in an all-account overlay.
 
 The plugin ID is `claude-profiles`, so its CLI is `bb claude-profiles`. BB
@@ -31,7 +31,7 @@ else. Disabling the plugin removes the rule.
  3  O DeepSeek Flash ●○○        ★
     + Add model…
  ────────────────────────
-  (S) Summit  (T) Trove  ...   account row, Claude only
+  (S) Summit  (T) Trove  ...   account row
  ────────────────────────
   ⌕ All models            /
 ```
@@ -80,6 +80,73 @@ Down** moves, **Enter** uses the highlighted model and **⌘S** stars it.
 **Escape** or the **‹** button returns to the favourites. A provider whose catalogue fails shows
 only when you search for its name. The catalogue does not verify account
 access; Go plan and workspace settings apply.
+
+### Antigravity accounts
+
+Antigravity offers **Default** and registered isolated accounts in the account row.
+Default keeps the native login and configuration. Isolated accounts use private homes.
+Choosing an account preserves the selected model and draft. It sends no prompt.
+Account changes require an idle thread. BB performs its normal provider handoff when the account route changes.
+Native Antigravity conversation continuity across account routes is not guaranteed.
+Models unavailable on the target account prevent the change.
+Favourites include their account route, so a favourite selects its account too.
+
+```mermaid
+flowchart LR
+  Selection[Selected account] --> Route[Account ACP route]
+  Route --> Launcher[Mandatory profile launcher]
+  Launcher --> ACP[Thread and native workers]
+  Launcher --> Models[Model discovery]
+  Launcher --> Usage[Quota collection]
+```
+
+Each isolated account has a stable provider ID, `acp-antigravity-profile-NAME`.
+Keep that ID when changing its display name. BB threads and favourites store the ID.
+Default retains `acp-antigravity`.
+The account row shows a stable letter and a ring for the fullest quota window.
+Agent Usage groups the accounts under Antigravity and caches each account separately.
+An authentication failure offers **Sign in again** through the same account launcher.
+
+Create and enrol an account on the machine running its threads:
+
+```sh
+profile="$HOME/src/bb-plugins/claude-profiles/bin/agy-profile"
+"$profile" create example
+"$profile" example acp --login
+```
+
+Add the account to `provider-acp.customAgents` in the
+[managed settings](../../../.config/bb/plugin-config.json), preserving existing entries:
+
+```json
+{
+  "id": "antigravity-profile-example",
+  "displayName": "Antigravity · Example",
+  "command": "zsh",
+  "args": [
+    "-c", "exec \"$HOME/src/bb-plugins/claude-profiles/bin/agy-profile\" example \"$@\"",
+    "agy-profile", "acp", "--process-per-session"
+  ]
+}
+```
+
+Run `bb-plugins apply` and verify `bb provider models acp-antigravity-profile-example --json`.
+Account creation and registration use these commands. There is no Add account form.
+To remove an account, first move its threads and favourites to another route.
+Remove its managed registration and run `bb-plugins apply`.
+After closing its CLI processes, use `trash` on its directory under `~/.local/share/agy-profiles/`.
+Never remove Default's native credentials as part of isolated account removal.
+
+The launcher requires macOS and Antigravity 1.5.9.
+It resolves global mise tools before changing `HOME` and preserves the workspace directory.
+A missing profile or unsupported CLI version stops the launch without using Default.
+Its sandbox blocks Keychain access, the native `.gemini` directory and other existing profile directories.
+Native authentication owns credential creation and refresh. The plugin does not parse or copy tokens.
+The file-storage fallback uses an undocumented cache marker and `WSL_INTEROP=1`.
+Version upgrades require renewed isolation checks before changing the launcher's version guard.
+Private `HOME` also changes user settings, skills, shell configuration and tool credentials.
+The launcher does not link the real home into a profile.
+Token refresh and logout independence require further live verification.
 
 ### Favourites and effort
 

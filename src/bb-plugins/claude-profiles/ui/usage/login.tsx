@@ -20,7 +20,8 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
     try { return openCodeAccountHost(targetSchema.parse(JSON.parse(decodeURIComponent(subPath ?? ''))).accountId) !== null; }
     catch { return false; }
   })();
-  const name = codex ? 'Codex' : opencode ? 'OpenCode Go' : 'Claude';
+  const antigravity = decodeURIComponent(subPath ?? '').includes('["antigravity",');
+  const name = codex ? 'Codex' : opencode ? 'OpenCode Go' : antigravity ? 'Antigravity' : 'Claude';
   const [method, setMethod] = useState<LoginMethod>('device');
   const [message, setMessage] = useState(`Opening ${name} sign-in…`);
   const [error, setError] = useState<string | null>(null);

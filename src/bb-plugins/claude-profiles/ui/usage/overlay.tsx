@@ -15,6 +15,7 @@ import { closeUsage, restoreUsageFocus, useUsageOpen } from './overlay-store.ts'
 import { useNow } from './use-now.ts';
 import './usage.css';
 import { openCodeAccountHost } from '../../src/accounts/usage/opencode.ts';
+import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 
 function Meter({ window, view, stale = false }: { window: UsageWindow; view: WindowView; stale?: boolean }) {
   const elapsed = view.pace.kind === 'elapsed';
@@ -57,7 +58,7 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
   const name = accountName(account);
   const go = openCodeAccountHost(account.id) !== null;
   const canLogin = (usage?.status === 'expired' || usage?.status === 'unauthenticated')
-    && (account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
+    && (antigravityAccountId(account.providerId) !== null || account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
       || account.providerId === 'codex' && account.id.startsWith('provider-codex:')
       || go);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
@@ -87,7 +88,7 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
     </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading}
-          antigravity={account.providerId === 'acp-antigravity'} />)}
+          antigravity={antigravityAccountId(account.providerId) !== null} />)}
       </div>}
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
@@ -205,7 +206,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, ho
   return <section className="au-provider" aria-label={first.displayName}>
     <h3 className="au-provider-heading">
       <>{first.providerId === 'acp-grok' ? <BrandIcon brand="grok" />
-        : first.providerId === 'acp-antigravity' ? <BrandIcon brand="antigravity" />
+        : antigravityAccountId(first.providerId) !== null ? <BrandIcon brand="antigravity" />
         : <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />}</>
       {first.displayName}
     </h3>
@@ -221,7 +222,10 @@ function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, ho
 
 function byProvider(accounts: Account[]): Account[][] {
   const groups = new Map<string, Account[]>();
-  for (const account of accounts) groups.set(account.providerId, [...groups.get(account.providerId) ?? [], account]);
+  for (const account of accounts) {
+    const family = antigravityAccountId(account.providerId) !== null ? 'antigravity' : account.providerId;
+    groups.set(family, [...groups.get(family) ?? [], account]);
+  }
   return [...groups.values()];
 }
 

@@ -31,6 +31,8 @@ const levels = ['low', 'medium', 'high'].map(reasoningEffort => ({ reasoningEffo
 const catalogue: Record<string, { name: string; models: string[] }> = {
   codex: { name: 'Codex', models: ['sol', 'luna'] },
   'claude-code': { name: 'Claude Code', models: ['opus', 'haiku'] },
+  'acp-antigravity': { name: 'Antigravity', models: ['argon'] },
+  'acp-antigravity-profile-secondary': { name: 'Antigravity · Secondary', models: ['argon'] },
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
@@ -51,6 +53,11 @@ function render(options: Options = {}) {
       'favourites.remove': input => { saved = saved.filter(f => f.id !== input.id); return saved; },
       'favourites.remember': input => { saved = saved.map(f => f.id === input.id ? { ...f, ...(input.reasoningLevel ? { reasoningLevel: input.reasoningLevel } : {}),
         ...(input.serviceTier ? { serviceTier: input.serviceTier } : {}) } : f); return saved; },
+      antigravityAccounts: () => [
+        { id: 'acp-antigravity', label: 'Default', configDir: null, key: 'D' },
+        { id: 'acp-antigravity-profile-secondary', label: 'Secondary', configDir: null, key: 'S' },
+      ],
+      antigravityQuota: () => ({ status: 'ok', observedAt: 0, windows: [], message: null }),
       accounts: () => options.unsupported ? { supported: false, profiles: [], currentId: 'default', pendingId: null }
         : { supported: true, profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
       choose: input => {
@@ -78,6 +85,7 @@ function render(options: Options = {}) {
           return makeThreadResponse({ id: 'thread-test' });
         },
       },
+      environments: { get: async () => ({ hostId: 'h' }) },
       system: { executionOptions: async ({ providerId = selection.providerId }: { providerId?: string }) => ({
         providers: Object.entries(catalogue).map(([id, value]) => ({ id, available: true, displayName: value.name,
           capabilities: { supportsServiceTier: id === 'codex' } })),
@@ -391,5 +399,28 @@ test('the Daybreak toggle keeps the chosen effort', async () => {
     fireEvent.click(await slot.findByRole('button', { name: 'Daybreak' }));
     await waitFor(() => expect(slot.getByRole('button', { name: 'Daybreak' }).getAttribute('aria-pressed')).toBe('true'));
     expect(slot.inspection.composer.selection?.reasoningLevel).toBe('low');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+
+test('Antigravity account selection changes the provider and preserves the draft without sending', async () => {
+  const slot = render({ selection: { providerId: 'acp-antigravity', model: 'argon' } });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Secondary' }));
+    await waitFor(() => expect(slot.inspection.composer.selection?.providerId).toBe('acp-antigravity-profile-secondary'));
+    expect(slot.inspection.composer.selection?.model).toBe('argon');
+    expect(slot.inspection.composer.submits).toEqual([]);
+    expect(slot.inspection.composer.text).toBe('Keep this draft');
+    expect(calls(slot, 'choose')).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Antigravity refuses to change accounts during a running turn', async () => {
+  const slot = render({ selection: { providerId: 'acp-antigravity', model: 'argon' }, running: true });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Secondary' }));
+    await slot.findByText('Finish or stop the turn before changing Antigravity accounts.');
+    expect(slot.inspection.composer.selection?.providerId).toBe('acp-antigravity');
+    expect(slot.inspection.composer.submits).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });

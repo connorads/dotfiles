@@ -92,6 +92,12 @@ export function createController(composer: PluginComposerApi, sdk: PluginBrowser
   }
   return {
     statuses, scopeReason, daybreak,
+    async hostId() {
+      const target = await scope();
+      if (target.hostId) return target.hostId;
+      if (target.environmentId) return (await sdk.environments.get({ environmentId: target.environmentId })).hostId;
+      throw new Error('Choose a machine before choosing an account.');
+    },
     async models(providerId: string) {
       return (await executionOptions(providerId)).models;
     },

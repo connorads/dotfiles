@@ -18,6 +18,19 @@ type Call = Parameters<UsagePorts['callRpc']>[0];
 const answer = (respond: (input: Call) => unknown): UsagePorts['callRpc'] =>
   (async (input: Call) => input.outputSchema.parse(respond(input))) as UsagePorts['callRpc'];
 
+test('Antigravity account labels come from their provider and do not become Claude profile IDs', async () => {
+  const base = snapshot.machines[0]!.providers[0]!;
+  const source = { machines: [{ ...snapshot.machines[0], providers: [
+    { ...base, id: 'claude-profiles:["antigravity","host-one"]', providerId: 'acp-antigravity', displayName: 'Antigravity' },
+    { ...base, id: 'claude-profiles:["antigravity","host-one","example"]', providerId: 'acp-antigravity-profile-example', displayName: 'Antigravity · Example Account' },
+  ] }] };
+  const reader = createUsageReader({ ...ports, callRpc: answer(() => source) });
+  const accounts = (await reader.overview(false)).machines[0]!.providers;
+  assert.deepEqual(accounts.map(account => [account.displayName, account.accountLabel]), [
+    ['Antigravity', 'Default'], ['Antigravity', 'Example Account'],
+  ]);
+});
+
 test('Antigravity inspection preserves group labels and explicit quota periods', async () => {
   const resource = '["antigravity","host-one"]';
   const account = { ...snapshot.machines[0]!.providers[0]!, id: `claude-profiles:${resource}`, providerId: 'acp-antigravity' };

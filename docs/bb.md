@@ -41,7 +41,7 @@ Read its [guide](../src/bb-plugins/cost/README.md).
 Mise owns the `agy` binary and its cross-platform lock entry.
 The managed `provider-acp.customAgents` setting registers `acp-antigravity`.
 BB launches `agy acp --process-per-session` so client-supplied HTTP MCP servers work.
-Antigravity keeps the single account's OAuth credentials in its native store.
+Default uses Antigravity's native login. Isolated accounts use private homes and native file-backed OAuth storage.
 
 1. Run `mise install --locked agy` on the machine that runs the BB thread.
 2. Run `agy acp --login` in a terminal on that machine and complete Google sign-in.
@@ -53,8 +53,16 @@ Agent Usage reads Antigravity's native `/usage` JSON without sending a model pro
 The overlay shows each quota group, percentage used and reset time.
 Successful readings are cached for two minutes. Refresh requests a fresh reading.
 The thread badge omits exhaustion estimates because the CLI exposes no verified model-to-quota mapping.
-Separate home directories do not establish separate Keychain credentials.
-This setup uses one account and has no account-switching controls.
+Agent Switcher shows **Default** and each registered isolated account in its account row.
+Choosing an account selects its ACP route. Account changes require an idle thread.
+The selected route persists with the BB thread and its favourites.
+Each account has separate model discovery and cached quota readings.
+
+The [account guide](../src/bb-plugins/claude-profiles/README.md#antigravity-accounts) owns profile creation and sign-in.
+Isolated profiles live under `~/.local/share/agy-profiles/`, outside Git.
+The launcher blocks Keychain access and uses the native file-storage fallback.
+It supports macOS with Antigravity 1.5.9 and refuses other versions until verified.
+Its private `HOME` also isolates user settings, skills and tool configuration.
 The [ACP guide](https://antigravity.google/docs/ide/extensions/acp) documents transport and sign-in.
 
 ## Claude account connectors

@@ -5,6 +5,7 @@ import type { ConnectorState } from '../../src/accounts/connectors-contract.ts';
 import { open, registerAnchor, subscribeSelection } from './store.ts';
 import { Glyph, useController } from './switcher.tsx';
 import './switcher.css';
+import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 
 type Accounts = { profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
 
@@ -32,10 +33,16 @@ export function Chip() {
     if (key === composer.key) void controller.daybreak().then(setDaybreak, () => setDaybreak(undefined));
   }), [composer.key, controller]);
   const loadAccounts = useCallback(() => {
+    if (providerId && antigravityAccountId(providerId) !== null) {
+      setConnectors(null);
+      controller.hostId().then(hostId => rpc.call('antigravityAccounts', { hostId }))
+        .then(profiles => setAccounts({ profiles, currentId: providerId, pendingId: null }), () => setAccounts(null));
+      return;
+    }
     if (providerId !== 'claude-code' || (composer.scope.kind !== 'thread' && composer.scope.kind !== 'new-thread')) { setAccounts(null); setConnectors(null); return; }
     rpc.call('accounts', { threadId }).then(value => setAccounts(value.supported ? value : null), () => setAccounts(null));
     rpc.call('connectors.get', { threadId }).then(setConnectors, () => setConnectors(null));
-  }, [rpc, threadId, providerId, composer.scope.kind]);
+  }, [rpc, threadId, providerId, composer.scope.kind, controller]);
   // A thread gains its environment during the first turn, so reload when a turn ends.
   useEffect(loadAccounts, [loadAccounts, composer.isRunning]);
   useRealtime('profiles-changed', loadAccounts);

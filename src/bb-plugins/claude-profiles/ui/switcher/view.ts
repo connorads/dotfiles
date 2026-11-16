@@ -2,6 +2,7 @@ import type { KeyedProfile } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { availability, matches } from '../../src/models/favourites.ts';
+import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 
 export type CatalogModel = {
   model: string;
@@ -121,7 +122,7 @@ export type AccountChip = { profile: KeyedProfile; selected: boolean; pending: b
 // The account row exists only when the current model's provider offers a choice of accounts.
 export function accountChips(providerId: string | undefined, accounts: { profiles: readonly KeyedProfile[]; currentId: string; pendingId: string | null } | null,
   connectors: Readonly<Record<string, boolean>>): AccountChip[] {
-  if (providerId !== 'claude-code' || !accounts || accounts.profiles.length < 2) return [];
+  if ((providerId !== 'claude-code' && (providerId === undefined || antigravityAccountId(providerId) === null)) || !accounts || accounts.profiles.length < 2) return [];
   const shown = accounts.pendingId ?? accounts.currentId;
   return accounts.profiles.map(profile => ({ profile, selected: profile.id === shown, pending: profile.id === accounts.pendingId,
     connectors: connectors[profile.id] === true }));

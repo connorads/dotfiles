@@ -7,6 +7,7 @@ import { sourceSnapshotSchema, type Account, type Header, type Inspection, type 
 import type { Period } from './pace.ts';
 import type { ResetCredits } from './reset-credits.ts';
 import type { ClaudeResets } from './claude-resets.ts';
+import { antigravityAccountId } from '../antigravity-account.ts';
 
 const ownPluginId = 'claude-profiles';
 const profileLocatorSchema = z.tuple([z.string(), z.string(), z.string()]);
@@ -31,7 +32,9 @@ function describeWindow(window: Omit<UsageWindow, 'period'>): UsageWindow {
 function describeAccounts(snapshot: SourceSnapshot): Snapshot {
   return { machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
     displayName: account.providerId === 'acp-grok' ? 'Grok Build'
-      : account.providerId === 'acp-antigravity' ? 'Antigravity' : account.displayName,
+      : antigravityAccountId(account.providerId) !== null ? 'Antigravity' : account.displayName,
+    ...(antigravityAccountId(account.providerId) !== null ? { accountLabel: account.providerId === 'acp-antigravity'
+      ? 'Default' : account.displayName.replace(/^Antigravity\s*·\s*/u, '') } : {}),
     usage: account.usage?.status === 'ok' ? { ...account.usage, windows: account.usage.windows.map(describeWindow) } : account.usage,
   })) })) };
 }
@@ -43,7 +46,7 @@ function describeAccounts(snapshot: SourceSnapshot): Snapshot {
  */
 function foldDefaultProfile(providers: Account[]): Account[] {
   const profileOf = (account: Account) => {
-    if (!account.id.startsWith('claude-profiles:')) return null;
+    if (account.providerId !== 'claude-code' || !account.id.startsWith('claude-profiles:')) return null;
     const locator = profileLocatorSchema.safeParse(resourceLocator(account));
     return locator.success ? locator.data[2] : null;
   };
@@ -172,7 +175,7 @@ export function createUsageReader(ports: UsagePorts) {
     const providers = await ports.listProviders();
     const label = providers.find(provider => provider.id === thread.providerId)?.displayName ?? thread.providerId;
     const base = { providerId: thread.providerId, label, accountLabel: null, windows: [] };
-    if (thread.providerId === 'acp-antigravity') return { ...base,
+    if (antigravityAccountId(thread.providerId) !== null) return { ...base,
       message: 'See Agent Usage for quota groups. Model-to-quota membership is unavailable.' };
     const claude = thread.providerId === 'claude-code' ? await ports.claudeAccount(threadId) : null;
     if (claude) {

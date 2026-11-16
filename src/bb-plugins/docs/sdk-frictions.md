@@ -244,6 +244,10 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Ask: `experimental_contributeRequiredEnv(providerId, resolve)` or a `required: true`
   flag. BB refuses the launch with a safe 409 shown beside the draft.
 - Status: open. Core-patch experiment discarded; not deployed.
+- Antigravity accounts use distinct ACP routes with mandatory launchers. This
+  binds threadless model discovery and quota commands to the same account.
+  Missing profiles stop before native authentication; optional env contributions
+  cannot provide that guarantee. See the [account launcher](../claude-profiles/src/accounts/antigravity-cli.ts).
 - For optional Claude account connectors, a BB global machine environment value
   of `ENABLE_CLAUDEAI_MCP_SERVERS=false` supplies the safe default. Agent Switcher
   contributes the combined global, account and thread policy. A failed contribution leaves the default

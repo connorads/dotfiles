@@ -9,6 +9,8 @@ import { createController, type Controller } from './controller.ts';
 import { close, open, openedState, reanchor, subscribe, type Anchor } from './store.ts';
 import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
 import './switcher.css';
+import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
+import { BrandIcon } from '../usage/brand-icon.tsx';
 
 type Accounts = { supported: boolean; profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
 const controllers = new Map<string, Controller>();
@@ -63,6 +65,7 @@ export function Overlay() {
 
 const GLYPHS: Record<string, string> = { 'claude-code': '✳', codex: '◎', 'acp-opencode': 'O', pi: 'π' };
 export function Glyph({ providerId }: { providerId: string }) {
+  if (antigravityAccountId(providerId) !== null) return <BrandIcon brand="antigravity" />;
   return <span className="sw-glyph" data-provider={providerId} aria-hidden="true">{GLYPHS[providerId] ?? providerId.charAt(0).toUpperCase()}</span>;
 }
 function Dots({ id, levels, effort }: { id: string; levels: readonly Effort[]; effort: Effort | null }) {
@@ -125,6 +128,19 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const accountGeneration = useRef(0);
   const loadAccounts = useCallback(async () => {
     const request = ++accountGeneration.current;
+    if (providerId && antigravityAccountId(providerId) !== null) {
+      try {
+        const hostId = await controller.hostId();
+        const profiles = await rpc.call('antigravityAccounts', { hostId });
+        if (request !== accountGeneration.current) return;
+        setAccounts({ supported: true, profiles, currentId: providerId, pendingId: null });
+        setConnectors({});
+        for (const profile of profiles) void rpc.call('antigravityQuota', { hostId, providerId: profile.id }).then(usage => {
+          if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage }));
+        }, () => {});
+      } catch (cause) { if (request === accountGeneration.current) setError(message(cause)); }
+      return;
+    }
     if (providerId !== 'claude-code') { setAccounts(null); return; }
     try {
       const value = await rpc.call('accounts', { threadId });
@@ -137,7 +153,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         void reading.then(settle, () => settle({ status: 'error', windows: [], message: 'Usage unavailable', observedAt: null }));
       }
     } catch (cause) { if (request === accountGeneration.current) setError(message(cause)); }
-  }, [rpc, threadId, providerId]);
+  }, [rpc, threadId, providerId, controller]);
   useEffect(() => { void loadAccounts(); }, [loadAccounts, composer.isRunning]);
   useRealtime('profiles-changed', () => { void loadAccounts(); });
 
@@ -197,6 +213,15 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   // Daybreak can change without a model change, so every apply re-reads it.
   const apply = (setup: Setup) => run(async () => { await controller.apply(setup); await loadModels(); });
   const chooseAccount = (profile: KeyedProfile) => run(async () => {
+    if (providerId && antigravityAccountId(providerId) !== null) {
+      if (composer.isRunning) throw new Error('Finish or stop the turn before changing Antigravity accounts.');
+      const model = composer.selection?.model;
+      if (!model) throw new Error('Choose a model before changing accounts.');
+      await controller.apply({ providerId: profile.id, model,
+        ...(composer.selection?.reasoningLevel ? { reasoningLevel: composer.selection.reasoningLevel } : {}) });
+      await loadModels();
+      return;
+    }
     const { currentId } = await rpc.call('choose', { threadId, profileId: profile.id });
     await loadAccounts();
     if (currentId !== profile.id && threadId !== null) toast(`${profile.label} from the next turn`);
@@ -389,7 +414,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         {favourites.length < 9 && <li className="sw-row sw-add"><button type="button" className="sw-select" onClick={openSearch}>
           <span className="sw-slot" aria-hidden="true" /><span className="sw-glyph" aria-hidden="true">+</span><span className="sw-name">Add model…</span></button></li>}
       </ul>}
-      {chips.length > 0 && <div className="sw-accounts" role="group" aria-label="Claude account">
+      {chips.length > 0 && <div className="sw-accounts" role="group" aria-label={providerId === 'claude-code' ? 'Claude account' : 'Antigravity account'}>
         {chips.map(chip => <button type="button" key={chip.profile.id} className="sw-account" aria-pressed={chip.selected}
           data-target={work?.accountId === chip.profile.id || undefined} aria-keyshortcuts={chip.profile.key ?? undefined}
           aria-label={`${chip.profile.label}${chip.pending ? ', next turn' : ''}${chip.connectors ? ', connectors on' : ''}`}
