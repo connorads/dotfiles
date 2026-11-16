@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 afterEach(() => { slot?.lifecycle.unmount(); headerSlot?.lifecycle.unmount(); slot = undefined; headerSlot = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout']; sdk?: RenderSlotOptions['sdk']; settings?: RenderSlotOptions['settings'] } = {}) {
+async function render(archiveStatus = 'idle', duringInspect?: () => void | Promise<void>, threads?: PluginSidebarThread[], options: { diagnostics?: () => Diagnostics | Promise<Diagnostics>; nativeQuestion?: { multi?: boolean; disabled?: boolean }; composer?: RenderSlotOptions['composer']; sidebarSplitLayout?: RenderSlotOptions['sidebarSplitLayout']; sdk?: RenderSlotOptions['sdk']; settings?: RenderSlotOptions['settings']; sidebarStatus?: 'loading' } = {}) {
   const { diagnostics = () => unavailableDiagnostics, nativeQuestion } = options;
   const replies: Reply[] = [];
   const archived: string[] = [];
@@ -60,6 +60,7 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
     sidebarSplitLayout: options.sidebarSplitLayout,
     settings: options.settings,
     sidebarThreads: {
+      ...(options.sidebarStatus ? { status: options.sidebarStatus } : {}),
       threads: threads ?? [thread('t1'), thread('waiting', { hasPendingInteraction: true }), thread('hidden', { isHidden: true, hasPendingInteraction: true }), thread('done', { indicator: 'unread-success' })],
       projects: [{ id: 'p1', name: 'dotfiles', isPersonal: false, href: '/', settingsHref: '/' },
         { id: 'p2', name: 'kb', isPersonal: false, href: '/', settingsHref: '/' }],
@@ -304,6 +305,21 @@ test('running archives need explicit confirmation and another command cancels it
   expect(view.archived).toEqual(['t1']);
 });
 
+test('a voice command during a clicked archive confirmation is refused rather than archiving twice', async () => {
+  let release = () => {};
+  let hold = false;
+  const view = await render('active', () => hold ? new Promise<void>(resolve => { release = resolve; }) : undefined);
+  await view.command({ action: 'archive' });
+  hold = true;
+  fireEvent.click(view.slot.getByRole('button', { name: 'Confirm archive' }));
+  expect(await view.command({ action: 'confirm-archive' })).toMatchObject({ ok: false, message: expect.stringMatching(/Busy/) });
+  expect(view.slot.getByRole('button', { name: /Voice monitor\. Working/ })).toBeTruthy();
+  hold = false;
+  release();
+  await waitFor(() => expect(view.archived).toEqual(['t1']));
+  expect(view.slot.queryByRole('dialog', { name: 'Confirm archive' })).toBeNull();
+});
+
 test('cancelling an archive leaves the selected thread and draft untouched', async () => {
   const view = await render('active');
   await view.command({ action: 'archive' });
@@ -371,6 +387,32 @@ test('pausing BB commands blocks actions and resuming restores them', async () =
   expect(view.slot.inspection.navigateCalls).toEqual([]);
   expect(await view.command({ action: 'listen', enabled: true })).toMatchObject({ ok: true });
   expect(await view.command({ action: 'new' })).toMatchObject({ ok: true });
+});
+
+test('the voice monitor stays available while BB commands are paused', async () => {
+  const view = await render();
+  await view.command({ action: 'listen', enabled: false });
+  expect(await view.command({ action: 'monitor' })).toMatchObject({ ok: true });
+  expect(view.slot.getByRole('dialog', { name: 'Voice monitor' })).toBeTruthy();
+});
+
+test('the monitor shows loading until the first diagnostics reply, then unavailability', async () => {
+  let fail: (error: Error) => void = () => {};
+  const view = await render('idle', undefined, undefined, { diagnostics: () => new Promise<Diagnostics>((_, reject) => { fail = reject; }) });
+  await view.command({ action: 'monitor' });
+  expect(view.slot.getByText('Loading Hex diagnostics…')).toBeTruthy();
+  expect(view.slot.queryByText('Hex diagnostics unavailable on this BB server.')).toBeNull();
+  await act(async () => { fail(new Error('No Hex log')); });
+  await waitFor(() => expect(view.slot.getByText('Hex diagnostics unavailable on this BB server.')).toBeTruthy());
+});
+
+test('attention and finished lists wait for BB threads instead of reporting none', async () => {
+  const view = await render('idle', undefined, undefined, { sidebarStatus: 'loading' });
+  for (const action of ['attention', 'finished'] as const) {
+    expect(await view.command({ action })).toMatchObject({ ok: false, message: expect.stringMatching(/loading its threads/) });
+  }
+  await view.command({ action: 'monitor' });
+  expect(view.slot.getByText('Loading BB threads…')).toBeTruthy();
 });
 
 test('heard feedback reports the preceding recognition attempt rather than its own phrase', async () => {

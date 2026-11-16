@@ -25,6 +25,10 @@
 .handsfree-tabs { display: flex; gap: 8px; margin: 16px 0 8px; }
 .handsfree-tabs button { padding: 5px 10px; color: var(--ink); border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent); border-radius: 6px; background: transparent; cursor: pointer; }
 .handsfree-tabs button[aria-selected="true"] { background: color-mix(in oklab, var(--ink) 10%, var(--canvas)); }
+.handsfree-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.handsfree-actions button { padding: 7px 12px; color: var(--ink); border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent); border-radius: 6px; background: transparent; cursor: pointer; }
+.handsfree-actions button:first-child { color: var(--destructive, var(--ink)); border-color: color-mix(in oklab, var(--destructive, var(--ink)) 50%, transparent); }
+.handsfree-card button:disabled { opacity: .5; cursor: progress; }
 .handsfree-history li { padding: 10px 0; border-bottom: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); }
 .handsfree-history li > div { display: flex; justify-content: space-between; font-size: 12px; }
 .handsfree-history li[data-problem="true"] > div { color: var(--destructive, var(--ink)); }

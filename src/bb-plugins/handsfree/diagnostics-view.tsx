@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import type { Diagnostics } from './diagnostics-contract.ts';
 const time = (at: number) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-export function HexActivity({ snapshot, now, children }: { snapshot: Diagnostics; now: number; children: ReactNode }) {
+export function HexActivity({ snapshot, loaded, now, children }: { snapshot: Diagnostics; loaded: boolean; now: number; children: ReactNode }) {
   const [unmatched, setUnmatched] = useState(false);
   return <>
     <section aria-label="Hex activity">
-    {!snapshot.available ? <p>Hex diagnostics unavailable on this BB server.</p> : <>
+    {!loaded ? <p>Loading Hex diagnostics…</p> : !snapshot.available ? <p>Hex diagnostics unavailable on this BB server.</p> : <>
       <p className="handsfree-context">{snapshot.state
         ? `Last Hex state: ${snapshot.state.state} at ${time(snapshot.state.at)}` : 'No recent Hex capture state.'}</p>
       {snapshot.transcript && <div className="handsfree-transcript">

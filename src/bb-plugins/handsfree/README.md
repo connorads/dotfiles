@@ -148,8 +148,8 @@ destination only after BB observes the return. Failed navigation can be retried.
 Draft navigation preserves the current draft rather than restoring an older copy.
 Reloading clears navigation history and resumes paused BB commands.
 
-Pausing blocks BB actions. Context queries, recognition feedback, help and resume
-remain available. Dictation is unaffected.
+Pausing blocks BB actions. Context queries, recognition feedback, the voice
+monitor, help and resume remain available. Dictation is unaffected.
 
 Spoken confirmations default off. Their plugin setting persists across reloads.
 Explicit state queries and reply readouts speak regardless of that preference.
@@ -166,6 +166,7 @@ state update. This file records events; its presence does not prove Hex is runni
 Each attempt exposes the heard text and result. Command recordings appear as
 `Printed`. BB action results appear separately.
 Missing or unreadable logs show `Hex diagnostics unavailable on this BB server`.
+Until the first reply arrives, Activity shows `Loading Hex diagnostics…`.
 
 The monitor opens beside the header or draft control. It is an in-app surface.
 A detached desktop window requires support from BB's desktop window API.
@@ -275,7 +276,8 @@ opaque candidate ID without constructing it. List replies carry a context identi
 return it unchanged. A changed thread, project, provider or machine rejects stale choices.
 Only one window claims each request. Unclaimed requests expire without replay;
 plugin reload cancels pending requests. No focused window produces an explicit error
-after 1.5 seconds. A window busy with another command rejects the new one.
+after 1.5 seconds. A window busy with another command rejects the new one. Card clicks and keys count
+as commands, so a spoken command during a pending archive confirmation is rejected.
 
 Tests cover command ownership, expiry, stale context, drafts, model selection,
 attention filters and pedal behaviour. Live checks cover BB navigation and the

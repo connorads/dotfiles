@@ -88,6 +88,7 @@ function VoiceCard() {
   const [problem, setProblem] = useState(false);
   const [feedback, setFeedback] = useState(false);
   const [diagnostics, setDiagnostics] = useState<Diagnostics>(unavailableDiagnostics);
+  const [diagnosticsLoaded, setDiagnosticsLoaded] = useState(false);
   const [now, setNow] = useState(Date.now);
   const diagnosticStart = useRef(Date.now());
   const observedThread = useRef(context.threadId);
@@ -134,6 +135,7 @@ function VoiceCard() {
       const snapshot = await rpc.call('diagnostics', {}).catch(() => unavailableDiagnostics);
       if (!active) return;
       setDiagnostics(snapshot);
+      setDiagnosticsLoaded(true);
       setNow(Date.now());
       timer = window.setTimeout(() => { void poll(); }, 750);
     };
@@ -264,7 +266,7 @@ function VoiceCard() {
   };
 
   const handle = async (command: Command): Promise<Reply> => {
-    if (paused.current && !['listen', 'state', 'heard', 'help', 'notice', 'capture', 'list', 'stop-reading'].includes(command.action)) {
+    if (paused.current && !['listen', 'state', 'heard', 'help', 'monitor', 'notice', 'capture', 'list', 'stop-reading'].includes(command.action)) {
       throw new Error('BB commands are paused. Say “resume commands”.');
     }
     if (!['confirm-archive', 'cancel-archive', 'notice', 'list', 'capture'].includes(command.action)) setArchiveConfirmation(null);
@@ -447,6 +449,7 @@ function VoiceCard() {
       }
       case 'attention':
       case 'finished': {
+        if (sidebar.status !== 'ready') throw new Error('BB is loading its threads. Try again shortly.');
         setChoices(null);
         const options = threads.filter(row => command.action === 'attention'
           ? row.hasPendingInteraction : row.indicator === 'unread-success').map(threadCandidate).slice(0, 9);
@@ -518,6 +521,12 @@ function VoiceCard() {
       return { ok: false, outcome: 'error', message };
     } finally { setBusy(false); }
   };
+  // Clicks and keys share the voice guard, so a spoken command cannot overlap a pending card action.
+  const runFromCard = (command: Command) => {
+    if (processing.current) return;
+    processing.current = true;
+    void run(command).finally(() => { processing.current = false; });
+  };
 
   useRealtime('command', async payload => {
     const parsed = requestSchema.safeParse(payload);
@@ -526,7 +535,7 @@ function VoiceCard() {
     if (processing.current) {
       const { requestId } = parsed.data;
       const { claimed } = await rpc.call('claim', { requestId });
-      if (claimed) await rpc.call('complete', { requestId, reply: { ok: false, message: 'Busy with another voice command. Try again.' } });
+      if (claimed) await rpc.call('complete', { requestId, reply: { ok: false, message: 'Busy with another command. Try again.' } });
       return;
     }
     processing.current = true;
@@ -548,7 +557,7 @@ function VoiceCard() {
         close();
       } else if (expanded && choices && card.current?.contains(document.activeElement) && event.key === 'Enter') {
         event.preventDefault(); event.stopImmediatePropagation();
-        if (!busy) void run({ action: 'choose', number: choiceNumber(choices, highlight) });
+        if (!busy) runFromCard({ action: 'choose', number: choiceNumber(choices, highlight) });
       } else if (expanded && choices && card.current?.contains(document.activeElement) && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
         event.preventDefault(); event.stopImmediatePropagation();
         setHighlight(index => (index + (event.key === 'ArrowDown' ? 1 : choices.options.length - 1)) % choices.options.length);
@@ -569,16 +578,17 @@ function VoiceCard() {
     }}>
       <header className="handsfree-heading"><strong>{choices ? choices.kind === 'favourite' ? 'Favourite models' : 'Choose a match' : archiveConfirmation ? 'Confirm archive' : 'Voice monitor'}</strong><button type="button" aria-label="Close voice controls"
         onClick={close}>×</button></header>
-      <p className="handsfree-context">Following {thread?.displayTitle ?? 'New thread'} · {projectId ? projectName(projectId) : 'Choose a project'}</p>
+      <p className="handsfree-context">{sidebar.status === 'loading' ? 'Loading BB threads…'
+        : `Following ${thread?.displayTitle ?? 'New thread'} · ${projectId ? projectName(projectId) : 'Choose a project'}`}</p>
       <p role="status">{message}</p>
       {choices && <p className="handsfree-context">Say “choose” and a number. ↑ ↓ then Enter also works.</p>}
-      {archiveConfirmation && <div role="group" aria-label="Confirm archive">
-        <button type="button" disabled={busy} onClick={() => void run({ action: 'confirm-archive' })}>Confirm archive</button>
-        <button type="button" disabled={busy} onClick={() => void run({ action: 'cancel-archive' })}>Cancel archive</button>
+      {archiveConfirmation && <div role="group" aria-label="Confirm archive" className="handsfree-actions">
+        <button type="button" disabled={busy} onClick={() => runFromCard({ action: 'confirm-archive' })}>Confirm archive</button>
+        <button type="button" disabled={busy} onClick={() => runFromCard({ action: 'cancel-archive' })}>Cancel archive</button>
       </div>}
       {choices ? <ol aria-label="Voice choices">{choices.options.map((option, index) => <li key={option.id}>
         <button type="button" disabled={busy} aria-current={index === highlight ? 'true' : undefined}
-          onClick={() => void run({ action: 'choose', number: choiceNumber(choices, index) })}>
+          onClick={() => runFromCard({ action: 'choose', number: choiceNumber(choices, index) })}>
             <span className="handsfree-choice-number">{choiceNumber(choices, index)}</span>
             <span className="handsfree-choice-label">{choices.kind === 'favourite' ? <>
               <span>{option.label.replace(/ \([^)]*\)$/, '')}</span>
@@ -618,7 +628,7 @@ function VoiceCard() {
         <dt>“Send message” / “Stop this agent”</dt><dd>Send the draft or stop the selected thread's work</dd>
       </dl></section>
       <section role="tabpanel" id="voice-activity-panel" aria-labelledby="voice-activity" hidden={view !== 'activity'}>
-        <HexActivity snapshot={diagnostics} now={now}>
+        <HexActivity snapshot={diagnostics} loaded={diagnosticsLoaded} now={now}>
         <h3 className="handsfree-results-heading">BB results</h3>
         {history.length ? <ol aria-label="Recent voice results" className="handsfree-history">
           {history.slice().reverse().map((entry, index) => <li key={index} data-problem={entry.problem}>
