@@ -24,8 +24,8 @@ export function Insights({ days, grouped }: { days: 7 | 30 | 90; grouped: boolea
   const load = useCallback(() => {
     const request = ++latest.current;
     return rpc.call('insights', { days, group: grouped }).then(
-      value => { if (request === latest.current) { setLoaded({ key, points: value.points }); setFailed(null); } },
-      () => { if (request === latest.current) setFailed(key); });
+      value => { if (request === latest.current) { setLoaded({ key, points: value.points }); setFailed(null); } return false; },
+      () => { if (request !== latest.current) return false; setFailed(key); return true; });
   }, [rpc, days, grouped, key]);
   useEffect(() => { void load(); }, [load]);
   useRealtime('usage-changed', load);

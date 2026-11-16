@@ -256,6 +256,60 @@ test('a thread card retry that succeeds moves focus to the card', async () => {
   } finally { slot.lifecycle.unmount(); }
 });
 
+test('a retry that a realtime refresh supersedes does not report a failure', async () => {
+  const replies: ReturnType<typeof deferred<SummaryView>>[] = [];
+  const slot = await usagePage(() => { const reply = deferred<SummaryView>(); replies.push(reply); return reply.promise; });
+  try {
+    await act(async () => replies[0]!.reject(new Error('Database busy')));
+    const button = await slot.findByRole('button', { name: 'Retry' });
+    fireEvent.click(button);
+    await slot.emitRealtime('usage-changed', {});
+    await act(async () => replies[1]!.reject(new Error('Database busy')));
+    expect(slot.getByRole('alert').textContent).not.toContain('Still failing');
+    await act(async () => replies[2]!.resolve(summary(30)));
+    await waitFor(() => expect(eyebrow(slot)).toBe('Last 30 days at API prices'));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('two clicks in one task send one retry', async () => {
+  let calls = 0;
+  const slot = await usagePage(() => { calls += 1; return calls === 1 ? Promise.reject(new Error('Database busy')) : new Promise<SummaryView>(() => {}); });
+  try {
+    const button = await slot.findByRole('button', { name: 'Retry' });
+    act(() => { button.click(); button.click(); });
+    expect(calls).toBe(2);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the retry focus home stops taking focus once focus leaves it', async () => {
+  let calls = 0;
+  const slot = await usagePage(async days => { calls += 1; if (calls === 1) throw new Error('Database busy'); return summary(days); });
+  try {
+    const button = await slot.findByRole('button', { name: 'Retry' });
+    act(() => button.focus());
+    fireEvent.click(button);
+    const column = slot.container.querySelector<HTMLElement>('.cost-column')!;
+    await waitFor(() => expect(document.activeElement).toBe(column));
+    act(() => column.blur());
+    expect(column.hasAttribute('tabindex')).toBe(false);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a focused chart day that a period drops does not bring its tooltip back later', async () => {
+  const slot = await usagePage(async days => summary(days));
+  try {
+    await waitFor(() => expect(slot.container.querySelectorAll('.cost-columns > li')).toHaveLength(30));
+    // Fixture periods start on the same day, so the 7-day columns lack the 30th day.
+    act(() => slot.container.querySelector<HTMLElement>('.cost-columns > li:last-child')!.focus());
+    expect(slot.container.querySelector('.cost-tooltip')).not.toBeNull();
+    act(() => setPeriod(7));
+    await waitFor(() => expect(slot.container.querySelectorAll('.cost-columns > li')).toHaveLength(7));
+    act(() => setPeriod(30));
+    await waitFor(() => expect(slot.container.querySelectorAll('.cost-columns > li')).toHaveLength(30));
+    expect(slot.container.querySelector('.cost-tooltip')).toBeNull();
+  } finally { slot.lifecycle.unmount(); }
+});
+
 test('the chip keeps its estimate when a refresh fails, and an older reply never replaces a newer one', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   const view = (usd: number): ThreadView => ({ ...emptyCost(), usd, requests: 4, models: [], pricesAt: null, title: null });

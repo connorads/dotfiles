@@ -67,11 +67,12 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
     setError(current => current && sameWindow(current, { days, grouped }) ? current : null);
     rpc.call('progress', {}).then(setProgress, () => {});
     return rpc.call('summary', { days, group: grouped }).then(
-      view => { if (request === latest.current) { setShown({ days, grouped, view }); setError(null); } },
+      view => { if (request === latest.current) { setShown({ days, grouped, view }); setError(null); } return false; },
       (reason: unknown) => {
-        if (request !== latest.current) return;
+        if (request !== latest.current) return false;
         const message = (reason instanceof Error ? reason.message : String(reason)).replace(/\.+$/, '');
         setError({ days, grouped, message });
+        return true;
       });
   }, [rpc, days, grouped]);
   useEffect(() => { void load(); }, [load]);
@@ -95,7 +96,7 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
     <section className="cost-card cost-reveal" style={{ '--i': 2 } as React.CSSProperties}>
       <DailyChart days={data.days} today={data.lastDay} />
     </section>
-    <section className="cost-card cost-reveal" style={{ '--i': 3 } as React.CSSProperties} tabIndex={-1} data-retry-home>
+    <section className="cost-card cost-reveal" style={{ '--i': 3 } as React.CSSProperties} data-retry-home>
       <div className="cost-tabs" role="tablist" aria-label="Breakdown">
         {tabs.map(value => <button key={value.id} type="button" role="tab" aria-selected={tab === value.id}
           onClick={() => setTab(value.id)}>{value.label}</button>)}
@@ -113,13 +114,13 @@ export function UsagePage({ subPath }: PluginNavPanelProps) {
 // A narrow page header has no room for the sub-thread switch, so the body carries it at the same widths.
 const Shell = ({ children, pending = false }: { children: ReactNode; pending?: boolean }) =>
   <div className="cost-page"><div className="cost-column" aria-busy={pending || undefined} data-pending={pending || undefined}
-    tabIndex={-1} data-retry-home>
+    data-retry-home>
     <div className="cost-group-body"><GroupSwitch /></div>
     {children}
   </div></div>;
 
 /** A failed load over data that stays on screen: says which window failed and which one is still shown. */
-function LoadError({ wanted, showing, error, onRetry }: { wanted: UsageWindow; showing: UsageWindow; error: string; onRetry: () => Promise<unknown> }) {
+function LoadError({ wanted, showing, error, onRetry }: { wanted: UsageWindow; showing: UsageWindow; error: string; onRetry: () => Promise<boolean> }) {
   const same = sameWindow(wanted, showing);
   const withGrouping = wanted.grouped !== showing.grouped;
   return <div className="cost-alert" role="alert">
@@ -284,7 +285,7 @@ function ModelTable({ models }: { models: readonly ModelCost[] }) {
           </td>
           <td className="cost-hide-narrow">{model.priced ? <Mix cost={model} /> : <span className="cost-muted">Not in the price file</span>}</td>
           <td className="cost-num cost-muted cost-hide-narrow">{count(model.requests)}</td>
-          <td className="cost-num">{model.priced ? usd(model.usd) : <span className="cost-muted">—</span>}</td>
+          <td className="cost-num">{model.priced ? usd(model.usd) : <span className="cost-muted">no price</span>}</td>
         </tr>)}
       </tbody>
     </table>
@@ -316,13 +317,13 @@ function FocusedThread({ threadId }: { threadId: string }) {
   const load = useCallback(() => {
     const request = ++latest.current;
     return rpc.call('thread', { threadId }).then(
-      value => { if (request === latest.current) { setView(value); setFailed(false); } },
-      () => { if (request === latest.current) setFailed(true); });
+      value => { if (request === latest.current) { setView(value); setFailed(false); } return false; },
+      () => { if (request !== latest.current) return false; setFailed(true); return true; });
   }, [rpc, threadId]);
   useEffect(() => { setView(undefined); setFailed(false); void load(); }, [load]);
   useRealtime('usage-changed', load);
   if (view === undefined && !failed) return null;
-  return <section className="cost-card cost-focus cost-reveal" style={{ '--i': 0 } as React.CSSProperties} tabIndex={-1} data-retry-home>
+  return <section className="cost-card cost-focus cost-reveal" style={{ '--i': 0 } as React.CSSProperties} data-retry-home>
     <header>
       <span className="cost-eyebrow">This thread, all time</span>
       <button type="button" className="cost-close" aria-label="Show all usage" onClick={() => navigate.toPluginPanel('usage', { subPath: '' })}>×</button>

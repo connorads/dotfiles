@@ -17,6 +17,8 @@ export function DailyChart({ days, today }: { days: readonly DayCost[]; today: s
   const labelEvery = days.length > 45 ? 14 : days.length > 10 ? 7 : 1;
   const present = providers.filter(provider => days.some(day => (day.byProvider[provider] ?? 0) > 0));
   const activeIndex = active === null ? -1 : days.findIndex(day => day.day === active);
+  // A day the new columns lack gets no blur or mouse leave, so drop it here; it would otherwise return with a later period.
+  if (active !== null && activeIndex < 0) setActive(null);
   // One tab stop for the whole chart: the last focused day, else today. Arrow keys, Home and End move between days.
   const [stop, setStop] = useState<string | null>(null);
   const kept = stop === null ? -1 : days.findIndex(day => day.day === stop);
