@@ -34,13 +34,14 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; chooseResult?: Promise<never> };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; chooseResult?: Promise<never>; connectorSave?: () => { restarted: number } };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
   let currentId = 'summit';
   let pendingId: string | null = null;
   let daybreak = options.daybreak ?? false;
+  let connectors = options.connectors ?? {};
   const slot = renderSlot<Record<string, never>, typeof rpcContract>({ component: TestSwitcher }, {}, {
     composer: { text: 'Keep this draft', isRunning: options.running, selection,
       scope: options.newThread ? { kind: 'new-thread', projectId: null } : { kind: 'thread', threadId: 'thread-test' } },
@@ -58,7 +59,12 @@ function render(options: Options = {}) {
         else currentId = input.profileId;
         return { currentId };
       },
-      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: options.connectors ?? {}, profileId: 'summit', restartPending: false }),
+      'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: connectors, profileId: 'summit', restartPending: false }),
+      'connectors.account.set': input => {
+        const result = options.connectorSave?.() ?? { restarted: 0 };
+        connectors = { ...connectors, [input.profileId]: input.enabled };
+        return result;
+      },
       usage: input => ({ status: 'ok', message: null, observedAt: 0, windows: [{ id: 'five_hour', label: 'Five hours', usedPercent: input.profileId === 'trove' ? 92 : 30, resetsAt: null, cost: null }] }),
       nextThreadQuota: () => ({ status: 'ok', message: null, observedAt: 0, windows: [] }),
     } as Partial<PluginRpcTestHandlers<typeof rpcContract>> as PluginRpcTestHandlers<typeof rpcContract>),
@@ -155,7 +161,7 @@ test('left and right change effort and the current favourite remembers it', asyn
 test('a current model that is not a favourite leads the list and Cmd+S keeps it with its effort', async () => {
   const slot = render({ selection: { providerId: 'claude-code', model: 'haiku', reasoningLevel: 'high' } });
   try {
-    await slot.findByText('⌘S to keep');
+    await slot.findByRole('button', { name: 'Keep Haiku as a favourite' });
     fireEvent.keyDown(dialog(slot), { key: 's', metaKey: true });
     await waitFor(() => expect(calls(slot, 'favourites.add')).toEqual([{ name: '', providerId: 'claude-code', model: 'haiku', reasoningLevel: 'high' }]));
     await slot.findByRole('button', { name: '3. Haiku' });
@@ -172,7 +178,7 @@ test('slash opens search across providers; Enter uses the highlighted model and 
     await slot.findByRole('button', { name: 'Luna' });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(slot.inspection.composer.selection?.model).toBe('luna'));
-    await slot.findByRole('button', { name: /Luna/ });
+    await slot.findByRole('button', { name: 'Luna' });
     fireEvent.keyDown(dialog(slot), { key: '/' });
     fireEvent.keyDown(await slot.findByRole('combobox', { name: 'Search models' }), { key: 'Escape' });
     await slot.findByRole('button', { name: 'All models' });
@@ -228,7 +234,7 @@ test('Escape and a backdrop click still close the switcher while an account swit
     await waitFor(() => expect(calls(slot, 'choose')).toHaveLength(1));
     const before = closed;
     fireEvent.keyDown(dialog(slot), { key: 'Escape' });
-    fireEvent.pointerDown(dialog(slot));
+    fireEvent.click(dialog(slot), { clientX: -1, clientY: -1 });
     expect(closed - before).toBe(2);
   } finally {
     slot.lifecycle.unmount(); release();
@@ -289,7 +295,7 @@ test('a handoff without account choice says when accounts become available', asy
 test('a Daybreak choice is its own favourite beside the standard model', async () => {
   const slot = render({ selection: { providerId: 'codex', model: 'sol', reasoningLevel: 'high' }, daybreak: true });
   try {
-    await slot.findByText('⌘S to keep');
+    await slot.findByRole('button', { name: 'Keep Sol · Daybreak as a favourite' });
     expect(slot.getByRole('button', { name: 'Sol · Daybreak' })).toBeTruthy();
     fireEvent.keyDown(dialog(slot), { key: 's', metaKey: true });
     await waitFor(() => expect(calls(slot, 'favourites.add')).toEqual([{ name: '', providerId: 'codex', model: 'sol', daybreak: true, reasoningLevel: 'high' }]));
@@ -312,5 +318,78 @@ test('search lists Daybreak variants that can be starred directly', async () => 
     fireEvent.change(input, { target: { value: 'daybreak' } });
     fireEvent.click(await slot.findByRole('button', { name: 'Favourite Luna · Daybreak' }));
     await waitFor(() => expect(calls(slot, 'favourites.add')).toEqual([{ name: '', providerId: 'codex', model: 'luna', daybreak: true }]));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a press on an effort segment sets that effort and the current favourite remembers it', async () => {
+  const slot = render();
+  try {
+    const effort = await slot.findByRole('group', { name: 'Effort' });
+    expect(Array.from(effort.querySelectorAll('button'), button => button).map(button => [button.textContent, button.getAttribute('aria-pressed')]))
+      .toEqual([['low', 'true'], ['medium', 'false'], ['high', 'false']]);
+    fireEvent.click(slot.getByRole('button', { name: 'high' }));
+    await waitFor(() => expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high'));
+    await waitFor(() => expect(calls(slot, 'favourites.remember')).toEqual([{ id: 'b', reasoningLevel: 'high' }]));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('pressing the current row closes the switcher without re-applying its favourite', async () => {
+  const slot = render({ selection: { reasoningLevel: 'high' } });
+  try {
+    const before = closed;
+    fireEvent.click(await slot.findByRole('button', { name: '2. Opus' }));
+    expect(closed - before).toBe(1);
+    expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high');
+    expect(calls(slot, 'favourites.list')).toHaveLength(1);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Keep adds the current model as a favourite and its star removes it again', async () => {
+  const slot = render({ selection: { providerId: 'claude-code', model: 'haiku', reasoningLevel: 'high' } });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Keep Haiku as a favourite' }));
+    await waitFor(() => expect(calls(slot, 'favourites.add')).toEqual([{ name: '', providerId: 'claude-code', model: 'haiku', reasoningLevel: 'high' }]));
+    fireEvent.click(await slot.findByRole('button', { name: 'Unfavourite Haiku' }));
+    await waitFor(() => expect(calls(slot, 'favourites.remove')).toEqual([{ id: 'new' }]));
+    await slot.findByRole('button', { name: 'Keep Haiku as a favourite' });
+    fireEvent.click(slot.getByRole('button', { name: 'Unfavourite Sol' }));
+    await waitFor(() => expect(slot.queryByRole('button', { name: '1. Sol' })).toBeNull());
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('Add model opens search and Back returns to the favourites', async () => {
+  const slot = render();
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Add model…' }));
+    await slot.findByRole('combobox', { name: 'Search models' });
+    fireEvent.click(slot.getByRole('button', { name: 'Back to favourites' }));
+    await slot.findByRole('button', { name: '2. Opus' });
+    expect(slot.queryByRole('combobox', { name: 'Search models' })).toBeNull();
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the connectors switch saves the shown account preference and shows a failed save', async () => {
+  let fail = false;
+  const slot = render({ connectorSave: () => { if (fail) throw new Error('Claude session settings are changing. Try again after they finish.'); return { restarted: 0 }; } });
+  try {
+    const toggle = await slot.findByRole('switch', { name: 'Summit connectors' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(slot.getByRole('switch', { name: 'Summit connectors' }).getAttribute('aria-checked')).toBe('true'));
+    expect(calls(slot, 'connectors.account.set')).toEqual([{ threadId: 'thread-test', profileId: 'summit', enabled: true }]);
+    await slot.findByRole('button', { name: 'Summit, connectors on' });
+    fail = true;
+    fireEvent.click(slot.getByRole('switch', { name: 'Summit connectors' }));
+    expect((await slot.findByRole('alert')).textContent).toBe('Claude session settings are changing. Try again after they finish.');
+    expect(slot.getByRole('switch', { name: 'Summit connectors' }).getAttribute('aria-checked')).toBe('true');
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('the Daybreak toggle keeps the chosen effort', async () => {
+  const slot = render({ selection: { providerId: 'codex', model: 'sol', reasoningLevel: 'low' } });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Daybreak' }));
+    await waitFor(() => expect(slot.getByRole('button', { name: 'Daybreak' }).getAttribute('aria-pressed')).toBe('true'));
+    expect(slot.inspection.composer.selection?.reasoningLevel).toBe('low');
   } finally { slot.lifecycle.unmount(); }
 });

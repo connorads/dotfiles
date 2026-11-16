@@ -18,6 +18,13 @@ const running = new Map<string, Work>();
 const message = (error: unknown) => error instanceof Error ? error.message : 'Could not update the selection.';
 const isTyping = (target: EventTarget | null) => target instanceof HTMLElement && Boolean(target.closest('input, textarea, select'));
 const isButton = (target: EventTarget | null) => target instanceof HTMLElement && Boolean(target.closest('button'));
+// Touch and narrow phone screens get a full-width sheet at the bottom instead of a popover beside the chip.
+const SHEET = '(pointer: coarse) and (max-width: 640px)';
+function sheetChanges(listener: () => void) {
+  const query = window.matchMedia?.(SHEET);
+  query?.addEventListener('change', listener);
+  return () => query?.removeEventListener('change', listener);
+}
 
 export function useController(composer: PluginComposerApi) {
   const sdk = useSdk();
@@ -39,6 +46,8 @@ export function CommandOwner() {
 export async function command(composer: PluginComposerApi, work: (controller: Controller) => Promise<void>) {
   const controller = controllers.get(composer.key);
   if (!controller) { open(composer); return; }
+  const earlier = running.get(composer.key);
+  if (earlier) { toast.error(`Wait for the current change to finish: ${earlier.status}`); return; }
   try { await work(controller); }
   catch (cause) { toast.error(message(cause)); }
 }
@@ -99,6 +108,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const providerId = composer.selection?.providerId;
   const generation = useRef(0);
   const ids = useId();
+  const sheet = useSyncExternalStore(sheetChanges, () => window.matchMedia?.(SHEET).matches ?? false);
 
   const loadModels = useCallback(async () => {
     const request = ++generation.current;
@@ -123,7 +133,8 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       void rpc.call('connectors.get', { threadId }).then(state => { if (request === accountGeneration.current) setConnectors(state.accounts); }, () => {});
       for (const profile of value.profiles) {
         const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id }) : rpc.call('usage', { threadId, profileId: profile.id, refresh: false });
-        void reading.then(usage => { if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage })); }, () => {});
+        const settle = (usage: Usage) => { if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage })); };
+        void reading.then(settle, () => settle({ status: 'error', windows: [], message: 'Usage unavailable', observedAt: null }));
       }
     } catch (cause) { if (request === accountGeneration.current) setError(message(cause)); }
   }, [rpc, threadId, providerId]);
@@ -202,16 +213,17 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   }, 'Saving favourites…');
   // A dimmed favourite says why instead of ignoring the press; touch has no hover title.
   const pick = (row: Row) => { if (row.reason) setError(row.reason); else void apply(row.setup); };
+  const efforts = currentModel?.supportedReasoningEfforts.map(e => e.reasoningEffort) ?? [];
   const changeEffort = (direction: -1 | 1) => {
-    if (!currentModel || !providerId) return;
-    const levels = currentModel.supportedReasoningEfforts.map(e => e.reasoningEffort);
-    const next = stepEffort(levels, current.reasoningLevel ?? null, direction, currentModel.defaultReasoningEffort);
-    if (!next || next === current.reasoningLevel) return;
+    if (currentModel) setEffort(stepEffort(efforts, current.reasoningLevel ?? null, direction, currentModel.defaultReasoningEffort));
+  };
+  function setEffort(next: Effort | null) {
+    if (!currentModel || !providerId || !next || next === current.reasoningLevel) return;
     void run(async () => {
       await composer.setSelection({ providerId, model: currentModel.model, reasoningLevel: next });
       if (currentFavourite) await rpc.call('favourites.remember', { id: currentFavourite.id, reasoningLevel: next });
     });
-  };
+  }
   const toggleFast = () => {
     if (!currentModel || !providerId || !tiers.length) return;
     const tier = composer.selection?.serviceTier && composer.selection.serviceTier !== 'default' ? 'default' : tiers[0]!.id;
@@ -222,8 +234,22 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   };
   const toggleDaybreak = () => {
     if (!currentModel || !providerId || !daybreakOption || daybreakOption.fixed) return;
-    void run(async () => { await controller.apply({ providerId, model: currentModel.model, daybreak: !daybreak }); await loadModels(); });
+    // The programme change keeps the effort and tier already chosen.
+    const kept = { ...(current.reasoningLevel ? { reasoningLevel: current.reasoningLevel } : {}), ...(current.serviceTier ? { serviceTier: current.serviceTier } : {}) };
+    void run(async () => { await controller.apply({ providerId, model: currentModel.model, daybreak: !daybreak, ...kept }); await loadModels(); });
   };
+  // The switch writes the same account preference as the settings section; the server's profiles-changed event refreshes both.
+  const shownProfile = accounts?.supported ? accounts.profiles.find(profile => profile.id === (accounts.pendingId ?? accounts.currentId)) : undefined;
+  const toggleConnectors = (profile: KeyedProfile) => {
+    const next = connectors[profile.id] !== true;
+    void run(async () => {
+      await rpc.call('connectors.account.set', { threadId, profileId: profile.id, enabled: next });
+      setConnectors(previous => ({ ...previous, [profile.id]: next }));
+      await loadAccounts();
+    }, 'Saving connectors…');
+  };
+  const openSearch = () => { setView('search'); setHighlight(0); };
+  const closeSearch = () => { setView('quick'); setQuery(''); };
 
   // Keyboard and letter-key changes land on rows a height-capped dialog may have scrolled out of view.
   const selectedAccount = chips.find(chip => chip.selected)?.profile.id;
@@ -238,6 +264,11 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     shownAccount.current = selectedAccount;
   }, [selectedAccount]);
   useEffect(() => { if (error) dialog.current?.querySelector('.sw-error')?.scrollIntoView?.({ block: 'nearest' }); }, [error]);
+  // A control that re-renders away takes focus with it; the open modal keeps it so its keys still work.
+  useEffect(() => {
+    const element = dialog.current;
+    if (element?.open && !element.contains(document.activeElement)) element.focus({ preventScroll: true });
+  });
 
   function keyboard(event: React.KeyboardEvent<HTMLDialogElement>) {
     event.stopPropagation();
@@ -252,23 +283,27 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (key === 'Escape') {
       event.preventDefault();
-      if (view === 'search') { setView('quick'); setQuery(''); } else onClose();
+      if (view === 'search') closeSearch(); else onClose();
       return;
     }
     if (view === 'search') {
+      // The highlight, not a focused result, is what Enter uses, so moving it or typing returns focus to the input.
+      if (isButton(event.target) && (key === 'ArrowDown' || key === 'ArrowUp' || (key.length === 1 && key !== ' '))) search.current?.focus();
       if (key === 'ArrowDown' || key === 'ArrowUp') {
         event.preventDefault();
         setHighlight(index => results.length ? (index + (key === 'ArrowDown' ? 1 : results.length - 1)) % results.length : 0);
       } else if (key === 'Enter' && !isButton(event.target)) {
         event.preventDefault();
         const result = results[highlight];
-        if (result) void run(async () => { await controller.apply(result.setup); await loadModels(); setView('quick'); setQuery(''); });
+        if (result) void run(async () => { await controller.apply(result.setup); await loadModels(); closeSearch(); });
       }
       return;
     }
     if (isTyping(event.target)) return;
+    // Arrow, digit and letter keys act on the selection, so Enter afterwards closes rather than pressing a stale focused button.
+    if ((key.startsWith('Arrow') || (key.length === 1 && key !== ' ')) && isButton(event.target)) dialog.current?.focus({ preventScroll: true });
     if (key === 'Enter') { if (!isButton(event.target)) { event.preventDefault(); onClose(); } }
-    else if (key === '/') { event.preventDefault(); setView('search'); setHighlight(0); }
+    else if (key === '/') { event.preventDefault(); openSearch(); }
     else if (key === 'ArrowLeft' || key === 'ArrowRight') { event.preventDefault(); changeEffort(key === 'ArrowLeft' ? -1 : 1); }
     else if (key === 'ArrowUp' || key === 'ArrowDown') {
       event.preventDefault();
@@ -287,26 +322,29 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   }
 
   function quickRow(row: Row) {
+    const saved = favourites.find(f => f.id === row.id);
     return <li key={row.id} className="sw-row" data-selected={row.selected || undefined} data-unavailable={row.reason ? true : undefined}>
+      {/* The current row is already applied, so pressing it closes instead of re-applying its saved effort. */}
       <button type="button" className="sw-select" aria-current={row.selected || undefined} aria-disabled={Boolean(row.reason) || undefined}
         aria-label={`${row.slot ? `${row.slot}. ` : ''}${row.name}`} aria-describedby={row.levels.length ? `${ids}-effort-${row.id}` : undefined} title={row.reason ?? row.provider}
-        onClick={() => pick(row)}>
+        onClick={() => { if (row.selected && !row.reason) onClose(); else pick(row); }}>
         <kbd className="sw-slot" aria-hidden="true">{row.slot ?? ''}</kbd>
         <Glyph providerId={row.providerId} />
         <span className="sw-name">{row.name}</span>
-        {row.slot === null && <span className="sw-keep">⌘S to keep</span>}
       </button>
-      {row.selected && tiers.length > 0 && <button type="button" className="sw-pill" aria-pressed={Boolean(composer.selection?.serviceTier && composer.selection.serviceTier !== 'default')} onClick={toggleFast}>Fast</button>}
-      {row.selected && daybreakOption && !daybreakOption.fixed && composer.scope.kind === 'thread' && <button type="button" className="sw-pill" aria-pressed={Boolean(daybreak)} onClick={toggleDaybreak}>Daybreak</button>}
       <Dots id={`${ids}-effort-${row.id}`} levels={row.levels} effort={row.effort} />
       <span className="sw-check" aria-hidden="true">{row.selected ? '✓' : ''}</span>
+      {saved ? <button type="button" className="sw-star" aria-pressed="true" aria-label={`Unfavourite ${row.name}`} title="Remove from favourites"
+        onClick={() => { void star(row.setup, saved); }}>★</button>
+        : row.slot === null && <button type="button" className="sw-keep" aria-label={`Keep ${row.name} as a favourite`} aria-keyshortcuts="Meta+S"
+          title="Keep as a favourite (⌘S)" onClick={() => { void star(row.setup, undefined); }}>☆ Keep</button>}
     </li>;
   }
   function searchRow(result: Result, index: number) {
     const saved = favourites.find(f => f.slot === result.slot);
     return <li key={result.id} className="sw-row" data-highlight={index === highlight || undefined}>
       <button type="button" id={`${ids}-${index}`} className="sw-select" aria-label={result.name} onMouseEnter={() => setHighlight(index)}
-        onClick={() => { void run(async () => { await controller.apply(result.setup); await loadModels(); setView('quick'); setQuery(''); }); }}>
+        onClick={() => { void run(async () => { await controller.apply(result.setup); await loadModels(); closeSearch(); }); }}>
         <span className="sw-slot" aria-hidden="true" /><Glyph providerId={result.setup.providerId} />
         <span className="sw-name">{result.name}</span>
       </button>
@@ -316,13 +354,41 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     </li>;
   }
 
+  const fast = Boolean(composer.selection?.serviceTier && composer.selection.serviceTier !== 'default');
+  const daybreakToggle = Boolean(daybreakOption && !daybreakOption.fixed && composer.scope.kind === 'thread');
+  const connectorProfile = providerId === 'claude-code' ? shownProfile : undefined;
+  const now = !loading && currentModel && (efforts.length > 0 || tiers.length > 0 || daybreakToggle || connectorProfile);
   const offset = (group: number) => groups.slice(0, group).reduce((total, g) => total + g.results.length, 0);
-  const position = placement(anchor, { width: window.innerWidth, height: window.innerHeight });
-  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} style={position ?? undefined} aria-label="Switch model" aria-busy={busy || loading} data-working={busy || undefined} onKeyDown={keyboard}
+  const position = sheet ? null : placement(anchor, { width: window.innerWidth, height: window.innerHeight });
+  return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} data-sheet={sheet || undefined} style={position ?? undefined}
+    aria-label="Switch model" aria-busy={busy || loading} data-working={busy || undefined} onKeyDown={keyboard}
     onCancel={event => { event.preventDefault(); }}
-    onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    onClick={event => {
+      const element = event.currentTarget;
+      // Close on click, not pointerdown: the rest of a tap on the backdrop would land on the chip and reopen the switcher.
+      if (event.target === element) {
+        const box = element.getBoundingClientRect();
+        if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
+        return;
+      }
+      // A mouse click leaves no focus on the button, so Enter afterwards closes as documented.
+      if ((event.nativeEvent as PointerEvent).pointerType === 'mouse' && isButton(event.target)) (view === 'search' ? search.current : element)?.focus({ preventScroll: true });
+    }}>
     {view === 'quick' ? <>
-      {loading ? <p role="status" className="sw-empty">Loading…</p> : <ul className="sw-list" aria-label="Favourites">{rows.map(quickRow)}</ul>}
+      {now && <div className="sw-now" role="group" aria-label="Current model settings">
+        {efforts.length > 0 && <div className="sw-seg" role="group" aria-label="Effort">
+          {efforts.map(level => <button type="button" key={level} aria-pressed={current.reasoningLevel === level} onClick={() => setEffort(level)}>{level}</button>)}
+        </div>}
+        {tiers.length > 0 && <button type="button" className="sw-pill" aria-pressed={fast} onClick={toggleFast}>Fast</button>}
+        {daybreakToggle && <button type="button" className="sw-pill" aria-pressed={Boolean(daybreak)} onClick={toggleDaybreak}>Daybreak</button>}
+        {connectorProfile && <button type="button" role="switch" className="sw-pill sw-connectors" aria-checked={connectors[connectorProfile.id] === true}
+          aria-label={`${connectorProfile.label} connectors`} title={`Apps connected through ${connectorProfile.label}, such as Slack`}
+          onClick={() => toggleConnectors(connectorProfile)}><PlugIcon />Connectors {connectors[connectorProfile.id] ? 'on' : 'off'}</button>}
+      </div>}
+      {loading ? <p role="status" className="sw-empty">Loading…</p> : <ul className="sw-list" aria-label="Favourites">{rows.map(quickRow)}
+        {favourites.length < 9 && <li className="sw-row sw-add"><button type="button" className="sw-select" onClick={openSearch}>
+          <span className="sw-slot" aria-hidden="true" /><span className="sw-glyph" aria-hidden="true">+</span><span className="sw-name">Add model…</span></button></li>}
+      </ul>}
       {chips.length > 0 && <div className="sw-accounts" role="group" aria-label="Claude account">
         {chips.map(chip => <button type="button" key={chip.profile.id} className="sw-account" aria-pressed={chip.selected}
           data-target={work?.accountId === chip.profile.id || undefined} aria-keyshortcuts={chip.profile.key ?? undefined}
@@ -330,7 +396,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
           aria-describedby={`${ids}-quota-${chip.profile.id}`}
           onClick={() => { if (!chip.selected) void chooseAccount(chip.profile); }}>
           <AccountBadge chip={chip} usage={quotas[chip.profile.id]} />
-          <span id={`${ids}-quota-${chip.profile.id}`} hidden>{ring(quotas[chip.profile.id]).label}</span>
+          <span id={`${ids}-quota-${chip.profile.id}`} hidden>{quotas[chip.profile.id] ? ring(quotas[chip.profile.id]).label : 'Checking usage…'}</span>
           {chip.connectors && <span className="sw-plug" title="Connectors on" aria-hidden="true"><PlugIcon /></span>}
           <span className="sw-account-name">{chip.profile.label}</span>
           {chip.pending && <span className="sw-next">next turn</span>}
@@ -338,10 +404,11 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       </div>}
       {providerId === 'claude-code' && accounts && !accounts.supported && <p className="sw-empty" role="status">
         Account choice opens after the first message. New Claude threads start on your remembered account.</p>}
-      <button type="button" className="sw-search-row" aria-label="All models" aria-keyshortcuts="/" onClick={() => { setView('search'); setHighlight(0); }}>
+      <button type="button" className="sw-search-row" aria-label="All models" aria-keyshortcuts="/" onClick={openSearch}>
         <span aria-hidden="true">⌕</span><span>All models</span><kbd>/</kbd></button>
     </> : <>
-      <div className="sw-search"><span aria-hidden="true">⌕</span>
+      <div className="sw-search">
+        <button type="button" className="sw-back" aria-label="Back to favourites" title="Back (esc)" onClick={closeSearch}>‹</button>
         <input ref={search} role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls={`${ids}-results`}
           aria-activedescendant={results[highlight] ? `${ids}-${highlight}` : undefined}
           aria-label="Search models" placeholder="Search models" value={query} autoComplete="off" spellCheck={false}

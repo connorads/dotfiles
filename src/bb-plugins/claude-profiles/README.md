@@ -24,9 +24,12 @@ markup change brings the native trigger back beside the chip; it hides nothing
 else. Disabling the plugin removes the rule.
 
 ```text
- 1  ◎ Sol            ●○○
- 2  ✳ Opus           ●●○   ✓
- 3  O DeepSeek Flash ●○○
+ [low|medium|high]  Fast        ⌁ Connectors off
+ ────────────────────────────────────────────
+ 1  ◎ Sol            ●○○        ★
+ 2  ✳ Opus           ●●○   ✓    ★
+ 3  O DeepSeek Flash ●○○        ★
+    + Add model…
  ────────────────────────
   (S) Summit  (T) Trove  ...   account row, Claude only
  ────────────────────────
@@ -41,7 +44,7 @@ else. Disabling the plugin removes the rule.
 | A letter | Use the account with that letter |
 | **⌘S** | Star or unstar the current model |
 | **/** | Search every model |
-| **Enter** or **Escape** | Close, also while a change still runs; a later failure shows as a notification. **Enter** on a focused button presses it instead |
+| **Enter** or **Escape** | Close, also while a change still runs; a later failure shows as a notification. **Enter** on a button reached with **Tab** presses it instead |
 
 One change runs at a time per composer. A change that takes a moment dims the
 switcher and names itself, such as **Switching to Trove…**. Reopening the
@@ -51,9 +54,19 @@ Each row shows its slot, provider, name and effort as dots, one per level the
 model supports. **auto** means the model's default effort. A model supplied
 by an unavailable provider is dimmed; hover over it or press it for the reason.
 
-The current model leads the list when it is not a favourite. It shows **⌘S to
-keep**. **Fast** and **Daybreak** appear on the current row only when its
-model offers them.
+The current model leads the list when it is not a favourite. Its **☆ Keep**
+button, or **⌘S**, saves it as a favourite. Each favourite's **★** removes it.
+**Add model…** opens search. Pressing the current row closes the switcher and
+leaves its effort as it is.
+
+The strip at the top sets the current model by press as well as by key: one
+effort segment per level the model supports, **Fast** and **Daybreak** when
+the model offers them, and, for Claude, a **Connectors** switch for the shown
+account. The switch writes the same preference as the settings section.
+
+On a touch screen every control is at least 44 px. On a phone-width touch
+screen the switcher opens as a sheet at the bottom of the window. A tap on the
+dimmed backdrop closes it.
 
 The account row shows when the current provider has more than one account.
 Each account shows its letter inside a ring. The ring fills with the fullest
@@ -64,7 +77,7 @@ allowance window. It turns amber at 70% and red at 90%. Hover for each window.
 
 Type to filter by model, provider or route, such as **OpenCode Go**. **Up /
 Down** moves, **Enter** uses the highlighted model and **⌘S** stars it.
-**Escape** returns to the favourites. A provider whose catalogue fails shows
+**Escape** or the **‹** button returns to the favourites. A provider whose catalogue fails shows
 only when you search for its name. The catalogue does not verify account
 access; Go plan and workspace settings apply.
 
@@ -72,6 +85,7 @@ access; Go plan and workspace settings apply.
 
 Up to nine favourites fit in numbered slots. Removing one leaves the other slot
 numbers unchanged. **Alt+1-9** uses a favourite without opening the switcher.
+While a switcher change runs, it shows a notification and changes nothing.
 
 A favourite remembers the last effort and tier used with it. Changing either
 while a favourite is current saves it to that favourite.
@@ -109,7 +123,7 @@ Executor keeps its own connection control.
 
 | Control | Choices | Where |
 | --- | --- | --- |
-| Account | Off / On | **Claude account connectors** in Agent Switcher's settings |
+| Account | Off / On | **Claude account connectors** in Agent Switcher's settings, or the switcher's **Connectors** switch |
 | Thread | Use account setting / Off | `bb claude-profiles connectors THREAD` |
 
 A thread can restrict access but cannot enable an account that is off.

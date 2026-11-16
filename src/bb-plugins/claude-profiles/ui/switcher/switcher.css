@@ -27,7 +27,8 @@
 .sw-row[data-unavailable] .sw-select { cursor: default; }
 .sw-slot { flex: none; width: 12px; padding: 0 !important; border: 0 !important; background: none !important; text-align: center; opacity: .7; }
 .sw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sw-keep { font-size: 10.5px; color: var(--muted-foreground); border: 1px dashed var(--border); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.sw-keep { all: unset; flex: none; font-size: 10.5px !important; color: var(--muted-foreground); border: 1px dashed var(--border); border-radius: 5px; padding: 1px 6px; white-space: nowrap; cursor: pointer; }
+.sw-keep:hover { color: var(--foreground); border-color: var(--muted-foreground); }
 .sw-glyph { width: 16px; height: 16px; border-radius: 5px; display: grid; place-items: center; flex: none; font-size: 10px; font-weight: 700;
   color: #fff; background: var(--muted-foreground); }
 .sw-glyph[data-provider="claude-code"] { background: #d97757; }
@@ -44,6 +45,23 @@
 .sw-pill[aria-disabled=true] { opacity: .55; cursor: progress; }
 .sw-star { all: unset; width: 18px; text-align: center; color: var(--muted-foreground); cursor: pointer; }
 .sw-star[aria-pressed=true] { color: #e8b339; }
+/* Every favourite carries a star, so the quick list keeps them quiet until hovered. */
+.sw-list[aria-label=Favourites] .sw-star { color: var(--muted-foreground); }
+.sw-list[aria-label=Favourites] .sw-star:hover { color: #e8b339; }
+.sw-add .sw-select { color: var(--muted-foreground); }
+.sw-add .sw-select:hover { color: var(--foreground); }
+.sw-add .sw-glyph { color: inherit; background: none; border: 1px dashed var(--border); box-sizing: border-box; font-size: 12px; font-weight: 400; }
+
+/* The current model's effort, tier, programme and account connectors, all reachable by a press as well as a key. */
+.sw-now { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 4px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.sw-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.sw-seg button { all: unset; box-sizing: border-box; font-size: 11.5px !important; padding: 2px 9px; text-align: center; color: var(--muted-foreground); cursor: pointer; }
+.sw-seg button + button { border-left: 1px solid var(--border); }
+.sw-seg button:hover { color: var(--foreground); background: var(--accent); }
+.sw-seg button[aria-pressed=true] { color: var(--background); background: var(--foreground); }
+.sw-connectors { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.sw-back { all: unset; flex: none; width: 22px; text-align: center; font-size: 18px !important; line-height: 1; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
+.sw-back:hover { color: var(--foreground); background: var(--accent); }
 
 /* Many accounts wrap to a second line rather than cutting every name to a few letters. */
 .sw-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 4px; margin: 6px 0 0; padding: 6px 2px 2px; border-top: 1px solid var(--border); }
@@ -69,8 +87,8 @@
   border-top: 1px solid var(--border); color: var(--muted-foreground); cursor: pointer; border-radius: 0 0 9px 9px; }
 .sw-search-row span:nth-child(2) { flex: 1; }
 .sw-search-row:hover { color: var(--foreground); }
-.sw-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
-.sw-search input { all: unset; flex: 1; color: var(--foreground); }
+.sw-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px 0 4px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
+.sw-search input { all: unset; flex: 1; align-self: stretch; color: var(--foreground); }
 .sw-results { max-height: 360px; overflow: auto; scrollbar-width: thin; padding-top: 4px; }
 .sw-group { margin: 0; padding: 8px 10px 3px; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
 .sw-empty { margin: 0; padding: 10px; color: var(--muted-foreground); font-size: 12.5px; }
@@ -79,7 +97,7 @@
 .sw-dialog[data-working] button { cursor: progress; }
 /* Quick changes finish before the delay, so arrow-key stepping does not flicker. */
 .sw-dialog[data-working] :is(.sw-row:not([data-unavailable]), .sw-account:not([data-target]), .sw-search-row) { opacity: .55; transition: opacity 120ms 250ms; }
-.sw-account[data-target] { outline: 1px dashed var(--muted-foreground); outline-offset: -1px; }
+.sw-account[data-target]:not(:focus-visible) { outline: 1px dashed var(--muted-foreground); outline-offset: -1px; }
 .sw-working { margin: 6px 4px 0; padding: 6px 8px; font-size: 12px; color: var(--muted-foreground); animation: sw-appear 120ms 250ms backwards; }
 @keyframes sw-appear { from { opacity: 0; } }
 .sw-error { margin: 6px 4px 0; padding: 6px 8px; border-radius: 8px; font-size: 12px; color: var(--destructive-text, var(--destructive));
@@ -103,3 +121,18 @@
 .sw-settings .sw-row { padding-right: 4px; }
 .sw-key-inline { position: static; display: inline-grid; width: 16px; height: 16px; margin-right: 8px; }
 .sw-settings-error { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Touch: every control is at least 44 px, and a phone-width screen gets a bottom sheet (SHEET in switcher.tsx). */
+@media (pointer: coarse) {
+  .sw-row { height: auto; min-height: 44px; }
+  .sw-select { min-height: 44px; }
+  .sw-star, .sw-back { display: grid; place-items: center; min-width: 44px; min-height: 44px; }
+  .sw-keep { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; font-size: 12px !important; }
+  .sw-pill, .sw-seg button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px; }
+  .sw-pill { font-size: 12px !important; }
+  .sw-seg button { font-size: 12.5px !important; }
+  .sw-search-row { height: 44px; }
+  .sw-search { height: 48px; }
+}
+.sw-dialog[data-sheet] { position: fixed; inset: auto 0 0; box-sizing: border-box; width: 100%; max-width: 100%; max-height: 85dvh; margin: 0;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); border-width: 1px 0 0; border-radius: 16px 16px 0 0; }
