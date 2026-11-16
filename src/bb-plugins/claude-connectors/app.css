@@ -9,7 +9,8 @@
 .cc-empty { margin: 0; padding: 12px 14px; color: var(--muted-foreground); font-size: var(--text-sm, 13px); }
 .cc-error { color: var(--destructive-text, var(--destructive)); font-size: var(--text-xs, 12px); }
 .cc-pad { margin: 0; padding: 0 14px 8px; }
-.cc-save-error { padding-top: 8px; border-top: 1px solid var(--border-seam, var(--border)); }
+/* A whole line at the top of the preview box (see popover.tsx). */
+.cc-save-error { flex: 1 0 100%; margin: 0; }
 .cc-empty.cc-error { color: var(--destructive-text, var(--destructive)); }
 
 .cc-rows { display: grid; padding: 4px; }

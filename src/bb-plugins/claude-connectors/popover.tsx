@@ -126,16 +126,17 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
           <span className="cc-row-aside">{saving === row.id ? 'Saving…' : row.aside}{row.id === pressed && <span className="cc-check" aria-hidden> ✓</span>}</span>
         </button>)}
       </section>}
-    {/* The preview keeps one height whatever row is focused: a press focuses its row before the click lands,
-        and a panel that opens upwards would otherwise move the rows under the pointer. */}
+    {/* The preview keeps one height whatever row is focused or whether a save failed: a press focuses its row
+        before the click lands, and a panel that opens upwards would otherwise move the rows under the pointer,
+        so a retry tap would land on another row. A failed save's message therefore sits inside the preview. */}
     {view && profiles.length > 0 && <section className="cc-preview" aria-label={focused ? `${focused} connectors` : 'Connectors'}>
+      {error && pending && <p className="cc-error cc-save-error" role="alert">{failedChange(pending.row, inheritedFrom)} {error}</p>}
       {!focused ? <span className="cc-muted">No connector tools.</span>
         : preview === undefined || preview === 'loading' ? <span className="cc-muted">Loading {focused}'s connectors…</span>
         : preview.error ? <span className="cc-error">{preview.error} <Retry /></span>
         : <>{preview.list.slice(0, PREVIEW).map(name => <span key={name} className="cc-tag">{name}</span>)}
           {preview.list.length > PREVIEW && <span className="cc-muted">+{preview.list.length - PREVIEW} more</span>}</>}
     </section>}
-    {error && pending && <p className="cc-error cc-pad cc-save-error" role="alert">{failedChange(pending.row, inheritedFrom)} {error}</p>}
     <footer className="cc-footer">
       {profiles.length > 0 && <span className="cc-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
       {/* Holds its place with no profile focused, so the panel keeps its height (see the preview). */}
