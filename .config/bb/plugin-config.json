@@ -1,6 +1,6 @@
 {
   "provider-acp": {
-    "customAgents": "[{\"id\":\"antigravity\",\"displayName\":\"Antigravity\",\"command\":\"agy\",\"args\":[\"acp\",\"--process-per-session\"]}]"
+    "customAgents": "[{\"id\":\"antigravity\",\"displayName\":\"Antigravity\",\"command\":\"agy\",\"args\":[\"acp\",\"--process-per-session\"]},{\"id\":\"antigravity-profile-secondary\",\"displayName\":\"Antigravity · Secondary\",\"command\":\"zsh\",\"args\":[\"-c\",\"exec \\\"$HOME/src/bb-plugins/claude-profiles/bin/agy-profile\\\" secondary \\\"$@\\\"\",\"agy-profile\",\"acp\",\"--process-per-session\"]}]"
   },
   "provider-claude-code": {
     "memoryEnabled": false

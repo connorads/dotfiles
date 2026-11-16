@@ -43,6 +43,17 @@ export function createLogin(ports: LoginPorts) {
       throw new Error('Account machine is offline. Connect it before signing in.');
   }
   return async function login(hostId: string, accountId: string, method: LoginMethod = 'device'): Promise<{ terminalId: string }> {
+    if (accountId.startsWith('claude-profiles:["antigravity",')) {
+      const [, accountHost, profileId = 'default'] = z.union([
+        z.tuple([z.literal('antigravity'), z.string()]),
+        z.tuple([z.literal('antigravity'), z.string(), z.string().regex(/^[a-z][a-z0-9-]{0,31}$/u)]),
+      ]).parse(JSON.parse(accountId.slice('claude-profiles:'.length)));
+      if (accountHost !== hostId) throw new Error('Account belongs to another machine.');
+      await connected(hostId);
+      const argv = profileId === 'default' ? ['agy', 'acp', '--login']
+        : ['zsh', '-c', 'exec "$HOME/src/bb-plugins/claude-profiles/bin/agy-profile" "$@"', 'agy-profile', profileId, 'acp', '--login'];
+      return open(JSON.stringify([hostId, 'antigravity', profileId]), `Antigravity sign-in · ${profileId}`, hostId, argv);
+    }
     const accountHost = openCodeAccountHost(accountId);
     if (accountHost !== null) {
       if (accountHost !== hostId) throw new Error('Account belongs to another machine.');

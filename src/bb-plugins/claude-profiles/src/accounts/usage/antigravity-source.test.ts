@@ -6,6 +6,22 @@ import type { Measurement } from '../usage-source.ts';
 const reading: Measurement = { accountKey: null, observedAt: 1000,
   usage: { status: 'ok', plan: null, planLabel: null, accountEmail: null, windows: [] } };
 
+test('accounts on the same host have independent caches and quota requests', async () => {
+  const calls: string[] = [];
+  const source = createAntigravitySource(async (_host, accountId) => {
+    calls.push(accountId); return { ...reading, observedAt: accountId === 'default' ? 100 : 200 };
+  });
+  const resources = source.resources([{ id: 'host-a', name: 'Example', accounts: [
+    { id: 'default', label: 'Default' }, { id: 'secondary', label: 'Secondary' },
+  ] }]);
+  await Promise.all(resources.map(resource => source.read(resource.id, false)));
+  assert.deepEqual(calls.sort(), ['default', 'secondary']);
+  assert.equal(source.lastReading(resources[0]!.id)?.observedAt, 100);
+  assert.equal(source.lastReading(resources[1]!.id)?.observedAt, 200);
+  await source.read(resources[1]!.id, true);
+  assert.deepEqual(calls, ['default', 'secondary', 'secondary']);
+});
+
 test('inventory is host-bound and does not query quota', () => {
   const source = createAntigravitySource(async () => { throw new Error('Must not collect'); });
   assert.deepEqual(source.resources([{ id: 'host-a', name: 'Example machine' }]), [{

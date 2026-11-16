@@ -15,6 +15,7 @@ import { createGrokSource } from './src/accounts/usage/grok-source.ts';
 import { createAntigravitySource } from './src/accounts/usage/antigravity-source.ts';
 import { registerModels } from './src/models/server.ts';
 import { registerConnectors } from './src/accounts/connectors.ts';
+import { antigravityAccountId } from './src/accounts/antigravity-account.ts';
 export { rpcContract } from './contracts.ts';
 
 export default function plugin(bb: BbPluginApi) {
@@ -25,7 +26,7 @@ export default function plugin(bb: BbPluginApi) {
   registerModels(bb);
   const host = bb.hosts.experimental_client({ contract: hostContract });
   const grok = createGrokSource(hostId => host.call('grokUsage', {}, { hostId, timeoutMs: 20_000 }));
-  const antigravity = createAntigravitySource(hostId => host.call('antigravityUsage', {}, { hostId, timeoutMs: 30_000 }));
+  const antigravity = createAntigravitySource((hostId, accountId) => host.call('antigravityUsage', { accountId }, { hostId, timeoutMs: 30_000 }));
   const amp = createAmpSource(() => bb.sdk.hosts.list(), hostId => host.call('ampUsage', {}, { hostId, timeoutMs: 25_000 }));
   const switching = new Set<string>();
   const connectors = registerConnectors(bb, switching, async (threadId, requestedProfileId) => {
@@ -404,6 +405,25 @@ export default function plugin(bb: BbPluginApi) {
       : readResource(id, refresh),
   });
   bb.rpc.register(accountsContract, {
+    antigravityAccounts: async ({ hostId }) => {
+      const providers = await bb.sdk.providers.list({ hostId });
+      const profiles = providers.filter(provider => antigravityAccountId(provider.id) !== null && provider.available).map(provider => ({
+        id: provider.id, label: provider.id === 'acp-antigravity' ? 'Default' : provider.displayName.replace(/^Antigravity\s*·\s*/u, ''),
+        configDir: null,
+      }));
+      const saved = await bb.storage.kv.get<AccountKeys>('antigravity-account-keys') ?? {};
+      const assigned = assignKeys(saved, profiles);
+      if (assigned.changed) await bb.storage.kv.set('antigravity-account-keys', assigned.keys);
+      return profiles.map(profile => ({ ...profile, key: assigned.keys[profile.id] ?? null }));
+    },
+    antigravityQuota: async ({ hostId, providerId }) => {
+      const accountId = antigravityAccountId(providerId);
+      if (accountId === null) throw new Error('Invalid Antigravity account.');
+      const resourceId = JSON.stringify(accountId === 'default' ? ['antigravity', hostId] : ['antigravity', hostId, accountId]);
+      const value = await antigravity.read(resourceId, false);
+      return { status: value.usage.status, windows: value.usage.status === 'ok' ? value.usage.windows : [],
+        observedAt: value.observedAt, message: value.usage.status === 'error' ? value.usage.message : null };
+    },
     accounts: async ({ threadId }) => {
       const unsupported = { supported: false, profiles: [], currentId: 'default', pendingId: null };
       if (threadId === null) {
@@ -455,7 +475,11 @@ export default function plugin(bb: BbPluginApi) {
       const antigravityHosts = (await Promise.all(hosts.map(async machine => {
         try {
           const providers = await bb.sdk.providers.list({ hostId: machine.id });
-          return providers.some(provider => provider.id === 'acp-antigravity' && provider.available) ? [machine] : [];
+          const accounts = providers.flatMap(provider => {
+            const id = antigravityAccountId(provider.id);
+            return id !== null && provider.available ? [{ id, label: (provider.displayName ?? provider.id).replace(/^Antigravity\s*·\s*/u, '') }] : [];
+          });
+          return accounts.length ? [{ ...machine, accounts }] : [];
         } catch { return []; }
       }))).flat();
       return { resources: [...groups.flat(), ...grok.resources(hosts), ...antigravity.resources(antigravityHosts)] };

@@ -97,7 +97,8 @@ export default experimental_defineHostEntry({
     sweepForkStages: async input => ({ removed: await sweepForkStages(join(homedir(), '.claude'), input.maxAgeMs) }),
     ampUsage: (_input, { signal }) => collectAmpUsage(signal),
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
-    antigravityUsage: (_input, { signal }) => collectAntigravityUsage({ signal }),
+    antigravityUsage: (input, { signal }) => collectAntigravityUsage({ signal,
+      command: input.accountId === 'default' ? ['agy'] : [join(homedir(), 'src/bb-plugins/claude-profiles/bin/agy-profile'), input.accountId] }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
     claudeResets: async (input, { signal }) => {
       await profile(input.root, input.profileId);

@@ -37,11 +37,13 @@ export const hostContract = defineRpcContract({
   sweepForkStages: { input: z.object({ maxAgeMs: z.number() }), output: z.object({ removed: z.array(z.string()) }) },
   ampUsage: { input: z.object({}), output: ampReadingSchema },
   grokUsage: { input: z.object({}), output: measurementSchema },
-  antigravityUsage: { input: z.object({}), output: measurementSchema },
+  antigravityUsage: { input: z.object({ accountId: z.string().default('default') }), output: measurementSchema },
   ...usageHostContract,
 });
 // A null thread is the new-thread composer: its choice is remembered and claimed by the next Claude thread's first send.
 export const accountsContract = defineRpcContract({
+  antigravityAccounts: { input: z.object({ hostId: z.string() }), output: z.array(keyedProfileSchema) },
+  antigravityQuota: { input: z.object({ hostId: z.string(), providerId: z.string() }), output: usageSchema },
   accounts: { input: z.object({ threadId: z.string().nullable() }), output: z.object({
     supported: z.boolean(), profiles: z.array(keyedProfileSchema), currentId: z.string(),
     // An account chosen during a turn; it applies when the thread is next idle.
