@@ -79,6 +79,7 @@
 .mh-app { grid-template-columns: 1fr 120px 64px 36px; border: 0; background: none; text-align: left; cursor: pointer; }
 .mh-thread { grid-template-columns: 18px 1fr 64px 200px; }
 .mh-thread[data-safe="false"] .mh-name { color: var(--muted-foreground); }
+.mh-thread input[aria-disabled="true"] { opacity: .5; filter: grayscale(1); cursor: default; }
 .mh-thread .mh-why { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mh-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .mh-mb { text-align: right; font-variant-numeric: tabular-nums; }

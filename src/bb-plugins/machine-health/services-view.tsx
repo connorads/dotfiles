@@ -11,13 +11,14 @@ export function ProcessRows({ processes, busy, onEnd }: { processes: AppProcess[
       <span className="mh-mb">≈{humanMb(proc.mb)}</span>
       <code title={proc.command}>{proc.pid} {proc.command}</code>
       {proc.owner !== null ? <span className="mh-why">{proc.owner === 'thread' ? 'BB thread' : 'BB infrastructure'}</span>
+        // Without a start time a later process with this PID looks the same, so no stop is offered, and the row says why.
+        : !proc.started ? <span className="mh-why">start time unknown</span>
         : <details className="mh-stop">
-          <summary aria-label={`Stop process ${proc.pid}`} aria-disabled={busy || !proc.started}
-            title={proc.started ? undefined : 'Start time unknown, so this process cannot be told apart from a later one with its PID'}
-            onClick={event => { if (busy || !proc.started) event.preventDefault(); }}>Stop…</summary>
+          <summary aria-label={`Stop process ${proc.pid}`} aria-disabled={busy}
+            onClick={event => { if (busy) event.preventDefault(); }}>Stop…</summary>
           <div className="mh-confirm">
             <span>Stop PID {proc.pid}?</span>
-            <button type="button" disabled={busy || !proc.started} onClick={event => {
+            <button type="button" disabled={busy} onClick={event => {
               const detail = event.currentTarget.closest('details');
               if (detail) { detail.open = false; detail.querySelector('summary')?.focus(); }
               if (proc.started) void onEnd(proc.pid, proc.command, proc.started);

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import { useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
-import type { Outcome, ThreadRowData, TriageData, rpcContract } from './contracts.ts';
+import type { ThreadRowData, TriageData, rpcContract } from './contracts.ts';
+import { closeWork, getWork, idle, runningElsewhere, setWork, startView, subscribeWork, threadCount, type Hibernated } from './src/actions.ts';
 import { gapText, humanMb } from './src/format.ts';
 import { segmentLines, slotLines, stateGlyph, type Gauge, type Lines } from './src/gauge.ts';
 import { detailRows, type Machine } from './src/present.ts';
@@ -99,13 +100,16 @@ function Threads({ threads, busy, hibernating, retry, onHibernate, onOpen }: {
   // Ticks stay through a failed call, so a retry is one click.
   const run = async () => { setConfirming(false); if (await onHibernate(ids)) setSelected(new Set()); };
   const cancel = () => { refocus.current = true; setConfirming(false); };
+  // Unticking every thread under the question withdraws it rather than asking about zero threads.
+  useEffect(() => { if (confirming && ids.length === 0) setConfirming(false); }, [confirming, ids.length]);
   return <section aria-labelledby="mh-threads">
     <h3 id="mh-threads">bb threads on this machine <small>provider process tree footprint</small></h3>
     {threads.length === 0 && <p className="mh-empty">No Claude provider processes run here.</p>}
     <ul className="mh-list">
       {threads.map((row, index) => <li key={row.threadId} className="mh-thread" data-safe={row.refusal === null}>
-        <input type="checkbox" aria-label={`Select ${row.title}`} aria-describedby={`${id}-why-${index}`} disabled={row.refusal !== null || busy}
-          checked={selected.has(row.threadId)} onChange={() => flip(row.threadId)} />
+        {/* aria-disabled while busy: a disabled box drops keyboard focus, so `r` on a ticked box loses the user's place. */}
+        <input type="checkbox" aria-label={`Select ${row.title}`} aria-describedby={`${id}-why-${index}`} disabled={row.refusal !== null}
+          aria-disabled={busy} checked={selected.has(row.threadId)} onChange={() => { if (!busy) flip(row.threadId); }} />
         <button type="button" className="mh-link mh-name" title={`Open thread: ${row.title}`} onClick={() => onOpen(row.threadId)}>{row.title}</button>
         <span className="mh-mb">{humanMb(row.mb)}</span>
         <span className="mh-why" id={`${id}-why-${index}`} title={row.refusal ?? 'idle'}>{row.refusal ?? 'idle'}</span>
@@ -124,30 +128,6 @@ function Threads({ threads, busy, hibernating, retry, onHibernate, onOpen }: {
     </div>
   </section>;
 }
-
-type Hibernated = { summary: string; outcomes: Outcome[]; titles: Map<string, string> };
-
-/**
- * A thread's Stop or Hibernate and its outcome, kept outside the dialog: closing
- * mid-call must not re-arm the action or lose its result. The entry goes when a
- * dialog that has shown the outcome closes.
- */
-type Work = {
-  running: 'hibernate' | 'stop' | null; hostId: string | null;
-  hibernated: Hibernated | null; status: string | null; error: string | null; retry: string[] | null;
-};
-const idle: Work = { running: null, hostId: null, hibernated: null, status: null, error: null, retry: null };
-const work = new Map<string, Work>();
-const workListeners = new Set<() => void>();
-const subscribeWork = (listener: () => void) => { workListeners.add(listener); return () => { workListeners.delete(listener); }; };
-function setWork(threadId: string, next: Partial<Work>) {
-  work.set(threadId, { ...(work.get(threadId) ?? idle), ...next });
-  workListeners.forEach(listener => listener());
-}
-/** Stop and Hibernate act on the machine, so a dialog for another thread on it waits too. */
-const runningElsewhere = (hostId: string | undefined, threadId: string) =>
-  hostId !== undefined && [...work].some(([id, entry]) => id !== threadId && entry.running !== null && entry.hostId === hostId);
-const threadCount = (count: number) => `${count} ${count === 1 ? 'thread' : 'threads'}`;
 
 /** The summary line, then one line per thread that was not hibernated, by title. */
 function HibernateResult({ summary, outcomes, titles }: Hibernated) {
@@ -168,14 +148,12 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const navigate = useBbNavigate();
   const [data, setData] = useState<TriageData | null>(null);
   const [triageError, setTriageError] = useState<string | null>(null);
-  const { running, hibernated, status, error, retry } = useSyncExternalStore(subscribeWork, () => work.get(threadId) ?? idle);
+  const { running, hibernated, status, error, retry } = useSyncExternalStore(subscribeWork, () => getWork(threadId));
   const elsewhere = useSyncExternalStore(subscribeWork, () => runningElsewhere(data?.hostId, threadId));
   const hibernating = running === 'hibernate';
   const busy = running !== null || elsewhere;
   const [loading, setLoading] = useState(false);
-  // Reopened during or after a hibernate, the dialog starts where its ticks and button are.
-  const [view, setView] = useState<'services' | 'threads' | 'apps'>(() =>
-    work.get(threadId)?.running === 'hibernate' || work.get(threadId)?.retry ? 'threads' : 'services');
+  const [view, setView] = useState<'services' | 'threads' | 'apps'>(() => startView(threadId));
   const request = useRef(0);
   const box = useRef<HTMLDialogElement>(null);
   const viewBox = useRef<HTMLDivElement>(null);
@@ -185,7 +163,7 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
-    return () => { alive.current = false; if (!work.get(threadId)?.running) work.delete(threadId); };
+    return () => { alive.current = false; closeWork(threadId); };
   }, [threadId]);
 
   const refreshTriage = useCallback(async () => {
@@ -218,7 +196,8 @@ export function MachineDialog({ threadId, anchor, machine, machineError, onRefre
     if (!rescue.current) return;
     const active = document.activeElement;
     const lost = !active || active === document.body || active === box.current || active === viewBox.current || active.matches(':disabled');
-    if (lost && outcome.current) outcome.current.focus();
+    // No scroll while the action runs: a click on plain text parks focus on the dialog, and the reader stays put.
+    if (lost && outcome.current) outcome.current.focus({ preventScroll: busy || loading });
     else if (lost) viewBox.current?.focus({ preventScroll: true });
     if (!busy && !loading && (!lost || outcome.current)) rescue.current = false;
   });

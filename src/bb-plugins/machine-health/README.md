@@ -46,6 +46,7 @@ Three views keep each task in its own list:
 - **Apps** ranks summed footprints. Expand an app for its individual processes.
 
 Process stops require confirmation and matching PID, command and start time.
+A process with no readable start time shows `start time unknown` and no Stop.
 The host sends SIGTERM and polls for up to three seconds. It reports either
 confirmed exit or an unconfirmed exit. It never escalates automatically.
 Provider-tree processes, BB infrastructure, PID 1 and the host worker refuse Stop.
@@ -94,8 +95,9 @@ descendant. The telegram channel's `bun server.ts` is one such server.
 
 After the stops, the server polls the machine every 750 ms for up to 6 s. Each
 thread reports `hibernated`, `stopped but still running`, `refused` or
-`failed`. Ticking more than one thread asks for confirmation. If the call
-fails, the ticks stay for a retry, also when the dialog is closed and reopened.
+`failed`. Ticking more than one thread asks for confirmation; unticking them
+all withdraws it. If the call fails, the ticks stay for a retry. A failure that
+arrives after the dialog closed shows, with its ticks, on the next open.
 
 ### Unverified: does a stop free the Claude process?
 
