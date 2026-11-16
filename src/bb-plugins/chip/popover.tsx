@@ -1,18 +1,27 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type DialogHTMLAttributes, type ReactNode, type Ref } from 'react';
 import './popover.css';
 
-/** Where the chip sat when the popover opened. Null centres the popover near the top. */
-type ChipAnchor = { right: number; bottom: number } | null;
-type PopoverPlacement = { top: number; left: number; width: number; origin: string };
+/**
+ * Where the chip sat when the popover opened. Null centres the popover near the top.
+ * With `top`, the popover can open above a chip that sits low on screen.
+ */
+type ChipAnchor = { right: number; bottom: number; top?: number } | null;
+/** `bottom`, when set, pins the panel's bottom edge that far above the window's bottom, and `top` is ignored. */
+type PopoverPlacement = { top: number; left: number; width: number; origin: string; bottom?: number };
 
 const margin = 12;
+const gap = 8;
 
-/** Right edge on the chip's right edge, 8 px below it, kept on screen. */
+/** Right edge on the chip's right edge, 8 px below it, or above it when there is more room above. Kept on screen. */
 function placeUnder(anchor: ChipAnchor, width: number): PopoverPlacement {
   const w = Math.min(width, window.innerWidth - margin * 2);
   if (!anchor) return { width: w, top: Math.round(window.innerHeight * 0.1), left: (window.innerWidth - w) / 2, origin: 'top center' };
   const left = Math.min(Math.max(margin, anchor.right - w), window.innerWidth - w - margin);
-  return { width: w, top: anchor.bottom + 8, left, origin: `${anchor.right - left}px 0` };
+  const top = anchor.bottom + gap;
+  if (anchor.top !== undefined && anchor.top - gap > window.innerHeight - top) {
+    return { width: w, top, bottom: window.innerHeight - anchor.top + gap, left, origin: `${anchor.right - left}px 100%` };
+  }
+  return { width: w, top, left, origin: `${anchor.right - left}px 0` };
 }
 
 /** A pointer event on the dialog itself, outside its box: the ::backdrop. */
@@ -53,14 +62,23 @@ export function ChipPopover({ ref, trigger, anchor, width, instant, place, panel
   useLayoutEffect(() => {
     const node = element.current;
     node?.showModal();
-    // A focused control that unmounts, such as a sub-screen's input, drops focus to <body>, where keys miss the
-    // key guard and the plugin's shortcuts. Keep focus on the dialog instead.
-    const keepFocus = new MutationObserver(() => {
+    // A focused control that unmounts, turns disabled or hides, such as a sub-screen's input or a Save button
+    // during a save, drops focus to <body>, where keys miss the key guard and the plugin's shortcuts. Keep focus on
+    // the dialog instead. Not when focus leaves a control that is still usable, such as Tab out of the page.
+    const keepFocus = () => {
       if (node?.open && (!document.activeElement || document.activeElement === document.body)) node.focus({ preventScroll: true });
-    });
-    if (node) keepFocus.observe(node, { childList: true, subtree: true });
+    };
+    const lostControl = (event: FocusEvent) => {
+      const lost = event.target as HTMLElement;
+      if (event.relatedTarget === null && (lost.matches(':disabled') || lost.closest('[inert]') || lost.checkVisibility?.() === false)) keepFocus();
+    };
+    // Removal fires no focusout in some engines, hence the observer as well.
+    const removals = new MutationObserver(keepFocus);
+    if (node) removals.observe(node, { childList: true, subtree: true });
+    node?.addEventListener('focusout', lostControl);
     return () => {
-      keepFocus.disconnect();
+      removals.disconnect();
+      node?.removeEventListener('focusout', lostControl);
       // Return focus only from the popover: an action that moved it elsewhere keeps it there.
       const active = document.activeElement;
       const restore = !active || active === document.body || (node?.contains(active) ?? false);
@@ -78,8 +96,10 @@ export function ChipPopover({ ref, trigger, anchor, width, instant, place, panel
 
   return <dialog tabIndex={-1} {...dialog} ref={element} className={className ? `bbp-popover ${className}` : 'bbp-popover'} aria-modal="true"
     data-instant={instant || undefined}
-    style={{ top: position.top, left: position.left, width: position.width, transformOrigin: position.origin,
-      '--bbp-popover-top': `${position.top}px` } as CSSProperties}
+    style={{ left: position.left, width: position.width, transformOrigin: position.origin,
+      ...position.bottom === undefined
+        ? { top: position.top, '--bbp-popover-top': `${position.top}px` }
+        : { bottom: position.bottom, '--bbp-popover-bottom': `${position.bottom}px` } } as CSSProperties}
     onKeyDown={event => {
       if (event.key !== 'Escape') event.stopPropagation();
       onKeyDown?.(event);
