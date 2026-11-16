@@ -40,17 +40,21 @@ export function CommitComposer({ threadId, repository, branch, op, onRun, onCanc
   const busy = op?.status === 'running';
   // The form holds focus while the index is read, so typed text never reaches the
   // pop-up's row keys (d discards); the textarea takes it once it can be edited.
-  useEffect(() => { if (open) form.current?.focus({ preventScroll: true }); }, [open]);
+  /** The caret has been placed since the form opened; later returns keep the user's caret. */
+  const placed = useRef(false);
+  useEffect(() => { placed.current = false; if (open) form.current?.focus({ preventScroll: true }); }, [open]);
+  // Also after a generation ends or is cancelled, which takes focus away from the textarea.
   useEffect(() => {
     const area = textarea.current;
-    if (!open || !review || busy || !area || area.disabled) return;
+    if (!open || !review || busy || generating || !area || area.disabled) return;
     const active = area.ownerDocument.activeElement;
     if (!active || active === area.ownerDocument.body || active === form.current) {
       area.focus({ preventScroll: true });
       // A kept draft continues at its end, not before the subject.
-      area.setSelectionRange(area.value.length, area.value.length);
+      if (!placed.current) area.setSelectionRange(area.value.length, area.value.length);
     }
-  }, [open, review, busy]);
+    placed.current = true;
+  }, [open, review, busy, generating]);
   const refresh = () => {
     invalidate();
     const version = reviewVersion.current;

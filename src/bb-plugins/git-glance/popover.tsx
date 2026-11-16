@@ -77,7 +77,9 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
           ?? last.element.closest('[role="group"]')?.querySelector<HTMLElement>('button:not(:disabled)') : null;
         if (holder) { holder.focus({ preventScroll: true }); return; }
         const list = rows();
-        list[Math.max(0, Math.min(last.row, list.length - 1))]?.focus({ preventScroll: true });
+        const row = list[Math.max(0, Math.min(last.row, list.length - 1))];
+        // Rows disabled while a repository is chosen: the dialog keeps focus, so keys stay in the pop-up.
+        if (row && !row.matches(':disabled')) row.focus({ preventScroll: true }); else root.focus({ preventScroll: true });
       });
     };
     const observer = new MutationObserver(rescue);
@@ -89,15 +91,19 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
   /** A request sent to the server whose reply has not arrived. */
   const [sending, setSending] = useState<OpRequest | null>(null);
   const latest = useRef<OpRequest | null>(null);
+  /** Counts repository changes: a reply to a request sent before one belongs to the previous repository. */
+  const selection = useRef(0);
   const runOp = useCallback((request: OpRequest) => {
     const root = state.root;
     if (!root) return Promise.resolve(false);
+    const sentFor = selection.current;
     setActionError(null);
     latest.current = request;
     setSending(request);
     const sent = () => { if (latest.current === request) { latest.current = null; setSending(null); } };
     return rpc.call('run', { threadId, root, request, origin: 'user' }).then(({ op }) => {
       sent();
+      if (sentFor !== selection.current) return false;
       const blocker = refusedBy(op, request);
       if (blocker) {
         const { name } = describe(blocker.request);
@@ -108,12 +114,18 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
       return true;
     }, cause => {
       sent();
+      if (sentFor !== selection.current) return false;
       if (request.kind === 'fetch') fetchRequestFailed(threadId, root, cause);
       else setActionError({ refused: false, text: `${describe(request).name} failed: ${message(cause)}` });
       return false;
     });
   }, [rpc, threadId, state.root]);
-  const cancelOp = useCallback(() => { if (!state.root) return; rpc.call('cancel', { threadId, root: state.root }).catch(cause => setActionError({ refused: false, text: message(cause) })); }, [rpc, threadId, state.root]);
+  const cancelOp = useCallback(() => {
+    if (!state.root) return;
+    const sentFor = selection.current;
+    const name = state.op ? describe(state.op.request).name : 'the operation';
+    rpc.call('cancel', { threadId, root: state.root }).catch(cause => { if (sentFor === selection.current) setActionError({ refused: false, text: `Could not cancel ${name}: ${message(cause)}` }); });
+  }, [rpc, threadId, state.root, state.op]);
   // A refusal holds only while its blocker runs.
   const shownError = actionError?.blocker && !(state.op?.id === actionError.blocker && state.op.status === 'running') ? null : actionError;
 
@@ -154,16 +166,18 @@ export function GitPopover({ threadId, anchor, instant, onClose }: { threadId: s
     setFolders(false);
     requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>('[data-folders-trigger]')?.focus({ preventScroll: true }));
   };
+  /** A repository choice is in flight: the folder browser stays, as its Back button does, until the switch lands. */
+  const [choosing, setChoosing] = useState(false);
   const selected = () => {
     opened.current = false; setPicker('closed'); setDismissed(null); setActionError(null);
     // A request still in flight belongs to the previous repository.
-    latest.current = null; setSending(null);
-    void renew(threadId).then(() => setFolders(false));
+    latest.current = null; setSending(null); selection.current++;
+    return renew(threadId).then(() => setFolders(false));
   };
   return <ChipPopover ref={dialog} className="gg-dialog" panelClassName="gg-panel" aria-label="Git status" onKeyDown={keyboard}
     trigger={() => chip(threadId)} anchor={anchor} width={640} instant={instant} place={zoomed ? placeZoomed : undefined}
-    data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose} onEscape={folders ? backToGit : undefined}>
-    {folders ? <FolderPicker threadId={threadId} onClose={backToGit} onSelected={selected} />
+    data-zoomed={zoomed || undefined} data-morph={morph || undefined} onClose={onClose} onEscape={folders ? () => { if (!choosing) backToGit(); } : undefined}>
+    {folders ? <FolderPicker threadId={threadId} onClose={backToGit} onSelected={selected} onBusy={setChoosing} />
       : state.snapshot?.kind === 'none' && !state.error ? <FolderPicker threadId={threadId} embedded={!state.selected} onSelected={selected} />
       : repo ? <Zoomed.Provider value={zoomed}><RepoView key={state.root} onFolders={() => setFolders(true)} repo={repo} threadId={threadId} state={state} actionError={shownError}
       dismissed={dismissed} onDismiss={setDismissed} onDismissAction={() => setActionError(null)} sending={sending} onRun={runOp} onCancel={cancelOp}

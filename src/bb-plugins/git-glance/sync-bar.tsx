@@ -53,8 +53,8 @@ export function available(repo: Repo, op: OpState | null): Availability {
     [kind, { enabled: reason[kind] === null, title: reason[kind] ?? titles[kind] }])) as Availability;
 }
 
-/** How long after a cancel click the same button ignores clicks: covers a double-click and repeated presses. */
-const cancelGuardMs = 1000;
+/** How long after a start or cancel click the same button ignores clicks: covers a double-click and repeated presses. */
+const clickGuardMs = 1000;
 
 export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
   repo: Repo; op: OpState | null;
@@ -65,8 +65,8 @@ export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
   const can = available(repo, op);
   const running = op?.status === 'running' ? op : null;
   const { branch } = repo;
-  /** The last cancel click: a second click of a double-click lands after the op ends and must not start it again. */
-  const cancelled = useRef<{ kind: OpKind; at: number } | null>(null);
+  /** The last start or cancel click: the second click of a double-click must not cancel what the first started, or restart what it cancelled. */
+  const pressed = useRef<{ kind: OpKind; at: number } | null>(null);
   const button = ({ kind, icon, label, count, tone }: { kind: OpKind; icon: string; label: string; count: number | null; tone: string }) => {
     const active = running?.request.kind === kind;
     // aria-disabled, not disabled, while starting: a disabled button drops keyboard focus to the page.
@@ -74,11 +74,10 @@ export function SyncBar({ repo, op, starting, fetched, onSync, onCancel }: {
       disabled={!active && !can[kind].enabled} aria-disabled={active && starting ? true : undefined}
       title={active ? running?.progress?.phase ?? `${describe({ kind }).doing}…` : can[kind].title}
       onClick={event => {
-        const last = cancelled.current;
-        if ((active && starting) || (last?.kind === kind && event.timeStamp - last.at < cancelGuardMs)) return;
-        if (!active) { onSync(kind); return; }
-        cancelled.current = { kind, at: event.timeStamp };
-        onCancel();
+        const last = pressed.current;
+        if ((active && starting) || (last?.kind === kind && event.timeStamp - last.at < clickGuardMs)) return;
+        pressed.current = { kind, at: event.timeStamp };
+        if (active) onCancel(); else onSync(kind);
       }} aria-label={active ? starting ? `Starting ${kind}` : `Cancel ${kind}` : can[kind].title}>
       {active ? <span className="gg-spinner gg-spinner-sm" /> : <Icon name={icon} className="size-3.5" />}
       <span className="gg-sync-label">{active ? running?.progress?.percent != null ? `${running.progress.percent}%` : describe({ kind }).doing : label}</span>

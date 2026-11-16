@@ -138,3 +138,69 @@ it('moves focus to the next row when the focused row disappears, so the row keys
   act(() => receiveSnapshot({ threadIds: [threadId], root, snapshot: { ...two, changes: two.changes.slice(1) } }));
   await waitFor(() => expect(view.baseElement.ownerDocument.activeElement?.getAttribute('data-file-path')).toBe('NOTES.md'));
 });
+
+it('ignores the second click of a double-click on an idle action, so a push that just started is not cancelled', async () => {
+  const threadId = crypto.randomUUID();
+  const ahead = { ...repo, branch: { ...repo.branch, ahead: 2 } };
+  const pushing: OpState = { id: 'op_push', request: { kind: 'push' }, origin: 'user', startedAt: 1, status: 'running', progress: null };
+  const run = vi.fn(({ origin }: { origin: 'user' | 'auto' }) => ({ op: origin === 'user' ? pushing : null }));
+  const cancel = vi.fn(() => ({}));
+  slot = renderSlot<Parameters<typeof GitPopover>[0], Pick<typeof rpcContract, 'watch' | 'unwatch' | 'run' | 'cancel'>>({ component: GitPopover },
+    { threadId, anchor: null, instant: true, onClose: () => {} },
+    { rpc: {
+      watch: () => ({ root, selected: false, snapshot: ahead, op: null, fetch: { lastSucceededAt: null, failure: null } }),
+      unwatch: () => ({}),
+      run,
+      cancel,
+    } });
+  const view = slot;
+  const push = await view.findByRole('button', { name: /^Push 2 commits/ });
+  act(() => push.click());
+  await waitFor(() => expect(run.mock.calls.filter(([input]) => input.origin === 'user')).toHaveLength(1));
+  // The server's reply lands inside the double-click: the button now offers Cancel push.
+  const second = await view.findByRole('button', { name: 'Cancel push' });
+  act(() => second.click());
+  expect(cancel).not.toHaveBeenCalled();
+});
+
+/** A pop-up with its commit form open on a kept draft. */
+async function composer(generateMessage: () => Promise<{ message: string }> = () => new Promise(() => {})) {
+  const threadId = crypto.randomUUID();
+  localStorage.setItem('git-glance:commit:example', 'Fix the regional table');
+  slot = renderSlot<Parameters<typeof GitPopover>[0], Pick<typeof rpcContract, 'watch' | 'unwatch' | 'run' | 'review' | 'generateMessage' | 'cancelMessage'>>({ component: GitPopover },
+    { threadId, anchor: null, instant: true, onClose: () => {} },
+    { rpc: {
+      watch: () => ({ root, selected: false, snapshot: repo, op: null, fetch: { lastSucceededAt: null, failure: null } }),
+      unwatch: () => ({}),
+      run: () => ({ op: null }),
+      review: () => review,
+      generateMessage,
+      cancelMessage: () => ({}),
+    } });
+  const view = slot;
+  await waitFor(() => expect(row(view)).toBeTruthy());
+  key(row(view), 'c');
+  const textarea = await view.findByRole('textbox', { name: /Commit subject/ }) as HTMLTextAreaElement;
+  await waitFor(() => expect(view.baseElement.ownerDocument.activeElement).toBe(textarea));
+  return { view, threadId, textarea };
+}
+
+it('keeps the caret where the user left it when an operation starts and ends while the commit form is open', async () => {
+  const { view, threadId, textarea } = await composer();
+  expect(textarea.selectionStart).toBe(textarea.value.length);
+  act(() => textarea.setSelectionRange(4, 4));
+  act(() => receiveOp({ threadIds: [threadId], root, op: fetching, fetch: { lastSucceededAt: null, failure: null } }));
+  await waitFor(() => expect(view.baseElement.ownerDocument.activeElement).not.toBe(textarea));
+  act(() => receiveOp({ threadIds: [threadId], root, op: { ...fetching, status: 'succeeded', summary: 'Fetched', finishedAt: 2 }, fetch: { lastSucceededAt: 2, failure: null } }));
+  await waitFor(() => expect(view.baseElement.ownerDocument.activeElement).toBe(textarea));
+  expect(textarea.selectionStart).toBe(4);
+});
+
+it('returns focus to the message when a generation is cancelled, so typed text never reaches row shortcuts', async () => {
+  const { view, textarea } = await composer();
+  act(() => view.getByRole('button', { name: 'Generate message' }).click());
+  const cancel = await view.findByRole('button', { name: 'Cancel generation' });
+  act(() => cancel.focus());
+  act(() => cancel.click());
+  await waitFor(() => expect(view.baseElement.ownerDocument.activeElement).toBe(textarea));
+});

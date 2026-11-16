@@ -90,7 +90,7 @@
 .gg-icon-button { width: 24px; padding: 0; justify-content: center; }
 /* The eyebrow and the repository button shrink, so a long repository name is cut short instead of widening the header. */
 .gg-eyebrow, .gg-eyebrow > [data-folders-trigger] { min-width: 0; }
-.gg-eyebrow > [data-folders-trigger] > :last-child { flex: none; }
+.gg-eyebrow > [data-folders-trigger] > :last-child, .gg-header .gg-eyebrow > :first-child, .gg-header .gg-icon-button { flex: none; }
 .gg-repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gg-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .gg-title-icon { width: 18px; height: 18px; flex: none; color: var(--gg-tone); }

@@ -17,8 +17,11 @@ function PathLabel({ path }: { path: string }) {
  * Browses and searches the thread checkout for a repository. As the empty state
  * of a checkout without one, it replaces the pop-up body and has nothing to go back to.
  */
-export function FolderPicker({ threadId, embedded = false, onSelected, onClose }: {
-  threadId: string; embedded?: boolean; onSelected: () => void; onClose?: () => void;
+export function FolderPicker({ threadId, embedded = false, onSelected, onClose, onBusy }: {
+  threadId: string; embedded?: boolean;
+  /** Resolves once the chosen repository shows; the picker stays busy until then. */
+  onSelected: () => Promise<void>;
+  onClose?: () => void; onBusy?: (busy: boolean) => void;
 }) {
   const rpc = useRpc<typeof rpcContract>();
   const [path, setPath] = useState('.');
@@ -57,10 +60,10 @@ export function FolderPicker({ threadId, embedded = false, onSelected, onClose }
     setPath(parts.length > 1 ? parts.slice(0, -1).join('/') : '.');
   };
   const select = async (next: string | null, worktree?: string) => {
-    setBusy(true); setError(null);
-    try { await rpc.call('select', { threadId, path: next, ...worktree === undefined ? {} : { worktree } }); onSelected(); }
-    catch (cause) { setError(message(cause)); }
-    finally { setBusy(false); }
+    setBusy(true); onBusy?.(true); setError(null);
+    try { await rpc.call('select', { threadId, path: next, ...worktree === undefined ? {} : { worktree } }); await onSelected(); }
+    catch (cause) { setError(message(cause)); search.current?.focus(); }
+    finally { setBusy(false); onBusy?.(false); }
   };
   const join = (child: string) => path === '.' ? child : `${path}/${child}`;
   const parts = path === '.' ? [] : path.split('/');
