@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blockReason, matchedSecret, SECRET_PATHS, tokenise } from "./guard.ts";
+import { blockReason, matchedSecret, tokenise } from "./guard.ts";
 
 const HOME = "/Users/test";
 
@@ -123,10 +123,12 @@ test("matchedSecret is component-aware", () => {
   assert.equal(matchedSecret("/other/home/.ssh", HOME), undefined);
 });
 
-test("SECRET_PATHS has the srt denyRead cardinality", () => {
-  // Full parity with srt base.json is enforced by the secret-path-parity hk
-  // step; this catches accidental local edits.
-  assert.equal(SECRET_PATHS.length, 28);
+test("isolated Antigravity credentials are blocked without blocking launcher source", () => {
+  const path = ".local/share/agy-profiles/example/home/.gemini/antigravity-cli/antigravity-oauth-token";
+  assert.ok(bash(`cat ~/${path}`));
+  assert.ok(blockReason("read", { path: `${HOME}/${path}` }, HOME));
+  assert.ok(blockReason("write", { path: `${HOME}/${path}` }, HOME));
+  assert.equal(bash("cat ~/src/bb-plugins/claude-profiles/src/accounts/antigravity-cli.ts"), undefined);
 });
 
 test("own token: pi reads its own, never another agent's", () => {

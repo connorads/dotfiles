@@ -60,6 +60,7 @@ Each account has separate model discovery and cached quota readings.
 
 The [account guide](../src/bb-plugins/claude-profiles/README.md#antigravity-accounts) owns profile creation and sign-in.
 Isolated profiles live under `~/.local/share/agy-profiles/`, outside Git.
+The shared agent secret-file policies block reads and writes to that directory.
 The launcher blocks Keychain access and uses the native file-storage fallback.
 It supports macOS with Antigravity 1.5.9 and refuses other versions until verified.
 Its private `HOME` also isolates user settings, skills and tool configuration.

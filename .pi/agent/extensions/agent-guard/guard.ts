@@ -27,6 +27,7 @@ export const SECRET_PATHS = [
   ".gnupg",
   ".cloudflared",
   ".gemini",
+  ".local/share/agy-profiles",
   ".config/op",
   ".kube",
   ".password-store",
