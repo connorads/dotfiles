@@ -18,23 +18,31 @@ setopt no_unset pipe_fail
 local wrapper="${${(%):-%x}:A}"
 local mode=patch
 
-while (( $# )); do
+while (($#)); do
   case $1 in
-    --check)   mode=check;   shift ;;
-    --restore) mode=restore; shift ;;
-    --reapply) mode=reapply; shift ;;
-    --help|-h)
-      awk '
+  --check)
+    mode=check
+    shift
+    ;;
+  --restore)
+    mode=restore
+    shift
+    ;;
+  --reapply)
+    mode=reapply
+    shift
+    ;;
+  --help | -h)
+    awk '
         NR == 1 { next }
         /^emulate / { exit }
         { print }
       ' "$wrapper"
-      return 0
-      ;;
-    *) break ;;
+    return 0
+    ;;
+  *) break ;;
   esac
 done
-
 
 _warn_missing_target() {
   local detail="$1"
@@ -47,7 +55,7 @@ _warn_missing_target() {
     print -r -- "reason: $detail"
     print -r -- "when:   $when"
     print -r -- "Pi or mise likely changed its install layout."
-  } > "$marker" 2>/dev/null || true
+  } >"$marker" 2>/dev/null || true
   print -u2 "pi-image-paste-patch: $detail (marker: $marker)"
 }
 
@@ -79,15 +87,15 @@ fi
 
 local -a chunks=("$agent_root"/dist/bundle/chunks/*.js(N.))
 local -a clipboard=(${(f)"$(grep -l 'async function readClipboardImageViaNativeClipboard' "${chunks[@]}" /dev/null 2>/dev/null)"})
-if (( ${#clipboard} != 1 )); then
+if ((${#clipboard} != 1)); then
   _fail_target "expected one bundle chunk defining readClipboardImageViaNativeClipboard, found ${#clipboard} under $agent_root/dist/bundle/chunks"
   return
 fi
 
 local patch_name=pi-image-paste-fileurl-patch
 local patch_label='native clipboard file URL fallback'
-local needle='if(bytes!==void 0)return bytes?.length?{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"}:null'
-local replace='if(bytes?.length)return{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"};if(process.platform==="darwin"){let fileUrlPath=(await runClipboardCommand("osascript",["-e","POSIX path of (the clipboard as «class furl»)"],{timeoutMs:1e3}))?.toString("utf-8").trim(),ext=fileUrlPath?.match(/\.(png|jpe?g|gif|webp)$/i)?.[1].toLowerCase();if(ext){let fileBytes=await runClipboardCommand("cat",[fileUrlPath]);if(fileBytes?.length)return{bytes:new Uint8Array(fileBytes),mimeType:ext==="png"?"image/png":ext==="gif"?"image/gif":ext==="webp"?"image/webp":"image/jpeg"}}}return bytes===void 0?void 0:null'
+local needle='if(bytes2!==void 0)return bytes2?.length?{bytes:bytes2,mimeType:detectSupportedImageMimeType(bytes2)??"application/octet-stream"}:null'
+local replace='if(bytes2?.length)return{bytes:bytes2,mimeType:detectSupportedImageMimeType(bytes2)??"application/octet-stream"};if(process.platform==="darwin"){let fileUrlPath=(await runClipboardCommand("osascript",["-e","POSIX path of (the clipboard as «class furl»)"],{timeoutMs:1e3}))?.toString("utf-8").trim(),ext=fileUrlPath?.match(/\.(png|jpe?g|gif|webp)$/i)?.[1].toLowerCase();if(ext){let fileBytes=await runClipboardCommand("cat",[fileUrlPath]);if(fileBytes?.length)return{bytes:new Uint8Array(fileBytes),mimeType:ext==="png"?"image/png":ext==="gif"?"image/gif":ext==="webp"?"image/webp":"image/jpeg"}}}return bytes2===void 0?void 0:null'
 local marker="$HOME/.cache/$patch_name.stale"
 local missing_body=$'Pi likely changed its bundled clipboard reader. Ctrl+V paste of\nfile-URL screenshots (Zappy) will revert until this needle is updated.'
 local missing_banner='Ctrl+V file-URL image paste will revert'

@@ -16,8 +16,8 @@ NODE_BIN="$(command -v node)"
 MARKER_REL=".cache/pi-image-paste-fileurl-patch.stale"
 LAYOUT_MARKER_REL=".cache/pi-image-paste-patch.stale"
 
-NEEDLE='if(bytes!==void 0)return bytes?.length?{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"}:null'
-PATCHED='if(bytes?.length)return{bytes,mimeType:detectSupportedImageMimeType(bytes)??"application/octet-stream"}'
+NEEDLE='if(bytes2!==void 0)return bytes2?.length?{bytes:bytes2,mimeType:detectSupportedImageMimeType(bytes2)??"application/octet-stream"}:null'
+PATCHED='if(bytes2?.length)return{bytes:bytes2,mimeType:detectSupportedImageMimeType(bytes2)??"application/octet-stream"}'
 
 # Write a bundle chunk defining the reader around whichever body is passed,
 # plus an unrelated sibling chunk the resolver must skip.
@@ -26,7 +26,7 @@ write_chunk() {
   chunks="$(dirname "$CLIPBOARD")"
   mkdir -p "$chunks"
   printf 'function other(){return 1}\n' >"$chunks/chunk-OTHER.js"
-  printf 'async function readClipboardImageViaNativeClipboard(){let bytes=await getNativeClipboard()?.getImage();%s}\n' "$1" >"$CLIPBOARD"
+  printf 'async function readClipboardImageViaNativeClipboard(){let bytes2=await getNativeClipboard()?.getImage();%s}\n' "$1" >"$CLIPBOARD"
 }
 
 PI_PKG='@earendil-works/pi-coding-agent'
@@ -207,7 +207,7 @@ JS
 }
 
 @test "a renamed needle marks and exits 0 under --reapply" {
-  write_chunk 'if(bytes!==void 0)return bytes?.length?{bytes,mimeType:detectSupportedImageMimeType(bytes)??"image/png"}:null'
+  write_chunk 'if(bytes2!==void 0)return bytes2?.length?{bytes:bytes2,mimeType:detectSupportedImageMimeType(bytes2)??"image/png"}:null'
 
   run_zsh_function "$PI_PATCH" --reapply "$INSTALL_DIR"
 
