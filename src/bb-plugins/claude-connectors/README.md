@@ -42,6 +42,16 @@ owner is the parent thread, or the origin thread of a BB workflow run. A worker 
 what its owner resolves to and never more. Write tools stay with the owner, even
 when allowed for the profile. A pick made on the worker itself replaces this.
 
+The popover of a thread narrows what it holds and passes on:
+
+| Control | Effect |
+| --- | --- |
+| Connector tags | Click a tag to turn that connector off for the thread. A new profile pick turns every connector on. |
+| Workers toggle, `w` | On by default. Off passes nothing to the threads this one starts. |
+
+A worker takes its owner's connector list. A new-thread draft has neither control
+until its first message.
+
 ```mermaid
 flowchart LR
   Owner[Owner thread: work] -->|read-only| Worker[BB workflow worker or child thread]

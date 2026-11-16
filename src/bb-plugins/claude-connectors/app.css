@@ -45,6 +45,11 @@
   padding: 8px 14px 10px; border-top: 1px solid var(--border-seam, var(--border));
 }
 .cc-tag { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--foreground); font-size: 11.5px; line-height: 18px; }
+button.cc-tag { background: none; font-family: inherit; cursor: pointer; }
+button.cc-tag:hover { background: var(--state-hover, var(--accent)); }
+button.cc-tag:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+button.cc-tag[aria-pressed="false"] { border-style: dashed; color: var(--muted-foreground); text-decoration: line-through; }
+button.cc-tag[aria-disabled="true"] { cursor: progress; }
 
 .cc-footer { display: grid; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-seam, var(--border)); color: var(--muted-foreground); font-size: var(--text-xs, 12px); }
 .cc-keys { display: flex; align-items: center; gap: 4px; }

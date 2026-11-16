@@ -129,6 +129,16 @@ export async function save(target: Target, row: string, task: () => Promise<unkn
   catch (cause) { put({ row, error: message(cause) }); return false; }
 }
 
+/** only: the thread's connector list, or null for every connector of its profile. */
+export async function setOnly(target: Target & { kind: 'thread' }, only: string[] | null) {
+  await rpc().call('setOnly', { threadId: target.threadId, only });
+  await loadThread(target.threadId, target.projectId);
+}
+export async function setShare(target: Target & { kind: 'thread' }, share: boolean) {
+  await rpc().call('setShare', { threadId: target.threadId, share });
+  await loadThread(target.threadId, target.projectId);
+}
+
 export async function setProjectDefault(projectId: string, value: string) {
   await rpc().call('setProject', { projectId, value });
   await reloadChoices();

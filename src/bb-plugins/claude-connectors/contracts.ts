@@ -8,6 +8,7 @@ export const resolvedView = z.object({
   profile: z.string().nullable(),
   source: z.enum(['thread', 'owner', 'project', 'default']),
   readOnly: z.boolean(),
+  only: z.array(z.string()).nullable(),
 });
 export type ResolvedView = z.infer<typeof resolvedView>;
 
@@ -22,6 +23,8 @@ export const threadView = z.object({
   threadId: z.string(),
   own: z.string().nullable(),
   resolved: resolvedView,
+  /** Whether threads this one starts get its connectors. */
+  share: z.boolean(),
 });
 export type ThreadView = z.infer<typeof threadView>;
 
@@ -44,6 +47,8 @@ export const rpcContract = defineRpcContract({
   state: { input: z.null(), output: stateView },
   thread: { input: z.object({ threadId: z.string(), projectId: z.string() }), output: threadView },
   setThread: { input: z.object({ threadId: z.string(), value }), output: z.null() },
+  setOnly: { input: z.object({ threadId: z.string(), only: z.array(z.string().min(1).max(200)).max(500).nullable() }), output: z.null() },
+  setShare: { input: z.object({ threadId: z.string(), share: z.boolean() }), output: z.null() },
   draft: { input: z.object({ projectId: z.string() }), output: draftView },
   setDraft: { input: z.object({ projectId: z.string(), value }), output: z.null() },
   setProject: { input: z.object({ projectId: z.string(), value }), output: z.null() },

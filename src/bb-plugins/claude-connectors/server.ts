@@ -7,7 +7,7 @@ import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { NativeArtifacts } from './src/artifacts.ts';
 import { CHANGED, rpcContract } from './contracts.ts';
-import { isProfileName, OFF, ownerOf, resolveChoice, type Choice, type Resolved } from './src/choice.ts';
+import { inScope, isProfileName, OFF, ownerOf, resolveChoice, type Choice, type Resolved } from './src/choice.ts';
 import { policyKey, type Access, type Overrides } from './src/policy.ts';
 import { ConnectorService, UserFacingError, type Run } from './src/service.ts';
 
@@ -44,19 +44,25 @@ export default async function plugin(bb: BbPluginApi) {
   const policies = new Map<string, Overrides>();
   /** Each started thread's owner, recorded at its first dispatch. */
   const owners = new Map<string, string>();
+  /** A thread's own connector list; absent means every connector of its profile. */
+  const onlys = new Map<string, string[]>();
+  /** Threads that pass nothing on to the threads they start. */
+  const unshared = new Set<string>();
   let fallback: Choice | undefined;
   for (const key of await kv.list('thread:')) { const v = await kv.get<Choice>(key); if (v) threads.set(key.slice(7), v); }
   for (const key of await kv.list('project:')) { const v = await kv.get<Choice>(key); if (v) projects.set(key.slice(8), v); }
   for (const key of await kv.list('draft:')) { const v = await kv.get<Choice>(key); if (v) drafts.set(key.slice(6), v); }
   for (const key of await kv.list('policy:')) { const v = await kv.get<Overrides>(key); if (v) policies.set(key.slice(7), v); }
   for (const key of await kv.list('owner:')) { const v = await kv.get<string>(key); if (v) owners.set(key.slice(6), v); }
+  for (const key of await kv.list('only:')) { const v = await kv.get<string[]>(key); if (v) onlys.set(key.slice(5), v); }
+  for (const key of await kv.list('unshared:')) unshared.add(key.slice(9));
   fallback = await kv.get<Choice>('default');
 
   const resolve = (threadId: string, projectId: string, seen = new Set<string>()): Resolved => {
     const ownerId = owners.get(threadId);
     seen.add(threadId);
-    const owner = ownerId && !seen.has(ownerId) ? resolve(ownerId, projectId, seen) : undefined;
-    return resolveChoice(threads.get(threadId), projects.get(projectId), fallback, owner);
+    const owner = ownerId && !seen.has(ownerId) ? { resolved: resolve(ownerId, projectId, seen), share: !unshared.has(ownerId) } : undefined;
+    return resolveChoice(threads.get(threadId), projects.get(projectId), fallback, { only: onlys.get(threadId) ?? null, owner });
   };
   const policy = (profile: string) => policies.get(profile) ?? {};
 
@@ -64,6 +70,18 @@ export default async function plugin(bb: BbPluginApi) {
   async function setChoice(map: Map<string, Choice>, prefix: string, id: string, value: string) {
     if (value === 'inherit') { map.delete(id); await kv.delete(prefix + id); }
     else { map.set(id, value); await kv.set(prefix + id, value); }
+    // Connector names belong to one profile, so a new thread pick starts with every connector.
+    if (map === threads && onlys.delete(id)) await kv.delete(`only:${id}`);
+    changed();
+  }
+  async function setOnly(threadId: string, only: string[] | null) {
+    if (only === null) { onlys.delete(threadId); await kv.delete(`only:${threadId}`); }
+    else { onlys.set(threadId, only); await kv.set(`only:${threadId}`, only); }
+    changed();
+  }
+  async function setShare(threadId: string, share: boolean) {
+    if (share) { unshared.delete(threadId); await kv.delete(`unshared:${threadId}`); }
+    else { unshared.add(threadId); await kv.set(`unshared:${threadId}`, true); }
     changed();
   }
   async function setDefault(value: string) {
@@ -95,9 +113,13 @@ export default async function plugin(bb: BbPluginApi) {
     isError: true,
   });
   const accessOf = (threadId: string, projectId: string) => {
-    const { profile, readOnly } = resolve(threadId, projectId);
+    const { profile, readOnly, only } = resolve(threadId, projectId);
     if (!profile) throw new UserFacingError('Claude connectors are off for this thread. The person can turn them on with `bb claude-connectors use <profile>`.');
-    return { profile, readOnly };
+    return { profile, readOnly, only };
+  };
+  /** Refuses a connector outside the thread's list; the name is the profile's own spelling. */
+  const requireInScope = (only: string[] | null, connector: string) => {
+    if (!inScope(only, connector)) throw new UserFacingError(`${connector} is not enabled for this thread. The person chooses its connectors from the connectors chip.`);
   };
 
   bb.agents.registerTool({
@@ -107,12 +129,13 @@ export default async function plugin(bb: BbPluginApi) {
     parameters: z.object({ connector: z.string().min(1).optional().describe('Connector name, such as "Slack". Omit to list connectors.') }),
     async execute({ connector }, ctx) {
       try {
-        const { profile, readOnly } = accessOf(ctx.threadId, ctx.projectId);
+        const { profile, readOnly, only } = accessOf(ctx.threadId, ctx.projectId);
         if (!connector) {
           const list = await service.connectors(profile, ctx.signal);
-          return bounded({ profile, connectors: list.map(c => c.name), next: 'Call again with `connector` to see its tools.' });
+          return bounded({ profile, connectors: list.map(c => c.name).filter(name => inScope(only, name)), next: 'Call again with `connector` to see its tools.' });
         }
         const found = await service.connector(profile, connector, ctx.signal);
+        requireInScope(only, found.name);
         const tools = await service.toolViews({ profile, connector: found, overrides: policy(profile), readOnly, withSchema: true, signal: ctx.signal });
         return bounded({ profile, connector: found.name, tools });
       } catch (error) { return failure(error); }
@@ -130,7 +153,8 @@ export default async function plugin(bb: BbPluginApi) {
     }),
     async execute({ connector, tool, arguments: args }, ctx) {
       try {
-        const { profile, readOnly } = accessOf(ctx.threadId, ctx.projectId);
+        const { profile, readOnly, only } = accessOf(ctx.threadId, ctx.projectId);
+        requireInScope(only, (await service.connector(profile, connector, ctx.signal)).name);
         const result = await service.call({ profile, connector, tool, args, overrides: policy(profile), readOnly, signal: ctx.signal });
         const parsed = z.object({ content: z.array(z.object({ type: z.string(), text: z.string().optional() }).passthrough()), isError: z.boolean().optional() })
           .safeParse(result);
@@ -177,7 +201,9 @@ export default async function plugin(bb: BbPluginApi) {
       };
     },
     thread: async ({ threadId, projectId }) =>
-      ({ threadId, own: threads.get(threadId) ?? null, resolved: resolve(threadId, projectId) }),
+      ({ threadId, own: threads.get(threadId) ?? null, resolved: resolve(threadId, projectId), share: !unshared.has(threadId) }),
+    setOnly: async ({ threadId, only }) => { await setOnly(threadId, only); return null; },
+    setShare: async ({ threadId, share }) => { await setShare(threadId, share); return null; },
     setThread: async ({ threadId, value }) => { await checkProfile(value); await setChoice(threads, 'thread:', threadId, value); return null; },
     draft: async ({ projectId }) =>
       ({ projectId, own: drafts.get(projectId) ?? null, resolved: resolveChoice(drafts.get(projectId), projects.get(projectId), fallback) }),
@@ -245,6 +271,8 @@ export default async function plugin(bb: BbPluginApi) {
             if (ctx.threadId && ctx.projectId) {
               const r = resolve(ctx.threadId, ctx.projectId);
               lines.push(`This thread: ${r.profile ?? 'off'} (from ${r.source}${r.readOnly ? ', read-only' : ''})`);
+              if (r.profile && r.only) lines.push(`Connectors: ${r.only.join(', ') || 'none'}`);
+              lines.push(`Shares with the threads it starts: ${unshared.has(ctx.threadId) ? 'no' : 'yes, read-only'}`);
             }
             return out(lines.join('\n'));
           }

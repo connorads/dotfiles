@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import { Retry } from './retry.tsx';
-import { choose, close, loadConnectors, loadKey, save, setProjectDefault, useConnectors, visibleChip, type Open } from './store.ts';
+import { inScope } from './src/choice.ts';
+import { choose, close, loadConnectors, loadKey, save, setOnly, setProjectDefault, setShare, useConnectors, visibleChip, type Open } from './store.ts';
 
 type Row = { id: string; keycap: string; value: string; label: string; aside: string };
 const PREVIEW = 14;
 const HOVER_REST = 150;
 /** The save row for `p`, which names the profile being made the project default. */
 const DEFAULT_ROW = 'default:';
+/** The save rows for a thread's connector list and for what it passes to the threads it starts. */
+const ONLY_ROW = 'only';
+const SHARE_ROW = 'share';
 
 /** Names the change a failed save tried to make, from its save row. */
 function failedChange(row: string, inheritedFrom: string) {
+  if (row === ONLY_ROW) return 'Could not change this thread\'s connectors.';
+  if (row === SHARE_ROW) return 'Could not change what workers get.';
   if (row.startsWith(DEFAULT_ROW)) return `Could not make ${row.slice(DEFAULT_ROW.length)} this project's default.`;
   if (row.startsWith('p:')) return `Could not switch to ${row.slice(2)}.`;
   return row === 'inherit' ? `Could not switch to the ${inheritedFrom}.` : 'Could not turn connectors off.';
@@ -76,6 +82,21 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
     if (profile && profiles.length > 0) void save(target, DEFAULT_ROW + profile, () => setProjectDefault(target.projectId, profile));
   }
 
+  /** A thread's own connector list and sharing; a new-thread draft has neither until its first message. */
+  const shown = target.kind === 'thread' ? threads.get(target.threadId) : undefined;
+  const thread = target.kind === 'thread' && shown ? { target, share: shown.share } : null;
+  const only = resolved?.only ?? null;
+  /** The ticks edit the list of the profile in use, and an owned thread's list belongs to its owner. */
+  const editable = thread !== null && focused !== null && focused === resolved?.profile && resolved.source !== 'owner';
+  function toggleConnector(name: string, all: string[]) {
+    if (!thread) return;
+    const next = all.filter(n => (n === name) !== inScope(only, n));
+    void save(target, ONLY_ROW, () => setOnly(thread.target, next.length === all.length ? null : next));
+  }
+  function toggleShare() {
+    if (thread) void save(target, SHARE_ROW, () => setShare(thread.target, !thread.share));
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     clearTimeout(hover.current);
@@ -89,6 +110,7 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
     if (event.key === 'ArrowDown' || event.key === 'j') { event.preventDefault(); move(1); return; }
     if (event.key === 'ArrowUp' || event.key === 'k') { event.preventDefault(); move(-1); return; }
     if (event.key === 'p') { event.preventDefault(); makeProjectDefault(); return; }
+    if (event.key === 'w' && thread) { event.preventDefault(); toggleShare(); return; }
     const byKey = rows.find(r => r.keycap === event.key);
     if (byKey) { event.preventDefault(); void pick(byKey); }
   }
@@ -134,6 +156,9 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
       {!focused ? <span className="cc-muted">No connector tools.</span>
         : preview === undefined || preview === 'loading' ? <span className="cc-muted">Loading {focused}'s connectors…</span>
         : preview.error ? <span className="cc-error">{preview.error} <Retry /></span>
+        : editable ? preview.list.map(name => <button key={name} type="button" className="cc-tag" aria-pressed={inScope(only, name)}
+            aria-disabled={saving !== null || undefined} title={`${inScope(only, name) ? 'Turn off' : 'Turn on'} ${name} for this thread`}
+            onClick={() => toggleConnector(name, preview.list)}>{name}</button>)
         : <>{preview.list.slice(0, PREVIEW).map(name => <span key={name} className="cc-tag">{name}</span>)}
           {preview.list.length > PREVIEW && <span className="cc-muted">+{preview.list.length - PREVIEW} more</span>}</>}
     </section>}
@@ -144,7 +169,11 @@ export function ConnectorsPopover({ open }: { open: NonNullable<Open> }) {
         aria-disabled={saving !== null || undefined} aria-busy={savingDefault !== null || undefined} title={linkText}>
         <kbd>p</kbd> {linkText}
       </button> : profiles.length > 0 && <span className="cc-link cc-link-idle" aria-hidden><kbd>p</kbd></span>}
-      <span>{target.kind === 'thread' ? 'A thread that was off gets the tools from its next message.' : 'Applies when you send the first message.'}
+      {thread && <button type="button" className="cc-link" aria-pressed={thread.share} onClick={toggleShare}
+        aria-disabled={saving !== null || undefined} aria-busy={saving === SHARE_ROW || undefined}>
+        <kbd>w</kbd> {thread.share ? 'Workers get these connectors, read-only ✓' : 'Workers get no connectors'}
+      </button>}
+      <span>{target.kind === 'thread' ? 'Click a connector to turn it off for this thread. A thread that was off gets the tools from its next message.' : 'Applies when you send the first message.'}
         {' '}Write tools are off until allowed in Settings → Claude Connectors.</span>
     </footer>
   </ChipPopover>;

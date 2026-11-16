@@ -1,25 +1,37 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ownerOf, resolveChoice } from './choice.ts';
+import { inScope, ownerOf, resolveChoice } from './choice.ts';
 import { parseRpcBody } from './mcp.ts';
 import { accessFor } from './policy.ts';
 import { ConnectorService, UserFacingError, type Run } from './service.ts';
 import { keychainService, parseToken } from './token.ts';
 
 test('a chat pick beats the project default, which beats the global default', () => {
-  assert.deepEqual(resolveChoice('work', 'client', 'home'), { profile: 'work', source: 'thread', readOnly: false });
-  assert.deepEqual(resolveChoice(undefined, 'client', 'home'), { profile: 'client', source: 'project', readOnly: false });
-  assert.deepEqual(resolveChoice(undefined, undefined, 'home'), { profile: 'home', source: 'default', readOnly: false });
-  assert.deepEqual(resolveChoice('off', 'client', 'home'), { profile: null, source: 'thread', readOnly: false });
-  assert.deepEqual(resolveChoice(undefined, undefined, undefined), { profile: null, source: 'default', readOnly: false });
+  assert.deepEqual(resolveChoice('work', 'client', 'home'), { profile: 'work', source: 'thread', readOnly: false, only: null });
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home'), { profile: 'client', source: 'project', readOnly: false, only: null });
+  assert.deepEqual(resolveChoice(undefined, undefined, 'home'), { profile: 'home', source: 'default', readOnly: false, only: null });
+  assert.deepEqual(resolveChoice('off', 'client', 'home'), { profile: null, source: 'thread', readOnly: false, only: null });
+  assert.deepEqual(resolveChoice(undefined, undefined, undefined), { profile: null, source: 'default', readOnly: false, only: null });
 });
 
 test('a started thread gets its owner\'s access read-only, ahead of the project default', () => {
-  const owner = resolveChoice('work', undefined, undefined);
-  assert.deepEqual(resolveChoice(undefined, 'client', 'home', owner), { profile: 'work', source: 'owner', readOnly: true });
-  const ownerOff = resolveChoice('off', undefined, undefined);
-  assert.deepEqual(resolveChoice(undefined, 'client', 'home', ownerOff), { profile: null, source: 'owner', readOnly: true });
-  assert.deepEqual(resolveChoice('client', undefined, undefined, owner), { profile: 'client', source: 'thread', readOnly: false });
+  const owner = { resolved: resolveChoice('work', undefined, undefined), share: true };
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home', { owner }), { profile: 'work', source: 'owner', readOnly: true, only: null });
+  const ownerOff = { resolved: resolveChoice('off', undefined, undefined), share: true };
+  assert.deepEqual(resolveChoice(undefined, 'client', 'home', { owner: ownerOff }), { profile: null, source: 'owner', readOnly: true, only: null });
+  assert.deepEqual(resolveChoice('client', undefined, undefined, { owner }), { profile: 'client', source: 'thread', readOnly: false, only: null });
+});
+
+test('a started thread gets its owner\'s connector list, and nothing from an owner that does not share', () => {
+  const resolved = resolveChoice('work', undefined, undefined, { only: ['Slack'] });
+  assert.deepEqual(resolved.only, ['Slack']);
+  assert.deepEqual(resolveChoice(undefined, undefined, undefined, { only: ['HubSpot'], owner: { resolved, share: true } }),
+    { profile: 'work', source: 'owner', readOnly: true, only: ['Slack'] });
+  assert.equal(resolveChoice(undefined, 'client', 'home', { owner: { resolved, share: false } }).profile, null);
+  assert.equal(inScope(null, 'Slack'), true);
+  assert.equal(inScope(['slack'], 'Slack'), true);
+  assert.equal(inScope(['Slack'], 'HubSpot'), false);
+  assert.equal(inScope([], 'Slack'), false);
 });
 
 test('the owner is the parent, else the origin of a BB workflow run', () => {
