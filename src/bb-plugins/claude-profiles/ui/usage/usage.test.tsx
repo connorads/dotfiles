@@ -324,7 +324,7 @@ test('Amp presents a clear account, remaining balance and credit settings link',
   const slot = renderSlot(overview(app), {}, { rpc: {
     'usage.inspection': async () => inspect(),
     'usage.amp': async () => ({ machines: [{ hostId: 'host-one', hostName: 'Laptop', message: null,
-      reading: { status: 'ok', text: 'Signed in as member@example.com\nIndividual credits: $9.81 remaining (set up auto-reload to avoid running out) - https://ampcode.com/settings', observedAt: NOW.getTime() } }] }),
+      reading: { status: 'ok', text: 'Signed in as member@example.com\n**Individual credits:** $9.81 remaining (set up auto-reload to avoid running out) - https://ampcode.com/settings\n## How Usage Is Charged\n- Self-hosted orbs: free.\n# Run `amp usage --details` for more detailed information.\nBilling is suspended.', observedAt: NOW.getTime() } }] }),
   } });
   await act(async () => openUsage());
   const amp = await slot.findByRole('region', { name: 'Amp usage' });
@@ -334,6 +334,11 @@ test('Amp presents a clear account, remaining balance and credit settings link',
   expect(amp.textContent).toContain('remaining');
   expect(amp.textContent).not.toContain('Signed in as');
   expect(amp.textContent).not.toContain('auto-reload');
+  expect(amp.textContent).not.toContain('**');
+  expect(amp.textContent).not.toContain('How Usage Is Charged');
+  expect(amp.textContent).not.toContain('Self-hosted orbs');
+  expect(amp.textContent).not.toContain('amp usage --details');
+  expect(amp.textContent).toContain('Billing is suspended.');
   expect(amp.querySelector('.au-meter')).toBeNull();
   expect(slot.getByRole('link', { name: 'Manage credits' }).getAttribute('href')).toBe('https://ampcode.com/settings');
 });

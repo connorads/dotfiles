@@ -306,7 +306,9 @@ flowchart LR
 ```
 
 Amp presents the native `amp usage` account and credit balances as labelled
-amounts, with a link to credit settings. Unrecognised provider text stays visible.
+amounts, with a link to credit settings. Plain text and Markdown balance labels
+are supported. Recognised billing help is omitted; warnings and unrecognised
+provider text stay visible.
 The overlay requests Amp and quotas in parallel. Quotas appear as soon as they
 are ready; Amp stays below them. The refresh indicator tracks both requests.
 Refresh requests a new reading; a failed refresh retains the previous text with the failure.
