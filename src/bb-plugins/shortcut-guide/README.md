@@ -26,7 +26,7 @@ flowchart LR
 | Key | Action |
 | --- | --- |
 | Up / Down in search | Select a command |
-| Cmd+S / Ctrl+S in search | Star or unstar the selected command |
+| Cmd+S / Ctrl+S in search or on a command | Star or unstar the selected or focused command |
 | Enter in search | Close and return to practise the selected chord |
 | Escape | Close, including when search contains text |
 | Tab | Move through collection buttons, commands and stars |

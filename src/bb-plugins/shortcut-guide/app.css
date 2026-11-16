@@ -45,4 +45,11 @@
 .sg-help > span { display: inline-flex; align-items: center; gap: 4px; }
 .sg-help kbd { height: 17px; min-width: 17px; font-size: 10px; color: var(--muted-foreground); }
 .sg-save-error { margin: 0; padding: 0 20px 12px; font-size: 11px; color: var(--muted-foreground); }
-@media (max-width: 440px) { .sg-description { display: none; } .sg-command { gap: 8px; } .sg-count { display: none; } }
+@media (max-width: 440px) {
+  .sg-description, .sg-count { display: none; }
+  /* A wide chord drops below its title instead of squeezing it to one word per line. */
+  .sg-command { flex-wrap: wrap; gap: 4px 8px; }
+  .sg-copy { flex-basis: 7em; }
+  .sg-command .sg-chord { margin-left: auto; }
+  .sg-practise { flex-wrap: wrap; row-gap: 4px; }
+}

@@ -22,7 +22,7 @@ const config = { keybindings: bindings, defaultKeybindings: bindings, keybinding
 // SAFETY: this SDK fake supplies plugin identity and enablement, which the catalogue reads.
 const plugins = { plugins: [{ id: 'git-glance', enabled: true }] } as unknown as Awaited<ReturnType<PluginBrowserBbSdk['plugins']['list']>>;
 
-function render(fail = false) {
+function render(fail = false, load: () => Promise<typeof config> = async () => { if (fail) throw new Error('Offline'); return config; }, list = plugins) {
   const draft = document.createElement('textarea');
   draft.value = 'Keep my draft';
   document.body.append(draft);
@@ -32,7 +32,7 @@ function render(fail = false) {
     return closed ? null : <ShortcutPopover returnFocus={draft} instant onClose={() => setClosed(true)} />;
   }
   const slot = renderSlot({ component: Surface }, {}, {
-    sdk: { system: { config: async () => { if (fail) throw new Error('Offline'); return config; } }, plugins: { list: async () => plugins } },
+    sdk: { system: { config: load }, plugins: { list: async () => list } },
   });
   return { slot, draft };
 }
@@ -91,6 +91,54 @@ test('arrow keys browse and the star shortcut saves the selected command', async
   fireEvent.keyDown(search, { key: 'Enter' });
   expect(slot.queryByRole('dialog')).toBeNull();
   expect(document.activeElement).toBe(draft);
+  draft.remove();
+});
+
+test('the Favourites badge counts only starred commands the guide lists', async () => {
+  localStorage.setItem('bb-plugin-shortcut-guide.favourites', JSON.stringify(['thread.new', 'plugin:lazygit/open']));
+  const { slot, draft } = render();
+  await slot.findByRole('button', { name: 'Practise New thread' });
+  expect(slot.getByRole('button', { name: /^Favourites/ }).textContent).toBe('Favourites1');
+  draft.remove();
+});
+
+test('the star chord on a focused command stars that row and keeps the browser from saving the page', async () => {
+  const { slot, draft } = render();
+  const command = await slot.findByRole('button', { name: 'Practise Search threads' });
+  command.focus();
+  expect(fireEvent.keyDown(command, { key: 's', metaKey: true })).toBe(false);
+  expect(slot.getByRole('button', { name: 'Favourite Search threads' }).getAttribute('aria-pressed')).toBe('true');
+  expect(fireEvent.keyDown(slot.getByRole('button', { name: 'Essentials' }), { key: 's', metaKey: true })).toBe(false);
+  expect(slot.getAllByRole('button', { pressed: true, name: /^Favourite / })).toHaveLength(1);
+  draft.remove();
+});
+
+test('hovering a row selects it without scrolling the list; arrow keys still reveal the selection', async () => {
+  const scrolled: Element[] = [];
+  Element.prototype.scrollIntoView = function () { scrolled.push(this); };
+  try {
+    const { slot, draft } = render();
+    const command = await slot.findByRole('button', { name: 'Practise Search threads' });
+    scrolled.length = 0;
+    fireEvent.pointerMove(command);
+    expect(command.parentElement?.dataset.selected).toBe('true');
+    expect(scrolled).toHaveLength(0);
+    fireEvent.keyDown(slot.getByRole('searchbox'), { key: 'ArrowDown' });
+    expect(scrolled).toHaveLength(1);
+    draft.remove();
+  } finally { delete (Element.prototype as Partial<Element>).scrollIntoView; }
+});
+
+test('loading shows no shortcut count, and an empty Essentials view does not ask for stars', async () => {
+  let resolve: (value: typeof config) => void = () => {};
+  // SAFETY: an SDK fake with every plugin disabled.
+  const none = { plugins: [] } as unknown as typeof plugins;
+  const { slot, draft } = render(false, () => new Promise(done => { resolve = done; }), none);
+  await slot.findByText('Loading your shortcuts…');
+  expect(slot.container.ownerDocument.querySelector('.sg-count')?.textContent).toBe('');
+  // SAFETY: an empty SDK config fake, as BB returns with no bindings.
+  resolve({ keybindings: [], defaultKeybindings: [], keybindingOverrides: [] } as unknown as typeof config);
+  expect(await slot.findByText('BB reports none of the listed shortcuts for this client.')).toBeTruthy();
   draft.remove();
 });
 

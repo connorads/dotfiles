@@ -28,6 +28,8 @@ export function ShortcutPopover({ returnFocus, instant, onClose }: { returnFocus
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const prefix = useId();
+  // Pointer hover selects without scrolling, so the row stays under the pointer.
+  const hovered = useRef(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let live = true;
@@ -46,7 +48,9 @@ export function ShortcutPopover({ returnFocus, instant, onClose }: { returnFocus
   const visible = visibleCommands(rows ?? [], { query, view, favourites, platform: environment.platform });
   const ordered = groups.flatMap(group => visible.filter(row => row.group === group));
   const active = ordered.find(row => row.id === selected) ?? ordered[0];
+  const available = rows ? favourites.filter(id => rows.some(row => row.id === id)).length : 0;
   useEffect(() => {
+    if (hovered.current) { hovered.current = false; return; }
     const row = list.current?.querySelector<HTMLElement>('[data-selected="true"]');
     row?.scrollIntoView?.({ block: 'nearest' });
   }, [active?.id]);
@@ -71,8 +75,12 @@ export function ShortcutPopover({ returnFocus, instant, onClose }: { returnFocus
       setSelected(ordered[(index + direction + ordered.length) % ordered.length]?.id ?? null);
     } else if (event.target === search.current && event.key === 'Enter' && active) {
       event.preventDefault(); onClose();
-    } else if (event.target === search.current && event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey) && active) {
-      event.preventDefault(); favourite(active.id);
+    } else if (event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+      // The guide owns the chord, so the browser never opens Save Page. A focused command or star names its row.
+      event.preventDefault();
+      const focused = event.target instanceof Element ? event.target.closest<HTMLElement>('.sg-row')?.dataset.id : undefined;
+      const id = focused ?? (event.target === search.current ? active?.id : undefined);
+      if (id) favourite(id);
     }
   }
   const closeLabel = environment.platform === 'mac' ? '⌘S' : 'Ctrl+S';
@@ -91,22 +99,24 @@ export function ShortcutPopover({ returnFocus, instant, onClose }: { returnFocus
         {(['essentials', 'favourites', 'all'] as const).map(value => <button type="button" key={value} aria-pressed={view === value}
           onClick={() => { setView(value); setQuery(''); setSelected(null); search.current?.focus(); }}>
           {value === 'essentials' ? 'Essentials' : value === 'favourites' ? 'Favourites' : 'Browse'}
-          {value === 'favourites' && favourites.length > 0 && <span>{favourites.length}</span>}
+          {value === 'favourites' && available > 0 && <span>{available}</span>}
         </button>)}
       </div>
-      <span className="sg-count" role="status">{query.trim() ? `${visible.length} found` : `${visible.length} shortcuts`}</span>
+      <span className="sg-count" role="status">{rows === null || error ? '' : query.trim() ? `${visible.length} found`
+        : `${visible.length} ${visible.length === 1 ? 'shortcut' : 'shortcuts'}`}</span>
     </div>
     <div id={`${prefix}-list`} ref={list} className="sg-list" aria-label="Shortcuts">
       {rows === null && !error && <p className="sg-empty" role="status">Loading your shortcuts…</p>}
       {error && <div className="sg-empty" role="alert"><p>Could not load shortcuts.</p><p>{error}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>}
       {rows !== null && !error && ordered.length === 0 && <p className="sg-empty">{query.trim() ? 'No matching shortcuts. Try a command name, “git” or “alt”.'
-        : 'Star shortcuts in Essentials or Browse to keep them here.'}</p>}
+        : view === 'favourites' ? 'Star shortcuts in Essentials or Browse to keep them here.'
+          : 'BB reports none of the listed shortcuts for this client.'}</p>}
       {groups.map(group => {
         const commands = ordered.filter(row => row.group === group);
         if (!commands.length) return null;
         return <section key={group} aria-label={group} className="sg-group"><h3>{group}<span>{commands.length}</span></h3>
-          {commands.map(row => <div className="sg-row" key={row.id} data-selected={row.id === active?.id || undefined}>
-            <button type="button" className="sg-command" onFocus={() => setSelected(row.id)} onPointerMove={() => setSelected(row.id)}
+          {commands.map(row => <div className="sg-row" key={row.id} data-id={row.id} data-selected={row.id === active?.id || undefined}>
+            <button type="button" className="sg-command" onFocus={() => setSelected(row.id)} onPointerMove={() => { if (row.id === active?.id) return; hovered.current = true; setSelected(row.id); }}
               onClick={onClose} aria-label={`Practise ${row.title}`}>
               <span className="sg-copy"><span className="sg-name">{row.title}</span><span className="sg-description">{row.description}</span></span>
               <Keys row={row} platform={environment.platform} />
