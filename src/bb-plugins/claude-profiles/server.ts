@@ -15,12 +15,14 @@ import { createGrokSource } from './src/accounts/usage/grok-source.ts';
 import { createAntigravitySource } from './src/accounts/usage/antigravity-source.ts';
 import { registerModels } from './src/models/server.ts';
 import { registerConnectors } from './src/accounts/connectors.ts';
+import { antigravityAccountLabel, parseAntigravityLabels } from './src/accounts/antigravity-labels.ts';
 import { antigravityAccountId } from './src/accounts/antigravity-account.ts';
 export { rpcContract } from './contracts.ts';
 
 export default function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
     profileRoot: { type: 'string', label: 'Claude profile root on each host', default: '~/.claude-profiles/code' },
+    antigravityAccountLabels: { type: 'string', label: 'Antigravity account labels (JSON keyed by account ID)', default: '{}' },
     executable: { type: 'string', label: 'Native Claude executable', default: 'claude' },
   });
   registerModels(bb);
@@ -388,6 +390,7 @@ export default function plugin(bb: BbPluginApi) {
     catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
   }
   const usageReader = registerUsage(bb, {
+    antigravityLabels: async () => parseAntigravityLabels((await settings.get()).antigravityAccountLabels),
     login: createLogin({ terminals: bb.sdk.terminals, config: () => settings.get(), hosts: () => bb.sdk.hosts.list(),
       profiles: (hostId, root) => host.call('profiles', { root }, { hostId }) }),
     amp: refresh => amp.read(refresh),
@@ -407,8 +410,9 @@ export default function plugin(bb: BbPluginApi) {
   bb.rpc.register(accountsContract, {
     antigravityAccounts: async ({ hostId }) => {
       const providers = await bb.sdk.providers.list({ hostId });
+      const labels = parseAntigravityLabels((await settings.get()).antigravityAccountLabels);
       const profiles = providers.filter(provider => antigravityAccountId(provider.id) !== null && provider.available).map(provider => ({
-        id: provider.id, label: provider.id === 'acp-antigravity' ? 'Default' : provider.displayName.replace(/^Antigravity\s*·\s*/u, ''),
+        id: provider.id, label: antigravityAccountLabel(antigravityAccountId(provider.id)!, provider.displayName, labels),
         configDir: null,
       }));
       const saved = await bb.storage.kv.get<AccountKeys>('antigravity-account-keys') ?? {};
@@ -472,12 +476,13 @@ export default function plugin(bb: BbPluginApi) {
           scope: { kind: 'host' as const, hostId: machine.id, hostName: machine.name },
         }));
       }));
+      const labels = parseAntigravityLabels(config.antigravityAccountLabels);
       const antigravityHosts = (await Promise.all(hosts.map(async machine => {
         try {
           const providers = await bb.sdk.providers.list({ hostId: machine.id });
           const accounts = providers.flatMap(provider => {
             const id = antigravityAccountId(provider.id);
-            return id !== null && provider.available ? [{ id, label: (provider.displayName ?? provider.id).replace(/^Antigravity\s*·\s*/u, '') }] : [];
+            return id !== null && provider.available ? [{ id, label: antigravityAccountLabel(id, provider.displayName ?? provider.id, labels) }] : [];
           });
           return accounts.length ? [{ ...machine, accounts }] : [];
         } catch { return []; }

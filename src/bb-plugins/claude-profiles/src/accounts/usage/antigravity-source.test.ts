@@ -61,3 +61,12 @@ test('failed refresh is explicit and receives a short cooldown rather than zero 
   await source.read(id, false);
   assert.equal(calls, 3);
 });
+
+test('native account identity labels survive resource inventory', () => {
+  const source = createAntigravitySource(async () => reading);
+  const [resource] = source.resources([{ id: 'host-a', name: 'Example', accounts: [
+    { id: 'default', label: 'first@example.com' },
+  ] }]);
+  assert.equal(resource?.id, '["antigravity","host-a"]');
+  assert.equal(resource?.label, 'Antigravity · first@example.com');
+});

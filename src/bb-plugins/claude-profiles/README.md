@@ -103,6 +103,18 @@ flowchart LR
 Each isolated account has a stable provider ID, `acp-antigravity-profile-NAME`.
 Keep that ID when changing its display name. BB threads and favourites store the ID.
 Default retains `acp-antigravity`.
+
+Set display labels independently of profile paths and provider IDs:
+
+```sh
+bb plugin config claude-profiles set antigravityAccountLabels '{"default":"first@example.com","secondary":"second@example.com"}'
+```
+
+The switcher and Agent Usage use these labels. They are explicit names, not automatic login detection.
+Update a label after signing a profile into another account.
+Store private labels in BB settings, outside tracked managed configuration.
+Account shortcut letters stay stable when labels change.
+
 The account row shows a stable letter and a ring for the fullest quota window.
 Agent Usage groups the accounts under Antigravity and caches each account separately.
 An authentication failure offers **Sign in again** through the same account launcher.

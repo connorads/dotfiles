@@ -7,6 +7,7 @@ import { sourceSnapshotSchema, type Account, type Header, type Inspection, type 
 import type { Period } from './pace.ts';
 import type { ResetCredits } from './reset-credits.ts';
 import type { ClaudeResets } from './claude-resets.ts';
+import { antigravityAccountLabel } from '../antigravity-labels.ts';
 import { antigravityAccountId } from '../antigravity-account.ts';
 
 const ownPluginId = 'claude-profiles';
@@ -29,12 +30,11 @@ function describeWindow(window: Omit<UsageWindow, 'period'>): UsageWindow {
   return { ...window, period: null };
 }
 
-function describeAccounts(snapshot: SourceSnapshot): Snapshot {
+function describeAccounts(snapshot: SourceSnapshot, labels: Record<string, string>): Snapshot {
   return { machines: snapshot.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
     displayName: account.providerId === 'acp-grok' ? 'Grok Build'
       : antigravityAccountId(account.providerId) !== null ? 'Antigravity' : account.displayName,
-    ...(antigravityAccountId(account.providerId) !== null ? { accountLabel: account.providerId === 'acp-antigravity'
-      ? 'Default' : account.displayName.replace(/^Antigravity\s*·\s*/u, '') } : {}),
+    ...(antigravityAccountId(account.providerId) !== null ? { accountLabel: antigravityAccountLabel(antigravityAccountId(account.providerId)!, account.displayName, labels) } : {}),
     usage: account.usage?.status === 'ok' ? { ...account.usage, windows: account.usage.windows.map(describeWindow) } : account.usage,
   })) })) };
 }
@@ -73,6 +73,7 @@ function resourceLocator(account: Pick<Account, 'id'>): unknown {
 }
 
 export interface UsagePorts {
+  antigravityLabels(): Promise<Record<string, string>>;
   callRpc: BbPluginApi['sdk']['plugins']['callRpc'];
   getThread(input: { threadId: string }): Promise<{ providerId: string; environmentId: string | null }>;
   getEnvironment(input: { environmentId: string }): Promise<{ hostId: string }>;
@@ -94,7 +95,7 @@ export function createUsageReader(ports: UsagePorts) {
   async function collectOverview(refresh: boolean) {
     const inventory = await read([], null, false);
     const providerIds = [...new Set(inventory.machines.flatMap(machine => machine.providers.map(account => account.providerId)))];
-    return describeAccounts(providerIds.length ? await read(providerIds, null, refresh) : inventory);
+    return describeAccounts(providerIds.length ? await read(providerIds, null, refresh) : inventory, await ports.antigravityLabels());
   }
   function fold(snapshot: Snapshot): Snapshot {
     return { machines: snapshot.machines.map(machine => ({ ...machine, providers: foldDefaultProfile(machine.providers) })) };

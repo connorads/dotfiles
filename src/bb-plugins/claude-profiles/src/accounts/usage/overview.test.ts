@@ -10,6 +10,7 @@ const snapshot: SourceSnapshot = { machines: [{ id: 'host-one', displayName: 'La
 
 const unused = async () => { throw new Error('Unexpected port call'); };
 const ports: Omit<UsagePorts, 'callRpc'> = {
+  antigravityLabels: async () => ({}),
   getThread: unused, getEnvironment: unused, listProviders: unused, resetCredits: unused,
   claudeResets: unused, claudeAccount: unused, claudeResource: unused,
 };
@@ -18,16 +19,16 @@ type Call = Parameters<UsagePorts['callRpc']>[0];
 const answer = (respond: (input: Call) => unknown): UsagePorts['callRpc'] =>
   (async (input: Call) => input.outputSchema.parse(respond(input))) as UsagePorts['callRpc'];
 
-test('Antigravity account labels come from their provider and do not become Claude profile IDs', async () => {
+test('configured Antigravity labels override collector provider IDs without becoming Claude profiles', async () => {
   const base = snapshot.machines[0]!.providers[0]!;
   const source = { machines: [{ ...snapshot.machines[0], providers: [
-    { ...base, id: 'claude-profiles:["antigravity","host-one"]', providerId: 'acp-antigravity', displayName: 'Antigravity' },
+    { ...base, id: 'claude-profiles:["antigravity","host-one"]', providerId: 'acp-antigravity', displayName: 'acp-antigravity' },
     { ...base, id: 'claude-profiles:["antigravity","host-one","example"]', providerId: 'acp-antigravity-profile-example', displayName: 'Antigravity · Example Account' },
   ] }] };
-  const reader = createUsageReader({ ...ports, callRpc: answer(() => source) });
+  const reader = createUsageReader({ ...ports, antigravityLabels: async () => ({ default: 'first@example.com' }), callRpc: answer(() => source) });
   const accounts = (await reader.overview(false)).machines[0]!.providers;
   assert.deepEqual(accounts.map(account => [account.displayName, account.accountLabel]), [
-    ['Antigravity', 'Default'], ['Antigravity', 'Example Account'],
+    ['Antigravity', 'first@example.com'], ['Antigravity', 'Example Account'],
   ]);
 });
 

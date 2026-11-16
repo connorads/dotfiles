@@ -16,7 +16,7 @@ export function createAntigravitySource(collect: (hostId: string, accountId: str
     resources(hosts: { id: string; name: string; accounts?: { id: string; label: string }[] }[]) {
       return hosts.flatMap(host => (host.accounts ?? [{ id: 'default', label: 'Default' }]).map(account => ({
         id: JSON.stringify(account.id === 'default' ? ['antigravity', host.id] : ['antigravity', host.id, account.id]), accountKey: null,
-        providerId: antigravityProviderId(account.id), label: account.id === 'default' ? 'Antigravity' : `Antigravity · ${account.label}`,
+        providerId: antigravityProviderId(account.id), label: account.id === 'default' && account.label === 'Default' ? 'Antigravity' : `Antigravity · ${account.label}`,
         scope: { kind: 'host' as const, hostId: host.id, hostName: host.name } })));
     },
     async read(id: string, refresh: boolean): Promise<Measurement> {
