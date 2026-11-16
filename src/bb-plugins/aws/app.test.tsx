@@ -106,7 +106,7 @@ it('shows a failed sign-in request as an alert', async () => {
   act(() => { void command.run({ threadId: 't5' } as never); });
   fireEvent.click(await overlay.findByRole('option', { name: /acme-prod/ }));
   fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
-  expect((await overlay.findByRole('alert')).textContent).toContain('host unreachable');
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not start the sign-in: host unreachable');
   act(() => { void command.run({ threadId: 't5' } as never); });
 });
 
@@ -482,4 +482,61 @@ it('keeps focus on Retry when a retry after a config error fails, so Enter canno
   expect(overlay.rpcCalls.filter(c => c.method === 'setChoice')).toHaveLength(0);
   expect(h.current()).toEqual({ profile: 'acme-dev', region: null });
   act(() => { void command.run({ threadId: 't28' } as never); });
+});
+
+it('keeps the thread\'s region override when the field is cleared again before it loads', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-dev', region: 'us-east-2' } });
+  let release = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { ...h.rpc, thread: () => new Promise(resolve => { release = () => resolve(h.rpc.thread()); }) },
+  });
+  act(() => { void command.run({ threadId: 't29' } as never); });
+  await overlay.findByRole('dialog', { name: 'AWS profile' });
+  const region = overlay.getByLabelText('Region override') as HTMLInputElement;
+  fireEvent.change(region, { target: { value: 'x' } });
+  fireEvent.change(region, { target: { value: '' } });
+  await act(async () => release());
+  await overlay.findByRole('option', { name: /acme-dev/ });
+  await waitFor(() => expect(region.value).toBe('us-east-2'));
+  fireEvent.keyDown(overlay.getByLabelText('Filter profiles'), { key: 'Enter' });
+  await waitFor(() => expect(overlay.rpcCalls.filter(c => c.method === 'setChoice').at(-1)?.input)
+    .toEqual({ threadId: 't29', choice: { profile: 'acme-dev', region: 'us-east-2' } }));
+});
+
+it('scrolls the sign-in box and a failed refresh into view, as a short window can hide them', async () => {
+  const h = handlers();
+  let fail = false;
+  const scrolled: string[] = [];
+  // jsdom has no layout, so record which elements ask to scroll.
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+  Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.className); };
+  try {
+    const overlay = renderSlot(app.appOverlays[0]!, {}, {
+      rpc: { ...h.rpc, state: () => { if (fail) throw new Error('offline'); return state; } },
+    });
+    act(() => { void command.run({ threadId: 't30' } as never); });
+    fireEvent.click(await overlay.findByRole('option', { name: /acme-prod/ }));
+    const signIn = await overlay.findByRole('button', { name: 'Sign in with Granted' });
+    await waitFor(() => expect(scrolled).toContain('aws-signin'));
+    fail = true;
+    fireEvent.click(signIn);
+    expect((await overlay.findByRole('alert')).textContent).toBe('Could not refresh AWS profiles: offline');
+    await waitFor(() => expect(scrolled).toContain('aws-problem'));
+    act(() => { void command.run({ threadId: 't30' } as never); });
+  } finally {
+    if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+    else delete (Element.prototype as Partial<Element>).scrollIntoView;
+  }
+});
+
+it('says where the sign-in browser opens while it waits', async () => {
+  const h = handlers();
+  h.rpc.setChoice({ choice: { profile: 'acme-prod/ReadOnly', region: null } });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { ...h.rpc, signIn: () => new Promise(() => {}) } });
+  act(() => { void command.run({ threadId: 't31' } as never); });
+  fireEvent.click(await overlay.findByRole('button', { name: 'Sign in with Granted' }));
+  const box = (await overlay.findByRole('button', { name: 'Waiting for browser…' })).closest('.aws-signin');
+  expect(box?.textContent).toContain('Finish the sign-in in the browser on the computer running BB.');
+  act(() => { void command.run({ threadId: 't31' } as never); });
 });

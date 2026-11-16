@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type Ref } from 'react';
 import { ChipPopover } from '@bb-plugins/chip';
 import type { PluginRpcClient } from '@get-bb/plugin-sdk/app';
 import type { rpcContract, StateView, ThreadView } from './contracts.ts';
@@ -54,16 +54,20 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   const follow = useRef(false);
   /** Where the pointer last was. A list that scrolls under a still pointer sends mouse events too; only a real move hovers. */
   const pointer = useRef<string | null>(null);
-  /** Set once the person edits the region, so a load that lands later cannot overwrite what they typed. */
+  /** Set while the region differs from the thread's, so a load that lands later cannot overwrite what they typed. */
   const regionEdited = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const refreshErrorRef = useRef<HTMLDivElement>(null);
+  const signInRef = useRef<HTMLParagraphElement>(null);
   const rows = useMemo(() => state ? rowsFor(state, filter) : [], [state, filter]);
   const current = thread?.choice.profile ?? null;
   const reveal = (i: number) => list.current?.querySelectorAll('.aws-row')[i]?.scrollIntoView?.({ block: 'nearest' });
 
   useEffect(() => { if (!regionEdited.current) setRegion(thread?.choice.region ?? ''); }, [thread?.choice.region]);
   // The message can render below the fold of a short window, under the button that caused it.
-  useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: 'nearest' }); }, [error]);
+  useEffect(() => {
+    (errorRef.current ?? refreshErrorRef.current)?.scrollIntoView?.({ block: 'nearest' });
+  }, [error, loadError]);
   useEffect(() => { setIndex(i => Math.min(i, Math.max(rows.length - 1, 0))); }, [rows.length]);
   useEffect(() => {
     alive.current = true;
@@ -154,7 +158,13 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
   }
 
   const selected = current ? state?.profiles.find(p => p.name === current) : undefined;
+  const needsSignIn = !!selected && selected.status !== 'ok';
   const waiting = signingIn || selected?.status === 'signing-in';
+  // Picking a profile that needs a sign-in keeps the picker open; on a short window the box with the next step
+  // renders below the fold. The box grows while it waits.
+  useEffect(() => {
+    if (needsSignIn) signInRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [needsSignIn, selected?.name, waiting]);
   const listId = `${ids}-rows`;
   const regionErrorId = `${ids}-region-error`;
   // aria-disabled, not disabled: a disabled button drops focus out of the dialog.
@@ -170,7 +180,7 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
     {retrying ? 'Retrying…' : 'Retry'}
   </button>;
   // Keyed by retries, so a retry that fails again redraws the alert and is announced again.
-  const problem = (text: string) => <div className="aws-problem">
+  const problem = (text: string, ref?: Ref<HTMLDivElement>) => <div ref={ref} className="aws-problem">
     <p key={retries} className="aws-error" role="alert">{text}</p>{retryButton}
   </div>;
   return <ChipPopover aria-label="AWS profile" trigger={() => null} anchor={null} width={420} instant
@@ -197,7 +207,13 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
         }} />
       <input className="aws-input aws-region" placeholder="region (profile's)" aria-label="Region override"
         aria-invalid={regionError ? true : undefined} aria-describedby={regionError ? regionErrorId : undefined}
-        value={region} onChange={event => { regionEdited.current = true; setRegion(event.target.value); setRegionError(null); }} />
+        value={region} onChange={event => {
+          const value = event.target.value;
+          // Typing back the thread's own region, or clearing the field before it loads, is not an edit.
+          regionEdited.current = value !== (thread?.choice.region ?? '');
+          setRegion(value);
+          setRegionError(null);
+        }} />
     </div>
     {regionError && <p id={regionErrorId} className="aws-error aws-region-error" role="alert">{regionError}</p>}
     {!state ? loadError ? problem(`${retries ? 'Still could not' : 'Could not'} load AWS profiles: ${loadError}`)
@@ -226,15 +242,16 @@ export function AwsPicker({ rpc, threadId, state, thread, loadError, refresh, on
       </>}
     {/* Always present, so a screen reader hears the box appear after choosing a profile that needs a sign-in. */}
     <div role="status">
-      {selected && selected.status !== 'ok' && <p className="aws-signin">
-        {waiting ? 'Finish the sign-in in your browser.' : 'This profile needs a sign-in.'}{' '}
+      {selected && needsSignIn && <p ref={signInRef} className="aws-signin">
+        {/* Granted opens a browser on the computer running BB, which may not be the device in hand. */}
+        {waiting ? 'Finish the sign-in in the browser on the computer running BB.' : 'This profile needs a sign-in.'}{' '}
         <button type="button" aria-disabled={waiting || undefined} onMouseDown={keepFocus} onClick={() => void signIn(selected.name)}>
           {waiting ? 'Waiting for browser…' : 'Sign in with Granted'}
         </button>
       </p>}
     </div>
     {error && <p ref={errorRef} className="aws-error" role="alert">{error}</p>}
-    {state && !state.error && loadError && !error && problem(`Could not refresh AWS profiles: ${loadError}`)}
+    {state && !state.error && loadError && !error && problem(`Could not refresh AWS profiles: ${loadError}`, refreshErrorRef)}
     <footer className="aws-footer">
       <span className="aws-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>
       <span>Applies to this thread's next AWS call. Agents cannot sign in.</span>

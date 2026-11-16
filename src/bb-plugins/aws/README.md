@@ -11,7 +11,7 @@ Agents never sign in to AWS and never read `~/.aws`.
    **Off** removes AWS access for the thread.
 3. Optionally type a region. It overrides the profile's region for this thread.
 4. If a profile needs a sign-in, press **Sign in with Granted**. Granted opens
-   your browser. Agents get a 503 asking them to have you sign in.
+   a browser on the computer running BB. Agents get a 503 asking them to have you sign in.
 
 A choice applies to the thread's next AWS call. A mid-thread switch needs no restart.
 
