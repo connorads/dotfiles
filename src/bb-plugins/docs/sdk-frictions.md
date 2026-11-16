@@ -1128,6 +1128,20 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: app-bug
 - Evidence: @thread:thr_k8h8gbmkid
 
+### Plugin agent tools fail in background sub-agents after the turn ends
+
+- Found: 2026-11-14, claude-connectors, BB 0.45.0
+- Wanted: a native Claude Code background sub-agent or Workflow worker calls a plugin agent tool.
+- Gap: The host daemon routes each provider tool call through the thread's active turn.
+  A call after `turn/completed` returns `Cannot route provider tool call ... because no active turn is known`.
+  `turn/completed` also aborts calls in flight. An aborted call sends no result and no error, so the sub-agent waits without limit.
+  Native background work outlives the turn that started it.
+- Workaround: none in the plugin. Run connector work in the main agent, a foreground sub-agent, or a BB workflow worker thread.
+- Ask: answer an aborted tool call with an error. Route tool calls while the thread has live background tasks.
+- Status: open
+- Category: app-bug
+- Evidence: @thread:thr_4dmbzb5x7r; daemon bundle `turn/completed` handler calls `cancelThread`.
+
 ## Open: CLI and tooling
 
 ### Global and workspace instruction paths can load the same file twice
