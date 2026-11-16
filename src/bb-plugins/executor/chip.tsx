@@ -12,7 +12,7 @@ export function ExecutorChip({ threadId, isCompactViewport }: PluginThreadHeader
   const resolved = resolve(view, choices.get(threadId));
   const value = resolved.kind === 'connection' ? resolved.name : 'None';
   const signedOut = resolved.kind === 'connection' && resolved.status !== 'signed-in';
-  // A pick that failed after its popover closed: the chip already names the saved connection again, so say why.
+  // A pick or add that failed after its popover closed: the chip names the saved connection, so say why.
   const failed = unsaved?.threadId === threadId ? unsaved.message : null;
   const label = (resolved.kind === 'connection'
     ? `Executor: ${resolved.name}${resolved.viaDefault ? ' (default)' : ''}${statusNote(resolved)}`

@@ -86,7 +86,8 @@
   .ex-connection button, .ex-add-submit { min-height: 44px; }
 }
 
-.ex-add { display: grid; gap: 6px; margin: 4px 12px 10px; }
+/* minmax(0, 1fr): an input's intrinsic width would otherwise widen the column past the panel on touch. */
+.ex-add { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 4px 12px 10px; }
 .ex-add-row { display: flex; gap: 6px; }
 .ex-add-row .ex-input { flex: 1; min-width: 0; }
 .ex-add-error { padding: 0; }

@@ -108,7 +108,7 @@ it('settings: asks twice before removing a connection', async () => {
 });
 const two = stateOf({ connections: [connection('coding', 'Coding', { isDefault: true }), connection('ops', 'Ops', { status: 'signed-out' })] });
 
-function draftSurface(blocked?: string) {
+function draftSurface(blocked?: string, rpc: Record<string, (input: unknown) => unknown> = {}) {
   const action = app.composerCustomizations.find(c => c.id === 'connection')?.actions?.[0];
   const overlay = app.appOverlays[0];
   if (!action || !overlay) throw new Error('Missing Executor composer surfaces.');
@@ -119,7 +119,7 @@ function draftSurface(blocked?: string) {
     <Action />
   </form><Overlay /></> }, {}, {
     composer: { scope: { kind: 'new-thread', projectId: 'project-test' }, text: 'Synthetic prompt', submittingBlockedReason: blocked },
-    rpc: { state: () => two },
+    rpc: { state: () => two, ...rpc },
   });
 }
 
@@ -816,4 +816,97 @@ it('popover: a failed save falls back to the last connection saved, not the defa
   act(() => toggle('t-fallback', 'keyboard'));
   fireEvent.keyDown(await overlay.findByRole('dialog'), { key: '1' });
   expect(await chip.findByRole('button', { name: /^Executor is off for this thread\. Could not switch to Coding\./ })).toBeTruthy();
+});
+
+/** Opens the add form in an open popover, types a URL and submits it. */
+async function submitAdd(surface: ReturnType<typeof renderSlot>, name = '') {
+  fireEvent.keyDown(await surface.findByRole('dialog'), { key: 'a' });
+  fireEvent.change(await surface.findByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_3' } });
+  if (name) fireEvent.change(surface.getByRole('textbox', { name: 'Connection name' }), { target: { value: name } });
+  fireEvent.submit(surface.getByRole('form', { name: 'Add connection' }));
+  await surface.findByRole('button', { name: 'Adding…' });
+}
+
+it('popover: an add that ends after the dialog closed natively switches nothing, so a later pick stands', async () => {
+  let finish: (result: { ok: true; id: string }) => void = () => {};
+  let choice: unknown = { kind: 'default' };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      state: () => two, threadChoice: () => choice, signIn: () => null,
+      setThreadChoice: (input: unknown) => { choice = (input as { choice: unknown }).choice; return null; },
+      add: () => new Promise(resolve => { finish = resolve; }),
+    },
+  });
+  act(() => toggle('t-add-native', 'keyboard'));
+  await overlay.findByRole('button', { name: /Add connection/ });
+  await submitAdd(overlay);
+  // Chromium closes a modal dialog on a repeated Escape even when its cancel event is prevented.
+  const dialog = overlay.getByRole('dialog');
+  act(() => { dialog.removeAttribute('open'); fireEvent(dialog, new Event('close')); });
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+  act(() => toggle('t-add-native', 'keyboard'));
+  await overlay.findByRole('button', { name: /Off/ });
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: '1' });
+  await waitFor(() => expect(choice).toEqual({ kind: 'connection', id: 'coding' }));
+  await act(async () => finish({ ok: true, id: 'connection-3' }));
+  expect(choice).toEqual({ kind: 'connection', id: 'coding' });
+  expect(overlay.rpcCalls.filter(c => c.method === 'setThreadChoice')).toHaveLength(1);
+  expect(overlay.rpcCalls.some(c => c.method === 'signIn')).toBe(false);
+});
+
+it('popover: an add that fails after the popover closed marks the chip and explains on reopen', async () => {
+  let fail: (cause: Error) => void = () => {};
+  const handlers = { state: () => two, threadChoice: () => ({ kind: 'default' }), add: () => new Promise((_, reject) => { fail = reject; }) };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-add-gone', isCompactViewport: false } as never, { rpc: handlers });
+  await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  act(() => toggle('t-add-gone', 'keyboard'));
+  await overlay.findByRole('button', { name: /Add connection/ });
+  await submitAdd(overlay, 'Atlas');
+  act(() => close());
+  await act(async () => fail(new Error('Executor is not reachable.')));
+  expect(await chip.findByRole('button', { name: 'Executor: Coding (default). Could not add Atlas. Executor is not reachable.' })).toBeTruthy();
+  act(() => toggle('t-add-gone', 'keyboard'));
+  expect((await overlay.findByRole('alert')).textContent).toBe('Could not add Atlas. Executor is not reachable.');
+});
+
+it('popover: while an add runs, an enabled Close leaves, and the add then switches nothing', async () => {
+  let finish: (result: { ok: true; id: string }) => void = () => {};
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }), setThreadChoice: () => null, signIn: () => null, add: () => new Promise(resolve => { finish = resolve; }) },
+  });
+  act(() => toggle('t-add-close', 'pointer'));
+  await overlay.findByRole('button', { name: /Add connection/ });
+  await submitAdd(overlay);
+  const closeButton = overlay.getByRole('button', { name: 'Close' });
+  expect(closeButton.getAttribute('aria-disabled')).toBeNull();
+  fireEvent.click(closeButton);
+  await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+  await act(async () => finish({ ok: true, id: 'connection-3' }));
+  expect(overlay.rpcCalls.some(c => c.method === 'setThreadChoice' || c.method === 'signIn')).toBe(false);
+});
+
+it('draft: an add that ends after its popover closed keeps the pick made since; a failure shows beside the chip', async () => {
+  let finish: (result: { ok: true; id: string }) => void = () => {};
+  let fail: (cause: Error) => void = () => {};
+  let adds = 0;
+  const slot = draftSurface(undefined, {
+    signIn: () => null,
+    add: () => new Promise((resolve, reject) => { if (++adds === 1) finish = resolve; else fail = reject; }),
+  });
+  const chip = await slot.findByRole('button', { name: 'Executor: Coding (default)' });
+  fireEvent.click(chip);
+  await submitAdd(slot);
+  fireEvent.click(slot.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
+  fireEvent.click(chip);
+  fireEvent.click(await slot.findByRole('button', { name: /Off.*no Executor tools/ }));
+  await slot.findByRole('button', { name: 'Executor is off for this new thread' });
+  await act(async () => finish({ ok: true, id: 'connection-3' }));
+  expect(slot.getByRole('button', { name: 'Executor is off for this new thread' })).toBeTruthy();
+  fireEvent.click(slot.getByRole('button', { name: 'Executor is off for this new thread' }));
+  await submitAdd(slot, 'Atlas');
+  fireEvent.click(slot.getByRole('button', { name: 'Close' }));
+  await act(async () => fail(new Error('Executor is not reachable.')));
+  expect((await slot.findByRole('alert')).textContent).toBe('Could not add Atlas. Executor is not reachable.');
 });

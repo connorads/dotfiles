@@ -7,7 +7,7 @@ import { draftChoice, message, resetDraft, resolve, statusNote, toggle, useExecu
  * then submit through the SDK so dispatch receives the choice atomically. */
 export function DraftConnection() {
   const composer = useComposer();
-  const { view, draft, open } = useExecutor();
+  const { view, draft, open, unsaved } = useExecutor();
   const marker = useRef<HTMLSpanElement>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -40,6 +40,8 @@ export function DraftConnection() {
       unsubscribe(); resetDraft();
     };
   }, [composer]);
+  // An add that failed after the draft's popover closed; the popover says it itself while open.
+  const lost = unsaved?.threadId === null && open?.threadId !== null ? unsaved.message : null;
   const resolved = resolve(view, draft);
   const signedOut = resolved.kind === 'connection' && resolved.status !== 'signed-in';
   const value = resolved.kind === 'connection' ? resolved.name : resolved.kind === 'off' ? 'Off' : 'None';
@@ -51,6 +53,6 @@ export function DraftConnection() {
       icon={<Icon name="Plug02" />}>
       <ChipValue className={resolved.kind === 'off' ? 'ex-chip-off' : undefined}>{value}</ChipValue>
     </Chip>
-    {error && <span className="ex-draft-error" role="alert">{error}</span>}
+    {(error ?? lost) && <span className="ex-draft-error" role="alert">{error ?? lost}</span>}
   </span>;
 }

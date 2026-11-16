@@ -3,7 +3,7 @@ import { ChipPopover } from '@bb-plugins/chip';
 import { AddForm, looksLikeMcpUrl } from './add-form.tsx';
 import type { ConnectionView, StateView } from './contracts.ts';
 import { SignInPanel } from './sign-in.tsx';
-import { choose, dismissUnsaved, message, refresh, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
+import { choose, dismissUnsaved, message, refresh, reportUnsaved, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
 
 type Row = { id: string; keycap: string; choice: Choice; label: ReactNode; aside?: ReactNode; connection?: ConnectionView };
 
@@ -98,6 +98,14 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
     focused.current = true;
     focusRow(current);
   }, [view, current, focusRow]);
+  // Chromium closes a modal dialog itself on a repeated Escape, even when its cancel is prevented, as during an add.
+  // Close the popover with it, so the store does not hold a closed dialog open. A removed dialog's late close is not one.
+  useEffect(() => {
+    const node = dialog.current;
+    const closed = () => { if (node?.isConnected) onClose(); };
+    node?.addEventListener('close', closed);
+    return () => node?.removeEventListener('close', closed);
+  }, [onClose]);
   // A control that unmounts while focused, such as the add form after a submit, leaves focus on the page body,
   // where the popover's keys do not reach. Put it back on a row.
   useEffect(() => {
@@ -155,8 +163,8 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
 
   return <ChipPopover ref={dialog} aria-label="Executor connection" trigger={visibleChip} anchor={anchor} width={360}
     instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste}
-    // While the add runs, neither Escape nor a click outside closes the popover: the add cannot be cancelled,
-    // its outcome shows in the form, and the switch that follows it must not land on a pick made after a reopen.
+    // While the add runs, neither Escape nor a click outside closes the popover, so a stray press keeps the add's
+    // outcome in view. The form's Close leaves on purpose; an add that ends after the popover closed switches nothing.
     onClose={pending === 'add' ? () => {} : onClose}
     // Escape leaves the add form first; with no connections the form is the whole popover.
     onEscape={pending === 'add' ? () => {} : adding !== null && hasRows ? () => setAdding(null) : undefined}>
@@ -194,7 +202,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
     {addedName && pending && !rows.some(row => row.id === pending) &&
       <p className="ex-empty" role="status">Switching to {addedName} and starting its sign-in…</p>}
     {view && showAdd && <AddForm key={adding ?? ''} initialUrl={adding ?? ''} count={view.connections.length}
-      onBusy={next => setPending(next ? 'add' : null)} onAdded={added} />}
+      onBusy={next => setPending(next ? 'add' : null)} onAdded={added} onClose={onClose} onLost={text => reportUnsaved(threadId, text)} />}
     {signIns.map(signIn => <SignInPanel key={signIn.id} signIn={signIn}
       name={view?.connections.find(c => c.id === signIn.id)?.name ?? signIn.id} />)}
     {Object.entries(view?.errors ?? {}).map(([id, text]) => <p key={id} className="ex-error" role="alert">

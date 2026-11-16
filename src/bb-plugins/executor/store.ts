@@ -10,8 +10,11 @@ export type Anchor = { top: number; right: number; bottom: number; left: number 
 /** instant: opened by keyboard, so it appears without an entrance. */
 export type Open = { threadId: string | null; anchor: Anchor; instant: boolean } | null;
 
-/** A thread whose last pick failed after its popover may have closed; cleared when that thread's popover closes or the thread is picked again. */
-export type Unsaved = { threadId: string; message: string } | null;
+/**
+ * A failed pick or add that may have outlived its popover, for a thread or, with a null threadId, the draft.
+ * Cleared when that popover closes or the thread is picked again.
+ */
+export type Unsaved = { threadId: string | null; message: string } | null;
 /**
  * loadError: why the last state read failed; shown only while there is no view to keep.
  * saves: the pick whose save is in flight per thread, so a popover reopened mid-save waits for it too.
@@ -101,6 +104,9 @@ export async function choose(threadId: string | null, choice: Choice) {
     }
   }
 }
+
+/** An add that failed after its popover closed: the chip and the next popover say why. */
+export function reportUnsaved(threadId: string | null, text: string) { set({ unsaved: { threadId, message: text } }); }
 
 /** The popover shows a thread's failed pick itself while it is open. */
 export function dismissUnsaved(threadId: string) {
