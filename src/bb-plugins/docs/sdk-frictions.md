@@ -718,6 +718,24 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: @thread:thr_zqaqu3f5qy, @thread:thr_mwk4t6gthq, commits `d140e19a`, `b925430c`
 
+### Usage collector blocks on stale sources
+
+- Found: 2026-11-16, agent-usage, claude-profiles, SDK 0.6.132 (BB 0.49.0)
+- Wanted: Agent Usage opens on the last readings and refreshes them in the background.
+- Gap: `bb--provider-usage` `getUsage` awaits a fresh `provider-usage.v1.getResource`
+  for every resource older than `maxAgeMs`, three at a time. A cold read measured
+  8.75-16s; one Antigravity resource alone takes about 3.6s. No input returns cached
+  readings and revalidates them afterwards.
+- Workaround: the plugin saves each inspection in plugin storage and serves it through
+  `usage.saved` while collection runs:
+  [server.ts](../claude-profiles/src/accounts/usage/server.ts),
+  [overlay.tsx](../claude-profiles/ui/usage/overlay.tsx).
+- Ask: a `getUsage` option that returns the cached snapshot at once and refreshes stale
+  resources in the background, with a realtime event when they land.
+- Status: open
+- Category: sdk-gap
+- Evidence: @thread:thr_qmg7zm7ek5, commit `1b036675`
+
 ### Thread-to-process mapping
 
 - Found: 2026-10-11, machine-health, SDK 0.6.15 (rechecked 0.6.37)
