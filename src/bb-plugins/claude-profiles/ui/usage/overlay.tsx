@@ -27,12 +27,18 @@ function Meter({ window, view, stale = false }: { window: UsageWindow; view: Win
   </span>;
 }
 
-function WindowRow({ window, now, reading }: { window: UsageWindow; now: Date; reading: ReadingState }) {
+function WindowRow({ window, now, reading, antigravity = false }: { window: UsageWindow; now: Date; reading: ReadingState; antigravity?: boolean }) {
   const view = viewWindow(window, now, reading);
   const expected = view.pace.kind === 'paced' || view.pace.kind === 'early' ? ` Even pace would be ${percent(view.pace.expectedPercent)}.` : '';
   const description = view.pace.kind === 'elapsed' ? view.status : `${percent(window.usedPercent)} used. ${view.status}`;
+  const split = antigravity ? window.label.lastIndexOf(' · ') : -1;
+  const group = split < 0 ? window.label : window.label.slice(0, split);
+  const shortGroup = group === 'Gemini Models' ? 'Gemini' : group === 'Claude and GPT models' ? 'Claude / GPT'
+    : group === 'Gemini 4 Argon' ? 'Argon' : group;
   return <div className="au-row" role="row" aria-label={`${window.label}: ${description}.${expected}`}>
-    <span className="au-row-label" role="rowheader">{window.label}</span>
+    <span className="au-row-label" role="rowheader" data-stacked={split >= 0 || undefined} title={window.label}>
+      {split >= 0 ? <><span>{shortGroup}</span><small>{window.label.slice(split + 3)}</small></> : window.label}
+    </span>
     <span className="au-row-meter" role="cell"><Meter window={window} view={view} stale={reading === 'stale'} /></span>
     <span className="au-row-value" role="cell" data-tone={view.tone}>{view.pace.kind === 'elapsed' ? '–' : <RollingValue value={percent(window.usedPercent)} />}</span>
     {/* The bar's fill, colour and pace marker show the pace, so the row ends in one phrase the bar cannot show. */}
@@ -80,7 +86,8 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
         }}>{go ? 'Connect Go' : 'Sign in again'}</button>}
     </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
-        {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading} />)}
+        {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading}
+          antigravity={account.providerId === 'acp-antigravity'} />)}
       </div>}
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
@@ -198,6 +205,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, ho
   return <section className="au-provider" aria-label={first.displayName}>
     <h3 className="au-provider-heading">
       <>{first.providerId === 'acp-grok' ? <BrandIcon brand="grok" />
+        : first.providerId === 'acp-antigravity' ? <BrandIcon brand="antigravity" />
         : <ProviderIcon providerKind="agent" provider={{ ...first, id: first.providerId }} fallback="Bot" className="size-4" />}</>
       {first.displayName}
     </h3>

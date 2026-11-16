@@ -29,6 +29,7 @@ test('Antigravity inspection preserves group labels and explicit quota periods',
     ] },
   }) });
   const result = await reader.inspection(false);
+  assert.equal(result.snapshot.machines[0]?.providers[0]?.displayName, 'Antigravity');
   assert.partialDeepStrictEqual(result.snapshot.machines[0]?.providers[0]?.usage,
     { windows: [{ label: 'Example group · Session', period: 'five-hour', usedPercent: 25 }] });
 });

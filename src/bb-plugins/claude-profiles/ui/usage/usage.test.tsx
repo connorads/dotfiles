@@ -88,6 +88,23 @@ test('overlay groups accounts by provider, explains pace and keeps figures when 
   expect(requests).toEqual([{ refresh: false }, { refresh: true }]);
 });
 
+test('Antigravity labels separate model groups from periods and use the brand mark', async () => {
+  const app = await load();
+  const provider = { ...account('Antigravity', 'Antigravity', []), providerId: 'acp-antigravity',
+    usage: { status: 'ok' as const, accountEmail: null, planLabel: null, windows: [
+      { label: 'Gemini Models · Weekly', period: 'week' as const, usedPercent: 0, resetsAt: hoursFromNow(100), cost: null },
+      { label: 'Claude and GPT models · 5-hour', period: 'five-hour' as const, usedPercent: 0, resetsAt: hoursFromNow(4), cost: null },
+      { label: 'Gemini 4 Argon · Weekly', period: 'week' as const, usedPercent: 0, resetsAt: hoursFromNow(100), cost: null },
+    ] } };
+  const value: Snapshot = { machines: [{ ...snapshot.machines[0]!, providers: [provider] }] };
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect(value) } });
+  act(() => openUsage());
+  await slot.findByRole('dialog', { name: 'Agent usage' });
+  expect(slot.getAllByRole('rowheader').map(element => element.textContent)).toEqual(['GeminiWeekly', 'Claude / GPT5-hour', 'ArgonWeekly']);
+  const heading = slot.getByRole('heading', { name: 'Antigravity' });
+  expect(heading.querySelector('svg')?.getAttribute('viewBox')).toBe('12 16 88 82');
+});
+
 test('a window whose reset has passed shows no stale percentage', async () => {
   const app = await load();
   const stale: Snapshot = { machines: [{ ...snapshot.machines[0]!, providers: [account('Codex', 'Personal',

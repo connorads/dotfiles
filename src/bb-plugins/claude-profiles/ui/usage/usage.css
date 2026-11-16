@@ -72,6 +72,9 @@
 .au-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 4px; min-height: 18px; font-size: var(--text-xs, 12px); line-height: 1.5; }
 .au-row > span { min-width: 0; }
 .au-row-label { color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.au-row-label[data-stacked] { display: flex; flex-direction: column; white-space: normal; overflow: visible; line-height: 1.35; }
+.au-row-label[data-stacked] > span { color: var(--foreground); }
+.au-row-label[data-stacked] > small { font-size: 11px; color: var(--au-subtle); }
 .au-row-value { text-align: right; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .au-row-detail { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--au-subtle); font-variant-numeric: tabular-nums; }
 .au-row [data-tone="warning"] { color: var(--warning-text, var(--warning)); }
