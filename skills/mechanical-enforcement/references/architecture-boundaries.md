@@ -66,6 +66,20 @@ fixture violations, barrel launder and dynamic import among them. ts-morph bundl
 TypeScript (6.0.2 at 28.0.0), so the test resolves modules under a different compiler than the
 build, which is also why it survives the cliff below.
 
+**Oxcruise can enforce TS 7 boundaries that include type-only paths.**
+On a fixture with TypeScript 7.0.2, Oxcruise 0.3.0 resolved tsconfig aliases
+and reported direct and barrel-mediated violations. A direct rule accepts
+`to.typeOnly`. A rule with `to.reachable` follows type-only paths and rejects
+that filter. Use the ts-morph test for runtime-only reachability.
+
+Run `pnpm exec oxcruise src -f json` against the intended source tree. Keep
+`unresolved-dependencies` at error. Assert that the graph contains the
+expected source and destination modules. A missing entry glob exited 0
+with an empty graph, and a misspelt rule source glob exited 0 with a
+populated graph. Seed a forbidden import through a barrel and check that
+the intended rule fails. Remove the import and verify a clean run.
+[Oxcruise rule and output documentation](https://github.com/greeeg/oxcruise).
+
 **dependency-cruiser is the richer engine, and it stops at TypeScript 6.** 18.2.0 declares
 `typescript >=2.0.0 <7.0.0`, and that is a removed-API problem rather than a version-range
 oversight, so no range bump fixes it. Under TS 7 every `.ts` extension is disabled and a
