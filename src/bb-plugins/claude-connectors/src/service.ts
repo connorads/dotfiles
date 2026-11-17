@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ARTIFACT_CONNECTOR, type Artifacts } from './artifacts.ts';
 import { ConnectorSession, HttpError, listConnectors, type Connector, type FetchLike, type Tool } from './mcp.ts';
-import { accessFor, type Access, type Overrides } from './policy.ts';
+import { decide, refusal, type Access, type Overrides } from './policy.ts';
 import { CONNECTOR_SCOPE, keychainService, needsRefresh, parseToken, type Token } from './token.ts';
 
 export type Run = (file: string, args: string[], options: { env?: NodeJS.ProcessEnv; timeoutMs: number }) => Promise<string>;
@@ -144,7 +144,7 @@ export class ConnectorService {
       name: t.name,
       description: (t.description ?? '').slice(0, 300),
       readOnly: t.annotations?.readOnlyHint === true,
-      access: accessFor(connector.name, t, overrides, readOnly),
+      access: decide(connector.name, t, overrides, readOnly).access,
       ...(withSchema && t.inputSchema ? { inputSchema: t.inputSchema } : {}),
     }));
   }
@@ -154,10 +154,8 @@ export class ConnectorService {
     const connector = await this.connector(profile, connectorName, signal);
     const tool = (await this.tools(profile, connector, signal)).find(t => t.name === toolName);
     if (!tool) throw new UserFacingError(`${connector.name} has no tool "${toolName}". Call claude_connectors_list with this connector to see its tools.`);
-    if (readOnly && accessFor(connector.name, tool, overrides, false) === 'allow')
-      throw new UserFacingError(`${connector.name}/${toolName} can write. This thread has read-only access from the thread that started it, so that thread must make the call.`);
-    if (accessFor(connector.name, tool, overrides, readOnly) !== 'allow')
-      throw new UserFacingError(`${connector.name}/${toolName} is turned off in Claude Connectors. Ask the person to allow it: bb claude-connectors allow "${connector.name}" ${toolName}`);
+    const decision = decide(connector.name, tool, overrides, readOnly);
+    if (decision.access === 'off') throw new UserFacingError(refusal(connector.name, toolName, decision.reason));
     if (connector.id === ARTIFACT_CONNECTOR.id && this.deps.artifacts)
       return this.deps.artifacts.call({ profile, tool: toolName, args, signal });
     return this.#authed(profile, () => this.#session(profile, connector).callTool(toolName, args, signal));

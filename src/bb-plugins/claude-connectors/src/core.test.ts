@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inScope, ownerOf, resolveChoice } from './choice.ts';
 import { parseRpcBody } from './mcp.ts';
-import { accessFor } from './policy.ts';
+import { decide } from './policy.ts';
 import { ConnectorService, UserFacingError, type Run } from './service.ts';
 import { keychainService, parseToken } from './token.ts';
 
@@ -45,12 +45,31 @@ test('the owner is the parent, else the origin of a BB workflow run', () => {
 test('read-only tools are allowed and writes stay off until allowed', () => {
   const read = { name: 'read_channel', annotations: { readOnlyHint: true } };
   const write = { name: 'send_message' };
-  assert.equal(accessFor('Slack', read, {}, false), 'allow');
-  assert.equal(accessFor('Slack', write, {}, false), 'off');
-  assert.equal(accessFor('Slack', write, { 'slack/send_message': 'allow' }, false), 'allow');
-  assert.equal(accessFor('Slack', read, { 'slack/read_channel': 'off' }, false), 'off');
-  assert.equal(accessFor('Slack', write, { 'slack/send_message': 'allow' }, true), 'off');
-  assert.equal(accessFor('Slack', read, {}, true), 'allow');
+  assert.deepEqual(decide('Slack', read, {}, false), { access: 'allow' });
+  assert.deepEqual(decide('Slack', write, {}, false), { access: 'off', reason: 'policy' });
+  assert.deepEqual(decide('Slack', write, { 'slack/send_message': 'allow' }, false), { access: 'allow' });
+  assert.deepEqual(decide('Slack', read, { 'slack/read_channel': 'off' }, false), { access: 'off', reason: 'policy' });
+  assert.deepEqual(decide('Slack', write, { 'slack/send_message': 'allow' }, true), { access: 'off', reason: 'read-only-thread' });
+  assert.deepEqual(decide('Slack', read, {}, true), { access: 'allow' });
+});
+
+test('a call goes through exactly when the tool list shows it allowed', async () => {
+  const tools = [{ name: 'read_channel', annotations: { readOnlyHint: true } }, { name: 'send_message' }];
+  const { service, calls } = harness([item(9_000_000)], { 'tools/list': { tools }, 'tools/call': { content: [] } });
+  const connector = await service.connector('work', 'Slack');
+  for (const readOnly of [false, true])
+    for (const tool of tools)
+      for (const override of [undefined, 'allow', 'off'] as const) {
+        const overrides = override ? { [`slack/${tool.name}`]: override } : {};
+        const shown = (await service.toolViews({ profile: 'work', connector, overrides, readOnly, withSchema: false }))
+          .find(v => v.name === tool.name)!.access;
+        const before = calls.length;
+        const reached = await service.call({ profile: 'work', connector: 'Slack', tool: tool.name, args: {}, overrides, readOnly })
+          .then(() => true, (e: unknown) => { assert.ok(e instanceof UserFacingError); return false; });
+        const label = `${tool.name} readOnly=${readOnly} override=${override}`;
+        assert.equal(reached, shown === 'allow', label);
+        assert.equal(calls.slice(before).includes('fetch /v1/mcp/srv_1 tools/call'), reached, label);
+      }
 });
 
 test('the Keychain service matches Claude Code for a profile directory', () => {
