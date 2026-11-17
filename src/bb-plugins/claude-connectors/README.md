@@ -64,6 +64,15 @@ or built-in Workflow worker shares its parent's thread, so its calls fail once t
 turn ends. The agent instruction says to call connectors in the turn, or to use a BB
 workflow. See [SDK frictions](../docs/sdk-frictions.md).
 
+Unit tests cannot reach the worker wiring: owner lookup, the inherited profile and
+turn routing. After changing it, run the live check from a thread that has a profile
+picked. It starts a one-worker BB workflow that calls one read-only tool, and it exits
+non-zero unless the worker sees the tool allowed and the call succeeds:
+
+```bash
+pnpm selftest Slack slack_search_emojis '{"query":"tada"}'
+```
+
 ## Claude Code artefacts
 
 The `Claude Code Artifacts` connector exposes the available native artefact tools

@@ -19,6 +19,7 @@
   "scripts": {
     "test": "node --experimental-strip-types --test 'src/*.test.ts'",
     "typecheck": "tsc --noEmit",
+    "selftest": "node --experimental-strip-types selftest.ts",
     "build": "bb plugin build",
     "dev": "bb plugin dev"
   },
