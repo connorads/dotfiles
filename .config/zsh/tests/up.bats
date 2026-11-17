@@ -78,6 +78,17 @@ EOF
   : >"$TEST_HOME/.config/mise/mise.lock" # committed lock exists, empty
   : >"$TEST_HOME/.config/nix/flake.lock" # committed lock exists, empty
 
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+echo "df $*" >>"$TEST_LOG"
+[ -n "${DF_FAIL:-}" ] && exit 1
+[ -n "${DF_FAIL_AFTER_CASK:-}" ] && [ -f "$HOME/first-done" ] && exit 1
+available=${UP_TEST_SPACE:-20971520}
+[ -f "$HOME/space-low" ] && available=1048576
+printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+printf '/dev/test 40000000 1000000 %s 10%% /\n' "$available"
+EOF
+
   write_stub scutil <<'EOF'
 #!/usr/bin/env bash
 echo "${UP_TEST_HOST:-Connors-Mac-mini}"
@@ -152,6 +163,9 @@ if [ "$cmd" = "brew" ] && [ "\${1:-}" = "upgrade" ] && [ -n "\${BREW_PARTIAL:-}"
   exit 1
 fi
 [ "$cmd" = "brew" ] && [ -n "\${BREW_FAIL:-}" ] && exit 1
+if [ "$cmd" = "brew" ] && [ "\${1:-}" = "outdated" ]; then
+  echo '{"formulae":[{"name":"example-tool"}],"casks":[]}'
+fi
 [ "$cmd" = "tmux-upstream" ] && [ -n "\${TMUX_UPSTREAM_FAIL:-}" ] && exit 1
 exit 0
 EOF
@@ -258,7 +272,7 @@ EOF
 
 @test "up cleanup summary separates policy from successful phase outcomes" {
   local cmd
-  for cmd in nix-store nix-collect-garbage launchctl systemctl du df; do
+  for cmd in nix-store nix-collect-garbage launchctl systemctl du; do
     write_stub "$cmd" <<'EOF'
 #!/usr/bin/env bash
 echo "${0##*/} $*" >>"$TEST_LOG"
@@ -272,7 +286,7 @@ EOF
   [[ "$output" == *"Homebrew declared packages: rebuild completed; policy uninstalls undeclared packages; their app data stays on disk"* ]] || false
   [[ "$output" == *"mise: unused versions and caches are not explicitly pruned by up"* ]] || false
   [[ "$output" != *"APT autoremove:"* ]] || false
-  ! grep -E 'brew cleanup|mise (prune|cache)|nix-store|nix-collect-garbage|launchctl|systemctl|^du |^df ' "$TEST_LOG"
+  ! grep -E 'brew cleanup|mise (prune|cache)|nix-store|nix-collect-garbage|launchctl|systemctl|^du ' "$TEST_LOG"
 }
 
 @test "up frozen cleanup summary retains rebuild policy" {
@@ -371,7 +385,7 @@ EOF
   grep -qF "dotfiles commit -m chore(mise): update tool lock -- $TEST_HOME/.config/mise/mise.lock" "$TEST_LOG"
   grep -qF "dotfiles commit -m chore(nix): update flake lock -- $TEST_HOME/.config/nix/flake.lock" "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
-  grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
+  grep -qF 'brew upgrade --formula --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'claude-telegram-clear-patch --reapply' "$TEST_LOG"
   [[ "$output" == *"=> UPDATE COMPLETE (update)"* ]]
@@ -392,6 +406,7 @@ EOF
 #!/usr/bin/env bash
 echo "brew $*" >>"$TEST_LOG"
 command -v gh >>"$TEST_LOG"
+[ "$1" = outdated ] && echo '{"formulae":[],"casks":[]}'
 exit 0
 EOF
 
@@ -412,6 +427,7 @@ EOF
   write_stub brew <<'EOF'
 #!/usr/bin/env bash
 echo "brew-token=${HOMEBREW_GITHUB_API_TOKEN-unset}" >>"$TEST_LOG"
+[ "$1" = outdated ] && echo '{"formulae":[],"casks":[]}'
 exit 0
 EOF
 }
@@ -531,7 +547,7 @@ EOF
   # the flake half still runs independently of the mise no-op
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
-  grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
+  grep -qF 'brew upgrade --formula --no-ask' "$TEST_LOG"
 }
 
 @test "up does not install or commit the lock when resolution failed" {
@@ -616,7 +632,7 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"brew"*"1 no longer outdated; remaining after upgrade: formula/podman"* ]] || false
   [[ "$output" == *"Not attempted"*"flake update"*"blocked by brew"* ]] || false
-  [[ "$output" == *'PATH="$HOME/.local/bin:$PATH" brew update && PATH="$HOME/.local/bin:$PATH" brew upgrade --no-ask'*"rerun up"* ]] || false
+  [[ "$output" == *"rerun up"* ]] || false
 }
 
 @test "up diagnoses an inactive mise gh shim from the captured Homebrew failure" {
@@ -663,7 +679,7 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"disk space exhausted"*"recent output:"* ]] || false
   [[ "$output" == *"Failed"*"1 no longer outdated; remaining after upgrade: formula/podman; disk space exhausted"* ]] || false
-  [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"*"rerun up"* ]] || false
+  [[ "$output" == *"Next"*"Free disk space before retrying"*"rerun up"* ]] || false
   [[ "$output" == *"doctor context"*"Failed"*"disk space exhausted"* ]] || false
   [[ "$output" == *"full log:"* ]] || false
   ! grep -qF 'nfu' "$TEST_LOG"
@@ -672,7 +688,7 @@ EOF
   run_zsh_function "$UP" --no-audit --verbose
   [ "$status" -ne 0 ]
   [[ "$output" == *"Failed"*"0 no longer outdated; remaining after upgrade: formula/podman; disk space exhausted"* ]] || false
-  [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"* ]] || false
+  [[ "$output" == *"Next"*"Free disk space before retrying"*"rerun up"* ]] || false
 }
 
 @test "up does not diagnose disk exhaustion from an earlier successful phase" {
@@ -912,7 +928,7 @@ EOF
   [[ "$output" == *"2 no longer outdated; none remaining after upgrade"* ]]
 }
 
-@test "up snapshot errors do not fail an upgrade or invent progress" {
+@test "up snapshot errors stop upgrades without inventing progress" {
   write_stub brew <<'EOF'
 #!/usr/bin/env bash
 echo "brew $*" >>"$TEST_LOG"
@@ -924,12 +940,13 @@ fi
 exit 0
 EOF
   run_zsh_function "$UP" --no-audit
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" == *"counts unavailable"* ]]
   grep -qF 'snapshot unavailable' "$XDG_CACHE_HOME"/up/*.log
+  ! grep -q '^brew upgrade' "$TEST_LOG"
   : >"$TEST_HOME/.config/nix/flake.lock"
   SNAPSHOT_EXIT=1 run_zsh_function "$UP" --no-audit
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" == *"counts unavailable"* ]]
 }
 
@@ -1211,4 +1228,114 @@ EOF2
   [ "$status" -eq 0 ]
   [[ "$output" == *'BB patch inspection unavailable'* ]]
   [[ "$output" == *'BB after activation'*'inspect exit 2'* ]]
+}
+
+@test "up refuses low space before resolving or installing tools" {
+  UP_TEST_SPACE=1048576 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"disk reserve"* ]]
+  ! grep -qF 'mise lock --global --bump' "$TEST_LOG"
+  ! grep -qF 'mise install --locked' "$TEST_LOG"
+  ! grep -q '^brew update' "$TEST_LOG"
+}
+
+@test "up refuses an unreadable free-space measurement" {
+  DF_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  ! grep -qF 'mise install --locked' "$TEST_LOG"
+}
+
+_space_brew_fixture() {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+case "$1" in
+  outdated)
+    if [ -f "$HOME/first-done" ]; then
+      echo '{"formulae":[],"casks":[{"name":"second"}]}'
+    else
+      echo '{"formulae":[],"casks":[{"name":"first"},{"name":"second"}]}'
+    fi ;;
+  upgrade)
+    if [ "$*" = 'upgrade --cask --no-ask first' ]; then
+      touch "$HOME/first-done" "$HOME/space-low"
+      exit "${FIRST_FAIL:-0}"
+    fi ;;
+  cleanup)
+    [ -n "${CLEANUP_FAIL:-}" ] && exit 1
+    [ -n "${CLEANUP_RESTORES_SPACE:-}" ] && mv "$HOME/space-low" "$HOME/space-reclaimed"
+    exit 0 ;;
+esac
+EOF
+}
+
+@test "up reclaims completed cask downloads before starting the next cask" {
+  _space_brew_fixture
+  CLEANUP_RESTORES_SPACE=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  grep -qFx 'brew cleanup --prune=all first' "$TEST_LOG"
+  grep -qFx 'brew upgrade --cask --no-ask second' "$TEST_LOG"
+  ! grep -qFx 'brew upgrade --no-ask' "$TEST_LOG"
+}
+
+@test "up stops between casks when cleanup cannot restore the reserve" {
+  _space_brew_fixture
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'brew cleanup --prune=all first' "$TEST_LOG"
+  ! grep -qFx 'brew upgrade --cask --no-ask second' "$TEST_LOG"
+  ! grep -q '^nfu' "$TEST_LOG"
+  [[ "$output" == *"1 no longer outdated"*"disk reserve"* ]]
+}
+
+@test "up preserves failed cask downloads and stops before the next cask" {
+  _space_brew_fixture
+  FIRST_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  ! grep -q '^brew cleanup' "$TEST_LOG"
+  ! grep -qFx 'brew upgrade --cask --no-ask second' "$TEST_LOG"
+}
+
+@test "up checks space again before installing a newly resolved lock" {
+  write_stub mise <<'STUB'
+#!/usr/bin/env bash
+echo "mise $*" >>"$TEST_LOG"
+[ "$*" = 'lock --global --bump' ] && touch "$HOME/space-low"
+exit 0
+STUB
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'mise lock --global --bump' "$TEST_LOG"
+  ! grep -qFx 'mise install --locked' "$TEST_LOG"
+}
+
+@test "up checks space again before rebuilding updated Nix inputs" {
+  write_stub nfu <<'STUB'
+#!/usr/bin/env bash
+echo nfu >>"$TEST_LOG"
+touch "$HOME/space-low"
+echo updated >>"$HOME/.config/nix/flake.lock"
+STUB
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx nfu "$TEST_LOG"
+  ! grep -qFx drs "$TEST_LOG"
+  ! grep -qF 'dotfiles commit -m chore(nix)' "$TEST_LOG"
+}
+
+@test "up stops without cleanup when disk measurement fails after a cask" {
+  _space_brew_fixture
+  DF_FAIL_AFTER_CASK=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  ! grep -q '^brew cleanup' "$TEST_LOG"
+  ! grep -qFx 'brew upgrade --cask --no-ask second' "$TEST_LOG"
+  [[ "$output" == *"disk measurement unavailable"* ]]
+}
+
+@test "up stops before another cask when native cleanup fails" {
+  _space_brew_fixture
+  CLEANUP_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'brew cleanup --prune=all first' "$TEST_LOG"
+  ! grep -qFx 'brew upgrade --cask --no-ask second' "$TEST_LOG"
 }

@@ -61,6 +61,20 @@ Activation remains explicit. Follow [BB deployments](../../docs/remote-access.md
 
 **How `up` works**: its mise commands run from home without changing the caller's directory. By default it requires clean `mise.lock` and `flake.lock` files and checks mise's strict reader with `mise lock --global --dry-run --json` before mutation. The mise phase runs `mise lock --global --bump`, then `mise install --locked`, then repeats the readability check before pathspec-committing the lock. Resolution covers the configured platforms, stays within ranges and preserves the lock format. A failed resolution, installation or validation leaves any partial lock dirty and uncommitted for inspection. Satisfied Python tools keep their environments; old tool versions are not scheduled for pruning. Brew/apt and `nfu` then run; `flake.lock` is committed only when both its update and every applicable rebuild succeed. Privileged hosts validate sudo immediately before privileged work and keep the ticket alive only for this invocation. A required-phase failure blocks later mutations and makes `up` exit 1; advisory reports continue without failing the run. Unknown arguments exit 2 before any work. **`--frozen` / `-s` / `--skip-flake`** requires a clean readable committed `mise.lock`, installs it with `--locked` and validates it, skips standalone brew/apt and flake update/commit, then rebuilds. The macOS rebuild still runs Homebrew Bundle upgrades and declarative cleanup, including in frozen mode. The cleanup summary reports policy and phase outcomes without scanning reclaimable space or checking scheduler health. It permits a dirty `flake.lock` so `up -s` can retry a failed rebuild without bumping again. Do not use `up -s` after a failed mise phase; inspect and reconcile `.config/mise/mise.lock` first.
 
+`up` requires at least 10 GiB available on the home and temporary filesystems before
+mise, standalone Homebrew, flake updates and rebuilds. Nix phases also check
+`/nix/store` when present. Measurements and paths appear in the run log.
+An unreadable measurement blocks the phase. The reserve is a guardrail, not an
+estimate of an individual package's peak space requirement.
+
+Standalone Homebrew upgrades formulae first, then upgrades each outdated cask
+with a separate command. This prevents Homebrew from staging every selected
+cask together. After a successful cask, low space triggers named
+`brew cleanup --prune=all <cask>` between operations. `up` checks space again
+before continuing. Failed casks retain their downloads for investigation.
+Homebrew snapshots must be readable before upgrades start. Frozen rebuilds still
+run the declarative Homebrew Bundle phase through nix-darwin.
+
 **Degradations**: a phase can exit 0 and still have done less than it claims - an expired or missing GitHub token. `up` scans each phase's own log slice for those markers and reports one inline on the phase's `Applied` row, with the remedy in `Next` and `- degraded, see Next` appended to the header line. The phase keeps its state and duration, and `up` still exits 0: the remedies need a human (a credential to renew), so failing the run would leave it failing until someone acts. Markers today: GitHub API 401 and 403 (repo count, not warning count - one repo produces several warnings per run). `pin-audit`'s FLAG count is *not* one - that phase worked correctly, so it enriches the `Advisories` row only.
 
 On normal macOS runs, `up` runs `brew vulns --list-skipped` after activation if the standalone Brew phase was attempted, including after a failed update or rebuild. The scan covers installed formulae, including installed formula dependencies, but not casks or bundled libraries. Failed standalone Brew updates/upgrades also run `brew doctor`. Both native reports are advisory and cannot change update status or cleanup outcomes. `--no-audit` skips both vulnerability scans; doctor remains enabled. Frozen mode skips the Brew scan. The commands target Homebrew 7; unavailable checks warn.

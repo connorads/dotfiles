@@ -120,6 +120,38 @@ _up_logged() {
   fi
 }
 
+_up_space() {
+  setopt localoptions pipefail
+  local target available
+  local -a targets=("$HOME" "${TMPDIR:-/tmp}")
+  [[ $1 == *rebuild* || $1 == "flake update" ]] && [[ -d /nix/store ]] && targets+=(/nix/store)
+  for target in "${targets[@]}"; do
+    available=$(LC_ALL=C df -Pk "$target" | awk 'NR == 2 {print $4}') || available=""
+    if [[ $available != <-> ]]; then
+      print -u2 "up: cannot measure free space at $target"
+      return 2
+    fi
+    print "up: $1: $target has $available KiB available; disk reserve is 10485760 KiB (10 GiB)"
+    ((available >= 10485760)) || return 1
+  done
+}
+
+_up_require_space() {
+  _up_space "$1" && return 0
+  up_phase_diagnosis="disk reserve unavailable"
+  _up_next "Restore at least 10 GiB free on the reported filesystem before retrying up"
+  return 1
+}
+
+_up_checked() {
+  local name=$1
+  shift
+  case $name in
+  mise | brew | "flake update" | *rebuild*) _up_require_space "$name" || return 1 ;;
+  esac
+  "$@"
+}
+
 # Fills each unset token from fnox, then unsets any still empty so consumers
 # see no token rather than an empty one. Assigns up's own locals.
 _up_github_tokens() {
@@ -137,6 +169,7 @@ _up_mise() (
 )
 
 _up_install_mise() {
+  _up_require_space "mise install" || return 1
   _up_mise install --locked || return $?
   _up_mise lock --global --dry-run --json
 }
@@ -182,17 +215,19 @@ _up_degradations() {
   # and lockfile checksums refreshed, and mise still exits 0. Raw warnings are
   # inflated by repeated resolve/lock passes over the same repo (41 warnings, 19
   # repos, 2026-09-22), so the repo slug is the unit.
-  repos=$(( $(_up_github_rejects "$log_start" "$log_end" '401 Unauthorized') ))
+  repos=$(($(_up_github_rejects "$log_start" "$log_end" '401 Unauthorized')))
   if ((repos)); then
-    noun=repos; ((repos == 1)) && noun=repo
+    noun=repos
+    ((repos == 1)) && noun=repo
     _up_degrade "GitHub API rejected the token (401); $repos $noun not refreshed"
     _up_next "renew the PAT in fnox: fnox set -g MISE_GITHUB_TOKEN and HOMEBREW_GITHUB_API_TOKEN, then rerun up"
   fi
 
   # With no token at all the same calls are rate-limited instead of rejected.
-  repos=$(( $(_up_github_rejects "$log_start" "$log_end" '403 Forbidden') ))
+  repos=$(($(_up_github_rejects "$log_start" "$log_end" '403 Forbidden')))
   if ((repos)); then
-    noun=repos; ((repos == 1)) && noun=repo
+    noun=repos
+    ((repos == 1)) && noun=repo
     _up_degrade "GitHub API rate-limited (403); $repos $noun not refreshed"
     _up_next "fnox set -g MISE_GITHUB_TOKEN - unauthenticated GitHub API calls are rate-limited"
   fi
@@ -204,17 +239,17 @@ _up_run() {
   local started=$SECONDS rc state log_start log_end
   up_phase_diagnosis=""
   up_phase_degraded=""
-  log_start=$(( $(wc -l <"$up_log") + 1 ))
+  log_start=$(($(wc -l <"$up_log") + 1))
 
   print "=> $name"
   if [[ $policy == advisory ]]; then
     printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$name" >>"$up_log"
     "$@" > >(tee -a "$up_log") 2> >(tee -a "$up_log" >&2)
   else
-    _up_logged "$name" "$@"
+    _up_logged "$name" _up_checked "$name" "$@"
   fi
   rc=$?
-  log_end=$(( $(wc -l <"$up_log") ))
+  log_end=$(($(wc -l <"$up_log")))
   _up_degradations "$log_start" "$log_end"
   if ((rc)); then
     if _up_phase_log "$log_start" "$log_end" | grep -F 'No space left on device' >/dev/null; then
@@ -302,7 +337,7 @@ _up_summary() {
   local printed=0
   for ((i = 1; i <= ${#up_phase_names}; i++)); do
     [[ ${up_phase_states[$i]} == "NOT RUN" ]] || continue
-    if ((!printed)); then
+    if ((! printed)); then
       print ""
       print "Not attempted"
       printed=1
@@ -315,7 +350,7 @@ _up_summary() {
   printed=0
   for ((i = 1; i <= ${#up_phase_names}; i++)); do
     [[ ${up_phase_states[$i]} == REPORTED || ${up_phase_states[$i]} == WARN ]] || continue
-    if ((!printed)); then
+    if ((! printed)); then
       print ""
       print "Advisories"
       printed=1
@@ -379,7 +414,7 @@ _up_preflight() {
   local -a locks dirty
 
   locks=("$mise_lock")
-  ((!frozen)) && locks+=("$flake_lock")
+  ((! frozen)) && locks+=("$flake_lock")
   print "=> preflight"
   for lock in "${locks[@]}"; do
     label=${lock#$HOME/}
@@ -523,15 +558,52 @@ _up_review_builds() {
 _up_brew() {
   # Homebrew locates gh itself for bottle attestation. A project-installed mise
   # shim can otherwise shadow the global wrapper without an active version.
-  local brew_path="$HOME/.local/bin:$PATH" before="" after="" rc remaining
+  local brew_path="$HOME/.local/bin:$PATH" before="" after="" rc=0 remaining cask
+  local space_rc
+  local -a casks
   local snapshot_filter='type == "object" and
     (.formulae | type == "array") and (.casks | type == "array") and
     all(.formulae[], .casks[]; type == "object" and (.name | type == "string"))'
 
   PATH="$brew_path" brew update || return $?
   before=$(HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew outdated --json=v2) || before=""
-  HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew upgrade --no-ask
+  up_brew_detail="package counts unavailable"
+  if ! print -r -- "$before" | jq -e "$snapshot_filter" >/dev/null; then
+    print -u2 "up: Homebrew snapshot unavailable or invalid; refusing an unbounded upgrade"
+    return 1
+  fi
+  HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew upgrade --formula --no-ask
   rc=$?
+  casks=("${(@f)$(print -r -- "$before" | jq -r '.casks[].name')}")
+  for cask in "${casks[@]}"; do
+    [[ -n $cask ]] || continue
+    _up_require_space "cask/$cask" || {
+      rc=1
+      break
+    }
+    if HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew upgrade --cask --no-ask "$cask"; then
+      _up_space "after cask/$cask"
+      space_rc=$?
+      if ((space_rc == 2)); then
+        up_phase_diagnosis="disk measurement unavailable"
+        _up_next "Restore readable disk measurements before retrying up"
+        rc=1
+        break
+      elif ((space_rc)); then
+        HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew cleanup --prune=all "$cask" || {
+          rc=1
+          break
+        }
+        _up_require_space "after cleanup/$cask" || {
+          rc=1
+          break
+        }
+      fi
+    else
+      rc=1
+      break
+    fi
+  done
   after=$(HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew outdated --json=v2) || after=""
 
   up_brew_detail="package counts unavailable"
@@ -611,7 +683,7 @@ if ((frozen)); then
 else
   _up_run required mise "resolve ranges, locked install and validate" _up_update_mise || mise_ok=0
 fi
-if ((!mise_ok)); then
+if ((! mise_ok)); then
   print -u2 "!! mise update failed - NOT committing mise.lock"
   print -u2 "   inspect lock: dotfiles diff -- .config/mise/mise.lock"
   _up_skip "mise lock" "mise update failed"
@@ -641,7 +713,7 @@ else
   _up_not_run patches
 fi
 
-if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
+if ((! frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
   if [[ -z $up_blocked_by ]]; then
     up_brew_attempted=1
     _up_run required brew "update and upgrade" _up_brew
@@ -658,7 +730,6 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
       if grep -qF 'No version is set for shim: gh' "$up_log"; then
         up_phase_details[-1]="${up_phase_details[-1]}; inactive mise gh shim selected"
       fi
-      _up_next "PATH=\"\$HOME/.local/bin:\$PATH\" brew update && PATH=\"\$HOME/.local/bin:\$PATH\" brew upgrade --no-ask"
       _up_next "rerun up"
       _up_brew_advisory "brew doctor" "diagnostics" doctor
     fi
@@ -672,7 +743,7 @@ fi
 
 # apt updates (non-NixOS Linux). Each step depends on the previous one so a
 # failed index refresh cannot drive an upgrade from stale package lists.
-if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+if ((! frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
   if [[ -n $up_blocked_by ]]; then
     _up_not_run apt
   elif _up_sudo_ready apt; then
@@ -752,7 +823,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     _up_skip "brew vulns" "frozen mode"
   elif ((no_audit)); then
     _up_skip "brew vulns" "--no-audit"
-  elif ((!up_brew_attempted)); then
+  elif ((! up_brew_attempted)); then
     _up_skip "brew vulns" "Brew phase not attempted"
   else
     _up_brew_advisory "brew vulns" "installed formulae; see coverage report" vulns --list-skipped
@@ -781,7 +852,7 @@ if ((frozen)); then
   _up_skip pins "frozen mode"
 else
   _up_run advisory pins "conditional and range pins" pin-audit
-  local flagged=$(( $(grep -c 'pin-audit: FLAG ' "$up_log") ))
+  local flagged=$(($(grep -c 'pin-audit: FLAG ' "$up_log")))
   ((flagged)) && up_phase_details[-1]+="; $flagged flagged"
 fi
 
