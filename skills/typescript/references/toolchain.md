@@ -17,6 +17,35 @@ the Go binary over JSON-RPC with no emit pipeline, so a first-party codemod or d
 it and a custom transformer cannot. `@typescript/native-preview` (`tsgo`) is frozen at
 `7.0.0-dev.20260707.2`, nightlies publish as `typescript@next`, and both run the same engine.
 
+### Evaluating a different checker
+
+Use the project's pinned `tsc` as the reference for diagnostics. For a standalone
+tsrs trial, record its TypeScript compatibility version and whether fast mode
+is enabled. tsrs targets TypeScript 7.1 compatibility. Checker count and file
+order can affect diagnostics, so compare output in the mode that would run in CI.
+[tsrs conformance notes](https://github.com/oxc-project/tsrs#conformance).
+
+In an existing Bun project, `bun check --no-script -p tsconfig.json` is another
+candidate. Record `process.versions.typescript` from Bun. `--no-script`
+prevents a package script named `check` from shadowing the checker. Omit
+positional file paths for project-wide coverage. For either candidate, compare
+project references, file coverage, diagnostics and exit status before timing.
+Verify emit and editor support separately if the migration also changes them.
+[Bun checker documentation](https://bun.com/docs/runtime/check).
+
+### Framework content mappers
+
+TypeScript 7.1 beta adds content mappers that expose embedded TypeScript to
+the compiler. Register the mapper in the top-level `contentMappers` list.
+Run the project's pinned `tsc` with `--runExternalCode`. This permits every
+configured mapper to execute, so use a tsconfig whose mappers you trust.
+A `.jxn` fixture reported its embedded error with TypeScript 7.1.0-beta.
+Bun 1.4.4 failed to load the fixture and rejected `--runExternalCode`.
+Before switching a framework gate, verify availability for the framework and
+compiler versions. Introduce a known error in a component and check that the
+normal project command reports it at the original location and fails.
+[Microsoft's content mapper announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/#content-mappers).
+
 ## TS 6.0 defaults, and the config tsc will not show you
 
 `strict: true`, `target: es2025`, `types: []` and `noUncheckedSideEffectImports` are **TS 6.0**
