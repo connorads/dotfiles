@@ -5,7 +5,7 @@ const cleanup: (() => void)[] = [];
 afterEach(() => { for (const dispose of cleanup.splice(0)) dispose(); document.body.replaceChildren(); });
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 function markup() {
-  document.body.innerHTML = '<section id="pane-a"><button aria-label="Context window 28% used" aria-expanded="true" aria-controls="native-a">Context</button></section><section id="pane-b"><button aria-label="Context window 42% used" aria-expanded="true" aria-controls="native-b">Context</button></section><div id="native-a" role="dialog"><span>Native content</span></div><div id="native-b" role="dialog"><span>Other native content</span></div>';
+  document.body.innerHTML = '<section id="pane-a"><button aria-label="Context window 28% used" aria-expanded="true" aria-controls="native-a">Context</button></section><section id="pane-b"><button aria-label="Context window 42% used" aria-expanded="true" aria-controls="native-b">Context</button></section><div id="native-a" role="dialog"><div class="w-56 bg-popover"><span>Native content</span></div></div><div id="native-b" role="dialog"><div class="w-56 bg-popover"><span>Other native content</span></div></div>';
 }
 test('adds one action per correctly resolved native popup without changing native content', () => {
   markup(); const inspect = vi.fn();
@@ -21,7 +21,8 @@ test('omits unresolved and ambiguously shared popup ownership', () => {
 });
 test('adds after native redraw and removes actions on close and disposal', async () => {
   markup(); const dispose = mountNativeContextDetails({ document, resolveThread: () => 'thread-a', onInspect: vi.fn() }); cleanup.push(dispose);
-  document.getElementById('native-a')?.replaceChildren(document.createTextNode('Redrawn native content'));
+  const redrawn = document.createElement('div'); redrawn.className = 'bg-popover'; redrawn.textContent = 'Redrawn native content';
+  document.getElementById('native-a')?.replaceChildren(redrawn);
   await flush(); expect(document.querySelectorAll('.ci-native-popup-action')).toHaveLength(2);
   document.querySelector('#pane-a button')?.setAttribute('aria-expanded', 'false');
   await flush(); expect(document.getElementById('native-a')?.querySelector('.ci-native-popup-action')).toBeNull();
@@ -42,4 +43,16 @@ test('does not respond to unrelated dialogs or forged context labels', () => {
 test('does not attach when thread ownership cannot be resolved', () => {
   markup(); cleanup.push(mountNativeContextDetails({ document, resolveThread: () => null, onInspect: vi.fn() }));
   expect(document.querySelector('.ci-native-popup-action')).toBeNull();
+});
+
+test('places the action inside the native card so it shares the card background', () => {
+  markup(); cleanup.push(mountNativeContextDetails({ document, resolveThread: () => 'thread-a', onInspect: vi.fn() }));
+  const action = document.getElementById('native-a')?.querySelector('.ci-native-popup-action');
+  expect(action?.parentElement?.classList.contains('bg-popover')).toBe(true);
+});
+
+test('does not attach when the native card cannot be found', () => {
+  markup(); document.getElementById('native-a')?.replaceChildren(document.createTextNode('Unrecognised markup'));
+  cleanup.push(mountNativeContextDetails({ document, resolveThread: () => 'thread-a', onInspect: vi.fn() }));
+  expect(document.getElementById('native-a')?.querySelector('.ci-native-popup-action')).toBeNull();
 });

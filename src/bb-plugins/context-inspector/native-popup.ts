@@ -10,6 +10,8 @@ export function mountNativeContextDetails({ document: doc, resolveThread, onInsp
   if (!view) return () => {};
   const NativeElement = view.HTMLElement;
   const owned = new Map<HTMLElement, { button: HTMLButtonElement; trigger: HTMLElement; threadId: string }>();
+  // The dialog is a transparent positioning wrapper; the visible card is its `bg-popover` child.
+  const nativeCard = (popup: HTMLElement) => popup.querySelector<HTMLElement>(':scope > .bg-popover');
   let disposed = false;
   function linkedPopup(trigger: HTMLElement): HTMLElement | null {
     const label = trigger.getAttribute('aria-label') ?? '';
@@ -28,7 +30,7 @@ export function mountNativeContextDetails({ document: doc, resolveThread, onInsp
     }
     for (const [popup, entry] of owned) {
       const triggers = candidates.get(popup);
-      if (triggers?.length !== 1 || triggers[0] !== entry.trigger || resolveThread(entry.trigger) !== entry.threadId || !entry.button.isConnected) {
+      if (triggers?.length !== 1 || triggers[0] !== entry.trigger || resolveThread(entry.trigger) !== entry.threadId || entry.button.parentElement !== nativeCard(popup)) {
         entry.button.remove(); owned.delete(popup);
       }
     }
@@ -36,7 +38,8 @@ export function mountNativeContextDetails({ document: doc, resolveThread, onInsp
       if (triggers.length !== 1 || owned.has(popup)) continue;
       const trigger = triggers[0];
       const threadId = resolveThread(trigger);
-      if (!threadId) continue;
+      const card = nativeCard(popup);
+      if (!threadId || !card) continue;
       const button = doc.createElement('button');
       button.type = 'button';
       button.className = 'ci-native-popup-action';
@@ -46,7 +49,7 @@ export function mountNativeContextDetails({ document: doc, resolveThread, onInsp
         event.stopPropagation();
         if (!disposed && linkedPopup(trigger) === popup && resolveThread(trigger) === threadId) onInspect(threadId);
       });
-      popup.append(button);
+      card.append(button);
       owned.set(popup, { button, trigger, threadId });
     }
   }

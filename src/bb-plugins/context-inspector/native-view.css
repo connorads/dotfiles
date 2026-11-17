@@ -27,7 +27,7 @@
 .ci-native-other .ci-native-category { padding-top: 4px; }
 .ci-native-notes { padding-left: 16px; }
 .ci-native-purge { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.ci-native-popup-action { display: block; width: 100%; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--foreground); text-align: left; padding: 10px 8px; font: 12px var(--font-sans); cursor: pointer; }
-.ci-native-popup-action:hover { background: var(--accent); }
-.ci-native-popup-action:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.ci-native-popup-action { display: block; width: 100%; margin-top: 8px; padding: 6px 0 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--muted-foreground); text-align: left; font: 12px var(--font-sans); cursor: pointer; }
+.ci-native-popup-action:hover { color: var(--foreground); }
+.ci-native-popup-action:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
 @media (max-width: 420px) { .ci-native-scope { align-items: flex-start; flex-wrap: wrap; gap: 5px; } }
