@@ -43,7 +43,7 @@ boundaries.
 | Formatter | oxfmt with `.oxfmtrc.json` | Prettier-conformant, formats JS/TS, JSON and YAML in one pass. See [Formatting](#formatting). |
 | Linter | raw oxlint with `.oxlintrc.json` | Native Rust, runs on any TypeScript, owns the boundary and purity rules. Ultracite is an optional React/Next starting point, not the default. |
 | Type check | `./node_modules/.bin/tsc -p tsconfig.json` (TS 7) | The one whole-program gate. See [Type checking](#type-checking). |
-| Type-aware lint | oxlint `options.typeAware: true` + `oxlint-tsgolint` | The only route to floating promises, exhaustive switch and the `no-unsafe-*` family on TS 7. |
+| Type-aware lint | oxlint `options.typeAware: true` + `oxlint-tsgolint` | Gates floating promises, exhaustive switches and the `no-unsafe-*` family on TS 7. See [Evaluating tsrs](#evaluating-tsrs). |
 | ESLint | optional, behind a TS 6 side-by-side alias | typescript-eslint refuses TS 7 outright. Reach for it only for `eslint-plugin-regexp`, `naming-convention` and framework plugins. |
 | Boundaries | ts-morph test + oxlint `import/*` + knip cycles | dependency-cruiser cannot parse TS 7. See `references/architecture-boundaries.md`, Transitive architecture tests. |
 | Runner | vitest, with bun test scoped to bun-runtime zero-dependency projects | See `references/typescript-testing.md`, bun test. |
@@ -165,6 +165,24 @@ tsc-baseline, typescript-strict-plugin and betterer are all weak. See
 `references/ratcheting.md`.
 
 - **There is no per-diagnostic severity map, and a `plugins` entry is not one.** microsoft/TypeScript#13408 ("Add support for diagnostic severities") is open with no proposal, so a compiler option is on or off and an enabled one reports at error severity. A `compilerOptions.plugins` entry configures a language-service plugin, which the editor honours and `tsc` ignores, so a diagnostics map gated only that way is editor-green and CI-unarmed unless something patches the installed compiler (`effect-tsgo patch` is one such tool), and a patch wired from a `prepare` script never runs under `ignore-scripts`. Canary the gate with a known violation, not the editor. Verified 2026-09-21.
+
+### Evaluating tsrs
+
+Oxlint 1.92+ can select `tsrs-lint` from the `tsrs` package in place of
+`oxlint-tsgolint`. Keep `options.typeAware` and the existing rule settings.
+Keep the project-wide typecheck. With tsrs 0.25, Oxlint's `--type-check`
+reports compiler errors only in files Oxlint lints. The combined benchmark
+used tsrs 0.24, which checked whole tsconfig programs.
+[Upstream backend and coverage notes](https://github.com/oxc-project/tsrs#type-aware-lint).
+
+Use the repo's package manager and existing lint entry point. On Vite+, use
+the project's `vp` command. Compare backends on the same Oxlint version,
+file scope and config. Check which backend ran. Compare diagnostic locations,
+rules, severities and exit status. Use a known floating promise and, where
+the gate includes Effect diagnostics, a known discarded Effect. Check fixes
+and suggestions where the project relies on them. Record median elapsed
+time and peak memory over alternating runs with comparable cache state.
+Run the normal project validation before adopting the backend.
 
 ## Lint families and suppressions
 
