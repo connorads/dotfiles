@@ -35,9 +35,12 @@ export const headerSchema = z.object({
   providerId: z.string(), label: z.string(), accountLabel: z.string().nullable(),
   windows: z.array(windowSchema), message: z.string().nullable(),
 });
-export const inspectionSchema = z.object({
+const quotaReadingSchema = z.object({
   snapshot: snapshotSchema,
   readings: z.array(z.object({ accountId: z.string(), observedAt: z.number().nonnegative().nullable(), unread: z.array(z.string()) })),
+});
+export const usageQuotasEventSchema = z.object({ requestId: z.string().uuid() });
+export const inspectionSchema = quotaReadingSchema.extend({
   resetCredits: z.array(z.object({ hostId: z.string(), reading: resetCreditsSchema })),
   claudeResets: z.array(z.object({ accountId: z.string(), reading: claudeResetsSchema })),
 });
@@ -52,7 +55,8 @@ export const usageContract = defineRpcContract({
     output: z.object({ terminalId: z.string() }) },
   'usage.amp': { input: z.object({ refresh: z.boolean() }), output: ampOverviewSchema },
   'usage.header': { input: z.object({ threadId: z.string() }), output: headerSchema },
-  'usage.inspection': { input: z.object({ refresh: z.boolean() }), output: inspectionSchema },
+  'usage.inspection': { input: z.object({ refresh: z.boolean(), requestId: z.string().uuid().optional() }), output: inspectionSchema },
+  'usage.quotas': { input: usageQuotasEventSchema, output: quotaReadingSchema.nullable() },
   /** The last inspection BB collected, so the overlay can show figures before collection finishes. */
   'usage.saved': { input: z.object({}), output: inspectionSchema.nullable() },
 });
@@ -62,3 +66,4 @@ export type Account = Snapshot['machines'][number]['providers'][number];
 export type UsageWindow = z.infer<typeof windowSchema>;
 export type Header = z.infer<typeof headerSchema>;
 export type Inspection = z.infer<typeof inspectionSchema>;
+export type QuotaReading = z.infer<typeof quotaReadingSchema>;

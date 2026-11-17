@@ -1,3 +1,4 @@
+import { usageQuotasEventSchema } from '../../src/accounts/usage/contract.ts';
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -85,7 +86,7 @@ test('overlay groups accounts by provider, explains pace and keeps figures when 
   fireEvent.click(slot.getByRole('button', { name: 'Refresh' }));
   expect((await slot.findByRole('alert')).textContent).toContain('Showing previous figures');
   expect(slot.getByRole('region', { name: 'Codex · Personal' })).toBeTruthy();
-  expect(requests).toEqual([{ refresh: false }, { refresh: true }]);
+  expect(requests).toMatchObject([{ refresh: false }, { refresh: true }]);
 });
 
 test('Antigravity labels separate model groups from periods and use the brand mark', async () => {
@@ -369,6 +370,30 @@ for (const first of ['amp', 'quotas'] as const) {
     expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(false);
   });
 }
+
+test('fresh quotas appear before reset details finish', async () => {
+  const app = await load();
+  let finish!: (value: Inspection) => void;
+  let requestId = 'missing-request';
+  const full = inspect();
+  const quotas = { snapshot: full.snapshot, readings: full.readings };
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.inspection': input => new Promise<Inspection>(resolve => {
+      requestId = usageQuotasEventSchema.parse(input).requestId;
+      finish = resolve;
+    }),
+    'usage.quotas': async () => quotas,
+    'usage.amp': async () => ({ machines: [] }),
+  } });
+  await act(async () => openUsage());
+  await slot.behavior.emitRealtime('usage.quotas', { requestId: crypto.randomUUID() });
+  expect(slot.queryByRole('region', { name: 'Codex · Personal' })).toBeNull();
+  await slot.behavior.emitRealtime('usage.quotas', { requestId });
+  expect(await slot.findByRole('region', { name: 'Codex · Personal' })).toBeTruthy();
+  expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(true);
+  await act(async () => finish(full));
+  expect(slot.getByRole('button', { name: 'Refresh' }).hasAttribute('disabled')).toBe(false);
+});
 
 test('saved figures show while the live reading collects, then give way to it', async () => {
   const app = await load();

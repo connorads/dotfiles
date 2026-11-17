@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createUsageReader, type UsagePorts } from './overview.ts';
-import type { SourceSnapshot } from './contract.ts';
+import type { QuotaReading, SourceSnapshot } from './contract.ts';
 
 const snapshot: SourceSnapshot = { machines: [{ id: 'host-one', displayName: 'Laptop', status: 'connected', error: null,
   providers: [{ id: 'provider-codex:["host-one","codex"]', providerId: 'codex', accountLabel: null, displayName: 'Codex',
@@ -82,6 +82,22 @@ test('inspection keeps provider observation times and isolates reset-credit fail
   assert.deepEqual(value.readings, [{ accountId: snapshot.machines[0]!.providers[0]!.id, observedAt: 123, unread: [] }]);
   assert.deepEqual(value.resetCredits, [{ hostId: 'host-one', reading: { status: 'unavailable', message: 'Reset credits could not be read from this machine.' } }]);
   assert.ok(!('observedAt' in (value.snapshot.machines[0]?.providers[0]?.usage ?? {})));
+});
+
+test('inspection publishes timestamped quotas while reset credit collection is pending', async () => {
+  let finishCredits!: (value: Awaited<ReturnType<UsagePorts['resetCredits']>>) => void;
+  const credits = new Promise<Awaited<ReturnType<UsagePorts['resetCredits']>>>(resolve => { finishCredits = resolve; });
+  let publish!: (value: QuotaReading) => void;
+  const published = new Promise<QuotaReading>(resolve => { publish = resolve; });
+  const reader = createUsageReader({ ...ports, resetCredits: () => credits,
+    callRpc: answer(input => input.method === 'getUsage' ? snapshot : { observedAt: 123, usage: snapshot.machines[0]!.providers[0]!.usage }),
+  });
+  const inspection = reader.inspection(true, publish);
+  const first = await published;
+  assert.equal(first.readings[0]?.observedAt, 123);
+  assert.deepEqual(first.snapshot, await reader.overview(false));
+  finishCredits({ status: 'unavailable', message: 'No cache' });
+  assert.partialDeepStrictEqual(await inspection, first);
 });
 
 test('inspection requests reset credits only on connected Codex machines and passes refresh through', async () => {

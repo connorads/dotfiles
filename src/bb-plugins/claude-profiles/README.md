@@ -388,8 +388,9 @@ Amp presents the native `amp usage` account and credit balances as labelled
 amounts, with a link to credit settings. Plain text and Markdown balance labels
 are supported. Recognised billing help is omitted; warnings and unrecognised
 provider text stay visible.
-The overlay requests Amp and quotas in parallel. Quotas appear as soon as they
-are ready; Amp stays below them. The refresh indicator tracks both requests.
+The overlay requests Amp and quotas in parallel. It shows fresh quotas while
+Codex and Claude reset details finish loading. Amp stays below the quotas.
+The refresh indicator stays active until all readings finish.
 Collection waits for every source older than two minutes, which can take
 several seconds. The plugin saves the last collected quotas, so the first open
 shows them with **Refreshing…** until collection finishes.

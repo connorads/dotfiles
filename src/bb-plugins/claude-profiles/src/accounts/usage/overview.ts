@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Usage } from '../quota.ts';
 import { normaliseClaudePlanLabel } from '../account.ts';
 import type { Measurement } from '../usage-source.ts';
-import { sourceSnapshotSchema, type Account, type Header, type Inspection, type Snapshot, type SourceSnapshot, type UsageWindow } from './contract.ts';
+import { sourceSnapshotSchema, type Account, type Header, type Inspection, type QuotaReading, type Snapshot, type SourceSnapshot, type UsageWindow } from './contract.ts';
 import type { Period } from './pace.ts';
 import type { ResetCredits } from './reset-credits.ts';
 import type { ClaudeResets } from './claude-resets.ts';
@@ -101,42 +101,40 @@ export function createUsageReader(ports: UsagePorts) {
     return { machines: snapshot.machines.map(machine => ({ ...machine, providers: foldDefaultProfile(machine.providers) })) };
   }
   async function overview(refresh: boolean) { return fold(await collectOverview(refresh)); }
-  async function inspection(refresh: boolean): Promise<Inspection> {
+  async function inspection(refresh: boolean, showQuotas?: (quotas: QuotaReading) => void): Promise<Inspection> {
     let raw = await collectOverview(refresh);
     const observationSchema = z.object({ observedAt: z.number().nonnegative().nullable(), unread: z.array(z.string()).optional(),
       usage: sourceSnapshotSchema.shape.machines.element.shape.providers.element.shape.usage });
-    const [observations, resetCredits] = await Promise.all([
-      Promise.all(raw.machines.flatMap(machine => machine.providers.map(async account => {
-        const separator = account.id.indexOf(':');
-        let observedAt: number | null = null;
-        let unread: string[] = [];
-        let usage: Account['usage'] = null;
-        if (machine.status === 'connected' && account.usage?.status === 'ok' && separator > 0) {
-          try {
-            const pluginId = account.id.slice(0, separator);
-            const resourceId = account.id.slice(separator + 1);
-            const value = pluginId === ownPluginId ? observationSchema.parse(await ports.claudeResource(resourceId, false))
-              : await ports.callRpc({ pluginId, method: 'provider-usage.v1.getResource', input: { resourceId, refresh: false },
-                outputSchema: observationSchema, signal: AbortSignal.timeout(15_000) });
-            if (value.usage?.status === 'ok') {
-              observedAt = value.observedAt;
-              unread = value.unread ?? [];
-              usage = { ...value.usage, windows: value.usage.windows.map(describeWindow) };
-            }
-          } catch { /* A source without observation metadata leaves its reading age unknown. */ }
-        }
-        return { accountId: account.id, observedAt, unread, usage };
-      }))),
-      Promise.all(raw.machines.filter(machine => machine.providers.some(account => account.providerId === 'codex')).map(async machine => {
-        let reading: ResetCredits;
-        if (machine.status === 'disconnected') reading = { status: 'unavailable', message: 'Machine is offline.' };
-        else {
-          try { reading = await ports.resetCredits(machine.id, refresh); }
-          catch { reading = { status: 'unavailable', message: 'Reset credits could not be read from this machine.' }; }
-        }
-        return { hostId: machine.id, reading };
-      })),
-    ]);
+    const resetCredits = Promise.all(raw.machines.filter(machine => machine.providers.some(account => account.providerId === 'codex')).map(async machine => {
+      let reading: ResetCredits;
+      if (machine.status === 'disconnected') reading = { status: 'unavailable', message: 'Machine is offline.' };
+      else {
+        try { reading = await ports.resetCredits(machine.id, refresh); }
+        catch { reading = { status: 'unavailable', message: 'Reset credits could not be read from this machine.' }; }
+      }
+      return { hostId: machine.id, reading };
+    }));
+    const observations = await Promise.all(raw.machines.flatMap(machine => machine.providers.map(async account => {
+      const separator = account.id.indexOf(':');
+      let observedAt: number | null = null;
+      let unread: string[] = [];
+      let usage: Account['usage'] = null;
+      if (machine.status === 'connected' && account.usage?.status === 'ok' && separator > 0) {
+        try {
+          const pluginId = account.id.slice(0, separator);
+          const resourceId = account.id.slice(separator + 1);
+          const value = pluginId === ownPluginId ? observationSchema.parse(await ports.claudeResource(resourceId, false))
+            : await ports.callRpc({ pluginId, method: 'provider-usage.v1.getResource', input: { resourceId, refresh: false },
+              outputSchema: observationSchema, signal: AbortSignal.timeout(15_000) });
+          if (value.usage?.status === 'ok') {
+            observedAt = value.observedAt;
+            unread = value.unread ?? [];
+            usage = { ...value.usage, windows: value.usage.windows.map(describeWindow) };
+          }
+        } catch { /* A source without observation metadata leaves its reading age unknown. */ }
+      }
+      return { accountId: account.id, observedAt, unread, usage };
+    })));
     // A source may refresh while the collector snapshot stays cached. Pair its timestamp with its own figures.
     raw = { machines: raw.machines.map(machine => ({ ...machine, providers: machine.providers.map(account => ({ ...account,
       usage: observations.find(value => value.accountId === account.id)?.usage ?? account.usage,
@@ -156,7 +154,8 @@ export function createUsageReader(ports: UsagePorts) {
       const profile = source ? sourced?.observedAt ?? null : native;
       return { accountId: account.id, observedAt: native === null || profile === null ? null : Math.min(native, profile), unread: sourced?.unread ?? [] };
     }));
-    const claudeResets = await Promise.all(snapshot.machines.flatMap(machine => machine.providers
+    showQuotas?.({ snapshot, readings });
+    const claudeResets = Promise.all(snapshot.machines.flatMap(machine => machine.providers
       .filter(account => account.providerId === 'claude-code').map(async account => {
         const locator = account.id.startsWith('claude-profiles:') ? profileLocatorSchema.safeParse(resourceLocator(account)) : null;
         const profileId = locator?.success ? locator.data[2] : 'default';
@@ -169,7 +168,7 @@ export function createUsageReader(ports: UsagePorts) {
         }
         return { accountId: account.id, reading };
       })));
-    return { snapshot, readings, resetCredits, claudeResets };
+    return { snapshot, readings, resetCredits: await resetCredits, claudeResets: await claudeResets };
   }
   async function header(threadId: string): Promise<Header> {
     const thread = await ports.getThread({ threadId });

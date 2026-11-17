@@ -3,11 +3,11 @@ import { RollingValue } from './rolling-value.tsx';
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { experimental_ProviderIcon as ProviderIcon, useBbNavigate, useRpc } from '@get-bb/plugin-sdk/app';
+import { experimental_ProviderIcon as ProviderIcon, useBbNavigate, useRealtime, useRpc } from '@get-bb/plugin-sdk/app';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog.tsx';
 import { Icon } from '../components/ui/icon.tsx';
 import type { rpcContract } from '../../contracts.ts';
-import type { Account, Inspection, UsageWindow } from '../../src/accounts/usage/contract.ts';
+import { usageQuotasEventSchema, type Account, type Inspection, type UsageWindow } from '../../src/accounts/usage/contract.ts';
 import { duration, expiryClock, percent, readingAge, readingState, viewWindow, type ReadingState, type WindowView } from '../../src/accounts/usage/format.ts';
 import type { ResetCredits } from '../../src/accounts/usage/reset-credits.ts';
 import type { ClaudeResets } from '../../src/accounts/usage/claude-resets.ts';
@@ -243,7 +243,7 @@ export function UsageOverlay() {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pending = useRef(false);
+  const pending = useRef<{ id: string; received: boolean } | null>(null);
   const mounted = useRef(true);
   const shown = useRef(false);
   useEffect(() => {
@@ -259,22 +259,34 @@ export function UsageOverlay() {
     return () => window.removeEventListener('keydown', dismiss);
   }, [open]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useRealtime('usage.quotas', payload => {
+    const event = usageQuotasEventSchema.safeParse(payload);
+    const request = pending.current;
+    if (!event.success || !request || request.received || request.id !== event.data.requestId) return;
+    void rpc.call('usage.quotas', event.data).then(quotas => {
+      if (!quotas || pending.current !== request || request.received || !mounted.current) return;
+      request.received = true;
+      shown.current = true;
+      setInspection({ ...quotas, resetCredits: [], claudeResets: [] });
+      setQuotaLoading(false);
+    }, () => {}); // The full inspection still arrives if a progress update is missed.
+  });
   const refresh = useCallback(async (force: boolean) => {
     if (pending.current) return;
-    pending.current = true;
+    const request = { id: crypto.randomUUID(), received: false };
+    pending.current = request;
     setLoading(true);
     setError(null);
     setQuotaLoading(true);
     setAmpLoading(true);
     setAmpMessage(null);
-    let collected = false;
     // Collection can take seconds when sources are stale, so the first open shows the last saved figures meanwhile.
     if (!shown.current) void rpc.call('usage.saved', {}).then(saved => {
-      if (saved && !collected && mounted.current) { shown.current = true; setInspection(saved); }
+      if (saved && !request.received && mounted.current) { shown.current = true; setInspection(saved); }
     }, () => {});
     await Promise.allSettled([
-      rpc.call('usage.inspection', { refresh: force }).then(next => {
-        collected = true;
+      rpc.call('usage.inspection', { refresh: force, requestId: request.id }).then(next => {
+        request.received = true;
         if (mounted.current) { shown.current = true; setInspection(next); }
       }).catch(cause => {
         if (mounted.current) setError(cause instanceof Error ? cause.message : 'Usage could not be loaded');
@@ -285,7 +297,7 @@ export function UsageOverlay() {
         if (mounted.current) setAmpMessage('Amp usage could not be loaded.');
       }).finally(() => { if (mounted.current) setAmpLoading(false); }),
     ]);
-    pending.current = false;
+    pending.current = null;
     if (mounted.current) setLoading(false);
   }, [rpc]);
   useEffect(() => {
