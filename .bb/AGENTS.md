@@ -20,6 +20,14 @@ Use BB's supplied skills and `bb guide` for platform commands.
 For a requested workflow or multi-agent run in BB, use a BB workflow, not the provider's built-in workflow tool.
 BB workflow workers are separate threads that can use plugin tools and appear in the run card.
 
+A BB workflow notifies its origin thread only when the whole run ends.
+When the user waits for a mid-run milestone, such as a first push or deploy, put the notice in the script.
+Pass the origin thread ID through `args`. Have a worker run `bb thread tell <origin> --mode auto "<result>"`.
+Put that command in the prompt of the worker that reaches the milestone, or in a small step between phases.
+End the run at the milestone instead when the next phase needs the user's decision.
+For a long run, also queue `bb thread tell <origin> --send-at <duration>` on the origin, so a hung worker cannot hide the delay.
+Never promise a mid-run update without one of these in place.
+
 For BB SDK gaps, app bugs, provider issues and CLI problems, read `~/src/bb-plugins/docs/sdk-frictions.md`.
 Search for an existing entry and extend it rather than adding a duplicate.
 Record the gap, workaround, evidence and smallest upstream request.
