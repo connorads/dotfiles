@@ -31,6 +31,10 @@ export function modelOf(catalog: readonly ProviderCatalog[], providerId: string 
   return catalog.find(p => p.providerId === providerId)?.models.find(m => m.model === model);
 }
 
+export function tierLabel(id: string, model: CatalogModel | undefined): string {
+  return model?.supportedServiceTiers?.find(tier => tier.id === id)?.label || id.charAt(0).toUpperCase() + id.slice(1);
+}
+
 export function displayName(catalog: readonly ProviderCatalog[], setup: Setup): string {
   return `${modelOf(catalog, setup.providerId, setup.model)?.displayName ?? setup.model}${setup.daybreak ? ' · Daybreak' : ''}`;
 }

@@ -59,10 +59,14 @@ button, or **⌘S**, saves it as a favourite. Each favourite's **★** removes i
 **Add model…** opens search. Pressing the current row closes the switcher and
 leaves its effort as it is.
 
-The strip at the top sets the current model by press as well as by key: one
-effort segment per level the model supports, **Fast** and **Daybreak** when
-the model offers them, and, for Claude, a **Connectors** switch for the shown
-account. The switch writes the same preference as the settings section.
+The top strip shows one effort segment per supported level and the speed tiers
+BB reports for the current model. A single speed tier appears as a toggle.
+Multiple tiers appear beside **Default**. The composer chip names the active
+speed tier when it differs from **Default**.
+
+The strip also shows **Daybreak** when available and a **Connectors** switch
+for the shown Claude account. The switch writes the same preference as the
+settings section.
 
 On a touch screen every control is at least 44 px. On a phone-width touch
 screen the switcher opens as a sheet at the bottom of the window. A tap on the

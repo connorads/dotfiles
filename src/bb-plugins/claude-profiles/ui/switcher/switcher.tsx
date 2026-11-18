@@ -7,7 +7,7 @@ import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { createController, type Controller } from './controller.ts';
 import { close, open, openedState, reanchor, subscribe, type Anchor } from './store.ts';
-import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
+import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, tierLabel, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
 import './switcher.css';
 import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 import { BrandIcon } from '../usage/brand-icon.tsx';
@@ -208,6 +208,8 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const results = groups.flatMap(group => group.results);
   const chips = accounts?.supported ? accountChips(providerId, accounts, connectors) : [];
   const tiers = (currentModel?.supportedServiceTiers ?? []).filter(tier => tier.id !== 'default');
+  const singleTier = tiers.length === 1 ? tiers[0] : undefined;
+  const activeTier = current.serviceTier ?? 'default';
   const daybreakOption = currentModel?.sessionOptions?.find(option => option.id === 'daybreak' && option.type === 'boolean');
 
   // Daybreak can change without a model change, so every apply re-reads it.
@@ -249,11 +251,13 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       if (currentFavourite) await rpc.call('favourites.remember', { id: currentFavourite.id, reasoningLevel: next });
     });
   }
-  const toggleFast = () => {
-    if (!currentModel || !providerId || !tiers.length) return;
-    const tier = composer.selection?.serviceTier && composer.selection.serviceTier !== 'default' ? 'default' : tiers[0]!.id;
+  const setServiceTier = (tier: string) => {
+    if (!currentModel || !providerId || tier === activeTier) return;
     void run(async () => {
-      await composer.setSelection({ providerId, model: currentModel.model, serviceTier: tier });
+      const settled = await composer.setSelection({ providerId, model: currentModel.model, serviceTier: tier });
+      if (!settled || (settled.serviceTier ?? 'default') !== tier) {
+        throw new Error('BB could not apply this speed. Check the current model before sending.');
+      }
       if (currentFavourite) await rpc.call('favourites.remember', { id: currentFavourite.id, serviceTier: tier === 'default' ? null : tier });
     });
   };
@@ -379,7 +383,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     </li>;
   }
 
-  const fast = Boolean(composer.selection?.serviceTier && composer.selection.serviceTier !== 'default');
   const daybreakToggle = Boolean(daybreakOption && !daybreakOption.fixed && composer.scope.kind === 'thread');
   const connectorProfile = providerId === 'claude-code' ? shownProfile : undefined;
   const now = !loading && currentModel && (efforts.length > 0 || tiers.length > 0 || daybreakToggle || connectorProfile);
@@ -404,7 +407,12 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         {efforts.length > 0 && <div className="sw-seg" role="group" aria-label="Effort">
           {efforts.map(level => <button type="button" key={level} aria-pressed={current.reasoningLevel === level} onClick={() => setEffort(level)}>{level}</button>)}
         </div>}
-        {tiers.length > 0 && <button type="button" className="sw-pill" aria-pressed={fast} onClick={toggleFast}>Fast</button>}
+        {singleTier && <button type="button" className="sw-pill" aria-pressed={activeTier === singleTier.id}
+          onClick={() => setServiceTier(activeTier === singleTier.id ? 'default' : singleTier.id)}>{tierLabel(singleTier.id, currentModel)}</button>}
+        {tiers.length > 1 && <div className="sw-seg" role="group" aria-label="Speed">
+          {['default', ...tiers.map(tier => tier.id)].map(tier => <button type="button" key={tier}
+            aria-pressed={activeTier === tier} onClick={() => setServiceTier(tier)}>{tierLabel(tier, currentModel)}</button>)}
+        </div>}
         {daybreakToggle && <button type="button" className="sw-pill" aria-pressed={Boolean(daybreak)} onClick={toggleDaybreak}>Daybreak</button>}
         {connectorProfile && <button type="button" role="switch" className="sw-pill sw-connectors" aria-checked={connectors[connectorProfile.id] === true}
           aria-label={`${connectorProfile.label} connectors`} title={`Apps connected through ${connectorProfile.label}, such as Slack`}

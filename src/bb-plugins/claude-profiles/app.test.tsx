@@ -66,6 +66,12 @@ test('the chip leaves out the account for another provider', async () => {
   expect(slot.inspection.rpcCalls.some(call => call.method === 'accounts')).toBe(false);
 });
 
+test('the composer chip names Ultrafast when it is selected', async () => {
+  const { slot } = await render({ ...newThread, selection: { ...newThread.selection, providerId: 'codex', model: 'sol', serviceTier: 'ultrafast' } });
+  const chip = await slot.findByRole('button', { name: /^Switch model: sol, high, ultrafast$/i });
+  expect(chip.textContent).toMatch(/ultrafast/i);
+});
+
 test('clicking the chip opens the switcher', async () => {
   const { slot } = await render(thread);
   expect(slot.queryByRole('dialog', { name: 'Switch model' })).toBeNull();

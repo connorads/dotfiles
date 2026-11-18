@@ -36,7 +36,7 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; chooseResult?: Promise<never>; connectorSave?: () => { restarted: number } };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; connectorSave?: () => { restarted: number } };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
@@ -44,6 +44,7 @@ function render(options: Options = {}) {
   let pendingId: string | null = null;
   let daybreak = options.daybreak ?? false;
   let connectors = options.connectors ?? {};
+  const tiers = [{ id: 'fast', label: 'Fast' }, ...(options.ultrafast ? [{ id: 'ultrafast', label: 'Ultrafast' }] : [])];
   const slot = renderSlot<Record<string, never>, typeof rpcContract>({ component: TestSwitcher }, {}, {
     composer: { text: 'Keep this draft', isRunning: options.running, selection,
       scope: options.newThread ? { kind: 'new-thread', projectId: null } : { kind: 'thread', threadId: 'thread-test' } },
@@ -90,7 +91,7 @@ function render(options: Options = {}) {
         providers: Object.entries(catalogue).map(([id, value]) => ({ id, available: true, displayName: value.name,
           capabilities: { supportsServiceTier: id === 'codex' } })),
         models: (catalogue[providerId]?.models ?? []).map(model => ({ model, id: model, displayName: model[0]!.toUpperCase() + model.slice(1),
-          defaultReasoningEffort: 'medium', supportedReasoningEfforts: levels, ...(providerId === 'codex' ? { supportedServiceTiers: [{ id: 'fast', label: 'Fast' }], sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean', value: false }] } : {}) })),
+          defaultReasoningEffort: 'medium', supportedReasoningEfforts: levels, ...(providerId === 'codex' ? { supportedServiceTiers: tiers, sessionOptions: [{ id: 'daybreak', label: 'Daybreak', type: 'boolean', value: false }] } : {}) })),
         modelLoadError: null,
       }) },
     } as never,
@@ -219,6 +220,23 @@ test('Fast shows only for a model with a fast tier and is remembered by its favo
     await claude.findByRole('button', { name: '2. Opus' });
     expect(claude.queryByRole('button', { name: 'Fast' })).toBeNull();
   } finally { claude.lifecycle.unmount(); }
+});
+
+test('a model with multiple speed tiers can select Ultrafast, Fast and Default', async () => {
+  const slot = render({ selection: { providerId: 'codex', model: 'sol', reasoningLevel: 'high' }, ultrafast: true });
+  try {
+    const defaultTier = await slot.findByRole('button', { name: 'Default', pressed: true });
+    const fast = slot.getByRole('button', { name: 'Fast', pressed: false });
+    const ultrafast = slot.getByRole('button', { name: 'Ultrafast', pressed: false });
+    for (const [button, tier, saved] of [[ultrafast, 'ultrafast', 'ultrafast'], [fast, 'fast', 'fast'], [defaultTier, 'default', null]] as const) {
+      fireEvent.click(button);
+      await waitFor(() => expect(calls(slot, 'favourites.remember').at(-1)).toEqual({ id: 'a', serviceTier: saved }));
+      await waitFor(() => expect(dialog(slot).getAttribute('aria-busy')).toBe('false'));
+      expect(slot.inspection.composer.selection?.serviceTier).toBe(tier);
+      expect(button.getAttribute('aria-pressed')).toBe('true');
+    }
+    expect(slot.inspection.composer.selection?.reasoningLevel).toBe('high');
+  } finally { slot.lifecycle.unmount(); }
 });
 
 test('Escape and Enter close the switcher', async () => {

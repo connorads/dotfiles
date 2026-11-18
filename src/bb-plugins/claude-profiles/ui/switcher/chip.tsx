@@ -4,6 +4,7 @@ import type { KeyedProfile, rpcContract } from '../../contracts.ts';
 import type { ConnectorState } from '../../src/accounts/connectors-contract.ts';
 import { open, registerAnchor, subscribeSelection } from './store.ts';
 import { Glyph, useController } from './switcher.tsx';
+import { tierLabel, type CatalogModel } from './view.ts';
 import './switcher.css';
 import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 
@@ -14,7 +15,7 @@ export function Chip() {
   const composer = useComposer();
   const rpc = useRpc<typeof rpcContract>();
   const controller = useController(composer);
-  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [models, setModels] = useState<CatalogModel[]>([]);
   const [daybreak, setDaybreak] = useState<boolean | undefined>();
   const [accounts, setAccounts] = useState<Accounts | null>(null);
   const [connectors, setConnectors] = useState<Pick<ConnectorState, 'enabled' | 'launch'> | null>(null);
@@ -25,8 +26,8 @@ export function Chip() {
     if (!providerId) return;
     let alive = true;
     Promise.all([controller.models(providerId), controller.daybreak()]).then(
-      ([models, programme]) => { if (alive) { setNames(new Map(models.map(m => [m.model, m.displayName]))); setDaybreak(programme); } },
-      () => { if (alive) setNames(new Map()); });
+      ([models, programme]) => { if (alive) { setModels(models); setDaybreak(programme); } },
+      () => { if (alive) setModels([]); });
     return () => { alive = false; };
   }, [controller, providerId, model, composer.isRunning]);
   useEffect(() => subscribeSelection(key => {
@@ -47,19 +48,21 @@ export function Chip() {
   useEffect(loadAccounts, [loadAccounts, composer.isRunning]);
   useRealtime('profiles-changed', loadAccounts);
   if (!providerId || !model) return null;
-  const name = `${names.get(model) ?? model}${daybreak ? ' · Daybreak' : ''}`;
+  const currentModel = models.find(entry => entry.model === model);
+  const name = `${currentModel?.displayName ?? model}${daybreak ? ' · Daybreak' : ''}`;
   const effort = composer.selection?.reasoningLevel;
-  const fast = composer.selection?.serviceTier && composer.selection.serviceTier !== 'default';
+  const tier = composer.selection?.serviceTier;
+  const speed = tier && tier !== 'default' ? tierLabel(tier, currentModel) : null;
   const shownId = accounts?.pendingId ?? accounts?.currentId;
   const account = accounts && accounts.profiles.length > 1 ? accounts.profiles.find(profile => profile.id === shownId) : undefined;
   const pending = Boolean(accounts?.pendingId);
   const stillOn = connectors && !connectors.enabled && connectors.launch === 'on';
   return <button type="button" className="sw-chip" ref={element => registerAnchor(composer.key, element)} onClick={() => open(composer)}
-    aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${fast ? ', fast' : ''}${account ? `, ${account.label} account${pending ? ' from the next turn' : ''}` : ''}${stillOn ? ', connectors still on' : ''}`}
+    aria-label={`Switch model: ${name}${effort ? `, ${effort}` : ''}${speed ? `, ${speed}` : ''}${account ? `, ${account.label} account${pending ? ' from the next turn' : ''}` : ''}${stillOn ? ', connectors still on' : ''}`}
     title="Switch model (⌘⇧M)">
     <Glyph providerId={providerId} />
     <span className="sw-chip-name">{name}</span>
-    {(effort || fast) && <span className="sw-muted">{[effort, fast ? 'fast' : null].filter(Boolean).join(' · ')}</span>}
+    {(effort || speed) && <span className="sw-muted">{[effort, speed].filter(Boolean).join(' · ')}</span>}
     {account && <><span className="sw-sep" aria-hidden="true" />
       <span className="sw-key" aria-hidden="true">{account.key ?? '?'}</span>
       <span className="sw-muted sw-chip-account">{account.label}</span>
