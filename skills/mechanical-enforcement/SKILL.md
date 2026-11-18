@@ -43,7 +43,7 @@ The table names the defaults. The **Read** column is where each pick is justifie
 | HTML | - | html-validate | - | `references/web-delivery.md` (HTML conformance) |
 | Markdown; YAML; TOML | rumdl; oxfmt; taplo | rumdl; yamllint; taplo | - | `references/other-stacks.md` |
 | Commit messages | - | commitlint | - | Commit messages, below |
-| Comment & doc content | - | Vale (`existence` styles); windbag is a watch | - | `references/comment-hygiene.md` |
+| Comment & doc content | - | Vale (`existence` styles); windbag is a watch; block-by-default `no-comments` is measured and declined | - | `references/comment-hygiene.md` |
 | Secrets; typos; GitHub Actions | - | gitleaks; typos; zizmor + actionlint | - | Secrets & CI hardening, below |
 | API / event contracts | - | buf breaking; oasdiff; graphql-inspector; cargo-semver-checks; api-extractor | - | `references/contract-gates.md`; `references/architecture-boundaries.md` (Boundary contracts) |
 | Code duplication | - | jscpd | - | `references/complexity.md` (Duplication) |
