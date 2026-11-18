@@ -1430,14 +1430,17 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Wanted: select Fable 5.2 from the model picker after updating Claude Code.
 - Gap: BB model refresh succeeds but lists Fable 5.1. Direct initialisation with the updated CLI reports Fable 5.2.
   Reloading the provider does not resolve the discrepancy. The cause remains unconfirmed.
+  With Claude Code 2.1.326, the native stream JSON `initialize` response can list Mythos 5.2 and 5.1 while BB's catalogue omits both.
 - Workaround: add `{"providerId":"claude-code","model":"claude-fable-5-2","displayName":"Fable 5.2"}`
   to `customModels` in the data directory's `config.json`, then run `bb-app config refresh`.
-  The entry uses `model`, not `id`.
-- Ask: expose the executable and refresh provenance for model discovery so a successful stale catalogue can be diagnosed.
+  Use the same entry format with the verified Mythos model ID where the Claude account has access.
+- Ask: expose the executable and refresh provenance for model discovery, including which models the bridge received before BB built its catalogue.
 - Status: open; custom entry verified in the model list and model access verified through the updated CLI.
 - Category: provider-issue
 - Evidence: `bb updates status` reports Claude Code 2.1.322; `bb provider models claude-code` returns Fable 5.1.
   The same CLI's initialisation resolves `fable` to `claude-fable-5-2`, and an explicit model request succeeds.
+  With Claude Code 2.1.326, the native `initialize` response includes `claude-mythos-5-2`, and a direct request reports usage for that ID.
+  BB's provider list includes the ID after adding it to `customModels` and refreshing the running server config.
 
 ### Native Claude Code artefacts are absent from account connector discovery
 
