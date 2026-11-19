@@ -259,6 +259,13 @@ render_launcher() {
   [ "$status" -ne 0 ]
 }
 
+@test "prepare releases the lock when called as an autoloaded function" {
+  run zsh --no-rcs -c 'fpath=("$1" $fpath); autoload -Uz bb-deploy; bb-deploy prepare' _ "$(dirname "$DEPLOY")"
+  [ "$status" -eq 0 ]
+  [ -f "$DEPLOY_ROOT/candidate/mise.toml" ]
+  [ ! -e "$DEPLOY_ROOT/.lock" ]
+}
+
 @test "another deployment holds the lock" {
   mkdir -p "$DEPLOY_ROOT/.lock"
   run prepare

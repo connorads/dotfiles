@@ -47,7 +47,8 @@ if ! mkdir "$root/.lock" 2>/dev/null; then
   print -u2 "bb-deploy: deployment locked at $root/.lock"
   return 1
 fi
-trap 'rmdir "$root/.lock"' EXIT
+# An autoloaded function's EXIT trap runs after its locals go out of scope.
+trap "rmdir ${(q)root}/.lock" EXIT
 trap 'return 130' INT
 trap 'return 143' TERM
 
