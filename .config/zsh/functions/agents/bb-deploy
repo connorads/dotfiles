@@ -80,7 +80,10 @@ _bb_deploy_resolve() {
     [[ $package_root == /* && -f "$package_root/dist/bb-app.js" ]] || return 1
     ;;
   system) ;;
-  *) print -u2 'bb-deploy: invalid deployed service'; return 1 ;;
+  *)
+    print -u2 'bb-deploy: invalid deployed service'
+    return 1
+    ;;
   esac
 }
 
@@ -132,7 +135,10 @@ if [[ $action == prepare ]]; then
     package_value=$(jq -Rn --arg value "$package_root" '$value') || return 1
     ;;
   system) ;;
-  *) print -u2 'bb-deploy: invalid deployed service'; return 1 ;;
+  *)
+    print -u2 'bb-deploy: invalid deployed service'
+    return 1
+    ;;
   esac
   mkdir -p "$root/candidate" || return 1
   {
