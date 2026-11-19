@@ -17,10 +17,10 @@ export function publishVoiceHeader(next: HeaderState) {
   listeners.forEach(listener => listener());
 }
 
-/** Idle shows only the mic; activity and results show their text beside it. */
 export function VoiceHeader() {
   const current = useSyncExternalStore(subscribe, () => state);
   const text = current.label.replace(/^Voice( · )?/, '');
+  if (!text && !current.problem && !current.expanded) return null;
   return <Chip className="handsfree-toggle" data-handsfree-header tone={current.problem ? 'danger' : undefined}
     aria-label={`Voice monitor. ${current.label}`} expanded={current.expanded} title={current.label}
     onClick={() => window.dispatchEvent(new Event('handsfree:open'))} icon={<Icon name="Mic" />}>

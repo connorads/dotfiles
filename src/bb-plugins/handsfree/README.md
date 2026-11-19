@@ -1,8 +1,10 @@
 # Handsfree
 
-Spoken commands, recorded through Hex, control the focused BB window. A Voice header control shows brief
-results and failures. Clicking opens activity, command help and numbered matches.
-New drafts provide the same control beside the composer actions.
+Spoken commands, recorded through Hex, control the focused BB window. Open
+**Voice monitor** from the command palette for activity and command help.
+The Voice chip appears during capture, briefly shows results and failures,
+and stays visible while the monitor is open. New drafts show it beside the
+composer actions. Settings → Handsfree controls spoken feedback.
 
 ## Command pedal
 

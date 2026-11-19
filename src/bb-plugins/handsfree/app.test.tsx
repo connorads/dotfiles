@@ -110,6 +110,12 @@ async function render(archiveStatus = 'idle', duringInspect?: () => void | Promi
   return {
     archived, restored, approvals,
     slot: rendered,
+    openMonitor() {
+      const actions = (app as unknown as { commandPaletteActions: { id: string; run: () => void }[] }).commandPaletteActions;
+      const monitor = actions.find(action => action.id === 'monitor');
+      if (!monitor) throw new Error('Voice monitor palette entry missing');
+      act(() => monitor.run());
+    },
     async command(command: Command) {
       const count = replies.length;
       await rendered.behavior.emitRealtime('command', { requestId: String(++sequence), command });
@@ -721,13 +727,13 @@ test.each(['q', 'Q'])('%s closes focused voice help but leaves composer typing a
   expect(view.slot.inspection.composer.text).toBe('Unsent task');
 });
 
-test('voice feedback belongs in a header control, with no persistent floating card', async () => {
+test('idle voice hides its chip and the command palette opens the monitor', async () => {
   const app = await loadPluginApp(() => import('./app.tsx'));
   expect(app.threadHeaderActions).toHaveLength(1);
   const view = await render();
-  expect(view.slot.queryByRole('button', { name: 'Voice' })).toBeNull();
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
   expect(view.slot.queryByText(/Right Alt:/)).toBeNull();
-  await view.command({ action: 'help' });
+  view.openMonitor();
   expect(view.slot.getByRole('dialog', { name: 'Voice monitor' })).toBeTruthy();
   expect(view.slot.queryByText(/Right Alt:/)).toBeNull();
 });
@@ -748,8 +754,8 @@ test('command failures expire after eight seconds and remain in Activity', async
   await act(async () => { await vi.advanceTimersByTimeAsync(7999); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*There is no active question/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
-  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
+  view.openMonitor();
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active question/);
 });
 
@@ -763,8 +769,8 @@ test.each(['t2', null])('changing the focused destination to %s clears failures 
   layout.panes[0].threadId = threadId;
   await view.slot.behavior.setComposerScope(threadId
     ? { kind: 'thread', threadId } : { kind: 'new-thread', projectId: 'p1' });
-  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
-  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
+  view.openMonitor();
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/There is no active question/);
 });
 
@@ -779,8 +785,8 @@ test('native diagnostic failures expire after eight seconds and remain in Activi
   await act(async () => { await vi.advanceTimersByTimeAsync(750); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*Native command failed/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(7500); });
-  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
-  fireEvent.click(view.slot.getByRole('button', { name: 'Voice monitor. Voice' }));
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
+  view.openMonitor();
   expect(view.slot.getByRole('tabpanel', { name: 'Activity' }).textContent).toMatch(/Native command failed/);
 });
 
@@ -822,7 +828,7 @@ test('capture feedback expires and polling stops when the controller unmounts', 
   await act(async () => { await vi.advanceTimersByTimeAsync(750); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*Recording/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-  expect(view.slot.getByRole('button', { name: 'Voice monitor. Voice' })).toBeTruthy();
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
   view.slot.lifecycle.unmount(); slot = undefined;
   const count = read.mock.calls.length;
   await act(async () => { await vi.advanceTimersByTimeAsync(2000); });

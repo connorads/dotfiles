@@ -646,4 +646,8 @@ export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'voice', component: VoiceCard });
   registerThreadHeaderChip(app, { id: 'voice', title: 'Voice monitor', component: VoiceHeader });
   app.composer.customize({ id: 'voice', scopes: ['new-thread'], actions: [{ id: 'voice', component: VoiceHeader }] });
+  app.commands.register({
+    id: 'monitor', title: 'Voice monitor',
+    run: () => { window.dispatchEvent(new Event('handsfree:open')); },
+  });
 });
