@@ -67,10 +67,10 @@ test('the usage ring shows the fullest window and its tone', () => {
 test('the account row appears only for Claude with more than one account', () => {
   const profiles = [{ id: 'summit', label: 'Summit', configDir: '/s', key: 'S' }, { id: 'trove', label: 'Trove', configDir: '/t', key: 'T' }];
   const accounts = { profiles, currentId: 'summit', pendingId: null };
-  expect(accountChips('codex', accounts, {})).toEqual([]);
-  expect(accountChips('claude-code', { ...accounts, profiles: profiles.slice(0, 1) }, {})).toEqual([]);
-  expect(accountChips('claude-code', { ...accounts, pendingId: 'trove' }, { trove: true })
-    .map(c => [c.profile.key, c.selected, c.pending, c.connectors])).toEqual([['S', false, false, false], ['T', true, true, true]]);
+  expect(accountChips('codex', accounts)).toEqual([]);
+  expect(accountChips('claude-code', { ...accounts, profiles: profiles.slice(0, 1) })).toEqual([]);
+  expect(accountChips('claude-code', { ...accounts, pendingId: 'trove' })
+    .map(c => [c.profile.key, c.selected, c.pending])).toEqual([['S', false, false], ['T', true, true]]);
 });
 
 test('the switcher opens beside its chip and stays inside the window', () => {

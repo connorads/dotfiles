@@ -96,10 +96,6 @@ function Dots({ id, levels, effort }: { id: string; levels: readonly Effort[]; e
   const filled = levels.indexOf(effort) + 1;
   return <span id={id} className="sw-dots" title={effort} aria-label={`Effort ${effort}`}>{levels.map((level, index) => <i key={level} data-on={index < filled || undefined} />)}</span>;
 }
-function PlugIcon() {
-  return <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-    <path d="M6 1.5v3M10 1.5v3M4 4.5h8v3a4 4 0 0 1-8 0zM8 11.5v3" /></svg>;
-}
 export function AccountBadge({ chip, usage }: { chip: Pick<AccountChip, 'profile'>; usage?: Usage }) {
   const view = ring(usage);
   const r = 13, length = 2 * Math.PI * r;
@@ -125,7 +121,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const [daybreak, setDaybreak] = useState<boolean | undefined>();
   const [accounts, setAccounts] = useState<Accounts | null>(null);
   const [quotas, setQuotas] = useState<Record<string, Usage>>({});
-  const [connectors, setConnectors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [work, setWork] = useState<Work | null>(() => running.get(composer.key) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +152,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         const profiles = await rpc.call('antigravityAccounts', { hostId });
         if (request !== accountGeneration.current) return;
         setAccounts({ supported: true, profiles, currentId: providerId, pendingId: null });
-        setConnectors({});
         for (const profile of profiles) void rpc.call('antigravityQuota', { hostId, providerId: profile.id }).then(usage => {
           if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage }));
         }, () => {});
@@ -169,7 +163,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       const value = await rpc.call('accounts', { threadId });
       if (request !== accountGeneration.current) return;
       setAccounts(value);
-      void rpc.call('connectors.get', { threadId }).then(state => { if (request === accountGeneration.current) setConnectors(state.accounts); }, () => {});
       for (const profile of value.profiles) {
         const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id }) : rpc.call('usage', { threadId, profileId: profile.id, refresh: false });
         const settle = (usage: Usage) => { if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage })); };
@@ -229,7 +222,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const currentModel = modelOf(catalog, providerId, composer.selection?.model);
   const groups = searchGroups(catalog, favourites, query, id => composer.scope.kind === 'thread' && id === providerId);
   const results = groups.flatMap(group => group.results);
-  const chips = accounts?.supported ? accountChips(providerId, accounts, connectors) : [];
+  const chips = accounts?.supported ? accountChips(providerId, accounts) : [];
   const tiers = (currentModel?.supportedServiceTiers ?? []).filter(tier => tier.id !== 'default');
   const singleTier = tiers.length === 1 ? tiers[0] : undefined;
   const activeTier = current.serviceTier ?? 'default';
@@ -292,16 +285,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
     // The programme change keeps the effort and tier already chosen.
     const kept = { ...(current.reasoningLevel ? { reasoningLevel: current.reasoningLevel } : {}), ...(current.serviceTier ? { serviceTier: current.serviceTier } : {}) };
     void run(async () => { await controller.apply({ providerId, model: currentModel.model, daybreak: !daybreak, ...kept }); await loadModels(); });
-  };
-  // The switch writes the same account preference as the settings section; the server's profiles-changed event refreshes both.
-  const shownProfile = accounts?.supported ? accounts.profiles.find(profile => profile.id === (accounts.pendingId ?? accounts.currentId)) : undefined;
-  const toggleConnectors = (profile: KeyedProfile) => {
-    const next = connectors[profile.id] !== true;
-    void run(async () => {
-      await rpc.call('connectors.account.set', { threadId, profileId: profile.id, enabled: next });
-      setConnectors(previous => ({ ...previous, [profile.id]: next }));
-      await loadAccounts();
-    }, 'Saving connectors…');
   };
   const openSearch = () => { setView('search'); setHighlight(0); };
   const closeSearch = () => { setView('quick'); setQuery(''); };
@@ -410,8 +393,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   }
 
   const daybreakToggle = Boolean(daybreakOption && !daybreakOption.fixed && composer.scope.kind === 'thread');
-  const connectorProfile = providerId === 'claude-code' ? shownProfile : undefined;
-  const now = !loading && currentModel && (efforts.length > 0 || tiers.length > 0 || daybreakToggle || connectorProfile);
+  const now = !loading && currentModel && (efforts.length > 0 || tiers.length > 0 || daybreakToggle);
   const offset = (group: number) => groups.slice(0, group).reduce((total, g) => total + g.results.length, 0);
   const position = sheet ? null : placement(anchor, { width: window.innerWidth, height: window.innerHeight });
   return <dialog ref={dialog} tabIndex={-1} className="sw-dialog" data-anchored={position ? true : undefined} data-sheet={sheet || undefined} style={position ?? undefined}
@@ -440,9 +422,6 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
             aria-pressed={activeTier === tier} onClick={() => setServiceTier(tier)}>{tierLabel(tier, currentModel)}</button>)}
         </div>}
         {daybreakToggle && <button type="button" className="sw-pill" aria-pressed={Boolean(daybreak)} onClick={toggleDaybreak}>Daybreak</button>}
-        {connectorProfile && <button type="button" role="switch" className="sw-pill sw-connectors" aria-checked={connectors[connectorProfile.id] === true}
-          aria-label={`${connectorProfile.label} connectors`} title={`Apps connected through ${connectorProfile.label}, such as Slack`}
-          onClick={() => toggleConnectors(connectorProfile)}><PlugIcon />Connectors {connectors[connectorProfile.id] ? 'on' : 'off'}</button>}
       </div>}
       {loading ? <p role="status" className="sw-empty">Loading…</p> : <ul className="sw-list" aria-label="Favourites">{rows.map(quickRow)}
         {favourites.length < 9 && <li className="sw-row sw-add"><button type="button" className="sw-select" onClick={openSearch}>
@@ -451,12 +430,11 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       {chips.length > 0 && <div className="sw-accounts" role="group" aria-label={providerId === 'claude-code' ? 'Claude account' : 'Antigravity account'}>
         {chips.map(chip => <button type="button" key={chip.profile.id} className="sw-account" aria-pressed={chip.selected}
           data-target={work?.accountId === chip.profile.id || undefined} aria-keyshortcuts={chip.profile.key ?? undefined}
-          aria-label={`${chip.profile.label}${chip.pending ? ', next turn' : ''}${chip.connectors ? ', connectors on' : ''}`}
+          aria-label={`${chip.profile.label}${chip.pending ? ', next turn' : ''}`}
           aria-describedby={`${ids}-quota-${chip.profile.id}`}
           onClick={() => { if (!chip.selected) void chooseAccount(chip.profile); }}>
           <AccountBadge chip={chip} usage={quotas[chip.profile.id]} />
           <span id={`${ids}-quota-${chip.profile.id}`} hidden>{quotas[chip.profile.id] ? ring(quotas[chip.profile.id]).label : 'Checking usage…'}</span>
-          {chip.connectors && <span className="sw-plug" title="Connectors on" aria-hidden="true"><PlugIcon /></span>}
           <span className="sw-account-name">{chip.profile.label}</span>
           {chip.pending && <span className="sw-next">next turn</span>}
         </button>)}

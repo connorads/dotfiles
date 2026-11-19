@@ -36,14 +36,14 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict; connectorSave?: () => { restarted: number } };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
   let currentId = 'summit';
   let pendingId: string | null = null;
   let daybreak = options.daybreak ?? false;
-  let connectors = options.connectors ?? {};
+  const connectors = options.connectors ?? {};
   const tiers = [{ id: 'fast', label: 'Fast' }, ...(options.ultrafast ? [{ id: 'ultrafast', label: 'Ultrafast' }] : [])];
   const slot = renderSlot<Record<string, never>, typeof rpcContract>({ component: TestSwitcher }, {}, {
     composer: { text: 'Keep this draft', isRunning: options.running, selection,
@@ -69,11 +69,6 @@ function render(options: Options = {}) {
         return { currentId, conflict: null };
       },
       'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: connectors, profileId: 'summit', restartPending: false }),
-      'connectors.account.set': input => {
-        const result = options.connectorSave?.() ?? { restarted: 0 };
-        connectors = { ...connectors, [input.profileId]: input.enabled };
-        return result;
-      },
       usage: input => ({ status: 'ok', message: null, observedAt: 0, windows: [{ id: 'five_hour', label: 'Five hours', usedPercent: input.profileId === 'trove' ? 92 : 30, resetsAt: null, cost: null }] }),
       nextThreadQuota: () => ({ status: 'ok', message: null, observedAt: 0, windows: [] }),
     } as Partial<PluginRpcTestHandlers<typeof rpcContract>> as PluginRpcTestHandlers<typeof rpcContract>),
@@ -150,11 +145,13 @@ test('the account row is hidden for a model without accounts and for a single ac
   } finally { single.lifecycle.unmount(); }
 });
 
-test('connectors and quota show on the account row', async () => {
+test('the picker shows account quota without native connector controls', async () => {
   const slot = render({ connectors: { trove: true } });
   try {
-    await slot.findByRole('button', { name: 'Trove, connectors on' });
     await waitFor(() => expect(slot.container.querySelector('[data-account="trove"]')?.closest('.sw-ring')?.getAttribute('data-tone')).toBe('critical'));
+    expect(slot.getByRole('button', { name: 'Trove' })).toBeTruthy();
+    expect(slot.queryByTitle('Connectors on')).toBeNull();
+    expect(slot.queryByRole('switch', { name: /connectors/i })).toBeNull();
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -414,23 +411,6 @@ test('Add model opens search and Back returns to the favourites', async () => {
     fireEvent.click(slot.getByRole('button', { name: 'Back to favourites' }));
     await slot.findByRole('button', { name: '2. Opus' });
     expect(slot.queryByRole('combobox', { name: 'Search models' })).toBeNull();
-  } finally { slot.lifecycle.unmount(); }
-});
-
-test('the connectors switch saves the shown account preference and shows a failed save', async () => {
-  let fail = false;
-  const slot = render({ connectorSave: () => { if (fail) throw new Error('Claude session settings are changing. Try again after they finish.'); return { restarted: 0 }; } });
-  try {
-    const toggle = await slot.findByRole('switch', { name: 'Summit connectors' });
-    expect(toggle.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(toggle);
-    await waitFor(() => expect(slot.getByRole('switch', { name: 'Summit connectors' }).getAttribute('aria-checked')).toBe('true'));
-    expect(calls(slot, 'connectors.account.set')).toEqual([{ threadId: 'thread-test', profileId: 'summit', enabled: true }]);
-    await slot.findByRole('button', { name: 'Summit, connectors on' });
-    fail = true;
-    fireEvent.click(slot.getByRole('switch', { name: 'Summit connectors' }));
-    expect((await slot.findByRole('alert')).textContent).toBe('Claude session settings are changing. Try again after they finish.');
-    expect(slot.getByRole('switch', { name: 'Summit connectors' }).getAttribute('aria-checked')).toBe('true');
   } finally { slot.lifecycle.unmount(); }
 });
 

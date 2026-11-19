@@ -122,12 +122,10 @@ export function ring(usage: Usage | undefined): { percent: number | null; tone: 
   return { percent, tone, label };
 }
 
-export type AccountChip = { profile: KeyedProfile; selected: boolean; pending: boolean; connectors: boolean };
+export type AccountChip = { profile: KeyedProfile; selected: boolean; pending: boolean };
 // The account row exists only when the current model's provider offers a choice of accounts.
-export function accountChips(providerId: string | undefined, accounts: { profiles: readonly KeyedProfile[]; currentId: string; pendingId: string | null } | null,
-  connectors: Readonly<Record<string, boolean>>): AccountChip[] {
+export function accountChips(providerId: string | undefined, accounts: { profiles: readonly KeyedProfile[]; currentId: string; pendingId: string | null } | null): AccountChip[] {
   if ((providerId !== 'claude-code' && (providerId === undefined || antigravityAccountId(providerId) === null)) || !accounts || accounts.profiles.length < 2) return [];
   const shown = accounts.pendingId ?? accounts.currentId;
-  return accounts.profiles.map(profile => ({ profile, selected: profile.id === shown, pending: profile.id === accounts.pendingId,
-    connectors: connectors[profile.id] === true }));
+  return accounts.profiles.map(profile => ({ profile, selected: profile.id === shown, pending: profile.id === accounts.pendingId }));
 }

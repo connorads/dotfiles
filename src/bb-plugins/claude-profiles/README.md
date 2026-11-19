@@ -24,7 +24,7 @@ markup change brings the native trigger back beside the chip; it hides nothing
 else. Disabling the plugin removes the rule.
 
 ```text
- [low|medium|high]  Fast        ⌁ Connectors off
+ [low|medium|high]  Fast
  ────────────────────────────────────────────
  1  ◎ Sol            ●○○        ★
  2  ✳ Opus           ●●○   ✓    ★
@@ -64,9 +64,7 @@ BB reports for the current model. A single speed tier appears as a toggle.
 Multiple tiers appear beside **Default**. The composer chip names the active
 speed tier when it differs from **Default**.
 
-The strip also shows **Daybreak** when available and a **Connectors** switch
-for the shown Claude account. The switch writes the same preference as the
-settings section.
+The strip also shows **Daybreak** when available.
 
 On a touch screen every control is at least 44 px. On a phone-width touch
 screen the switcher opens as a sheet at the bottom of the window. A tap on the
@@ -75,7 +73,6 @@ dimmed backdrop closes it.
 The account row shows when the current provider has more than one account.
 Each account shows its letter inside a ring. The ring fills with the fullest
 allowance window. It turns amber at 70% and red at 90%. Hover for each window.
-**⌁** marks an account whose connectors are on.
 
 #### Search
 
@@ -206,7 +203,7 @@ Executor keeps its own connection control.
 
 | Control | Choices | Where |
 | --- | --- | --- |
-| Account | Off / On | **Claude account connectors** in Agent Switcher's settings, or the switcher's **Connectors** switch |
+| Account | Off / On | **Claude account connectors** in Agent Switcher's settings |
 | Thread | Use account setting / Off | `bb claude-profiles connectors THREAD` |
 
 A thread can restrict access but cannot enable an account that is off.

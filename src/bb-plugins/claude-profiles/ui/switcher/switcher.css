@@ -52,27 +52,24 @@
 .sw-add .sw-select:hover { color: var(--foreground); }
 .sw-add .sw-glyph { color: inherit; background: none; border: 1px dashed var(--border); box-sizing: border-box; font-size: 12px; font-weight: 400; }
 
-/* The current model's effort, tier, programme and account connectors, all reachable by a press as well as a key. */
+/* The current model's effort, tier and programme, all reachable by a press as well as a key. */
 .sw-now { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 4px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
 .sw-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
 .sw-seg button { all: unset; box-sizing: border-box; font-size: 11.5px !important; padding: 2px 9px; text-align: center; color: var(--muted-foreground); cursor: pointer; }
 .sw-seg button + button { border-left: 1px solid var(--border); }
 .sw-seg button:hover { color: var(--foreground); background: var(--accent); }
 .sw-seg button[aria-pressed=true] { color: var(--background); background: var(--foreground); }
-.sw-connectors { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
 .sw-back { all: unset; flex: none; width: 22px; text-align: center; font-size: 18px !important; line-height: 1; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
 .sw-back:hover { color: var(--foreground); background: var(--accent); }
 
 /* Many accounts wrap to a second line rather than cutting every name to a few letters. */
 .sw-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 4px; margin: 6px 0 0; padding: 6px 2px 2px; border-top: 1px solid var(--border); }
-.sw-account { all: unset; position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px;
+.sw-account { all: unset; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px;
   padding: 8px 4px 7px; border-radius: 9px; font-size: 11.5px; color: var(--muted-foreground); cursor: pointer; }
 .sw-account:hover, .sw-account[aria-pressed=true] { background: var(--accent); }
 .sw-account[aria-pressed=true] { color: var(--foreground); }
 .sw-account-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-next { margin-top: -3px; font-size: 10px; color: var(--warning-text, var(--warning)); }
-.sw-plug { position: absolute; top: 3px; left: calc(50% + 6px); width: 14px; height: 14px; display: grid; place-items: center;
-  border-radius: 50%; font-size: 9px; line-height: 1; color: var(--foreground); background: var(--popover, var(--card)); border: 1px solid var(--border); }
 .sw-ring { position: relative; width: 30px; height: 30px; flex: none; }
 .sw-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
 .sw-ring circle { fill: none; stroke-width: 2.5; }
