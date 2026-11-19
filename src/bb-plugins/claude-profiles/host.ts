@@ -5,7 +5,7 @@ import { isAbsolute, join } from 'node:path';
 import { hostContract, type Profile } from './contracts.ts';
 import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
-import { transferSession } from './src/accounts/handover.ts';
+import { releaseSession, transferSession } from './src/accounts/handover.ts';
 import { stageFork, sweepForkStages, unstageFork } from './src/accounts/fork-stage.ts';
 import { materialise } from './src/accounts/materialise.ts';
 import { adoptSession, isSessionId, locateSession, paneSession } from './src/accounts/import.ts';
@@ -42,6 +42,12 @@ async function profile(root: string, id: string) {
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Profile directory must be a real directory.');
   return selected;
 }
+async function handoverDirs(input: { root: string; sourceDir: string | null; profileId: string }) {
+  const selected = await profile(input.root, input.profileId);
+  const source = (await profiles(input.root)).find(value => value.configDir === input.sourceDir);
+  if (!source) throw new Error('Current profile is outside the configured profile root. Set the correct root before switching.');
+  return { source: source.configDir ?? join(homedir(), '.claude'), target: selected.configDir ?? join(homedir(), '.claude') };
+}
 export default experimental_defineHostEntry({
   contract: hostContract,
   handlers: {
@@ -73,11 +79,13 @@ export default experimental_defineHostEntry({
       return { materialised: await materialise(script, selected.configDir, context.signal) };
     },
     transfer: async input => {
-      const selected = await profile(input.root, input.profileId);
-      const source = (await profiles(input.root)).find(value => value.configDir === input.sourceDir);
-      if (!source) throw new Error('Current profile is outside the configured profile root. Set the correct root before switching.');
-      await transferSession(source.configDir ?? join(homedir(), '.claude'), selected.configDir ?? join(homedir(), '.claude'), input.sessionId);
+      const { source, target } = await handoverDirs(input);
+      await transferSession(source, target, input.sessionId);
       return { copied: true };
+    },
+    release: async input => {
+      const { source, target } = await handoverDirs(input);
+      return releaseSession(source, target, input.sessionId);
     },
     locate: async input => {
       const dirs = (await profiles(input.root)).map(value => ({ id: value.id, dir: value.configDir ?? join(homedir(), '.claude') }));

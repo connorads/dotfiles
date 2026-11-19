@@ -5,7 +5,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mkdtemp, mkdir, readFile, readdir, writeFile, symlink, truncate } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { transferSession } from './handover.ts';
+import { releaseSession, transferSession } from './handover.ts';
 
 const sessionId = '68fe2a7c-6970-42b4-a246-77aa535bd3ba';
 async function fixture() {
@@ -38,6 +38,31 @@ test('refuses divergent target history without overwriting it', async () => {
   await writeFile(f.destination, 'different history\n');
   await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
   assert.equal(await readFile(f.destination, 'utf8'), 'different history\n');
+});
+test('release removes the source copy once the target holds it', async () => {
+  const f = await fixture();
+  await mkdir(join(f.source, 'projects', 'workspace', sessionId, 'subagents'), { recursive: true });
+  await writeFile(join(f.source, 'projects', 'workspace', sessionId, 'subagents', 'agent.jsonl'), 'side\n');
+  await transferSession(f.source, f.target, sessionId);
+  assert.deepEqual(await releaseSession(f.source, f.target, sessionId), { released: true });
+  assert.deepEqual(await readdir(join(f.source, 'projects', 'workspace')), []);
+  assert.equal(await readFile(join(f.target, 'projects', 'workspace', sessionId, 'subagents', 'agent.jsonl'), 'utf8'), 'side\n');
+  // With one copy left, switching back needs no divergence check.
+  await transferSession(f.target, f.source, sessionId);
+  assert.equal(await readFile(f.file, 'utf8'), '{"message":"remember me"}\n');
+});
+test('release keeps a source copy the target does not hold', async () => {
+  const f = await fixture();
+  await transferSession(f.source, f.target, sessionId);
+  await writeFile(f.file, '{"message":"remember me"}\n{"message":"written after the copy"}\n');
+  assert.deepEqual(await releaseSession(f.source, f.target, sessionId), { released: false });
+  assert.match(await readFile(f.file, 'utf8'), /written after the copy/);
+});
+test('release refuses when the target has no copy', async () => {
+  const f = await fixture();
+  await mkdir(join(f.target, 'projects', 'workspace'), { recursive: true });
+  assert.deepEqual(await releaseSession(f.source, f.target, sessionId), { released: false });
+  assert.equal(await readFile(f.file, 'utf8'), '{"message":"remember me"}\n');
 });
 test('refuses symlinked transcript destinations', async () => {
   const f = await fixture();

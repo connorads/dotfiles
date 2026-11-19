@@ -452,6 +452,8 @@ sequenceDiagram
     Plugin->>Host: Transfer this session transcript
     Host->>Host: Reject conflicting history; copy atomically
     Plugin->>Plugin: Persist thread profile selection
+    Plugin->>Host: Release the source copy
+    Host->>Host: Remove it if the target holds every file unchanged
     User->>Claude: Next message through BB
     Claude->>Claude: Resume session under selected config directory
 ```
@@ -514,8 +516,10 @@ older transcript only when its contents are an exact prefix of the current one.
 Claude rewrites workflow state files whole, so the switch replaces a differing
 `workflows/*.json` only when the parent transcript has grown past the target's.
 Conflicting history, symlink paths and transcripts above 64 MiB cause refusal.
-Source transcripts remain intact. Transcript files can contain conversation
-content and tool results, so the target profile receives that content.
+After the thread binds to the target, the switch removes the source copy, so each
+session keeps one copy, in its thread's account. A source copy that differs from
+the target copy stays. Transcript files can contain conversation content and tool
+results, so the target profile receives that content.
 
 Quota requests use Claude's stream-JSON control protocol: `initialize`, then
 `get_usage` with `skip_behaviors: true`. The plugin sends no user message. It bounds
@@ -577,7 +581,8 @@ session, so the import works in 5 steps:
    the pane's processes and `sessions/<pid>.json`. The session must be idle.
 2. Spawn a thread in the BB environment whose path is the session's working
    directory. Its stub turn replies `OK`. The title is the session's AI title.
-3. Switch the thread to the profile that holds the source transcript.
+3. Switch the thread to the profile that holds the source transcript. The stub
+   session moves there with it.
 4. Copy the source transcript and its session directory over the stub's
    session, with the session ID rewritten.
 5. The next message resumes with the full history.

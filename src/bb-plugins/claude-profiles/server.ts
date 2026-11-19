@@ -319,6 +319,15 @@ export default function plugin(bb: BbPluginApi) {
       await bb.storage.kv.set(key(threadId), value);
       // Launches before the switch ran under the old profile, so only later launches are reviewed.
       await bb.storage.kv.set(guardKey(threadId), { checkedSeq: resolved?.seq ?? 0, notice: null } satisfies Guard);
+      // Release only after the thread points at the target, so a failed save still finds its history.
+      if (identity?.type === 'thread/identity') {
+        try {
+          await host.call('release', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
+            { hostId: environment.hostId });
+        } catch (error) {
+          bb.log.warn(`Kept the ${threadId} history copy in the previous account: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
       await invalidateCache(threadId);
       bb.realtime.publish('profiles-changed', { threadId });
       return value;

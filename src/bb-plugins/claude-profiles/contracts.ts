@@ -24,6 +24,7 @@ export const hostContract = defineRpcContract({
   // Derives a profile's shared settings, memory, skills and commands from ~/.claude before Claude launches on it.
   materialise: { input: z.object({ ...rootInput, profileId: z.string() }), output: z.object({ materialised: z.boolean() }) },
   transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ copied: z.boolean() }) },
+  release: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ released: z.boolean() }) },
   // A ref is a native session ID or a tmux pane target.
   locate: { input: z.object({ ...rootInput, ref: z.string() }),
     output: z.object({ profileId: z.string(), sessionId: z.string(), cwd: z.string(), title: z.string() }) },

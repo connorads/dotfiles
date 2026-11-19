@@ -103,13 +103,12 @@ async function changes(source: Snapshot, target: Snapshot, sourceProject: string
   });
 }
 
-/** Only this session's history crosses profiles. Existing divergent history is preserved. */
-export async function transferSession(source: string, target: string, sessionId: string): Promise<void> {
-  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(sessionId)) throw new Error('Invalid native session ID.');
-  if (source === target) return;
-  await directory(source);
-  await directory(target);
-  const projects = join(source, 'projects');
+const sessionIdPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+/** The one project directory in a profile that holds this session's transcript. */
+async function sessionProject(profile: string, sessionId: string) {
+  if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
+  await directory(profile);
+  const projects = join(profile, 'projects');
   await directory(projects);
   const matches: string[] = [];
   for (const entry of await readdir(projects, { withFileTypes: true })) {
@@ -120,8 +119,17 @@ export async function transferSession(source: string, target: string, sessionId:
   }
   const project = matches[0];
   if (matches.length !== 1 || !project) throw new Error('Native session not found uniquely in the current profile.');
-  const sourceProject = join(projects, project);
-  await directory(sourceProject);
+  await directory(join(projects, project));
+  return project;
+}
+
+/** Only this session's history crosses profiles. Existing divergent history is preserved. */
+export async function transferSession(source: string, target: string, sessionId: string): Promise<void> {
+  if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
+  if (source === target) return;
+  const project = await sessionProject(source, sessionId);
+  await directory(target);
+  const sourceProject = join(source, 'projects', project);
   const content = await snapshot(sourceProject, sessionId);
   const main = `${sessionId}.jsonl`;
   if (!content.get(main)) throw new Error('Source history changed during the switch.');
@@ -186,4 +194,31 @@ export async function transferSession(source: string, target: string, sessionId:
     for (const path of [...created].reverse()) await rmdir(join(temporary, path));
     await rmdir(temporary);
   }
+}
+
+/**
+ * Removes the source profile's copy once the target holds every source file unchanged, so each
+ * session keeps one live copy. A source that differs from the target is left in place.
+ */
+export async function releaseSession(source: string, target: string, sessionId: string): Promise<{ released: boolean }> {
+  if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
+  if (source === target) return { released: false };
+  const project = await sessionProject(source, sessionId);
+  const sourceProject = join(source, 'projects', project);
+  const targetProject = join(target, 'projects', project);
+  const content = await snapshot(sourceProject, sessionId);
+  await directory(targetProject);
+  const copy = await snapshot(targetProject, sessionId);
+  const held = [...content].every(([path, value]) => {
+    const other = copy.get(path);
+    return value === null ? other === null : !!other && same(value, other);
+  });
+  if (!held) return { released: false };
+  // The transcript goes first: without it Claude Code no longer lists the session, even if a later unlink fails.
+  const files = [...content].filter(([, value]) => value !== null).map(([path]) => path)
+    .sort((a, b) => Number(b === `${sessionId}.jsonl`) - Number(a === `${sessionId}.jsonl`));
+  for (const path of files) await unlink(join(sourceProject, path));
+  const folders = [...content].filter(([, value]) => value === null).map(([path]) => path);
+  for (const path of folders.sort((a, b) => b.length - a.length)) await rmdir(join(sourceProject, path));
+  return { released: true };
 }

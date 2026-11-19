@@ -6,10 +6,11 @@ import plugin from '../../server.ts';
 const summit = { id: 'summit', label: 'Summit', configDir: '/profiles/summit' };
 const trove = { id: 'trove', label: 'Trove', configDir: '/profiles/trove' };
 
-async function setup(options: { transfer?: () => Promise<void>; turnOpen?: () => boolean } = {}) {
+async function setup(options: { transfer?: () => Promise<void>; release?: () => Promise<void>; turnOpen?: () => boolean } = {}) {
   const thread = makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'active', environmentId: 'e1', queuedMessageCount: 0 });
   const stops: unknown[] = [];
   const transfers: unknown[] = [];
+  const releases: { input: unknown; boundTo: string | undefined }[] = [];
   const { bb, harness } = createFakePluginHost({
     sdk: {
       threads: {
@@ -31,6 +32,11 @@ async function setup(options: { transfer?: () => Promise<void>; turnOpen?: () =>
       if (call.method === 'profiles') return [{ id: 'default', label: 'Default', configDir: null }, summit, trove];
       if (call.method === 'validate') return { authenticated: true };
       if (call.method === 'transfer') { transfers.push(call.input); await options.transfer?.(); return { copied: true }; }
+      if (call.method === 'release') {
+        releases.push({ input: call.input, boundTo: (await bb.storage.kv.get<{ profile: { id: string } }>('thread:t1'))?.profile.id });
+        await options.release?.();
+        return { released: true };
+      }
       if (call.method === 'materialise') return { materialised: true };
       throw new Error(`Unexpected host call ${call.method}`);
     },
@@ -47,7 +53,7 @@ async function setup(options: { transfer?: () => Promise<void>; turnOpen?: () =>
     thread.status = 'idle'; thread.queuedMessageCount = queued;
     await harness.behavior.emitThreadEvent('experimental_thread.events', { thread: { ...thread }, sequence: 8 });
   };
-  return { harness, thread, stops, transfers, dispatch, bound, finishTurn };
+  return { harness, thread, stops, transfers, releases, dispatch, bound, finishTurn };
 }
 
 test('choosing an account mid-turn queues it instead of refusing', async () => {
@@ -158,5 +164,21 @@ test('a turn that has started while BB still reports idle queues the switch inst
   open = false;
   await finishTurn();
   assert.equal(transfers.length, 1);
+  assert.equal(await bound(), 'trove');
+});
+
+test('an idle switch releases the old account copy after binding the new account', async () => {
+  const { harness, thread, releases, bound } = await setup();
+  thread.status = 'idle';
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove' });
+  assert.equal(await bound(), 'trove');
+  assert.deepEqual(releases, [{ boundTo: 'trove',
+    input: { root: '~/.claude-profiles/code', sourceDir: summit.configDir, profileId: 'trove', sessionId: 'session-1' } }]);
+});
+
+test('a failed release keeps the switch', async () => {
+  const { harness, thread, bound } = await setup({ release: async () => { throw new Error('disk busy'); } });
+  thread.status = 'idle';
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove' });
   assert.equal(await bound(), 'trove');
 });
