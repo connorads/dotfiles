@@ -274,9 +274,14 @@ During a turn the account shows **next turn**. The switch runs when the turn
 ends. Choosing the current account again cancels it. The next message waits
 with **Moving to <account>…** until the conversation transfers.
 
-Account selection in a cross-provider handoff is unavailable before its first
-message. The switcher says so. New Claude threads use the remembered account;
-switch accounts after the first message.
+Cross-provider handoff:
+
+1. In a thread on another provider, choose a Claude model. BB prepares a handoff.
+2. Press the account's letter. This sets the remembered new-thread account.
+3. Send the message. BB creates the Claude thread on that account.
+
+The handoff thread has no link to its source, so the choice uses the
+new-thread rule.
 
 **Default** means the thread has no named account. It uses the native default
 configuration.

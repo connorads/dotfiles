@@ -36,7 +36,7 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict };
+  unsupported?: boolean; handoff?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
@@ -59,8 +59,8 @@ function render(options: Options = {}) {
         { id: 'acp-antigravity-profile-secondary', label: 'Secondary', configDir: null, key: 'S' },
       ],
       antigravityQuota: () => ({ status: 'ok', observedAt: 0, windows: [], message: null }),
-      accounts: () => options.unsupported ? { supported: false, profiles: [], currentId: 'default', pendingId: null }
-        : { supported: true, profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
+      accounts: () => options.unsupported ? { supported: false, target: 'thread', profiles: [], currentId: 'default', pendingId: null }
+        : { supported: true, target: options.handoff ? 'next' : 'thread', profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
       choose: input => {
         if (options.chooseResult) return options.chooseResult;
         if (options.conflict && !input.replace) return { currentId, conflict: options.conflict };
@@ -118,6 +118,17 @@ test('an account letter switches the Claude account and the account row shows ea
     fireEvent.keyDown(dialog(slot), { key: 't' });
     await waitFor(() => expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'trove', replace: false }]));
     await waitFor(() => expect(slot.getByRole('button', { name: 'Trove' }).getAttribute('aria-pressed')).toBe('true'));
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a handoff to Claude chooses the new thread\'s account and reads its quota like a new-thread draft', async () => {
+  const slot = render({ handoff: true });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Trove' }));
+    await waitFor(() => expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'trove', replace: false }]));
+    await waitFor(() => expect(slot.getByRole('button', { name: 'Trove' }).getAttribute('aria-pressed')).toBe('true'));
+    expect(calls(slot, 'nextThreadQuota').length).toBeGreaterThan(0);
+    expect(calls(slot, 'usage')).toEqual([]);
   } finally { slot.lifecycle.unmount(); }
 });
 
@@ -330,7 +341,7 @@ test('a dimmed favourite says why when pressed', async () => {
   } finally { slot.lifecycle.unmount(); }
 });
 
-test('a handoff without account choice says when accounts become available', async () => {
+test('a Claude thread without a machine says when accounts become available', async () => {
   const slot = render({ unsupported: true });
   try {
     await slot.findByText(/Account choice opens after the first message/);

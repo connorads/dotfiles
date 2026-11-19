@@ -43,7 +43,7 @@ async function render(composer: Composer, rpc: Partial<PluginRpcTestHandlers<typ
   let currentId = 'default';
   // Methods without a handler reject, which keeps the usage RPCs out of this surface.
   const slot = renderSlot<object, typeof rpcContract>({ component: Surface }, {}, { composer, rpc: {
-    accounts: () => ({ supported: true, profiles, currentId, pendingId: null }),
+    accounts: () => ({ supported: true, target: 'thread', profiles, currentId, pendingId: null }),
     'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: {}, profileId: 'default', restartPending: false }),
     choose: input => { currentId = input.profileId; return { currentId, conflict: null }; },
     'favourites.list': () => [],
@@ -54,7 +54,7 @@ async function render(composer: Composer, rpc: Partial<PluginRpcTestHandlers<typ
 }
 
 test('the chip shows the model, effort and the remembered account in a new-thread Claude composer', async () => {
-  const { slot } = await render(newThread, { accounts: () => ({ supported: true, profiles, currentId: 'work', pendingId: null }) });
+  const { slot } = await render(newThread, { accounts: () => ({ supported: true, target: 'next', profiles, currentId: 'work', pendingId: null }) });
   const chip = await slot.findByRole('button', { name: /^Switch model: opus, high, Work account/ });
   expect(chip.textContent).toContain('Work');
   expect(slot.inspection.rpcCalls.find(call => call.method === 'accounts')?.input).toEqual({ threadId: null });

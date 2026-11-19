@@ -49,11 +49,12 @@ export const hostContract = defineRpcContract({
   ...usageHostContract,
 });
 // A null thread is the new-thread composer: its choice is remembered and claimed by the next Claude thread's first send.
+// A handoff draft composes in its non-Claude source thread. Its send creates a new Claude thread, so it targets that same choice.
 export const accountsContract = defineRpcContract({
   antigravityAccounts: { input: z.object({ hostId: z.string() }), output: z.array(keyedProfileSchema) },
   antigravityQuota: { input: z.object({ hostId: z.string(), providerId: z.string() }), output: usageSchema },
   accounts: { input: z.object({ threadId: z.string().nullable() }), output: z.object({
-    supported: z.boolean(), profiles: z.array(keyedProfileSchema), currentId: z.string(),
+    supported: z.boolean(), target: z.enum(['thread', 'next']), profiles: z.array(keyedProfileSchema), currentId: z.string(),
     // An account chosen during a turn; it applies when the thread is next idle.
     pendingId: z.string().nullable(),
   }) },

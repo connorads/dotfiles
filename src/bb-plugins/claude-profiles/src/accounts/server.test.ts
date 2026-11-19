@@ -242,6 +242,16 @@ test('a thread with no parent uses the composer account', async () => {
   assert.equal((await binding())?.profile.id, 'personal');
 });
 
+test('a handoff from another provider chooses the account its new Claude thread starts on', async () => {
+  const { harness, firstSend, binding } = await newThreadSetup();
+  assert.partialDeepStrictEqual(await harness.behavior.callRpc('accounts', { threadId: 'codex-source' }),
+    { supported: true, target: 'next', currentId: 'personal', pendingId: null });
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 'codex-source', profileId: 'work', replace: false }),
+    { currentId: 'work', conflict: null });
+  assert.deepEqual(await firstSend(), { action: 'proceed' });
+  assert.equal((await binding())?.profile.id, 'work');
+});
+
 test('a lifecycle owner alone is not a parent', async () => {
   const { bb, firstSend, binding } = await newThreadSetup();
   await bb.storage.kv.set('thread:owner', { hostId: 'h1', profile: work });

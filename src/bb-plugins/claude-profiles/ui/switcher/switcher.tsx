@@ -12,7 +12,7 @@ import './switcher.css';
 import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 import { BrandIcon } from '../usage/brand-icon.tsx';
 
-type Accounts = { supported: boolean; profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
+type Accounts = { supported: boolean; target: 'thread' | 'next'; profiles: KeyedProfile[]; currentId: string; pendingId: string | null };
 const controllers = new Map<string, Controller>();
 // One change at a time per composer, across switcher instances: closing and reopening must not start a second change.
 type Work = { done: Promise<void>; status: string; accountId: string | null };
@@ -151,7 +151,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
         const hostId = await controller.hostId();
         const profiles = await rpc.call('antigravityAccounts', { hostId });
         if (request !== accountGeneration.current) return;
-        setAccounts({ supported: true, profiles, currentId: providerId, pendingId: null });
+        setAccounts({ supported: true, target: 'thread', profiles, currentId: providerId, pendingId: null });
         for (const profile of profiles) void rpc.call('antigravityQuota', { hostId, providerId: profile.id }).then(usage => {
           if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage }));
         }, () => {});
@@ -164,7 +164,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       if (request !== accountGeneration.current) return;
       setAccounts(value);
       for (const profile of value.profiles) {
-        const reading = threadId === null ? rpc.call('nextThreadQuota', { profileId: profile.id }) : rpc.call('usage', { threadId, profileId: profile.id, refresh: false });
+        const reading = threadId === null || value.target === 'next' ? rpc.call('nextThreadQuota', { profileId: profile.id }) : rpc.call('usage', { threadId, profileId: profile.id, refresh: false });
         const settle = (usage: Usage) => { if (request === accountGeneration.current) setQuotas(previous => ({ ...previous, [profile.id]: usage })); };
         void reading.then(settle, () => settle({ status: 'error', windows: [], message: 'Usage unavailable', observedAt: null }));
       }

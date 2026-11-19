@@ -390,6 +390,10 @@ export default function plugin(bb: BbPluginApi) {
     await bb.storage.kv.set(nextKey, profileId);
     bb.realtime.publish('profiles-changed', { threadId: null });
   }
+  // A handoff draft's send creates a new Claude thread, which claims the remembered choice like a new-thread draft.
+  async function handoff(threadId: string) {
+    return (await bb.sdk.threads.get({ threadId })).providerId !== 'claude-code';
+  }
   // A thread without an environment has no host to list profiles on yet.
   async function threadAccount(threadId: string) {
     const thread = await bb.sdk.threads.get({ threadId });
@@ -448,14 +452,16 @@ export default function plugin(bb: BbPluginApi) {
         observedAt: value.observedAt, message: value.usage.status === 'error' ? value.usage.message : null };
     },
     accounts: async ({ threadId }) => {
-      const unsupported = { supported: false, profiles: [], currentId: 'default', pendingId: null };
-      if (threadId === null) {
+      const unsupported = { supported: false, target: 'thread' as const, profiles: [], currentId: 'default', pendingId: null };
+      if (threadId === null || await handoff(threadId)) {
         const profiles = await localProfiles();
-        return profiles ? { supported: true, profiles: await keyed(profiles), currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default', pendingId: null } : unsupported;
+        return profiles ? { supported: true, target: 'next' as const, profiles: await keyed(profiles),
+          currentId: await bb.storage.kv.get<string>(nextKey) ?? 'default', pendingId: null } : unsupported;
       }
       const account = await threadAccount(threadId);
       const pending = await bb.storage.kv.get<Pending>(pendingKey(threadId));
-      return account ? { supported: true, profiles: await keyed(account.profiles), currentId: account.currentId, pendingId: pending?.profileId ?? null } : unsupported;
+      return account ? { supported: true, target: 'thread' as const, profiles: await keyed(account.profiles), currentId: account.currentId,
+        pendingId: pending?.profileId ?? null } : unsupported;
     },
     nextThreadQuota: async ({ profileId }) => {
       const hostId = await localHostId();
@@ -463,7 +469,7 @@ export default function plugin(bb: BbPluginApi) {
       return hostUsage(hostId, await settings.get(), profileId, false);
     },
     choose: async ({ threadId, profileId, replace }) => {
-      if (threadId !== null) return queueSwitch(threadId, profileId, replace);
+      if (threadId !== null && !(await handoff(threadId))) return queueSwitch(threadId, profileId, replace);
       await chooseNext(profileId);
       return { currentId: profileId, conflict: null };
     },

@@ -11,7 +11,7 @@ const profiles = [
 const state = (accounts: Record<string, boolean>) => ({ enabled: false, launch: 'pending' as const, mode: 'account' as const,
   accounts, profileId: 'default', restartPending: false });
 afterEach(cleanup);
-const listed = (list = profiles) => async () => ({ supported: true, profiles: list, currentId: 'default', pendingId: null });
+const listed = (list = profiles) => async () => ({ supported: true, target: 'thread', profiles: list, currentId: 'default', pendingId: null });
 
 test('shows a loading line until the accounts arrive', async () => {
   const slot = renderSlot({ component: ConnectorSettings }, {}, {
