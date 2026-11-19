@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExtern
 import { useComposer, useComposers, useRealtime, useRpc, useSdk } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi } from '@get-bb/plugin-sdk/app';
 import { toast } from 'sonner';
-import type { KeyedProfile, rpcContract } from '../../contracts.ts';
+import type { CopySummary, HistoryConflict, KeyedProfile, rpcContract } from '../../contracts.ts';
 import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { createController, type Controller } from './controller.ts';
@@ -26,6 +26,28 @@ function sheetChanges(listener: () => void) {
   const query = window.matchMedia?.(SHEET);
   query?.addEventListener('change', listener);
   return () => query?.removeEventListener('change', listener);
+}
+
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+function CopyLine({ name, copy }: { name: string; copy: CopySummary }) {
+  return <li><b>{name}: {copy.prompts} {copy.prompts === 1 ? 'prompt' : 'prompts'}, last written {day(copy.modifiedAt)}.</b>
+    {copy.lastPrompt && <> Last prompt: “{copy.lastPrompt}”</>}</li>;
+}
+// The target account already holds this session with turns this thread lacks, so only the user can pick a side.
+function ConflictNotice({ conflict, onReplace, onCancel }: { conflict: HistoryConflict; onReplace: () => void; onCancel: () => void }) {
+  const ids = useId();
+  return <div role="alertdialog" className="sw-conflict" aria-labelledby={`${ids}-title`} aria-describedby={`${ids}-body`}>
+    <p id={`${ids}-title`} className="sw-conflict-title">{conflict.label} has a different copy of this conversation</p>
+    <ul id={`${ids}-body`}>
+      <CopyLine name="This thread" copy={conflict.source} />
+      <CopyLine name={conflict.label} copy={conflict.target} />
+    </ul>
+    <p>Replace keeps this thread’s history. The {conflict.label} copy moves to its <code>replaced-history</code> folder.</p>
+    <div className="sw-conflict-actions">
+      <button type="button" onClick={onCancel}>Cancel</button>
+      <button type="button" className="sw-conflict-replace" onClick={onReplace}>Replace {conflict.label} copy</button>
+    </div>
+  </div>;
 }
 
 export function useController(composer: PluginComposerApi) {
@@ -107,6 +129,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const [loading, setLoading] = useState(true);
   const [work, setWork] = useState<Work | null>(() => running.get(composer.key) ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{ profile: KeyedProfile; conflict: HistoryConflict } | null>(null);
   const threadId = composer.scope.kind === 'thread' ? composer.scope.threadId : null;
   const providerId = composer.selection?.providerId;
   const generation = useRef(0);
@@ -214,7 +237,8 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
 
   // Daybreak can change without a model change, so every apply re-reads it.
   const apply = (setup: Setup) => run(async () => { await controller.apply(setup); await loadModels(); });
-  const chooseAccount = (profile: KeyedProfile) => run(async () => {
+  const chooseAccount = (profile: KeyedProfile, replace = false) => run(async () => {
+    setConflict(null);
     if (providerId && antigravityAccountId(providerId) !== null) {
       if (composer.isRunning) throw new Error('Finish or stop the turn before changing Antigravity accounts.');
       const model = composer.selection?.model;
@@ -224,7 +248,9 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       await loadModels();
       return;
     }
-    const { currentId } = await rpc.call('choose', { threadId, profileId: profile.id });
+    const result = await rpc.call('choose', { threadId, profileId: profile.id, replace });
+    if (result.conflict) { setConflict({ profile, conflict: result.conflict }); return; }
+    const { currentId } = result;
     await loadAccounts();
     if (currentId !== profile.id && threadId !== null) toast(`${profile.label} from the next turn`);
   }, `Switching to ${profile.label}…`, profile.id);
@@ -456,6 +482,8 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
       </div>
       <div className="sw-foot" aria-hidden="true">{results.length > 0 && <><span><kbd>↵</kbd> use</span><span><kbd>⌘S</kbd> favourite</span></>}<span><kbd>esc</kbd> back</span></div>
     </>}
+    {conflict && <ConflictNotice conflict={conflict.conflict} onCancel={() => setConflict(null)}
+      onReplace={() => void chooseAccount(conflict.profile, true)} />}
     {work && <p role="status" className="sw-working">{work.status}</p>}
     {error && <p role="alert" className="sw-error">{error}</p>}
   </dialog>;

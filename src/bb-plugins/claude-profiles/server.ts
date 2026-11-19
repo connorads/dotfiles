@@ -1,6 +1,6 @@
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { accountsContract, hostContract, usageSourceContract, type Profile, type Selection } from './contracts.ts';
+import { accountsContract, hostContract, usageSourceContract, type HistoryConflict, type Profile, type Selection } from './contracts.ts';
 import { assignKeys, type AccountKeys } from './src/accounts/keys.ts';
 import { providerEnv } from './src/accounts/claude.ts';
 import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/accounts/guard.ts';
@@ -167,11 +167,14 @@ export default function plugin(bb: BbPluginApi) {
   }
   const quiet = async (threadId: string, thread: { status: string; activeBackgroundAgentCount?: number | null }) =>
     ['idle', 'error'].includes(thread.status) && !thread.activeBackgroundAgentCount && !await turnOpen(threadId);
-  async function queueSwitch(threadId: string, profileId: string) {
+  async function queueSwitch(threadId: string, profileId: string, replace: boolean) {
     const thread = await bb.sdk.threads.get({ threadId });
     if (await quiet(threadId, thread) && !thread.queuedMessageCount) {
       await bb.storage.kv.delete(pendingKey(threadId));
-      return (await select(threadId, profileId)).profile.id;
+      const result = await select(threadId, profileId, false, replace);
+      return 'conflict' in result
+        ? { currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default', conflict: result.conflict }
+        : { currentId: result.profile.id, conflict: null };
     }
     const current = (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default';
     if (profileId === current) await bb.storage.kv.delete(pendingKey(threadId));
@@ -183,7 +186,7 @@ export default function plugin(bb: BbPluginApi) {
       await bb.storage.kv.set(pendingKey(threadId), { profileId, label: profile.label, error: null } satisfies Pending);
     }
     bb.realtime.publish('profiles-changed', { threadId });
-    return current;
+    return { currentId: current, conflict: null };
   }
   async function applyPending(threadId: string) {
     const pending = await bb.storage.kv.get<Pending>(pendingKey(threadId));
@@ -191,7 +194,8 @@ export default function plugin(bb: BbPluginApi) {
     if (!await quiet(threadId, await bb.sdk.threads.get({ threadId }))) return;
     applying.add(threadId);
     try {
-      await select(threadId, pending.profileId, true);
+      const result = await select(threadId, pending.profileId, true);
+      if ('conflict' in result) throw new Error(conflictMessage(result.conflict));
       await bb.storage.kv.delete(pendingKey(threadId));
     } catch (error) {
       await bb.storage.kv.set(pendingKey(threadId), { ...pending, error: error instanceof Error ? error.message : String(error) } satisfies Pending);
@@ -285,7 +289,9 @@ export default function plugin(bb: BbPluginApi) {
       bb.log.warn(`Could not mark the prompt cache cold for ${threadId}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  async function select(threadId: string, profileId: string, allowQueued = false): Promise<Selection> {
+  const conflictMessage = (conflict: HistoryConflict) =>
+    `${conflict.label} has a different copy of this conversation. Choose ${conflict.label} in the switcher to compare and replace it.`;
+  async function select(threadId: string, profileId: string, allowQueued = false, replace = false): Promise<Selection | { conflict: HistoryConflict }> {
     if (connectors.changing || switching.has(threadId)) throw new Error('Claude session settings are changing.');
     switching.add(threadId);
     try {
@@ -312,8 +318,11 @@ export default function plugin(bb: BbPluginApi) {
       requireIdle(await bb.sdk.threads.get({ threadId }), allowQueued);
       await connectors.invalidate(threadId);
       if (identity?.type === 'thread/identity') {
-        await host.call('transfer', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
-          { hostId: environment.hostId });
+        const transfer = await host.call('transfer', { root: config.profileRoot, sourceDir, profileId,
+          sessionId: identity.data.providerThreadId, replace }, { hostId: environment.hostId });
+        if (transfer.status === 'diverged') {
+          return { conflict: { profileId, label: profile.label, source: transfer.source, target: transfer.target } };
+        }
       }
       const value: Selection = { hostId: environment.hostId, profile };
       await bb.storage.kv.set(key(threadId), value);
@@ -349,7 +358,8 @@ export default function plugin(bb: BbPluginApi) {
       new Error(`Import into ${thread.id} stopped at ${step}: ${error instanceof Error ? error.message : String(error)}`);
     try {
       await bb.sdk.threads.wait({ threadId: thread.id, status: 'idle', timeoutMs: 300_000 });
-      await select(thread.id, source.profileId);
+      const result = await select(thread.id, source.profileId);
+      if ('conflict' in result) throw new Error(conflictMessage(result.conflict));
     } catch (error) { throw failed('the stub turn', error); }
     const [identity] = await bb.sdk.threads.events.list({ threadId: thread.id, types: ['thread/identity'], order: 'desc', limit: '1' });
     if (identity?.type !== 'thread/identity') throw failed('the session ID', 'the stub recorded none');
@@ -452,10 +462,10 @@ export default function plugin(bb: BbPluginApi) {
       if (!hostId) throw new Error('No connected machine to read quota on.');
       return hostUsage(hostId, await settings.get(), profileId, false);
     },
-    choose: async ({ threadId, profileId }) => {
-      if (threadId !== null) return { currentId: await queueSwitch(threadId, profileId) };
+    choose: async ({ threadId, profileId, replace }) => {
+      if (threadId !== null) return queueSwitch(threadId, profileId, replace);
       await chooseNext(profileId);
-      return { currentId: profileId };
+      return { currentId: profileId, conflict: null };
     },
     usage: input => usage(input.threadId, input.profileId, input.refresh),
     threadAccounts: async () => {
@@ -537,8 +547,8 @@ export default function plugin(bb: BbPluginApi) {
           const { environment, config } = await context(threadId);
           value = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
         } else if (command === 'switch' && profileId) {
-          const currentId = await queueSwitch(threadId, profileId);
-          value = { currentId, pendingId: (await bb.storage.kv.get<Pending>(pendingKey(threadId)))?.profileId ?? null };
+          const { currentId, conflict } = await queueSwitch(threadId, profileId, false);
+          value = { currentId, pendingId: (await bb.storage.kv.get<Pending>(pendingKey(threadId)))?.profileId ?? null, conflict };
         }
         else if (command === 'usage' && profileId) value = await usage(threadId, profileId, true);
         else throw new Error('Unknown command. Use list, switch or usage.');

@@ -36,7 +36,7 @@ test('refuses divergent target history without overwriting it', async () => {
   const f = await fixture();
   await transferSession(f.source, f.target, sessionId);
   await writeFile(f.destination, 'different history\n');
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal((await transferSession(f.source, f.target, sessionId)).status, 'diverged');
   assert.equal(await readFile(f.destination, 'utf8'), 'different history\n');
 });
 test('release removes the source copy once the target holds it', async () => {
@@ -63,6 +63,37 @@ test('release refuses when the target has no copy', async () => {
   await mkdir(join(f.target, 'projects', 'workspace'), { recursive: true });
   assert.deepEqual(await releaseSession(f.source, f.target, sessionId), { released: false });
   assert.equal(await readFile(f.file, 'utf8'), '{"message":"remember me"}\n');
+});
+const prompt = (text: string) => JSON.stringify({ type: 'user', message: { role: 'user', content: text } });
+test('a diverged target is summarised for the user', async () => {
+  const f = await fixture();
+  await writeFile(f.file, [prompt('first'), prompt('second'), JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result' }] } })].join('\n') + '\n');
+  await mkdir(join(f.target, 'projects', 'workspace'), { recursive: true });
+  await writeFile(f.destination, `${prompt('Reply with only:\n  OK')}\n{"type":"assistant"}\n`);
+  const result = await transferSession(f.source, f.target, sessionId);
+  assert.equal(result.status, 'diverged');
+  if (result.status !== 'diverged') return;
+  assert.deepEqual([result.source.prompts, result.source.lastPrompt], [2, 'second']);
+  assert.deepEqual([result.target.prompts, result.target.lastPrompt], [1, 'Reply with only: OK']);
+});
+test('replace moves the diverged target aside, then copies', async () => {
+  const f = await fixture();
+  await sidecar(f.target, 'subagents/agent-target.jsonl', 'only at target\n');
+  await writeFile(f.destination, 'different history\n');
+  const now = new Date('2026-11-19T11:00:00.000Z');
+  assert.deepEqual(await transferSession(f.source, f.target, sessionId, { replace: true, now }), { status: 'copied' });
+  assert.equal(await readFile(f.destination, 'utf8'), await readFile(f.file, 'utf8'));
+  await assert.rejects(readFile(join(f.target, 'projects', 'workspace', sessionId, 'subagents', 'agent-target.jsonl')), { code: 'ENOENT' });
+  const archive = join(f.target, 'replaced-history', 'workspace', `${sessionId}-2026-11-19T11-00-00-000Z`);
+  assert.equal(await readFile(join(archive, `${sessionId}.jsonl`), 'utf8'), 'different history\n');
+  assert.equal(await readFile(join(archive, sessionId, 'subagents', 'agent-target.jsonl'), 'utf8'), 'only at target\n');
+});
+test('replace leaves a target that the source extends in place', async () => {
+  const f = await fixture();
+  await transferSession(f.source, f.target, sessionId);
+  await writeFile(f.file, '{"message":"remember me"}\n{"message":"next"}\n');
+  assert.deepEqual(await transferSession(f.source, f.target, sessionId, { replace: true }), { status: 'copied' });
+  await assert.rejects(readdir(join(f.target, 'replaced-history')), { code: 'ENOENT' });
 });
 test('refuses symlinked transcript destinations', async () => {
   const f = await fixture();
@@ -119,7 +150,7 @@ test('child conflicts leave parent and other destination files untouched', async
   const conflict = await sidecar(f.target, 'subagents/agent-child.jsonl', 'different history\n');
   await writeFile(f.destination, '{"message":"remember me"}\n');
   await writeFile(f.file, '{"message":"remember me"}\n{"message":"next"}\n');
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal((await transferSession(f.source, f.target, sessionId)).status, 'diverged');
   assert.equal(await readFile(conflict, 'utf8'), 'different history\n');
   assert.equal(await readFile(f.destination, 'utf8'), '{"message":"remember me"}\n');
   await assert.rejects(readFile(join(f.target, 'projects', 'workspace', sessionId, 'tool-results/new.txt')), { code: 'ENOENT' });
@@ -128,13 +159,13 @@ test('refuses differing opaque metadata', async () => {
   const f = await fixture();
   await sidecar(f.source, 'subagents/agent-child.meta.json', '{"agentType":"new"}');
   await sidecar(f.target, 'subagents/agent-child.meta.json', '{"agentType":"old"}');
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal((await transferSession(f.source, f.target, sessionId)).status, 'diverged');
   await assert.rejects(readFile(f.destination), { code: 'ENOENT' });
 });
 test('refuses target-only state instead of merging two branches', async () => {
   const f = await fixture();
   await sidecar(f.target, 'subagents/agent-target.jsonl', 'only at target\n');
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal((await transferSession(f.source, f.target, sessionId)).status, 'diverged');
 });
 test('copies files larger than the former per-file limit', async () => {
   const f = await fixture();
@@ -250,6 +281,6 @@ test('refuses differing workflow state when the parent transcript has not advanc
   await sidecar(f.source, 'workflows/wf_run.json', '{"status":"source"}');
   await transferSession(f.source, f.target, sessionId);
   const target = await sidecar(f.target, 'workflows/wf_run.json', '{"status":"target"}');
-  await assert.rejects(transferSession(f.source, f.target, sessionId), /diverged/);
+  assert.equal((await transferSession(f.source, f.target, sessionId)).status, 'diverged');
   assert.equal(await readFile(target, 'utf8'), '{"status":"target"}');
 });

@@ -77,6 +77,7 @@ function equal(left: Snapshot, right: Snapshot) {
     return content === null ? other === null : other !== null && other !== undefined && same(content, other);
   });
 }
+/** The source paths to copy, or null when the target holds history the source lacks. */
 async function changes(source: Snapshot, target: Snapshot, sourceProject: string, sessionId: string) {
   // Claude rewrites workflow state files whole. The loop below proves the source parent log extends the
   // target's, so a strictly longer one means the source holds every target turn and its state is newer.
@@ -87,14 +88,14 @@ async function changes(source: Snapshot, target: Snapshot, sourceProject: string
   for (const [path, previous] of target) {
     const content = source.get(path);
     if (content === undefined || (previous === null) !== (content === null)) {
-      throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
+      return null;
     }
     if (previous !== null && content !== null && !same(previous, content)) {
       const extendsLog = path.endsWith('.jsonl') &&
         previous.size <= content.size &&
         (previous.size === 0 || previous.lastByte === 10) &&
         same(await fingerprint(join(sourceProject, path), previous.size), previous);
-      if (!extendsLog && !(advanced && workflowState.test(path))) throw new Error(`Target history has diverged at ${path}. It was not overwritten.`);
+      if (!extendsLog && !(advanced && workflowState.test(path))) return null;
     }
   }
   return [...source].filter(([path, content]) => {
@@ -123,10 +124,68 @@ async function sessionProject(profile: string, sessionId: string) {
   return project;
 }
 
-/** Only this session's history crosses profiles. Existing divergent history is preserved. */
-export async function transferSession(source: string, target: string, sessionId: string): Promise<void> {
+export type CopySummary = { prompts: number; modifiedAt: string; lastPrompt: string | null };
+export type Transfer = { status: 'copied' } | { status: 'diverged'; source: CopySummary; target: CopySummary };
+
+function promptText(record: unknown): string | null {
+  if (!record || typeof record !== 'object') return null;
+  const value = record as { type?: unknown; isMeta?: unknown; message?: { content?: unknown } };
+  if (value.type !== 'user' || value.isMeta === true) return null;
+  const content = value.message?.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return null;
+  const text = content.find((part): part is { type: 'text'; text: string } =>
+    !!part && typeof part === 'object' && part.type === 'text' && typeof part.text === 'string');
+  return text?.text ?? null;
+}
+/** Enough of a copy for the user to tell two histories apart. */
+async function summarise(project: string, sessionId: string): Promise<CopySummary> {
+  const path = join(project, `${sessionId}.jsonl`);
+  const value = await stat(path);
+  if (!value?.isFile()) return { prompts: 0, modifiedAt: new Date(0).toISOString(), lastPrompt: null };
+  let prompts = 0;
+  let lastPrompt: string | null = null;
+  let rest = '';
+  const read = (line: string) => {
+    let text: string | null = null;
+    try { text = promptText(JSON.parse(line)); } catch { /* A torn final line from a live writer is skipped. */ }
+    if (text === null) return;
+    prompts += 1;
+    lastPrompt = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+  };
+  const decoder = new TextDecoder();
+  for await (const chunk of chunks(path)) {
+    const lines = (rest + decoder.decode(chunk, { stream: true })).split('\n');
+    rest = lines.pop() ?? '';
+    lines.forEach(read);
+  }
+  read(rest + decoder.decode());
+  return { prompts, modifiedAt: value.mtime.toISOString(), lastPrompt };
+}
+
+/**
+ * Moves the target's copy of a session aside, under `replaced-history/`, so a transfer can take its place.
+ * Claude Code never reads that folder, and the user can restore from it by hand.
+ */
+async function setAside(target: string, project: string, sessionId: string, now: Date) {
+  const targetProject = join(target, 'projects', project);
+  const archive = join(target, 'replaced-history', project, `${sessionId}-${now.toISOString().replace(/[:.]/g, '-')}`);
+  await mkdir(archive, { recursive: true, mode: 0o700 });
+  for (const name of [`${sessionId}.jsonl`, sessionId]) {
+    const value = await stat(join(targetProject, name));
+    if (value?.isSymbolicLink()) throw new Error('Refusing a symlink in session paths.');
+    if (value) await rename(join(targetProject, name), join(archive, name));
+  }
+}
+
+/**
+ * Only this session's history crosses profiles. A target copy with history the source lacks is reported
+ * as diverged and kept, unless `replace` moves it aside first.
+ */
+export async function transferSession(source: string, target: string, sessionId: string,
+  options: { replace?: boolean; now?: Date } = {}): Promise<Transfer> {
   if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
-  if (source === target) return;
+  if (source === target) return { status: 'copied' };
   const project = await sessionProject(source, sessionId);
   await directory(target);
   const sourceProject = join(source, 'projects', project);
@@ -136,8 +195,16 @@ export async function transferSession(source: string, target: string, sessionId:
   await directory(join(target, 'projects'), true);
   const targetProject = join(target, 'projects', project);
   await directory(targetProject, true);
-  const previous = await snapshot(targetProject, sessionId);
-  const pending = await changes(content, previous, sourceProject, sessionId);
+  let previous = await snapshot(targetProject, sessionId);
+  let pending = await changes(content, previous, sourceProject, sessionId);
+  if (!pending && options.replace) {
+    await setAside(target, project, sessionId, options.now ?? new Date());
+    previous = await snapshot(targetProject, sessionId);
+    pending = await changes(content, previous, sourceProject, sessionId);
+  }
+  if (!pending) {
+    return { status: 'diverged', source: await summarise(sourceProject, sessionId), target: await summarise(targetProject, sessionId) };
+  }
   const temporary = join(targetProject, `.${sessionId}-${randomUUID()}.tmp`);
   await directory(temporary, true);
   const staged: string[] = [];
@@ -194,6 +261,7 @@ export async function transferSession(source: string, target: string, sessionId:
     for (const path of [...created].reverse()) await rmdir(join(temporary, path));
     await rmdir(temporary);
   }
+  return { status: 'copied' };
 }
 
 /**

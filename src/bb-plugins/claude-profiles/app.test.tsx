@@ -45,7 +45,7 @@ async function render(composer: Composer, rpc: Partial<PluginRpcTestHandlers<typ
   const slot = renderSlot<object, typeof rpcContract>({ component: Surface }, {}, { composer, rpc: {
     accounts: () => ({ supported: true, profiles, currentId, pendingId: null }),
     'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: {}, profileId: 'default', restartPending: false }),
-    choose: input => { currentId = input.profileId; return { currentId }; },
+    choose: input => { currentId = input.profileId; return { currentId, conflict: null }; },
     'favourites.list': () => [],
     usage: () => ({ status: 'unavailable', windows: [], message: null, observedAt: null }),
     ...rpc,
@@ -126,8 +126,8 @@ test('the badge bridge loads thread accounts and reloads when an account changes
 });
 
 test('a switcher reopened while an account change runs shows that change and sends no second one', async () => {
-  let release = (_value: { currentId: string }) => {};
-  const { slot } = await render(thread, { choose: () => new Promise<{ currentId: string }>(resolve => { release = resolve; }) });
+  let release = (_value: { currentId: string; conflict: null }) => {};
+  const { slot } = await render(thread, { choose: () => new Promise<{ currentId: string; conflict: null }>(resolve => { release = resolve; }) });
   const chip = await slot.findByRole('button', { name: /^Switch model:/ });
   fireEvent.click(chip);
   fireEvent.click(await slot.findByRole('button', { name: 'Work' }));
@@ -141,6 +141,6 @@ test('a switcher reopened while an account change runs shows that change and sen
   fireEvent.click(await slot.findByRole('button', { name: 'Work' }));
   fireEvent.keyDown(reopened, { key: 'w' });
   expect(slot.inspection.rpcCalls.filter(call => call.method === 'choose')).toHaveLength(1);
-  release({ currentId: 'work' });
+  release({ currentId: 'work', conflict: null });
   await waitFor(() => expect(slot.queryByText('Switching to Work…')).toBeNull());
 });

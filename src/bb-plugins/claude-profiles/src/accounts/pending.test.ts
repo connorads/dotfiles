@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { createFakePluginHost, makeMessageDispatchHookContext, makeThreadResponse } from '@get-bb/plugin-sdk/testing';
 import plugin from '../../server.ts';
 
+type Summary = { prompts: number; modifiedAt: string; lastPrompt: string | null };
 const summit = { id: 'summit', label: 'Summit', configDir: '/profiles/summit' };
 const trove = { id: 'trove', label: 'Trove', configDir: '/profiles/trove' };
 
-async function setup(options: { transfer?: () => Promise<void>; release?: () => Promise<void>; turnOpen?: () => boolean } = {}) {
+async function setup(options: { transfer?: () => Promise<void | { status: 'diverged'; source: Summary; target: Summary }>; release?: () => Promise<void>; turnOpen?: () => boolean } = {}) {
   const thread = makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'active', environmentId: 'e1', queuedMessageCount: 0 });
   const stops: unknown[] = [];
   const transfers: unknown[] = [];
@@ -31,7 +32,7 @@ async function setup(options: { transfer?: () => Promise<void>; release?: () => 
     experimental_callHostRpc: async call => {
       if (call.method === 'profiles') return [{ id: 'default', label: 'Default', configDir: null }, summit, trove];
       if (call.method === 'validate') return { authenticated: true };
-      if (call.method === 'transfer') { transfers.push(call.input); await options.transfer?.(); return { copied: true }; }
+      if (call.method === 'transfer') { transfers.push(call.input); return await options.transfer?.() ?? { status: 'copied' as const }; }
       if (call.method === 'release') {
         releases.push({ input: call.input, boundTo: (await bb.storage.kv.get<{ profile: { id: string } }>('thread:t1'))?.profile.id });
         await options.release?.();
@@ -59,7 +60,7 @@ async function setup(options: { transfer?: () => Promise<void>; release?: () => 
 test('choosing an account mid-turn queues it instead of refusing', async () => {
   const { harness, transfers, bound } = await setup();
   const result = await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' });
-  assert.deepEqual(result, { currentId: 'summit' });
+  assert.deepEqual(result, { currentId: 'summit', conflict: null });
   const accounts = await harness.behavior.callRpc('accounts', { threadId: 't1' }) as { currentId: string; pendingId: string | null };
   assert.deepEqual([accounts.currentId, accounts.pendingId], ['summit', 'trove']);
   assert.equal(transfers.length, 0);
@@ -118,7 +119,7 @@ test('a failed switch refuses the next turn once with the reason and keeps the o
 test('an idle thread still switches immediately', async () => {
   const { harness, thread, transfers, bound } = await setup();
   thread.status = 'idle';
-  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove' });
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove', conflict: null });
   assert.equal(transfers.length, 1);
   assert.equal(await bound(), 'trove');
 });
@@ -157,7 +158,7 @@ test('a turn that has started while BB still reports idle queues the switch inst
   let open = true;
   const { harness, thread, transfers, stops, bound, finishTurn } = await setup({ turnOpen: () => open });
   thread.status = 'idle';
-  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'summit' });
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'summit', conflict: null });
   await harness.behavior.emitThreadEvent('experimental_thread.events', { thread: { ...thread }, sequence: 9 });
   assert.equal(transfers.length, 0);
   assert.equal(stops.length, 0);
@@ -170,7 +171,7 @@ test('a turn that has started while BB still reports idle queues the switch inst
 test('an idle switch releases the old account copy after binding the new account', async () => {
   const { harness, thread, releases, bound } = await setup();
   thread.status = 'idle';
-  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove' });
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove', conflict: null });
   assert.equal(await bound(), 'trove');
   assert.deepEqual(releases, [{ boundTo: 'trove',
     input: { root: '~/.claude-profiles/code', sourceDir: summit.configDir, profileId: 'trove', sessionId: 'session-1' } }]);
@@ -179,6 +180,36 @@ test('an idle switch releases the old account copy after binding the new account
 test('a failed release keeps the switch', async () => {
   const { harness, thread, bound } = await setup({ release: async () => { throw new Error('disk busy'); } });
   thread.status = 'idle';
-  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove' });
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'trove', conflict: null });
   assert.equal(await bound(), 'trove');
+});
+
+const copy = (prompts: number, lastPrompt: string) => ({ prompts, modifiedAt: '2026-11-01T00:00:00.000Z', lastPrompt });
+const diverged = { status: 'diverged' as const, source: copy(9, 'Ship it'), target: copy(1, 'Reply with only: OK') };
+
+test('a conflicting target copy comes back to the switcher and keeps the thread where it was', async () => {
+  const { harness, thread, transfers, releases, bound } = await setup({ transfer: async () => diverged });
+  thread.status = 'idle';
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' }), { currentId: 'summit',
+    conflict: { profileId: 'trove', label: 'Trove', source: diverged.source, target: diverged.target } });
+  assert.equal(await bound(), 'summit');
+  assert.equal(releases.length, 0);
+  assert.equal((transfers[0] as { replace: boolean }).replace, false);
+});
+
+test('replace passes through to the transfer', async () => {
+  const { harness, thread, transfers, bound } = await setup();
+  thread.status = 'idle';
+  assert.deepEqual(await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove', replace: true }), { currentId: 'trove', conflict: null });
+  assert.equal((transfers[0] as { replace: boolean }).replace, true);
+  assert.equal(await bound(), 'trove');
+});
+
+test('a queued switch that meets a conflicting copy rejects the next send and names the fix', async () => {
+  const { harness, dispatch, bound, finishTurn } = await setup({ transfer: async () => diverged });
+  await harness.behavior.callRpc('choose', { threadId: 't1', profileId: 'trove' });
+  await finishTurn();
+  assert.equal(await bound(), 'summit');
+  assert.deepEqual(await dispatch('start-turn'), { action: 'reject', message:
+    'Could not move to Trove: Trove has a different copy of this conversation. Choose Trove in the switcher to compare and replace it.' });
 });

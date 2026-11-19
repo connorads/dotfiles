@@ -80,8 +80,7 @@ export default experimental_defineHostEntry({
     },
     transfer: async input => {
       const { source, target } = await handoverDirs(input);
-      await transferSession(source, target, input.sessionId);
-      return { copied: true };
+      return transferSession(source, target, input.sessionId, { replace: input.replace });
     },
     release: async input => {
       const { source, target } = await handoverDirs(input);

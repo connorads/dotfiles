@@ -450,7 +450,7 @@ sequenceDiagram
     Host->>Claude: auth status --json
     Plugin->>Plugin: Stop and release thread runtime
     Plugin->>Host: Transfer this session transcript
-    Host->>Host: Reject conflicting history; copy atomically
+    Host->>Host: Report conflicting history; copy atomically
     Plugin->>Plugin: Persist thread profile selection
     Plugin->>Host: Release the source copy
     Host->>Host: Remove it if the target holds every file unchanged
@@ -515,7 +515,15 @@ settings and unrelated sessions separate. Returning to a profile advances its
 older transcript only when its contents are an exact prefix of the current one.
 Claude rewrites workflow state files whole, so the switch replaces a differing
 `workflows/*.json` only when the parent transcript has grown past the target's.
-Conflicting history, symlink paths and transcripts above 64 MiB cause refusal.
+Symlink paths and transcripts above 64 MiB cause refusal.
+
+A target copy with history this thread lacks is a conflict. The switcher shows
+both copies, with prompt count, last write and last prompt, and offers **Replace**
+or **Cancel**. Replace moves the target copy to
+`<account>/replaced-history/<project>/<session>-<time>/`, then copies. Claude Code
+never reads that folder. To restore a copy, move its files back into
+`projects/<project>/`. A queued switch that meets a conflict rejects the next send
+and asks you to choose the account again in the switcher.
 After the thread binds to the target, the switch removes the source copy, so each
 session keeps one copy, in its thread's account. A source copy that differs from
 the target copy stays. Transcript files can contain conversation content and tool
@@ -564,7 +572,7 @@ bb claude-profiles next [PROFILE]
 ```
 
 `switch` queues the account while a turn runs, as the switcher does, and prints
-`currentId` and `pendingId`.
+`currentId`, `pendingId` and `conflict`. The CLI never replaces a conflicting copy.
 `overview` and `header` print the usage overlay and header data as JSON.
 `next` prints the remembered new-thread account and the profiles on the
 connected machine. With `PROFILE`, it first sets that account, as the switcher does
@@ -599,7 +607,7 @@ send resolves the choice on the thread's own host. A switch copies the parent
 transcript and its session directory, including subagent history and tool results.
 Existing JSONL files must match or extend the target at a complete line boundary.
 Other existing files must match exactly. Target-only files and conflicting
-metadata stop the switch without overwriting the conflicting history.
+metadata are a conflict, which only an explicit Replace overwrites.
 
 The transfer refuses symlinks and special files. It permits up to 4096 files
 and directories. Copying and comparison use bounded buffers without a byte-size

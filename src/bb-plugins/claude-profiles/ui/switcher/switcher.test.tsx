@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useComposer } from '@get-bb/plugin-sdk/app';
 import type { ComposerSelection } from '@get-bb/plugin-sdk/app';
 import { Switcher } from './switcher.tsx';
-import type { rpcContract } from '../../contracts.ts';
+import type { HistoryConflict, rpcContract } from '../../contracts.ts';
 import type { Favourite } from '../../src/models/contract.ts';
 
 beforeAll(() => {
@@ -36,7 +36,7 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
 };
 
 type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
-  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; connectorSave?: () => { restarted: number } };
+  unsupported?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict; connectorSave?: () => { restarted: number } };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
@@ -63,9 +63,10 @@ function render(options: Options = {}) {
         : { supported: true, profiles: options.single ? profiles.slice(0, 1) : profiles, currentId, pendingId },
       choose: input => {
         if (options.chooseResult) return options.chooseResult;
+        if (options.conflict && !input.replace) return { currentId, conflict: options.conflict };
         if (options.running) pendingId = input.profileId === currentId ? null : input.profileId;
         else currentId = input.profileId;
-        return { currentId };
+        return { currentId, conflict: null };
       },
       'connectors.get': () => ({ enabled: false, launch: 'pending', mode: 'account', accounts: connectors, profileId: 'summit', restartPending: false }),
       'connectors.account.set': input => {
@@ -120,7 +121,7 @@ test('an account letter switches the Claude account and the account row shows ea
     const trove = await slot.findByRole('button', { name: 'Trove' });
     expect(trove.getAttribute('aria-keyshortcuts')).toBe('T');
     fireEvent.keyDown(dialog(slot), { key: 't' });
-    await waitFor(() => expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'trove' }]));
+    await waitFor(() => expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'trove', replace: false }]));
     await waitFor(() => expect(slot.getByRole('button', { name: 'Trove' }).getAttribute('aria-pressed')).toBe('true'));
   } finally { slot.lifecycle.unmount(); }
 });
@@ -283,6 +284,28 @@ test('Enter on a focused button presses it instead of closing the switcher', asy
     expect(closed - before).toBe(0);
     expect(slot.inspection.composer.selection?.model).toBe('opus');
     expect(input.getAttribute('aria-activedescendant')).toBe(slot.getByRole('button', { name: 'Haiku' }).id);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a conflicting copy on the target account is shown before anything is replaced', async () => {
+  const conflict: HistoryConflict = { profileId: 'trove', label: 'Trove',
+    source: { prompts: 42, modifiedAt: '2026-11-13T11:44:00.000Z', lastPrompt: 'Ship the config' },
+    target: { prompts: 1, modifiedAt: '2026-10-15T09:55:00.000Z', lastPrompt: 'Reply with only: OK' } };
+  const slot = render({ conflict });
+  try {
+    fireEvent.click(await slot.findByRole('button', { name: 'Trove' }));
+    const notice = await slot.findByRole('alertdialog', { name: 'Trove has a different copy of this conversation' });
+    expect(notice.textContent).toContain('This thread: 42 prompts');
+    expect(notice.textContent).toContain('Trove: 1 prompt,');
+    expect(notice.textContent).toContain('Reply with only: OK');
+    expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'trove', replace: false }]);
+    fireEvent.click(slot.getByRole('button', { name: 'Cancel' }));
+    expect(slot.queryByRole('alertdialog')).toBeNull();
+    fireEvent.click(slot.getByRole('button', { name: 'Trove' }));
+    fireEvent.click(await slot.findByRole('button', { name: 'Replace Trove copy' }));
+    await waitFor(() => expect(calls(slot, 'choose').at(-1)).toEqual({ threadId: 'thread-test', profileId: 'trove', replace: true }));
+    await waitFor(() => expect(slot.getByRole('button', { name: 'Trove' }).getAttribute('aria-pressed')).toBe('true'));
+    expect(slot.queryByRole('alertdialog')).toBeNull();
   } finally { slot.lifecycle.unmount(); }
 });
 

@@ -102,6 +102,14 @@
 @keyframes sw-appear { from { opacity: 0; } }
 .sw-error { margin: 6px 4px 0; padding: 6px 8px; border-radius: 8px; font-size: 12px; color: var(--destructive-text, var(--destructive));
   background: color-mix(in oklch, var(--destructive) 10%, transparent); }
+.sw-conflict { margin: 6px 4px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+.sw-conflict p, .sw-conflict ul { margin: 0 0 6px; }
+.sw-conflict ul { padding-left: 16px; color: var(--muted-foreground); }
+.sw-conflict b { font-weight: 500; color: var(--foreground); }
+.sw-conflict-title { font-weight: 600; }
+.sw-conflict-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.sw-conflict-actions button { padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.sw-conflict-actions .sw-conflict-replace { border-color: var(--destructive); color: var(--destructive-text, var(--destructive)); }
 
 .sw-chip { all: unset; display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px 4px 6px; border-radius: 8px; font-size: 12.5px; cursor: pointer; }
 /* Long model and account names end in an ellipsis instead of stacking the chip into a tall column. */

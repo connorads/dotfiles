@@ -17,13 +17,20 @@ export const keyedProfileSchema = profileSchema.extend({ key: z.string().nullabl
 export type KeyedProfile = z.infer<typeof keyedProfileSchema>;
 export type ThreadAccount = z.infer<typeof threadAccountSchema>;
 const rootInput = { root: z.string() };
+export const copySummarySchema = z.object({ prompts: z.number(), modifiedAt: z.string(), lastPrompt: z.string().nullable() });
+export type CopySummary = z.infer<typeof copySummarySchema>;
+/** The target account holds a copy of this thread's session with history this thread lacks. */
+export const historyConflictSchema = z.object({ profileId: z.string(), label: z.string(), source: copySummarySchema, target: copySummarySchema });
+export type HistoryConflict = z.infer<typeof historyConflictSchema>;
 export const hostContract = defineRpcContract({
   profiles: { input: z.object(rootInput), output: z.array(profileSchema) },
   validate: { input: z.object({ ...rootInput, profileId: z.string(), executable: z.string() }), output: z.object({ authenticated: z.literal(true) }) },
   usage: { input: z.object({ ...rootInput, profileId: z.string(), executable: z.string() }), output: usageSchema },
   // Derives a profile's shared settings, memory, skills and commands from ~/.claude before Claude launches on it.
   materialise: { input: z.object({ ...rootInput, profileId: z.string() }), output: z.object({ materialised: z.boolean() }) },
-  transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ copied: z.boolean() }) },
+  transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string(), replace: z.boolean() }),
+    output: z.discriminatedUnion('status', [z.object({ status: z.literal('copied') }),
+      z.object({ status: z.literal('diverged'), source: copySummarySchema, target: copySummarySchema })]) },
   release: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ released: z.boolean() }) },
   // A ref is a native session ID or a tmux pane target.
   locate: { input: z.object({ ...rootInput, ref: z.string() }),
@@ -50,7 +57,9 @@ export const accountsContract = defineRpcContract({
     // An account chosen during a turn; it applies when the thread is next idle.
     pendingId: z.string().nullable(),
   }) },
-  choose: { input: z.object({ threadId: z.string().nullable(), profileId: z.string() }), output: z.object({ currentId: z.string() }) },
+  // `replace` answers a conflict that an earlier choose returned: the target's copy moves aside.
+  choose: { input: z.object({ threadId: z.string().nullable(), profileId: z.string(), replace: z.boolean().default(false) }),
+    output: z.object({ currentId: z.string(), conflict: historyConflictSchema.nullable() }) },
   usage: { input: z.object({ threadId: z.string(), profileId: z.string(), refresh: z.boolean() }), output: usageSchema },
   // A draft has no thread yet, so its quota is read on the machine that lists its accounts.
   nextThreadQuota: { input: z.object({ profileId: z.string() }), output: usageSchema },
