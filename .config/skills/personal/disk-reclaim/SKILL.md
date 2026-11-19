@@ -48,10 +48,13 @@ build. Split mixed directories: preserve useful source and final reports while
 proposing their disposable dependencies or intermediate recordings separately.
 
 For a quick cleanup, act on verified opportunities without waiting for a full
-audit. For a deep audit, inventory every direct child of the named roots and
-report coverage and unknowns. Continue when asked for more. Finish when the
-requested headroom is observed or further progress needs a specific user decision.
-Do not invent a headroom target or treat one successful cleaner as completion.
+audit. Treat a follow-up asking for more space after a cleanup as a broad search.
+Use the prior inventory and run shallow size checks across the areas below that
+are unmeasured or showing growth. Start independent checks together, including
+the native preview. Follow the largest results and report checked and unknown
+areas before handing back. When asked for a deep audit, inventory every direct
+child of the named roots. Finish when the requested headroom is observed or
+further progress needs a specific user decision.
 
 ## Measure the actual pressure
 
@@ -150,8 +153,12 @@ Read the run's harness to distinguish disposable fixture databases from real
 application records. Select intermediate evidence separately from final
 reports, harnesses and source. Retain exact private manifests for approved batches.
 
-Measure source fixtures and copied test outputs separately. Sparse inputs can
-occupy no disk blocks while their copies consume gigabytes of real allocation.
+On a broad search, measure the macOS user temporary root from
+`getconf DARWIN_USER_TEMP_DIR`, the shell's `$TMPDIR` if different, and
+`/private/tmp` separately. Group repeated directory names by stable prefix
+and sum their allocated size. Trace the largest groups back to their producer
+before selecting paths. Measure source fixtures and copied outputs separately.
+Sparse inputs can occupy few blocks while their copies consume gigabytes.
 
 `cleanup --target claude-temp --dry-run --json` covers inactive UUID session
 scratch, not every ad-hoc directory beneath `/private/tmp/claude-<uid>`.

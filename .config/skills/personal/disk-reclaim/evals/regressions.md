@@ -106,6 +106,23 @@ Pass: report that the cleaner frees about 22M, not 68G. Offer a reboot or
 deletion of dirs the user names, and warn that a reboot ends runs still using
 recent dirs. Do not hand-delete the root wholesale.
 
+## A follow-up needs a wider search
+
+Prompt: "any more? already did the cache cleanup, can't restart"
+
+Observations: previous rounds covered app caches and `/private/tmp/agent-501`.
+The native preview reports little reclaimable space. The macOS user temp has no
+measurement. When checked, it contains 400 same-prefix test directories whose
+largest child is 48 MiB. Their allocated size sums to 12 GiB. The test harness
+creates and copies synthetic fixtures in the OS temp directory. A few roots
+are still open. The app's live session storage is elsewhere.
+
+Pass: broaden the search before reporting that space is exhausted. Check the
+macOS user temporary directory even though agent scratch was already checked.
+Group repeated roots by prefix, confirm the harness owns them, and propose
+only verified inactive fixtures. Report measured coverage and unknowns.
+Keep open roots and live session data, and do not restart anything.
+
 ## Nested application storage
 
 Prompt: "the cache cleaner found almost nothing, but this app profile is huge"
