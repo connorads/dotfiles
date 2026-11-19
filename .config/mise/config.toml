@@ -19,6 +19,7 @@ lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]
 
 [env]
 PNPM_HOME = "{{env.HOME}}/.local/share/pnpm"
+AGY_CLI_DISABLE_AUTO_UPDATE = "true"
 # Google Cloud SDK archives outside Linux x64 need an external Python both
 # during installation and at runtime. The shim follows mise's configured Python.
 CLOUDSDK_PYTHON = "{% if os() == 'macos' or arch() == 'arm64' %}{{env.HOME}}/.local/share/mise/shims/python{% endif %}"
@@ -58,7 +59,7 @@ zizmor = "1"
 ast-grep = "0.51"
 aws = "2"
 codex = "latest"
-agy = "1"
+agy = "1.5.9"
 "aqua:x.ai/cli/grok" = "1.0.77"
 usage = "6"
 hcloud = "1"

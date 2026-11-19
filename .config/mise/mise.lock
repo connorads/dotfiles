@@ -45,23 +45,23 @@ url_api = "https://api.github.com/repos/FiloSottile/age/releases/assets/53554189
 provenance = "github-attestations"
 
 [[tools.agy]]
-version = "1.5.8"
+version = "1.5.9"
 backend = "aqua:google-antigravity/antigravity-cli"
 
 [tools.agy."platforms.linux-arm64"]
-checksum = "sha256:0ca407357661aa244fbc3b0e79a1d1d2623b2ca1515d2e2f77a801c3676bd562"
-url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.8/agy_cli_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/742336512"
+checksum = "sha256:3a18c238c7ee6661e43df7e824a7d4c1bed78aeeda09430921a0f1dbfe825bca"
+url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.9/agy_cli_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/746444887"
 
 [tools.agy."platforms.linux-x64"]
-checksum = "sha256:905d4accfbd61bc00bee84bfaf24c59b85d334cabd786cf99237b66cfe06ab98"
-url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.8/agy_cli_linux_x64.tar.gz"
-url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/742336511"
+checksum = "sha256:8b1f5e56779f2434a0af36f1b715a8392a084de550f8c68bc79821f95fabf3fa"
+url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.9/agy_cli_linux_x64.tar.gz"
+url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/746444888"
 
 [tools.agy."platforms.macos-arm64"]
-checksum = "sha256:fc9a89abcdc045a6a770085e73e377d23d067940fb57773a157f137e0bc3829f"
-url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.8/agy_cli_mac_arm64.tar.gz"
-url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/742336876"
+checksum = "sha256:51fb8eb7e18c53d4665f0043b761f04f4d0d4b2eb046bac6c2dcbe32473b5b2e"
+url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.9/agy_cli_mac_arm64.tar.gz"
+url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/746445099"
 
 [[tools.amp]]
 version = "0.0.1794240032-ga42e06"

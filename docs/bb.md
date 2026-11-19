@@ -38,7 +38,7 @@ Read its [guide](../src/bb-plugins/cost/README.md).
 
 ## Antigravity
 
-Mise owns the `agy` binary and its cross-platform lock entry.
+Mise pins `agy` to the version verified for isolated profiles and disables its self-updater.
 The managed `provider-acp.customAgents` setting registers `acp-antigravity`.
 BB launches `agy acp --process-per-session` so client-supplied HTTP MCP servers work.
 Default uses Antigravity's native login. Isolated accounts use private homes and native file-backed OAuth storage.
