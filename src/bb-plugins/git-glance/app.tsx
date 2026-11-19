@@ -1,7 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { definePluginApp, experimental_Icon as Icon, useComposer, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
 import type { PluginThreadHeaderActionProps } from '@get-bb/plugin-sdk';
-import { Chip as GlanceChip, ChipDot, ChipValue } from '@bb-plugins/chip';
+import { Chip as GlanceChip, ChipValue } from '@bb-plugins/chip';
 import { projectSubject, rpcContract } from './contracts.ts';
 import { chip, GitPopover, type Anchor } from './popover.tsx';
 import { receiveOp, receiveSnapshot, renew, renewAll, useRepo } from './repo-store.ts';
@@ -73,11 +73,11 @@ function Chip({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   return <GlanceChip data-git-glance={threadId} expanded={isOpen} tone={error || fetchFailed ? 'warn' : danger ? 'danger' : undefined}
     aria-label={label} title={`${label} (⌥G)`} onClick={event => toggle(threadId, event.detail === 0 ? 'keyboard' : 'pointer')}
     icon={op?.status === 'running' ? <span className="gg-spinner gg-spinner-sm" />
-      : <Icon name={repo?.operation || error || fetchFailed ? 'AlertTriangle' : 'GitBranch'} />}>
+      : <Icon name={danger || error || fetchFailed ? 'AlertTriangle' : 'GitBranch'} />}>
     {!isCompactViewport && <ChipValue className="gg-chip-branch">{repo?.operation ? repo.operation : branch}</ChipValue>}
     {repo && repo.branch.ahead > 0 && !isCompactViewport && <span className="gg-chip-ahead">↑{repo.branch.ahead}</span>}
     {repo && repo.branch.behind > 0 && !isCompactViewport && <span className="gg-chip-behind">↓{repo.branch.behind}</span>}
-    {files > 0 && <ChipDot tone="warn">{files}</ChipDot>}
+    {files > 0 && <span aria-hidden="true">· {files}</span>}
   </GlanceChip>;
 }
 

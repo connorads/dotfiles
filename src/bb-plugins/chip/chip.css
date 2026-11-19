@@ -25,7 +25,6 @@
 .bbp-chip-dot[data-tone="danger"] { color: var(--destructive-text); }
 .bbp-chip-dot > i {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
-  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 22%, transparent);
 }
 
 /* BB's thread header is the `page-header` inline-size container, so this tracks pane width, not the viewport.
