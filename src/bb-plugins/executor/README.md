@@ -23,8 +23,10 @@ passes Executor's own MCP tools through with an `executor_` prefix
 3. Before starting a thread, use the composer chip or `⌥E` to choose:
    `d` default, `1`-`9` a connection, `o` off. The choice applies before the
    agent receives tools. Off disables Executor tools only.
-4. In a thread, the header chip names its connection. Click it or press `⌥E`
-   to switch. Picking a signed-out connection starts its sign-in.
+4. In a thread, the header chip shows the Executor mark and the active
+   connection name. It shows just the mark when there is no connection and
+   **Off** when tools are explicitly disabled. Click it or press `⌥E` to
+   switch. Picking a signed-out connection starts its sign-in.
 
 New drafts start with the configured default. Sending successfully or leaving
 the composer resets its choice; a failed send keeps it. Enter, Cmd/Ctrl+Enter

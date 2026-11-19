@@ -172,19 +172,22 @@ it('draft: newline, composition and mention-menu keys do not send', async () => 
   expect(slot.inspection.composer.submits).toEqual([]);
 });
 
-it('chip: names the default connection and hides with no connections', async () => {
-  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-chip', isCompactViewport: false } as never, {
-    rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }) },
-  });
-  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: { state: () => two, threadChoice: () => ({ kind: 'default' }) } });
-  expect(await chip.findByRole('button', { name: 'Executor: Coding (default)' })).toBeTruthy();
+it('chip: shows the mark with the default name or on its own without a connection', async () => {
+  const configured = { state: () => two, threadChoice: () => ({ kind: 'default' }) };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: configured });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-chip', isCompactViewport: false } as never, { rpc: configured });
+  const selected = await chip.findByRole('button', { name: 'Executor: Coding (default)' });
+  expect(selected.textContent).toBe('Coding');
+  expect(selected.querySelector('img')?.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
   overlay.unmount();
   chip.unmount();
+
   const empty = { state: () => stateOf({}), threadChoice: () => ({ kind: 'default' }) };
-  const overlayEmpty = renderSlot(app.appOverlays[0]!, {}, { rpc: empty });
-  const hidden = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-empty', isCompactViewport: false } as never, { rpc: empty });
-  await waitFor(() => expect(overlayEmpty.rpcCalls.some(c => c.method === 'state')).toBe(true));
-  await waitFor(() => expect(hidden.queryByRole('button')).toBeNull());
+  renderSlot(app.appOverlays[0]!, {}, { rpc: empty });
+  const emptyChip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-empty', isCompactViewport: false } as never, { rpc: empty });
+  const unselected = await emptyChip.findByRole('button', { name: 'No Executor connection' });
+  expect(unselected.textContent).toBe('');
+  expect(unselected.querySelector('img')?.getAttribute('src')).toBe(selected.querySelector('img')?.getAttribute('src'));
 });
 
 it('chip: switches a thread by key and marks a signed-out choice', async () => {

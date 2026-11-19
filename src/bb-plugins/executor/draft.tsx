@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { experimental_Icon as Icon, useComposer } from '@get-bb/plugin-sdk/app';
+import { useComposer } from '@get-bb/plugin-sdk/app';
 import { Chip, ChipValue } from '@bb-plugins/chip';
+import { ExecutorMark } from './mark.tsx';
 import { draftChoice, message, resetDraft, resolve, statusNote, toggle, useExecutor } from './store.ts';
 
 /** Native submits have no SDK data hook. Capture only this composer's form,
@@ -44,14 +45,15 @@ export function DraftConnection() {
   const lost = unsaved?.threadId === null && open?.threadId !== null ? unsaved.message : null;
   const resolved = resolve(view, draft);
   const signedOut = resolved.kind === 'connection' && resolved.status !== 'signed-in';
-  const value = resolved.kind === 'connection' ? resolved.name : resolved.kind === 'off' ? 'Off' : 'None';
   const label = resolved.kind === 'off' ? 'Executor is off for this new thread'
-    : `Executor: ${value}${resolved.kind === 'connection' && resolved.viaDefault ? ' (default)' : ''}${statusNote(resolved)}`;
+    : resolved.kind === 'connection' ? `Executor: ${resolved.name}${resolved.viaDefault ? ' (default)' : ''}${statusNote(resolved)}`
+    : 'No Executor connection';
   return <span ref={marker} className="ex-draft">
     <Chip data-executor-chip expanded={open?.threadId === null} tone={signedOut ? 'warn' : undefined} aria-label={label} title={`${label} (⌥E)`}
       onClick={event => toggle(null, event.detail === 0 ? 'keyboard' : 'pointer', event.currentTarget)}
-      icon={<Icon name="Plug02" />}>
-      <ChipValue className={resolved.kind === 'off' ? 'ex-chip-off' : undefined}>{value}</ChipValue>
+      icon={<ExecutorMark />}>
+      {resolved.kind === 'off' && <span className="ex-chip-off">Off</span>}
+      {resolved.kind === 'connection' && <ChipValue>{resolved.name}</ChipValue>}
     </Chip>
     {(error ?? lost) && <span className="ex-draft-error" role="alert">{error ?? lost}</span>}
   </span>;
