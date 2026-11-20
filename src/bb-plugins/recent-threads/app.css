@@ -1,0 +1,8 @@
+button.rt-active {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+button.rt-active [data-icon-root] {
+  opacity: 1;
+}
