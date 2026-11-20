@@ -11,7 +11,7 @@
       "source": "callstack/agent-device",
       "sourceType": "github",
       "skillPath": "skills/agent-device/SKILL.md",
-      "computedHash": "b95587ae3c9c546dd3c51b996c77e1e25b19e8d2d3fab7a3770a5592647e80b2"
+      "computedHash": "09bce667141405f5d8e60a6217d0d18c385de6db06cf1e299b10fe6efe93d47c"
     },
     "benchmark-checklist": {
       "source": "cursor/plugins",
@@ -68,7 +68,7 @@
       "source": "cathrynlavery/diagram-design",
       "sourceType": "github",
       "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "131d0484db90409d4663ba9c7236a7ffd8708cf66abf33a53c746e4e3170abc3"
+      "computedHash": "09dc4e3efaa22dea09470c0e51d44e98667bd2c3595c1efc2bde8ff5dc43071b"
     },
     "effect": {
       "source": "kitlangton/skills",
@@ -80,7 +80,7 @@
       "source": "vercel-labs/emulate",
       "sourceType": "github",
       "skillPath": "skills/emulate/SKILL.md",
-      "computedHash": "251786dffcd6d9f6fa34ed99a66699b793497ef95c361e0fbf3cf09113649a87"
+      "computedHash": "9e5662f1a82f7012d46daad60cea17b0047395ae65e2023cec37e31d0cf87de3"
     },
     "explain-then-fix": {
       "source": "jnsahaj/skills",
@@ -105,7 +105,7 @@
       "source": "dmtrKovalenko/fframes",
       "sourceType": "github",
       "skillPath": "skills/fframes-video/SKILL.md",
-      "computedHash": "2010e10d22976778ab827188d2e7846832b17437f676c2b4d03b10c2b2dd0035"
+      "computedHash": "b80cae3c6f889700eeb11dcefd32c7034de3238277ab4e7c652e3dabd20a4769"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -149,7 +149,7 @@
       "source": "blader/humanizer",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "62d4eba31b0be2589d17b27fd211fd80fb9e19cd5046be47ff985807fc4636ca"
+      "computedHash": "6da5d71e32eb66770b4c1ebe38b7e5c271bfca6290c9248aeb8449a84dbfe914"
     },
     "i-have-adhd": {
       "source": "ayghri/i-have-adhd",
@@ -253,13 +253,13 @@
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "d3c50339092b670cdda1ba2bed0bdee1c34247cdf70df475e8b7d83983a39e79"
+      "computedHash": "54c3f1e47b2566ecc3a2c1515823f77f4609edfe8029351924311dafc0d2ba66"
     },
     "portless": {
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "504830c46fefd37dea514fd37aca100702583750f072b269f92553bb12722e55"
+      "computedHash": "18a44b42b29741c704b877b9c6d3f66e2dcba1dcb834d8c8df4059e8fd42cbc4"
     },
     "pr-lens": {
       "source": "coldteadotai/pr-lens",
@@ -283,7 +283,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "55e6029eeafb7f64bfcaef013f7b9f569dfcc4db6554c6d6fb833ad141ec1494"
+      "computedHash": "3a00c916c1a0ee0ccb64b27b08049508d712d65c04ee1bd84d96709854c488e4"
     },
     "reverse-engineer-anything": {
       "source": "morluto/rea",
