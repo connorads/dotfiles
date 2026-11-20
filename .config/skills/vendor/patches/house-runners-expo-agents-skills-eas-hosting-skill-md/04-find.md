@@ -1,3 +1,1 @@
-# Export the web bundle (includes any API routes)
-npx expo export -p web
-
+npx --yes eas-cli@latest login

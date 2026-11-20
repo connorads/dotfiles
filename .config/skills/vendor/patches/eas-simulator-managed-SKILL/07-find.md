@@ -1,0 +1,1 @@
+If `simulator:devices` is unrecognized, update the CLI and check `simulator:devices --help`. Do not create a session just to discover device names. For selecting a device at startup versus inspecting or targeting devices inside an existing session, see [references/run-your-app.md](./references/run-your-app.md#targeting-a-device--ipad-or-several-at-once).

@@ -1,0 +1,3 @@
+```bash
+eas metadata:pull
+```

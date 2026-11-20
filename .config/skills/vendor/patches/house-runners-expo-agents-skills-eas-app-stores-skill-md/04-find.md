@@ -1,3 +1,1 @@
-# Android Play Store build
-npx eas-cli@latest build -p android --profile production
-
+Run `npx --yes eas-cli@latest init` only when the requested setup needs linking and no project ID is already configured. It links or creates the EAS project. Run `npx --yes eas-cli@latest build:configure` to create missing build profiles in `eas.json`; preserve existing project and store identifiers when a release setup already exists.

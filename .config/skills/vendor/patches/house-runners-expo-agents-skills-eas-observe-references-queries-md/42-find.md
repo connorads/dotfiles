@@ -1,0 +1,1 @@
+- Requires the user to be logged in (`npx --yes eas-cli@latest login`).

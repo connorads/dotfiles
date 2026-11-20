@@ -1,3 +1,3 @@
-# iOS App Store build
-npx eas-cli@latest build -p ios --profile production
-
+```bash
+npx --yes eas-cli@latest init
+```

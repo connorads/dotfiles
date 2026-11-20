@@ -1,1 +1,1 @@
-npm install -g eas-cli
+npx expo serve

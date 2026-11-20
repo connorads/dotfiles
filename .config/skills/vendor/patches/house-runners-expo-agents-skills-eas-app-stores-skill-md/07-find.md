@@ -1,1 +1,1 @@
-npx eas-cli@latest build -p android --profile production --auto-submit
+npx --yes eas-cli@latest build --profile production

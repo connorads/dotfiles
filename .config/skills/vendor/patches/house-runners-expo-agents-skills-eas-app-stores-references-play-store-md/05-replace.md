@@ -1,0 +1,1 @@
+Have the account owner inspect the selected app's signing status in Play Console/EAS or `eas credentials -p android` privately. The credential manager can change or download keys; do not drive those actions or print its raw output as a status check. Preserve valid upload/signing keys and report only the relevant non-secret status.

@@ -1,0 +1,3 @@
+```bash
+eas observe:versions
+```

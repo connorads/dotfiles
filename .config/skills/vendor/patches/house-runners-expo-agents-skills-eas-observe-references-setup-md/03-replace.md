@@ -1,0 +1,3 @@
+```sh
+eas build
+```

@@ -1,1 +1,1 @@
-mise install npm:eas-cli
+pnpm exec expo serve

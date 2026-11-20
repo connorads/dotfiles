@@ -146,7 +146,7 @@ Connect to local development:
 
 ```bash
 # Start Metro bundler
-npx expo start --dev-client
+pnpm exec expo start --dev-client
 
 # Scan QR code with dev client or enter URL manually
 ```
@@ -171,7 +171,6 @@ eas build -p ios --profile development --clear-cache
 
 ```bash
 eas --version
-eas update
 ```
 
 ## Feedback

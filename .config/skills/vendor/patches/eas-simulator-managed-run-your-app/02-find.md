@@ -1,1 +1,1 @@
-> These sequences are **iOS**. For **Android**: build via `npx --yes eas-cli@latest build --platform android` (or local Gradle), `install` the `.apk` instead of an `.app` (`.aab` fails), and skip `pod install`. Android sessions include a browser preview (`webPreviewUrl`), which the expo.dev session page opens in a new tab with **Open preview**. Some features are iOS-only, such as crash reports and the device log API; check `--help` for platform notes.
+npx --yes eas-cli@latest simulator:start --platform ios --type agent-device --non-interactive \

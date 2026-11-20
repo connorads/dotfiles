@@ -1,1 +1,1 @@
-npm install -g eas-cli
+Run EAS commands with `npx --yes eas-cli@latest` from Expo's official package. This uses the current CLI without replacing a global installation. Check the resolved version and command help for compatibility before running a workflow.

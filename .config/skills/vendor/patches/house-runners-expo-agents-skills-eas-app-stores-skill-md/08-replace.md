@@ -1,3 +1,1 @@
-# Expo / React Native shortcut for iOS TestFlight
-pnpm exec testflight
-```
+eas submit -p ios --profile SUBMIT_PROFILE --id BUILD_ID

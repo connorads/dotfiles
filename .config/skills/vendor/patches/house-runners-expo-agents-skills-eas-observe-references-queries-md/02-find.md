@@ -1,0 +1,1 @@
+`observe:metrics` also accepts a full metric name in place of an alias, for example `npx --yes eas-cli@latest observe:metrics expo.app_startup.tti`. `observe:routes` accepts full navigation names the same way. The `--metric` flags on `metrics-summary` and `routes` are strict oclif options, so they take aliases only.

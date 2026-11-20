@@ -1,0 +1,1 @@
+2. **`exec` is a wrapper, not a driver.** `simulator:exec` loads `.env.eas-simulator` and spawns the command you pass; the device verbs come from the controller (`agent-device`). There is no `simulator:tap`.

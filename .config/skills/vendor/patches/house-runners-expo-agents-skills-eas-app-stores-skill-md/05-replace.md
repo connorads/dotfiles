@@ -1,1 +1,1 @@
-eas build --profile production
+eas build -p ios --profile production

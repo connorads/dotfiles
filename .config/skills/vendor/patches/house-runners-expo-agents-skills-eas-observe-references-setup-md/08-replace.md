@@ -1,0 +1,1 @@
+- [ ] `expo-observe` installed via `pnpm exec expo install`.

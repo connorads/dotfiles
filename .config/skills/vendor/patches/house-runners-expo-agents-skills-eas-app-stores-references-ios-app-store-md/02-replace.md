@@ -1,0 +1,1 @@
+Reuse a working managed key. If initial setup is missing, have the account owner complete `eas credentials -p ios` privately for the selected team/profile; do not automate Apple password/MFA entry or download private keys. For an existing protected local team API key, configure the submit profile explicitly:

@@ -1,3 +1,1 @@
-# Android Play Store build
-eas build -p android --profile production
-
+Run `eas init` only when the requested setup needs linking and no project ID is already configured. It links or creates the EAS project. Run `eas build:configure` to create missing build profiles in `eas.json`; preserve existing project and store identifiers when a release setup already exists.

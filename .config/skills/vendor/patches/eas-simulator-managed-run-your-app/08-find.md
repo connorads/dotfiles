@@ -1,1 +1,1 @@
-npx expo prebuild --platform ios          # set ios.bundleIdentifier in app.json first to avoid prompts
+npx --yes eas-cli@latest simulator:exec npx agent-device@latest open <bundleId> "<devClientURL>" \

@@ -1,1 +1,1 @@
-  S=$(eas simulator:get --json --non-interactive 2>/dev/null)
+**Choose a device before starting a session.** Run `eas simulator:devices --platform ios` (or `android`) for the server's current catalog; add `--json` for machine-readable identifiers and display names. Omit `--device` to use the server default, or pass the exact listed identifier to `simulator:start`:

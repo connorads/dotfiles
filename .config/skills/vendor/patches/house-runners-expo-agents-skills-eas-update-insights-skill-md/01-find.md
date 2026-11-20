@@ -1,0 +1,2 @@
+- Run EAS commands with `npx --yes eas-cli@latest <command>` from Expo's official package. Check its resolved version and command help.
+- Check the existing account with `npx --yes eas-cli@latest whoami`. If sign-in is needed, let the user complete `npx --yes eas-cli@latest login --browser`.

@@ -1,0 +1,1 @@
+Once these are complete, the default `eas submit` works for a first-time submission and creates the app's first release on the internal testing track. Store listing, content rating, and pricing are only required before promoting a release to production.
