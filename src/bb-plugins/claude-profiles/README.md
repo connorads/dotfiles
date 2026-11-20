@@ -150,13 +150,16 @@ Remove its managed registration and run `bb-plugins apply`.
 After closing its CLI processes, use `trash` on its directory under `~/.local/share/agy-profiles/`.
 Never remove Default's native credentials as part of isolated account removal.
 
-The launcher requires macOS and Antigravity 1.5.9.
+The launcher requires macOS and the agy release named by `verifiedAgyVersion` in
+[antigravity-profile.ts](src/accounts/antigravity-profile.ts).
 It resolves global mise tools before changing `HOME` and preserves the workspace directory.
 A missing profile or unsupported CLI version stops the launch without using Default.
 Its sandbox blocks Keychain access, the native `.gemini` directory and other existing profile directories.
 Native authentication owns credential creation and refresh. The plugin does not parse or copy tokens.
 The file-storage fallback uses an undocumented cache marker and `WSL_INTEROP=1`.
 Version upgrades require renewed isolation checks before changing the launcher's version guard.
+Change `verifiedAgyVersion` and the mise `agy` pin in one commit; the `agy-pin-lockstep` hk step rejects a mismatch.
+A binary that reports another version under a verified pin updated itself in place. The launcher then names the reinstall command.
 Private `HOME` also changes user settings, skills, shell configuration and tool credentials.
 The launcher does not link the real home into a profile.
 Token refresh and logout independence require further live verification.

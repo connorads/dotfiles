@@ -3,7 +3,7 @@ import test from 'node:test';
 import { mkdtemp, lstat, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prepareAntigravityProfile, antigravityLaunch } from './antigravity-profile.ts';
+import { prepareAntigravityProfile, antigravityLaunch, agyVersionProblem, verifiedAgyVersion } from './antigravity-profile.ts';
 
 test('an isolated launch refuses absent profiles instead of using the default login', async () => {
   const home = await mkdtemp(join(tmpdir(), 'agy-account-'));
@@ -28,4 +28,13 @@ test('account names cannot escape their root or impersonate Default', async () =
   const home = await mkdtemp(join(tmpdir(), 'agy-account-'));
   for (const id of ['../other', 'default', 'UPPER', '', 'a/b'])
     await assert.rejects(prepareAntigravityProfile(home, id));
+});
+test('only the verified agy release launches an isolated account', () => {
+  assert.equal(agyVersionProblem(verifiedAgyVersion, verifiedAgyVersion), undefined);
+});
+test('a binary that drifted from a verified pin names the reinstall', () => {
+  assert.match(agyVersionProblem('9.9.9', verifiedAgyVersion)!, /mise install --force --locked agy/);
+});
+test('a pin moved past the verified release asks for isolation checks', () => {
+  assert.match(agyVersionProblem('9.9.9', '9.9.9')!, new RegExp(`needs verification with agy 9\\.9\\.9\\. Tested version: ${verifiedAgyVersion.replaceAll('.', '\\.')}`));
 });

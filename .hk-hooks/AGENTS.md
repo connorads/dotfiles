@@ -102,11 +102,14 @@ type-aware section below), `ruff-check` +
 config `.hk-hooks/ruff.toml` passed with `--config` so it gates without becoming
 the global XDG default; same vendored/fixture exclude set as oxlint;
 `ruff-format` runs after `ruff-check` so import fixes land before the final
-formatter pass), and `quarantine-drift`
+formatter pass), `quarantine-drift`
 (`~/.hk-hooks/quarantine-drift.py`: the 4-day quarantine is hand-spelled in
 nine config files across four time units; the checker normalises each to days
 and blocks the commit on disagreement, with warn-only staleness checks on the
-docs that cite literal values), and `tmux-bind-lint`
+docs that cite literal values), `agy-pin-lockstep`
+(`~/.hk-hooks/agy-pin-lockstep.py`: mise's `agy` pin must equal the
+`verifiedAgyVersion` the isolated-profile launcher accepts, so a pin bump
+without an isolation check fails at commit, not at launch), and `tmux-bind-lint`
 (`~/.hk-hooks/tmux-bind-lint.py`: statically parses `.config/tmux/tmux.conf` and
 blocks a key bound twice in one key-table, or both members of a terminal-alias
 pair, i.e. a self-collision that silently kills the earlier bind - the

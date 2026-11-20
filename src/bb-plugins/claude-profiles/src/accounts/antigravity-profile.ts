@@ -1,6 +1,15 @@
 import { mkdir, lstat, chmod, writeFile, utimes, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+// Isolation relies on undocumented agy storage behaviour, so only a release checked
+// by hand may launch. The agy-pin-lockstep hk step holds mise's pin to this value.
+export const verifiedAgyVersion = '1.5.9';
+export function agyVersionProblem(installed: string, pinned: string) {
+  if (installed === verifiedAgyVersion) return undefined;
+  if (pinned === verifiedAgyVersion)
+    return `agy ${installed} replaced the pinned ${pinned} binary. Reinstall it with: mise install --force --locked agy`;
+  return `Isolated authentication needs verification with agy ${installed}. Tested version: ${verifiedAgyVersion}.`;
+}
 const accountName = /^[a-z][a-z0-9-]{0,31}$/u;
 export function antigravityProfilePath(home: string, id: string) {
   if (!accountName.test(id) || id === 'default') throw new Error('Use a lowercase account name other than default.');

@@ -64,7 +64,7 @@ The [account guide](../src/bb-plugins/claude-profiles/README.md#antigravity-acco
 Isolated profiles live under `~/.local/share/agy-profiles/`, outside Git.
 The shared agent secret-file policies block reads and writes to that directory.
 The launcher blocks Keychain access and uses the native file-storage fallback.
-It supports macOS with Antigravity 1.5.9 and refuses other versions until verified.
+It supports macOS with the verified agy release and refuses other versions.
 Its private `HOME` also isolates user settings, skills and tool configuration.
 The [ACP guide](https://antigravity.google/docs/ide/extensions/acp) documents transport and sign-in.
 
