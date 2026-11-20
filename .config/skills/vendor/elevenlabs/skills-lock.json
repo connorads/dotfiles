@@ -29,7 +29,7 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "speech-to-text/SKILL.md",
-      "computedHash": "5fc18101504a58f47ce89feba6ba131fce5fb86998c867960e60ba5707557e6c"
+      "computedHash": "1e5c5b5fcb11bb0261089525fbe9f3709d8702e645c22cc789fae888eb7c4935"
     },
     "text-to-speech": {
       "source": "elevenlabs/skills",
