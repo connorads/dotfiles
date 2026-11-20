@@ -15,7 +15,7 @@ Available actions:
 - transfer_to_number: Transfer to human support
 
 Always verify order ID before lookup. Offer transfer for complex issues.""",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "tools": [
                     # Webhook: Server-side order lookup
                     {

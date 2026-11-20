@@ -9,7 +9,7 @@ client.conversational_ai.agents.update(agent_id="id", conversation_config={
 
 # Update prompt/LLM (nested in agent)
 client.conversational_ai.agents.update(agent_id="id", conversation_config={
-    "agent": {"prompt": {"prompt": "New instructions.", "llm": "claude-sonnet-4", "temperature": 0.8}}
+    "agent": {"prompt": {"prompt": "New instructions.", "llm": "claude-sonnet-4-6", "temperature": 0.8}}
 })
 
 # Update first message

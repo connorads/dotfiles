@@ -5,7 +5,7 @@ agent = client.conversational_ai.agents.create(
         "agent": {
             "prompt": {
                 "prompt": "You are a support agent. Use the knowledge base to answer questions.",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "knowledge_base": [
                     {"type": "file", "id": "doc-id", "name": "Product Guide", "usage_mode": "auto"}
                 ],

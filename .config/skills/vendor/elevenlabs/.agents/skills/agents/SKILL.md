@@ -62,7 +62,7 @@ agent = client.conversational_ai.agents.create(
             "language": "en",
             "prompt": {
                 "prompt": "You are a helpful assistant. Be concise and friendly.",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "temperature": 0.7
             }
         },
@@ -85,7 +85,7 @@ const agent = await client.conversationalAi.agents.create({
       language: "en",
       prompt: {
         prompt: "You are a helpful assistant.",
-        llm: "gemini-2.0-flash",
+        llm: "gemini-3.5-flash",
         temperature: 0.7
       }
     },
@@ -100,7 +100,7 @@ The CLI reads `ELEVENLABS_API_KEY` from the environment automatically:
 
 ```bash
 elevenlabs agents create \
-  --json '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "selected_voice_id"}}}'
+  --json '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-3.5-flash"}}, "tts": {"voice_id": "selected_voice_id"}}}'
 ```
 
 ## Starting Conversations
@@ -184,9 +184,9 @@ function App({ signedUrl }: { signedUrl: string }) {
 
 | Provider | Models |
 |----------|--------|
-| OpenAI | `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.5-2026-04-23`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17`, `gpt-5.4-nano-2026-03-17`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
-| Anthropic | `claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5-5`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
-| Google | `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
+| OpenAI | `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.5-2026-04-23`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17`, `gpt-5.4-nano-2026-03-17`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o`, `gpt-4o-mini` |
+| Anthropic | `claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5-5`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |
+| Google | `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` |
 | ElevenLabs | `glm-52`, `deepseek-v41-flash`, `glm-45-air-fp8`, `qwen3-30b-a3b`, `qwen36-35b-a3b`, `qwen35-35b-a3b`, `qwen35-397b-a17b`, `nemotron-35-super-vl-nvfp4`, `gpt-oss-120b` |
 | Custom | `custom-llm` (bring your own endpoint) |
 
@@ -223,7 +223,7 @@ Workspace environment variables can resolve per-environment server tool URLs, he
 ```python
 "prompt": {
     "prompt": "You are a helpful assistant that can check the weather.",
-    "llm": "gemini-2.0-flash",
+    "llm": "gemini-3.5-flash",
     "tools": [
         # Webhook: server-side API call
         {"type": "webhook", "name": "get_weather", "description": "Get weather",
@@ -313,6 +313,43 @@ No-auth APIs useful for prototypes (URLs must be HTTPS):
 | `search_wikipedia` | `https://en.wikipedia.org/api/rest_v1/page/summary/{topic}` | Topic summary |
 | `get_exchange_rate` | `https://open.er-api.com/v6/latest/{base_currency}` | FX rates |
 
+### Build Tools in Code
+
+The Python and JavaScript SDKs include a tool builder (`Tool`, `Schema`, `Header`, and `SystemTool`; imported from `elevenlabs.agent_tools` in Python and from the package root in JavaScript) that produces the request for `tools.create()` and `tools.update()`. Start with `Tool.webhook(name, description)`, `Tool.client(name, description)`, or a `SystemTool` constructor, then chain calls such as `get()`/`post()`, `path_param()`/`pathParam()`, `body()`, `header()`, and `assign()`. Every literal parameter needs exactly one value source: `describe()` (the LLM fills it), `from_variable()`/`fromVariable()`, `constant()`, `system_provided()`/`systemProvided()`, or `omit()`. `build()` checks the whole tool and raises one `ToolValidationError` listing every problem. Reference: [Tools as code](https://elevenlabs.io/docs/eleven-agents/customization/agents-as-code/tools).
+
+```python
+from elevenlabs import ElevenLabs
+from elevenlabs.agent_tools import Header, Schema, Tool
+
+client = ElevenLabs()
+
+get_order = (
+    Tool.webhook("get_order", "Look up an order by the number the caller gives")
+    .get("https://api.example.com/orders/{order_id}")
+    .path_param("order_id", Schema.string().describe("The order number, e.g. A-1042"))
+    .header("Authorization", Header.secret("sec_orders_api"))
+    .assign("order_status", "order.status")
+)
+
+tool = client.conversational_ai.tools.create(request=get_order.build())
+```
+
+```javascript
+import { ElevenLabsClient, Header, Schema, Tool } from "@elevenlabs/elevenlabs-js";
+
+const client = new ElevenLabsClient();
+
+const getOrder = Tool.webhook("get_order", "Look up an order by the number the caller gives")
+  .get("https://api.example.com/orders/{order_id}")
+  .pathParam("order_id", Schema.string().describe("The order number, e.g. A-1042"))
+  .header("Authorization", Header.secret("sec_orders_api"))
+  .assign("order_status", "order.status");
+
+const tool = await client.conversationalAi.tools.create(getOrder.build());
+```
+
+Attach the created tool with `tool_ids`; for system tools, `build_config()` / `buildConfig()` returns the entry for `built_in_tools`. To edit an existing tool, load it with `Tool.from_response()` / `Tool.fromResponse()`, change it, and push it back with `tools.update()`. `to_json_string()` / `toJSONString()` and `Tool.from_json()` / `Tool.fromJSON()` store tools as JSON in version control.
+
 ## Workflows
 
 Route conversations through discrete steps with branching logic. Define under the agent's top-level `workflow` field. Reference: [Agent Workflows](https://elevenlabs.io/docs/eleven-agents/customization/agent-workflows).
@@ -341,9 +378,52 @@ Use `entry_behavior` on `override_agent` nodes to choose whether a sub-agent spe
 For nested agent transfers, set `enable_nesting` on a `standalone_agent` node and
 `return_when_nested` on an `end` node that should return control to the parent workflow.
 
+### Build Workflows in Code
+
+The Python and JavaScript SDKs include a `Workflow` builder that produces the `workflow` value for `agents.create()` and `agents.update()`. Chain `converse`, `tool`, `transfer`, and `end` steps, and route between them with `when` (a string is an LLM condition; an `Expr` is an expression on dynamic variables), `on_success` / `on_failure`, and `go_to`. `build()` assigns `start_node`, edge IDs, `edge_order`, and editor positions, and raises one `WorkflowValidationError` listing every workflow graph problem. Reference: [Workflows as code](https://elevenlabs.io/docs/eleven-agents/customization/agent-workflows-as-code).
+
+```python
+from elevenlabs import ElevenLabs
+from elevenlabs.agent_workflows import Destination, Workflow
+
+client = ElevenLabs()
+
+wf = Workflow()
+triage = wf.converse("triage", "Greet the caller and find out why they're calling")
+lookup = triage.when("Caller gave an order number").tool("lookup_order", ["tool_get_order"])
+lookup.on_result(
+    success=lambda ok: ok.converse("resolve", "Explain the order status").when("Caller is satisfied").end(),
+    failure=lambda failed: failed.go_to(triage),
+)
+triage.when("Caller wants a human").transfer("human", Destination.phone("+15551234567"))
+
+client.conversational_ai.agents.update("agent_id", workflow=wf.build())
+```
+
+```javascript
+import { Destination, ElevenLabsClient, Workflow } from "@elevenlabs/elevenlabs-js";
+
+const client = new ElevenLabsClient();
+
+const wf = new Workflow();
+const triage = wf.converse("triage", "Greet the caller and find out why they're calling");
+const lookup = triage.when("Caller gave an order number").tool("lookup_order", ["tool_get_order"]);
+lookup.onResult({
+  success: (ok) => ok.converse("resolve", "Explain the order status").when("Caller is satisfied").end(),
+  failure: (failed) => failed.goTo(triage),
+});
+triage.when("Caller wants a human").transfer("human", Destination.phone("+15551234567"));
+
+await client.conversationalAi.agents.update("agent_id", { workflow: wf.build() });
+```
+
+To edit an existing workflow, load it with `Workflow.from_agent(agent)` / `Workflow.fromAgent(agent)`, then change nodes with `wf.node(id).update(...)`, `insert_between` / `insertBetween`, or `remove`; IDs and positions are kept. `to_json_string()` / `toJSONString()` and `Workflow.from_json()` / `Workflow.fromJSON()` store workflows as JSON in version control, and `elevenlabs agents workflow diagram <file>` draws a workflow file as a flowchart (`--format mermaid` for Mermaid output).
+
+A Start procedure node starts an attached procedure at a chosen point in the workflow graph. See [Procedures](#procedures) for the `start_procedure` node and its continuation behavior.
+
 ## Procedures
 
-Reusable instruction blocks an agent runs when a trigger matches. A procedure is `free_form` (markdown guidance the agent adapts, and the only type that can reference knowledge base documents) or `deterministic` (called "structured" in the dashboard: typed steps that run in a fixed order, for flows that must happen the same way every time). See [Using the Procedure API](references/using-procedure-api.md) for the full CLI and SDK flow, and [Writing Procedures](references/writing-procedures.md) for the step reference, validation rules, and authoring guidance.
+Reusable instruction blocks an agent runs when a trigger matches or a Start procedure workflow node starts it. A procedure is `free_form` (markdown guidance the agent adapts, and the only type that can reference knowledge base documents) or `deterministic` (called "structured" in the dashboard: typed steps that run in a fixed order, for flows that must happen the same way every time). See [Using the Procedure API](references/using-procedure-api.md) for the full CLI and SDK flow, and [Writing Procedures](references/writing-procedures.md) for the step reference, validation rules, and authoring guidance.
 
 Procedures live on an agent branch, and every write stages a per-user draft:
 
@@ -360,7 +440,7 @@ Semantics worth knowing before writing any of these calls:
 - If a structured procedure is invalid, the publish or draft save returns `400` with `status` `procedure_validation_failed` and `errors` keyed by procedure ID, each entry carrying the `path` of the offending field and a message. Nothing is written; repair the procedure draft and publish again.
 - A draft update replaces the whole body. Read the draft first, then resend `name`, `type`, and `trigger` alongside the new `content`. `type` cannot change after creation.
 - `content` is markdown for a `free_form` procedure, and a JSON-encoded object with a `steps` array for a `deterministic` one. The trigger is the top-level `trigger` field in both cases, not part of `content`. Serialize it; do not hand-escape quotes.
-- Manually authored workflow edges cannot connect to or from a structured procedure. Use a `sub_procedure` step to chain structured procedures; entry from a matching trigger and completion are platform-managed.
+- Use a Start procedure workflow node (`type: "start_procedure"`, `procedure_id: "<attached procedure ID>"`) to start either procedure type at a chosen point in the workflow graph without a trigger match. Free-form content loads and traversal continues in the same turn; a structured procedure runs before the node's outgoing edges are evaluated. Connect workflow edges to the Start procedure node. Use a `sub_procedure` step to chain structured procedures.
 - A third `type`, `folder`, groups procedures in the dashboard. Folders carry no `content` or `trigger`; move a procedure into one with `POST .../procedures/{procedure_id}/move`.
 - The agent keeps the five most recently started procedures in context. When more have been started, the content, inline tools, and knowledge base documents of the oldest free-form ones drop out of the prompt, although the procedures remain active. Keep procedures focused and use sub-procedures so that few are active at once.
 - Routing is driven by the `trigger` text, not the procedure name. Write concrete, non-overlapping triggers that cover the phrasings a user would actually say. The model sees only a numbered menu of triggers; it never sees procedure names or IDs.
@@ -547,7 +627,7 @@ agent = client.conversational_ai.agents.get(agent_id="your-agent-id")
 client.conversational_ai.agents.update(agent_id="your-agent-id", name="New Name")
 client.conversational_ai.agents.update(agent_id="your-agent-id",
     conversation_config={
-        "agent": {"prompt": {"prompt": "New instructions", "llm": "claude-sonnet-4"}}
+        "agent": {"prompt": {"prompt": "New instructions", "llm": "claude-sonnet-4-6"}}
     })
 
 # Delete

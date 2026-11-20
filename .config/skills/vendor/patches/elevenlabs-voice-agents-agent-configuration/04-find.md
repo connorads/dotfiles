@@ -5,6 +5,6 @@ await client.conversationalAi.agents.update("id", {
   conversationConfig: { tts: { voiceId: "EXAVITQu4vr4xnSDxMaL" } }
 });
 await client.conversationalAi.agents.update("id", {
-  conversationConfig: { agent: { prompt: { prompt: "New instructions.", llm: "claude-sonnet-4" } } }
+  conversationConfig: { agent: { prompt: { prompt: "New instructions.", llm: "claude-sonnet-4-6" } } }
 });
 ```
