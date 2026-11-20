@@ -55,6 +55,12 @@
       "skillPath": "skills/break/SKILL.md",
       "computedHash": "041fe26ec8552f3e9114fd21a006a91cc82f30fb7561694ab12601c0a8b42cc9"
     },
+    "build-design": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/build-design/SKILL.md",
+      "computedHash": "78b640694e568d796dd9044256889d8b28853d98f3349dd08305ae9aeea4aaac"
+    },
     "explain-interface": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",

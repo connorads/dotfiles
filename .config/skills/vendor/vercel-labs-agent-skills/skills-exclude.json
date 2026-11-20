@@ -1,4 +1,5 @@
 {
+  "deploy-to-vercel": "Not needed for this setup.",
   "vercel-cli-with-tokens": "Token handling that bypasses the fnox credential workflow.",
   "vercel-optimize": "155 bundled files to review for an occasional cost audit.",
   "writing-guidelines": "Overlaps authored writing-precisely and vendored better-writing."

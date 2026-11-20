@@ -1,0 +1,1 @@
+Channels and branches commonly have the same name, but they are separate objects. `npx --yes eas-cli@latest channel:edit` changes a channel's server-side branch mapping for every build on that channel. It does not change an individual installation's embedded channel.

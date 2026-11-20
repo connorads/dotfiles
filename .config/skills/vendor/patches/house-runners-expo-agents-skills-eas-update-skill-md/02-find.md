@@ -1,0 +1,1 @@
+- If `eas.json` is absent, do not create it by hand. The CLI may direct the user to run `npx --yes eas-cli@latest build:configure` separately.

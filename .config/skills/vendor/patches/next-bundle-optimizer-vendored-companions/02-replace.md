@@ -1,0 +1,1 @@
+use vendored [`next-dev-loop`](../next-dev-loop/SKILL.md) when verifying the edit in the running app.

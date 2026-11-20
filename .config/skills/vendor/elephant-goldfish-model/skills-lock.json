@@ -25,6 +25,12 @@
       "skillPath": "skills/egm-drift-report/SKILL.md",
       "computedHash": "bfd4486d437704941cb6b5957de03f3ed1ab4c76d6d2eb48436382ed811cbd18"
     },
+    "egm-lite": {
+      "source": "google/elephant-goldfish-model",
+      "sourceType": "github",
+      "skillPath": "skills/egm-lite/SKILL.md",
+      "computedHash": "7db787428b17d44cff998467940f790aeca42f0aff43388b27b3199aaae0b000"
+    },
     "egm-resolve": {
       "source": "google/elephant-goldfish-model",
       "sourceType": "github",
