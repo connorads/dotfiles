@@ -1,0 +1,1 @@
+If you read in an American accent and target the British "George" voice, you get George's timbre with an American accent.

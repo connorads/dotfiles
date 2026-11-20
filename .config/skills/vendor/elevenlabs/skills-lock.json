@@ -7,6 +7,12 @@
       "skillPath": "agents/SKILL.md",
       "computedHash": "ded9f37c6c1c2dff86035c7fda8c37c0c80b6a0d9d1ed1f22528eedf97b63f59"
     },
+    "dubbing": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "dubbing/SKILL.md",
+      "computedHash": "02199ec6cbcb7387988149082c8a4412a0cf66f8feb85e26c77771cb487df798"
+    },
     "music": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
@@ -25,6 +31,12 @@
       "skillPath": "sound-effects/SKILL.md",
       "computedHash": "5c0a1d653194633986f9887c599f3f98c595bce0fcb0e16dc5d90935ec65a6df"
     },
+    "speech-engine": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "speech-engine/SKILL.md",
+      "computedHash": "8c6eefc33160da76ce84dba3ac99ac537f6ed8e51c6cb59a9c9b8726d01ecefe"
+    },
     "speech-to-text": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
@@ -36,6 +48,18 @@
       "sourceType": "github",
       "skillPath": "text-to-speech/SKILL.md",
       "computedHash": "fec523d1f12af3c06c94783129f2d556fafc9309ee3f13578170f7ef33c5f97e"
+    },
+    "voice-changer": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "voice-changer/SKILL.md",
+      "computedHash": "c7dbca7fbc40c9216f0065d2d4aaa015e297280922dec2a6659a3ffd4d3b416c"
+    },
+    "voice-isolator": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "skillPath": "voice-isolator/SKILL.md",
+      "computedHash": "8bc07ba491ce751835f29027fb879f54e518851bcb60fd29d1e0c39cc3a2547d"
     }
   }
 }

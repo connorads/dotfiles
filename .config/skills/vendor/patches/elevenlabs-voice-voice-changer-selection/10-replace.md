@@ -1,0 +1,1 @@
+If you read in an American accent and target a British voice, you get that voice's timbre with an American accent.

@@ -5,8 +5,11 @@
   ],
   "vars": {
     "skill": [
+      "dubbing",
       "music",
-      "sound-effects"
+      "sound-effects",
+      "voice-changer",
+      "voice-isolator"
     ]
   }
 }
