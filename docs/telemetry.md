@@ -43,6 +43,13 @@ desktop controls after relaunch; a shell export alone does not prove GUI coverag
 It refreshes cached feature flags. Claude's native settings do not duplicate
 these opt-outs, so the explicit exception remains effective.
 
+## Self-updaters
+
+The module also carries `AGY_CLI_DISABLE_AUTO_UPDATE`. An `agy` self-update replaces
+the mise-installed binary in place, bypassing the lockfile and the isolated-profile
+version check. The variable must reach every launch path, so it lives here rather
+than in mise's `[env]`, which only shims apply.
+
 ## Grok CLI
 
 Mise owns Grok Build and pins its release in

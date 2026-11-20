@@ -38,7 +38,9 @@ Read its [guide](../src/bb-plugins/cost/README.md).
 
 ## Antigravity
 
-Mise pins `agy` to the version verified for isolated profiles and disables its self-updater.
+Mise pins `agy` to the version verified for isolated profiles.
+The [telemetry module](./telemetry.md) sets `AGY_CLI_DISABLE_AUTO_UPDATE` for shells, launchd and BB.
+BB's `PATH` reaches the install directory before mise shims, so a mise-only variable misses BB launches.
 The managed `provider-acp.customAgents` setting registers `acp-antigravity`.
 BB launches `agy acp --process-per-session` so client-supplied HTTP MCP servers work.
 Default uses Antigravity's native login. Isolated accounts use private homes and native file-backed OAuth storage.
