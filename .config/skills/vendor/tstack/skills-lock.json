@@ -1,59 +1,59 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "babysit-pr": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/babysit-pr/SKILL.md",
-      "computedHash": "ba004a14dde8e9997f2f69c1ca52152349473bd82cfa0801eb5af81879200cf8"
+      "computedHash": "b6f349b95dbf4cce64cf61608b4ed9a98ce3725afe29676e6614efc8dccb5c29"
     },
     "council": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/council/SKILL.md",
-      "computedHash": "3a914b86431aa5ac8c0a57ef732a714ad3445a713fda96f4dd7c6f6625db4c3c"
+      "computedHash": "2b07ab25fa4a1bb07c70b89b8eaf4a5bb43c673faead94aa7f3e608e19577e4e"
     },
     "file-pr": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/file-pr/SKILL.md",
-      "computedHash": "7a073ff704743ba9ca6be75a173bb1de892e58c6e46105515bbdcc386ba6a266"
+      "computedHash": "9f4f1174623e51b7d4582d53c387459af71032aa0cba70470bd0bb2a85820443"
     },
     "full-send": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/full-send/SKILL.md",
-      "computedHash": "f5e7297f9eeb6a4f83312d22a81186db11233d647c854d75addf756e099dfb47"
+      "computedHash": "dd66dd22c76558f50c722c26432e713468a68599fb0db0eb2d9e50bbebdbd3f8"
     },
     "full-stop": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/full-stop/SKILL.md",
-      "computedHash": "81dc01710afe6a54337a18f0a90d17ccf2776220acd1e84512fdbd9b89e19054"
+      "computedHash": "97cd08646e1f9bbb89bf18bf131982ee66df7834cce071bc5385e8fc4f5a60a9"
     },
     "leaving-pr-comments": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/leaving-pr-comments/SKILL.md",
-      "computedHash": "d64a0d8e7bb6e5b9129a9f0017f98f1e5851c2f317d2300c4eef3aaeec649149"
+      "computedHash": "aa96b3df788cf8125aa202ad54bebbd91878a0218eae94c8035536d7bda026a2"
     },
     "modernize": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/modernize/SKILL.md",
-      "computedHash": "ef60debce4f34f309c6f15375cde504f6c59eefd2f8763f3118ff9f4a22466e2"
+      "computedHash": "01aceb93a7408157fc0038bc3e84e698e163ff4330a6da9f6358487ce8af3ddd"
     },
     "sol-loop": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/sol-loop/SKILL.md",
-      "computedHash": "0b039bc755d387a522ce2c050b6f000c3dee08ec7477171037131ad57c2935ec"
+      "computedHash": "579718e954d9edc00de37bdc4666475bcebb5c398b4d8f608f8251a1599bc6f6"
     },
     "takeover": {
       "source": "t3dotgg/tstack",
       "sourceType": "github",
       "skillPath": "skills/takeover/SKILL.md",
-      "computedHash": "eafabb14624dfaa7bf8b1fb30e3f9a026023f82234b6f78443d2dc37930004f6"
+      "computedHash": "3cd3b50b50005459839f9c77614a3e707121f3aad20b7b23c203813b6cf7b4fc"
     }
   }
 }
