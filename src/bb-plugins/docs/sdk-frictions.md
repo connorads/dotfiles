@@ -27,6 +27,19 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Plugin pickers cannot open their own settings
+
+- Found: 2026-11-18, executor, SDK 0.6.37
+- Wanted: open Executor settings with a click or tap from the connection picker.
+- Gap: `useBbNavigate()` has no plugin settings destination. The sidebar footer
+  action receives `openPluginDetails()`, which is scoped to that action.
+- Workaround: render the existing settings component inside the picker
+  ([popover.tsx](../executor/popover.tsx)).
+- Ask: expose this plugin's settings destination through `useBbNavigate()`.
+- Status: open
+- Category: sdk-gap
+- Evidence: `BbNavigate` and `experimental_sidebarFooter` SDK declarations.
+
 ### No way to hide only the native model picker
 
 - Found: 2026-11-13, claude-profiles, SDK 0.6.132

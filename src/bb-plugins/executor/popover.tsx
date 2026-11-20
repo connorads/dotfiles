@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type Key
 import { ChipPopover } from '@bb-plugins/chip';
 import { AddForm, looksLikeMcpUrl } from './add-form.tsx';
 import type { ConnectionView, StateView } from './contracts.ts';
+import { ExecutorSettings } from './settings.tsx';
 import { SignInPanel } from './sign-in.tsx';
 import { choose, dismissUnsaved, message, refresh, reportUnsaved, rpc, visibleChip, type Anchor, type Choice } from './store.ts';
 
@@ -36,6 +37,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   const dialog = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   // A save outlives a popover closed mid-save; it must not close the next one.
   const alive = useRef(true);
   useEffect(() => {
@@ -94,10 +96,10 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   // Focus the thread's current row once, when the state first arrives.
   const focused = useRef(false);
   useEffect(() => {
-    if (!view || focused.current) return;
+    if (!view || showSettings || focused.current) return;
     focused.current = true;
     focusRow(current);
-  }, [view, current, focusRow]);
+  }, [view, showSettings, current, focusRow]);
   // Chromium closes a modal dialog itself on a repeated Escape, even when its cancel is prevented, as during an add.
   // Close the popover with it, so the store does not hold a closed dialog open. A removed dialog's late close is not one.
   useEffect(() => {
@@ -136,7 +138,7 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDialogElement>) {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (showSettings || event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target as HTMLElement;
     if (target.closest('.ex-signin, .ex-add')) return;
     const index = rows.findIndex(row => row.id === target.dataset['row']);
@@ -154,66 +156,72 @@ export function ExecutorPopover({ view, loadError, threadId, choice, saving, uns
   // Paste an MCP URL anywhere in the popover to start adding it.
   // Not while a pick or an add runs: a new add form would replace the running one and its outcome.
   function onPaste(event: ClipboardEvent<HTMLDialogElement>) {
-    if (busy || (event.target as HTMLElement).closest('input')) return;
+    if (showSettings || busy || (event.target as HTMLElement).closest('input')) return;
     const text = event.clipboardData.getData('text/plain');
     if (!looksLikeMcpUrl(text)) return;
     event.preventDefault();
     openAdd(text.trim());
   }
 
-  return <ChipPopover ref={dialog} aria-label="Executor connection" trigger={visibleChip} anchor={anchor} width={360}
+  const title = showSettings ? 'Executor settings' : 'Executor connection';
+  return <ChipPopover ref={dialog} aria-label={title} trigger={visibleChip} anchor={anchor} width={360}
     instant={instant} panelClassName="ex-panel" className="ex-dialog" onKeyDown={onKeyDown} onPaste={onPaste}
     // While the add runs, neither Escape nor a click outside closes the popover, so a stray press keeps the add's
     // outcome in view. The form's Close leaves on purpose; an add that ends after the popover closed switches nothing.
     onClose={pending === 'add' ? () => {} : onClose}
     // Escape leaves the add form first; with no connections the form is the whole popover.
-    onEscape={pending === 'add' ? () => {} : adding !== null && hasRows ? () => setAdding(null) : undefined}>
+    onEscape={pending === 'add' ? () => {} : !showSettings && adding !== null && hasRows ? () => setAdding(null) : undefined}>
     <header className="ex-header">
-      <h2>Executor connection</h2>
-      <span className="ex-muted">{threadId ? 'for this thread' : 'before the first message'}</span>
+      <h2>{title}</h2>
+      <button type="button" className="ex-button" aria-disabled={busy !== null || undefined} onClick={event => {
+        if (busy) return;
+        event.currentTarget.focus();
+        setShowSettings(!showSettings);
+      }}>{showSettings ? 'Back to connections' : 'Executor settings'}</button>
     </header>
-    {!view ? loadError
-        ? <div className="ex-empty ex-load-failed" role="alert">
-          <span>Could not load connections. {loadError}</span>
-          <button type="button" className="ex-button" aria-disabled={retrying || undefined} onClick={() => {
-            if (retrying) return;
-            setRetrying(true);
-            void refresh().finally(() => setRetrying(false));
-          }}>{retrying ? 'Trying again…' : 'Try again'}</button>
-        </div>
-        : <p className="ex-empty">Loading…</p>
-      : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one from Executor's Connect page.</p>
-      : <section className="ex-rows" aria-label="Connections">
-        {rows.map(row => <button key={row.id} type="button" className="ex-row" data-row={row.id}
-          aria-pressed={row.id === current} aria-busy={row.id === busy || undefined}
-          aria-disabled={busy !== null && row.id !== busy ? true : undefined} onClick={() => void pick(row)}>
-          {row.keycap ? <kbd>{row.keycap}</kbd> : <span aria-hidden />}
-          <span className="ex-row-label">{row.label}</span>
-          <span className="ex-row-aside" data-warn={row.connection && (row.connection.status !== 'signed-in' || view.errors[row.connection.id]) ? '' : undefined}
-            data-error={row.aside === 'error' ? '' : undefined}>
-            {row.id === busy ? 'saving…' : row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
-          </span>
-        </button>)}
-        {!showAdd && <button type="button" className="ex-row" data-row="add" aria-disabled={busy !== null || undefined}
-          onClick={() => { if (!busy) openAdd(); }}>
-          <kbd>a</kbd><span className="ex-row-label">Add connection…</span><span className="ex-row-aside">or paste a URL</span>
-        </button>}
-      </section>}
-    {addedName && pending && !rows.some(row => row.id === pending) &&
-      <p className="ex-empty" role="status">Switching to {addedName} and starting its sign-in…</p>}
-    {view && showAdd && <AddForm key={adding ?? ''} initialUrl={adding ?? ''} count={view.connections.length}
-      onBusy={next => setPending(next ? 'add' : null)} onAdded={added} onClose={onClose} onLost={text => reportUnsaved(threadId, text)} />}
-    {signIns.map(signIn => <SignInPanel key={signIn.id} signIn={signIn}
-      name={view?.connections.find(c => c.id === signIn.id)?.name ?? signIn.id} />)}
-    {Object.entries(view?.errors ?? {}).map(([id, text]) => <p key={id} className="ex-error" role="alert">
-      {view?.connections.find(c => c.id === id)?.name ?? id}: {text}
-    </p>)}
-    {unsaved && <p className="ex-error" role="alert">{unsaved}</p>}
-    {error && <p className="ex-error" role="alert">{error}</p>}
-    <footer className="ex-footer">
-      {hasRows && pending !== 'add' && <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
-      <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
-      {hasRows && <span>Sign out, change the default or remove in Settings → Executor.</span>}
-    </footer>
+    {showSettings ? <div className="ex-settings"><ExecutorSettings /></div> : <>
+      {!view ? loadError
+          ? <div className="ex-empty ex-load-failed" role="alert">
+            <span>Could not load connections. {loadError}</span>
+            <button type="button" className="ex-button" aria-disabled={retrying || undefined} onClick={() => {
+              if (retrying) return;
+              setRetrying(true);
+              void refresh().finally(() => setRetrying(false));
+            }}>{retrying ? 'Trying again…' : 'Try again'}</button>
+          </div>
+          : <p className="ex-empty">Loading…</p>
+        : view.connections.length === 0 ? <p className="ex-empty">No connections yet. Add one from Executor's Connect page.</p>
+        : <section className="ex-rows" aria-label="Connections">
+          {rows.map(row => <button key={row.id} type="button" className="ex-row" data-row={row.id}
+            aria-pressed={row.id === current} aria-busy={row.id === busy || undefined}
+            aria-disabled={busy !== null && row.id !== busy ? true : undefined} onClick={() => void pick(row)}>
+            {row.keycap ? <kbd>{row.keycap}</kbd> : <span aria-hidden />}
+            <span className="ex-row-label">{row.label}</span>
+            <span className="ex-row-aside" data-warn={row.connection && (row.connection.status !== 'signed-in' || view.errors[row.connection.id]) ? '' : undefined}
+              data-error={row.aside === 'error' ? '' : undefined}>
+              {row.id === busy ? 'saving…' : row.aside}{row.id === current && <span className="ex-check" aria-hidden> ✓</span>}
+            </span>
+          </button>)}
+          {!showAdd && <button type="button" className="ex-row" data-row="add" aria-disabled={busy !== null || undefined}
+            onClick={() => { if (!busy) openAdd(); }}>
+            <kbd>a</kbd><span className="ex-row-label">Add connection…</span><span className="ex-row-aside">or paste a URL</span>
+          </button>}
+        </section>}
+      {addedName && pending && !rows.some(row => row.id === pending) &&
+        <p className="ex-empty" role="status">Switching to {addedName} and starting its sign-in…</p>}
+      {view && showAdd && <AddForm key={adding ?? ''} initialUrl={adding ?? ''} count={view.connections.length}
+        onBusy={next => setPending(next ? 'add' : null)} onAdded={added} onClose={onClose} onLost={text => reportUnsaved(threadId, text)} />}
+      {signIns.map(signIn => <SignInPanel key={signIn.id} signIn={signIn}
+        name={view?.connections.find(c => c.id === signIn.id)?.name ?? signIn.id} />)}
+      {Object.entries(view?.errors ?? {}).map(([id, text]) => <p key={id} className="ex-error" role="alert">
+        {view?.connections.find(c => c.id === id)?.name ?? id}: {text}
+      </p>)}
+      {unsaved && <p className="ex-error" role="alert">{unsaved}</p>}
+      {error && <p className="ex-error" role="alert">{error}</p>}
+      <footer className="ex-footer">
+        {hasRows && pending !== 'add' && <span className="ex-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> choose <kbd>esc</kbd> close</span>}
+        <span>{threadId ? "Applies to this thread's next Executor call." : 'Applies before the agent starts. Off disables Executor tools.'}</span>
+      </footer>
+    </>}
   </ChipPopover>;
 }
