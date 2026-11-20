@@ -96,10 +96,10 @@
     },
     "feynman": {
       "source": "leostera/feynman",
-      "ref": "v0.15.0",
       "sourceType": "github",
+      "ref": "v0.16.0",
       "skillPath": "packages/feynman/skills/feynman/SKILL.md",
-      "computedHash": "78bd958c6c1afe6315aef5538e4752747e4e5672b7db88b2a4bc7acd7854b595"
+      "computedHash": "5bb4131d167f969bf54eb78fd3b2fafcbdff47670663feec5538005b453b0599"
     },
     "fframes-video": {
       "source": "dmtrKovalenko/fframes",
@@ -226,10 +226,10 @@
     },
     "modern-web-guidance": {
       "source": "GoogleChrome/modern-web-guidance",
-      "ref": "v1.0.0",
       "sourceType": "github",
+      "ref": "v1.0.1",
       "skillPath": "skills/modern-web-guidance/SKILL.md",
-      "computedHash": "9e69ce00dc314b64f6664031b70295ea46c7de93ac682c624808df6e48e08b66"
+      "computedHash": "d9f3ceba8b5c77b12ae6f852932a349843ce086d03ce76ab5e2257e7e5acd16d"
     },
     "mutation-testing": {
       "source": "citypaul/.dotfiles",

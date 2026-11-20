@@ -19,6 +19,32 @@ from it:
 what matters in the domain (a terminal to type in, a Settings pane), add a small
 playground file beside the spec that composes Feynman's kit; see "Playground files".
 
+## The book
+
+*Writing specs with Feynman* (https://github.com/leostera/feynman/blob/main/book/README.md) is the long form of this page: every rule
+here, with the reasoning behind it, worked step by step on real specs whose checked output
+is quoted. This page says what to do; the book shows why, and what goes wrong otherwise.
+Read the chapter for the task in front of you:
+
+| Task | Chapter |
+| --- | --- |
+| A first spec, end to end | 1. A first spec |
+| Actors, state, actions; what to leave out | 3. Things and what they hold |
+| Messages, and where a step ends | 4. Telling each other |
+| Writing properties; reading a counterexample | 5. What must stay true |
+| Scenarios a reader needs | 6. Showing that it happens |
+| Timers, with no clock | 7. When the timer fires first |
+| Lost messages, calls that fail, retries, idempotency | 8. When the answer never comes |
+| Crashes, and what is on disk | 9. When it restarts right here |
+| Liveness, fairness, `leadsTo` | 10. Does it ever finish? |
+| Rules and `needs`; `--without` | 11. Which part does the work? |
+| Bounds, symmetry, `~` and `?`, a state space too big | 12. How sure are we? |
+| Reading code into a spec; sources, lock, diff | 13. Pointing at the code |
+| Displays, tokens, playground files, flows | 14. Explaining it to the new person |
+| Triaging counterexamples; a `✓` that lies | 15. My agent found a bug. Is it real? |
+| Worked protocols: 2PC, outbox, leases and fencing, CRDTs | 16 to 19 |
+| From TLA+, Alloy or P; a one-page reference | Appendices A and B |
+
 ## Setup
 
 <!-- LOCAL PATCH (connorads dotfiles): Use the repository package manager and an installed Feynman CLI; prevent task-time package-runner downloads. -->
@@ -109,6 +135,9 @@ Before you finish, go through the spec once more. For each actor, message and st
      behaviour in a scenario whose description says it is intended.
    - **A finding:** the code really does this, and should not. Do not weaken the invariant
      to make it go away; report it.
+
+   Chapter 15 of the book works through an agent's spec with one of each: a spec that split
+   one SQL statement into two steps, and a real lost-ticket bug behind a restart.
 
    Then judge how likely a finding is before anyone writes tests or files issues. Check
    says how many faults each counterexample needs (it searches again with fewer, so "needs
@@ -307,6 +336,9 @@ const codesOnlyShrink = defineProperty("codesOnlyShrink", {
   description: "Only issuing a code adds one.",
   everyStep: (before, after, e) => e.is(Relay, "newCode") || Object.keys(after.the(Relay).state.codes).length <= Object.keys(before.the(Relay).state.codes).length,
 });
+// reachable: some world on some path gets there. Check gives the shortest way, or ✗ when no
+// world does. A spec, or a fix, that does nothing keeps every safety property; these catch it.
+const someoneLinks = defineProperty("someoneLinks", { description: "A Mac can be linked.", reachable: (w) => w.all(Mac).some((m) => m.state.account !== null) });
 // leadsTo: whenever the first holds, the second holds then or later, in every fair behaviour.
 // Also: eventually (holds at some point), infinitelyOften, eventuallyAlways (holds from some point on).
 const pendingResolves = defineProperty("pendingResolves", {
@@ -350,7 +382,7 @@ export default defineSpec({
   description: "How a Mac gets linked to an account with a one-time pairing code.",
   actors: [Relay, Person, Mac],
   limits: [codeLifetime],
-  properties: [codesAreHashed, codesOnlyShrink, pendingResolves, redeemedOnce],
+  properties: [codesAreHashed, codesOnlyShrink, someoneLinks, pendingResolves, redeemedOnce],
   scenarios: [linkAMac],
 });
 ```
@@ -368,7 +400,8 @@ a named type for `initialState`.
 
 - **Determinism.** Handlers see the world only through `ctx`:
   - `id`, `label`;
-  - `fresh(prefix)` for ids, `hash(value)` and `random()`;
+  - `fresh(prefix)` for ids, `hash(value)` and `random()` (seeded: one value per draw, so
+    what holds where a step drew reads `~`; make a real choice an input or two steps);
   - `send`, `reply`, `start(label)` and `cancel(label)`;
   - `the(Actor)`/`all(Actor)` to find instances, and `note(text)`;
   - for steps that build faults: `delivery` (the message taken, and whom from),
@@ -390,7 +423,8 @@ a named type for `initialState`.
 
 ### Make the playground worth looking at
 
-The playground is drawn from the spec, so the spec decides how good it looks. For every
+The playground is drawn from the spec, so the spec decides how good it looks. Chapter 14 of
+the book takes one spec from bare to finished in four steps, with screenshots of each. For every
 actor, add:
 
 - **`display.icon`.** One of `person`, `people`, `phone`, `laptop`, `desktop`, `browser`,
@@ -542,7 +576,8 @@ export default definePlayground(spec, (play) => {
 
 - Everything a spec needs comes from `"@leostera/feynman"`: the `define*` functions, the
   faults library (`budget`, `spend`, `atMost`, `lose`, `duplicate`, `crash`, `defineCall`,
-  `failed`), `input`, and the schemas. For helpers, the types are `Actor`, `Instance`, `World`, `Ctx`, `Script`, `Display`,
+  `failed`), `input`, and the schemas. For helpers, the types are `Actor`, `Instance`, `WorldView` (the world a property or guard
+  reads; `World` is the engine's), `Setup` (what a shared `setup` takes), `Ctx`, `Script`, `Display`,
   `Link`, `Row`, `Token`, `Icon`, `Mood`, `ZonePlace` and `ActorPlace`.
 - **The source is the reference.** Feynman ships as TypeScript, so it is in
   `node_modules/@leostera/feynman/src`; read it when this page does not answer.
@@ -578,6 +613,9 @@ its call tree says nothing about this one.
 
 **Point at real code; never invent paths.** `feynman check` fails on sources that don't
 resolve. When the code does not exist yet, leave `sources` out of that step instead.
+Members of an interface or a type are not definitions: point at their lines
+(`db.ts:9-10`). Chapter 13 of the book models a small codebase this way, and uses
+`lock` and `diff` to review a change to it.
 
 ### Modelling choices
 
@@ -589,6 +627,9 @@ resolve. When the code does not exist yet, leave `sources` out of that step inst
   computes with them (electing the highest id, hashing an id). The checker tests the claim
   on up to `--symmetry-checks N` merged states (2000) and says when it is false; testing
   takes a large share of a symmetric search, so lower it for speed once the claim has held.
+  It can only test the states it merges: a false claim whose difference shows only later
+  can pass the search, and the random runs, which merge nothing, are what catch it. Keep
+  them on (chapter 12 of the book shows one).
 - **State.** Keep only what decides behaviour. Use hashes, not secrets (`ctx.hash`).
 - **Repeats.** Bound each action a person could take forever with `with: [atMost(2)]`: each
   instance takes it at most twice on one path. Raise the number when a bug needs more; a
@@ -600,6 +641,14 @@ resolve. When the code does not exist yet, leave `sources` out of that step inst
   - `lose(Message, { spend: faults })` on the receiver: the message is lost on the way. The
     sender hears nothing, as with a queue, a datagram or a stream.
   - `duplicate(Message, { spend: faults })`: the network delivers it twice.
+  - Order is not a fault: any message in flight may arrive next, as on a network of separate
+    requests. Messages on one connection (TCP, a WebSocket, a single-partition queue) keep
+    their order: `defineMessage(id, schema, { ordered: true })`, and `defineCall` takes it
+    too. Of the ordered messages one instance sends another, of every kind, a step takes only
+    the oldest in flight; `lose` takes any (`outOfOrder: true` on a step lets it). An ordered
+    message is never put back in flight: `ctx.forward()` and `duplicate` on one are errors;
+    give the step a `when` to make it wait. Declare `ordered` only where something keeps the
+    order: two connections, a retry on a new one, or a load balancer reorder.
   - `crash({ keeps: ["codes"], spend: faults })`: the instance starts again from its
     initial state, but for the fields in `keeps` (what it wrote to disk); its timers are gone.
 
@@ -612,7 +661,8 @@ resolve. When the code does not exist yet, leave `sources` out of that step inst
   Losing its reply fails it too, when the lost reply says so:
   `lose(Charged, { fails: Charge, spend: faults })`. The caller cannot tell which was lost,
   as the code cannot: a retry after a lost reply runs the call twice, so that is where to
-  look for duplicates. A crash drops the failures on their way to the instance. A
+  look for duplicates. A crash drops the failures on their way to the instance, and orphans
+  the calls it had made: lost after the crash, they fail into nobody. A
   counterexample that ends with someone waiting on a lost message is the code having no
   answer for it (a finding), or the model missing the one it has (often: it is a call).
 - **Time.** Specs have no clock: a run is an order of events, and anything pending may go
@@ -662,18 +712,25 @@ resolve. When the code does not exist yet, leave `sources` out of that step inst
   is a safety property (`always: (w) => !w.quiet || …`), cheaper and sharper than liveness
   when what you mean is "after everything has arrived".
 - **Never.** A `never` property sees the path through `trace.count` and `trace.some`; prefer
-  those to reading `trace.events`, which makes every path its own state.
+  those to reading `trace.events`, which makes every path its own state. Ask the same
+  questions of every path: read each count into a `const` first, then combine them. A property
+  that asks one only sometimes (`t.some(a) && t.count(b) > 1`) is still judged rightly, but by
+  remembering whole paths, which is slow. From a scenario's end, the path includes the
+  scenario's steps.
+- **Possible.** A `reachable` property needs one world where it holds, on any path: `✓ …
+  reached in N event(s)`, with the way there under `--only` and as a scenario under
+  `--as-scenario`. `✗ never reached` only when every world was explored; a search cut off by a
+  bound or a limit reads `~`, not reached yet. Write one for each thing the system is for: it
+  catches a guard too strict, a step that can never run, and bounds too small to get there.
+  It takes no `needs`.
 - **Liveness.** `eventually`, `leadsTo`, `infinitelyOften` and `eventuallyAlways` hold in
   every fair behaviour, as in TLA+. Fair: a message in flight is delivered, a timer that stays
   set fires, a guard that stays true runs (weak fairness; `fair: "strong"` on a step for steps
   that keep being possible on and off, `fair: false` for none). Actions and faults are never
   fair: a person may stop, the network may stop failing. A counterexample is a path and then
   a loop it repeats forever (or a world where nothing fair can happen). Liveness turns off
-  symmetry, so it costs more states. If a loop could lie past the
-  depth bound (the worlds never run out, as when retries pile up copies), the verdict is
-  unfinished, not holds. When the paths that matter are simply longer than the depth (a push
-  through five services and back), raise `--depth`, or `check: { depth }` in
-  feynman.config.ts for every run, until the verdict is ✓ or ✗.
+  symmetry, so it costs more states. If a loop could lie past where the search stopped (the
+  worlds never run out, as when retries pile up copies), the verdict is unfinished, not holds.
 - **Stuck.** A world where nothing can happen (no message or timer pending, no action
   possible, no fair guard true; an exhausted `atMost` or budget does not count) is reported
   as stuck: a deadlock, or a wait nothing will end. A system that
@@ -751,9 +808,11 @@ read worse. To update one:
 ```
 feynman list                   the specs found
 feynman run [spec] [--scenario NAME | --all] [--without RULE]
-feynman check [spec] [--depth 14] [--set faults=1] [--instances Actor=N] [--max-states N] [--time-limit S]
+feynman check [spec] [--depth N] [--set faults=1] [--instances Actor=N] [--max-states N] [--time-limit S]
               [--memory-limit GB] [--walks 2000] [--walk-depth 120] [--no-symmetry] [--symmetry-checks 2000]
               [--only P,Q] [--without RULE,RULE] [--no-rules] [--brief | --json | --as-scenario]
+feynman conform <spec> <log.jsonl | trace.json> [--gap 4] [--unlogged A,B] [--logs-faults] [--instances Actor=N] [--set k=v]
+              [--map map.ts] [--trace ID] [--order causal|time] [--json | --as-scenario]
 feynman lock                   record source hashes in feynman.lock
 feynman diff [spec] [--base main]
 feynman dev [--port 4321] [--base REF]
@@ -761,15 +820,18 @@ feynman build [--out .feynman/index.html | DIR/] [--base REF]   minified self-co
 feynman open
 ```
 
-`check` explores in two ways. A breadth-first search tries every order of events up to
-`--depth` and finds the shortest counterexample. Random runs (`--walks N`, up to
+`check` explores in two ways. A breadth-first search tries every order of events, until it
+has every world or meets a limit, and finds the shortest counterexample. `--depth N` stops it
+at N events: quicker in a space too big to finish, but what holds there reads `~`, since the
+paths it cut off may break it further on. Random runs (`--walks N`, up to
 `--walk-depth` steps, a quarter of the time) go far deeper and find bugs the search cannot
 reach. Their counterexamples are shrunk but may not be the shortest, and they prove nothing.
 The search runs on one thread, on worlds as integers (RFD0008).
 Read the verdicts as:
 
 - `✓` holds in every state within the bounds;
-- `~` held in the states explored, but the search stopped early: not a proof;
+- `~` held in the states explored, but the search stopped early, or `--depth` cut paths off:
+  not a proof;
 - `?` never tested: no explored world got to where it applies (add a scenario that does);
 - `✗` broken, by the search, a random run, or a scenario; in yellow with "known bug" when
   the property is marked `known`, which does not fail the check.
@@ -790,19 +852,47 @@ Read check's output with its own flags, not with grep:
   it step by step. Paste it into the spec to keep the bug as a flow, and use it as the
   outline of a regression test in the system's own test suite.
 
+`conform` checks the other direction: is a log of what the system did a run of the spec?
+The log is JSON Lines. Spawn lines come first, `{"kind":"spawn","actor":"Person","label":"Alice"}`,
+for every instance that is not a singleton. Then there is one line per step:
+`{"instance":"Alice","key":"hold"}` for an action, or
+`{"instance":"Box office","key":"hold","from":"Alice","payload":{…}}` for a message. A step
+line may add `inputs`, `message`, and the `state` the instance was left in, and the spec's
+step must match whatever the line gives. Between two logged steps, up to `--gap` (4) steps
+the log does not show may happen. These are the faults, unless `--logs-faults`, and the steps
+of `--unlogged` actors. The answer is the reading with the fewest of them, plus the
+properties it breaks, judged along the run. Otherwise it gives the line where the log leaves
+the spec, with what the instance could do there instead (`near`) and what else could
+happen. A log the spec rejects means the spec and the system disagree. Triage it as you
+would a counterexample: read the code around that line. A line may list `after: [lines]`,
+the lines that must come before it. The log is then a partial order, and it conforms when
+some order that keeps it is a run.
+
+Traces work directly: OTLP JSON (the Collector's file exporter, Tempo's API), Jaeger JSON, and
+Zipkin v2. A span is a step when it has `feynman.step`, or when a `--map` module
+(`defineTraceMapping` from `@leostera/feynman/config`) returns a line for it. The instance is
+`feynman.instance`, else the resource's `service.instance.id`, else its `service.name`.
+Replicas of a service that are not singletons say `feynman.actor` on the span or the resource.
+The sender is found up the parents or across the links, skipping services the spec doesn't
+have. Inputs, payload and state can be given as JSON (`feynman.payload`) or field by field
+(`feynman.payload.value`). Clocks are not trusted: a step comes after its instance's previous
+step and after the steps it descends from or links to, and nothing else is assumed.
+`--order time` trusts the clocks. When asked to check production against a spec, prefer a
+mapping over adding attributes: read the spans the system already emits.
+
 When `check` stops at a limit (states, time, or memory), it says so, and how far it got:
 a safety property "held on every path of up to N events". It also says what the states
 differ in most ("Session.outcomes (1,359 values)"). A field with many values (a log, a
 counter, ids, a list that only grows) is usually the cause: bound it, or keep only what the
 properties read. Without one, it is the orders of what is in flight: smaller `atMost` limits,
 fewer instances, or a smaller budget (`--set faults=0`). Do not just raise `--max-states`: a state space that is too big usually
-means the spec models too much.
+means the spec models too much. Chapter 12 of the book lists what to cut, in order of payoff.
 
 A `feynman.config.ts` at the repository root can name spec globs and checker defaults:
 
 ```ts
 import { defineConfig } from "@leostera/feynman/config";
-export default defineConfig({ specs: ["docs/specs/*.ts"], check: { depth: 12, instances: { Mac: 2 } } });
+export default defineConfig({ specs: ["docs/specs/*.ts"], check: { maxStates: 500_000, instances: { Mac: 2 } } });
 ```
 
 ## What to report back
