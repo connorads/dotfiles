@@ -39,6 +39,7 @@ The complete pattern:
 - `aria-describedby` links the field to its inline error so screen readers announce it with the field.
 - Errors render inline beside their fields, with an icon or text. Never a red border alone, which is a color-only cue.
 - On failed submit, follow the form's established error-summary pattern when present. For errors spread across a substantial form, provide a summary with links to the affected fields and focus that summary. For a local error without a summary, focus the invalid field. Move focus once after rendering the errors; never focus the summary and then the first invalid field in the same submission. Summary links move focus to their fields when the user activates them.
+- Put `novalidate` on the `<form>` when you render your own errors. Otherwise native validation blocks the submit event before they run.
 - Accept free text and validate after. Never block typing or filter characters as the user types. Trim values before validating, because autocomplete and text expansion add trailing spaces.
 
 ## Autocomplete and input types
