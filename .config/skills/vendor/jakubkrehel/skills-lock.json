@@ -11,7 +11,7 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-colors/SKILL.md",
-      "computedHash": "b00e36418b17f7601e196b4066f8b0c1a4489f3adbb6a0fc288d3c699395656e"
+      "computedHash": "67b8dc45ed05ca4329d3a654a5b036bfc3fb584437f1887fb9b7b77ccf7793dc"
     },
     "better-interface": {
       "source": "jakubkrehel/skills",
@@ -41,13 +41,13 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-writing/SKILL.md",
-      "computedHash": "5dcd97f7df29f92ef99901601b2a63e2c709f49f9748fd6b61c751b667468564"
+      "computedHash": "17d5689e01131289d8d6754b9c763fd40f88e04567638d6bbd6881ed1121f85f"
     },
     "break": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/break/SKILL.md",
-      "computedHash": "a31627543d546b00ee744d6cbc31889a4eef67b25f854007b99344f022fc0c05"
+      "computedHash": "d865690aa1b9af6258568ff3b0f5cb66804076716d2a754085a51475f0312ba8"
     },
     "explain-interface": {
       "source": "jakubkrehel/skills",
@@ -59,7 +59,7 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/interface-review/SKILL.md",
-      "computedHash": "3b04fd6eb5fef3b49c76b6af2b0bb542bbadcdbd88beed7ca11ab54d5a207750"
+      "computedHash": "13a0cd22704debffd051ffdc3c2e4b802bf46621501c8f20740de858f74051cc"
     },
     "make-interfaces-feel-better": {
       "source": "jakubkrehel/make-interfaces-feel-better",
@@ -71,13 +71,13 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/state-machine/SKILL.md",
-      "computedHash": "f5b8d15d09ad91de8ad969fc6314f3e45a3cc625e0ea8046f109add9e86a33eb"
+      "computedHash": "25071beaa9e58e4335c7579f07d0b1cc3bdeef5051ac624f965fc59c2f195836"
     },
     "variant": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/variant/SKILL.md",
-      "computedHash": "c783573ebf39b02ed2dc393cc7fe3de0a2fafc5d10a9a3c76a8461889beb7c2d"
+      "computedHash": "3e9b11b5aed2f94c8635078b02adc2e5beb8cb60d73a4680c6798b8230e40f2e"
     }
   }
 }
