@@ -6,7 +6,7 @@ Compare the clean original with the affected audio, or compare speech with silen
 
 ## Music under a voice
 
-Duck the bed with a `volume` lane on the music: full level before the voice, down to about 0.3–0.4 while anyone speaks (word timings from `hyperframes transcribe` or the voiceover give the times), back up after. Then carve the bed, which dips only the bands the voice uses: `node <SKILL_DIR>/audio/scripts/carve.mjs --comp index.html` (needs `ffmpeg` and project-local `@hyperframes/core@0.8.46`; provision with `pnpm add -D --save-exact @hyperframes/core@0.8.46` under the configured release-age gate and install-script protections, and stop if unavailable or blocked; `--dry-run` to see the plan). It is the same analysis as Studio's carve panel. It reads only double-quoted attributes (JSON quotes as `&quot;`), so write the bed's chain and lanes that way or it overwrites them. Never put a carve on a voice track.
+Duck the bed with a `volume` lane on the music: full level before the voice, down to about 0.3–0.4 while anyone speaks (word timings from `hyperframes transcribe` or the voiceover give the times), back up after. Then carve the bed, which dips only the bands the voice uses: `node <SKILL_DIR>/audio/scripts/carve.mjs --comp index.html` (needs `ffmpeg`; `--dry-run` to see the plan). It is the same analysis as Studio's carve panel. It reads only double-quoted attributes (JSON quotes as `&quot;`), so write the bed's chain and lanes that way or it overwrites them. Never put a carve on a voice track.
 
 ## Group buses and carve safety
 

@@ -1,4 +1,3 @@
-
 ```bash
 hyperframes info                   # project metadata
 hyperframes info ./my-video        # specific project

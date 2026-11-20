@@ -6,6 +6,4 @@ Use the managed installed CLI and provision missing tools through the local tool
 
 # HyperFrames CLI
 
-Run `hyperframes <command>` unless the project gives a wrapper; then use the wrapper. It needs Node.js 22+ and FFmpeg. Every command has `--help`; most take `--json`, and a failure prints `✗ …`, a `Fix:` line and exits non-zero.
-
-## Commands by job
+Run `hyperframes <command>` using the managed installed CLI, never a project's own scripts or wrapper unless the person names that command. It needs Node.js 22+ and FFmpeg. Every command has `--help`; most take `--json`, and a failure prints `✗ …`, a `Fix:` line and exits non-zero.

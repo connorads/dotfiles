@@ -1,8 +1,7 @@
-function font() {
-  for (const file of [
-    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-  ]) if (existsSync(file)) return file;
-  throw new Error("No supported local font. Provision a font through the local tool workflow.");
-}
+} else if (cmd === "auto") {
+  // Optional external upload requires explicit user authorisation for this image.
+  if (process.env.HYPERFRAMES_ALLOW_IMAGE_UPLOAD !== "1") {
+    console.error("Gemini image upload requires explicit user authorisation; use the local grid loop.");
+    process.exit(1);
+  }
+  const key = process.env.GEMINI_API_KEY;

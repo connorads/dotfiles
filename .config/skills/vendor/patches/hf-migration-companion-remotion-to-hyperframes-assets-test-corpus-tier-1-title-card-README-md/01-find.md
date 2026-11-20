@@ -6,4 +6,6 @@ cd remotion-src && npm install && npm run render
 # Render HyperFrames translation
 cd ../hf-src && npx hyperframes render --output ../hf.mp4
 
-# Compare with the eval harness (from skill scripts/)
+# Compare with the HF CLI
+npx hyperframes diff ../remotion-src/out/baseline.mp4 ../hf.mp4 --out ../diff
+```

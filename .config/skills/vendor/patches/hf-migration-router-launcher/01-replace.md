@@ -1,12 +1,13 @@
 #!/usr/bin/env node
+import "./lib/windows-exe-search.mjs";
 import { spawnSync } from "node:child_process";
 import { isMainModule } from "./lib/main-module.mjs";
 
 export function invocation(args, { env = process.env, node = process.execPath } = {}) {
   if (args[0] === "skills" || args[0] === "upgrade")
     throw new Error("Refresh skills and tools through the reviewed local update workflow.");
-  if (args[0] === "usage")
-    throw new Error("Harness credential probes are disabled by local policy.");
+  if (args[0] === "usage" || args[0] === "events")
+    throw new Error("Harness credential probes and usage beacons are disabled by local policy.");
   const childEnv = { ...env, HYPERFRAMES_SKIP_SKILLS: "1", HYPERFRAMES_NO_UPDATE_CHECK: "1", HYPERFRAMES_NO_TELEMETRY: "1" };
   if (args[0] === "--script") {
     if (!args[1]) throw new Error("--script requires a Node script path.");

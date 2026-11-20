@@ -82,5 +82,5 @@ cd remotion-src && pnpm add && pnpm render
 cd ../hf-src && hyperframes render --output ../hf.mp4
 
 # Compare
-../../../scripts/render_diff.sh ./remotion-src/out/baseline.mp4 ./hf.mp4 ./diff
+hyperframes diff ../remotion-src/out/baseline.mp4 ../hf.mp4 --out ../diff
 ```

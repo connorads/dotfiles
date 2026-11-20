@@ -41,7 +41,7 @@ hyperframes check --no-contrast      # skip the WCAG audit while iterating
 hyperframes check --strict           # exit non-zero on warnings too (default: only errors)
 ```
 
-One command, one Chrome boot. `check` runs the linter first and skips the browser entirely when lint reports errors. When the browser never ran (lint errors, a linter crash, or a browser launch failure), `browserSkipped` is `true` and the `layout`, `motion` and `contrast` sections are empty, not clean. Otherwise it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
+Run it as `hyperframes check`, never through `pnpm run`: a tool timeout's SIGTERM ends npm at once, while `check` goes on and saves its report to the file it names on stderr (`.hyperframes/artifacts/checks/`). One command, one Chrome boot. `check` runs the linter first. A lint error fails the check, but the browser audits still run and report alongside it, unless the error leaves no composition to load (a root with no `data-composition-id`). When the browser never ran (no composition to load, a linter crash, or a browser launch failure), `browserSkipped` is `true` and the `layout`, `motion` and `contrast` sections are empty, not clean. Otherwise it loads the bundled composition once, wires runtime listeners before navigation, and sweeps one seek grid running every audit per sample:
 
 - **Runtime**: JavaScript console errors, unhandled exceptions, failed network requests (media-file `ERR_ABORTED` filtered out), HTTP 4xx/5xx.
 - **Layout**: text extending outside its container or the canvas, text clipped by its own box, held text overlaps and occlusion (with an approximate covered fraction), an opaque element covering the canvas above every other clip for most of the film (`canvas_covered`, naming it), children escaping clipping containers. Text under a transparent `<video>` (a `remove-background` cutout) is measured per word against the frame's alpha: partial cover is info with the share hidden, a word 80% hidden or two neighbouring words each half hidden is an error, and a frame that cannot be read falls back to opaque with a `video_alpha_unread` note.
@@ -53,6 +53,15 @@ One command, one Chrome boot. `check` runs the linter first and skips the browse
   - `text_below_floor`: text under 2.6% of the frame's short side (28 px on 1080) held 0.5 s or more, one finding per file listing every element.
   - `first_frame_empty`: frame 0 paints nothing but the background (no text, image, video, canvas or svg), or an opaque element covers every other clip and the message names it; it is the thumbnail on social players.
   - `film_silent`: a film over 15 s with no unmuted `<audio>` or audible `<video>`.
+- **Audio**: the clips the render mixes, in the report's `audio` section. It runs even when lint stops the browser pass. Remote sources are not fetched.
+  - `audio_source_unreadable` (error): the file cannot be read as audio, so the render's mix fails and the render stops. Point `src` at a file with an audio track, or re-export it.
+  - `audio_source_rejected` (error): the file has no audio track, so render stops before it starts. Point `src` at a file with audio, or remove `data-has-audio="true"` from a `<video>`.
+  - `audio_starts_past_source_end` (warning): `data-media-start` is at or past the file's length, so the clip plays nothing. Lower `data-media-start` below the length.
+  - `audio_clip_silent` (warning): the file is silent for the whole part the clip plays. Check the file has sound there, or move `data-media-start` to where it does.
+  - `audio_none` (info): no clip plays audio and no unmuted `<video>` has an audio track. Fine for a silent film; otherwise add the `<audio>`.
+  - `audio_check_unavailable` (info): the audio check itself failed (the message says why), so the clips were not checked. Re-run; if it repeats, run `hyperframes doctor`.
+  - `audio_src_not_found` (error, from `lint`): an `<audio src>` names a file not in the project, so the render is silent. Add the file or fix the path.
+  - Cost: each media probe (the audio metadata render uses, and render's media-type rule) runs at most once per file; whether a `<video>` has sound is probed on each use. The check runs alongside the browser pass, up to four files at a time. A clip longer than 3 s is first sampled at three 1-second spots and decoded in full only if all three are silent.
 
 Every finding carries a selector, the element's `data-*` identity, the composition source file, a bbox, and the sample time: jump straight from the JSON to the HTML you must edit and re-run.
 

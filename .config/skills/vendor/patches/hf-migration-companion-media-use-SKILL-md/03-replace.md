@@ -1,13 +1,13 @@
-| Images, icons | Asset search, 75k+ | Local FLUX (mflux), if installed |
-| Logos (`logo`) | | theSVG, GitHub avatar, favicon; never redrawn |
-| Voiceover (`voice`) | HeyGen voices, voice cloning | `hyperframes tts` (Kokoro on device; Python 3.10+ with `pip install kokoro-onnx soundfile`) |
-| A presenter speaking | Avatar video (`--type video`) | Local LTX for generic clips, if installed |
-| Transcripts | | `hyperframes transcribe` (Parakeet or whisper) |
-| Cutouts | `heygen background-removal` | `hyperframes remove-background` |
-| Grades, LUTs, looks | | `hyperframes media-treatment` |
+| Voiceover (`voice`) | Voice Turbo, Free plan: 3 min a month | Voice Turbo on a paid plan, other HeyGen voices, cloning | `hyperframes tts` (Kokoro on device) |
+| A presenter speaking | | Avatar video (`--type video`) | Local LTX for generic clips, if installed |
+| Transcripts | `hyperframes transcribe` (Parakeet or whisper) | | |
+| Cutouts | | Video: `--type cutout` | `hyperframes remove-background` |
+| Grades, LUTs, looks | `hyperframes media-treatment` | | |
 
-**Host apps.** Inside an app that gives you its own media tools, use those first. When `HEYGEN_API_BASE` is set, the host pays for HeyGen: don't ask for the `heygen` CLI or a sign-in, and when a call is refused, relay the host's message as written and stop.
+**Sign in.** When a request needs a HeyGen model or the catalog, run `hyperframes auth status` first. If not signed in, report the missing auth and offer the choice between signing in (`hyperframes auth login`) or using an installed local/free path; wait for the user's choice.
 
-**HeyGen.** Use the managed installed `heygen` CLI and sign in with `heygen auth login --oauth`: the OAuth session carries a free allowance on subscription credits; an API key (`--api-key`) bills API credits. Check setup with `hyperframes media-use resolve --doctor`. When a request needs HeyGen (a presenter or avatar, a HeyGen voice, catalog music) and `heygen` is missing or signed out, tell the person how to get it: the install link, `heygen auth login --oauth` for the free allowance, or an API key for credits. Then offer the free path or wait. Beyond `resolve`, the same CLI makes text-to-video (`heygen video-agent create`), avatar videos with a recorded track (`heygen video create`), cloned voices (`heygen voice clone create`), dubbing (`heygen lipsync`), translated videos (`heygen video-translate`) and short clips from a long video (`heygen ai-clipping`): recipes in `references/operations.md`.
+**Host apps.** Inside an app with its own media tools, use those first. When `HEYGEN_API_BASE` is set, the host pays: don't ask for a sign-in; relay a refused call's message as written and stop.
 
-**Free.** Every tool in the free column needs no account; local models are opt-in installs (`references/setup-providers.md`). Without `heygen`, `resolve` for music, images and icons fails and says so; credit CC BY sounds (`audio/references/sfx.md`). `--local-only` skips every network provider.
+**HeyGen.** `hyperframes media-use generate` makes images, shots, talking photos, voices and music using configured HyperFrames auth. Helpers and direct recipes use the managed installed `heygen` CLI; if it is missing, report the prerequisite and wait for the user to install it. Direct `heygen` recipes bill that CLI's own login: use them only when that payer is selected.
+
+**Credits and cost consent.** Confirm before making paid generation calls that the user did not explicitly request, and share `--plan` cost/credit estimates when they affect the user's decision. Honour any credit limit recorded in `.hyperframes/credit-limit.json` (`--max-credits` only tightens). If a step exceeds the limit or a call is refused, explain why and ask the user how to proceed.

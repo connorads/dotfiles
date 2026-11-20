@@ -17,35 +17,35 @@ hyperframes media-use resolve --type <type> --intent "<what you need>" --project
 
 It prints one line, `resolved <id> → <path> (<type>, <metadata>)`. List reusable assets first with `--candidates` and judge the fit yourself; reuse, ingest (`--from`) and adopt are in `references/resolve.md`.
 
-## Two ways to get it
+## Where it comes from
 
-| Need | HeyGen (best quality) | Free, no account |
-| --- | --- | --- |
-| Music (`bgm`) | Catalog of 10k+ tracks | Local MusicGen (`audio/references/bgm.md`) |
-| Sound effects (`sfx`) | | Openverse; 21 bundled offline |
-| Images, icons | Asset search, 75k+ | Local FLUX (mflux), if installed |
-| Logos (`logo`) | | theSVG, GitHub avatar, favicon; never redrawn |
-| Voiceover (`voice`) | HeyGen voices, voice cloning | `hyperframes tts` (Kokoro on device; Python 3.10+ with `pip install kokoro-onnx soundfile`) |
-| A presenter speaking | Avatar video (`--type video`) | Local LTX for generic clips, if installed |
-| Transcripts | | `hyperframes transcribe` (Parakeet or whisper) |
-| Cutouts | `heygen background-removal` | `hyperframes remove-background` |
-| Grades, LUTs, looks | | `hyperframes media-treatment` |
+| Need | Free | HyperFrames credits | Local or the person's own key (only when they ask) |
+| --- | --- | --- | --- |
+| Music (`bgm`) | HeyGen catalog of 10k+ tracks (signed in) | Generated track | Local MusicGen |
+| Sound effects (`sfx`) | HeyGen (signed in); Openverse (credit CC BY); bundled | | |
+| Images, icons | HeyGen asset search, 75k+ (signed in) | Generated images | Local FLUX (mflux), if installed |
+| Logos (`logo`) | theSVG, GitHub avatar, favicon; never redrawn | | |
+| Voiceover (`voice`) | Voice Turbo, Free plan: 3 min a month | Voice Turbo on a paid plan, other HeyGen voices, cloning | `hyperframes tts` (Kokoro on device) |
+| A presenter speaking | | Avatar video (`--type video`) | Local LTX for generic clips, if installed |
+| Transcripts | `hyperframes transcribe` (Parakeet or whisper) | | |
+| Cutouts | | Video: `--type cutout` | `hyperframes remove-background` |
+| Grades, LUTs, looks | `hyperframes media-treatment` | | |
 
-**Host apps.** Inside an app that gives you its own media tools, use those first. When `HEYGEN_API_BASE` is set, the host pays for HeyGen: don't ask for the `heygen` CLI or a sign-in, and when a call is refused, relay the host's message as written and stop.
+**Sign in.** When a request needs a HeyGen model or the catalog, run `hyperframes auth status` first. If not signed in, report the missing auth and offer the choice between signing in (`hyperframes auth login`) or using an installed local/free path; wait for the user's choice.
 
-**HeyGen.** Use the managed installed `heygen` CLI and sign in with `heygen auth login --oauth`: the OAuth session carries a free allowance on subscription credits; an API key (`--api-key`) bills API credits. Check setup with `hyperframes media-use resolve --doctor`. When a request needs HeyGen (a presenter or avatar, a HeyGen voice, catalog music) and `heygen` is missing or signed out, tell the person how to get it: the install link, `heygen auth login --oauth` for the free allowance, or an API key for credits. Then offer the free path or wait. Beyond `resolve`, the same CLI makes text-to-video (`heygen video-agent create`), avatar videos with a recorded track (`heygen video create`), cloned voices (`heygen voice clone create`), dubbing (`heygen lipsync`), translated videos (`heygen video-translate`) and short clips from a long video (`heygen ai-clipping`): recipes in `references/operations.md`.
+**Host apps.** Inside an app with its own media tools, use those first. When `HEYGEN_API_BASE` is set, the host pays: don't ask for a sign-in; relay a refused call's message as written and stop.
 
-**Free.** Every tool in the free column needs no account; local models are opt-in installs (`references/setup-providers.md`). Without `heygen`, `resolve` for music, images and icons fails and says so; credit CC BY sounds (`audio/references/sfx.md`). `--local-only` skips every network provider.
+**HeyGen.** `hyperframes media-use generate` makes images, shots, talking photos, voices and music using configured HyperFrames auth. Helpers and direct recipes use the managed installed `heygen` CLI; if it is missing, report the prerequisite and wait for the user to install it. Direct `heygen` recipes bill that CLI's own login: use them only when that payer is selected.
 
-**Cost.** Confirm before a paid call you chose to make (an avatar video counts); one the person asked for just runs. `--provider <name>` pins one generator when the person names it.
+**Credits and cost consent.** Confirm before making paid generation calls that the user did not explicitly request, and share `--plan` cost/credit estimates when they affect the user's decision. Honour any credit limit recorded in `.hyperframes/credit-limit.json` (`--max-credits` only tightens). If a step exceeds the limit or a call is refused, explain why and ask the user how to proceed.
 
 ## Looks on real footage
 
-Feedback that footage is dark, flat or dull, should feel retro or printed, needs a face hidden, or needs a reveal is media intent: read `references/media-treatments.md`. Inspect the real `<img>`/`<video>`, pick one intent, start from `hyperframes media-treatment --capabilities --json`, then `--capability <id>`; never `--all`. Persist the final treatment with `hyperframes media-treatment`; no CSS or SVG stand-ins for supported effects, and no generated `.cube` just to encode exposure or warmth.
+Feedback that footage is dark, flat or dull, should feel retro or printed, needs a face hidden, or needs a reveal is media intent. Inspect the real `<img>`/`<video>`, pick one intent, and follow `references/media-treatments.md`; persist with `hyperframes media-treatment`, never a CSS, SVG or `.cube` stand-in.
 
 ## Offer once, never add silently
 
-When you build or review a piece, scan once for concrete gaps (on-screen text with no voiceover, emoji standing in for icons, placeholder images, silent cuts, 10 s+ with no music, a colour cast) and offer the specific fixes in one ask. No signal, no suggestion; respect "leave it".
+Scan a piece you build or review once for concrete gaps (on-screen text with no voiceover, emoji standing in for icons, placeholder images, silent cuts, 10 s+ with no music, a colour cast) and offer the fixes in one ask. No signal, no suggestion; respect "leave it".
 
 ## Where to look
 
@@ -54,9 +54,10 @@ When you build or review a piece, scan once for concrete gaps (on-screen text wi
 | Resolve, reuse, adopt, ingest, flags | `references/resolve.md` |
 | Grading, LUTs, `grade-compare` | `references/grading.md` |
 | Voiceover, music, sound effects, captions, transcription | `references/audio.md` |
-| Cut, reframe or transform media; HeyGen recipes | `references/operations.md` |
+| Cut, reframe or transform media; direct `heygen` recipes | `references/operations.md` |
 | Treatments, realtime effects, overlays, reveals | `references/media-treatments.md` |
-| Install, sign-in, providers, RAM ladders | `references/setup-providers.md` |
+| Install, sign-in, credentials, `--provider`, `--local-only`, RAM ladders | `references/setup-providers.md` |
+| `media-use generate`, HeyGen transcription, prices | `references/heygen.md` |
 | Fades, gain, ducking, automation, effects, buses on placed tracks | `references/mixing.md` |
 | Local commands: grade, cutout, loudness, beats | `references/local.md` |
 | Remembered preferences | `references/memory.md` |

@@ -23,7 +23,7 @@ http://localhost:<port>/#project/<project-name>
 
 Use the actual port and project directory name; treat `index.html` as source-code context, not the preview surface. For example, after `hyperframes preview --background --port 3017` in `codex-openai-video`, report `http://localhost:3017/#project/codex-openai-video`.
 
-Two ways a handed URL turns out dead — check both before handing it back: the URL is missing its `#project/<project-name>` hash (Studio loads but has no project to open), or the server is not actually running. Bare `preview` automatically creates a managed persistent session in a non-TTY agent shell; `--background` remains the clearest explicit form. Verify the printed URL returns HTTP 200, keep it alive for the whole review, and stop it explicitly with `hyperframes preview --stop` afterward. Use the printed URL as-is: HyperFrames URL-encodes project names that contain route metacharacters.
+Two ways a handed URL turns out dead — check both before handing it back: the URL is missing its `#project/<project-name>` hash (Studio loads but has no project to open), or the server is not actually running. Bare `preview` automatically creates a managed persistent session in a non-TTY agent shell; `--background` remains the clearest explicit form. Verify the printed URL returns HTTP 200, keep it alive for the whole review, and stop it explicitly with `hyperframes preview --stop` afterward. The desktop app can't edit a project while its preview runs; `hyperframes open` stops the background preview before handing the project over. Use the printed URL as-is: HyperFrames URL-encodes project names that contain route metacharacters.
 
 ### Agent context from Studio selection
 
@@ -131,6 +131,7 @@ hyperframes render --docker                       # byte-identical
 | `--keyframe-interval`                | seconds, e.g. `2`                                                                                  | —                              | MP4 only. A keyframe at least every N seconds.                                                                                                                                                                                                                                                                                                                                                                                                |
 | `--max-bitrate`                      | e.g. `8M`                                                                                          | —                              | MP4 only. Peak bitrate cap alongside the CRF/quality target. Not for WebM/MOV.                                                                                                                                                                                                                                                                                                                                                                |
 | `--buffer-size`                      | e.g. `16M`                                                                                         | —                              | MP4 only. Buffer for `--max-bitrate` (default 2x it). Needs `--max-bitrate`.                                                                                                                                                                                                                                                                                                                                                                  |
+| `--chroma-subsampling`               | 420, 444                                                                                           | 420                            | `444` keeps full-resolution colour for thin coloured text/UI (yuv444p, lossless PNG capture, slower). SDR MP4 + software encoder only; rejected with `--gpu`, `--hdr`, other formats. Many players cannot decode 4:4:4.                                                                                                                                                                                                                       |
 | `--hdr`                              | flag                                                                                               | off                            | Force HDR output even with SDR sources. MP4 only.                                                                                                                                                                                                                                                                                                                                                                                             |
 | `--sdr`                              | flag                                                                                               | off                            | Force SDR even with HDR sources.                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `--workers`                          | number or `auto`                                                                                   | auto                           | Each worker spawns Chrome (~256 MB)                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -147,6 +148,8 @@ hyperframes render --docker                       # byte-identical
 
 **Quality guidance:** `draft` while iterating, `looks` (the default) for the first real encode, `delivery` for final delivery. `standard` and `high` still work.
 
+The 1440p presets are `landscape-1440p` (2560×1440), `portrait-1440p` (1440×2560), and `square-1440p` (1440×1440). Aliases `1440p` and `qhd` follow the composition’s orientation. A 720p composition can upscale to 1440p at 2×, and a 4K composition can downscale to 1440p. A 1920×1080 composition cannot upscale to 1440p because 4/3 is not an integer scale; author at 1440p or render at 4K and downscale separately.
+
 **Read the summary's second line.** After the output path and size, `render` prints the capture path, GPU mode, and per-stage timings, e.g. `beginframe capture · software gpu · compile 0.7s · setup 1.1s · capture 8.1s · encode 5.8s`. `capture` is the frame loop and `setup` is calibration plus session init; the capture path reads `a|b` when parallel workers diverged, and `encode (during capture)` means the streaming encoder overlapped the loop, so do not add it to the wall time. Local GPU `auto` (the default) requests BeginFrame. If the line still says `screenshot capture` with `software gpu` on Linux, a hint under it says BeginFrame did not run (needs chrome-headless-shell, no `--resolution` upscale). It only appears when the GPU was auto-probed, never under `--docker` or `--no-browser-gpu`, where software GL is the point. Heavy compositions can stall on software GL. Do not reach for `--debug` just to learn which path ran.
 
 **Parametrized renders:** the composition declares its variables on the `<html>` root with **`data-composition-variables`** — a JSON **array of declarations** (`{id, type, label, default}` per entry) that defines the schema. Scripts inside read the resolved values via `window.__hyperframes.getVariables()`. The CLI `--variables '{"title":"Q4 Report"}'` is a JSON **object keyed by id** that overrides those declared defaults for one render; missing keys fall through, so the same composition runs unchanged in dev preview and in production. Sub-comp hosts can also override per-instance with `data-variable-values`. See `../../hyperframes/references/format.md` for the full pattern.
@@ -160,7 +163,7 @@ hyperframes feedback --rating 10                              # clean run, no no
 hyperframes feedback --rating 6 --comment "bg <video> renders grey in multi-scene; worked around with --format png-sequence"
 ```
 
-`--rating` is an integer from 0-10; `--comment` is free text. A `--comment` with no `--rating` is a ratingless report (`MISSING FEATURE:` and `HOST APP:` in `SKILL.md`) that never counts in the rating metric. Feedback is anonymous and attaches a `doctorSummary` (OS/Node/CPU/mem/ffmpeg) automatically, so don't repeat those fields. A clean run needs only a short result. Before sending any bug, workaround, or confusing behavior, collect this compact reproduction packet:
+`--rating` is an integer from 0-10; `--comment` is free text. A `--comment` with no `--rating` is a ratingless report (`MISSING FEATURE:` and `HOST APP:` in `SKILL.md`) that never counts in the rating metric. Feedback is anonymous until the user signs in to HeyGen (then it is linked to their account) and attaches a `doctorSummary` (OS/Node/CPU/mem/ffmpeg) automatically, so don't repeat those fields. A clean run needs only a short result. Before sending any bug, workaround, or confusing behavior, collect this compact reproduction packet:
 
 ```text
 REPRO COMMAND: <HF_*/PRODUCER_* env> hyperframes <exact command>   # run from the project directory; do NOT paste absolute paths
@@ -197,6 +200,26 @@ Uploads the project's source (HTML + assets) and returns a stable hosted URL tha
 
 ## Where to render, and skill attribution
 
-Use cloud rendering when the user wants hosted rendering without local Chrome, FFmpeg, or AWS. Use Lambda only when AWS ownership is a requirement. Use Cloud Run only when GCP ownership is a requirement. Read the matching reference before running any cloud path.
+Use cloud rendering when the user wants hosted rendering without local Chrome, FFmpeg, or AWS, and for the final render on a paid HyperFrames plan (`cloud.md`). Use Lambda only when AWS ownership is a requirement. Use Cloud Run only when GCP ownership is a requirement. Read the matching reference before running any cloud path.
 
-Skill attribution is automatic — the examples above need no `--skill`. A project scaffolded with `hyperframes init --skill=<slug>` records its owning skill in `hyperframes.json`, and every later render inherits it on anonymous telemetry: re-renders, `pnpm render`, and `--batch` alike. Pass `--skill=<slug>` explicitly only to stamp a project that was not scaffolded with one (its first render then persists it).
+Skill attribution is automatic — the examples above need no `--skill`. A project scaffolded with `hyperframes init --skill=<slug>` records its owning skill in `hyperframes.json`, and every later render inherits it when telemetry is enabled: re-renders, `pnpm render`, and `--batch` alike. Pass `--skill=<slug>` explicitly only to stamp a project that was not scaffolded with one (its first render then persists it).
+
+## Share a video for review
+
+Use `hyperframes share --public` only when the user explicitly wants anyone with
+the link to access the review. First sign in with `hyperframes auth login`.
+Other first-share choices are `--team`, `--invite-only` and `--private`, subject
+to workspace entitlement. `--yes` is not audience consent.
+
+Read `hyperframes share --status --json`: `ready: true` is required before
+calling the video ready to watch. Re-running `share` retrieves the existing
+link; `share --update` explicitly renders/uploads changed content. Five retained
+free projects are counted per workspace across CLI and Desktop; versions do
+not consume slots and turning a link off does not release a slot.
+
+`publish` uploads source to legacy `/p/` pages. It is not a review share alias.
+During the announced 60-day window its old behavior stays available with a
+notice. The start date is release-owned and currently unscheduled. After it, new
+projects are guided to Share; existing publications and legacy updates stay
+reachable. After the window, legacy updates require a signed-in account.
+Never convert legacy IDs or carry a legacy flag into review consent.

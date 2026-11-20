@@ -1,6 +1,6 @@
 ---
 name: hyperframes-cli
-description: The HyperFrames CLI by job - scaffold, check, look at frames, edit the timeline, preview, render locally or in the cloud, publish, project history - plus reading its JSON and recovering from build or render failures.
+description: HyperFrames CLI - scaffold, check frames, edit timelines, preview, render, share and project history; read JSON and recover from failures.
 ---
 
 <!-- LOCAL PATCH (connorads dotfiles): reviewed vendoring, managed tools and explicit reporting consent. -->
@@ -9,24 +9,28 @@ Use the managed installed CLI and provision missing tools through the local tool
 
 # HyperFrames CLI
 
-Run `hyperframes <command>` unless the project gives a wrapper; then use the wrapper. It needs Node.js 22+ and FFmpeg. Every command has `--help`; most take `--json`, and a failure prints `✗ …`, a `Fix:` line and exits non-zero.
+Run `hyperframes <command>` using the managed installed CLI, never a project's own scripts or wrapper unless the person names that command. It needs Node.js 22+ and FFmpeg. Every command has `--help`; most take `--json`, and a failure prints `✗ …`, a `Fix:` line and exits non-zero.
+
+A `--json` result may carry `_meta.updateNotice`: a newer HyperFrames release is out. Pass it to the person once per conversation, in your own words, at a natural pause; updating is theirs to decide.
 
 ## Commands by job
 
 | Job | Commands |
 | --- | --- |
-| Start | `init <dir>` (blank; `--example <name>` only when asked), `capture <url>` |
+| Start | `init <dir> --skip-skills` (blank; `--example <name>` only when asked), `capture <url>` |
 | Read a project | `info`, `compositions`, `timeline --json`, `docs <topic>` |
 | Check it | `lint` while writing; `check --json` as the gate (lint, runtime, layout, contrast) |
 | Look at it | `snapshot` (`--at <t,…>`, `--range START,END`, `--composition <id>`, `--zoom`, `--angle`, `--against <video>`), `keyframes`, `compare`, `audio` |
 | Edit the timeline | `timeline` with `move`, `trim`, `split`, `set`, `duplicate`, `delete`, `apply`, `undo`, `ids` |
 | Reuse | `catalog`, `add` (`/hyperframes-registry`) |
 | Media and sound | `media-treatment`, `grade-compare`, `remove-background`, `tts`, `transcribe`, `beats`, `normalize-audio` (`/media-use`) |
-| Show and ship | `preview`, `present` (`/slideshow`), `render`, `publish`, `cloud`, `lambda`, `cloudrun` |
+| Show and ship | `preview`, `present` (`/slideshow`), `render`, `share`, `publish` (legacy), `cloud`, `lambda`, `cloudrun` |
 | Desktop app | `open`, `catch-up` |
 | Upkeep | `doctor`, `browser`, `clean`, `feedback` |
 
-`validate`, `inspect` and `layout` are deprecated aliases of `check`; `events` is telemetry for skills' own scripts. Don't run them.
+`captions` is not a command: run `transcribe`, then read ../hyperframes/references/captions.md.
+
+`validate`, `inspect` and `layout` are deprecated aliases of `check`; `events` is skills' own telemetry. Don't run them.
 
 ## The loop
 
@@ -34,7 +38,7 @@ Run `hyperframes <command>` unless the project gives a wrapper; then use the wra
 2. `hyperframes check --json` and fix every error. While a lint error remains the layout and contrast audits don't run; "0 samples" means nothing was checked. Contrast failures carry a `suggestedColor`. A finding at a single sample (an entrance in flight) is info; a 3 s+ video with no visible change fails `sweep_static`.
 3. `hyperframes snapshot` and read the PNGs (under `.hyperframes/artifacts/snapshots/`): that is how you see the video. With sub-compositions, snapshot a midpoint of every scene; tiny unstyled content or a missing hero is a mount defect (`../hyperframes/references/format.md`).
 4. `hyperframes preview --background`, check the URL answers 200, give the person the project URL and wait, unless they asked for the file or for no stops. Passing checks alone is not a reason to render.
-5. When it is time to render (step 4): `hyperframes render --quality looks --output out.mp4` (`draft` while iterating, `delivery` for the final). Confirm the file is non-empty and its `ffprobe` duration matches the root `data-duration`, then look at decoded frames.
+5. Time to render (step 4): `hyperframes render --quality looks -o out.mp4` (`draft` while iterating, `delivery` for the final; paid plan: `cloud render --fps <data-fps> --quality high -o out.mp4`). Confirm the file is non-empty and its `ffprobe` duration matches the root `data-duration`, then look at decoded frames.
 
 "This element" or the current selection: `hyperframes preview --context --json --context-fields selection`; `no-selection` means ask them to click it.
 
@@ -59,9 +63,9 @@ Every write is kept and can be undone. At the start of a turn, `hyperframes hist
 
 | Need | Command |
 | --- | --- |
-| Local | `render --quality looks --output out.mp4` (`draft`, `delivery`) |
-| Reproducible container | `render --docker --strict --output out.mp4` |
-| Batch from variables | `render --batch rows.json --output "renders/{name}.mp4"` |
+| Local | `render --quality looks -o out.mp4` (`draft`, `delivery`) |
+| Reproducible container | `render --docker --strict -o out.mp4` |
+| Batch from variables | `render --batch rows.json -o "renders/{name}.mp4"` |
 | Hosted, no local Chrome or FFmpeg | `cloud render` (`references/cloud.md`) |
 | Your own AWS or GCP | `lambda render`, `cloudrun render` (`references/lambda.md`, `references/cloudrun.md`) |
 
@@ -90,7 +94,7 @@ Read the row before running its command.
 | `lint`, `check`, motion sidecars, `snapshot` | `references/lint-validate-inspect.md` |
 | `compare`, `grade-compare`, `render --batch` | `references/compare-and-batch.md` |
 | `beats` | `references/beats.md` |
-| `preview`, `play`, `render`, `publish`, Studio context | `references/preview-render.md` |
+| `preview`, `play`, `render`, `share`, `publish` (legacy), Studio context | `references/preview-render.md` |
 | `doctor`, `browser` | `references/doctor-browser.md` |
 | `auth`, `cloud`, template variables | `references/cloud.md` |
 | `lambda`, `cloudrun` | `references/lambda.md`, `references/cloudrun.md` |

@@ -1,0 +1,1 @@
+Preview in raster, then export once: `npx hyperframes render --variables '{"renderer":"path","samples":64}'`.

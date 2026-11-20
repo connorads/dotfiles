@@ -1,5 +1,5 @@
- *
- * Needs `ffmpeg` on PATH (to decode the audio) and `@hyperframes/core` resolvable
- * from the composition's project (`npm i -D @hyperframes/core`) — the CLI bundles
- * core inline rather than shipping it as a package, so it cannot be borrowed from
- * there.
+
+// Only run as a CLI. Guarded so the pure helpers above can be unit-tested by
+// importing this module (`skills/**/*.test.mjs`, run by `bun run test:skills`).
+if (isMainModule(import.meta.url)) {
+  await main();
