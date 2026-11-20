@@ -11,20 +11,21 @@ or an argument its usage doesn't name, so these lists are what it takes.
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea render EDIT.tsx -o OUT.mp4|OUT.png|DIR [--frame N | --at A,B] [--composition ID] [--w W] [--h H] [--fps FPS] [--frames N] [--words W.json] [--perception P.json] [--input I.json|inputs.rrl] [--manifest render.json] [--stage WxH] [--10bit] [--aov] [--alpha] [--kbps N | --quality draft|high|master|0..1] [--clay]   (also: --lite --comps)
+raea render EDIT.tsx -o OUT.mp4|OUT.png|OUT.wav|DIR [--audio OUT.wav] [--frame N | --at A,B] [--composition ID] [--w W] [--h H] [--fps FPS] [--frames N] [--words W.json] [--perception P.json] [--input I.json|inputs.rrl] [--manifest render.json] [--layers] [--stage WxH] [--10bit] [--aov] [--alpha [--alpha-codec prores|hevc|rle|png]] [--kbps N | --quality draft|high|master|0..1] [--clay] [--despite CHECK WHY]   (also: --lite --comps)
 raea render EDIT.tsx --review DIR [--frame N]   (fixed cameras hero, front, right, top, iso, low in colour and clay: DIR/colour.png, clay.png, review.json)
 raea render PAGE.html -o OUT.mp4|OUT.png|DIR [--at A,B] [--alpha]   (an HTML composition)
 raea render --bundle NAME.comp.js -o OUT.png|DIR [--dir DIR] [--frame N]   (a bundle from raea bundle, as render_bundle draws it)
 ```
 
-Flags: `--10bit`, `--alpha`, `--aov`, `--at` (1), `--bundle` (1), `--clay`, `--composition` (1), `--comps`, `--dir` (1), `--fps` (1), `--frame` (1), `--frames` (1), `--h` (1), `--input` (1), `--kbps` (1), `--lite`, `--manifest` (1), `--perception` (1), `--quality` (1), `--review` (1), `--stage` (1), `--w` (1), `--words` (1), `-o` (1).
+Flags: `--10bit`, `--alpha`, `--alpha-codec` (1), `--aov`, `--at` (1), `--audio` (1), `--bundle` (1), `--clay`, `--composition` (1), `--comps`, `--despite` (2), `--dir` (1), `--fps` (1), `--frame` (1), `--frames` (1), `--h` (1), `--input` (1), `--kbps` (1), `--layers`, `--lite`, `--manifest` (1), `--perception` (1), `--quality` (1), `--review` (1), `--stage` (1), `--w` (1), `--words` (1), `-o` (1).
 
 ## raea media
 
 Access: HEADLESS. Its arguments go to a parser of its own: `raea media` alone lists them.
 
 ```
-raea media probe|still|sheet|audio|loudness|motion|cuts|freezes|proxy|trim|concat FILE ... | ffmpeg ARGS | ffprobe ARGS   (media work, native: media help)
+raea media probe|still|sheet|audio|loudness|motion|cuts|freezes|proxy|lod|trim|concat FILE ... | ffmpeg ARGS | ffprobe ARGS   (media work, native: media help)
+raea show FILE... [--title T] [--ask LINE] [--project P] [--replaces ITEM] [--as NAME] [--role ROLE] [--inbox NAME] [--open] [--label LABEL] [--detail PARAGRAPH] [--labels FILE.json] | raea show --question Q --choice A --choice B [STILL...] | raea show [--title T] --question Q [--preview FILE] --choice A [--preview FILE] --choice B ... [--question Q2] ... | raea show --on ITEM [--working ID] [--ask TEXT] [--status S] [--states S1,S2] [--sign N --clip FILE --render HASH] [--done ID] [--note LINE] [--sub NAME]   (shown in the raea app as an item the person can use and answer, posted quietly with a notice, the window left where they are unless --open: stills (several, a storyboard), a video, a sound, a NAME.script.ts or .md, a .tsx (an interactive artifact; a project's composition opens in its editor), or questions, all of them one item; --label "PLACE TAG" a label beside the picture, never on it, that points at PLACE (x0,y0,x1,y1 or x,y in its 0-1, then #N the Nth file, @T or @T-TO a film's seconds, or part=KEY a scene's part; the tag the rest), --detail the paragraph of the --label before it, --labels a JSON list of them as feed_post takes them, and a sheet raea media sheet made comes labelled; each question and choice with a --preview to play or read while answering (a still, a video, a sound, a script or .md; after a --choice that choice's, else the question's); what they send comes to ~/.raea/inbox/INBOX.jsonl; their edit comments are tasks: --working ID as you start one (each --ask with it one ask you read it as, for the person to correct; --status and --states where the note and each ask stand: to restate, to check, failing, to sign, passing, signed; --sign N --clip FILE --render HASH a clip under ask N for them to sign; a note closes when they retire it, never with --done), --done ID when it's settled, or with the version that settles it, FILE --replaces ITEM --done ID; never open media in Preview while the app is installed)
 ```
 
 ## raea bundle
@@ -117,6 +118,46 @@ raea library [new NAME [--cloud] | add LIBRARY PATH | files LIBRARY | tag SHA TA
 
 Flags: `--cloud`, `--kind` (1), `--library` (1), `--limit` (1), `--sound`.
 
+## raea show
+
+Access: HOST (starts the app), then PERSON to answer. Arguments besides flags: any number.
+
+```
+raea show FILE... [--title T] [--ask LINE] [--project P] [--replaces ITEM] [--as NAME] [--role ROLE] [--inbox NAME] [--open] [--label LABEL] [--detail PARAGRAPH] [--labels FILE.json] | raea show --question Q --choice A --choice B [STILL...] | raea show [--title T] --question Q [--preview FILE] --choice A [--preview FILE] --choice B ... [--question Q2] ... | raea show --on ITEM [--working ID] [--ask TEXT] [--status S] [--states S1,S2] [--sign N --clip FILE --render HASH] [--done ID] [--note LINE] [--sub NAME]   (shown in the raea app as an item the person can use and answer, posted quietly with a notice, the window left where they are unless --open: stills (several, a storyboard), a video, a sound, a NAME.script.ts or .md, a .tsx (an interactive artifact; a project's composition opens in its editor), or questions, all of them one item; --label "PLACE TAG" a label beside the picture, never on it, that points at PLACE (x0,y0,x1,y1 or x,y in its 0-1, then #N the Nth file, @T or @T-TO a film's seconds, or part=KEY a scene's part; the tag the rest), --detail the paragraph of the --label before it, --labels a JSON list of them as feed_post takes them, and a sheet raea media sheet made comes labelled; each question and choice with a --preview to play or read while answering (a still, a video, a sound, a script or .md; after a --choice that choice's, else the question's); what they send comes to ~/.raea/inbox/INBOX.jsonl; their edit comments are tasks: --working ID as you start one (each --ask with it one ask you read it as, for the person to correct; --status and --states where the note and each ask stand: to restate, to check, failing, to sign, passing, signed; --sign N --clip FILE --render HASH a clip under ask N for them to sign; a note closes when they retire it, never with --done), --done ID when it's settled, or with the version that settles it, FILE --replaces ITEM --done ID; never open media in Preview while the app is installed)
+```
+
+Flags: `--as` (1), `--ask` (1), `--choice` (1), `--clip` (1), `--detail` (1), `--done` (1), `--inbox` (1), `--label` (1), `--labels` (1), `--note` (1), `--on` (1), `--open`, `--preview` (1), `--project` (1), `--question` (1), `--render` (1), `--replaces` (1), `--role` (1), `--sign` (1), `--states` (1), `--status` (1), `--sub` (1), `--title` (1), `--working` (1).
+
+## raea clothes
+
+Access: HEADLESS. Arguments besides flags: any number.
+
+```
+raea clothes [make NAME ["WHAT IT IS"] [--plain] [--set PATH=VALUE,...] [--colour #RRGGBB] | settings | cover NAME --parts PART[:SHARE],... --colour #RRGGBB [--stand MM] [--over UNDER] [--hard [--sole MM] [--sole-colour #RRGGBB] [--panels #RRGGBB,...]] | wear OUT_DIR GARMENT... [--body DIR] [--head HEAD_DIR]]   (clothes for SOMA's body from words: make sews a garment: a sewing pattern (GarmentCode, MIT) from the words, or the plain base with --plain, its settings changed by --set PATH=VALUE (settings lists them and what each may be), cut to SOMA's measurements, draped by raea's own cloth and baked, as assets/clothes/NAME.json and its .glb, in --colour or the palette's next; the first make sets up GarmentCode and its Python in raea's models folder; cover makes one by procedure in the same file, no picture: the skin of the parts named (hips, waist, torso, chest, neck, head, upperArm, foreArm, hand, thigh, shin, foot, toes; a limb's SHARE is how far along it from its top), in one colour, MM off the skin (6 unless said), --over a garment already made as the one under it; wear puts garments on a body, innermost first (each GARMENT a name or its .json): OUT_DIR/NAME.glb each, with OUT_DIR/body.glb the body without the skin wholly under cloth; --body DIR another SOMA body folder (a headless one for a head part); --head HEAD_DIR the head that joins it (head.json), whose skin the body's is graded to at the collar; alone, the project's garments. The first use fetches SOMA's body (NVlabs/SOMA-X, Apache-2.0) into raea's models folder and needs Blender: raea setup blender)
+```
+
+Flags: `--body` (1), `--colour` (1), `--hard`, `--head` (1), `--over` (1), `--panels` (1), `--parts` (1), `--plain`, `--set` (1), `--sole` (1), `--sole-colour` (1), `--stand` (1).
+
+## raea motion
+
+Access: HEADLESS. Arguments besides flags: 1.
+
+```
+raea motion "LINE" [--keys KEYS.json] [--seconds 5 | --frames N] [--seed 1] [--steps 100] [-o CLIP.json]   (body motion made on this machine by Kimodo (NVIDIA): a SOMA clip from a line of words and, with --keys, Kimodo constraints (full-body keyframes, hand or foot targets, a root path, as sdk/body/tools/between.ts writes them), as the clip sdk/body/tools/fromkimodo.ts reads. On a Mac it runs on MLX (Apple silicon's GPU): the first use fetches the motion model (1.1 GB) into raea's models folder, and the first new line its text encoder (8.8 GB: Llama 3 8B in 8 bits with LLM2Vec's adapters). On Linux and Windows it runs upstream Kimodo on PyTorch, set up once by raea setup motion: on an NVIDIA GPU with CUDA (the text encoder, 16 GB in bf16, on the CPU unless the card has 18 GB or more), else on the CPU alone; reading a new line on the CPU takes about 18 GB of memory. A line's words are read once and kept. Licences: Kimodo's weights NVIDIA's Open Model License, Meta Llama 3 the Meta Llama 3 Community License, LLM2Vec's adapters MIT, Kimodo's code Apache-2.0)
+```
+
+Flags: `--frames` (1), `--keys` (1), `--seconds` (1), `--seed` (1), `--steps` (1), `-o` (1).
+
+## raea bug
+
+Access: HEADLESS. Arguments besides flags: any number.
+
+```
+raea bug TITLE... --text TEXT [--command CMD] [--error TEXT] [--agent NAME] [--dry-run]   (a bug in raea itself, not in your own composition, sent to raea's server with raea's version and the OS, no account needed: words only, paths, emails and keys taken out before it goes; five a day from a machine, the same bug again counted on the first report; --dry-run prints what would go and sends nothing)
+```
+
+Flags: `--agent` (1), `--command` (1), `--dry-run`, `--error` (1), `--text` (1).
+
 ## raea spec
 
 Access: HEADLESS. Arguments besides flags: 1.
@@ -132,7 +173,7 @@ Flags: `--as` (1).
 Access: HEADLESS. Arguments besides flags: 2.
 
 ```
-raea workspace init [NAME] [--layout LAYOUT] | raea workspace adopt DIR [--name NAME] | raea workspace [--json]   (a workspace: a git repo of projects and controllers under raea.root, ~/Studio unless git config says)
+raea workspace init [NAME] [--layout LAYOUT] | raea workspace adopt DIR [--name NAME] | raea workspace [--json]   (a workspace: a git repo of projects and controllers under raea.root, ~/Documents/raea unless git config says)
 ```
 
 Flags: `--json`, `--layout` (1), `--name` (1).
@@ -163,17 +204,18 @@ Access: HEADLESS. Arguments besides flags: 1.
 
 ```
 raea check EDIT.tsx --quick [--shape S] [--platform P] [--taste T] [-o check.json]   (three stills of a composition checked for text: clipped, cramped, safe areas, sizes; about a second)
-raea check VIDEO.mp4 [--manifest render.json] [--words W.json] [--perception P.json] [--shape 16:9|9:16|4:5|1:1] [--platform tiktok|reels|shorts] [--taste taste.ts|DIR] [-o check.json]   (an export against the floor: clipped text, contrast, safe areas, freezes, flashing, cues, loudness, blotching, a placeholder brand kit; P0-P3)
+raea check [PROJECT|EDIT.tsx] [--composition ID] [--only ID] [--taste T] [--render OUT | --no-render] [--json]   (every check that applies to each composition, over its frames: raea's floor on its newest render, the person's taste, the workspace's and the project's rules (a controller's rule fields: one of raea's checks by name, or a project's .ts check); what needs a render and has none waits, and says so)
+raea check VIDEO.mp4 [--manifest render.json] [--words W.json] [--perception P.json] [--things T.json] [--shape 16:9|9:16|4:5|1:1] [--platform tiktok|reels|shorts] [--taste taste.ts|DIR] [-o check.json]   (an export against the floor: clipped text, contrast, safe areas, freezes, flashing, cues, loudness, blotching, a placeholder brand kit, and with --things what `raea fingerprint things --json` found: a thing floating or passing through another, the camera lurching mid-move, an empty frame; its findings errors, warns and notes)
 ```
 
-Flags: `--manifest` (1), `--perception` (1), `--platform` (1), `--quick`, `--shape` (1), `--taste` (1), `--words` (1), `-o` (1).
+Flags: `--composition` (1), `--json`, `--manifest` (1), `--no-render`, `--only` (1), `--perception` (1), `--platform` (1), `--quick`, `--render` (1), `--shape` (1), `--taste` (1), `--things` (1), `--words` (1), `-o` (1).
 
 ## raea hook
 
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea hook claude   (Claude Code's PostToolUse hook: the quick check after a composition is saved)
+raea hook [claude|codex|gemini|kimi]   (every agent's tool hooks, which raea skills install adds: before a shell command, media opened in the Mac's viewer while the raea app is installed is stopped once for raea show (the same command again goes through); after a save, the quick check on a composition)
 ```
 
 ## raea next
@@ -209,7 +251,7 @@ Flags: `--png` (1), `--script` (1), `--size` (1), `--target` (1), `-o` (1).
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea skill [NAME] [--reference cli|feed|files|sdk] | raea skills install --agent claude|codex|kimi|gemini [--pin MOVE]... [--no-mcp] [--no-hooks]   (the agent skill this raea ships, for its version, which raea --version prints: an agent whose copy names another version reads this; install puts raea's skills where that agent reads skills, adds the blender MCP server unless --no-mcp, makes each --pin MOVE a /MOVE of its own, and for claude adds the quick-check hook unless --no-hooks)
+raea skill [NAME] [--reference cli|feed|files|sdk] | raea skills install --agent claude|codex|kimi|gemini|grokbot [--pin MOVE]... [--no-mcp] [--no-hooks]   (the agent skill this raea ships, for its version, which raea --version prints: an agent whose copy names another version reads this; install puts raea's skills where that agent reads skills, adds the blender MCP server unless --no-mcp, makes each --pin MOVE a /MOVE of its own, and adds raea's hooks to that agent unless --no-hooks (raea hook AGENT: media opened in the Mac's viewer goes to raea show, and the quick check after a composition is saved); a skill folder that's a link is left as it is; grokbot, the Grok Bot app, keeps its skills on its own computer, so its copy is staged on this Mac (RAEA_GROKBOT_HOME moves it) with the grokbot:// links that finish it in Grok Bot, and gets no hooks or MCP server)
 ```
 
 Flags: `--agent` (1), `--no-hooks`, `--no-mcp`, `--pin` (1), `--reference` (1).
@@ -219,7 +261,7 @@ Flags: `--agent` (1), `--no-hooks`, `--no-mcp`, `--pin` (1), `--reference` (1).
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea skill [NAME] [--reference cli|feed|files|sdk] | raea skills install --agent claude|codex|kimi|gemini [--pin MOVE]... [--no-mcp] [--no-hooks]   (the agent skill this raea ships, for its version, which raea --version prints: an agent whose copy names another version reads this; install puts raea's skills where that agent reads skills, adds the blender MCP server unless --no-mcp, makes each --pin MOVE a /MOVE of its own, and for claude adds the quick-check hook unless --no-hooks)
+raea skill [NAME] [--reference cli|feed|files|sdk] | raea skills install --agent claude|codex|kimi|gemini|grokbot [--pin MOVE]... [--no-mcp] [--no-hooks]   (the agent skill this raea ships, for its version, which raea --version prints: an agent whose copy names another version reads this; install puts raea's skills where that agent reads skills, adds the blender MCP server unless --no-mcp, makes each --pin MOVE a /MOVE of its own, and adds raea's hooks to that agent unless --no-hooks (raea hook AGENT: media opened in the Mac's viewer goes to raea show, and the quick check after a composition is saved); a skill folder that's a link is left as it is; grokbot, the Grok Bot app, keeps its skills on its own computer, so its copy is staged on this Mac (RAEA_GROKBOT_HOME moves it) with the grokbot:// links that finish it in Grok Bot, and gets no hooks or MCP server)
 ```
 
 Flags: `--agent` (1), `--no-hooks`, `--no-mcp`, `--pin` (1), `--reference` (1).
@@ -229,7 +271,9 @@ Flags: `--agent` (1), `--no-hooks`, `--no-mcp`, `--pin` (1), `--reference` (1).
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea setup blender [--check] [--download]   (find Blender or download the LTS into ~/.raea/tools/blender, and install its MCP add-on)
+raea setup blender [--check] [--download]   (find Blender or download the LTS into ~/.raea/tools/blender, and install raea's add-on and the MCP add-on)
+raea setup motion [--check]   (what raea motion runs on, made where missing (--check only says): on a Mac the MLX models in raea's models folder (the motion model 1.1 GB, the text encoder 8.8 GB); on Linux and Windows, in raea's models folder's kimodo-torch, a Python 3.11 environment made by uv (which it needs on PATH: https://docs.astral.sh/uv) with PyTorch (its CUDA build where there is an NVIDIA driver, about 8 GB, else CPU only, about 2 GB) and upstream Kimodo (nv-tlabs/kimodo at e1c219c, Apache-2.0), then the weights: Kimodo-SOMA-RP-v1 (1.1 GB, NVIDIA Open Model License), LLM2Vec's two adapters (0.3 GB, MIT) and Meta Llama 3 8B Instruct in bf16 (16 GB, Meta Llama 3 Community License, from NousResearch's ungated copy, checked file by file against Meta's SHA-256); about 26 GB in all. It says what this machine has and where each network runs: the denoiser on CUDA when there is an NVIDIA GPU, else the CPU; the text encoder beside it on a GPU of 18 GB or more, else the CPU)
+raea setup godot [--check]   (download Godot 4.6.1 with GodotJS, its TypeScript bindings (MIT), into ~/.raea/tools/godot: JavaScriptCore on the Mac, QuickJS on Windows and Linux; raea's own build (the Mac's notarized), else GodotJS's, each checked against its pinned sha256)
 ```
 
 Flags: `--check`, `--download`.
@@ -240,7 +284,35 @@ Access: HEADLESS. Its arguments go to a parser of its own: `raea blender` alone 
 
 ```
 raea blender run SCRIPT.py [ARGS...]   (blender --background --python SCRIPT.py -- ARGS, headless; blender/X.py missing from the project is copied from the library: convert, decimate, repair, split, bake, rig, cloth)
+raea blender run SCRIPT.ts [FILE.blend] [ARGS...]   (a TypeScript script against Blender's whole Python API through raea/blender: bpy, bmesh, mathutils, typed; a headless Blender, FILE.blend opened, quit when the script ends)
+raea blender shot SCRIPT.ts|FILE.blend -o DIR --frames N [--fps F] [--size WxH] [--engine eevee|cycles|workbench] [--samples S] [--transparent]   (a shot's frames rendered by Blender, DIR/0000.png on: a raea/blender script's scene or a .blend's animation; what <BlenderShot> shows, from raea/blender/shot)
+raea blender open EDIT.tsx [--frame N | --at A-B] [-o DIR] [--no-window] | FILE.blend|.glb   (the composition's 3D built in Blender, saved as DIR/NAME.blend (out/blender/NAME/ unless -o) and opened in a Blender window; a model or .blend opened as it is)
+raea blender back FILE.blend   (what changed in Blender since raea blender open, as edits to the TSX at their lines; meshes made there written as media/NAME.glb; --json)
 ```
+
+## raea godot
+
+Access: HEADLESS. Its arguments go to a parser of its own: `raea godot` alone lists them.
+
+```
+raea godot run [SCRIPT.ts] [--project DIR] [--window] [--movie FILE [--fps N] [--frames N]] [--scene res://X.tscn] [--size WxH] [--timeout S] [ARGS...]   (a TypeScript script against Godot's whole API through raea/godot: its default export gets the SceneTree and ARGS, headless unless --window; --movie writes every frame Godot draws (NAME.png numbered, or .avi) at a fixed --fps, 30 unless given; the project is DIR, else the nearest project.godot above the script, else an empty one; Godot quits when it returns, or after --frames N; --scene plays a scene of the project under it, with no script needed; a scene in --window plays until the window is closed)
+raea godot types [DIR]   (the project's own TypeScript types from GodotJS: Godot's API with its scenes, resources and input actions, into DIR/typings)
+raea godot open [DIR]   (the Godot editor on the project, GodotJS's, to edit its scenes)
+raea godot shot SCRIPT.ts|res://SCENE.tscn [--project DIR] -o DIR --frames N [--fps F] [--size WxH]   (a shot's frames recorded by Godot's Movie Maker, DIR/0000.png on, its sound as sound.wav; what <GodotShot> shows, from raea/godot/shot)
+raea godot export EDIT.tsx -o DIR [--frame N | --at A-B]   (the composition's 3D as a Godot project that runs: project.godot and main.tscn, each part Godot's own node, --at's frames an AnimationPlayer)
+raea godot back DIR   (what changed in Godot's main.tscn since the export, as edits to the TSX at their lines; nodes added there written as media/NAME.glb; --json)
+```
+
+## raea scene
+
+Access: HEADLESS. Arguments besides flags: 2.
+
+```
+raea scene export EDIT.tsx -o DIR [--composition ID] [--frame N | --at A-B]   (the composition's 3D as data other tools build: DIR/scene.json, each part placed (y up, metres) with its shape, material or light, and the camera; meshes/ and models/ beside it)
+raea scene lint|explain|light EDIT.tsx [--composition ID] [--frame N] [--part NAME] [--json]   (what each 3D part rests on: floating, sunk and clipping parts; light: the scene's lighting)
+```
+
+Flags: `--at` (1), `--composition` (1), `--frame` (1), `--json`, `--part` (1), `-o` (1).
 
 ## raea init
 
@@ -270,15 +342,25 @@ raea frame TAKE [--at S]   (how a take fits the edit: a talking take for <FaceFr
 
 Flags: `--at` (1).
 
+## raea component
+
+Access: HEADLESS. Arguments besides flags: any number.
+
+```
+raea component list | raea component add NAME ... [--shared] [--force] | raea part list | raea part add NAME ... [--shared] [--force]   (a ready component or set copied into components/, or the workspace's shared/components/ with --shared, yours to change; raea part is its old name)
+```
+
+Flags: `--force`, `--shared`.
+
 ## raea part
 
 Access: HEADLESS. Arguments besides flags: any number.
 
 ```
-raea part list | raea part add NAME ... [--force]   (a ready part copied into components/, yours to change)
+raea component list | raea component add NAME ... [--shared] [--force] | raea part list | raea part add NAME ... [--shared] [--force]   (a ready component or set copied into components/, or the workspace's shared/components/ with --shared, yours to change; raea part is its old name)
 ```
 
-Flags: `--force`.
+Flags: `--force`, `--shared`.
 
 ## raea brand
 
@@ -326,15 +408,65 @@ raea judge DIR [--by clef|kimi|claude] [--brief brief.ts] [--target T.png] [--js
 
 Flags: `--brief` (1), `--by` (1), `--dry`, `--json`, `--pass` (1), `--target` (1).
 
+## raea world
+
+Access: HEADLESS. Arguments besides flags: 1.
+
+```
+raea world EDIT.tsx [--composition ID] [--frame N | --at A-B|A,B] [--find JSON] [--no-layout] [--render OUT | --no-render] [--json]   (a frame as one world: its layers, text, parts, camera, shots, clips, cues and lines as entities with components, each measured, with what its newest render measured (contrast, light and movement, loudness, onsets, covers) or what waits for one; --find '{"with": ["Text", "Layer"], "where": {"Layer.medium": "2d-type"}}' is one query across media)
+```
+
+Flags: `--at` (1), `--composition` (1), `--find` (1), `--frame` (1), `--json`, `--no-layout`, `--no-render`, `--render` (1).
+
+## raea findings
+
+Access: HEADLESS. Arguments besides flags: 1.
+
+```
+raea findings [PROJECT|EDIT.tsx] [--about NAME] [--check ID] [--open] [--since RENDER] [--json]   (what each render and raea check found, from the project's record: fixed, new and carried since the one before, or since RENDER; --open: only what stands)
+```
+
+Flags: `--about` (1), `--check` (1), `--json`, `--open`, `--since` (1).
+
+## raea notes
+
+Access: HOST to show post's asks on the person's comments; take and ls run headless. Arguments besides flags: 2.
+
+```
+raea notes take [PROJECT] [--inbox NAME] [--said WORDS]... | raea notes check [PROJECT] [--composition ID] [--render OUT | --no-render] | raea notes ls [PROJECT] [--json] | raea notes post [PROJECT]   (a person's notes as files the work is held to: take writes each note sent from the raea app or said in a session to notes/ROUND/ID.ts, the words verbatim, to be restated as asks before anything changes, and writes in each correction and sign the person sent back; check runs each ask's check on the work as it stands, which must fail before the work changes (a check that passes first is refused), and cuts each clip the person is to sign from the newest render; ls says where each note and ask stands (to restate, to check, failing, to sign, passing, signed) and what its restatement still owes; post shows each note's asks and where they stand on its comment in the raea app, and each clip to sign)
+```
+
+Flags: `--composition` (1), `--inbox` (1), `--json`, `--no-render`, `--render` (1), `--said` (1).
+
+## raea fingerprint
+
+Access: HEADLESS. Arguments besides flags: any number.
+
+```
+raea fingerprint new NAME [--who W] [--about TEXT] [--extends FP] [--kinds K,K] [--tags T,T] | raea fingerprint bootstrap FILE... [--from LIST] [--per N] | raea fingerprint teach FILE --axis A --at T [--bad|--good] [--span S] [--box x0,y0,x1,y1] [--words W] [--project P] | raea fingerprint approve FILE... [--project P] | raea fingerprint pair WORSE BETTER --axis A [--at T] [--then T2] | raea fingerprint versions V1 V2... | raea fingerprint profile REFS... --as NAME [--against LIST] | raea fingerprint score FILE [--was OLD] [--json] [--sheet out.png] [--timeline] [--profile NAME] | raea fingerprint report [--json] | raea fingerprint which [PATH] [--json] | raea fingerprint use NAME [--in project|workspace] [PATH] | raea fingerprint diff A B [--json] | raea fingerprint share NAME [--in project|workspace] [PATH] | raea fingerprint reembed PLACE... | raea fingerprint read PROJECT [--by kimi|claude] | raea fingerprint readings [PROJECT] [--ask N] [--tally] | raea fingerprint learn-notes [PROJECT] | raea fingerprint move [--fp CHILD] [--to PARENT] [--axis A] [--source S] [--project P] | raea fingerprint postmortem [PROJECT] [--ask N] [--tally] | raea fingerprint things FILE [--project P] [--json] | raea fingerprint stop [--fp NAME]   (a person's sense of good work as axes with small heads over on-device encoders, docs/fingerprint.md: new makes ~/.raea/fingerprints/NAME with raea's base taxonomy in fingerprint.ts (or FP's axes with --extends), what it's for, the kinds of piece and project tags it judges, and every axis scoring from its words; bootstrap puts known defects into windows of real work and trains the mechanical axes, held out by source, and patch heads that say where in the frame a picture defect is; teach adds a label at a moment; approve makes approved work clean on every axis, away from its notes; pair says one moment is better than another on an axis (a pick, a hand edit); versions makes weak pairs of noted moments the next version changed; score prints the moments it expects a note on first (where in the frame, and the layers there, when its patch head points held out), then every axis per window with --json, a sheet PNG with --sheet, or the piece second by second in words with --timeline, and with --was OLD whether each of OLD's gating flags is fixed, still there, or looks disguised (nearer the axis's disguised defects than clean work); profile takes the ranges of work you admire (loudness, tilt, cut rate, motion, brightness, contrast, saturation, sharpness), checked leave-one-out, and score --profile says what falls outside them, where and which way; report says each head's held-out score, labels, cheats, gate and what it can't judge; which says the one that judges a piece (its project's, its workspace's, then yours) and why, use pins one there, diff lists the axes two fingerprints rank the same evidence most differently on, and share copies one's taxonomy and evidence (no heads, no media) into a project or workspace for its team; reembed moves a fingerprint's evidence to this machine's encoders, re-embedding the rows whose media it finds; read has a fresh kimi or claude session read a project's pinned notes into kinds and axes, readings puts them to you to check and tallies your answers, and learn-notes makes the defects and praise evidence once you've agreed with 45 kinds and 40 axes in 50, each project's in the fingerprint that judges it; move takes a child's own labels (by axis, source or project) up into a fingerprint it extends, which never reads them otherwise; postmortem scores every version in a project's feed and asks you at most ten yes/no questions in the app, each with its moment playing, where the fingerprint disagrees with your labels or is least sure, and --tally makes your answers evidence and says how each head's held-out score moved; things finds a piece's shots, its things (a render's layers, and the marks drawn on its notes) with their depth, and the camera's path, and says where a thing floats, two pass through each other, the camera lurches mid-move or nothing is on screen, as JSON for `raea check --things` with --json)
+```
+
+Flags: `--about` (1), `--against` (1), `--as` (1), `--ask` (1), `--at` (1), `--axis` (1), `--bad`, `--box` (1), `--by` (1), `--extends` (1), `--fp` (1), `--from` (1), `--good`, `--in` (1), `--json`, `--kinds` (1), `--per` (1), `--profile` (1), `--project` (1), `--sheet` (1), `--source` (1), `--span` (1), `--tags` (1), `--tally`, `--then` (1), `--timeline`, `--to` (1), `--was` (1), `--who` (1), `--words` (1).
+
+## raea index
+
+Access: HEADLESS. Arguments besides flags: any number.
+
+```
+raea index add FOLDER|photos:... [--json] | raea index search WORDS... [--k N] [--source ID|FOLDER] [--json] | raea index status [--json] | raea index remove ID|FOLDER | raea index serve   [--home DIR]   (every picture and video on a folder, a drive or Apple Photos (photos:) made searchable by words on this Mac, fast: add lists it and embeds each picture's small copy with SigLIP 2 on the Neural Engine, a counter as it goes, JSON lines with --json; search gives the best for the words; status lists the sources and what each holds; remove takes one out; serve keeps the index open for the raea app, one JSON ask a line on stdin; the index lives in ~/.raea/library/fast, or --home / RAEA_INDEX_HOME)
+```
+
+Flags: `--home` (1), `--json`, `--k` (1), `--source` (1).
+
 ## raea play
 
 Access: HEADLESS. Arguments besides flags: 1.
 
 ```
-raea play EDIT.tsx [--input | --input-script KEYS.json] [--size WxH] [--seconds N|end]   (a game, live; also: --input-log FILE --offscreen --snapshot T FILE --json FILE --seek F FILE --scrub N --baked --autoplay --no-vsync --master --3d)
+raea play EDIT.tsx [--input | --input-script KEYS.json] [--size WxH] [--seconds N|end]   (a game, live; also: --input-log FILE --offscreen --snapshot T FILE --json FILE --seek F FILE --pick X,Y --view YAW,PITCH,DISTANCE --scrub N --baked --autoplay --no-vsync --master --3d)
 ```
 
-Flags: `--3d`, `--autoplay`, `--baked`, `--input`, `--input-log` (1), `--input-script` (1), `--json` (1), `--master`, `--no-vsync`, `--offscreen`, `--scrub` (1), `--seconds` (1), `--seek` (2), `--size` (1), `--snapshot` (2).
+Flags: `--3d`, `--autoplay`, `--baked`, `--input`, `--input-log` (1), `--input-script` (1), `--json` (1), `--master`, `--no-vsync`, `--offscreen`, `--pick` (1), `--scrub` (1), `--seconds` (1), `--seek` (2), `--size` (1), `--snapshot` (2), `--view` (1).
 
 ## raea export-game
 
@@ -346,15 +478,17 @@ raea export-game EDIT.tsx -o OUT [--target mac-app|mac-cli] [--name NAME] [--ico
 
 Flags: `--icon` (1), `--keys` (1), `--name` (1), `--no-strip`, `--player` (1), `--target` (1), `-o` (1).
 
-## raea scene
+## raea export
 
 Access: HEADLESS. Arguments besides flags: 2.
 
 ```
-raea scene lint|explain|light EDIT.tsx [--composition ID] [--frame N] [--part NAME] [--json]   (what each 3D part rests on: floating, sunk and clipping parts; light: the scene's lighting)
+raea export capcut EDIT.tsx [--composition ID] [-o DIR] [--name NAME] [--alpha-codec prores|hevc|rle|png] [--no-register]   (the composition as a CapCut draft ready in its timeline: its footage and sounds as clips of their own files at their trims and gains, everything raea draws as transparent overlay clips above them; the captions on a track of their own above it; into CapCut's projects, entered in its project list while CapCut is closed, or a draft folder in DIR; the reference render copied into the draft's folder, and it and the layers kept in out/capcut/NAME)
+raea export layers EDIT.tsx [--composition ID] [-o DIR] [--name NAME] [--alpha-codec prores|hevc|rle|png]   (the composition as its layers and the timeline that places them, layers.json: the captions and the graphics as transparent movies, what's under the footage (and any 3D) as an opaque one, the footage and sounds as clips of their own files where they are, the captions also as SubRip, and the reference render; into out/layers/NAME, or DIR)
+raea export xml EDIT.tsx [--composition ID] [-o DIR] [--name NAME] [--alpha-codec prores|hevc|rle|png]   (the composition as an FCP7 XML project for Premiere Pro (File, Import) and DaVinci Resolve (File, Import, Timeline): its layers as raea export layers writes them, NAME.premiere.xml and NAME.resolve.xml beside them placing them on a timeline, each as that editor writes it, the footage and sounds as clips of their own files where they are, each clip's own sound linked to it; into out/xml/NAME, or DIR)
 ```
 
-Flags: `--composition` (1), `--frame` (1), `--json`, `--part` (1).
+Flags: `--alpha-codec` (1), `--composition` (1), `--name` (1), `--no-register`, `-o` (1).
 
 ## raea physics
 
@@ -362,6 +496,16 @@ Access: HEADLESS. Its arguments go to a parser of its own: `raea physics` alone 
 
 ```
 raea physics bake REQUEST.json [-o OUT.json] | physics goo SPEC.json | physics part SRC.glb NODE...   (the bakes <Physics> and <Goo> make)
+```
+
+Flags: `-o` (1).
+
+## raea wear
+
+Access: HEADLESS. Arguments besides flags: 2.
+
+```
+raea wear bake REQUEST.json [-o OUT.json]   (a .glb's weathering causes for raea/wear: the model with a second UV set and its cause maps, made once in the asset store)
 ```
 
 Flags: `-o` (1).
@@ -404,6 +548,16 @@ raea neural mlxdlss DIR -o OUT [--model M.dlssmodel] [--intensity X] [--profile 
 ```
 
 Flags: `--intensity` (1), `--local-structure` (1), `--model` (1), `--profile` (1), `--skin-structure` (1), `--steady` (1), `-o` (1).
+
+## raea light
+
+Access: HEADLESS. Arguments besides flags: 2.
+
+```
+raea light check SCENES.json -o DIR [--scene NAME] [--paths raster,traced-ao,solari,gi] [--spp N] [--fresh]   (each scene on each light path against its path-traced reference: distance in stops, the worst tile, a moving shot's flicker, a frame's cost; DIR/report.json)
+```
+
+Flags: `--fresh`, `--paths` (1), `--scene` (1), `--spp` (1), `-o` (1).
 
 ## raea mezz
 

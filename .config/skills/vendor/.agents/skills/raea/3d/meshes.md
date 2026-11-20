@@ -28,9 +28,10 @@
 
 - `<Instances src={staticFile("tree.glb")} at={placements} />` draws one glTF at every placement, loaded once and drawn
   by the GPU as instances; without `src`, a geometry child (or `shape={solid}`) and a material child draw a mesh at
-  every placement. Each placement is `{ position, rotation?, scale? }` (radians). The list is the first frame's for the
-  whole shot: move, turn, scale or hide the set with the Instances' own props. Copies share one surface and play no
-  clip. `shadow={false}` for grass and flowers by the thousand.
+  every placement. Each placement is `{ position, rotation?, scale? }` (radians). A list that changes moves the copies
+  (each distinct list is kept, so thousands moving every frame cost a list a frame); moving, turning, scaling or hiding
+  the whole set with the Instances' own props costs nothing. The count is the first frame's. Copies share one surface and
+  play no clip. `shadow={false}` for grass and flowers by the thousand.
 - `scatter({ area: { min: [x0, z0], max: [x1, z1] }, count, spacing, avoid, margin, clearOf, seed, yaw, tilt, scale,
   y, density })` makes the placements: seeded (the same every frame, render and play), at least `spacing` apart, off
   the `avoid` boxes, on the ground height `y(x, z)`, kept where `density(x, z)` says. Call it once at module level.

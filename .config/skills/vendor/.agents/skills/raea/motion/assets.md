@@ -15,7 +15,8 @@
   and `Tone.tokensynth(timbre, notes)` for an instrument's notes in a `Tone.Sampler` (`motion/music`).
 - Recorded instruments and drum hits come from the open sample libraries: `raea sounds WORDS` finds one, `raea sounds
   get PACK/INSTRUMENT` copies its files into `media/sounds/PACK-INSTRUMENT/` with a `LICENCE.txt`, and prints the
-  `staticFile` paths and the Sampler that plays them.
+  `staticFile` paths and the Sampler that plays them. Orchestras, drum kits, effect packs and MIDI grooves fetched by
+  hand, and how to set up SAO and TokenSynth, are in `motion/sources`.
 - Show stills with `<Img src>`. The frame waits for the image to load, and a missing one fails the render, naming
   `src`.
 - Keep pictures real: the person's footage, stock already in the object's media, or things you build (components,
@@ -28,9 +29,9 @@ error and so is a URL (`https://...`). `staticFile` checks both. A module import
 fails loudly with the line that has it instead of rendering a black clip.
 
 Generated imagery is banned outright (floor): no AI-generated images or video, ever. Generated sound is allowed by
-policy, and made on this computer: TokenSynth for an instrument's notes (music), SAO for foley, Pocket TTS
-(`<Speech>`) for narration over the picture. The sample libraries are recordings under open licences (CC0, CC-BY, public domain);
-a CC-BY one is credited where the piece is shown.
+policy, and made on this computer: TokenSynth for an instrument's notes where no library has the timbre, SAO for
+foley, Pocket TTS (`<Speech>`) for narration over the picture. The sample libraries are recordings under open licences
+(CC0, CC-BY, public domain); a CC-BY one is credited where the piece is shown.
 
 ## Common mistakes
 

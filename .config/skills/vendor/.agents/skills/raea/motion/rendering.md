@@ -46,8 +46,26 @@ A video's bitrate follows its size and frame rate (about 20 Mbit/s at 1080p30, 8
 flat pictures), and `--kbps N` sets it. `--quality draft|high|master` (or 0..1: 0.6, 0.85, 0.95) asks for constant
 quality instead, each frame getting the bits it needs: `master` keeps thin type and hard vector edges clean at 4K
 (about 31 Mbit/s on flat motion graphics). Blotching in dark areas is the encoder, not the composition: export dark
-material as PNG frames (`RAEA_READBACK=rgba raea render piece.tsx -o frames/`) and encode them with more bits for the
-darks.
+material as PNG frames (`RAEA_READBACK=rgba raea render piece.tsx -o piece.frames/`) and encode them with more bits for
+the darks. A `NAME.frames/` folder is never committed, and raea's storage dry run lists it a day after
+the render unless something names it.
+
+Which to ask for. A version made for notes (a cut to review, a shot that will be joined, a preview) takes no
+`--quality` flag: the default is already close to the picture `master` gives, in a fraction of the file. Measured on
+1080p24 film footage: the default 16 Mbit/s, `high` 30, `master` 87; against the `master` encode the default scores
+VMAF 99.5 (its worst frame 95.8) and `high` 99.7. So `master` on every review version is five times the disk for
+nothing a person sees, and a film reviewed ten times is ten gigabytes. Keep `master` for the one file that is
+delivered when it is motion graphics or type (thin edges at 4K are where it shows); deliver a film at `high`. A notes
+version takes no `--quality draft` either: constant quality has no ceiling, so on grain or noise `draft` can come
+out larger than the default.
+
+When a version is replaced, keep it, and never `rm` a render yourself: a person may want the earlier cut back, and an
+item, a note or a composition may still name it. Name versions `-vN` (`cut-v3.mp4`, not `cut3.mp4`) so raea can
+tell a version from a shot number, and put "final" in the name of a delivered file. When space is short, call
+`storage_plan`: it lists only versions with a newer one beside them, unused feed renders, frames and broken copies,
+never a file anything names, and it says why each is listed. Show the person that list, and only on their yes call
+`storage_trash` with it: the list waits in Settings › Storage for the person to move, and what they move goes to the
+Trash, where they can put it back.
 
 ## A person's hand edits
 

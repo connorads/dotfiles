@@ -90,6 +90,10 @@ check names a script (`bevy/blender`). It never places, lights, frames, material
    flat default colour. Lay out printed matter as a 2D composition, render it to a PNG, use the PNG as the map, then
    age it.
 6. **Motion, last and small.** Then `raea render EDIT.tsx -o out/scene.mp4` and `raea check out/scene.mp4`.
+   - Once things move, check how they move. Render with `--layers`, and render `--aov -o out/scene.aov` beside it for
+     depth. Then run `raea fingerprint things out/scene.mp4 --json > things.json` and
+     `raea check out/scene.mp4 --things things.json`. It finds a thing floating or passing through another, the
+     camera lurching mid-move, and an empty frame.
 
 ### R. Review after every stage and every fix
 

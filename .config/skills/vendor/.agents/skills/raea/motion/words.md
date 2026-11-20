@@ -16,6 +16,9 @@
 - Size captions at 60 px or more at 1080 wide (scale with the width), with at least 3:1 contrast against the pixels
   behind them. Keep them in one place unless a move means something, and keep them off cards, logos, burned-in text
   and the face (`motion/placement`).
+- Mark each caption: `data-raea-role="caption"` on the element holding its words. A layered export (`raea export
+  capcut`, `raea export xml`; `motion/delivery`) then puts the captions on a track of their own, styled as they're
+  drawn, and writes their words as an .srt beside them; unmarked, they're part of the graphics.
 - The transcript reaches the render for you: `raea cut` writes words.json beside the edit, and `raea render` reads it
   from there. Give it to `raea check` with `--words words.json`, so the check can match cues to their words.
 
@@ -76,7 +79,7 @@ function Captions() {
   const g = groups[i];
   const local = f - g[0].from;
   return (
-    <div style={{
+    <div data-raea-role="caption" style={{
       width: "100%", textAlign: "center", fontFamily: "var(--brand-font-heading)", fontWeight: 800, fontSize: 84, lineHeight: 1,
       color: "var(--brand-text)", textShadow: "0 4px 24px rgba(0,0,0,0.5)",
       transform: `translateY(${interpolate(local, [0, 5], [24, 0], { ...clamp, easing: OUT })}px)`,

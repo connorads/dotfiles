@@ -3,7 +3,9 @@
 ## What to do
 
 - Generate a picture, a clip, music, an effect, a voice, a 3D model or words with `raea gen` when the piece needs
-  something that isn't in the footage, the stock or the scene. `-o` is the folder; each command prints the files it wrote; use it like any
+  something that isn't in the footage, the stock or the scene. Music only when the person asks for a generated
+  track: a score is composed on instruments for the cut (`motion/music`), and a generated track can't be cut on the
+  bar or edited note by note. `-o` is the folder; each command prints the files it wrote; use it like any
   other media (`<Img src>`, `<Video src>`, `<Audio src>`, `<Model src>`).
 - Quote first. `raea gen plan FLOW` and `--plan` on a one-shot cost nothing and say where each step runs and what it
   costs in cents. A run past its cap is refused before anything is spent: `--max-cents N`, else

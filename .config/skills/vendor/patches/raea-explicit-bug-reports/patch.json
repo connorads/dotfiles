@@ -1,0 +1,6 @@
+{
+  "reason": "Bug reports require an explicit user request and an installed, verified tool; never send unsolicited reports.",
+  "files": [
+    ".agents/skills/raea/SKILL.md"
+  ]
+}

@@ -18,7 +18,8 @@ A viewer who had no plan to watch stops, believes the brief's `believe:` line, a
   the handle), inside the safe areas.
 - **Specific, not generic.** Cover the logo and ask whether another product could run this unchanged. If it could,
   the angle isn't specific enough yet.
-- **Plan it.** Hook · problem · proof · ask as a storyboard, approved before anything renders.
+- **Plan it.** Hook · problem · proof · ask as a storyboard, approved before anything renders. Chain its cuts on the
+  thirds so the proof lands where the problem was (`raea guide match-cuts`).
 
 ## The decisions
 

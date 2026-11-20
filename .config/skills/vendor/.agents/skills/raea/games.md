@@ -14,6 +14,7 @@ raea's craft guides (`raea guide NAME` prints the same text).
 | what a game has to do for the people playing it | [craft/modes/play.md](craft/modes/play.md) |
 | its sound | [sound.md](sound.md) |
 | a game made from shipped game assets (models, kits) | [3d/assets.md](3d/assets.md) |
+| a Godot project: scripting it from TypeScript, running it headless, recording its frames | [3d/godot.md](3d/godot.md) |
 
 ## The verbs
 
