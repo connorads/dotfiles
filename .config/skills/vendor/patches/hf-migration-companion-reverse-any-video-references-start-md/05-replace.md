@@ -1,0 +1,1 @@
+Confirm paid generation steps and estimated credit/cost impact with the user before spending credits (using `--plan` where supported), and report plan or credit details honestly when relevant.

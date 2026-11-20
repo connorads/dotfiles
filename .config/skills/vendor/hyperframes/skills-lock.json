@@ -37,11 +37,23 @@
       "skillPath": "skills/remotion-to-hyperframes/SKILL.md",
       "computedHash": "38eb75c5c051cfbd74d938fcaa7b57544d8b266ec47d18f02bab1574ef71786b"
     },
+    "reverse-any-video": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "skillPath": "skills/reverse-any-video/SKILL.md",
+      "computedHash": "ff697348c4f2b0590f156b939fcf7e550c7a17bc40bf210d07e71ccbd42db753"
+    },
     "slideshow": {
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/slideshow/SKILL.md",
       "computedHash": "1f3adb414853a124eb06b767d531048d68573a468b3790dd00bf340fc4a18677"
+    },
+    "style-sampling": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "skillPath": "skills/style-sampling/SKILL.md",
+      "computedHash": "86da7c4f9b678b950c43c9b1ca323ac11e761be91d8ad14feb3cb9043926d20d"
     }
   }
 }

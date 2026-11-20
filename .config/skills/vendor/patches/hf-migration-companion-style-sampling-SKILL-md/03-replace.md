@@ -1,0 +1,1 @@
+hyperframes templates pull <slug>

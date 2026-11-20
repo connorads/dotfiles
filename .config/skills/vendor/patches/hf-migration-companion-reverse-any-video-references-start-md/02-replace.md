@@ -1,0 +1,6 @@
+Also for you: `hyperframes reverse start <video> --dir <project>` prints the video's probe and a `reverse` field.
+`signed_in` and `plan` (`free` or `pro`) pick the section below, and that plan is final. Only a `null` plan is unknown:
+then ask `hyperframes auth status --json` and read its `hyperframes` field, never `user.subscription`, which is the HeyGen
+app's plan and does not unlock Reverse. `<project>` is the folder you build in: afterwards run `hyperframes init <project> --video <video> --keep-original --skip-transcribe --skip-skills`,
+which copies the video in untouched under its own file name and keeps the session it saved for `cloud render`. Keep the video out of `<project>` until then: `init`
+refuses a folder that already holds other files. If the installed managed `hyperframes` CLI does not know `reverse start`, stop before anything is paid for and report that the managed `hyperframes` installation needs a reviewed update; do not download an unreviewed CLI release with `--cli-version latest`.

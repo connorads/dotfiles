@@ -1,0 +1,1 @@
+- Captions: take each group's first and last frame from the caption band's pixels, every frame (`hyperframes measure events <video> --roi <band>`, or a frame difference over the band). The words come from `hyperframes transcribe`, which can mishear names; the switch times come from the pixels, since captions often lead or trail the voice. Switch hard unless the original fades.

@@ -1,0 +1,1 @@
+- **A sub-asset** placed inside the frame (a photo, a clip, an album cover, a logo or app icon, the people in a photo or collage) is cut from the original on its own box. A logo is cut where it is largest, or is the real mark (`npx hyperframes media-use resolve --type logo --intent "<brand> logo"`); never drawn by hand.
