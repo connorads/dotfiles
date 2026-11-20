@@ -17,7 +17,7 @@
       "source": "cursor/plugins",
       "sourceType": "github",
       "skillPath": "pstack/skills/benchmark-checklist/SKILL.md",
-      "computedHash": "4ed522cb6ea05fedac17edcc92b48462ddd7032595ef5c19eb25ede6654e1a48"
+      "computedHash": "4b4a6bdeddb7bd94c1a36ef5fcbb4f058b144c9fbce40355cef15f1d1553307d"
     },
     "caveman": {
       "source": "JuliusBrussee/caveman",
