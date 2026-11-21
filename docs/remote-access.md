@@ -34,16 +34,16 @@ Apple restricts command-line enablement on modern macOS. See [Apple's remote-man
 
 1. On the mini, run `drs` and confirm the rebuild succeeds before enabling Screen Sharing.
 2. On the mini, open System Settings > General > Sharing and enable Screen Sharing.
-3. In the mini's Screen Sharing settings, select "Only these users" and allow only `connorads`.
+3. In the mini's Screen Sharing settings, select "Only these users" and allow only the account you use for remote access.
 4. Leave permission requests and generic VNC-password access disabled on the mini.
-5. On the Air, open Screen Sharing and connect to `mac-mini.goose-rohu.ts.net` with the mini's account credentials.
+5. On the Air, open Screen Sharing and connect to the mini's MagicDNS name with its account credentials.
 
-The Tailscale policy controls which peers can reach the mini. The Air's Screen Sharing grant has this shape:
+The Tailscale policy controls which peers can reach the mini. This example grant uses documentation addresses. Look up the actual values in the private machine runbook.
 
 ```json
 {
-  "src": ["100.90.109.86/32", "fd7a:115c:a1e0::e135:6d56/128"],
-  "dst": ["100.125.154.87/32", "fd7a:115c:a1e0::9235:9a58/128"],
+  "src": ["192.0.2.10/32", "2001:db8::10/128"],
+  "dst": ["192.0.2.20/32", "2001:db8::20/128"],
   "ip": ["tcp:5900", "udp:5900-5902"]
 }
 ```
@@ -90,8 +90,7 @@ For mobile access, connect Tailscale on the phone and open the required BB serve
 
 ### BB service ownership
 
-[darwin-server.nix](../.config/nix/modules/darwin-server.nix) declares the Mac mini's BB system daemon.
-It runs as `connorads` in the system launchd domain, independently of desktop login.
+[darwin-server.nix](../.config/nix/modules/darwin-server.nix) declares the BB system daemon. It runs independently of desktop login.
 [bb-services.nix](../.config/nix/modules/bb-services.nix) declares the other macOS user services.
 mise owns Node and BB server installations. Servers resolve exact deployed versions from local mise pins.
 Worker services resolve the global mise configuration.
@@ -109,12 +108,12 @@ Missing configuration disables both services. A worker also requires an existing
 ```
 
 Set `server.enabled` for a standalone server. Set `worker.enabled` only after deliberate enrolment with a trusted server.
-Restart the relevant service after changing this file. The mini's server starts at system boot after FileVault unlock.
+Restart the relevant service after changing this file. The system daemon starts at boot after FileVault unlock.
 User services start at login. The server launcher starts both the BB server and its local execution daemon.
 Server URLs, enrolment credentials and BB state stay outside Nix and Git.
 
-The mini uses `system/org.nixos.bb-server`. Keep the competing `gui/501/app.getbb.server` agent disabled.
-The mini's Home Manager server agent is disabled in Nix. Its worker remains a user service.
+Keep the competing user server disabled on hosts that run the system daemon.
+See the private machine runbook for host assignments.
 Provider authentication needs verification outside a desktop login. Desktop automation still needs a desktop session.
 
 ```bash
@@ -231,7 +230,7 @@ The design and rejected alternatives are recorded in [ADR 0025](./adr/0025-bb-se
 
 ```mermaid
 flowchart LR
-  Nix[Public Nix modules] --> System[Mini system daemon as connorads]
+  Nix[Public Nix modules] --> System[System daemon]
   Nix --> User[User launch agents]
   Local[Private runtime configuration] --> System
   Local --> User
