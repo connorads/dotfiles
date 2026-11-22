@@ -12,7 +12,7 @@ test("uses installed CLI, preserves literal args and disables remote maintenance
   assert.equal(call.command, "hyperframes");
   assert.deepEqual(call.args, args);
   assert.deepEqual(call.env, { PATH: "/bin", HYPERFRAMES_SKIP_SKILLS: "1", HYPERFRAMES_NO_UPDATE_CHECK: "1", HYPERFRAMES_NO_TELEMETRY: "1" });
-  for (const name of ["skills", "upgrade", "usage"]) assert.throws(() => invocation([name]));
+  for (const name of ["skills", "upgrade", "usage", "events"]) assert.throws(() => invocation([name]));
   assert.throws(() => invocation(["--script"]), /requires/);
 });
 

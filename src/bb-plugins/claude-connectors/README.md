@@ -29,6 +29,9 @@ flowchart LR
 - The token stays on this Mac. The plugin reads Claude Code's Keychain item and never
   refreshes the token itself. When it nears expiry, the plugin runs `claude mcp list`
   in that profile so Claude Code renews it.
+- Every thread gets `claude_connectors_list` and `claude_connectors_call`, and each
+  call checks the thread's choice. A Codex thread keeps its start-time tool list for
+  life, so a thread turned on later still has the tools.
 - Read-only tools (MCP `readOnlyHint`) are allowed by default; others stay off until
   allowed. A 401 renews the login and retries once; other failures are never retried.
 - The connector list and the MCP proxy are undocumented Anthropic endpoints. They can

@@ -1,7 +1,6 @@
-(10 min/month) before paid usage; API keys follow normal API billing. If the
-only credential is an expired OAuth token it stops with a hint to run
-`npx hyperframes auth refresh`.
+rather than selecting a saved API key, with a hint to run `npx hyperframes auth refresh`
+(or `auth login` for a session from another OAuth client).
 
 ```bash
 # Only needed if you haven't run `npx hyperframes auth login`:
-export HEYGEN_API_KEY=...   # or put it in a project .env
+export HEYGEN_API_KEY=...   # a project .env key is used only when nothing is saved

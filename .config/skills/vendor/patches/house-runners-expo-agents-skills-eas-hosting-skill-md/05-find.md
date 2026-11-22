@@ -1,3 +1,1 @@
-# Deploy a preview (PR-style URL)
-npx eas-cli@latest deploy
-
+Deploying ships your web bundle and any Expo Router API routes together - `npx --yes eas-cli@latest deploy` handles both. The export runs whether you have a full website, an API-routes-only backend, or both.

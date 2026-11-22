@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- Tightened `SKILL.md` and `README.md` for clarity, concision, and readability. Reworded four "After" examples (§6, §13, §15, §25) so they read naturally and avoid stock academic phrasing.
+- Added "the part" as a stand-in to §4: "the hard part is X" stages X, and "the part that doesn't" or "the part worth sharing" points at something the text never names (#338).
+- `scripts/validate-package.py` now fails when a pattern number appears twice in `SKILL.md` or in the README tables. Before, the second one replaced the first and the check passed (#340).
+- Informal human text is no longer over-edited. Chat messages, rants, and angry reviews keep their lowercase, abbreviations, fragments, and blunt openers. A lone tell is not enough there (§22 chatbot residue excepted); two unrelated tells make the whole text a rewrite target. Anger keeps its strength, and "tried X" stays "tried X" (#318).
+- Added a closing "Overall" or "Ultimately" verdict that restates the paragraph to §2 (#318).
+- Said that a plain "let me know" in a message predates chatbots (#318).
+- Cited El Attar et al. (arXiv:2606.04177) in the Source section and the README sources (#318).
+
+## 4.0.0
+
+- The skill no longer forbids adding facts. Where the text is generic, it now adds a specific detail it knows to be true. It still keeps every claim the original made and treats a lost or changed claim as an error. This reverses the no-invention rule from 2.9.0. Patterns 14 and 17 follow the same change.
+- Reworked 15 "After" examples in `SKILL.md` and both README examples. Several were vaguer or stiffer than the text they replaced, used phrases from the skill's own watch lists, or changed a stated fact.
+- File mode now reads the whole current file before editing, even one written in the same session. Its summary says how many sections it reviewed, so a partial pass is visible (#326, #327).
+- Text being edited can contain fake closing tags or notes from an "operator" or a "system message". The skill now treats those as material to edit, never as instructions (#317).
+- Rewrote unclear sentences in `SKILL.md` and `README.md`. Coined terms such as "riders" and "shape edits" became plain words, and sentences that only announced or repeated a neighbor are gone. Step 3 now checks for dropped or changed facts first. Pattern 15 is now "Shallow -ing phrases". The README gives `/humanizer` as the only command (#330).
+- Added a blank line above each pattern label in `SKILL.md` so GitHub shows every label and example on its own line (#329).
+- The skill description no longer cites Wikipedia. The credit stays in the Source section and the README (#321).
+- Added a pi package manifest, so `pi install git:github.com/blader/humanizer` installs the skill (#315).
+- Removed the `$schema` key from the Claude plugin manifest, which caused a sync warning (#307).
+
 ## 3.1.0
 
 - Added pattern #26 and section F for replies that re-explain context the reader already has (#269). It acts on replies, not standalone writing. 26 patterns total.

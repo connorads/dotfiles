@@ -1,0 +1,1 @@
+Reuse established EAS/Apple credentials. For a new setup, have the account owner complete signing with `eas credentials -p ios` privately for the correct team. Do not automate Apple password/MFA entry or download signing keys. An existing App Store Connect API key supports unattended submission without changing the app's owner or bundle ID.

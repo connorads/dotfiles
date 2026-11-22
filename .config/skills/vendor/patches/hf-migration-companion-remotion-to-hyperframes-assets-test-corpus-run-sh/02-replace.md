@@ -6,6 +6,4 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$THIS_DIR/../.." && pwd)"
 
 LINT="$SKILL_DIR/scripts/lint_source.py"
-DIFF="$SKILL_DIR/scripts/render_diff.sh"
-STRIP="$SKILL_DIR/scripts/frame_strip.sh"
 REPORT="$THIS_DIR/run-report.json"

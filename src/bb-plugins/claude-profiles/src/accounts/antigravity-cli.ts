@@ -1,6 +1,6 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { antigravityLaunch, prepareAntigravityProfile } from './antigravity-profile.ts';
+import { agyVersionProblem, antigravityLaunch, prepareAntigravityProfile } from './antigravity-profile.ts';
 
 try {
   const [id, ...args] = process.argv.slice(2);
@@ -13,7 +13,9 @@ try {
     // Resolve mise before replacing HOME. A mise shim inside the private home can select a different tool.
     const executable = execFileSync('mise', ['-C', homedir(), 'which', 'agy'], { encoding: 'utf8', timeout: 10_000 }).trim();
     const version = execFileSync(executable, ['--version'], { encoding: 'utf8', timeout: 10_000 }).trim();
-    if (version !== '1.5.9') throw new Error(`Isolated authentication needs verification with agy ${version}. Tested version: 1.5.9.`);
+    const pinned = execFileSync('mise', ['-C', homedir(), 'current', 'agy'], { encoding: 'utf8', timeout: 10_000 }).trim();
+    const problem = agyVersionProblem(version, pinned);
+    if (problem) throw new Error(problem);
     const launch = await antigravityLaunch(homedir(), id, executable);
     const child = spawn(launch.command, [...launch.args, ...args], { env: launch.env, stdio: 'inherit' });
     for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) process.on(signal, () => { child.kill(signal); });

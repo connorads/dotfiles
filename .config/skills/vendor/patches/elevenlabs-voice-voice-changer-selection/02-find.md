@@ -1,0 +1,1 @@
+const audioStream = await client.speechToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {

@@ -20,7 +20,9 @@ from the room's size and the models' own measured boxes: no typed coordinates ex
   front (`seatFacing` returns null); any yaw works.
 - Check the layout before rendering: `checkLayout({ room, runs, islands, seats, furniture })` returns findings for the
   work aisle (1.07 m), walkways (0.91 m), room behind seats, the work triangle, overlaps and seats that don't face a
-  table. Run it with `raea run check.ts` and fix every error.
+  table. Each is a finding in raea's one shape (`check`, `level` error, warn or note, `about` the things by name, `says`,
+  `measure` the distance and its limit); a clearance that is met is a note, so its margin shows. Run it with
+  `raea run check.ts` and fix every error.
 - Wall decor: `hang(ROOM, "left", [{ src, name }], { at, centre, over, apart })` hangs pictures and shelves by the
   decorator's rules (`HANGING`). A piece hangs centred 1.5 m up on a bare wall; over furniture it hangs 0.18-0.30 m above
   it (`over: overUnits(run, "base-2")`) and centred on it; a group hangs a hand apart on one centre line. Each piece is

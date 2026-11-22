@@ -83,6 +83,7 @@ local fast_steps = new Mapping<String, Step> {
             ".hk-hooks/codex-slot-read.sh",
             ".hk-hooks/oxlintrc.json",
             ".hk-hooks/quarantine-drift.py",
+            ".hk-hooks/agy-pin-lockstep.py",
             ".hk-hooks/tsv-separator-lint.py",
             ".hk-hooks/skills-no-local-paths.sh",
             ".hk-hooks/adr-unique-number.sh",
@@ -675,6 +676,50 @@ local fast_steps = new Mapping<String, Step> {
     // tracked generic launcher implementation, but not concrete profile names.
     ["claude-profile-leak-guard"] {
         check = "python3 .hk-hooks/claude-profile-leak-guard.py"
+    }
+
+    // The agy-profile launcher runs only the agy release whose isolation was
+    // checked by hand. A mise pin moved alone breaks every isolated account at
+    // launch; this fails the commit instead.
+    ["agy-pin-lockstep"] {
+        glob = List(
+            ".config/mise/config.toml",
+            "src/bb-plugins/claude-profiles/src/accounts/antigravity-profile.ts",
+            ".hk-hooks/agy-pin-lockstep.py"
+        )
+        check = "python3 .hk-hooks/agy-pin-lockstep.py"
+
+        // Only the mise config is planted; the verified version resolves from
+        // the real tracked launcher module via the $HOME fallback.
+        tests {
+            ["a pin moved without the verified version fails"] {
+                run = "check"
+                files = List("{{tmp}}/.config/mise/config.toml")
+                write { ["{{tmp}}/.config/mise/config.toml"] = "[tools]\nagy = \"0.0.1\"\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/agy-pin-lockstep.py .hk-hooks/"
+                expect {
+                    code = 1
+                    stderr = "mise pins agy 0.0.1"
+                }
+            }
+
+            ["a config without an agy pin fails"] {
+                run = "check"
+                files = List("{{tmp}}/.config/mise/config.toml")
+                write { ["{{tmp}}/.config/mise/config.toml"] = "[tools]\nnode = \"24\"\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/agy-pin-lockstep.py .hk-hooks/"
+                expect {
+                    code = 1
+                    stderr = "not found"
+                }
+            }
+
+            ["the tracked pin and verified version agree"] {
+                run = "check"
+                files = List("{{root}}/.config/mise/config.toml")
+                expect { code = 0 }
+            }
+        }
     }
 
     // One policy value - the 4-day quarantine - is hand-spelled in nine config

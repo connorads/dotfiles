@@ -1,0 +1,1 @@
+`npx --yes eas-cli@latest init` links the project and writes `extra.eas.projectId`. Reuse the existing ID when one exists. The `expo` JSON key is EAS configuration here, not evidence of an Expo runtime. Xcode's bundle identifier is authoritative for a checked-in native project; keep any duplicate app-config identifier consistent, particularly for GitHub-triggered builds.

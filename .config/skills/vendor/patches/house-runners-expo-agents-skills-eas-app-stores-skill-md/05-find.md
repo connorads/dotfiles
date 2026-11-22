@@ -1,1 +1,1 @@
-npx eas-cli@latest build --profile production
+npx --yes eas-cli@latest build -p ios --profile production

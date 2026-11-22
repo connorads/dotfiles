@@ -1,0 +1,1 @@
+For managed credentials, use the official `npx --yes eas-cli@latest credentials -p android` flow to configure the Google service-account key for the selected project. The user supplies the key through that credential flow, not chat.

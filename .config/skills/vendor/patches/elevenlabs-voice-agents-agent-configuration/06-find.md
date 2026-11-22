@@ -6,7 +6,7 @@ agent = client.conversational_ai.agents.create(
             "first_message": "Hey! What do you need?",
             "prompt": {
                 "prompt": "Fast, efficient assistant. Brief answers.",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "temperature": 0.3,
                 "max_tokens": 100
             }

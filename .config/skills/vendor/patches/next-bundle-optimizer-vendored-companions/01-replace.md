@@ -1,0 +1,1 @@
+{{marker}} For a route's static App Shell, use vendored [`next-cache-components-optimizer`](../next-cache-components-optimizer/SKILL.md). For navigation prefetch work, use vendored [`next-partial-prefetching-optimizer`](../next-partial-prefetching-optimizer/SKILL.md).

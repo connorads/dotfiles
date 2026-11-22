@@ -30,6 +30,9 @@
 - Models are loaded once before the first frame is drawn; there's no loading state to handle.
 - Where a model comes from is the scene's routing (`bevy/scenes`): built in code when it's exact or architectural,
   a library or the person's file when one exists, generated with `raea gen mesh` (Tripo) when it has character.
+  The open libraries, their licences and how to fetch from each are `bevy/sources`; open `.blend` files are
+  `bevy/blend-files`, and Godot demos and kits `bevy/godot-projects`. Every model from outside carries a licence
+  sidecar (`chair.glb.json`).
   Generation costs money: quote it first (`raea gen plan`), and every generated mesh goes through `raea gen check`
   (size, facing, pivot, triangles) before a scene uses it.
 

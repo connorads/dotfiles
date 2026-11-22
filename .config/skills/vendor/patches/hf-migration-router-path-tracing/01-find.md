@@ -1,0 +1,1 @@
+Start from the `path-traced-3d` example (`npx hyperframes init <dir> --example path-traced-3d`):

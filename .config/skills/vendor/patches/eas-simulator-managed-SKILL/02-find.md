@@ -1,0 +1,1 @@
+The `simulator:*` commands need a recent eas-cli, and new flags arrive often — which is why this skill runs everything via `npx --yes eas-cli@latest`. **The relevant subcommand's `--help` output is authoritative.**

@@ -1,6 +1,6 @@
 # Parts: a talking take, dressed by name
 
-The reel's parts are designed parts for a talking take. They're an example the project owns: `raea part add reel`
+The reel's parts are designed parts for a talking take. They're an example the project owns: `raea component add reel`
 copies them into components/reel/, yours to change, and you import them from "./components/reel". You place each one
 with one line, and each one lands on the words that say it. You don't lay out boxes or count frames. You choose which
 part goes on which beat, and what it says.
@@ -44,8 +44,8 @@ registerRoot(() => <Composition id="reviews-reel" component={Piece} width={1080}
 
 ## Footage with no voice: cue on the beats
 
-A screen recording or b-roll has no words to cue on, so it's cut on its music bed. The host cuts the shots on the bed's
-beats and gives `BEATS` (each beat's frame in the cut) and `SHOTS` (where each shot looks). Pass `<Ad beats={BEATS}>`,
+A screen recording or b-roll has no words to cue on, so it's cut on its music: the person's own track (the host's
+`bed`), never a pad made to fill the silence. The host cuts the shots on the track's beats and gives `BEATS` (each beat's frame in the cut) and `SHOTS` (where each shot looks). Pass `<Ad beats={BEATS}>`,
 and cue each part by beat:
 
 - `beat`: the beat it lands on, counted from 0. A part on a shot's first beat lands on its cut.
@@ -100,4 +100,4 @@ line has one to three.
 - **Captions are always on.** They move under a card, hide under a hook, a strike or the ask, and go big at the top when the band is empty. Leave some beats empty so the face and the captions carry them.
 - **The thesis gets Phrases.** The thesis is the first line where the speaker says what the brief's `believe:` line means (the believe line finds it; its own wording never goes on screen): the line the piece is about, often the turn after the numbers, and often said as "not this, but that" ("so the fix isn't / another *discount* / it's a *fast reply*"). It reads phrase by phrase: one `<Phrases>` over it, a phrase per breath, the word that carries each phrase in the accent. Captions alone show it three words at a time, lit word by word, which reads as a caption, not a statement.
 - **About one part every three to five seconds.** A beat with nothing to show stays empty.
-- The sound is done for you. Each part brings its own hit, and `<Bed>` plus `<Mix lufs={-14} />` finish it. Don't add more foley.
+- The sound is done for you. Each part brings its own hit, and `<Mix lufs={-14} />` finishes it, with `<Bed>` when the person gave a track (their own track, or none: never a pad made to fill it). Don't add more foley.

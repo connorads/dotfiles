@@ -20,7 +20,9 @@ overview with the core rules every composition keeps, so read it first.
 
 - `raea brand DOMAIN` (HEADLESS) writes the kit from the brand's site: brand/brand.css, brand.json, BRAND.md and the
   logos. Run it first when the brief names a brand.
-- `raea part list`, `raea part add NAME` (HEADLESS) copy a ready part into components/, yours to change.
+- `raea component list`, `raea component add NAME` (HEADLESS) copy a ready component or set into components/, yours
+  to change; `--shared` puts it in the workspace's shared/components/ for every project to import as
+  `@shared/components/NAME`. `raea part` is the old name.
 - `raea render EDIT.tsx --at A,B -o frames/` for stills to look at; `--alpha` for transparent PNGs to overlay in
   another editor.
 

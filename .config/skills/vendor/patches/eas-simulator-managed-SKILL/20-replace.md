@@ -1,0 +1,1 @@
+Source of truth: Expo docs and the `eas` / `agent-device` CLIs (`eas simulator:* --help`, `eas simulator:exec agent-device help [topic]`; `--help` after `simulator:exec` shows the EAS CLI help instead). This skill teaches how to apply them; it doesn't replace them.

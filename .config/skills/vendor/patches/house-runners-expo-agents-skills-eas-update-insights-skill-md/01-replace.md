@@ -1,0 +1,2 @@
+- Run EAS commands with `eas <command>` from Expo's official package. Check its resolved version and command help.
+- Check the existing account with `eas whoami`. If sign-in is needed, let the user complete `eas login --browser`.

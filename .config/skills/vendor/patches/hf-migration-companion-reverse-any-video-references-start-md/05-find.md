@@ -1,0 +1,2 @@
+Billing comes up only when a step is refused. Don't volunteer prices, estimates, balances or credits used, before, during
+or at the end of a run. `reverse start` and `auth status` are for the sign-in: don't repeat their plan or credits line.

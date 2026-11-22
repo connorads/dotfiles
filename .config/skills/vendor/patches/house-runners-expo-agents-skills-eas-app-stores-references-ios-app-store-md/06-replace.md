@@ -1,0 +1,1 @@
+Ask the account owner to inspect the selected team's credentials through the EAS dashboard or `eas credentials -p ios` privately. Request only the non-secret status needed for the release. Do not treat the interactive credential manager as a read-only query or select create/download/revoke actions.

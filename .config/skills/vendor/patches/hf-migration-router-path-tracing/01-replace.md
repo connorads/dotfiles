@@ -1,0 +1,1 @@
+Start from the `path-traced-3d` example (`hyperframes init <dir> --skip-skills --example path-traced-3d`):

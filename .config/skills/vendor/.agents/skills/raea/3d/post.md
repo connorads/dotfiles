@@ -90,8 +90,9 @@ Put these beside the camera, once each:
   scene, so a film of many shots looks of a piece. `shadows`/`midtones`/`highlights` each take `{saturation, contrast,
   gamma, gain, lift}` (1, 1, 1, 1, 0 keep it); `temperature` warms (+) or cools (-) by about 0.03 a step; `vignette` is
   0..1 or `{intensity, radius, smoothness, color}`; `aberration` 0.002–0.005 is a lens's fringe. Like every effect,
-  the first frame's grade holds for the whole piece. `content/rome/film.tsx` (in a raea checkout) is the
-  worked example.
+  it's each frame's own: keep one across a film so it looks of a piece, give a shot its own, or ramp it from the
+  frame. `bench/rerender/film.tsx` and its `shots.tsx` (in a raea checkout) are the worked example: six shots, each
+  with its own sky, fog, bloom, grade or depth of field, in one composition.
 
 ## Composition passes: leaving part of the frame out of an effect
 
@@ -166,7 +167,8 @@ the camera HDR so bright parts can exceed white before they bloom.
 - Bloom with nothing bright in the scene: nothing glows. Add emissive parts or raise `exposure`.
 - `threshold={0}` with a light background: the whole frame goes milky.
 - Fog `far` shorter than the distance to the subject: the subject disappears.
-- Animating them: their first frame's values hold for the whole piece (the camera's `focus` and the fog volumes are the exceptions: a volume's place, size, density and colour change every frame). Animate the materials and lights instead.
+- A render a shot, to give each shot its own look, joined after with ffmpeg: every effect here is each frame's own,
+  so put each shot in a `<Sequence>` with its effects and render the film once.
 - Fog volumes that show as boxes, or stair-stepped shafts: that's `mode="march"` (its `ambient` lights each box
   whole; too few `steps` step). Drop the mode: the grid has neither.
 - A third shaft with a hard edge: only two spots and two directional lights are hero lights; the rest are lit in the

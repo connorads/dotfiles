@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "./lib/windows-exe-search.mjs";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
@@ -16,6 +17,7 @@ import { parseArgs, stripVTControlCharacters } from "node:util";
 import { mergeTokensToWords } from "./lib/parakeet-words.mjs";
 import { track } from "./lib/telemetry.mjs";
 import { resolveNpxInvocation } from "./lib/npx-sync.mjs";
+import { terminalText } from "./lib/terminal-text.mjs";
 
 // The DEFAULT local transcription path. Prefers NVIDIA Parakeet-TDT via
 // parakeet-mlx, which beats whisper.cpp on the Open ASR Leaderboard (~6.05% vs
@@ -60,7 +62,7 @@ if (!args.input) {
 }
 const inputPath = resolve(args.input);
 if (!existsSync(inputPath)) {
-  console.error(`error: input not found: ${inputPath}`);
+  console.error(terminalText(`error: input not found: ${inputPath}`));
   process.exit(2);
 }
 const outPath = resolve(
@@ -72,8 +74,10 @@ const outPath = resolve(
 // just PATH) is what keeps a user who followed the install docs verbatim from
 // silently falling through to whisper. Returns the runner path, or null.
 function resolveParakeet() {
+  // An override with a folder in it means the caller's folder; the runner itself starts elsewhere.
+  const override = process.env.HYPERFRAMES_PARAKEET;
   for (const p of [
-    process.env.HYPERFRAMES_PARAKEET,
+    override && /[\\/]/.test(override) ? resolve(override) : override,
     join(homedir(), ".venvs", "parakeet", "bin", "parakeet-mlx"),
   ]) {
     if (p && existsSync(p)) return p;
@@ -101,8 +105,16 @@ function report(engine, wordCount) {
   if (args.json) console.log(JSON.stringify({ ok: true, out: outPath, engine, words: wordCount }));
   else
     console.log(
-      `transcribed ${basename(inputPath)} -> ${outPath}${wordCount != null ? ` (${wordCount} words,` : " ("}${engine})`,
+      terminalText(
+        `transcribed ${basename(inputPath)} -> ${outPath}${wordCount != null ? ` (${wordCount} words,` : " ("}${engine})`,
+      ),
     );
+}
+
+// parakeet-mlx reads a model id as a folder when one exists in its working directory, so it runs in
+// the home folder. A model written as a relative path (./ or ../) still means the caller's folder.
+function modelFor(model, cwd = process.cwd()) {
+  return /^\.\.?[\\/]/.test(model) ? resolve(cwd, model) : model;
 }
 
 function runParakeet(runner) {
@@ -110,8 +122,16 @@ function runParakeet(runner) {
   try {
     execFileSync(
       runner,
-      [inputPath, "--model", args.model, "--output-format", "json", "--output-dir", workDir],
-      { stdio: ["ignore", "pipe", "pipe"], timeout: 1_800_000 },
+      [
+        inputPath,
+        "--model",
+        modelFor(args.model),
+        "--output-format",
+        "json",
+        "--output-dir",
+        workDir,
+      ],
+      { cwd: homedir(), stdio: ["ignore", "pipe", "pipe"], timeout: 1_800_000 },
     );
     const jsonPath = join(workDir, `${basename(inputPath, extname(inputPath))}.json`);
     if (!existsSync(jsonPath)) throw new Error("parakeet produced no JSON");
@@ -186,6 +206,9 @@ try {
   await track("media_use_transcribe", { engine });
 } catch (err) {
   if (args.json) console.log(JSON.stringify({ ok: false, error: err.message }));
-  else console.error(`error: transcription failed: ${err.message}`);
+  else
+    console.error(
+      `error: transcription failed: ${err.message}`.split("\n").map(terminalText).join("\n"),
+    );
   process.exit(1);
 }

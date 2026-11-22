@@ -1,0 +1,1 @@
+- `EAS Update insights is not supported by this version of eas-cli. Please upgrade ...` — retry with `npx --yes eas-cli@latest` from Expo's official package after checking its resolved version and command help; report the incompatibility if it persists.

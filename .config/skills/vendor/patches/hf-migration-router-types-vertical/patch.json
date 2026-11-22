@@ -1,0 +1,6 @@
+{
+  "reason": "Use the managed installed HyperFrames CLI without task-time npx downloads.",
+  "files": [
+    "hyperframes/.agents/skills/hyperframes/references/types/vertical.md"
+  ]
+}

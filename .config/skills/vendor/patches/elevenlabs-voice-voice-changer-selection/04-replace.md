@@ -1,0 +1,2 @@
+{{marker}}
+Choose a target voice that fits the brief and project choices rather than copying an example ID. Do not use George unless the user explicitly asks for George. List available voices on the account:

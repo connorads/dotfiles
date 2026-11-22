@@ -1,0 +1,1 @@
+(`npx hyperframes billing subscribe --feature reverse --skill reverse-any-video --session <id>`) for them to run from their home directory

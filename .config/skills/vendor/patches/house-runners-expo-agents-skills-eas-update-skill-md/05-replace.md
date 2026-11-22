@@ -1,0 +1,1 @@
+Use `eas update:configure` rather than manually inventing `updates.url`, `runtimeVersion`, native metadata, or build-profile channels. The command understands EAS project linking, Continuous Native Generation, and projects with committed native directories. Review and explain its resulting diff.

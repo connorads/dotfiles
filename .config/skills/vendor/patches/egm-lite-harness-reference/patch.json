@@ -1,0 +1,6 @@
+{
+  "reason": "Refer to upstream harness documentation without requiring plugin installation and preserve native fresh-context review.",
+  "files": [
+    "elephant-goldfish-model/.agents/skills/egm-lite/SKILL.md"
+  ]
+}

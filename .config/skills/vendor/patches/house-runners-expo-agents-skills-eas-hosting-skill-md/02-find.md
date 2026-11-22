@@ -1,1 +1,1 @@
-npx expo serve
+- **EAS Hosting**: Use `npx --yes eas-cli@latest env:create` or Expo dashboard

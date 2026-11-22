@@ -1,0 +1,1 @@
+const audioStream = await client.speechToSpeech.convert("selected_voice_id", {

@@ -1,0 +1,1 @@
+The URL is baked into the native layer at build time, so run `npx expo prebuild` and rebuild after changing it. If the backend expects standard OTLP paths without the project-ID prefix, route through a collector.

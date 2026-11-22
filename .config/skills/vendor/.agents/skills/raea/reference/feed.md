@@ -10,19 +10,26 @@ With no page, use the CLI instead: `raea controller` for the controllers, `raea 
 
 Access: PAGE.
 
-Post an item to the project's feed: a render to watch (.mp4), a still to look at (.png/.jpg), audio to listen to (.wav/.mp3/.m4a) or a game to play (its .tsx). The person sees it in the feed and leaves notes on it; a new version of an item names the one it replaces.
+Post an item to the project's feed: a render to watch (.mp4), a still to look at (.png/.jpg) or a storyboard of stills (look with files, in order), audio to listen to (.wav/.mp3/.m4a), a game to play (its .tsx), a 3D scene to look around in (scene: a 3D composition's or component's .tsx, or a model; with files, a board of them: a storyboard's shots, a grid of props or characters. The person moves through each one live, pins comments to points in its space, and moves, draws and re-times parts in its code), a script to read (read: its NAME.script.ts, raea's Script, which the feed shows as a screenplay and as an A/V table; or a .md for prose), or an artifact (a React .tsx of your own that the person uses in the feed: a picker, a form, a tool. Its default export is the component; it imports react, @raea/app (its item, its result back to you, comments) and its own files, nothing else; Tailwind classes use the feed's tokens; saving the file updates it in place), or an item a plugin the person installed draws (type plugin, its JSON as the file). The person sees it in the feed and leaves notes on it; a new version of an item names the one it replaces.
 
 | input | | |
 |---|---|---|
-| `type` | required | watch, look, listen or play |
+| `type` | required | watch, look, listen, play, scene, read, artifact or plugin |
+| `files` | optional | look: a storyboard's frames after the first (file), absolute paths, in order; the person sees them side by side. scene: the other scenes, props or characters after the first, in order |
+| `names` | optional | scene: what each entry is called on the board, in the files' order (file first); left out, each takes its file's name |
+| `plugin` | optional | plugin: the installed plugin and its item view, as "@you/raea-moodboard#moodboard"; the file is the JSON that view reads |
+| `ask` | optional | artifact: one line on what you want from the person, shown on its card |
 | `title` | required | what the person sees on the card |
 | `file` | required | absolute path of the file to post |
 | `replaces` | optional | the id of the item this is a new version of |
 | `changed` | optional | with replaces: one short line on what this version changed ("title bigger, cut the second shot"); the card shows it beside the new picture |
+| `answers` | optional | with replaces: the ids of the person's comments on that item this version settles; each shows done, linked to this version |
 | `export` | optional | true when this is a deliverable (an export for the client or a platform): it shows under Exports in the project's Table |
+| `final` | optional | true when this version is ready to share with reviewers, as you'd send it: it's tagged final and offered first when the person makes a review link. Say so only when it is, after the person's notes on it are settled |
 | `tags` | optional | tags; key:value tags (platform:tiktok, aspect:9x16, cut:15s, market:uk) become the Table's columns, so use the same keys across a project's exports |
 | `uses` | optional | the library files it was made from (footage, stills, music) |
 | `controls` | optional | play: the game's controls |
+| `labels` | optional | what each part of it is, shown as tags beside the picture that point at their place on hover: when one still holds several things (a contact sheet, a side by side, before and after, a grid of props), label each instead of naming them by position in the title. A few words each, a detail paragraph only when a tag isn't enough. Places are fractions of the picture, 0-1 from its top left |
 
 ## feed_propose
 
@@ -36,11 +43,25 @@ Propose a planned item for the person to accept: what you would make next, befor
 | `title` | required | the item you would make |
 | `why` | optional | one line on why |
 
+## comment_task
+
+Access: PAGE.
+
+Mark the person's comments on an item as you work them: each edit comment they send is a task they watch in the feed. Call it with state "working" as you start one (sub: a subagent's name when several of you split them), and "done" with a one-line note when it's settled without a new version or can't be; a version that settles comments says so with feed_post's answers instead. The note that sends them lists their ids.
+
+| input | | |
+|---|---|---|
+| `item` | required | the item the comments are on |
+| `comments` | required | the comments' ids |
+| `state` | required | working: you've started them; done: they're settled |
+| `sub` | optional | the subagent working them, when several split the comments |
+| `note` | optional | done: one line on what changed, or why it can't be done |
+
 ## item_tags
 
 Access: PAGE.
 
-Set the tags of an item already in the project's feed (feed_items lists them with their tags), to give the project's Table its structure: key:value tags (platform:tiktok, aspect:9x16) are its columns, and the tag export makes the item a deliverable. Replaces the item's own tags.
+Set the tags of an item already in the project's feed (feed_items lists them with their tags), to give the project's Table its structure: key:value tags (platform:tiktok, aspect:9x16) are its columns, the tag export makes the item a deliverable, and the tag final says this version is ready to share (it's offered first for a review link; put it on the newest version only, once it is). Replaces the item's own tags.
 
 | input | | |
 |---|---|---|
@@ -51,9 +72,53 @@ Set the tags of an item already in the project's feed (feed_items lists them wit
 
 Access: PAGE.
 
-Read the project's brief as it stands now, as brief.ts (`export default brief({...})` from "raea/brief"): what to make, for whom, the one thing to believe, its deliverables and staged tasks.
+Read the project's brief as it stands now, as brief.ts (`export default brief({...})` from "raea/brief"): what to make, for whom, the one thing to believe and its deliverables. Its tasks are the plan's: plan_read.
 
 No input.
+
+## plan_read
+
+Access: PAGE.
+
+Read the project's plan, plan.org at the top of its folder (Org mode): its open tasks under their stage headings, each with its id, keyword (TODO, MAKING, REVIEW), priority, tags, dates, progress, the feed item it stands on and who has it, and how many are closed. full: the whole file as well. Read it before you plan or change a task; the ids are how the other plan tools name tasks.
+
+| input | | |
+|---|---|---|
+| `full` | optional | the whole plan.org text as well: closed tasks, notes, checkboxes |
+
+## plan_add
+
+Access: PAGE.
+
+Add tasks to the project's plan, in order: before work of more than one step, its steps; whatever you find left to do. Each goes under a stage heading (under: its words, made when there's none) or a task (under: its id, a subtask), or before or after a task; with none of them, at the end. A task is yours unless agents names others. Answers with the new ids and the open tasks.
+
+| input | | |
+|---|---|---|
+| `tasks` | required | the tasks, in order, each { title, under?, before?, after?, state?, priority?, tags?, deadline?, scheduled?, item?, agents?, from?, checks?, note? }: under a stage heading's words or a task's id; deadline and scheduled as YYYY-MM-DD; agents by id (you when left out); checks its checkboxes |
+
+## plan_update
+
+Access: PAGE.
+
+Change tasks in the project's plan by id: mark one MAKING as you start it or REVIEW when it waits on the person, tick a checkbox (check: its place, 0 first) or add one, change its words, priority, tags, dates, item or who has it, add a note, move it, or remove it (a mistake only: drop work that no longer applies with plan_close). Answers with the open tasks.
+
+| input | | |
+|---|---|---|
+| `changes` | required | the changes, in order, each { id, state?, title?, priority?, tags?, deadline?, scheduled?, item?, agents?, note?, check?, done?, add_check?, move?, remove? }: state todo, making, review, done or dropped; check a checkbox's place (0 first) to tick; move { before, after or under } |
+
+## plan_close
+
+Access: PAGE.
+
+Close a task in the project's plan when its work is done: DONE with the time (CLOSED) and the feed item it made, or dropped when it no longer applies. Close each task you finish in the turn you finish it, with the item you posted. Done with checkboxes unticked or subtasks open is refused, naming them, unless all is true. Answers with the open tasks.
+
+| input | | |
+|---|---|---|
+| `id` | required | the task's id, from plan_read |
+| `state` | optional | done (the default) or dropped |
+| `item` | optional | the feed item that did it: feed_post's answer |
+| `note` | optional | one line on what was done, or why it was dropped |
+| `all` | optional | every checkbox and subtask under it is done too: they are ticked and closed with it |
 
 ## workspace_read
 
@@ -129,7 +194,7 @@ Make a channel (a client, a game, a show) from one sentence on what it is. Retur
 
 Access: PAGE.
 
-What the person has open in the composition editor right now: the composition, its version file, the playhead (seconds), the part they picked in the frame (id, name, box as fractions of the frame, any unsaved move/scale), and how many unsaved changes there are. Read it when they say "this", "here" or "the selected one".
+What the person has open in the composition editor right now: the composition, its version file, the playhead (seconds), the part they picked in the frame (id, name, box as fractions of the frame, any unsaved move/scale), and how many unsaved changes there are. Read it when they say "this", "here" or "the selected one". With a timeline open under a film, a scene or a sound, it also gives `timeline`: the item, fps, the playhead and length in frames, each track and its clips by id (start and length in frames, their speed and keyed properties), the picked clips, and how many edits stand unsent.
 
 No input.
 
@@ -137,7 +202,7 @@ No input.
 
 Access: PAGE.
 
-Change the composition open in the editor, the way the person does, in the version they're editing: it shows on their picture and their undo takes it back, and it's saved with their changes. Move, scale or fade a part on the picture (`part`: an id from editor_selection's parts; dx/dy in pixels, scale/opacity as multipliers), or move, trim, split or delete a <Sequence> on the timeline (`clip`: an i from editor_selection's clips; from/to/split in seconds, delete: true). One change a call. Read editor_selection first.
+Change the composition open in the editor, the way the person does, in the version they're editing: it shows on their picture and their undo takes it back, and it's saved with their changes. Move, scale or fade a part on the picture (`part`: an id from editor_selection's parts; dx/dy in pixels, scale/opacity as multipliers), or move, trim, split or delete a <Sequence> on the timeline (`clip`: an i from editor_selection's clips; from/to/split in seconds, delete: true). Or, on the open timeline, make any of its edits as one step with `ops`: a list of raea/editor operations on the clip ids and frames editor_selection's `timeline` gives (`{ op: "split", at: 90, ids: ["seq-2"] }`, `{ op: "move", ids, by }`, `{ op: "trim", id, edge: "start"|"end", to }`, `{ op: "remove", ids }`, `{ op: "set", id, set: { speed, volume, props } }`, `{ op: "key", id, prop, at, value, ease }`, `{ op: "transition", ... }`); they land in the person's undo history, the clips they touch light up, and Send carries them with the person's. One change a call (one `ops` list is one change). Read editor_selection first.
 
 | input | | |
 |---|---|---|
@@ -151,6 +216,7 @@ Change the composition open in the editor, the way the person does, in the versi
 | `to` | optional | the clip's new end, seconds |
 | `split` | optional | split the clip here, seconds |
 | `delete` | optional | delete the clip |
+| `ops` | optional | raea/editor operations on the open timeline's clip ids (editor_selection's timeline), made as one step |
 
 ## feed_items
 
@@ -174,7 +240,7 @@ Read a whiteboard item: its plan (what you or another agent wrote) and every ele
 
 Access: PAGE.
 
-Make a whiteboard (a plan, with no board) or change one (board plus a plan to replace its plan, or a patch). Say what is on it and how it's grouped; the feed lays it out, so never give positions. Sections become frames side by side: notes stacks cards, flow stacks them with arrows between, refs shows feed items' posters. People's own drawing on the board is kept.
+For mapping, not for showing the plan: how ideas, options and references connect, a structure to rearrange. A plan the person should judge is better shown as what it will be: previz (a rough raea render, feed_post watch), a storyboard (key frames as one look item with files), or a script (read: its NAME.script.ts, shown as a screenplay or an A/V table); use those first. Make a whiteboard (a plan, with no board) or change one (board plus a plan to replace its plan, or a patch). Say what is on it and how it's grouped; the feed lays it out, so never give positions. Sections become frames side by side: notes stacks cards, flow stacks them with arrows between, refs shows feed items' posters. People's own drawing on the board is kept.
 
 | input | | |
 |---|---|---|
@@ -215,4 +281,151 @@ Run a flow board's workflow as it stands through raea gen (ComfyUI). Its outputs
 | input | | |
 |---|---|---|
 | `board` | required | the flow board's item id |
+
+## share_link
+
+Access: PAGE, when the person allows agents to share.
+
+Share an item for review: its file goes up to the person's raea storage (Pro or Team) and a link anyone can open is made, raea.io/r/<token>, where reviewers watch it and comment on the picture without an account. Hand the link on as you're asked. Sharing an item that already has a live link adds this file to it as the next version, on the same URL. Good for 30 days unless days says otherwise; downloads off unless download is true; an optional password.
+
+| input | | |
+|---|---|---|
+| `item` | required | the feed item to share (feed_items lists them); its media is the file |
+| `title` | optional | what the reviewer sees as its name; the item's title when left out |
+| `days` | optional | how long the link works, 1 to 365 (30 when left out) |
+| `download` | optional | let reviewers download the file |
+| `password` | optional | a password reviewers must give |
+
+## share_links
+
+Access: PAGE, when the person allows agents to share.
+
+List the person's review links, newest first: each one's url, item, state (live, expired, stopped), views, comments from reviewers, approval and expiry. With item, that item's alone. With link, one link in full: its versions, every comment (guest is a reviewer's) and who viewed it.
+
+| input | | |
+|---|---|---|
+| `item` | optional | only this item's links |
+| `link` | optional | one link's id, in full |
+
+## share_change
+
+Access: PAGE, when the person allows agents to share.
+
+Change a live review link: its title, how many more days it works (from now), downloads on or off, its password (an empty string takes it off). Or stop it (stop: true): the link stops working for everyone at once. Or answer a reviewer's comment on it (reply, with parent: the comment's id), or mark one resolved.
+
+| input | | |
+|---|---|---|
+| `link` | required | the link's id (share_links lists them) |
+| `title` | optional | its new title |
+| `days` | optional | it works this many days from now, 1 to 365 |
+| `download` | optional | let reviewers download the file |
+| `password` | optional | a new password; empty to take it off |
+| `stop` | optional | stop sharing: the link stops working |
+| `reply` | optional | an answer to show on the link's page |
+| `parent` | optional | the comment it answers |
+| `resolve` | optional | a comment's id to mark resolved |
+
+## bug_report
+
+Access: HOST.
+
+Tell raea about a bug you found in raea itself: a raea command that fails or hangs, a wrong result, help or a guide that says one thing while raea does another. Not for a bug in your own composition. Words only: paths, emails and keys are taken out before it's sent, and the same bug again is counted on the first report. Then carry on with a workaround.
+
+| input | | |
+|---|---|---|
+| `title` | required | what's wrong, in a line |
+| `text` | required | what you did, what you expected, what happened |
+| `command` | optional | the raea command that went wrong, when there was one |
+| `error` | optional | what it printed |
+| `dry_run` | optional | show what would be sent, and send nothing |
+
+## storage_status
+
+Access: HOST.
+
+What raea keeps on this Mac and in its cloud: every byte by place (projects' files, Git LFS's second copies, the feed's renders, drafts, light copies, playback copies), the cloud's room on the person's plan, and this project's media files each with its state: synced (here and in raea's cloud), upload (committed, not sent yet), uncommitted (new or changed), cloud (only in raea's cloud: a pointer here, back when opened), local (this Mac only: Free, or not saved to raea), unchecked (raea's cloud couldn't be asked). Read it before rendering big or when the person asks where space went.
+
+| input | | |
+|---|---|---|
+| `max` | optional | how many of the project's files to list, biggest first (50 when left out) |
+
+## storage_plan
+
+Access: HOST.
+
+A dry run of old and unused files: feed renders no item mentions (class render; unowned for ones posted before raea recorded who posted them, which a workspace outside raea's folder could still name), earlier versions (NAME-v1 beside a newer NAME-v2) in a project's out/ that nothing mentions, frame folders and half-written .part files a render left. Each with its path, size, class and why, how many files in which workspaces raea read for their names (written out, URL-encoded, or fitting a template like out/shot-${i}.mp4), and the list's id. Never listed: anything mentioned, final work (final, master, export, deliver, approved anywhere in its name), a file without an explicit -vN in out/ (shot-1, spot-30 are different files), the newest of a name's versions, anything opened or changed in the last week, a project's sources. Moves nothing.
+
+| input | | |
+|---|---|---|
+| `max` | optional | how many candidates to list, biggest first (300 when left out) |
+
+## storage_trash
+
+Access: HOST, then PERSON (they confirm in Settings › Storage).
+
+Ask the person to move files from a storage_plan list to the Trash. Moves nothing itself: the list shows in Settings › Storage › Old and unused, ticked, and the person moves it (each file checked again, then to the Trash, where Put Back returns it) or keeps it. Show the person the list in your reply first, and call this only with the paths they agreed to. Never rm or overwrite a render or a project's file yourself.
+
+| input | | |
+|---|---|---|
+| `plan` | required | the list's id, from storage_plan |
+| `paths` | required | the paths from that list the person agreed to |
+| `why` | optional | one line the person sees with the list |
+
+## footage_add
+
+Access: HOST.
+
+Bring footage, sounds or stills into this project's assets/footage/ by their paths (files, or folders of them). Without go, a dry run: each clip, where it lands, and whether it's a clone (same APFS disk: takes no space) or a copy (another disk: its full size), refused if a copy would leave the Mac under its reserve. With go: true, the clips are cloned in. For a drive or an archive that should stay where it is, ask the person to link it as a library instead (Library → New library).
+
+| input | | |
+|---|---|---|
+| `files` | required | absolute paths of the clips or folders |
+| `go` | optional | true: add them (after a dry run you've read); left out: the dry run only |
+
+## rules_read
+
+Access: HOST.
+
+Read every rule this project's work follows, nearest first: the project's own (its taste.ts), the workspace's house rules, then the person's taste (taste.ts for everything, then motion, games, sound and ui). Each rule has its words, its section, and when known: when it applies, what checks it (a check raea measures, a script in the project, a fingerprint axis), and who wrote it (an agent's rule the person hasn't kept yet says waiting). With the fingerprint that judges the project and its axes. Read it before you start, and again before you post: the person changes rules in Fingerprint › Rules while you work.
+
+No input.
+
+## rule_add
+
+Access: HOST.
+
+Add a standing rule to the project's rules (or the workspace's house rules, level workspace), when the person states a preference that should hold for all of this work from now ("make this a rule", "always…", "never again…", "note that for later"), not a fix for one item. One plain sentence that holds for future work, with when it applies. It holds at once, written to the project's taste.ts and committed; the person sees it under Waiting for you in Fingerprint › Rules, where they keep, change or drop it, or move it into their own taste. Never for the person's own taste: they move a rule up themselves. check only when raea can measure the rule; axis when one of the fingerprint's axes (rules_read lists them) names what it guards against; run for a script in the project that exits 0 while the rule holds.
+
+| input | | |
+|---|---|---|
+| `text` | required | the rule, one plain sentence in the person's terms ("Words never cover the action.") |
+| `when` | optional | when it applies, the "if this" ("a line is on screen in a 9:16 ad"); left out, always |
+| `why` | required | one line: what the person said or did that makes it a rule |
+| `section` | optional | its section: a topic (Sound, Captions, Camera) or Always or Never; Always when left out |
+| `check` | optional | a check raea measures, as FORM VALUE: text-hold S, text-above P%, text-below P%, text-margin N, loudness L, still-max S |
+| `run` | optional | a script in the project's (or workspace's) folder, by its path there, that takes the file and exits 0 while the rule holds |
+| `axis` | optional | the fingerprint axis that holds it (clip, dark…), from rules_read |
+| `level` | optional | project (the default) or workspace |
+
+## rule_check
+
+Access: HOST.
+
+Hold a file (a render, a still, a sound, a game) to every rule that applies, before you post it: rules with a measured check run through raea check --taste, rules linked to a fingerprint axis through raea fingerprint score, rules with a script by running it, and the rest by your own eye, which you pass as verdicts after looking. Answers each rule held, broken (and where), flagged (the fingerprint points at moments it only advises on) or unchecked, with how it was checked, and a summary line the person sees in the chat. Never a score: say what broke and where. Fix what's broken and check again before feed_post.
+
+| input | | |
+|---|---|---|
+| `file` | required | the file to check, absolute or in the project's folder |
+| `verdicts` | optional | your own look at rules nothing measures: each { text (the rule's words, as rules_read gives them), held (true or false), at (a moment, 0:06), how (one line on what you looked at) } |
+
+## project_collaborators
+
+Access: PAGE, when the person allows agents to share.
+
+The people invited into this project (Team): list them, invite someone who has a raea account by their GitHub username or email (they reach the project's media once they accept, and the person's GitHub adds them to its repo), or remove someone.
+
+| input | | |
+|---|---|---|
+| `invite` | optional | a GitHub username or email to invite |
+| `remove` | optional | a collaborator's user id to remove (the list gives it) |
 

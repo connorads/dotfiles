@@ -1,0 +1,3 @@
+Follow the submission URL returned by `eas submit` for status and logs. Check Play Console for the resulting track and release state.
+
+With EAS CLI 23.2.0, `eas submit:list -p android --json --non-interactive` and `eas submit:view SUBMISSION_ID --json` report EAS submission jobs. Capture their output privately and use the bundled status helper as shown in [Monitoring](../SKILL.md#monitoring); raw responses can contain account names and private log URLs. `submit:status` currently reads Apple status only; do not treat an EAS job's success as confirmation of Play Console rollout.

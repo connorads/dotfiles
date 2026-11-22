@@ -48,6 +48,24 @@ it('settings: a failed state read says why and loads again on Try again', async 
   expect(await slot.findByText('No connections yet.')).toBeTruthy();
 });
 
+it('popover: opens connection settings by click and returns to the picker', async () => {
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      state: () => stateOf({ connections: [connection('coding', 'Coding', { isDefault: true })] }),
+      threadChoice: () => ({ kind: 'default' }),
+    },
+  });
+  act(() => toggle('t-settings', 'keyboard'));
+  await overlay.findByRole('button', { name: /no Executor tools/ });
+  fireEvent.click(overlay.getByRole('button', { name: 'Executor settings' }));
+  expect(overlay.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+  expect(overlay.getByRole('dialog', { name: 'Executor settings' })).toBeTruthy();
+  expect(fireEvent.keyDown(overlay.getByRole('textbox', { name: 'Connection name' }), { key: 'a' })).toBe(true);
+  fireEvent.click(overlay.getByRole('button', { name: 'Back to connections' }));
+  expect(overlay.getByRole('button', { name: /no Executor tools/ })).toBeTruthy();
+  expect(document.activeElement).toBe(overlay.getByRole('button', { name: 'Executor settings' }));
+});
+
 it('settings: adds a connection, then starts its sign-in', async () => {
   let view = stateOf({});
   const slot = renderSlot(app.settingsSections[0]!, {}, {

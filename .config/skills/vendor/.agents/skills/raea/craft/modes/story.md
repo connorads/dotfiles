@@ -12,8 +12,9 @@ they want the whole film.
 - **A world first.** The brief's `## Look` commits to one world: what each colour means, the light, the camera
   language, the type. Every shot belongs to it. Shots that look borrowed from different films break the spell.
 - **A storyboard and a camera map before shooting.** For each shot: the subject, the framing, how the camera moves
-  and how the cut joins the next shot (motion matched, a planned reversal, a hard cut on a hit). The person approves
-  the board before anything renders.
+  and how the cut joins the next shot (motion matched, a planned reversal, a hard cut on a hit). Plan the cuts as a
+  chain of hooks on the thirds, each shot taking the eye in where the last one left it (`raea guide match-cuts`). The
+  person approves the board before anything renders.
 - **Shots on a subject.** Close or medium on a person, an object, an action. A wide shot earns its place by showing
   where we are, once, and still has something in it.
 - **Cameras moving through cuts.** A shot starts already moving and ends still moving, so the cut joins motion to
@@ -32,8 +33,9 @@ they want the whole film.
   moves. The easy default is choosing a look shot by shot from references, and that ends up as several films.
 - **Each shot's subject.** Choose the person, object or action each shot is about. The easy default is a wide
   establishing shot, so question every one.
-- **What the music does.** It either leads, and you cut to its map, or it sits under the picture as a score. The easy
-  default is a cut on every bar.
+- **What the music does.** It either leads, and you cut to its map, or it scores the picture, written to the cut, or a
+  scene has none and belongs to its own sound or to silence. The easy defaults are a cut on every bar and a score
+  that is one held chord.
 - **The poster frame.** Choose it before anything renders, and build the edit toward it.
 
 ## The rut

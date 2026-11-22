@@ -1,1 +1,1 @@
-eas build -p android --profile production --auto-submit
+eas build --profile production

@@ -4,7 +4,7 @@ A composition is a React component that is rendered once per frame. Every frame 
 alone, with nothing carried over between frames. The engine decodes the footage, paints the page, draws the 3D
 and mixes the sound, so your job is to say what each frame looks and sounds like.
 
-Write it in the object's own files: edit.tsx, cuts.ts (`raea cut` writes it) and components/ (`raea part add` copies
+Write it in the object's own files: edit.tsx, cuts.ts (`raea cut` writes it) and components/ (`raea component add` copies
 parts in). AGENTS.md lists the whole API. These files say how to use it well.
 
 ## Which file to read
@@ -15,9 +15,11 @@ Read the files a task needs with `raea guide motion/NAME`, one or two at a time,
 |---|---|
 | starting a file, sizing it, picking compositions | `motion/compositions` |
 | deciding when things happen, cutting into scenes | `motion/timing` |
+| planning how shots cut into each other: hooks on the thirds, the eye carried through each cut | `motion/match-cuts` |
 | moving anything: entrances, exits, counters, push-ins | `motion/animating` |
 | cutting takes, framing a face, trimming, clip sound | `motion/footage` |
-| music beds, foley, gains, fades, the master | `motion/sound` (the music itself: `motion/music`) |
+| what each scene is heard as, effects and foley, gains, fades, the master | `motion/sound` (the music itself: `motion/music`) |
+| where sounds come from: the local models and their setup, sample libraries, effect packs, MIDI | `motion/sources` |
 | captions, or anything cued to what someone says | `motion/words` |
 | putting parts over a face, platform zones, the proof | `motion/placement` |
 | cards, stacks, type sizes, fonts | `motion/layout` |
@@ -38,6 +40,17 @@ Read the files a task needs with `raea guide motion/NAME`, one or two at a time,
    `useState`, `useEffect` and timers don't animate a render. `Math.random()` is seeded for each frame: a render
    repeats, but every frame draws new numbers, so it suits grain or a flicker, and something that should hold still
    (a scatter, a layout) is seeded from an index. `Date` (`Date.now()`, `new Date()`) is the frame's time.
+   A frame that needs one more step before it's taken (text measured in an effect, a fetch) holds it with
+   `delayRender("what it waits for")` and releases it with `continueRender(handle)` (`raea/hold`); a hold never
+   released fails the render after 30 s, naming its label.
+   Components written for a web page measure as they do in Chrome: a ref's `getBoundingClientRect`, `offsetWidth`
+   and `style`, `querySelector`, `document.createElement` (a hidden copy to measure), `document.createRange`, an svg
+   `<text>`'s `getComputedTextLength`, a canvas's `measureText`, `ResizeObserver`, `requestAnimationFrame`,
+   `new Image()` and an `<img>`'s `onLoad` answer from the page that draws the frame (installed for you:
+   `raea/dom-reads`, `raea/dom-tree`, `raea/dom-style`, `raea/dom-document`, `raea/dom-range`, `raea/dom-svgtext`,
+   `raea/canvas2d`, `raea/dom-observers`, `raea/frame-globals` and `raea/dom-load`). Load a web font with
+   `loadFont` (`raea/text`) so it's measured in its own faces. `MutationObserver` and `IntersectionObserver` never
+   call back.
 3. **Clamp every interpolate.** The default extrapolation extends the line forever, so use
    `{extrapolateLeft: "clamp", extrapolateRight: "clamp"}` unless you mean otherwise. Inputs must strictly increase.
 4. **Settle with `Easing.out(Easing.cubic)`.** The plain curves (`Easing.cubic`, `Easing.quad`) ease in, and
@@ -51,9 +64,11 @@ Read the files a task needs with `raea guide motion/NAME`, one or two at a time,
    (`text-brand-accent`, `bg-brand-surface`, `font-brand`, `text-title`, `rounded-brand` and the rest in AGENTS.md),
    or `var(--brand-*)` where a class can't reach. Never write a hex palette of your own. A role the kit leaves empty
    is yours to decide from the brand's own colours (`motion/brand`).
-8. **Sound is part of the edit.** Each sound goes in its own `<Sequence from layout="none">`. Use `gainDb` for
-   levels, Tone.js for music (`motion/music`: TokenSynth or sample-library instruments in a Sampler) and `sao()` for
-   foley, and put one `<Mix lufs={-14} />` in the composition. Put the sounds in the tree in time order.
+8. **Sound is part of the edit.** Decide what each scene is heard as (silence, its own sound, source music, score,
+   effects) before placing any; music is composed for the cut, never a bed by default. Each sound goes in its own
+   `<Sequence from layout="none">`. Use `gainDb` for levels, Tone.js for music (`motion/music`: sample-library or
+   TokenSynth instruments in a Sampler, playing a motif, chords that move and a rhythm) and `sao()` for foley, and
+   put one `<Mix lufs={-14} />` in the composition. Put the sounds in the tree in time order.
 9. **Keep animated styles present on every frame.** The engine keeps a style property that React stops sending.
    Write `transform: scale(1)` and `opacity: 1` rather than leaving them out when an animation settles. Always set
    `fontFamily`, because the engine's default face is a serif.
@@ -68,13 +83,19 @@ unreadable text, the wrong loudness) and bans (invented claims, generated imager
 ## A whole composition, small
 
 ```tsx
-import { AbsoluteFill, Composition, Easing, Mix, Sequence, Audio, interpolate, registerRoot, sao, useCurrentFrame, useVideoConfig } from "raea";
+import { AbsoluteFill, Composition, Easing, Mix, Sequence, Audio, interpolate, registerRoot, sao, staticFile, useCurrentFrame, useVideoConfig } from "raea";
 import * as Tone from "raea/tone";
 import { css } from "./styles.gen";
 
-// the bed: one TokenSynth instrument in a Sampler, a bar of notes on a loop (motion/music)
-const keys = new Tone.Sampler({ urls: Tone.tokensynth("a soft felt piano, warm, intimate", ["C3", "C4"], { seconds: 2 }), volume: -14 }).connect(Tone.buses.music);
-new Tone.Sequence((t, n) => keys.triggerAttackRelease(n, "4n", t), ["C4", "G3", "E4", "G3"], "4n").start(0);
+// the music: a chord on the title and a two-note lift after it, on a library piano (`raea sounds get
+// salamander/piano`: roots a minor third apart, D#4 as Ds4.mp3); a sting, not a bed (motion/music)
+const ROOTS = ["C4", "D#4", "F#4", "A4", "C5", "D#5"];
+const piano = new Tone.Sampler({ urls: Object.fromEntries(ROOTS.map((n) => [n, staticFile(`sounds/salamander-piano/${n.replace("#", "s")}.mp3`)])), release: 1, volume: -10 }).connect(Tone.buses.music);
+new Tone.Part((t, n) => piano.triggerAttackRelease(n.notes, n.dur, t, n.vel), [
+  { time: "0:0", notes: ["C4", "E4", "G4", "C5"], dur: "2n", vel: 0.8 },
+  { time: "0:2", notes: ["D5"], dur: "8n", vel: 0.55 },
+  { time: "0:2:2", notes: ["E5"], dur: "4n", vel: 0.65 },
+]).start(0);
 Tone.getTransport().start();
 const WHOOSH = sao("soft airy whoosh, short, clean, no music", { seconds: 0.8 });
 

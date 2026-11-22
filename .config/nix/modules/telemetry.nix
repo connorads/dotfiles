@@ -29,6 +29,7 @@ let
     ORT_DISABLE_TELEMETRY = "1";
     AWS_CLI_SESSION_ID_DISABLED = "true";
     SAND_DISABLE_TELEMETRY = "1";
+    AGY_CLI_DISABLE_AUTO_UPDATE = "true";
   }
   // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
     HOMEBREW_NO_ANALYTICS = "1";

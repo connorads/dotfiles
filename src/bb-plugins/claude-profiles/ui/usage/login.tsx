@@ -78,6 +78,7 @@ export function LoginPage({ subPath }: PluginNavPanelProps) {
         if (!alive) return;
         setHidden(!shown);
         setMessage(opencode ? 'Open the link in the terminal on any device and enter the code.'
+          : antigravity ? 'Open the Google sign-in link shown in the terminal. Paste the code Google gives you back into the terminal.'
           : !codex ? `Complete ${name} sign-in in the terminal and browser.`
           : method === 'device' ? 'Open the link in the terminal on any device and enter the code.'
             : 'Complete Codex sign-in in the terminal and the browser on the account machine.');

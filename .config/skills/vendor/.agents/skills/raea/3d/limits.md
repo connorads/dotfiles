@@ -33,7 +33,15 @@
 The router's eight, plus:
 
 - Parts are matched across frames by `name`, else kind and shape in tree order: name what comes and goes.
-- The first camera, and the first frame's Bloom, Fog, ToneMapping and Shadows, are the piece's.
+- The first active camera is the piece's (`<Camera3d is_active={false}>` draws nothing that frame, its depth of
+  field and ambient with it). A frame where another camera becomes the piece's is a cut: it's drawn as a shot rendered
+  alone draws its first frame (no motion blur from the frame before, Solari's history started again), so one render of
+  shots on several cameras draws each shot as it's drawn alone: a shot re-rendered with `--at` its frames is identical
+  (as its own composition from frame 0, motion blur's grain, seeded by the frame number, differs after its first
+  frame). A teleport of one camera isn't a cut: motion blur smears it; use two cameras. The effects and each light's
+  colour, shadows and shafts are each frame's own. A frame that brings or takes a sky, ambient occlusion,
+  anti-aliasing, a tonemapper, shadows or volumetric fog (a cut to a shot with a different look) warms up as a load
+  does, about 0.3 s at that frame; a value that moves (a grade ramping) doesn't.
 - Overlapping FogVolumes are composited in the order of their rows (the engine pins it), so a render of any frame
   equals its play; give each a `name` so its row, and so the order, stays put when others come and go.
 - A partly transparent page element over the 3D blends slightly differently in a render than in play; keep page
@@ -47,14 +55,16 @@ The router's eight, plus:
   the 3D.
 - `<Camera3d projection={{ Orthographic: { scaling_mode: { FixedVertical: { viewport_height } } } }}>`, `layers` on parts, lights and the camera, sprite sheets on ImagePlane (`grid`,
   `frame`) are there, and `pick(pointer, camera, parts, size)` answers which part the pointer is over. A second camera
-  or a viewport is an `<Entity>` with Bevy's `Camera3d` and `Camera` (see below), not a second `<Camera3d>`.
+  drawing at once (over the first, or into a viewport) is a second `<Camera3d order clear_color viewport>`, or an
+  `<Entity>` with Bevy's `Camera3d` and `Camera` (see below); a second camera to cut to is `<Camera3d is_active>`.
 - Physics engines in a live game, particle systems: do motion in the game's step. (Fire is there: `<Fire>` in
   `bevy/post`.)
 - Bevy's own AnimationEvent (use `clipEvents(events, prev, now, duration)` from `raea/3d`).
 - A looked model (`look="pixel"`/`"site"`) is drawn over the scene: parts in front of it don't hide it. At most 30.
 - A shader of your own on a standard material or a Model (the looks are the engine's own; a shader you write draws
-  its own shape, as `<ShaderMesh>`, below); react-three-fiber's `useFrame`, refs, `<primitive>` and drei helpers: none
-  of them exist here.
+  its own shape, as `<ShaderMesh>`, below). react-three-fiber's `useFrame`, refs, `<primitive>` and drei helpers
+  don't drive raea's own components; inside `<R3F>` they work, and a plain three.js page runs in `<Three program>`
+  (`bevy/r3f`, with what three.js work doesn't draw yet).
 
 Since 2026-10-22: `emissive_texture`, `alpha_mode`, `cull_mode`, real glass (`specular_transmission ior thickness`
 on StandardMaterial), `receiveShadow={false}`, `<Capsule3d>`, and any of Bevy's own reflected components inside a

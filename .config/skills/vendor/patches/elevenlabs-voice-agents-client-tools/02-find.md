@@ -7,7 +7,7 @@ agent = client.conversational_ai.agents.create(
                 "prompt": """You are a shopping assistant.
 When users want to see a product, use show_product.
 When users want to go somewhere, use navigate_to.""",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "tools": [
                     {
                         "type": "client",

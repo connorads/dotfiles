@@ -20,6 +20,10 @@ to a song, and the person's footage libraries. The files under `motion/` and `cr
 
 All HEADLESS (reference/cli.md has every flag):
 - `raea library search "WORDS"` finds a take in the person's libraries; `raea library` manages them.
+- `raea index search WORDS` finds a picture, or the moment in a video, among everything the person has switched on
+  in the raea app's Library → Index (folders, drives, Apple Photos), in milliseconds; `--json` gives each hit's file
+  and moment. `raea index add FOLDER` (or `photos:`) puts a source in, fast, on the Neural Engine; nothing leaves the
+  Mac. Reach for it when the person says "that photo of…" or "the clip where…" and the take isn't in a project yet.
 - `raea cut TAKE "line" ...` writes cuts.ts and words.json: the take cut in the pauses around each line it says.
 - `raea frame TAKE` says how a take fits the edit (`<FaceFrame>` for a talking take, `<ScreenFit>` for a screen).
 - `raea song FILE --plot FILE.song.png` maps a song's beats, sections, builds and drops: time cuts from the map, never a

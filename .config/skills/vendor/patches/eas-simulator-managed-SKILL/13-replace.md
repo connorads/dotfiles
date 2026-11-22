@@ -1,0 +1,1 @@
+eas simulator:start --help

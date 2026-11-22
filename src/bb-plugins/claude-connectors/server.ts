@@ -124,7 +124,7 @@ export default async function plugin(bb: BbPluginApi) {
 
   bb.agents.registerTool({
     name: 'claude_connectors_list',
-    description: 'List the claude.ai connectors (Slack, Snowflake, HubSpot, ...) available to this thread, or with `connector` set, that connector\'s tools, access and input schemas.',
+    description: 'List the claude.ai connectors (Slack, Snowflake, HubSpot, ...) available to this thread, or with `connector` set, that connector\'s tools, access and input schemas. Off unless the person turns connectors on for this thread; try it when asked to use one of these apps.',
     presentation: { label: { pending: 'Listing Claude connectors', completed: 'Listed Claude connectors' } },
     parameters: z.object({ connector: z.string().min(1).optional().describe('Connector name, such as "Slack". Omit to list connectors.') }),
     async execute({ connector }, ctx) {
@@ -165,11 +165,14 @@ export default async function plugin(bb: BbPluginApi) {
     },
   });
 
+  // Every session gets the tools: a Codex thread keeps its start-time tool list for life, even across resume.
+  // The tools check access per call, so turning connectors on works from the thread's next call.
   bb.agents.configure(ctx => {
+    const tools = ['claude_connectors_list', 'claude_connectors_call'];
     const resolved = resolve(ctx.thread.id, ctx.project.id);
-    if (!resolved.profile) return { tools: [], skills: [] };
+    if (!resolved.profile) return { tools, skills: [] };
     return {
-      tools: ['claude_connectors_list', 'claude_connectors_call'],
+      tools,
       skills: [],
       instructions: `Claude connectors from the "${resolved.profile}" Claude profile are available through claude_connectors_list and claude_connectors_call. `
         + 'They act as the person in that workspace. '

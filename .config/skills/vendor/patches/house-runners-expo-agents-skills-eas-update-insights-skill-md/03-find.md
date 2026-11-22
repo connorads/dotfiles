@@ -1,0 +1,1 @@
+Before querying insights for an update group, you need its `group` ID. Use `npx --yes eas-cli@latest update:list` with either `--branch <name>` (updates on that branch) or `--all` (updates across all branches). Always pass `--json --non-interactive` when running non-interactively; without a branch/`--all` flag the command will otherwise prompt for a branch selection:

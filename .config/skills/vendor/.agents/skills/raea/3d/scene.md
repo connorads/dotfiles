@@ -60,7 +60,8 @@ title's slide. Entities are composed into world space before the engine sees the
   `Transform.fromXyz(0, 1, 6).lookingAt([0, 0, 0])` and adjust.
 - `.lookingAt` a point straight above or below the camera: there's no up to turn by. Look a little off vertical.
 - Two cameras to cut between angles. Use one camera whose transform jumps at the cut frame.
-- `useFrame` or refs from react-three-fiber. There's no render loop: write the frame's values as props.
+- `useFrame` or refs from react-three-fiber on raea's own components: there's no render loop for them. Write the
+  frame's values as props. An R3F scene goes inside `<R3F>`, where they work (`bevy/r3f`).
 - 2D meant to pass behind a 3D part, without a `<Canvas3D layered>`: otherwise the whole page is over the 3D.
 - An unpositioned element after a layered Canvas3D: it paints under the 3D (CSS paints positioned boxes last). Make
   it `position: absolute`.

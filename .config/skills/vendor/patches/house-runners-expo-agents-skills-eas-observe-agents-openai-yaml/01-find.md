@@ -1,0 +1,1 @@
+  default_prompt: "Use $eas-observe to add expo-observe instrumentation (AppMetricsRoot/ObserveRoot, useObserve, ObserveInteractiveMarker, the router integrations, error reporting), query metrics with npx --yes eas-cli@latest observe:* commands, and interpret cold/warm launch, TTR, and TTI results."

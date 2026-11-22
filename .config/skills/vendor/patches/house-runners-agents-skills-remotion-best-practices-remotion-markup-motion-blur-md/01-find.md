@@ -1,1 +1,1 @@
-Install it with `npx remotion add @remotion/motion-blur`.
+bunx remotion add @remotion/motion-blur

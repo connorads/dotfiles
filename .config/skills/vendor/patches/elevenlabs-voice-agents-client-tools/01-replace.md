@@ -5,7 +5,7 @@ agent = client.conversational_ai.agents.create(
         "agent": {
             "prompt": {
                 "prompt": "You are a helpful assistant that can check the weather.",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "tools": [{
                     "type": "webhook",
                     "name": "get_weather",

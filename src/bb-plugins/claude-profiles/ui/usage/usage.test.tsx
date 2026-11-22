@@ -452,6 +452,23 @@ test.each(['expired', 'unauthenticated'] as const)('%s Claude login shows one ac
   await waitFor(() => expect(slot.queryByRole('dialog')).toBeNull());
 });
 
+test.each([null, 'ok'] as const)('Antigravity sign-in is available with usage status %s', async status => {
+  const app = await load();
+  const accountId = 'claude-profiles:["antigravity","host-one","secondary"]';
+  const secondary = account('Antigravity', 'Secondary', [
+    { label: 'Gemini Models · Weekly', period: 'week', usedPercent: 5, resetsAt: hoursFromNow(100), cost: null },
+  ]);
+  const provider = { ...secondary, id: accountId, providerId: 'acp-antigravity-profile-secondary',
+    usage: status === 'ok' ? secondary.usage : null };
+  const slot = renderSlot(overview(app), {}, { rpc: { 'usage.inspection': async () => inspect({
+    machines: [{ ...snapshot.machines[0]!, providers: [provider] }],
+  }) } });
+  act(() => openUsage());
+  fireEvent.click(await slot.findByRole('button', { name: 'Sign in to Secondary' }));
+  expect(slot.inspection.navigateCalls).toContainEqual({ method: 'toPluginPanel', path: 'claude-login',
+    options: { subPath: JSON.stringify({ hostId: 'host-one', accountId }) } });
+});
+
 test.each(['expired', 'unauthenticated'] as const)('%s OpenCode account opens sign-in from Agent usage', async status => {
   const app = await load();
   const accountId = 'provider-acp:["host-one","acp-opencode"]';

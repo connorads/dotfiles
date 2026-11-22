@@ -1,1 +1,1 @@
-eas simulator:exec agent-device devices --json
+eas simulator:start --platform android --device pixel_tablet \

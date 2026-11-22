@@ -16,6 +16,39 @@ Each step below says where it runs. **HEADLESS**: the `raea` CLI alone, in any s
 running on this machine (its host answers). **PAGE**: needs the person's feed open in the app. **PERSON**: only the
 person can do it. Every PAGE step says what a headless agent does instead.
 
+## 0. First, every time: which workspace, which project — HEADLESS
+<!-- sources: apps/workspace/src engine/cli/src -->
+
+Before you write, render or generate anything, settle where the work belongs, and keep it all there. Agents most often
+go wrong by starting to make things first and finding a home for them later, or never.
+1. **The workspace.** `raea workspace --json` says which one you're in. The workspaces are the folders under raea.root
+   (`git config --global raea.root`). If you're in none, or not the one this work is for (the studio or client it's
+   for), pick the right one, and ask the person when it isn't clear. `raea workspace init NAME` only when they want a
+   new one.
+2. **The project.** `raea workspace --json` lists the workspace's projects and their folders, and `raea project --json`
+   says which one you're in. Pick the one the request belongs to. When
+   none fits, say which project you'd make and make it (`raea project new NAME`) before any file of the work; ask
+   when it's unclear which one is meant.
+3. **Name it by id.** A project's id is its folder's name, as `raea workspace --json` lists it. Titles repeat and
+   drift, and agents that go by them post to the wrong project; ids don't. So name a project by `WORKSPACE/ID`
+   everywhere (`raea show --project WORKSPACE/ID`, your notes, what you tell the person). When the person pastes a line
+   from the app's Copy reference (a line that reads raea feed item "Hero cut" (i-acp-1) in project "Launch"
+   (launch), workspace "Acme": /path/..., naming no command), it names exactly the thing they mean: that item, in that
+   project.
+4. **Say it, then go there.** One line before you start: "Working in WORKSPACE / PROJECT (WORKSPACE/ID)." Then
+   `cd` into the project's folder and read its context (section 3). Everything you make goes in it: compositions in
+   `compositions/`, footage and media in `assets/`, renders in `out/`. Never in the home folder, the Desktop, a temp
+   folder or wherever the shell happened to start.
+5. **Plan before you make.** `plan.org` at the top of the project's folder is its to-do list, the one the person
+   sees in the app. Read it, find the task this work is (or add it), and for work of more than one step write the
+   steps as tasks first. Notes from the person (a round of comments, a list of fixes) are planned first too: the work
+   they ask for as tasks in your own words, each linked to the notes it answers, never the notes pasted in. Keep it as
+   you go: mark tasks as you start them, close them with what you made, add what's left. In the app, the plan tools;
+   anywhere else, the file as Org text. [plan.md](plan.md) says how.
+
+In the raea app, a chat opened from a project's feed is already in its workspace and project: work there. If the
+person's request turns out to be for another project partway through, stop, say so, and move to it before going on.
+
 ## 1. Install (on hold)
 
 <!-- LOCAL PATCH (connorads dotfiles): raea is on hold until its attested releases are verified here; agents must not install it. -->
@@ -59,13 +92,16 @@ task needs.
 |---|---|
 | a cut of real footage: takes cut by words, faces framed, captions, cuts to a song | [footage.md](footage.md) |
 | motion graphics and type: cards, stats, logos, end cards | [graphics.md](graphics.md) |
+| a short product film (a launch, a demo, a brand film) made like a good film of its kind, or one you were handed ("make me one like this") | the video-decompiler skill, installed beside this one by raea's installer and plugin (not in the plugin directory's edition) |
 | sound: voice, beds, foley, music for picture, the mix | [sound.md](sound.md) |
-| a 3D scene: lights, materials, models, people, rooms, splats | [3d.md](3d.md) |
+| a 3D scene: lights, materials, models, people, rooms, splats; three.js or React Three Fiber work | [3d.md](3d.md) |
 | a game, 2D or 3D | [games.md](games.md) |
 | an app's interface (web or native) | [apps.md](apps.md) |
 | generated images, video, sound or meshes | [gen.md](gen.md) |
 | the export, the share copy, platform specs, posting a deliverable | [delivery.md](delivery.md) |
 | working with the person in the raea app: the feed, controllers, the editor, boards | [collaborate.md](collaborate.md) |
+| planning the work and keeping its tasks: the project's plan.org, the person's to-do list | [plan.md](plan.md) |
+| checking a cut against the person's taste and rules, reading their notes on a sound, or teaching their fingerprint | [fingerprint.md](fingerprint.md) |
 
 Across all of them, `craft/`: [craft/ROUTER.md](craft/ROUTER.md) is how to decide what to make (the order of work and
 reading notes); [craft/floor.md](craft/floor.md) is read right before every edit; `craft/modes/` says what a pitch,
@@ -75,20 +111,25 @@ an explain, a story, a game or a tool has to do; `craft/verbs/` has one file per
 ## 2. The workspace and its projects — HEADLESS
 <!-- sources: apps/workspace/src -->
 
-Work lives in a workspace: a git repo under raea.root (`~/Studio` unless `git config --global raea.root` says
-otherwise), one per studio or client, holding projects and controllers. In the raea app a project shows as a channel.
+Work lives in a workspace: a git repo under raea.root (`git config --global raea.root`; unset, `~/Studio` where
+workspaces already are, else `~/Documents/raea`, or `~/raea` when iCloud keeps Documents), one per studio or client,
+holding projects and controllers. In the raea app a project shows as a channel.
 - `raea workspace init NAME` makes one; `raea workspace adopt DIR` makes an existing folder one. `raea workspace`
   shows it (`--json` for the projects and their paths).
-- `raea project new NAME` adds a project: its folder with `brief.ts`, `media/`, `out/` and `brand/`. A project can
-  live inline or as its own repo (`raea project split NAME`, `raea project join NAME`); both keep its history.
-- Work in the project's folder. Footage and other media go in `media/`, renders in `out/`.
+- `raea project new NAME` adds a project: its folder with `brief.ts`, `AGENTS.md`, `compositions/`, `components/`,
+  `controllers/`, `assets/`, `artifacts/` and `out/`. The workspace's `shared/` has the same five folders, which any
+  project imports from as `@shared/components/NAME`. A project can live inline or as its own repo
+  (`raea project split NAME`, `raea project join NAME`); both keep its history.
+- Work in the project's folder. Footage and other media go in `assets/` (`media/` in a project made before the
+  layout), renders in `out/`.
 
 ## 3. Read before you make — HEADLESS
 <!-- sources: engine/cli/src/guide.rs apps/workspace/src core/brief/src -->
 
 - `raea context .` in the project prints everything to read first, in order: the person's taste
   (`~/.raea/taste/taste.ts`; a line there beats any guide's default), the workspace's taste, the brief, the look, the
-  workspace's controllers, the craft floor and each of the brief's modes' guides. Read all of it.
+  workspace's controllers, the craft floor and each of the brief's modes' guides. Read all of it. In the raea app,
+  `rules_read` lists every rule the work follows, the project's own `taste.ts` first ([collaborate.md](collaborate.md)).
 - Run it once a session. If it refuses, say so in one line ("raea context failed: its message; reading the brief and
   controllers directly") and read `brief.ts`, any `*.script.ts`, `~/.raea/taste/taste.ts` and `raea controller ls`
   yourself. A `CONTEXT_STALE` line means `raea doctor` finds files from another version: run `raea doctor --fix`.
@@ -104,21 +145,31 @@ otherwise), one per studio or client, holding projects and controllers. In the r
   note. When the work needs such a decision from the person, put the controller in front of them with the feed's
   `controller_post` (its id, the fields as group.field, a line on what you need decided) rather than asking in prose;
   a controller you make with `controller_write` reaches their feed on its own. Fields are typed (toggle, choice,
-  number, text, list, agents, channels, workflow, servers, skills; reference/files.md), so put what they'll adjust in
-  fields, one controller per concern.
+  number, text, list, agents, channels, workflow, servers, skills, rule; reference/files.md), so put what they'll
+  adjust in fields, one controller per concern. A style preference with no fields to set ("words never cover the
+  action") is a rule instead: `rule_add` in the app, or a line in the project's `taste.ts`.
+- A `rule` field is a line every piece is held to and the check that holds it: one of raea's by name with its values,
+  or a `.ts` check written with `raea/check` (craft/ROUTER.md, step 7). `raea check PROJECT` runs every rule that
+  applies, with raea's floor and the person's taste, and says what waits for a render.
 - If the brief isn't shaped (no `believe`, no `mode`), shape it before making anything: ask who it's for and the one
   thing they should believe, or write your best guess and add its field to the brief's `assumed` list.
 - For a pitch, an explain or a story, plan first: write the deliverable's storyboard as `NAME.script.ts` beside the
   brief (`export default script({...})` from "raea/brief": scenes of beats, what's on screen and what each scene must
   land; its fields are in reference/files.md), name it on the deliverable, and add a task "storyboard approved" tagged `gate`. `raea spec NAME.script.ts`
   checks it. Render nothing until the person approves it (PERSON).
+- Show a plan as what it will be, in this order: previz (a rough, fast raea render of the blocking, timing and
+  camera: grey shapes, placeholder type, no polish; it is the plan, not the piece, so the gate allows it), else a
+  storyboard (key frames as one `feed_post` look with `files` in order), else the script itself (`feed_post` read
+  with its `NAME.script.ts`: the feed shows it as a screenplay and as an A/V table, timed from each beat's `seconds`).
+  People judge a picture faster than a description. A whiteboard maps how ideas, options and references connect; it
+  isn't the plan.
 - The person's footage and files: `raea library search "WORDS"` finds them by meaning across the libraries they've
   indexed (HEADLESS once indexed; adding a folder waits for the person's yes, PERSON).
 - Right before any edit to a composition, even a one-line change, read the floor: `raea guide craft`. Read
   `raea guide router` once for the order of work.
 
 ## 4. Make an item — HEADLESS
-<!-- sources: sdk/raea/src/index.tsx sdk/raea/src/3d.tsx -->
+<!-- sources: sdk/raea/src/index.tsx sdk/raea/src/3d.tsx apps/direction/src/findings.rs apps/fingerprint/src systems/fingerprint-things/src -->
 
 One `.tsx` file whose root registers compositions (`raea init` in a footage project writes the files to start from):
 
@@ -147,7 +198,8 @@ Rules that keep renders right (`raea guide motion` has all ten, under "The core 
 - Brand: the kit's `--brand-*` variables in `brand/brand.css` (`raea brand DOMAIN` reads them from a site), then
   `import { css } from "./styles.gen"` and Tailwind classes like `bg-brand-bg`.
 - 3D: read [3d.md](3d.md) first; it routes to one file per topic in `3d/`. An asset to fix first (scale, pivot, FBX
-  to .glb) goes through Blender (`raea setup blender`, then [3d/blender.md](3d/blender.md)).
+  to .glb) goes through Blender (`raea setup blender`, then [3d/blender.md](3d/blender.md)); a step can be TypeScript
+  (`raea/blender`). A Godot project is scripted from TypeScript too (`raea setup godot`, then [3d/godot.md](3d/godot.md)).
 - Sound: `raea guide sound` and `raea guide music`; to cut to a song, run `raea song FILE --plot FILE.song.png` and
   time cuts from its map, never a constant BPM. npm packages and React apps: `raea guide apps`.
 - Generated media: `raea guide gen` before the first `raea gen`.
@@ -160,7 +212,39 @@ raea render piece.tsx --at 0,45,89 -o frames/                 # stills to look a
 raea render piece.tsx --alpha -o frames/                     # transparent PNGs, for an overlay in another editor
 raea render piece.tsx -o out/piece.mp4 --manifest out/render.json
 raea check out/piece.mp4 --manifest out/render.json --taste ~/.raea/taste/taste.ts -o out/piece.check.json   # P0-P3; exits 1 on a P0 or P1
+raea findings --open                                          # what still stands, from every render and check so far
 ```
+
+In a project, every render and check is kept in its record (`.raea/record/`), so `raea findings` tells you where the
+piece stands without rereading old check files: for each thing rendered or checked, what its last run fixed, what is
+new and what it carries (and since which render). `--open` keeps only what stands, `--about NAME` one part,
+`--check ID` one check, `--since RENDER` sets it against an earlier run, and `--json` is for a script. Read it before
+you fix and after each render; say what it lists rather than "looks good". A render with an error exits 1; when the
+person accepts one, `raea render ... --despite CHECK "why"` lets it through, and findings lists what was let through.
+
+Before you post a cut, score it with the person's fingerprint, what raea has learned of their eye on this machine
+from their notes, marks and approvals: `raea fingerprint score out/piece.mp4` lists the moments it expects a note on,
+each named in the person's own words, beside raea check's findings. On a picture axis that has learned where, a moment
+also says where in the frame and, on a render with a layer pass, the layers there ("top right on Floor"): start the fix
+with that layer. Fix each gating moment, or say why you didn't, and
+score the fix against the cut before: `raea fingerprint score out/v2.mp4 --was out/v1.mp4` says whether each flag is
+fixed, still there, or looks disguised (nearer the axis's disguised defects than clean work, so the fix hid the defect
+rather than removing its cause); only a fixed flag is fixed. `raea fingerprint which out/piece.mp4` names the
+fingerprint that judges this piece (the project's, the workspace's, then the person's own) and why. Tell the person
+the axis and the moment, never a score. In the app, `rule_check` scores it and holds it to every rule in one call.
+[fingerprint.md](fingerprint.md) has the rest: the person's rules, reading a note's box on the sound, teaching the
+fingerprint, and keeping one with a project.
+`raea fingerprint report` says what each axis has learned and what it can't judge yet. A fingerprint's axes are
+~/.raea/fingerprints/NAME/fingerprint.ts, typed by `raea/fingerprint`: add, remove or reword an axis there, never its
+evidence. A script or brief scores on text axes only, and raea's own axes read pictures and sound, so a script scores
+only once the person has added an axis that reads text.
+
+For a 3D shot, check how its things sit and move. Render it with `--layers`, and render `--aov -o out/shot.aov` beside
+it. Then run `raea fingerprint things out/shot.mp4 --json > things.json` and
+`raea check out/shot.mp4 --things things.json`. It finds a thing floating or passing through another, the camera
+lurching mid-move, and an empty frame. When the person says a project is finished,
+`raea fingerprint postmortem PROJECT` asks them at most ten yes/no questions in the app about what the fingerprint is
+least sure of. Once they've answered, `--tally` makes the answers evidence.
 
 `raea guide rendering` covers stills, the check, bitrate and quality; `raea guide rubric` covers judging the rest.
 
@@ -169,7 +253,71 @@ raea check out/piece.mp4 --manifest out/render.json --taste ~/.raea/taste/taste.
 
 - In the raea app, post the render to the project's feed with `feed_post` (a watch, look, listen or play item); the
   person watches, plays and leaves notes on it there (PERSON). `feed_items` reads the items and their notes.
-- Headless instead: leave the file in the project's `out/`, give the person its path, and take their notes as text.
+- Outside the app (a session in a terminal: Claude Code, Codex, Gemini CLI, Kimi Code, any harness), `raea show` does
+  what `feed_post` does: `raea show FILE...` puts stills (several make a storyboard), a video, a sound, a
+  `NAME.script.ts` or `.md`, or a `.tsx` artifact in the project's feed as an item the person can use. Name the project
+  as `--project WORKSPACE/ID` (an id from `raea workspace --json`, or the person's Copy reference line pasted whole),
+  never its title: raea refuses a title when your folder is in another project or two projects share it. Check that
+  the place it prints (`item ID, project ID in WORKSPACE`) is the one you meant. It lands
+  quietly, with a notice, and the window stays where the person is (they may be working); `--open` brings the window
+  up on it only when they're waiting on it. Ask everything you need at once, as one item: every question in it, and
+  each choice with what it is to play or read while answering (`--preview FILE` after a `--choice` is that choice's;
+  after the `--question`, before its choices, the question's own, such as the script it asks about):
+  `raea show --title "Orientation: three picks" --question "Which narrator?" --choice Henry --preview henry.mp3
+  --choice Measured --preview measured.mp3 --question "Graybox the script?" --preview film.script.ts --choice Yes
+  --choice "Not yet"`. Put the choice you suggest first. Never post each option, sample or question as its own item.
+  While the raea app is installed, never open a render, a still, a contact sheet or a question in Preview or a
+  browser: show it. raea's hook (`raea skills install --agent A` adds it
+  to any of them) stops such an open once and names the `raea show` command; run the same command again only when the
+  person asked for the viewer. What the person sends on it (notes, edits, picks, answers, an artifact's `app.result`)
+  comes back as JSON lines in the inbox file `raea show` prints. raea's hook hands each new line to you after your
+  next tool call and keeps your turn from ending until you have it (where there is no hook, follow the file with
+  `tail -n0 -F FILE` or your harness's monitor). Answer each: it may change what you're doing. Without the app,
+  `raea show` opens the file in the Mac's own viewer and says so; take the person's notes as text then.
+- When one picture holds several things (a contact sheet, a side by side, a before and after, a grid of props or
+  characters), label each instead of naming them by position in the title or your message. A label is a tag of a few
+  words that stands beside the picture, never on it, and points at its place when the person's pointer is on it; give
+  it a paragraph only where a tag isn't enough. In the app, `feed_post` takes `labels`: each `{ text, detail?, box:
+  [x0, y0, x1, y1] }` or `point: [x, y]` in the picture's own 0-1, with `frame` for a storyboard's still, `t` (and
+  `to`) for a film's seconds, or `part` for a scene's part. Outside it: `raea show sheet.png --label "0,0,.5,1 v1, hook
+  first" --label ".5,0,1,1 v2, product first" --detail "Opens on the product for two seconds, then the hook."` (each
+  `--label` is the place, then its tag; a `--detail` is the paragraph of the `--label` before it). A sheet `raea media
+  sheet` made comes labelled with each cell's time or file; to say more, edit the tags and paragraphs in its
+  `OUT.labels.json` before you show it.
+- When you need the person to choose or fill something in (pick an opening, rank cuts, set a price), post an artifact:
+  a React `.tsx` of your own, `feed_post` with `type: "artifact"`, the file, and an `ask` line. The app builds it and
+  runs it sandboxed in the feed. Its default export is the component. It imports `react`, `@raea/app` and its own
+  files, nothing else (no fetch, no other packages). Tailwind classes use the feed's tokens (`bg-ground`, `text-ink`,
+  `text-ink-3`, `border-line`, `bg-accent`). Saving the file updates the open artifact in place, and a file that
+  doesn't compile shows its file and line there.
+
+  ```tsx
+  import { useState } from "react"
+  import { app, useItem } from "@raea/app"
+
+  const CUTS = ["15 s, hook first", "30 s, product last", "6 s bumper"]
+
+  export default function PickCut() {
+    const item = useItem() // { title, ask, status, answered, preview, media }
+    const [sent, setSent] = useState(false)
+    if (!item) return null
+    return (
+      <main className="p-8 text-ink">
+        <h1 className="text-lg font-semibold">{item.ask}</h1>
+        <div className="mt-4 grid gap-2">
+          {CUTS.map((c) => (
+            <button key={c} disabled={sent || item.answered} className="rounded-lg border border-line p-3 text-left hover:bg-accent/10"
+              onClick={() => app.result(`Picked: ${c}`).then(() => setSent(true))}>{c}</button>
+          ))}
+        </div>
+      </main>
+    )
+  }
+  ```
+
+  `app.result(text)` comes back to you as the person's next message; `app.comment(text, { x, y })` leaves a note on
+  the item, pinned to a point (0 to 1 across and down). Any other call is refused, naming it. On a card the artifact
+  is a preview that reads only; it acts once the person opens it.
 - Every note, from the feed or as text, gets a move before any edit: pick the one it asks for (quieter, bolder,
   distill, clarify, retime, recut, regrade, remix, harden, layout, typeset, animate, delight, adapt, optimize, extract,
   generate, polish, critique) on the part or moment it names, and read it (`craft/verbs/MOVE.md`, or `raea guide MOVE`)
@@ -181,13 +329,21 @@ raea check out/piece.mp4 --manifest out/render.json --taste ~/.raea/taste/taste.
 - Change the composition under the person's hand edits (the `edit` segments and `<Nudge>` props the app writes; see
   `raea guide rendering`), render again and check again.
 - Render each version to a new file beside the old (`piece-v2.mp4`), never over it: the earlier version stays
-  watchable. In the app, post it with `feed_post` naming the item it `replaces`, so the feed keeps both as versions.
+  watchable. In the app, post it with `feed_post` naming the item it `replaces` (outside it, `raea show --replaces
+  ITEM FILE`), so the feed keeps both as versions.
+- The person's edits are tasks they watch, each with an id (in your turn's prompt in the app; in the inbox line's
+  `comments` outside it). Mark each working as you start it and done when it's settled: in the app, `comment_task`,
+  or `feed_post` with `answers` naming the comments the version settles; outside it, `raea show --on ITEM --working
+  ID` and `--done ID [--note LINE]`, or `raea show FILE --replaces ITEM --done ID...`. When subagents split them, name
+  the one on each (`sub`, `--sub NAME`). Done stays in view until the person resolves it; Not done sends it back as a
+  new edit.
 
 ## 7. Deliver — HEADLESS
 <!-- sources: runtime/export/src -->
 
-- Final exports: `--quality master` for motion graphics and type; name files with lowercase letters, digits and
-  hyphens only (`spring-launch-9x16.mp4`).
+- The delivered file: `--quality master` for motion graphics and type, `--quality high` for a film. A version made
+  for notes takes no `--quality` flag (a fifth of the bytes for the same picture: `raea guide rendering`). Name files
+  with lowercase letters, digits and hyphens only (`spring-launch-9x16.mp4`).
 - A render is a standard MP4 but large: H.264 High and AAC on a Mac (VideoToolbox), H.264 Constrained Baseline and
   Opus on Windows and Linux (openh264), yuv420p on all. Hand over a share copy too, which any player takes:
   `ffmpeg -i film.mp4 -c:v libx264 -preset slow -crf 23 -maxrate 2600k -bufsize 5200k -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart film-share.mp4`.
@@ -196,7 +352,7 @@ raea check out/piece.mp4 --manifest out/render.json --taste ~/.raea/taste/taste.
   the rest (one composition per shape, cutdowns, tags, handing over).
 
 ## Apps: web or native — HEADLESS
-<!-- sources: docs/targets.feature apps/targets/src sdk/ui/src/app.ts sdk/rune/src -->
+<!-- sources: apps/targets/src sdk/ui/src/app.ts sdk/rune/src -->
 
 An app is a React file with a default export: DOM elements, inline `style` or Tailwind `className`, on @raea/ui. One
 setting picks the host that draws it. Both are desktop windows that draw every pixel themselves (neither uses the
@@ -250,3 +406,6 @@ game stays a composition; an app is an application's interface.
 
 - The guides: the routers above, or `raea guide` (it lists them; `raea guide NAME` prints one, the same text as the copy here).
 - The SDK's behaviour: `sdk/raea/spec/motion.feature`; what 3D reaches: `raea guide coverage`.
+<!-- LOCAL PATCH (connorads dotfiles): Bug reports require an explicit user request and an installed, verified tool; never send unsolicited reports. -->
+- A bug in raea itself: note it in the task summary and carry on with a workaround. Send a bug report only when the user
+  explicitly asks for it and `raea` is installed and off hold.

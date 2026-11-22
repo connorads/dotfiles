@@ -1,0 +1,1 @@
+eas build:version:get

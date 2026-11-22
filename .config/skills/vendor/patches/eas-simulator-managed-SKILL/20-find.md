@@ -1,0 +1,1 @@
+Source of truth: Expo docs and the `eas` / `agent-device` CLIs (`npx --yes eas-cli@latest simulator:* --help`, `npx --yes eas-cli@latest simulator:exec npx agent-device@latest help [topic]`; `--help` after `simulator:exec` shows the EAS CLI help instead). This skill teaches how to apply them; it doesn't replace them.

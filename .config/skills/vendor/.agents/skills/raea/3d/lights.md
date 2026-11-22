@@ -33,8 +33,8 @@ with `.lookingAt(point)`.
   put one `<Shadows>` beside the camera: `distance` (metres the sun's shadows reach; shorter is sharper),
   `firstCascade` (about the distance of the nearest subject), `mapSize` (1024-8192), `cascades`, `overlap`, and
   `bias` / `normalBias` if a lit surface shows stripes of its own shadow (acne) or shadows float off what casts them.
-  `filter="hardware"` gives crisper, cheaper 2x2 edges instead of the smooth Gaussian ones. Its first frame's values
-  hold for the whole piece.
+  `filter="hardware"` gives crisper, cheaper 2x2 edges instead of the smooth Gaussian ones. Each frame's are its own
+  (a room's 20 m between two street shots' 150 m).
 
   ```tsx
   <Shadows distance={60} firstCascade={5} mapSize={4096} bias={0.03} normalBias={2} />

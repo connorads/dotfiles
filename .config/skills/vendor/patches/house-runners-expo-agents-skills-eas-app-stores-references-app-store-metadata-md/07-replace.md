@@ -1,0 +1,1 @@
+        run: eas metadata:push

@@ -1,0 +1,1 @@
+- **App logs:** `eas simulator:logs`. Start `simulator:logs --follow` **before** you reproduce the problem. After the first 30 minutes of a session, new lines appear only while you follow.

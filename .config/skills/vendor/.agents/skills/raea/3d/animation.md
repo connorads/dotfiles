@@ -20,7 +20,8 @@ posed at the time you give it, not by a clock, so any frame renders alone and pl
 
 ## Common mistakes
 
-- `useFrame((_, dt) => ref.current.rotation.y += dt)`: there's no render loop. `Quat.fromEuler("XYZ", 0, f * speed, 0)`.
+- `useFrame((_, dt) => ref.current.rotation.y += dt)` in raea's own 3D: there's no render loop there. Write
+  `Quat.fromEuler("XYZ", 0, f * speed, 0)`. (Inside `<R3F>`, an R3F scene, useFrame works: `bevy/r3f`.)
 - Changing a shape's size or `shape` to animate size: animate the transform's scale.
 - A `spring` without `fps`, or an `interpolate` without clamping, overshooting into nonsense values.
 - A part shown with `{f > 30 && <Mesh3d ...>}` among others of the same shape, without a `name`: give it one so it

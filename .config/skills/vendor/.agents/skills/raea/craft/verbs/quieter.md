@@ -18,7 +18,7 @@ note names. Keep the point of view: a quieter piece still has one.
 - Light: fewer sources pulsing, shorter pulses, lower bloom. Glow only where the eye should go.
 - Colour: lower saturation on what's around the accent, not on the accent.
 - Motion: fewer moving things at once, smaller moves, no bounce.
-- Sound: duck the bed further under the voice; drop layers before lowering levels.
+- Sound: duck the music further under the voice; drop parts and layers before lowering levels.
 - Never solve quiet with blur, fog or grain that softens the work itself.
 
 ## Verify

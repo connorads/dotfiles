@@ -3,13 +3,13 @@ name: hyperframes
 description: Read first to make, edit, animate or render any video with HyperFrames (HTML rendered to video), including launch films, explainers, music videos, charts, maps, vertical clips, title cards, captions and overlays. Holds the render contract, the work loop and what each kind of video needs.
 ---
 
-**Plugin installs:** Before setup or freshness commands, follow [plugin execution rules](references/plugin-installation.md) when this skill is inside a HyperFrames plugin.
+<!-- LOCAL PATCH (connorads dotfiles): reviewed vendoring, managed tools and explicit reporting consent. -->
 
 # HyperFrames
 
-HyperFrames renders HTML to video by seeking a paused timeline frame by frame, so every render is identical; the person edits the same files in the Studio preview. Use it unless another framework or a plain browser recording is asked for. Run the managed installed CLI as `hyperframes <command>` (`/hyperframes-cli`). Do not probe agent credentials or plan usage. If the CLI is missing, report the prerequisite and request installation through the local tool workflow. Set `HYPERFRAMES_SKIP_SKILLS=1`, `HYPERFRAMES_NO_TELEMETRY=1` and `HYPERFRAMES_NO_UPDATE_CHECK=1` for CLI runs. Skills stay vendored; never install or refresh them during video work. Dependency installs, upgrades, paid services, feedback uploads and publication need explicit user authorisation.
+HyperFrames renders HTML to video by seeking a paused timeline frame by frame, so every render is identical; the person edits the same files in the Studio preview. Use it unless another framework or a plain browser recording is asked for. Run the managed installed CLI as `hyperframes <command>` (`/hyperframes-cli`). Do not probe agent credentials, plan usage or usage beacons. If the CLI is missing, report the prerequisite and request installation through the local tool workflow. Set `HYPERFRAMES_SKIP_SKILLS=1`, `HYPERFRAMES_NO_TELEMETRY=1` and `HYPERFRAMES_NO_UPDATE_CHECK=1` for CLI runs. Skills stay vendored; never install or refresh them during video work. Dependency installs, upgrades, paid services, feedback uploads and publication need explicit user authorisation.
 
-`index.html` is the root composition: it declares the video's variables and mounts one scene per sub-composition from `compositions/`. Media and fonts live in `assets/`. A new project: `hyperframes init <dir>`. A website as the subject: `hyperframes capture <url> --json`.
+`index.html` is the root composition: it declares the video's variables and mounts one scene per sub-composition from `compositions/`. Media and fonts live in `assets/`. A new project: `hyperframes init <dir> --skip-skills`. A website as the subject: `hyperframes capture <url> --json`.
 
 Build what was asked: no voiceover or captions and no new aspect ratio unless the request or the source calls for them; a film over ~15 s that tells something gets music and sound on its visible actions unless the person asked for silence (`references/sound.md`). A new video is 1920×1080 at 30 fps. A question, a hold or a loose idea gets an answer or a proposal, not an edit. Before hand-writing a named effect, transition, caption style, chart or card, search the registry (`/hyperframes-registry`). Any media (a presenter or avatar, footage, voice, music): `/media-use`, which says when HeyGen is needed and what is free. Show real things from their source (the product's screens, the brand's logo, a real place's imagery); draw only what has none.
 
@@ -17,14 +17,14 @@ Build what was asked: no voiceover or captions and no new aspect ratio unless th
 
 `hyperframes check --json` reports most violations with a `Fix:` line.
 
-1. Every timed element has `class="clip"`, `data-start` and `data-duration` in seconds, and shows over `[start, start + duration)`: land an end state just before its end. `data-track-index` is only a Studio lane; paint order is `z-index`.
+1. Every timed element has `class="clip"`, `data-start` and `data-duration` in seconds, and shows over `[start, start + duration)`: land an end state just before its end. `data-track-index` is only a Studio lane (clips that never overlap share one: `references/format.md`); paint order is `z-index`.
 2. The video's length is the root's `data-duration`: overrun is cut, an early end holds the last frame.
 3. Each composition builds one paused timeline and registers it after its tweens: `window.__timelines["<data-composition-id>"] = tl`.
 4. No `Date.now()`, unseeded `Math.random()`, network fetches, timers or `repeat: -1`. Everything visible is a function of timeline time.
 5. Never tween `display`, `visibility` or `autoAlpha` on a `.clip`; animate a child.
 6. No CSS `transform` on an element GSAP transforms; animate transforms, not `left`/`top`/`width`/`height`.
 7. Never `play()`, `pause()` or seek media. A `<video>` keeps its sound with `data-has-audio="true"`, else it is `muted`; music, voice, replacement sound and J/L cuts are a separate `<audio>`.
-8. Every `<audio>` has an `id` or it is left out of the mix. No `crossorigin` on media. Time a `<video>` or its wrapper, never both.
+8. Every `<audio>` has an `id` or it is left out of the mix. No `crossorigin` on media. Time the `<video>`, never its wrapper.
 9. Only the bundled fonts (`references/format.md`) resolve by name; any other family needs `@font-face` to a file in `assets/fonts/`.
 10. Asset paths: `assets/...` (no leading `/`), in sub-compositions too.
 11. Grades, grain, blur and vignettes on footage go through `hyperframes media-treatment` (`/media-use`), never CSS filters.
@@ -59,6 +59,9 @@ Call it "the HyperFrames desktop app", never "Studio"; offer it as the better wa
 
 | The request | Read |
 | --- | --- |
+| A video to copy or remake | `/reverse-any-video` |
+| An episode in a proven style | `/style-sampling` |
+| Another film's style on a new topic | `references/look.md` |
 | Launch, promo, feature | `references/types/launch.md` |
 | Explainer, tutorial | `references/types/explainer.md` |
 | Music video | `references/types/music.md` |
@@ -71,4 +74,4 @@ Call it "the HyperFrames desktop app", never "Studio"; offer it as the better wa
 | Motion: eases, titles, cuts, punch-ins, speed, holds | `references/motion.md` |
 | Scenes, attributes, media, lint; GSAP, Lottie, 3D, canvas | `references/format.md`; `references/runtimes.md` |
 
-Decks: `/slideshow`. Remotion source: `/remotion-to-hyperframes`. Figma: `/figma`. Installing, refreshing or upgrading skills and the pinned CLI: `references/skill-lifecycle.md`.
+Decks: `/slideshow`. Remotion source: `/remotion-to-hyperframes`. Figma: `/figma`. Skills and the pinned CLI: `references/skill-lifecycle.md`.

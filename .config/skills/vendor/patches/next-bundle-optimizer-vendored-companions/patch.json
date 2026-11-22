@@ -1,0 +1,6 @@
+{
+  "reason": "Reference vendored companion Next.js skills instead of task-time `npx skills add` installs.",
+  "files": [
+    "nextjs/.agents/skills/next-bundle-optimizer/SKILL.md"
+  ]
+}

@@ -1,1 +1,3 @@
-Older CLIs such as 18.6.0 lack these commands. Check `eas --version` and command help, or use a pinned `eas` invocation. Prefer the supported CLI over importing its internal Node modules or writing private GraphQL queries. An errored `submit:view --json` result can still omit the underlying error; follow its log URLs to diagnose it.
+eas build --platform ios --profile testflight --no-wait --non-interactive
+# After checking that build's result:
+eas submit --platform ios --profile testflight --id BUILD_ID --non-interactive

@@ -1,1 +1,1 @@
-pnpm exec expo serve
+- **EAS Hosting**: Use `eas env:create` or Expo dashboard

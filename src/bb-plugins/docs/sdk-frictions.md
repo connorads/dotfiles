@@ -27,6 +27,19 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 
 ## Open: SDK gaps
 
+### Plugin pickers cannot open their own settings
+
+- Found: 2026-11-18, executor, SDK 0.6.37
+- Wanted: open Executor settings with a click or tap from the connection picker.
+- Gap: `useBbNavigate()` has no plugin settings destination. The sidebar footer
+  action receives `openPluginDetails()`, which is scoped to that action.
+- Workaround: render the existing settings component inside the picker
+  ([popover.tsx](../executor/popover.tsx)).
+- Ask: expose this plugin's settings destination through `useBbNavigate()`.
+- Status: open
+- Category: sdk-gap
+- Evidence: `BbNavigate` and `experimental_sidebarFooter` SDK declarations.
+
 ### No way to hide only the native model picker
 
 - Found: 2026-11-13, claude-profiles, SDK 0.6.132
@@ -675,13 +688,18 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   `bb.agents.registerTool` tools are fixed at load. `configure()` gets no project or
   thread context and applies only at the next session. The first plugin to register a
   tool name wins. `PluginAgentToolContext` has only `signal`.
+  Codex 0.169 takes `dynamicTools` only on `thread/start`; `thread/resume` and
+  `thread/fork` reuse the list saved in the rollout. A BB tool `configure()` omits
+  at a Codex thread's start never reaches that thread, even after `bb thread stop`.
 - Workaround: the executor plugin registers MCP tools and reloads itself when the list
   is known. Separate entries per scope, each toggled globally.
+  [claude-connectors](../claude-connectors/server.ts) gives every session its tools
+  and checks access per call.
 - Ask: a provider-agnostic MCP setting, or project and thread context on
   `agents.configure()`, plus dynamic tool registration.
 - Status: open
 - Category: sdk-gap
-- Evidence: @thread:thr_gphz9jr2wb, commit `615faf0f`
+- Evidence: @thread:thr_gphz9jr2wb, commit `615faf0f`, @thread:thr_bfkcq2ncri
 
 ### OpenCode Go usage can prefer a stale key over Console OAuth
 

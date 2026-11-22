@@ -1,0 +1,1 @@
+**Build freshness:** reuse only a build whose **fingerprint matches current source** (`eas build:list --platform ios --json`, or `get-build` by fingerprint per Callstack's public `eas-agent-device` workflow); otherwise **rebuild** or use Mode C. Tell the user which build you used. (Why this matters → SKILL.md "Reusing an existing build" caveat.)

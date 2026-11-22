@@ -1,21 +1,23 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 test(
-  "plugin resolver uses the managed CLI without a repository checkout",
+  "plugin resolver uses the managed CLI without npx or a repository checkout",
   { skip: process.platform === "win32" },
   (t) => {
     const dir = mkdtempSync(join(tmpdir(), "hf-resolve-plugin-"));
     t.after(() => rmSync(dir, { recursive: true, force: true }));
     mkdirSync(join(dir, "lib"));
-    for (const file of ["resolve.mjs", "lib/npx-sync.mjs"]) {
+    for (const file of ["resolve.mjs", "lib/npx-sync.mjs", "lib/windows-exe-search.mjs"]) {
       copyFileSync(fileURLToPath(new URL(file, import.meta.url)), join(dir, file));
     }
+    const marker = join(dir, "npx-ran");
+    writeFileSync(join(dir, "npx"), `#!/bin/sh\ntouch "${marker}"\nexit 9\n`, { mode: 0o755 });
     writeFileSync(
       join(dir, "hyperframes"),
       `#!${process.execPath}\nconsole.log(JSON.stringify({args:process.argv.slice(2),skip:process.env.HYPERFRAMES_SKIP_SKILLS}));process.exit(7);`,
@@ -36,6 +38,7 @@ test(
       args: ["media-use", "resolve", "--intent", "a & b"],
       skip: "1",
     });
+    assert.equal(existsSync(marker), false);
   },
 );
 
@@ -45,7 +48,7 @@ test("resolver ignores repository and plugin bootstrap paths", (t) => {
   const scripts = join(root, "skills/media-use/scripts");
   mkdirSync(join(scripts, "lib"), { recursive: true });
   mkdirSync(join(root, "packages/cli/dist"), { recursive: true });
-  for (const file of ["resolve.mjs", "lib/npx-sync.mjs"]) {
+  for (const file of ["resolve.mjs", "lib/npx-sync.mjs", "lib/windows-exe-search.mjs"]) {
     copyFileSync(fileURLToPath(new URL(file, import.meta.url)), join(scripts, file));
   }
   writeFileSync(join(root, "packages/cli/dist/cli.js"), 'throw new Error("unmanaged checkout must not run");');

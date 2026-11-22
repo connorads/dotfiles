@@ -140,19 +140,34 @@ undecided candidate stays out of both files, so the next pass reports it again.
 
 The temporary CLI entry has `sourceType: local`. Build the candidate lockfile from
 the original bucket lock, replacing only each refreshed entry's `computedHash`
-with the value from that local installation. Preserve source, source type, ref,
-skill path and other metadata. New authorised entries use their actual GitHub
-source and recorded skill path. Sort skill names and preserve the CLI's JSON
-format and final newline.
+with the value from that local installation. Before copying a hash, verify that
+the temporary lock's `version` matches the installed bucket lock's `version`. If
+the versions differ, use a CLI that writes the installed format or complete a
+separate lock migration first.
 
-The hash describes the pristine upstream folder, before copy exclusions, local
-patches or attribution restoration. Do not hash the patched installed folder.
+Preserve source, source type, ref, skill path and other metadata. New authorised
+entries use their actual GitHub source and recorded skill path. Sort skill names
+and preserve the CLI's JSON format and final newline.
+
+Take the hash from the CLI's pristine local installation before applying patches
+or restoring attribution. The CLI applies the hashing rules for its lock version.
 Do not retain temporary paths or put a commit SHA into the CLI's branch/tag `ref`.
 Record the actual Git revision in the commit message instead.
 
 Held entries retain both their original payload and original lock entry. When
 content is unchanged but its hash differs, verify whether the old hash came from
 a cached snapshot before treating it as harmless lock maintenance.
+
+### Migrate the lock format separately
+
+Reproduce every existing hash from a recorded pristine snapshot using a CLI that
+writes the old format. Use the same snapshots with the new CLI to derive every
+new hash. Hold the migration if an existing hash cannot be reproduced. Automatic
+migration can drop hashes when installed payloads include local patches.
+
+Verify frozen restores of the pristine local copies with the new CLI. Compare the
+candidate locks with the baseline. Only the lock version and hashes change. Keep
+skill updates out of the migration commit.
 
 ## 3. Patch and review the preview
 

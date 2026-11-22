@@ -7,7 +7,7 @@ agent = client.conversational_ai.agents.create(
             "language": "en",
             "prompt": {
                 "prompt": "You are a customer support agent. Be helpful, professional, concise.",
-                "llm": "gemini-2.0-flash",
+                "llm": "gemini-3.5-flash",
                 "temperature": 0.5,
                 "built_in_tools": {
                     "end_call": {},

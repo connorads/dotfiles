@@ -27,3 +27,10 @@ condition = "AND"
 paths = ['''^\.config/skills/vendor/\.agents/skills/modern-web-guidance/guides/security/client-side-encryption\.md$''']
 regexTarget = "secret"
 regexes = ['''^MLKEM768-X25519$''']
+
+[[allowlists]]
+description = "HyperFrames CLI OAuth client_id is a public OAuth client identifier, not a secret (vendored hyperframes/media-use heygen.mjs and heygen.test.mjs)"
+condition = "AND"
+paths = ['''^\.config/skills/vendor/hyperframes/\.agents/skills/media-use/audio/scripts/lib/heygen(\.test)?\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^Zg3LF4FCLoeJoGs2YqMtZ17g$''']

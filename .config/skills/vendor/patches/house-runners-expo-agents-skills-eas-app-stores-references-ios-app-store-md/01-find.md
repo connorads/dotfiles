@@ -1,1 +1,1 @@
-npx testflight
+When working managed credentials are absent, the account owner completes `npx --yes eas-cli@latest credentials -p ios` privately for the selected team/profile. Its interactive menus can provision certificates/profiles and configure an API key; they are not read-only status queries. Do not drive those menus, collect account passwords/MFA codes, or download private credentials during a routine build or submission.

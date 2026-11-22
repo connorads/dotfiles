@@ -158,6 +158,12 @@ tmux caffeine lib, so the BB chip and the tmux pill always agree.
 into More. `⌘⇧F` opens the switcher, a number chooses a set, and a second `⌘⇧F`
 swaps between Off and your last set. Turning it off restores the sidebar.
 
+## Recent threads
+
+[Recent Threads](recent-threads/README.md) flips the sidebar between your
+previous grouping (`project` or `machine`) and global recent threads
+(`chronological`). Press `Alt+R` or click the sidebar footer clock button.
+
 ## Chat links
 
 [External Links](external-links/README.md) adds an arrow beside chat web links.

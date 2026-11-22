@@ -1,0 +1,1 @@
+A session is: **start → (install your app) → drive → stop.** `eas-cli` owns the *session*; the device *verbs* (open/tap/screenshot) come from the controller, which `eas simulator:exec` runs for you with the session's connection env loaded.

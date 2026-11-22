@@ -1,0 +1,1 @@
+uv add elevenlabs requests

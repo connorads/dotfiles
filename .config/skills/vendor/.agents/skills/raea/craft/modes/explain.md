@@ -14,7 +14,8 @@ everything, just one loop, all the way through.
   moves that project forward. A tour of features ("and here's the library, and here's settings") is the opposite.
 - **Plan it before writing a line.** Who it's for and the one thing they should be able to do afterwards. Then a
   storyboard: scene · on screen · narration · payoff, one row a scene. The person approves the board before anything
-  renders. Lines written to fit whatever is on screen read as random.
+  renders. Lines written to fit whatever is on screen read as random. Chain the scenes' cuts on the thirds with the
+  cursor as the hook, so each cut lands where the next step happens (`raea guide match-cuts`).
 - **25 to 45 words a scene.** One step per scene. If the narration needs more, the scene is two scenes.
 - **Say only what's on screen.** Every name the voice says is visible as it's said, and every thing the viewer has
   to find gets named. Time the camera and the cursor to the words, from the transcript.

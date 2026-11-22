@@ -47,10 +47,10 @@ globalThis.fetch = async (url, options) => {
 };
 `,
       );
+      const cli = join(bin, "cli.cjs");
       writeFileSync(
-        join(bin, "hyperframes"),
-        `#!${process.execPath}
-const assert = require('node:assert/strict');
+        cli,
+        `const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
@@ -61,7 +61,6 @@ fs.writeFileSync(path.join(args[args.indexOf('--dir')+1], 'transcript.json'), JS
  {text:'Hello',start:0.1,end:0.4}, {text:'there.',start:0.5,end:0.9}
 ]));
 `,
-        { mode: 0o755 },
       );
       writeFileSync(join(bin, "ffprobe"), "#!/bin/sh\necho 1.25\n", { mode: 0o755 });
       writeFileSync(join(dir, ".env"), "");
@@ -90,11 +89,12 @@ fs.writeFileSync(path.join(args[args.indexOf('--dir')+1], 'transcript.json'), JS
           encoding: "utf8",
           env: {
             ...process.env,
-            HEYGEN_CONFIG_DIR: config,
+            HYPERFRAMES_CONFIG_DIR: config,
             HEYGEN_API_KEY: "",
             HYPERFRAMES_API_KEY: "",
             GEMINI_API_KEY: "fixture-key",
             PATH: `${bin}:${process.env.PATH}`,
+            HYPERFRAMES_CLI_ENTRY: cli,
           },
         },
       );

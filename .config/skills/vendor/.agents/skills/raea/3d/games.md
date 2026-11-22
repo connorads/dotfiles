@@ -236,10 +236,12 @@ function Hop() {
 registerRoot(() => <Composition id="hop3d" component={Hop} width={1280} height={720} fps={30} durationInFrames={FRAMES} />);
 ```
 
-## Sound: one-shots on transitions, a bed under the voice
+## Sound: one-shots on transitions, music ducked under the voice
 
-A game's sound is Tone.js on raea (`motion/music` has the whole of it). Build the instruments at the top level, give
-the bed and the sounds their buses, and fire each one-shot on the frame its event happens:
+A game's sound is Tone.js on raea (`motion/music` has the whole of it). Every input and outcome gets a sound, the
+world's own sounds (machines, footsteps, a room's tone) sit where they are, and music, when the game has some, is a
+loop written to come round, not a pad. Build the instruments at the top level, give the music and the sounds their
+buses, and fire each one-shot on the frame its event happens:
 
 - `useGameEvents(INITIAL, fold, (before, after) => machine.state(after.hero) === "land" && machine.state(before.hero) !== "land")`
   gives the frames where a transition happened. `<Tone.Sfx when={landings.includes(frame)} play={(t) => thump.triggerAttackRelease("C2", "8n", t)} />`
@@ -267,4 +269,5 @@ function Game() {
 }
 ```
 
-sdk/react/bench/tone/game is a working game with all of this (a machine, a ducked bed, an SAO coin, a voice line).
+sdk/react/bench/tone/game is a working game with all of this (a machine, a chiptune loop that asks and answers,
+ducked under a voice line, an SAO coin).

@@ -1,0 +1,2 @@
+- [ ] (Optional, SDK 57+) `<ObserveErrorBoundary>` (or `errorBoundaryFallback` on `ObserveRoot`) around risky subtrees, `Observe.reportError` in recovery paths, `"uploadSourceMaps": true` in the `eas.json` build profile, and `eas update --upload-source-maps` when publishing updates.
+- [ ] New build produced with `eas build` and metrics visible in the Observe dashboard.

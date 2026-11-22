@@ -18,6 +18,8 @@ import {
   synthesizeHeygen,
   synthResult,
   pickProvider,
+  transcribeWav,
+  _resetNpxResolutionWarnForTests,
 } from "./tts.mjs";
 
 test("parseFfmpegDurationBanner reads ffmpeg's stderr Duration line", () => {
@@ -165,15 +167,20 @@ test("synthResult names a non-zero subprocess exit", () => {
   assert.match(res.error, /kokoro .* exited with status 2/);
 });
 
-// A fake managed CLI records the actual Kokoro arguments without synthesis.
+// Kokoro runs `hyperframes tts` through the CLI its caller hands over in HYPERFRAMES_CLI_ENTRY; a
+// fake entry records the argv synthesizeOne really builds, so a dropped flag fails here.
 async function kokoroArgv(options) {
   const dir = mkdtempSync(join(tmpdir(), "tts-kokoro-argv-"));
   const argvLog = join(dir, "argv.txt");
-  writeFileSync(join(dir, "hyperframes"), `#!/bin/sh\nprintf '%s\\n' "$@" > "${argvLog}"\n`);
-  chmodSync(join(dir, "hyperframes"), 0o755);
-  const originalPath = process.env.PATH;
+  const cli = join(dir, "cli.mjs");
+  writeFileSync(
+    cli,
+    `import { writeFileSync } from "node:fs";\n` +
+      `writeFileSync(${JSON.stringify(argvLog)}, process.argv.slice(2).join("\\n"));\n`,
+  );
+  const originalEntry = process.env.HYPERFRAMES_CLI_ENTRY;
   try {
-    process.env.PATH = dir;
+    process.env.HYPERFRAMES_CLI_ENTRY = cli;
     await synthesizeOne({
       provider: "kokoro",
       text: "hi",
@@ -184,30 +191,58 @@ async function kokoroArgv(options) {
     });
     return readFileSync(argvLog, "utf8").trim().split("\n");
   } finally {
-    process.env.PATH = originalPath;
+    if (originalEntry === undefined) delete process.env.HYPERFRAMES_CLI_ENTRY;
+    else process.env.HYPERFRAMES_CLI_ENTRY = originalEntry;
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
-test(
-  "synthesizeOne(kokoro) forwards a non-default speed to the CLI",
-  { skip: process.platform === "win32" },
-  async () => {
-    const argv = await kokoroArgv({ speed: 0.8, lang: "es" });
-    assert.deepEqual(argv.slice(-4), ["--lang", "es", "--speed", "0.8"]);
-  },
-);
+test("synthesizeOne(kokoro) forwards a non-default speed to the CLI", async () => {
+  const argv = await kokoroArgv({ speed: 0.8, lang: "es" });
+  assert.equal(argv[0], "tts");
+  assert.deepEqual(argv.slice(-4), ["--lang", "es", "--speed", "0.8"]);
+});
+
+test("synthesizeOne(kokoro) leaves --speed off at the default", async () => {
+  assert.ok(!(await kokoroArgv({})).includes("--speed"));
+});
 
 test(
-  "synthesizeOne(kokoro) leaves --speed off at the default",
+  "kokoro without a handed-over CLI uses managed hyperframes, never npx",
   { skip: process.platform === "win32" },
   async () => {
-    assert.ok(!(await kokoroArgv({})).includes("--speed"));
+    const dir = mkdtempSync(join(tmpdir(), "tts-kokoro-no-cli-"));
+    const marker = join(dir, "npx-ran");
+    const hfMarker = join(dir, "hf-ran");
+    writeFileSync(join(dir, "npx"), `#!/bin/sh\n: > "${marker}"\n`);
+    chmodSync(join(dir, "npx"), 0o755);
+    writeFileSync(join(dir, "hyperframes"), `#!/bin/sh\n: > "${hfMarker}"\nexit 1\n`);
+    chmodSync(join(dir, "hyperframes"), 0o755);
+    const saved = { PATH: process.env.PATH, entry: process.env.HYPERFRAMES_CLI_ENTRY };
+    try {
+      process.env.PATH = dir;
+      delete process.env.HYPERFRAMES_CLI_ENTRY;
+      _resetNpxResolutionWarnForTests();
+      const res = await synthesizeOne({
+        provider: "kokoro",
+        text: "hi",
+        voiceId: "am_michael",
+        wavAbs: join(dir, "line-0.wav"),
+        hyperframesDir: dir,
+      });
+      assert.equal(res.ok, false);
+      assert.equal(existsSync(hfMarker), true);
+      assert.equal(existsSync(marker), false);
+    } finally {
+      process.env.PATH = saved.PATH;
+      if (saved.entry !== undefined) process.env.HYPERFRAMES_CLI_ENTRY = saved.entry;
+      rmSync(dir, { recursive: true, force: true });
+    }
   },
 );
 
 test("pickProvider heygen with an unreadable credentials path says to fix that path", () => {
-  const saved = ["HEYGEN_API_KEY", "HYPERFRAMES_API_KEY", "HEYGEN_CONFIG_DIR"].map((k) => [
+  const saved = ["HEYGEN_API_KEY", "HYPERFRAMES_API_KEY", "HYPERFRAMES_CONFIG_DIR"].map((k) => [
     k,
     process.env[k],
   ]);
@@ -215,7 +250,7 @@ test("pickProvider heygen with an unreadable credentials path says to fix that p
   try {
     delete process.env.HEYGEN_API_KEY;
     delete process.env.HYPERFRAMES_API_KEY;
-    process.env.HEYGEN_CONFIG_DIR = dir;
+    process.env.HYPERFRAMES_CONFIG_DIR = dir;
     mkdirSync(join(dir, "credentials"));
     assert.throws(() => pickProvider("heygen"), /fix or remove that path/);
   } finally {
@@ -225,4 +260,18 @@ test("pickProvider heygen with an unreadable credentials path says to fix that p
     }
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("synthesizeHeygen refuses under a credit limit before any request", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hf-tts-limit-"));
+  mkdirSync(join(dir, ".hyperframes"));
+  writeFileSync(join(dir, ".hyperframes", "credit-limit.json"), '{"credits": 5}');
+  let asked = false;
+  const r = await synthesizeHeygen(
+    { text: "hi", voiceId: "v", lang: "en", speed: 1, wavAbs: join(dir, "a.wav") },
+    { projectDir: dir, heygenJSON: async () => ((asked = true), {}) },
+  );
+  assert.equal(r.ok, false);
+  assert.match(r.error, /credit limit of 5/);
+  assert.equal(asked, false);
 });

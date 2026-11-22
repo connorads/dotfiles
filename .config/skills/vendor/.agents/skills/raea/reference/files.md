@@ -5,28 +5,45 @@
 ## A workspace and its project
 
 What `raea workspace init Example` and then `raea project new Launch` make, under raea.root (`git config
---global raea.root`, else ~/Studio). The workspace is one git repo; media/ and out/ go to LFS.
+--global raea.root`; unset, ~/Studio where workspaces already are, else ~/Documents/raea, or ~/raea when iCloud
+keeps Documents). The workspace is one git repo; media/ and out/ go to LFS.
 
 ```
 example
   .gitattributes
   .raea
     workspace
-  controllers
-    .gitkeep
   projects
     .gitkeep
     launch
       .raea
         project
       AGENTS.md
-      brand
+      artifacts
+        .gitkeep
+      assets
         .gitkeep
       brief.ts
-      media
+      components
+        .gitkeep
+      compositions
+        .gitkeep
+      controllers
         .gitkeep
       out
         .gitkeep
+      tsconfig.json
+  shared
+    artifacts
+      .gitkeep
+    assets
+      .gitkeep
+    components
+      .gitkeep
+    compositions
+      .gitkeep
+    controllers
+      .gitkeep
   taste.ts
 ```
 
@@ -40,16 +57,26 @@ that moves each (when there is one) and the files that name them.
 | `~/.raea/Library/Caches` |  | apps/app/host/acp/fence.ts |
 | `~/.raea/account.json` | `RAEA_ACCOUNT` | apps/app/host/auth.ts |
 | `~/.raea/actions.jsonl` |  | io/shell/src/fs/mod.rs |
+| `~/.raea/app-host.json` |  | apps/app/host/host-file.ts, engine/cli/src/app.ts |
+| `~/.raea/app-prefs.json` | `RAEA_APP_PREFS` | apps/app/host/app-prefs.ts |
+| `~/.raea/avatars` | `RAEA_AVATARS` | apps/app/host/avatars.ts |
 | `~/.raea/bin` |  | io/assets/src/lib.rs, runtime/bundle/lib/src/lib.rs, runtime/page/src/faces.rs |
-| `~/.raea/cache` |  | apps/app/host/take.ts |
-| `~/.raea/env` | `RAEA_ENV_FILE` | apps/app/host/director.ts, apps/app/host/plugins.ts, io/gen-core/src/fal.rs, io/gen-core/src/fish.rs, io/gen-core/src/made.rs, io/gen-core/src/modal.rs, io/gen-core/src/openrouter.rs, io/gen-core/src/replicate.rs, io/gen-core/src/tripo.rs, io/home/src/lib.rs |
+| `~/.raea/cache` | `RAEA_EMOJI3D_CACHE` | apps/app/host/emoji3d.ts, apps/app/host/take.ts |
+| `~/.raea/env` | `RAEA_ENV_FILE` | apps/app/host/director.ts, apps/app/host/plugins.ts, engine/page/host/Cargo.toml, engine/page/host/src/main.rs, io/gen-core/src/fal.rs, io/gen-core/src/fish.rs, io/gen-core/src/made.rs, io/gen-core/src/modal.rs, io/gen-core/src/openrouter.rs, io/gen-core/src/replicate.rs, io/gen-core/src/tripo.rs, io/home/src/lib.rs |
 | `~/.raea/evals/skills` |  | apps/app/host/evals/skills.ts |
-| `~/.raea/feed` |  | apps/app/host/feed-items.ts |
+| `~/.raea/feed` |  | apps/app/host/feed-items.ts, apps/app/host/fingerprint.ts, apps/app/host/rules-asks.ts, apps/app/host/rules-train.ts, apps/app/host/storage/owners.ts |
+| `~/.raea/feed/i-taste-` |  | apps/app/host/rules-asks.ts |
 | `~/.raea/feed/media` |  | apps/app/host/paths.ts |
-| `~/.raea/library` | `RAEA_LIBRARY_HOME` | apps/app/host/library/local.ts |
+| `~/.raea/fingerprints` | `RAEA_FINGERPRINTS` | apps/app/host/fingerprint.ts, apps/app/host/rules-train.ts, apps/app/host/taste.ts |
+| `~/.raea/fingerprints/default` |  | apps/app/host/fingerprint.ts |
+| `~/.raea/inbox` | `RAEA_INBOX_DIR` | apps/app/host/inbox.ts, engine/cli/src/show.ts |
+| `~/.raea/inbox/INBOX.jsonl` |  | engine/cli/src/cli.rs |
+| `~/.raea/library` | `RAEA_LIBRARY_HOME` | apps/app/host/library/fast.ts, apps/app/host/library/local.ts |
+| `~/.raea/library/fast` |  | apps/app/host/library/fast.ts |
 | `~/.raea/library/granted.json` | `RAEA_LIBRARY_GRANTS` | apps/app/host/library/service.ts |
 | `~/.raea/library/hashes.json` | `RAEA_LIBRARY_STATE` | apps/app/host/library/scan.ts |
 | `~/.raea/library/requests.json` | `RAEA_LIBRARY_REQUESTS` | apps/app/host/library/service.ts |
+| `~/.raea/logs/js-heap-` |  | runtime/jsengine/src/upkeep.rs |
 | `~/.raea/media` |  | apps/app/host/compositions.ts |
 | `~/.raea/models` | `RAEA_MODELS` | apps/app/host/library/embed.ts, apps/app/host/library/words.ts |
 | `~/.raea/node.json` | `RAEA_NODE_FILE` | apps/app/host/link.ts, apps/app/host/reach.ts |
@@ -57,12 +84,19 @@ that moves each (when there is one) and the files that name them.
 | `~/.raea/npm/store` |  | io/npm/src/lib.rs, io/npm/src/store.rs |
 | `~/.raea/objects` |  | io/shell/src/fs/mod.rs |
 | `~/.raea/onboarding.json` | `RAEA_ONBOARDING_FILE` | apps/app/host/onboard-account.ts, apps/app/host/onboard.ts |
+| `~/.raea/plugins` | `RAEA_PLUGINS` | apps/app/host/packages.ts, engine/bundle/src/edit.rs |
 | `~/.raea/plugins.json` | `RAEA_PLUGINS_FILE` | apps/app/host/plugins.ts |
 | `~/.raea/publish/drive.json` | `RAEA_DRIVE_PICKS` | apps/app/host/publish-source.ts |
 | `~/.raea/publish/ready.json` | `RAEA_PUBLISH_READY` | apps/app/host/publish-ready.ts |
-| `~/.raea/taste` | `RAEA_TASTE` | apps/app/host/taste.ts, engine/cli/src/guide.rs, engine/cli/src/spec.rs |
-| `~/.raea/taste/corrections.jsonl` |  | apps/app/host/taste.ts |
+| `~/.raea/renders` |  | apps/app/host/renderProgress.ts, runtime/encode/src/progress.rs |
+| `~/.raea/sessions` | `RAEA_SESSIONS_DIR` | apps/app/host/fingerprint-uses.ts, apps/app/host/sessions.ts |
+| `~/.raea/storage-log.jsonl` | `RAEA_STORAGE_LOG` | apps/app/host/storage/trash.ts |
+| `~/.raea/storage-used.json` | `RAEA_STORAGE_USED` | apps/app/host/storage/back.ts |
+| `~/.raea/storage.json` | `RAEA_STORAGE_FILE` | apps/app/host/storage/plan.ts, apps/app/host/storage/service.ts |
+| `~/.raea/taste` | `RAEA_TASTE` | apps/app/host/rules.ts, apps/app/host/taste.ts, engine/cli/src/spec.rs |
+| `~/.raea/taste/corrections.jsonl` |  | apps/app/host/rules-asks.ts, apps/app/host/rules-file.ts, apps/app/host/taste.ts |
 | `~/.raea/taste/taste.ts` |  | engine/cli/src/guide.rs |
+| `~/.raea/trash` | `RAEA_TRASH_DIR` | apps/app/host/storage/trash.ts, apps/app/host/storage/usage.ts |
 | `~/.raea/update` | `RAEA_UPDATE_DIR` | apps/app/host/onboard.ts, apps/app/host/update.ts |
 | `~/.raea/usage-queue.json` |  | apps/app/host/telemetry.ts |
 
@@ -244,7 +278,7 @@ material?: string, style?: string,
 near?: string, };
 export type Controller = { id: string, title: string, help?: string, groups: Array<Group>, };
 export type Group = { id: string, title: string, help?: string, fields: Array<Field>, };
-export type Field = { id: string, label: string, help?: string, } & ({ "type": "toggle", value: boolean, } | { "type": "choice", options: Array<string>, value: string, } | { "type": "number", value: number, unit?: string, min?: number, max?: number, step?: number, } | { "type": "text", value: string, placeholder?: string, multiline?: boolean, } | { "type": "list", value: Array<string>, placeholder?: string, } | { "type": "agents", value: Array<string>, } | { "type": "channels", value: Array<string>, } | { "type": "workflow", value: Array<Step>, channels?: Array<string>, } | { "type": "servers", value: Array<string>, } | { "type": "skills", value: Array<string>, });
-export type Kind = { "type": "toggle", value: boolean, } | { "type": "choice", options: Array<string>, value: string, } | { "type": "number", value: number, unit?: string, min?: number, max?: number, step?: number, } | { "type": "text", value: string, placeholder?: string, multiline?: boolean, } | { "type": "list", value: Array<string>, placeholder?: string, } | { "type": "agents", value: Array<string>, } | { "type": "channels", value: Array<string>, } | { "type": "workflow", value: Array<Step>, channels?: Array<string>, } | { "type": "servers", value: Array<string>, } | { "type": "skills", value: Array<string>, };
+export type Field = { id: string, label: string, help?: string, } & ({ "type": "toggle", value: boolean, } | { "type": "choice", options: Array<string>, value: string, } | { "type": "number", value: number, unit?: string, min?: number, max?: number, step?: number, } | { "type": "text", value: string, placeholder?: string, multiline?: boolean, } | { "type": "list", value: Array<string>, placeholder?: string, } | { "type": "agents", value: Array<string>, } | { "type": "channels", value: Array<string>, } | { "type": "workflow", value: Array<Step>, channels?: Array<string>, } | { "type": "servers", value: Array<string>, } | { "type": "skills", value: Array<string>, } | { "type": "rule", check: string, values: Record<string, number | string | boolean>, level?: string, });
+export type Kind = { "type": "toggle", value: boolean, } | { "type": "choice", options: Array<string>, value: string, } | { "type": "number", value: number, unit?: string, min?: number, max?: number, step?: number, } | { "type": "text", value: string, placeholder?: string, multiline?: boolean, } | { "type": "list", value: Array<string>, placeholder?: string, } | { "type": "agents", value: Array<string>, } | { "type": "channels", value: Array<string>, } | { "type": "workflow", value: Array<Step>, channels?: Array<string>, } | { "type": "servers", value: Array<string>, } | { "type": "skills", value: Array<string>, } | { "type": "rule", check: string, values: Record<string, number | string | boolean>, level?: string, };
 export type Step = { name: string, by?: string, back?: string, };
 ```

@@ -3,3 +3,9 @@ raea/3d. No text was copied from other packs. Its layout (a short router, one fi
 checked example and a list of common mistakes) follows EnzeD/r3f-skills (no license stated; cited, not copied),
 chrisgliddon/bevy-skills (MIT) and gamedev-skills' bevy-ecs (Apache-2.0). Bevy API facts come from Bevy's own v0.19.1
 examples and migration guides (MIT OR Apache-2.0). The survey with links is in sdk/raea/docs/bevy-coverage.md.
+
+The Solari and water topics (bevy/solari.md, bevy/water.md) cite, and don't copy: Bevy's bevy_solari docs, its
+examples/3d/solari.rs and its implementation (v0.20, MIT OR Apache-2.0); JMS55's "Realtime Raytracing in Bevy 0.17
+(Solari)"; GPU Gems 1 ch. 1, "Effective Water Simulation from Physical Models"; Tessendorf's "Simulating Ocean
+Water"; an ocean simulation and rendering survey; Neopallium/bevy_water and mate-h/bevy_fft; and Bevy Elements'
+water research note.

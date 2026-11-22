@@ -25,13 +25,31 @@ piece's modes isn't asked.
 - land (pitch, story, explain): Does the end land: something this audience can do next, a payoff, or a return to the opening?
 - pace (all): Do shot lengths change with what they hold, with no stretch sitting still longer than it earns, and cuts falling on words or beats?
 - read (all): Is every word that matters large, sharp against what is behind it, and on long enough to read?
-- sound (all): Is the voice clear over everything else, with music and effects marking moments rather than filling space?
-- sound-silent (silent): With no voice, do the music and the effects carry it: cuts and moments landing on the beat, each effect marking a moment rather than filling space, nothing muddy? (asked in place of sound when no one speaks)
+- sound (all): Is the voice clear over everything else, with music and effects marking moments rather than filling space, and any music written for this cut (a tune, harmony that moves, a rhythm, an ending on a cut) rather than a pad or drone held under it?
+- sound-silent (silent): With no voice, do the music and the effects carry it: cuts and moments landing on the beat, the music composed (a tune, moving harmony, a rhythm, sections that change with the picture), each effect marking a moment rather than filling space, nothing muddy? (asked in place of sound when no one speaks)
 - world (all): Do colour, type, motion and sound hold one direction from the first frame to the last?
 - own (all): With the name covered, could this only be this project, rather than any product in its category?
 - feel (play): Does the player's input change the picture right away and in a way they can read?
 - again (play): After a failure, is it clear what went wrong and is the next attempt one press away?
 - task (tool): Can the task the screen exists for be done without stopping to work out where to look?
+
+## Music that sounds generated
+
+Listen for these before the decision model does; each is how a made score gives itself away, and the fix
+(`motion/music`):
+
+- **One held texture.** A pad, a sine sub and a long reverb under everything, no attack anywhere. Write a motif, chords
+  that move and a part with rhythm; reverb per instrument, nothing on the bus.
+- **Harmony that stands still.** One chord for four bars or more in a cue that's meant to move. Change it every bar or two.
+- **A loop, not a cue.** The same two bars for thirty seconds. Vary the motif, change the arrangement every four to
+  eight bars, and turn where the edit turns.
+- **Played by a machine.** Every note at one velocity, exactly on the grid. Spread the dynamics; move played parts a
+  few milliseconds; use a recorded groove.
+- **No ending.** A fade-out. End on a chord or a hit on the last cut.
+- **Everywhere.** Music under every scene because the piece "needs music". Some scenes belong to silence or to their
+  own sound.
+- **The wrong source.** A whole score from TokenSynth takes (organ-like sustains, buzz) or from an SAO "ambient
+  music" prompt. Recorded instruments play the parts; TokenSynth fills a timbre no library has; SAO makes effects.
 
 ## Ranking
 

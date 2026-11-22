@@ -25,8 +25,9 @@ Before you say a piece is done, every line here is true of the last render, not 
 - **Every name the voice says is on screen when it says it.** If the narration says "the brief", the brief is visible.
 - **Nothing stands still for three seconds** unless the stillness is the point. A held frame needs a reason the viewer
   can feel.
-- **Reading time.** About 0.3 s a word, and at least a second for anything that has to be read. A number gets time
-  to land before the next thing replaces it.
+- **Reading time.** About 0.3 s a word, and at least a second for anything that has to be read, counted while it can
+  be read: faded, covered or lost against its ground doesn't count, and `raea check` says which frames were lost. A
+  number gets time to land before the next thing replaces it.
 - **The mix.** -14 LUFS integrated (±1), true peak at or below -1 dBTP, and the voice clear over everything.
   Changing the target needs the person's say-so.
 - **Names are spelled right.** People, products and places are spelled as the brief has them, never as the
@@ -60,6 +61,8 @@ direction asks for it by name, and the direction then says why in a line.
 - **Template captions.** White bold text with one yellow word, an emoji pop, a zoom on every sentence, a whoosh on
   every entrance.
 - **The same move everywhere.** One entrance, one zoom or one sound on every beat makes every beat weaker.
+- **Music by default.** A bed under every second, or a held pad and drone standing in for a score. Decide what each
+  scene is heard as, and compose what it needs (`motion/music`).
 - **Copy that sounds like an ad.** Buzzwords, "Not X. Y." cadences, aphorisms, a label above every headline.
 
 ## Never

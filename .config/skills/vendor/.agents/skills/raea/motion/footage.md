@@ -11,7 +11,7 @@
   time shown at the clip's frame `f` is `(startFrom + f * playbackRate) / fps`. `trimBefore` and `trimAfter` are other
   names for the same two props: use one name or the other, never both.
 - Frame a talking head on its face. `raea frame TAKE` says whether the take is a talking take (`<FaceFrame>`, from
-  `raea part add face-frame`) or a wide screen recording (`<ScreenFit>`). `<FaceFrame src={take} />` (or
+  `raea component add face-frame`) or a wide screen recording (`<ScreenFit>`). `<FaceFrame src={take} />` (or
   `<Video framing="face">`) has the engine find the face and keep the eyes 38% down the frame as the speaker moves; an
   objectPosition or transform of your own on that Video turns the framing off. Zoom a clip for emphasis with
   `punchIn={1.15}`. Alternating punched and unpunched clips between cuts gives a talking head rhythm without a zoom
@@ -26,6 +26,25 @@
   audio's own rate, so they can be shorter than a frame.
 - Use `muted` for picture-only clips, `playbackRate` for speed changes (the sound follows) and `loop` with `endAt` to
   repeat a short source from `startFrom` each time it reaches `endAt` (without `endAt`, nothing loops).
+- For a speed ramp, give `speedCurve` instead of `playbackRate`: `[place, speed]` points over the source from
+  `startFrom` (place 0) to `endAt` (place 1, so it needs `endAt`), each speed from 0.1 to 10, changing in a straight
+  line between points: `speedCurve={[[0, 1], [0.5, 4], [1, 1]]}` speeds up to 4x at the middle and back. The sound
+  follows it. The clip then takes `speedLength(speedPoints("clip", curve), endAt - startFrom)` frames, so give its
+  `<Sequence>` that `durationInFrames` (rounded).
+- For a look over a stretch of time, put an `<Effect kind="mono" />` in a `<Sequence>` of its own, written after
+  the parts it covers: it filters everything drawn before it for that sequence's frames, and draws nothing itself.
+  Kinds: `blur`, `mono` (black and white), `sepia`, `vivid`, `faded`, `contrast`, `bright`, `dark`, `invert`, `hue`.
+  `amount` (0 to 1) says how much; `in` and `out` are the frames it takes to come on and go off. The feed's timeline
+  shows such a sequence as an effect clip, so the person can move, trim or retune it there.
+  An effect of your own is its `parts`, CSS filter functions from amount 0 to amount 1:
+  `<Effect kind="dream" parts={[["blur", 0, 6, "px"], ["saturate", 1, 1.6]]} />` (blur, brightness, contrast,
+  grayscale, hue-rotate, invert, saturate, sepia).
+- To recut a composition as data rather than by hand, use `raea/editor`, the model behind the feed's timeline.
+  `fromRender({ frames, fps, cuts })` makes its scenes clips of a main track, `applyAll(t, ops)` makes the edits
+  (`split`, `move`, `trim`, `remove`) and hands back each one's inverse, so a change can be undone, and
+  `segmentsOf(t)` is the cut as `<Composition edit={{ segments }}>` takes it. The main track's magnet closes every
+  gap, as the feed's does. Segments say only which source frames play in which order: a speed or a freeze on a clip
+  is not in them. docs/manual/examples/edits.tsx builds a timeline, edits it and undoes it.
 - Use `<Img src>` for stills. The frame waits until the image has loaded. An image whose file isn't there fails the
   render with "missing image: PATH"; a plain App prints that line and draws nothing.
 
