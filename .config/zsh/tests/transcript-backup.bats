@@ -209,3 +209,74 @@ EOF
   [[ "$output" == *"nothing to back up"* ]]
   [ -z "$(find "$TRANSCRIPT_BACKUP_REMOTE" -type f 2>/dev/null)" ]
 }
+
+create_bb_db() {
+  python3 - "$HOME/.bb/bb.db" "$@" <<'PY'
+import os, sqlite3, sys
+db = sys.argv[1]
+os.makedirs(os.path.dirname(db), exist_ok=True)
+conn = sqlite3.connect(db)
+conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, archived_at INTEGER, deleted_at INTEGER)")
+conn.execute("CREATE TABLE events (thread_id TEXT, provider_thread_id TEXT)")
+for spec in sys.argv[2:]:
+    tid, state, sid = spec.split(":")
+    arch = 1700000000000 if state == "archived" else None
+    deleted = 1700000000000 if state == "deleted" else None
+    conn.execute("INSERT INTO threads VALUES (?, ?, ?)", (tid, arch, deleted))
+    conn.execute("INSERT INTO events VALUES (?, ?)", (tid, sid))
+conn.commit()
+PY
+}
+
+@test "unarchived BB threads protect both Claude and Codex sessions regardless of age" {
+  local live_claude="44444444-4444-4444-8444-444444444444"
+  local live_codex="55555555-5555-4555-8555-555555555555"
+  local arch_codex="66666666-6666-4666-8666-666666666666"
+  printf 'live claude\n' >"$P/$live_claude.jsonl"
+  printf 'live codex\n' >"$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$live_codex.jsonl"
+  printf 'archived codex\n' >"$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$arch_codex.jsonl"
+  touch -t "$OLD" \
+    "$P/$live_claude.jsonl" \
+    "$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$live_codex.jsonl" \
+    "$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$arch_codex.jsonl"
+
+  create_bb_db \
+    "thr_live_c:live:$live_claude" \
+    "thr_live_x:live:$live_codex" \
+    "thr_arch_x:archived:$arch_codex"
+
+  run "$TB"
+  [ "$status" -eq 0 ]
+
+  [ -e "$P/$live_claude.jsonl" ]
+  [ -e "$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$live_codex.jsonl" ]
+  [ ! -e "$HOME/.codex/archived_sessions/rollout-2026-01-01T00-00-00-$arch_codex.jsonl" ]
+}
+
+@test "an unreadable BB database stops the run before anything moves" {
+  mkdir -p "$HOME/.bb"
+  printf 'not sqlite\n' >"$HOME/.bb/bb.db"
+
+  run "$TB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cannot read BB database"* ]]
+  [ -z "$(find "$TRANSCRIPT_BACKUP_REMOTE" -type f 2>/dev/null)" ]
+  [ -e "$P/$UUID_A.jsonl" ]
+}
+
+@test "default idle threshold is 14 days" {
+  local ten_days twenty_days
+  ten_days=$(python3 -c 'import time; print(time.strftime("%Y%m%d%H%M", time.localtime(time.time() - 10*86400)))')
+  twenty_days=$(python3 -c 'import time; print(time.strftime("%Y%m%d%H%M", time.localtime(time.time() - 20*86400)))')
+  local sid_10="77777777-7777-4777-8777-777777777777"
+  local sid_20="88888888-8888-4888-8888-888888888888"
+  printf 'ten days\n' >"$P/$sid_10.jsonl"
+  printf 'twenty days\n' >"$P/$sid_20.jsonl"
+  touch -t "$ten_days" "$P/$sid_10.jsonl"
+  touch -t "$twenty_days" "$P/$sid_20.jsonl"
+
+  run "$TB"
+  [ "$status" -eq 0 ]
+  [ -e "$P/$sid_10.jsonl" ]
+  [ ! -e "$P/$sid_20.jsonl" ]
+}

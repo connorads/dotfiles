@@ -115,7 +115,7 @@ their existing button behaviour.
 
 Homebrew manages automatic cleanup during upgrades. On non-NixOS Linux with APT, `up` runs autoremove after a successful upgrade; frozen mode skips this phase. `up` does not prune mise versions or caches, and its summary does not report what cleanup removed.
 
-Nix garbage collection runs each day at 03:15 with `--delete-older-than 14d`. macOS also schedules store optimisation at 03:30. Linux home-manager schedules collection for user profiles; the rpi5 repo owns its system collection policy. See [macOS policy](../.config/nix/modules/darwin-shared.nix) and [Linux policy](../.config/nix/modules/linux-base.nix).
+Nix garbage collection runs each day at 03:15 with `--delete-older-than 14d`. macOS also schedules store optimisation at 03:30, `vox prune` at 04:00, and `disk-janitor` at 04:15 (running `cleanup --yes` - including archived BB `thread-storage` >7d - and `transcript-backup` for 14+ day idle sessions while protecting live BB threads). Linux home-manager schedules collection for user profiles; the rpi5 repo owns its system collection policy. See [macOS policy](../.config/nix/modules/darwin-shared.nix), [macOS desktop agents](../.config/nix/modules/darwin-desktop.nix) and [Linux policy](../.config/nix/modules/linux-base.nix).
 
 ## sudo with Touch ID and YubiKey
 

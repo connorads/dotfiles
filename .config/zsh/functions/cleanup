@@ -4,18 +4,18 @@
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
 #            --playwright, --chrome, --temp, --docker, --nix, --mise,
-#            --mise-cache, --codex, --brew, --go, --claude-temp, --worktree-build,
-#            --volumes
+#            --mise-cache, --codex, --brew, --go, --bb-thread-storage,
+#            --claude-temp, --worktree-build, --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go claude-temp worktree-build)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go bb-thread-storage claude-temp worktree-build)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
 # costs a full recompile to restore.
-CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go)
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go bb-thread-storage)
 CLEANUP_SELECTED_TARGETS=()
 
 # Roots scanned for Rust build dirs. Space-separated; override to scan elsewhere.
@@ -36,6 +36,8 @@ typeset -g CLEANUP_CLAUDE_TMP_ROOT="${CLEANUP_CLAUDE_TMP_ROOT:-/private/tmp/clau
 typeset -g CLEANUP_CLAUDE_PROFILES_ROOT="${CLEANUP_CLAUDE_PROFILES_ROOT:-$HOME/.claude-profiles}"
 typeset -g CLEANUP_HIBERNATE_DIR="${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}"
 typeset -g CLEANUP_WORKTREE_ROOT="${CLEANUP_WORKTREE_ROOT:-$HOME/.trees}"
+typeset -g CLEANUP_BB_DIR="${CLEANUP_BB_DIR:-$HOME/.bb}"
+typeset -g CLEANUP_BB_THREAD_STORAGE_DAYS="${CLEANUP_BB_THREAD_STORAGE_DAYS:-7}"
 typeset -g CLEANUP_UV_CACHE_DIR=""
 typeset -g CLEANUP_PROBE_FAILED=0
 typeset -ga CLEANUP_PROBE_FAILED_TARGETS=()
@@ -67,6 +69,7 @@ CLEANUP_LABELS=(
   codex "Codex TUI log"
   brew "Homebrew download cache"
   go "Go build and module caches"
+  bb-thread-storage "Archived BB thread storage"
   claude-temp "Inactive Claude scratch sessions"
   worktree-build "Unused worktree build artefacts"
 )
@@ -94,6 +97,7 @@ CLEANUP_DEFAULT_FLAGS=(
   codex 1
   brew 1
   go 1
+  bb-thread-storage 1
   claude-temp 0
   worktree-build 0
 )
@@ -115,11 +119,14 @@ Usage:
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
   nvim, browsers, playwright, chrome, temp, docker, nix, mise, mise-cache,
-  codex, brew, go, claude-temp, worktree-build
+  codex, brew, go, bb-thread-storage, claude-temp, worktree-build
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
     opt-in only).
+  - bb-thread-storage removes storage for BB threads archived >7d ago (override
+    with CLEANUP_BB_THREAD_STORAGE_DAYS) and orphaned thr_* dirs (>1h old),
+    preserving live threads, pinned threads, and any top-level keep/ entry.
   - cargo-target scans $CLEANUP_CARGO_ROOTS and reclaims Rust build dirs;
     rebuildable, but the next build recompiles from scratch.
   - claude-temp is opt-in. It removes scratch directories older than 60 minutes
@@ -153,13 +160,18 @@ _cleanup_add_target() {
 }
 
 _cleanup_kb_sum() {
-  local total=0 path kb
-  for path in "$@"; do
-    [[ -e "$path" ]] || continue
-    kb=$(/bin/sh -c '/usr/bin/du -sk "$1" 2>/dev/null | /usr/bin/sed "s/[[:space:]].*//"' sh "$path")
-    (( total += ${kb:-0} ))
+  local -a existing
+  local entry
+  for entry in "$@"; do
+    [[ -e "$entry" ]] && existing+=("$entry")
   done
-  print -r -- "$total"
+  ((${#existing[@]} > 0)) || {
+    print -r -- 0
+    return 0
+  }
+  print -rN -- "${existing[@]}" |
+    xargs -0 /usr/bin/du -sk 2>/dev/null |
+    awk '{ s += $1 } END { print s + 0 }'
 }
 
 _cleanup_any_exists() {
@@ -172,12 +184,12 @@ _cleanup_any_exists() {
 
 _cleanup_human_kb() {
   local kb=${1:-0}
-  if (( kb >= 1073741824 )); then
-    printf '%.1fT' "$(( kb / 1024.0 / 1024.0 / 1024.0 ))"
-  elif (( kb >= 1048576 )); then
-    printf '%.1fG' "$(( kb / 1024.0 / 1024.0 ))"
-  elif (( kb >= 1024 )); then
-    printf '%.1fM' "$(( kb / 1024.0 ))"
+  if ((kb >= 1073741824)); then
+    printf '%.1fT' "$((kb / 1024.0 / 1024.0 / 1024.0))"
+  elif ((kb >= 1048576)); then
+    printf '%.1fG' "$((kb / 1024.0 / 1024.0))"
+  elif ((kb >= 1024)); then
+    printf '%.1fM' "$((kb / 1024.0))"
   else
     printf '%dK' "$kb"
   fi
@@ -186,9 +198,9 @@ _cleanup_human_kb() {
 _cleanup_signed_human_kb() {
   local kb=${1:-0}
   local sign="+"
-  if (( kb < 0 )); then
+  if ((kb < 0)); then
     sign="-"
-    kb=$(( -kb ))
+    kb=$((-kb))
   fi
   printf '%s%s' "$sign" "$(_cleanup_human_kb "$kb")"
 }
@@ -198,8 +210,8 @@ _cleanup_available_kb() {
   # macOS firmlinks HOME into the Data volume, but `df "$HOME"` reports the
   # read-only system volume. Probe Data directly so the delta tracks user data.
   [[ -d /System/Volumes/Data ]] && probe_path=/System/Volumes/Data
-  command df -kP "$probe_path" 2>/dev/null \
-    | awk 'NR == 2 && $4 ~ /^[0-9]+$/ { print $4; exit }'
+  command df -kP "$probe_path" 2>/dev/null |
+    awk 'NR == 2 && $4 ~ /^[0-9]+$/ { print $4; exit }'
 }
 
 _cleanup_json_escape() {
@@ -214,21 +226,24 @@ _cleanup_json_escape() {
 
 _cleanup_parse_size_to_kb() {
   local raw=${1//,/}
-  [[ "$raw" == "0B" || "$raw" == "0" ]] && { print -r -- 0; return 0; }
+  [[ "$raw" == "0B" || "$raw" == "0" ]] && {
+    print -r -- 0
+    return 0
+  }
 
   if [[ "$raw" =~ '^([0-9]+([.][0-9]+)?)([KMGTP]?B)$' ]]; then
     local -F value=$match[1]
     local unit=$match[3]
     local -F mult=1
     case "$unit" in
-      KB) mult=1 ;;
-      MB) mult=1024 ;;
-      GB) mult=$(( 1024.0 * 1024.0 )) ;;
-      TB) mult=$(( 1024.0 * 1024.0 * 1024.0 )) ;;
-      PB) mult=$(( 1024.0 * 1024.0 * 1024.0 * 1024.0 )) ;;
-      B)  mult=$(( 1.0 / 1024.0 )) ;;
+    KB) mult=1 ;;
+    MB) mult=1024 ;;
+    GB) mult=$((1024.0 * 1024.0)) ;;
+    TB) mult=$((1024.0 * 1024.0 * 1024.0)) ;;
+    PB) mult=$((1024.0 * 1024.0 * 1024.0 * 1024.0)) ;;
+    B) mult=$((1.0 / 1024.0)) ;;
     esac
-    printf '%.0f\n' "$(( value * mult ))"
+    printf '%.0f\n' "$((value * mult))"
     return 0
   fi
 
@@ -240,6 +255,90 @@ _cleanup_temp_candidates() {
   [[ -d "$root" ]] || return 0
 
   find "$root" -maxdepth 1 -mindepth 1 -user "${USER:-$(id -un)}" -mtime +7 -print 2>/dev/null
+}
+
+_cleanup_bb_thread_storage_candidates() {
+  local ts_root="$CLEANUP_BB_DIR/thread-storage"
+  local bb_db="$CLEANUP_BB_DIR/bb.db"
+  [[ -d "$ts_root" ]] || return 0
+  if [[ ! -e "$bb_db" ]]; then
+    print -u2 "error: cannot inspect BB thread state (missing $bb_db)"
+    return 1
+  fi
+  command -v python3 >/dev/null 2>&1 || {
+    print -u2 "error: python3 required to inspect BB thread state"
+    return 1
+  }
+  if [[ "$CLEANUP_BB_THREAD_STORAGE_DAYS" != <-> ]]; then
+    print -u2 "error: invalid CLEANUP_BB_THREAD_STORAGE_DAYS '$CLEANUP_BB_THREAD_STORAGE_DAYS'"
+    return 1
+  fi
+
+  python3 - "$ts_root" "$bb_db" "$CLEANUP_BB_THREAD_STORAGE_DAYS" <<'PY'
+import os
+import sqlite3
+import sys
+import time
+
+ts_root, bb_db, days_raw = sys.argv[1], sys.argv[2], sys.argv[3]
+days = int(days_raw)
+now_s = time.time()
+cutoff_s = now_s - days * 86400
+orphan_cutoff_s = now_s - 3600
+
+def to_seconds(val):
+    if val is None:
+        return None
+    v = float(val)
+    return v / 1000.0 if v > 1e12 else v
+
+try:
+    conn = sqlite3.connect(f"file:{bb_db}?mode=ro", uri=True, timeout=5.0)
+    threads = {
+        tid: (to_seconds(arch), pinned, to_seconds(deleted))
+        for tid, arch, pinned, deleted in conn.execute(
+            "SELECT id, archived_at, pinned_at, deleted_at FROM threads"
+        )
+    }
+except Exception as exc:
+    sys.stderr.write(f"error: cannot read BB database {bb_db}: {exc}\n")
+    sys.exit(1)
+
+for name in sorted(os.listdir(ts_root)):
+    if not name.startswith("thr_"):
+        continue
+    path = os.path.join(ts_root, name)
+    if os.path.islink(path) or not os.path.isdir(path):
+        continue
+
+    if name in threads:
+        archived_s, pinned_at, deleted_s = threads[name]
+        if pinned_at is not None:
+            continue
+        if deleted_s is not None:
+            if deleted_s > orphan_cutoff_s:
+                continue
+        elif archived_s is None:
+            continue
+        elif archived_s > cutoff_s:
+            continue
+    else:
+        try:
+            st = os.lstat(path)
+        except OSError:
+            continue
+        if st.st_mtime > orphan_cutoff_s:
+            continue
+
+    keep_path = os.path.join(path, "keep")
+    if os.path.lexists(keep_path):
+        for child in sorted(os.listdir(path)):
+            if child == "keep":
+                continue
+            print(os.path.join(path, child))
+    else:
+        print(path)
+PY
 }
 
 _cleanup_claude_temp_candidates() {
@@ -357,7 +456,7 @@ _cleanup_worktree_build_candidates() {
         break
       fi
     done
-    (( protected )) && continue
+    ((protected)) && continue
 
     while IFS= read -r artefact; do
       [[ -n "$artefact" ]] || continue
@@ -382,8 +481,8 @@ _cleanup_rustup_removable() {
   # "(", so its absence reliably means "idle/removable" — and matching the
   # marker by "(" rather than enumerating words avoids the override/overridden
   # prefix trap (the words diverge at char 8).
-  rustup toolchain list 2>/dev/null \
-    | awk '!/\(/ { if ($1 != "") print $1 }'
+  rustup toolchain list 2>/dev/null |
+    awk '!/\(/ { if ($1 != "") print $1 }'
 }
 
 # Print GOCACHE and GOMODCACHE, one per line, only when the toolchain answers.
@@ -395,7 +494,7 @@ _cleanup_go_env_dirs() {
   local -a dirs
   dirs=("${(@f)$(go env GOCACHE GOMODCACHE 2>/dev/null)}")
   dirs=("${(@)dirs:#}")
-  (( ${#dirs[@]} == 2 )) || return 1
+  ((${#dirs[@]} == 2)) || return 1
   print -rl -- "${dirs[@]}"
 }
 
@@ -529,7 +628,7 @@ _cleanup_sparse_vm_disk() {
         blocks=${out##* }
       fi
       [[ "$apparent" == <-> && "$blocks" == <-> ]] || continue
-      if (( apparent > blocks * 512 )); then
+      if ((apparent > blocks * 512)); then
         print -r -- "$disk"
         return 0
       fi
@@ -546,319 +645,332 @@ _cleanup_probe_target() {
   local -a dirs candidates
 
   case "$target" in
-    bun)
-      dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
+  bun)
+    dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || command -v bun >/dev/null 2>&1 || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}"
+    # Bun documents `bun pm cache rm`, but local path discovery can still fail.
+    command="bun pm cache rm (fallback: rm -rf Bun cache roots)"
+    ;;
+  pnpm)
+    command -v pnpm >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      dirs=("$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm")
       kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || command -v bun >/dev/null 2>&1 || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}"
-      # Bun documents `bun pm cache rm`, but local path discovery can still fail.
-      command="bun pm cache rm (fallback: rm -rf Bun cache roots)"
-      ;;
-    pnpm)
-      command -v pnpm >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        dirs=("$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm")
-        kb=$(_cleanup_kb_sum "${dirs[@]}")
-        estimate_kind="partial"
-        detail="Caches: ${dirs[1]}, ${dirs[2]}; pnpm store prune has unknown additional reclaim"
-        command="pnpm store prune; rm -rf pnpm cache roots"
-      fi
-      ;;
-    yarn)
-      # Never invoke `yarn`: the mise shim errors "No version is set for shim:
-      # yarn" when unpinned, so probe/run by path only.
-      dirs=("$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      _cleanup_any_exists "${dirs[@]}" || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}"
-      command="rm -rf ~/.local/share/yarn/berry/cache ~/.cache/yarn"
-      ;;
-    aube)
-      # Cache-only: the durable CAS store, primer/, and adaptive-state.json
-      # under ~/.local/share/aube and ~/.cache/aube/primer are preserved.
-      # virtual-store is excluded on purpose - it is live working set for mise
-      # npm-backend tools, not durable garbage; see _cleanup_run_target.
-      # tools/ holds aube-provisioned tool installs (node-gyp). Their store links
-      # are absolute paths into virtual-store, so they break whenever aube
-      # relocates an entry - e.g. across a virtual-store layout bump - and the
-      # bootstrap serves the dangling path rather than re-provisioning. It is
-      # ~48K and fully regenerable, so flush it instead of detecting staleness.
-      dirs=("$HOME/.cache/aube/packuments-full-v1" "$HOME/.cache/aube/tools")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || command -v aube >/dev/null 2>&1 || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}"
-      command="aube cache prune --age-days 0; rm -rf packuments-full-v1 tools"
-      ;;
-    npm)
-      command -v npm >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        kb=$(_cleanup_kb_sum "$HOME/.npm/_cacache" "$HOME/.npm/_npx")
-        detail="Paths: $HOME/.npm/_cacache, $HOME/.npm/_npx"
-        command="npm cache clean --force; rm -rf ~/.npm/_npx"
-      fi
-      ;;
-    pip)
-      command -v pip >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        kb=$(_cleanup_kb_sum "$HOME/.cache/pip")
-        detail="Path: $HOME/.cache/pip"
-        command="pip cache purge"
-      fi
-      ;;
-    uv)
-      command -v uv >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        CLEANUP_UV_CACHE_DIR=$(uv cache dir) || return 1
-        [[ -n "$CLEANUP_UV_CACHE_DIR" ]] || return 1
-        kb=$(_cleanup_kb_sum "$CLEANUP_UV_CACHE_DIR")
-        detail="Path: $CLEANUP_UV_CACHE_DIR"
-        command="uv cache clean --cache-dir ${(q)CLEANUP_UV_CACHE_DIR}"
-      fi
-      ;;
-    cargo)
-      dirs=("$HOME/.cargo/registry/cache")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || command -v cargo >/dev/null 2>&1 || applicable=0
-      detail="Path: $HOME/.cargo/registry/cache"
-      command="rm -rf ~/.cargo/registry/cache"
-      ;;
-    go)
-      dirs=("${(@f)$(_cleanup_go_env_dirs)}")
-      dirs=("${(@)dirs:#}")
-      if (( ${#dirs[@]} == 2 )); then
-        command="go clean -cache -modcache"
-        detail="Tool-resolved paths: ${dirs[1]}, ${dirs[2]}"
-      else
-        dirs=("$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod")
-        command="rm -rf canonical Go cache roots"
-        detail="Go toolchain unusable; paths: ${dirs[1]}, ${dirs[2]}; preserves ~/go/src and ~/go/bin"
-      fi
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || applicable=0
-      ;;
-    cargo-target)
-      local target_dir
-      local -a target_dirs
-      kb=0
-      target_dirs=("${(@f)$(_cleanup_cargo_target_dirs)}")
-      target_dirs=("${(@)target_dirs:#}")
-      for target_dir in "${target_dirs[@]}"; do
-        (( kb += $(_cleanup_kb_sum "$target_dir") ))
-      done
-      (( ${#target_dirs[@]} > 0 )) || applicable=0
-      detail="Roots: ${CLEANUP_CARGO_ROOTS}; ${#target_dirs[@]} build dir(s); next build recompiles from scratch"
-      command="cargo clean (per crate; fallback: rm -rf the target dir)"
-      ;;
-    rustup)
-      local tc
-      local -a removable_toolchains
-      kb=0
-      removable_toolchains=("${(@f)$(_cleanup_rustup_removable)}")
-      removable_toolchains=("${(@)removable_toolchains:#}")
-      for tc in "${removable_toolchains[@]}"; do
-        (( kb += $(_cleanup_kb_sum "$HOME/.rustup/toolchains/$tc") ))
-      done
-      command -v rustup >/dev/null 2>&1 || applicable=0
-      (( ${#removable_toolchains[@]} > 0 )) || applicable=0
-      detail="Source: rustup toolchain list (keeps default/active/overridden)"
-      command="rustup toolchain uninstall <unused toolchains>"
-      ;;
-    nvim)
-      kb=$(_cleanup_kb_sum "$HOME/.cache/nvim")
-      (( kb > 0 )) || applicable=0
-      detail="Path: $HOME/.cache/nvim"
-      command="rm -rf ~/.cache/nvim"
-      ;;
-    node-gyp)
-      # node-gyp resolves its download cache via env-paths, so the location is
-      # platform-dependent: ~/Library/Caches on macOS, XDG on Linux. ~/.node-gyp
-      # is the legacy devdir older toolchains still write. All three are pure
-      # re-downloadable header caches, and this file runs on both platforms.
-      dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      _cleanup_any_exists "${dirs[@]}" || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
-      command="rm -rf ~/Library/Caches/node-gyp ~/.cache/node-gyp ~/.node-gyp"
-      ;;
-    browsers)
-      # Wholesale-delete semantics only. Playwright is deliberately NOT here:
-      # its registry is shared between installs and pruned selectively, which is
-      # a different contract, so it has its own target.
-      dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
-      command="rm -rf browser automation caches"
-      ;;
-    playwright)
-      local -a pw_roots pw_stale
-      pw_roots=("${(@f)$(_cleanup_playwright_roots)}")
-      _cleanup_any_exists "${pw_roots[@]}" || applicable=0
-      if (( applicable )) && ! command -v python3 >/dev/null 2>&1; then
-        applicable=0
-      fi
-      if (( applicable )); then
-        pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
-        pw_stale=("${(@)pw_stale:#}")
-        kb=$(_cleanup_kb_sum "${pw_stale[@]}")
-        detail="Roots: ${(j:, :)pw_roots}; ${#pw_stale[@]} entries no live playwright-core references (0 is the normal answer)"
-        command="rm -rf unreferenced revision dirs and stale .links entries"
-      fi
-      ;;
-    chrome)
-      # HTTP cache only. Profiles, cookies, history and extensions live under
-      # ~/Library/Application Support/Google/Chrome, which is never named here.
-      dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium" \
-        "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}, ${dirs[4]}"
-      command="rm -rf Chrome/Chromium HTTP caches"
-      # Guarded on the browser being down, the way docker guards on the daemon
-      # being up: a running Chrome holds these files open and rewrites them as
-      # they are deleted, so the reclaim is both partial and disruptive.
-      if pgrep -x "Google Chrome" >/dev/null 2>&1 || pgrep -x chrome >/dev/null 2>&1; then
-        applicable=0
-        detail="Chrome is running; quit it before reclaiming its HTTP cache"
-      elif (( kb == 0 )); then
-        applicable=0
-      fi
-      ;;
-    temp)
-      candidates=("${(@f)$(_cleanup_temp_candidates)}")
-      kb=$(_cleanup_kb_sum "${candidates[@]}")
-      (( ${#candidates[@]} > 0 )) || applicable=0
-      detail="Root: $CLEANUP_TMP_ROOT; age: >7d; owner: ${USER:-$(id -un)}"
-      command="rm -rf stale temp entries"
-      ;;
-    docker)
-      command -v docker >/dev/null 2>&1 || applicable=0
-      if (( applicable )) && ! docker info >/dev/null 2>&1; then
-        applicable=0
-      fi
-      if (( applicable )); then
-        local line dtype reclaim
-        local docker_suffix=""
-        while IFS='|' read -r dtype reclaim; do
-          [[ -n "$dtype" && -n "$reclaim" ]] || continue
-          if [[ "$dtype" == "Local Volumes" ]] && (( ! CLEANUP_INCLUDE_VOLUMES )); then
-            continue
-          fi
-          (( kb += $(_cleanup_parse_size_to_kb "${reclaim%% *}") ))
-        done < <(docker system df --format '{{.Type}}|{{.Reclaimable}}' 2>/dev/null)
-        (( CLEANUP_INCLUDE_VOLUMES )) && docker_suffix=" --volumes"
-        command="docker system prune -af${docker_suffix}"
-        # A daemon backed by a sparse VM disk (colima, lima, podman machine)
-        # reclaims nothing on the host: the prune frees blocks inside the guest
-        # filesystem, and the image file only grows. Report 0 and keep docker's
-        # own figure in detail, the way nix and cargo-target carry caveats.
-        local vm_disk
-        vm_disk=$(_cleanup_sparse_vm_disk)
-        if [[ -n "$vm_disk" ]]; then
-          detail="Command: docker system prune -af${docker_suffix}; frees $(_cleanup_human_kb "$kb") inside the VM only - host disk unchanged (sparse ${vm_disk}); host bytes need 'colima delete'"
-          kb=0
-          estimate_kind="none"
-        else
-          detail="Command: docker system prune -af${docker_suffix}"
-          estimate_kind="tool-estimate"
+      estimate_kind="partial"
+      detail="Caches: ${dirs[1]}, ${dirs[2]}; pnpm store prune has unknown additional reclaim"
+      command="pnpm store prune; rm -rf pnpm cache roots"
+    fi
+    ;;
+  yarn)
+    # Never invoke `yarn`: the mise shim errors "No version is set for shim:
+    # yarn" when unpinned, so probe/run by path only.
+    dirs=("$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    _cleanup_any_exists "${dirs[@]}" || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}"
+    command="rm -rf ~/.local/share/yarn/berry/cache ~/.cache/yarn"
+    ;;
+  aube)
+    # Cache-only: the durable CAS store, primer/, and adaptive-state.json
+    # under ~/.local/share/aube and ~/.cache/aube/primer are preserved.
+    # virtual-store is excluded on purpose - it is live working set for mise
+    # npm-backend tools, not durable garbage; see _cleanup_run_target.
+    # tools/ holds aube-provisioned tool installs (node-gyp). Their store links
+    # are absolute paths into virtual-store, so they break whenever aube
+    # relocates an entry - e.g. across a virtual-store layout bump - and the
+    # bootstrap serves the dangling path rather than re-provisioning. It is
+    # ~48K and fully regenerable, so flush it instead of detecting staleness.
+    dirs=("$HOME/.cache/aube/packuments-full-v1" "$HOME/.cache/aube/tools")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || command -v aube >/dev/null 2>&1 || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}"
+    command="aube cache prune --age-days 0; rm -rf packuments-full-v1 tools"
+    ;;
+  npm)
+    command -v npm >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      kb=$(_cleanup_kb_sum "$HOME/.npm/_cacache" "$HOME/.npm/_npx")
+      detail="Paths: $HOME/.npm/_cacache, $HOME/.npm/_npx"
+      command="npm cache clean --force; rm -rf ~/.npm/_npx"
+    fi
+    ;;
+  pip)
+    command -v pip >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      kb=$(_cleanup_kb_sum "$HOME/.cache/pip")
+      detail="Path: $HOME/.cache/pip"
+      command="pip cache purge"
+    fi
+    ;;
+  uv)
+    command -v uv >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      CLEANUP_UV_CACHE_DIR=$(uv cache dir) || return 1
+      [[ -n "$CLEANUP_UV_CACHE_DIR" ]] || return 1
+      kb=$(_cleanup_kb_sum "$CLEANUP_UV_CACHE_DIR")
+      detail="Path: $CLEANUP_UV_CACHE_DIR"
+      command="uv cache clean --cache-dir ${(q)CLEANUP_UV_CACHE_DIR}"
+    fi
+    ;;
+  cargo)
+    dirs=("$HOME/.cargo/registry/cache")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || command -v cargo >/dev/null 2>&1 || applicable=0
+    detail="Path: $HOME/.cargo/registry/cache"
+    command="rm -rf ~/.cargo/registry/cache"
+    ;;
+  go)
+    dirs=("${(@f)$(_cleanup_go_env_dirs)}")
+    dirs=("${(@)dirs:#}")
+    if ((${#dirs[@]} == 2)); then
+      command="go clean -cache -modcache"
+      detail="Tool-resolved paths: ${dirs[1]}, ${dirs[2]}"
+    else
+      dirs=("$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod")
+      command="rm -rf canonical Go cache roots"
+      detail="Go toolchain unusable; paths: ${dirs[1]}, ${dirs[2]}; preserves ~/go/src and ~/go/bin"
+    fi
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || applicable=0
+    ;;
+  cargo-target)
+    local target_dir
+    local -a target_dirs
+    kb=0
+    target_dirs=("${(@f)$(_cleanup_cargo_target_dirs)}")
+    target_dirs=("${(@)target_dirs:#}")
+    for target_dir in "${target_dirs[@]}"; do
+      ((kb += $(_cleanup_kb_sum "$target_dir")))
+    done
+    ((${#target_dirs[@]} > 0)) || applicable=0
+    detail="Roots: ${CLEANUP_CARGO_ROOTS}; ${#target_dirs[@]} build dir(s); next build recompiles from scratch"
+    command="cargo clean (per crate; fallback: rm -rf the target dir)"
+    ;;
+  rustup)
+    local tc
+    local -a removable_toolchains
+    kb=0
+    removable_toolchains=("${(@f)$(_cleanup_rustup_removable)}")
+    removable_toolchains=("${(@)removable_toolchains:#}")
+    for tc in "${removable_toolchains[@]}"; do
+      ((kb += $(_cleanup_kb_sum "$HOME/.rustup/toolchains/$tc")))
+    done
+    command -v rustup >/dev/null 2>&1 || applicable=0
+    ((${#removable_toolchains[@]} > 0)) || applicable=0
+    detail="Source: rustup toolchain list (keeps default/active/overridden)"
+    command="rustup toolchain uninstall <unused toolchains>"
+    ;;
+  nvim)
+    kb=$(_cleanup_kb_sum "$HOME/.cache/nvim")
+    ((kb > 0)) || applicable=0
+    detail="Path: $HOME/.cache/nvim"
+    command="rm -rf ~/.cache/nvim"
+    ;;
+  node-gyp)
+    # node-gyp resolves its download cache via env-paths, so the location is
+    # platform-dependent: ~/Library/Caches on macOS, XDG on Linux. ~/.node-gyp
+    # is the legacy devdir older toolchains still write. All three are pure
+    # re-downloadable header caches, and this file runs on both platforms.
+    dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    _cleanup_any_exists "${dirs[@]}" || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
+    command="rm -rf ~/Library/Caches/node-gyp ~/.cache/node-gyp ~/.node-gyp"
+    ;;
+  browsers)
+    # Wholesale-delete semantics only. Playwright is deliberately NOT here:
+    # its registry is shared between installs and pruned selectively, which is
+    # a different contract, so it has its own target.
+    dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
+    command="rm -rf browser automation caches"
+    ;;
+  playwright)
+    local -a pw_roots pw_stale
+    pw_roots=("${(@f)$(_cleanup_playwright_roots)}")
+    _cleanup_any_exists "${pw_roots[@]}" || applicable=0
+    if ((applicable)) && ! command -v python3 >/dev/null 2>&1; then
+      applicable=0
+    fi
+    if ((applicable)); then
+      pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
+      pw_stale=("${(@)pw_stale:#}")
+      kb=$(_cleanup_kb_sum "${pw_stale[@]}")
+      detail="Roots: ${(j:, :)pw_roots}; ${#pw_stale[@]} entries no live playwright-core references (0 is the normal answer)"
+      command="rm -rf unreferenced revision dirs and stale .links entries"
+    fi
+    ;;
+  chrome)
+    # HTTP cache only. Profiles, cookies, history and extensions live under
+    # ~/Library/Application Support/Google/Chrome, which is never named here.
+    dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium"
+      "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}, ${dirs[4]}"
+    command="rm -rf Chrome/Chromium HTTP caches"
+    # Guarded on the browser being down, the way docker guards on the daemon
+    # being up: a running Chrome holds these files open and rewrites them as
+    # they are deleted, so the reclaim is both partial and disruptive.
+    if pgrep -x "Google Chrome" >/dev/null 2>&1 || pgrep -x chrome >/dev/null 2>&1; then
+      applicable=0
+      detail="Chrome is running; quit it before reclaiming its HTTP cache"
+    elif ((kb == 0)); then
+      applicable=0
+    fi
+    ;;
+  temp)
+    candidates=("${(@f)$(_cleanup_temp_candidates)}")
+    kb=$(_cleanup_kb_sum "${candidates[@]}")
+    ((${#candidates[@]} > 0)) || applicable=0
+    detail="Root: $CLEANUP_TMP_ROOT; age: >7d; owner: ${USER:-$(id -un)}"
+    command="rm -rf stale temp entries"
+    ;;
+  docker)
+    command -v docker >/dev/null 2>&1 || applicable=0
+    if ((applicable)) && ! docker info >/dev/null 2>&1; then
+      applicable=0
+    fi
+    if ((applicable)); then
+      local line dtype reclaim
+      local docker_suffix=""
+      while IFS='|' read -r dtype reclaim; do
+        [[ -n "$dtype" && -n "$reclaim" ]] || continue
+        if [[ "$dtype" == "Local Volumes" ]] && ((! CLEANUP_INCLUDE_VOLUMES)); then
+          continue
         fi
-      fi
-      ;;
-    nix)
-      if ! command -v nix-collect-garbage >/dev/null 2>&1 || ! command -v nix-store >/dev/null 2>&1; then
-        applicable=0
+        ((kb += $(_cleanup_parse_size_to_kb "${reclaim%% *}")))
+      done < <(docker system df --format '{{.Type}}|{{.Reclaimable}}' 2>/dev/null)
+      ((CLEANUP_INCLUDE_VOLUMES)) && docker_suffix=" --volumes"
+      command="docker system prune -af${docker_suffix}"
+      # A daemon backed by a sparse VM disk (colima, lima, podman machine)
+      # reclaims nothing on the host: the prune frees blocks inside the guest
+      # filesystem, and the image file only grows. Report 0 and keep docker's
+      # own figure in detail, the way nix and cargo-target carry caveats.
+      local vm_disk
+      vm_disk=$(_cleanup_sparse_vm_disk)
+      if [[ -n "$vm_disk" ]]; then
+        detail="Command: docker system prune -af${docker_suffix}; frees $(_cleanup_human_kb "$kb") inside the VM only - host disk unchanged (sparse ${vm_disk}); host bytes need 'colima delete'"
+        kb=0
+        estimate_kind="none"
       else
-        # Estimate from the dead-path set, NOT `du /nix/store`: GC only removes
-        # paths unreachable from a live root, so du'ing the whole store reported
-        # the entire 17G+ store as "reclaimable" when the true figure was ~0.
-        # `nix-store -q --size` returns each path's NAR size from metadata (no
-        # disk walk), so this is both accurate and far faster than du. It is a
-        # lower bound: `--delete-older-than 30d` may free a little more once old
-        # profile generations are dropped and their closures become dead.
-        local dead_paths
-        dead_paths=$(nix-store --gc --print-dead 2>/dev/null)
-        kb=0
-        if [[ -n "$dead_paths" ]]; then
-          kb=$(print -r -- "$dead_paths" \
-            | xargs nix-store -q --size 2>/dev/null \
-            | awk '{ s += $1 } END { printf "%d", s / 1024 }')
-        fi
-        detail="Reclaimable from dead store paths (lower bound; --optimise dedups further)"
-        command="nix-collect-garbage --delete-older-than 30d; nix-store --optimise"
-      fi
-      ;;
-    mise)
-      command -v mise >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        local prunable_path
-        kb=0
-        while IFS= read -r prunable_path; do
-          [[ -n "$prunable_path" ]] || continue
-          prunable_path=${prunable_path/#\~/$HOME}
-          (( kb += $(_cleanup_kb_sum "$prunable_path") ))
-        done < <(mise prune --dry-run 2>&1 | awk '/[[:space:]]remove[[:space:]]/ {print $NF}')
-        detail="Source: mise prune --dry-run"
-        command="mise prune --yes"
-      fi
-      ;;
-    mise-cache)
-      # Distinct from the `mise` target: that is `mise prune`, which reclaims
-      # unused tool *versions* under the data dir and never touches the cache
-      # root. env-paths again, so both platform locations.
-      dirs=("$HOME/Library/Caches/mise" "$HOME/.cache/mise")
-      kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || command -v mise >/dev/null 2>&1 || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}"
-      command="mise cache clear (fallback: rm -rf mise cache roots)"
-      ;;
-    codex)
-      # Sessions are transcripts: transcript-backup archives them before deleting.
-      local log_file=$HOME/.codex/log/codex-tui.log
-      kb=0
-      [[ -f "$log_file" ]] && (( kb += $(_cleanup_kb_sum "$log_file") ))
-      (( kb > 0 )) || applicable=0
-      detail="Truncate: $log_file"
-      command="truncate -s 0 codex-tui.log"
-      ;;
-    brew)
-      command -v brew >/dev/null 2>&1 || applicable=0
-      if (( applicable )); then
-        # brew's own figure, not du: only brew knows which cached downloads are
-        # superseded. --prune=all is deliberate - brew's default policy only
-        # prunes >120d, so `brew cleanup -n` reports 0 while the cache still
-        # holds gigabytes of bottles/casks for already-installed versions.
-        # No du fallback on purpose: du'ing $(brew --cache) would report the
-        # whole cache as reclaimable the moment brew's wording drifts - the
-        # overstatement the nix probe above was fixed for. Failing
-        # quiet-and-zero is the safe direction; a bats test pins the wording.
-        local freed
-        freed=$(brew cleanup --prune=all -n 2>/dev/null \
-          | awk '/would free approximately/ { for (i=1;i<=NF;i++) if ($i=="approximately") print $(i+1) }')
-        kb=$(_cleanup_parse_size_to_kb "${freed:-0}")
-        (( kb > 0 )) || applicable=0
-        detail="Source: brew cleanup --prune=all -n"
-        command="brew cleanup --prune=all"
+        detail="Command: docker system prune -af${docker_suffix}"
         estimate_kind="tool-estimate"
       fi
-      ;;
-    claude-temp)
-      candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
+    fi
+    ;;
+  nix)
+    if ! command -v nix-collect-garbage >/dev/null 2>&1 || ! command -v nix-store >/dev/null 2>&1; then
+      applicable=0
+    else
+      # Estimate from the dead-path set, NOT `du /nix/store`: GC only removes
+      # paths unreachable from a live root, so du'ing the whole store reported
+      # the entire 17G+ store as "reclaimable" when the true figure was ~0.
+      # `nix-store -q --size` returns each path's NAR size from metadata (no
+      # disk walk), so this is both accurate and far faster than du. It is a
+      # lower bound: `--delete-older-than 30d` may free a little more once old
+      # profile generations are dropped and their closures become dead.
+      local dead_paths
+      dead_paths=$(nix-store --gc --print-dead 2>/dev/null)
+      kb=0
+      if [[ -n "$dead_paths" ]]; then
+        kb=$(print -r -- "$dead_paths" |
+          xargs nix-store -q --size 2>/dev/null |
+          awk '{ s += $1 } END { printf "%d", s / 1024 }')
+      fi
+      detail="Reclaimable from dead store paths (lower bound; --optimise dedups further)"
+      command="nix-collect-garbage --delete-older-than 30d; nix-store --optimise"
+    fi
+    ;;
+  mise)
+    command -v mise >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      local prunable_path
+      kb=0
+      while IFS= read -r prunable_path; do
+        [[ -n "$prunable_path" ]] || continue
+        prunable_path=${prunable_path/#\~/$HOME}
+        ((kb += $(_cleanup_kb_sum "$prunable_path")))
+      done < <(mise prune --dry-run 2>&1 | awk '/[[:space:]]remove[[:space:]]/ {print $NF}')
+      detail="Source: mise prune --dry-run"
+      command="mise prune --yes"
+    fi
+    ;;
+  mise-cache)
+    # Distinct from the `mise` target: that is `mise prune`, which reclaims
+    # unused tool *versions* under the data dir and never touches the cache
+    # root. env-paths again, so both platform locations.
+    dirs=("$HOME/Library/Caches/mise" "$HOME/.cache/mise")
+    kb=$(_cleanup_kb_sum "${dirs[@]}")
+    ((kb > 0)) || command -v mise >/dev/null 2>&1 || applicable=0
+    detail="Paths: ${dirs[1]}, ${dirs[2]}"
+    command="mise cache clear (fallback: rm -rf mise cache roots)"
+    ;;
+  codex)
+    # Sessions are transcripts: transcript-backup archives them before deleting.
+    local log_file=$HOME/.codex/log/codex-tui.log
+    kb=0
+    [[ -f "$log_file" ]] && ((kb += $(_cleanup_kb_sum "$log_file")))
+    ((kb > 0)) || applicable=0
+    detail="Truncate: $log_file"
+    command="truncate -s 0 codex-tui.log"
+    ;;
+  brew)
+    command -v brew >/dev/null 2>&1 || applicable=0
+    if ((applicable)); then
+      # brew's own figure, not du: only brew knows which cached downloads are
+      # superseded. --prune=all is deliberate - brew's default policy only
+      # prunes >120d, so `brew cleanup -n` reports 0 while the cache still
+      # holds gigabytes of bottles/casks for already-installed versions.
+      # No du fallback on purpose: du'ing $(brew --cache) would report the
+      # whole cache as reclaimable the moment brew's wording drifts - the
+      # overstatement the nix probe above was fixed for. Failing
+      # quiet-and-zero is the safe direction; a bats test pins the wording.
+      local freed
+      freed=$(brew cleanup --prune=all -n 2>/dev/null |
+        awk '/would free approximately/ { for (i=1;i<=NF;i++) if ($i=="approximately") print $(i+1) }')
+      kb=$(_cleanup_parse_size_to_kb "${freed:-0}")
+      ((kb > 0)) || applicable=0
+      detail="Source: brew cleanup --prune=all -n"
+      command="brew cleanup --prune=all"
+      estimate_kind="tool-estimate"
+    fi
+    ;;
+  bb-thread-storage)
+    local ts_root="$CLEANUP_BB_DIR/thread-storage"
+    if [[ ! -d "$ts_root" ]]; then
+      applicable=0
+    else
+      candidates=("${(@f)$(_cleanup_bb_thread_storage_candidates)}") || return 1
       candidates=("${(@)candidates:#}")
       kb=$(_cleanup_kb_sum "${candidates[@]}")
-      (( ${#candidates[@]} > 0 )) || applicable=0
-      detail="Root: $CLEANUP_CLAUDE_TMP_ROOT; ${#candidates[@]} inactive session dir(s); age: >60m"
-      command="rm -rf inactive Claude scratch session dirs"
-      ;;
-    worktree-build)
-      candidates=("${(@f)$(_cleanup_worktree_build_candidates)}") || return 1
-      candidates=("${(@)candidates:#}")
-      kb=$(_cleanup_kb_sum "${candidates[@]}")
-      (( ${#candidates[@]} > 0 )) || applicable=0
-      detail="Root: $CLEANUP_WORKTREE_ROOT; ${#candidates[@]} untracked build artefact dir(s) in unused worktrees"
-      command="rm -rf exact rebuildable worktree artefact dirs"
-      ;;
+      ((${#candidates[@]} > 0)) || applicable=0
+      detail="Root: $ts_root; ${#candidates[@]} path(s); archived >${CLEANUP_BB_THREAD_STORAGE_DAYS}d or orphaned (live, pinned and keep/ preserved)"
+      command="rm -rf aged archived BB thread-storage entries"
+    fi
+    ;;
+  claude-temp)
+    candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
+    candidates=("${(@)candidates:#}")
+    kb=$(_cleanup_kb_sum "${candidates[@]}")
+    ((${#candidates[@]} > 0)) || applicable=0
+    detail="Root: $CLEANUP_CLAUDE_TMP_ROOT; ${#candidates[@]} inactive session dir(s); age: >60m"
+    command="rm -rf inactive Claude scratch session dirs"
+    ;;
+  worktree-build)
+    candidates=("${(@f)$(_cleanup_worktree_build_candidates)}") || return 1
+    candidates=("${(@)candidates:#}")
+    kb=$(_cleanup_kb_sum "${candidates[@]}")
+    ((${#candidates[@]} > 0)) || applicable=0
+    detail="Root: $CLEANUP_WORKTREE_ROOT; ${#candidates[@]} untracked build artefact dir(s) in unused worktrees"
+    command="rm -rf exact rebuildable worktree artefact dirs"
+    ;;
   esac
 
-  (( applicable )) || estimate_kind="none"
+  ((applicable)) || estimate_kind="none"
 
   CLEANUP_PROBE_APPLICABLE[$target]=$applicable
   CLEANUP_PROBE_KB[$target]=$kb
@@ -869,7 +981,7 @@ _cleanup_probe_target() {
 }
 
 _cleanup_progress_init() {
-  (( CLEANUP_JSON )) && return 0
+  ((CLEANUP_JSON)) && return 0
   [[ -t 1 ]] || return 0
 
   CLEANUP_PROGRESS_ENABLED=1
@@ -877,19 +989,19 @@ _cleanup_progress_init() {
 }
 
 _cleanup_progress_update() {
-  (( CLEANUP_PROGRESS_ENABLED )) || return 0
+  ((CLEANUP_PROGRESS_ENABLED)) || return 0
 
   local current=$1
   local total=$2
   local target=$3
-  local elapsed=$(( SECONDS - CLEANUP_PROGRESS_START ))
+  local elapsed=$((SECONDS - CLEANUP_PROGRESS_START))
   local label="${CLEANUP_LABELS[$target]:-$target}"
 
   print -rn -- $'\r\033[2K'"Probing cleanup targets ${current}/${total}: ${label} (elapsed ${elapsed}s)"
 }
 
 _cleanup_progress_finish() {
-  (( CLEANUP_PROGRESS_ENABLED )) || return 0
+  ((CLEANUP_PROGRESS_ENABLED)) || return 0
   print -r -- ""
   CLEANUP_PROGRESS_ENABLED=0
 }
@@ -899,168 +1011,177 @@ _cleanup_run_target() {
   local -a dirs candidates cmd
 
   case "$target" in
-    bun)
-      dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
-      if command -v bun >/dev/null 2>&1 && bun pm cache rm >/dev/null 2>&1; then
-        return 0
+  bun)
+    dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
+    if command -v bun >/dev/null 2>&1 && bun pm cache rm >/dev/null 2>&1; then
+      return 0
+    fi
+    command rm -rf -- "${dirs[@]}"
+    ;;
+  pnpm)
+    command -v pnpm >/dev/null 2>&1 || return 0
+    pnpm store prune
+    command rm -rf -- "$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm"
+    ;;
+  yarn)
+    # Never invoke `yarn` (unpinned mise shim errors); path removal only.
+    command rm -rf -- "$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn"
+    ;;
+  aube)
+    # Cache-only. The durable CAS (~/.local/share/aube/store), primer/, and
+    # adaptive-state.json are never named/removed. virtual-store is
+    # deliberately NOT deleted: mise's npm backend symlinks each `npm:*`
+    # tool's bin into it, so `rm -rf virtual-store` dangles the entire mise
+    # npm toolchain (mise no-ops on present install dirs; only
+    # `mise install --force` rebuilds). It is live working set cloned from the
+    # preserved CAS, not durable garbage. Stale tool versions are reclaimed
+    # safely by the `mise` target (`mise prune`), not here. `aube cache prune`
+    # only touches primer metadata, never virtual-store. tools/ does go: unlike
+    # virtual-store it is regenerable, re-provisioned on the next bootstrap.
+    command -v aube >/dev/null 2>&1 && aube cache prune --age-days 0
+    command rm -rf -- "$HOME/.cache/aube/packuments-full-v1" \
+      "$HOME/.cache/aube/tools"
+    ;;
+  npm)
+    command -v npm >/dev/null 2>&1 || return 0
+    npm cache clean --force
+    command rm -rf -- "$HOME/.npm/_npx"
+    ;;
+  pip)
+    command -v pip >/dev/null 2>&1 || return 0
+    pip cache purge
+    ;;
+  uv)
+    command -v uv >/dev/null 2>&1 || return 0
+    uv cache clean --cache-dir "$CLEANUP_UV_CACHE_DIR"
+    ;;
+  cargo)
+    command rm -rf -- "$HOME/.cargo/registry/cache"
+    ;;
+  go)
+    # Same gate as the probe, so execution takes the branch the plan promised:
+    # a shim that cannot answer `go env` cannot run `go clean` either.
+    if _cleanup_go_env_dirs >/dev/null 2>&1; then
+      go clean -cache -modcache
+    else
+      # The Go module cache deliberately stores downloaded files read-only.
+      # Match `go clean -modcache` by restoring owner write permission first.
+      [[ -d "$HOME/go/pkg/mod" ]] && chmod -R u+w "$HOME/go/pkg/mod"
+      command rm -rf -- "$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod"
+    fi
+    ;;
+  cargo-target)
+    local target_dir
+    while IFS= read -r target_dir; do
+      [[ -n "$target_dir" ]] || continue
+      # Prefer cargo: it removes only what it owns and leaves the dir usable.
+      # Fall back to removing the tree when cargo is absent or the crate no
+      # longer parses (a broken Cargo.toml must not strand gigabytes).
+      if command -v cargo >/dev/null 2>&1 &&
+        cargo clean --manifest-path "${target_dir:h}/Cargo.toml" >/dev/null 2>&1; then
+        continue
       fi
-      command rm -rf -- "${dirs[@]}"
-      ;;
-    pnpm)
-      command -v pnpm >/dev/null 2>&1 || return 0
-      pnpm store prune
-      command rm -rf -- "$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm"
-      ;;
-    yarn)
-      # Never invoke `yarn` (unpinned mise shim errors); path removal only.
-      command rm -rf -- "$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn"
-      ;;
-    aube)
-      # Cache-only. The durable CAS (~/.local/share/aube/store), primer/, and
-      # adaptive-state.json are never named/removed. virtual-store is
-      # deliberately NOT deleted: mise's npm backend symlinks each `npm:*`
-      # tool's bin into it, so `rm -rf virtual-store` dangles the entire mise
-      # npm toolchain (mise no-ops on present install dirs; only
-      # `mise install --force` rebuilds). It is live working set cloned from the
-      # preserved CAS, not durable garbage. Stale tool versions are reclaimed
-      # safely by the `mise` target (`mise prune`), not here. `aube cache prune`
-      # only touches primer metadata, never virtual-store. tools/ does go: unlike
-      # virtual-store it is regenerable, re-provisioned on the next bootstrap.
-      command -v aube >/dev/null 2>&1 && aube cache prune --age-days 0
-      command rm -rf -- "$HOME/.cache/aube/packuments-full-v1" \
-        "$HOME/.cache/aube/tools"
-      ;;
-    npm)
-      command -v npm >/dev/null 2>&1 || return 0
-      npm cache clean --force
-      command rm -rf -- "$HOME/.npm/_npx"
-      ;;
-    pip)
-      command -v pip >/dev/null 2>&1 || return 0
-      pip cache purge
-      ;;
-    uv)
-      command -v uv >/dev/null 2>&1 || return 0
-      uv cache clean --cache-dir "$CLEANUP_UV_CACHE_DIR"
-      ;;
-    cargo)
-      command rm -rf -- "$HOME/.cargo/registry/cache"
-      ;;
-    go)
-      # Same gate as the probe, so execution takes the branch the plan promised:
-      # a shim that cannot answer `go env` cannot run `go clean` either.
-      if _cleanup_go_env_dirs >/dev/null 2>&1; then
-        go clean -cache -modcache
-      else
-        # The Go module cache deliberately stores downloaded files read-only.
-        # Match `go clean -modcache` by restoring owner write permission first.
-        [[ -d "$HOME/go/pkg/mod" ]] && chmod -R u+w "$HOME/go/pkg/mod"
-        command rm -rf -- "$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod"
-      fi
-      ;;
-    cargo-target)
-      local target_dir
-      while IFS= read -r target_dir; do
-        [[ -n "$target_dir" ]] || continue
-        # Prefer cargo: it removes only what it owns and leaves the dir usable.
-        # Fall back to removing the tree when cargo is absent or the crate no
-        # longer parses (a broken Cargo.toml must not strand gigabytes).
-        if command -v cargo >/dev/null 2>&1 &&
-          cargo clean --manifest-path "${target_dir:h}/Cargo.toml" >/dev/null 2>&1; then
-          continue
-        fi
-        command rm -rf -- "$target_dir"
-      done < <(_cleanup_cargo_target_dirs)
-      ;;
-    rustup)
-      command -v rustup >/dev/null 2>&1 || return 0
-      local tc
-      while IFS= read -r tc; do
-        [[ -n "$tc" ]] || continue
-        rustup toolchain uninstall "$tc"
-      done < <(_cleanup_rustup_removable)
-      ;;
-    nvim)
-      command rm -rf -- "$HOME/.cache/nvim"
-      ;;
-    node-gyp)
-      dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
-      command rm -rf -- "${dirs[@]}"
-      ;;
-    browsers)
-      dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
-      command rm -rf -- "${dirs[@]}"
-      ;;
-    playwright)
-      local -a pw_stale
-      pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
-      pw_stale=("${(@)pw_stale:#}")
-      (( ${#pw_stale[@]} > 0 )) || return 0
-      command rm -rf -- "${pw_stale[@]}"
-      ;;
-    chrome)
-      dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium" \
-        "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
-      command rm -rf -- "${dirs[@]}"
-      ;;
-    temp)
-      candidates=("${(@f)$(_cleanup_temp_candidates)}")
-      (( ${#candidates[@]} > 0 )) || return 0
-      command rm -rf -- "${candidates[@]}"
-      ;;
-    docker)
-      command -v docker >/dev/null 2>&1 || return 0
-      docker info >/dev/null 2>&1 || return 0
-      cmd=(docker system prune -af)
-      (( CLEANUP_INCLUDE_VOLUMES )) && cmd+=(--volumes)
-      "${cmd[@]}"
-      ;;
-    nix)
-      command -v nix-collect-garbage >/dev/null 2>&1 || return 0
-      command -v nix-store >/dev/null 2>&1 || return 0
-      nix-collect-garbage --delete-older-than 30d
-      nix-store --optimise
-      ;;
-    mise)
-      command -v mise >/dev/null 2>&1 || return 0
-      mise prune --yes
-      ;;
-    mise-cache)
-      # Prefer mise's own cleaner; fall back to path removal when mise is gone
-      # but its cache is not, the same dual idiom as the bun arm.
-      if command -v mise >/dev/null 2>&1 && mise cache clear >/dev/null 2>&1; then
-        return 0
-      fi
-      command rm -rf -- "$HOME/Library/Caches/mise" "$HOME/.cache/mise"
-      ;;
-    codex)
-      local log_file=$HOME/.codex/log/codex-tui.log
-      [[ -f "$log_file" ]] && : > "$log_file"
-      ;;
-    brew)
-      command -v brew >/dev/null 2>&1 || return 0
-      # Cache only. `brew autoremove` is deliberately excluded: it uninstalls
-      # no-longer-needed dependencies, a tooling state change of the
-      # rustup/cargo-target class, and nix-darwin already owns which packages
-      # exist (homebrew.onActivation.cleanup = "uninstall"), so autoremove would
-      # fight the declarative model.
-      brew cleanup --prune=all
-      ;;
-    claude-temp)
-      # Refresh live and hibernated state immediately before deletion. A probe
-      # may be followed by a prompt, during which a protected session can change.
-      candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
-      candidates=("${(@)candidates:#}")
-      (( ${#candidates[@]} > 0 )) || return 0
-      command rm -rf -- "${candidates[@]}"
-      ;;
-    worktree-build)
-      # Refresh agent and hibernation state after the plan and any prompt.
-      candidates=("${(@f)$(_cleanup_worktree_build_candidates)}") || return 1
-      candidates=("${(@)candidates:#}")
-      (( ${#candidates[@]} > 0 )) || return 0
-      command rm -rf -- "${candidates[@]}"
-      ;;
+      command rm -rf -- "$target_dir"
+    done < <(_cleanup_cargo_target_dirs)
+    ;;
+  rustup)
+    command -v rustup >/dev/null 2>&1 || return 0
+    local tc
+    while IFS= read -r tc; do
+      [[ -n "$tc" ]] || continue
+      rustup toolchain uninstall "$tc"
+    done < <(_cleanup_rustup_removable)
+    ;;
+  nvim)
+    command rm -rf -- "$HOME/.cache/nvim"
+    ;;
+  node-gyp)
+    dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
+    command rm -rf -- "${dirs[@]}"
+    ;;
+  browsers)
+    dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
+    command rm -rf -- "${dirs[@]}"
+    ;;
+  playwright)
+    local -a pw_stale
+    pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
+    pw_stale=("${(@)pw_stale:#}")
+    ((${#pw_stale[@]} > 0)) || return 0
+    command rm -rf -- "${pw_stale[@]}"
+    ;;
+  chrome)
+    dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium"
+      "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
+    command rm -rf -- "${dirs[@]}"
+    ;;
+  temp)
+    candidates=("${(@f)$(_cleanup_temp_candidates)}")
+    ((${#candidates[@]} > 0)) || return 0
+    command rm -rf -- "${candidates[@]}"
+    ;;
+  docker)
+    command -v docker >/dev/null 2>&1 || return 0
+    docker info >/dev/null 2>&1 || return 0
+    cmd=(docker system prune -af)
+    ((CLEANUP_INCLUDE_VOLUMES)) && cmd+=(--volumes)
+    "${cmd[@]}"
+    ;;
+  nix)
+    command -v nix-collect-garbage >/dev/null 2>&1 || return 0
+    command -v nix-store >/dev/null 2>&1 || return 0
+    nix-collect-garbage --delete-older-than 30d
+    nix-store --optimise
+    ;;
+  mise)
+    command -v mise >/dev/null 2>&1 || return 0
+    mise prune --yes
+    ;;
+  mise-cache)
+    # Prefer mise's own cleaner; fall back to path removal when mise is gone
+    # but its cache is not, the same dual idiom as the bun arm.
+    if command -v mise >/dev/null 2>&1 && mise cache clear >/dev/null 2>&1; then
+      return 0
+    fi
+    command rm -rf -- "$HOME/Library/Caches/mise" "$HOME/.cache/mise"
+    ;;
+  codex)
+    local log_file=$HOME/.codex/log/codex-tui.log
+    [[ -f "$log_file" ]] && : >"$log_file"
+    ;;
+  brew)
+    command -v brew >/dev/null 2>&1 || return 0
+    # Cache only. `brew autoremove` is deliberately excluded: it uninstalls
+    # no-longer-needed dependencies, a tooling state change of the
+    # rustup/cargo-target class, and nix-darwin already owns which packages
+    # exist (homebrew.onActivation.cleanup = "uninstall"), so autoremove would
+    # fight the declarative model.
+    brew cleanup --prune=all
+    ;;
+  bb-thread-storage)
+    # Refresh BB thread state immediately before deletion so a thread
+    # unarchived or pinned during a confirmation prompt stays protected.
+    # Use xargs -0 so thousands of aged thread dirs never hit ARG_MAX.
+    candidates=("${(@f)$(_cleanup_bb_thread_storage_candidates)}") || return 1
+    candidates=("${(@)candidates:#}")
+    ((${#candidates[@]} > 0)) || return 0
+    print -rN -- "${candidates[@]}" | xargs -0 rm -rf --
+    ;;
+  claude-temp)
+    # Refresh live and hibernated state immediately before deletion. A probe
+    # may be followed by a prompt, during which a protected session can change.
+    candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
+    candidates=("${(@)candidates:#}")
+    ((${#candidates[@]} > 0)) || return 0
+    command rm -rf -- "${candidates[@]}"
+    ;;
+  worktree-build)
+    # Refresh agent and hibernation state after the plan and any prompt.
+    candidates=("${(@f)$(_cleanup_worktree_build_candidates)}") || return 1
+    candidates=("${(@)candidates:#}")
+    ((${#candidates[@]} > 0)) || return 0
+    command rm -rf -- "${candidates[@]}"
+    ;;
   esac
 }
 
@@ -1072,7 +1193,7 @@ _cleanup_probe_all() {
 
   _cleanup_progress_init
   for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
-    (( current += 1 ))
+    ((current += 1))
     _cleanup_progress_update "$current" "$total" "$target"
     if ! _cleanup_probe_target "$target"; then
       # A failed probe disables its own target and nothing else. It returns
@@ -1133,13 +1254,13 @@ _cleanup_print_plan() {
       fi
       continue
     fi
-    (( total_kb += kb ))
+    ((total_kb += kb))
     [[ "$estimate_kind" == "partial" ]] && has_unknown=1
     [[ -n "$detail" ]] && echo "      $detail"
     [[ -n "$command" ]] && echo "      run: $command"
   done < <(_cleanup_sorted_rows)
   echo "  known candidate total: $(_cleanup_human_kb "$total_kb")"
-  (( has_unknown )) && echo "      excludes selective cleanup with unknown size"
+  ((has_unknown)) && echo "      excludes selective cleanup with unknown size"
   echo "      logical/tool estimates; physical reclaim may be lower"
 }
 
@@ -1149,13 +1270,13 @@ _cleanup_print_json() {
   local candidate_total_kb=0 has_unknown=0 target
   for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
     [[ "${CLEANUP_PROBE_APPLICABLE[$target]}" == "1" ]] || continue
-    (( candidate_total_kb += ${CLEANUP_PROBE_KB[$target]:-0} ))
+    ((candidate_total_kb += ${CLEANUP_PROBE_KB[$target]:-0}))
     [[ "${CLEANUP_PROBE_KIND[$target]}" == "partial" ]] && has_unknown=1
   done
   printf '{'
   printf '"mode":"%s",' "$(_cleanup_json_escape "$mode_label")"
   printf '"dry_run":%s,' "$([[ "$mode_label" == "dry-run" ]] && echo true || echo false)"
-  printf '"volumes":%s,' "$(( CLEANUP_INCLUDE_VOLUMES ))"
+  printf '"volumes":%s,' "$((CLEANUP_INCLUDE_VOLUMES))"
   printf '"candidate_total_kb":%s,' "$candidate_total_kb"
   printf '"candidate_total_human":"%s",' "$(_cleanup_json_escape "$(_cleanup_human_kb "$candidate_total_kb")")"
   printf '"has_unknown_estimates":%s,' "$([[ "$has_unknown" == "1" ]] && echo true || echo false)"
@@ -1174,7 +1295,7 @@ _cleanup_print_json() {
     estimate_kind=${fields[6]}
     detail=${fields[7]}
     command=${fields[8]}
-    (( first )) || printf ','
+    ((first)) || printf ','
     first=0
     printf '{'
     printf '"id":"%s",' "$(_cleanup_json_escape "$target")"
@@ -1210,7 +1331,10 @@ _cleanup_confirm() {
 }
 
 _cleanup_ui() {
-  command -v fzf >/dev/null 2>&1 || { print -u2 "fzf required"; return 1; }
+  command -v fzf >/dev/null 2>&1 || {
+    print -u2 "fzf required"
+    return 1
+  }
 
   local script_path="${0:A}"
   local -a rows selections picked
@@ -1224,14 +1348,14 @@ _cleanup_ui() {
   done
 
   selections=("${(@f)$(
-    printf '%s\n' "${rows[@]}" | \
+    printf '%s\n' "${rows[@]}" |
       fzf --multi --reverse \
         --delimiter=$'\t' \
         --with-nth=2,3,4 \
         --header='tab:select enter:run  (* = default target)' \
         --preview="zsh --no-rcs ${(q)script_path} --dry-run --target {1}"
   )}")
-  (( ${#selections[@]} > 0 )) || return 0
+  ((${#selections[@]} > 0)) || return 0
 
   CLEANUP_SELECTED_TARGETS=()
   CLEANUP_SELECTED_FLAGS=()
@@ -1245,44 +1369,47 @@ _cleanup_ui() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    ui)
-      CLEANUP_SUBCOMMAND="ui"
-      shift
-      ;;
-    -n|--dry-run)
-      CLEANUP_DRY_RUN=1
-      shift
-      ;;
-    -y|--yes)
-      CLEANUP_ASSUME_YES=1
-      shift
-      ;;
-    --json)
-      CLEANUP_JSON=1
-      shift
-      ;;
-    --volumes)
-      CLEANUP_INCLUDE_VOLUMES=1
-      shift
-      ;;
-    --target)
-      [[ $# -ge 2 ]] || { print -u2 "error: --target requires a value"; return 1; }
-      _cleanup_add_target "$2" || return 1
-      shift 2
-      ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew|--go|--claude-temp|--worktree-build)
-      _cleanup_add_target "${1#--}" || return 1
-      shift
-      ;;
-    -h|--help|help)
-      _cleanup_usage
-      return 0
-      ;;
-    *)
-      print -u2 "error: unknown argument '$1'"
-      _cleanup_usage
+  ui)
+    CLEANUP_SUBCOMMAND="ui"
+    shift
+    ;;
+  -n | --dry-run)
+    CLEANUP_DRY_RUN=1
+    shift
+    ;;
+  -y | --yes)
+    CLEANUP_ASSUME_YES=1
+    shift
+    ;;
+  --json)
+    CLEANUP_JSON=1
+    shift
+    ;;
+  --volumes)
+    CLEANUP_INCLUDE_VOLUMES=1
+    shift
+    ;;
+  --target)
+    [[ $# -ge 2 ]] || {
+      print -u2 "error: --target requires a value"
       return 1
-      ;;
+    }
+    _cleanup_add_target "$2" || return 1
+    shift 2
+    ;;
+  --bun | --pnpm | --yarn | --aube | --node-gyp | --npm | --pip | --uv | --cargo | --cargo-target | --rustup | --nvim | --browsers | --playwright | --chrome | --temp | --docker | --nix | --mise | --mise-cache | --codex | --brew | --go | --bb-thread-storage | --claude-temp | --worktree-build)
+    _cleanup_add_target "${1#--}" || return 1
+    shift
+    ;;
+  -h | --help | help)
+    _cleanup_usage
+    return 0
+    ;;
+  *)
+    print -u2 "error: unknown argument '$1'"
+    _cleanup_usage
+    return 1
+    ;;
   esac
 done
 
@@ -1290,39 +1417,42 @@ if [[ "$CLEANUP_SUBCOMMAND" == "ui" ]]; then
   _cleanup_ui || return $?
 fi
 
-if (( ${#CLEANUP_SELECTED_TARGETS[@]} == 0 )); then
+if ((${#CLEANUP_SELECTED_TARGETS[@]} == 0)); then
   typeset default_target
   for default_target in "${CLEANUP_DEFAULT_TARGETS[@]}"; do
     _cleanup_add_target "$default_target" || return 1
   done
 fi
 
-if (( CLEANUP_INCLUDE_VOLUMES )) && [[ -z "${CLEANUP_SELECTED_FLAGS[docker]}" ]]; then
+if ((CLEANUP_INCLUDE_VOLUMES)) && [[ -z "${CLEANUP_SELECTED_FLAGS[docker]}" ]]; then
   print -u2 "error: --volumes requires Docker cleanup"
   return 1
 fi
 
 typeset mode_label="run"
-(( CLEANUP_DRY_RUN )) && mode_label="dry-run"
+((CLEANUP_DRY_RUN)) && mode_label="dry-run"
 _cleanup_probe_all
 
-if (( CLEANUP_JSON )); then
+if ((CLEANUP_JSON)); then
   _cleanup_print_json "$mode_label"
 else
   _cleanup_print_plan "$mode_label"
 fi
 
 # stderr, so stdout stays parseable under --json.
-(( CLEANUP_PROBE_FAILED )) && \
+((CLEANUP_PROBE_FAILED)) &&
   print -u2 "error: probe failed, target(s) skipped: ${(j:, :)CLEANUP_PROBE_FAILED_TARGETS}"
 
-if (( CLEANUP_DRY_RUN )); then
-  return $(( CLEANUP_PROBE_FAILED ? 1 : 0 ))
+if ((CLEANUP_DRY_RUN)); then
+  return $((CLEANUP_PROBE_FAILED ? 1 : 0))
 fi
 
-if (( ! CLEANUP_ASSUME_YES )); then
+if ((! CLEANUP_ASSUME_YES)); then
   if [[ -t 0 && -t 1 ]]; then
-    _cleanup_confirm "Run cleanup?" || { echo "Aborted."; return 1; }
+    _cleanup_confirm "Run cleanup?" || {
+      echo "Aborted."
+      return 1
+    }
   else
     print -u2 "error: non-interactive execution requires --yes"
     return 1
@@ -1332,32 +1462,32 @@ fi
 typeset target
 # A failed probe still makes the run exit non-zero - after every other target
 # has had its turn.
-typeset failed=$(( CLEANUP_PROBE_FAILED ? 1 : 0 ))
+typeset failed=$((CLEANUP_PROBE_FAILED ? 1 : 0))
 typeset volume_available_before_kb volume_available_after_kb volume_available_delta_kb
 volume_available_before_kb=$(_cleanup_available_kb)
 for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
   [[ "${CLEANUP_PROBE_APPLICABLE[$target]}" == "1" ]] || continue
-  if (( ! CLEANUP_JSON )); then
+  if ((! CLEANUP_JSON)); then
     echo "=> $target"
   fi
   _cleanup_run_target "$target" || failed=1
 done
 volume_available_after_kb=$(_cleanup_available_kb)
 if [[ "$volume_available_before_kb" == <-> && "$volume_available_after_kb" == <-> ]]; then
-  volume_available_delta_kb=$(( volume_available_after_kb - volume_available_before_kb ))
+  volume_available_delta_kb=$((volume_available_after_kb - volume_available_before_kb))
 else
   volume_available_before_kb=""
   volume_available_after_kb=""
   volume_available_delta_kb=""
 fi
 
-if (( CLEANUP_JSON )); then
+if ((CLEANUP_JSON)); then
   if [[ -n "$volume_available_delta_kb" ]]; then
     printf '{"ok":%s,"volume_available_before_kb":%s,"volume_available_after_kb":%s,"volume_available_delta_kb":%s}\n' \
-      "$(( failed == 0 ))" "$volume_available_before_kb" "$volume_available_after_kb" "$volume_available_delta_kb"
+      "$((failed == 0))" "$volume_available_before_kb" "$volume_available_after_kb" "$volume_available_delta_kb"
   else
     printf '{"ok":%s,"volume_available_before_kb":null,"volume_available_after_kb":null,"volume_available_delta_kb":null}\n' \
-      "$(( failed == 0 ))"
+      "$((failed == 0))"
   fi
 elif [[ -n "$volume_available_delta_kb" ]]; then
   echo "Observed volume free-space change: $(_cleanup_signed_human_kb "$volume_available_delta_kb")"

@@ -274,27 +274,27 @@
     };
   };
 
-  # -- agent transcript backup --
-  # Weekly: seal sessions idle 30+ days to B2, prune verified originals.
-  launchd.user.agents.transcript-backup = {
+  # -- daily disk janitor --
+  # Runs safe cleanup (including archived BB thread-storage >7d) and seals
+  # idle Claude/Codex transcripts (14+ days, live BB threads protected) to B2.
+  launchd.user.agents.disk-janitor = {
     serviceConfig = {
-      Label = "dev.connorads.transcript-backup";
+      Label = "dev.connorads.disk-janitor";
       ProgramArguments = [
         "/bin/zsh"
         "-c"
         # zsh startup files rebuild PATH without mise shims, so prepend them here.
-        "PATH=$HOME/.local/share/mise/shims:$PATH transcript-backup || /usr/bin/osascript -e 'display notification \"See ~/.cache/transcript-backup.log\" with title \"Transcript backup failed\"'"
+        "PATH=$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH disk-janitor"
       ];
       StartCalendarInterval = [
         {
-          Weekday = 0;
-          Hour = 11;
-          Minute = 0;
+          Hour = 4;
+          Minute = 15;
         }
       ];
       ProcessType = "Background";
-      StandardOutPath = "/Users/connorads/.cache/transcript-backup.log";
-      StandardErrorPath = "/Users/connorads/.cache/transcript-backup.log";
+      StandardOutPath = "/Users/connorads/.cache/disk-janitor.log";
+      StandardErrorPath = "/Users/connorads/.cache/disk-janitor.log";
     };
   };
 
