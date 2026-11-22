@@ -59,13 +59,13 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
   const go = openCodeAccountHost(account.id) !== null;
   const antigravity = antigravityAccountId(account.providerId) !== null;
   const needsLogin = usage?.status === 'expired' || usage?.status === 'unauthenticated';
-  const canLogin = antigravity || (needsLogin
-    && (account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
+  const canLogin = needsLogin
+    && (antigravity || account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
       || account.providerId === 'codex' && account.id.startsWith('provider-codex:')
-      || go));
+      || go);
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
-  const message = needsLogin && canLogin && connected ? (go ? 'Go usage unavailable. Check OpenCode Console.' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
+  const message = canLogin && connected ? (go ? 'Go usage unavailable. Check OpenCode Console.' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
     : usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
@@ -81,14 +81,13 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
       navigate.toPluginPanel('claude-login', { subPath: JSON.stringify({ hostId, accountId: account.id }) });
     }}>{go ? 'Connect Go' : signInLabel}</button>;
   return <section className="au-account" aria-label={`${account.displayName} · ${name}`}>
-    {(name !== account.displayName || plan || email || antigravity) && <header className="au-account-heading">
-      {(name !== account.displayName || plan || email) && <span className="au-account-name">{name}</span>}
+    {(name !== account.displayName || plan || email) && <header className="au-account-heading">
+      <span className="au-account-name">{name}</span>
       {plan && <span className="au-plan">{plan}</span>}
       {email && <span className="au-email">{email}</span>}
-      {antigravity && signIn}
     </header>}
-    {message ? <div className="au-account-message"><span data-tone={needsLogin && canLogin && connected ? 'warning' : undefined}>{message}</span>
-      {!antigravity && signIn}
+    {message ? <div className="au-account-message"><span data-tone={canLogin && connected ? 'warning' : undefined}>{message}</span>
+      {signIn}
     </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading}

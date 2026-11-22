@@ -84,8 +84,8 @@ access; Go plan and workspace settings apply.
 
 ### Antigravity accounts
 
-Antigravity offers **Default** and registered isolated accounts in the account row.
-Default keeps the native login and configuration. Isolated accounts use private homes.
+Antigravity starts with **Default**, which uses the native login and configuration.
+Register an isolated account to add it to the account row. Isolated accounts use private homes.
 Choosing an account preserves the selected model and draft. It sends no prompt.
 Account changes require an idle thread. BB performs its normal provider handoff when the account route changes.
 Native Antigravity conversation continuity across account routes is not guaranteed.
@@ -118,7 +118,7 @@ Account shortcut letters stay stable when labels change.
 
 The account row shows a stable letter and a ring for the fullest quota window.
 Agent Usage groups the accounts under Antigravity and caches each account separately.
-In BB, open **Agent Usage** with `⌘⇧A` and select **Sign in** beside the Antigravity account.
+In BB, open **Agent Usage** with `⌘⇧A`. An account that needs authentication offers **Sign in**.
 Open the Google sign-in link shown in the terminal. Paste the code Google gives you back into that terminal.
 The selected account uses its own launcher. Agent Usage refreshes when sign-in finishes.
 

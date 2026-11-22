@@ -49,10 +49,12 @@ export async function collectAntigravityUsage(options: {
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
       return { accountKey: null, observedAt: null, usage: { status: 'not_installed', ...fields } };
-    if (error instanceof Error && 'stdout' in error && typeof error.stdout === 'string'
-      && /not authenticated|authentication required|sign in|log in|login/iu.test(error.stdout))
+    if (error instanceof Error && ['stdout', 'stderr'].some(stream => {
+      const output: unknown = Reflect.get(error, stream);
+      return typeof output === 'string' && /\b(?:not authenticated|authentication required)\b/iu.test(output);
+    }))
       return { accountKey: null, observedAt: null, usage: { status: 'unauthenticated', ...fields } };
     return unavailable(options.signal?.aborted ? 'Antigravity quota collection cancelled.'
-      : 'Antigravity quota unavailable. Run agy acp --login on this machine and refresh.');
+      : 'Antigravity quota unavailable. Refresh to try again.');
   }
 }

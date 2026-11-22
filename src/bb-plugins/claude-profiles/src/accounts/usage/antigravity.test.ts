@@ -58,6 +58,15 @@ test('collector bounds hangs and output, handles missing CLI and never exposes r
     assert.equal(JSON.stringify(reading).includes('private-output'), false);
   }
 });
+test('the native signed-out error on stderr offers authentication', async () => {
+  const command = await cli(`
+    console.log(JSON.stringify({ status: 'ERROR', error: 'No supported credentials' }));
+    console.error("Error: authentication required. Run 'agy' to log in, then retry.");
+    process.exit(1);
+  `);
+  assert.equal((await collectAntigravityUsage({ command })).usage.status, 'unauthenticated');
+});
+
 test('collector does not launch when cancelled', async () => {
   const reading = await collectAntigravityUsage({ command: ['/nonexistent/agy'], signal: AbortSignal.abort() });
   assert.equal(reading.usage.status, 'error');
