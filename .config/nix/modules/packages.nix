@@ -149,6 +149,7 @@ let
     rustscan
     wgcf
     wireproxy
+    tor
 
     # Media & presentation
     android-tools # adb — needed by scrcpy
