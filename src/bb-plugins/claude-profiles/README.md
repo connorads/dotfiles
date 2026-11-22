@@ -118,7 +118,9 @@ Account shortcut letters stay stable when labels change.
 
 The account row shows a stable letter and a ring for the fullest quota window.
 Agent Usage groups the accounts under Antigravity and caches each account separately.
-An authentication failure offers **Sign in again** through the same account launcher.
+In BB, open **Agent Usage** with `⌘⇧A` and select **Sign in** beside the Antigravity account.
+Open the Google sign-in link shown in the terminal. Paste the code Google gives you back into that terminal.
+The selected account uses its own launcher. Agent Usage refreshes when sign-in finishes.
 
 Create and enrol an account on the machine running its threads:
 

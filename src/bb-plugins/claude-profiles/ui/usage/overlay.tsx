@@ -57,38 +57,42 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
   const usage = account.usage;
   const name = accountName(account);
   const go = openCodeAccountHost(account.id) !== null;
-  const canLogin = (usage?.status === 'expired' || usage?.status === 'unauthenticated')
-    && (antigravityAccountId(account.providerId) !== null || account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
+  const antigravity = antigravityAccountId(account.providerId) !== null;
+  const needsLogin = usage?.status === 'expired' || usage?.status === 'unauthenticated';
+  const canLogin = antigravity || (needsLogin
+    && (account.providerId === 'claude-code' && (account.id.startsWith('claude-profiles:') || account.id.startsWith('provider-claude-code:'))
       || account.providerId === 'codex' && account.id.startsWith('provider-codex:')
-      || go);
+      || go));
   const email = usage?.status === 'ok' && usage.accountEmail !== name ? usage.accountEmail : null;
   const reading = readingState(observedAt, usage?.status === 'ok' ? usage.windows : [], now);
-  const message = canLogin && connected ? (go ? 'Go usage unavailable. Check OpenCode Console.' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
+  const message = needsLogin && canLogin && connected ? (go ? 'Go usage unavailable. Check OpenCode Console.' : usage?.status === 'expired' ? 'Session expired' : 'Not signed in')
     : usage === null ? 'Usage not reported'
     : usage.status === 'unauthenticated' ? account.signInHint
     : usage.status === 'expired' ? account.expiredHint
     : usage.status === 'error' ? usage.message
     : usage.status === 'ok' && usage.windows.length === 0 ? 'No limits reported' : null;
   const plan = usage?.status === 'ok' ? usage.planLabel : null;
+  const signInLabel = antigravity && usage?.status !== 'expired' ? 'Sign in' : 'Sign in again';
+  const signIn = canLogin && <button type="button" className="au-login-button" disabled={!connected}
+    title={connected ? `Sign in to ${name} on this machine` : 'Connect this machine before signing in'}
+    aria-label={`${signInLabel} to ${name}`} onClick={() => {
+      closeUsage();
+      // BB encodes route segments; pass the target without URL encoding.
+      navigate.toPluginPanel('claude-login', { subPath: JSON.stringify({ hostId, accountId: account.id }) });
+    }}>{go ? 'Connect Go' : signInLabel}</button>;
   return <section className="au-account" aria-label={`${account.displayName} · ${name}`}>
-    {/* The provider heading already names an account that has no label, plan or email of its own. */}
-    {(name !== account.displayName || plan || email) && <header className="au-account-heading">
-      <span className="au-account-name">{name}</span>
+    {(name !== account.displayName || plan || email || antigravity) && <header className="au-account-heading">
+      {(name !== account.displayName || plan || email) && <span className="au-account-name">{name}</span>}
       {plan && <span className="au-plan">{plan}</span>}
       {email && <span className="au-email">{email}</span>}
+      {antigravity && signIn}
     </header>}
-    {message ? <div className="au-account-message"><span data-tone={canLogin && connected ? 'warning' : undefined}>{message}</span>
-      {canLogin && <button type="button" className="au-login-button" disabled={!connected}
-        title={connected ? `Sign in to ${name} on this machine` : 'Connect this machine before signing in'}
-        aria-label={`Sign in again to ${name}`} onClick={() => {
-          closeUsage();
-          // BB encodes route segments; pass the target without URL encoding.
-          navigate.toPluginPanel('claude-login', { subPath: JSON.stringify({ hostId, accountId: account.id }) });
-        }}>{go ? 'Connect Go' : 'Sign in again'}</button>}
+    {message ? <div className="au-account-message"><span data-tone={needsLogin && canLogin && connected ? 'warning' : undefined}>{message}</span>
+      {!antigravity && signIn}
     </div>
       : usage?.status === 'ok' && <div role="table" aria-label={`${name} limits`} className="au-rows">
         {usage.windows.map(window => <WindowRow key={window.label} window={window} now={now} reading={reading}
-          antigravity={antigravityAccountId(account.providerId) !== null} />)}
+          antigravity={antigravity} />)}
       </div>}
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
