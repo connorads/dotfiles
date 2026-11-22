@@ -13,6 +13,7 @@ import type { Usage } from './src/accounts/quota.ts';
 import { collectAmpUsage } from './src/accounts/usage/amp.ts';
 import { collectGrokUsage } from './src/accounts/usage/grok.ts';
 import { collectAntigravityUsage } from './src/accounts/usage/antigravity.ts';
+import { runCodexReset } from './src/accounts/usage/codex-reset-host.ts';
 import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
 import { collectClaudeResets, readClaudeResets } from './src/accounts/usage/claude-resets-host.ts';
 
@@ -106,6 +107,7 @@ export default experimental_defineHostEntry({
     grokUsage: (_input, { signal }) => collectGrokUsage({ signal }),
     antigravityUsage: (input, { signal }) => collectAntigravityUsage({ signal,
       command: input.accountId === 'default' ? ['agy'] : [join(homedir(), 'src/bb-plugins/claude-profiles/bin/agy-profile'), input.accountId] }),
+    codexReset: (input, { signal }) => runCodexReset(input, signal),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
     claudeResets: async (input, { signal }) => {
       await profile(input.root, input.profileId);

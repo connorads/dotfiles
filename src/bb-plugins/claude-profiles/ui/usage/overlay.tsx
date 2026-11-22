@@ -1,5 +1,6 @@
 import { BrandIcon } from './brand-icon.tsx';
 import { RollingValue } from './rolling-value.tsx';
+import { CodexReset } from './codex-reset.tsx';
 import { AmpUsage } from './amp.tsx';
 import type { AmpOverview } from '../../src/accounts/usage/amp-reading.ts';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -51,8 +52,8 @@ function accountName(account: Account): string {
   return account.accountLabel ?? (account.usage?.status === 'ok' ? account.usage.accountEmail : null) ?? account.displayName;
 }
 
-function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeResets, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
-  unread: string[]; resetCredits: ResetCredits | null; claudeResets: ClaudeResets | null; hostId: string; connected: boolean }) {
+function AccountBlock({ account, now, observedAt, unread, resetCredits, autoReset, claudeResets, hostId, connected }: { account: Account; now: Date; observedAt: number | null;
+  unread: string[]; resetCredits: ResetCredits | null; autoReset: boolean; claudeResets: ClaudeResets | null; hostId: string; connected: boolean }) {
   const navigate = useBbNavigate();
   const usage = account.usage;
   const name = accountName(account);
@@ -92,6 +93,7 @@ function AccountBlock({ account, now, observedAt, unread, resetCredits, claudeRe
       </div>}
     {resetCredits && <CreditResets reading={resetCredits} now={now} accountEmail={usage?.status === 'ok' ? usage.accountEmail : null}
       signedOut={usage?.status === 'expired' || usage?.status === 'unauthenticated'} />}
+    {autoReset && <CodexReset hostId={hostId} connected={connected} />}
     {claudeResets && usage?.status === 'ok' && <ClaudeResetRows reading={claudeResets} now={now} />}
     {usage?.status === 'ok' && unread.length > 0 && <p className="au-reading"
       title="The provider reported these fields with values this plugin does not read, so a limit may be missing above.">
@@ -215,6 +217,7 @@ function ProviderGroup({ accounts, now, readings, resetCredits, claudeResets, ho
       observedAt={readings.find(reading => reading.accountId === account.id)?.observedAt ?? null}
       unread={readings.find(reading => reading.accountId === account.id)?.unread ?? []}
       claudeResets={claudeResets.find(reading => reading.accountId === account.id)?.reading ?? null}
+      autoReset={account === first && first.providerId === 'codex'}
       resetCredits={account === first && first.providerId === 'codex' ? resetCredits : null} />)}
     </div>
   </section>;

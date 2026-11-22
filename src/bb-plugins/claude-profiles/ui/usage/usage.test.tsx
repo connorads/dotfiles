@@ -714,3 +714,24 @@ test('fields Claude reported but the parser could not read are named under that 
   expect(note.closest('section')?.getAttribute('aria-label')).toBe('Claude · Work');
   expect(slot.queryAllByText(/Unread usage fields/u)).toHaveLength(1);
 });
+
+test('Codex auto-reset takes an explicit arm action and sends the chosen threshold to that machine', async () => {
+  const app = await load();
+  const armed = vi.fn(async () => ({ mode: 'once', trigger: 98, message: 'Armed.', review: false }));
+  const slot = renderSlot(overview(app), {}, { rpc: {
+    'usage.inspection': async () => inspect(),
+    'codexReset.status': async () => ({ mode: 'off', trigger: 98, message: 'Disarmed.', review: false }),
+    'codexReset.set': armed,
+  } });
+  act(() => openUsage());
+  fireEvent.click(await slot.findByRole('button', { name: 'Auto-reset · Off' }));
+  const threshold = slot.getByRole('spinbutton', { name: 'Usage threshold (%)' });
+  expect((threshold as HTMLInputElement).value).toBe('98');
+  expect(armed).not.toHaveBeenCalled();
+  fireEvent.change(threshold, { target: { value: '101' } });
+  expect((slot.getByRole('button', { name: 'Arm once' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(threshold, { target: { value: '98' } });
+  fireEvent.click(slot.getByRole('button', { name: 'Arm once' }));
+  await slot.findByRole('button', { name: 'Auto-reset · Armed once' });
+  expect(armed).toHaveBeenCalledExactlyOnceWith({ hostId: 'host-one', action: { mode: 'once', trigger: 98 } });
+});

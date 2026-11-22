@@ -496,3 +496,28 @@ test('the last collected inspection is saved for the next overlay open, and an u
   await bb.storage.kv.set('usage.inspection', { snapshot: 'from an older version' });
   assert.equal(await harness.behavior.callRpc('usage.saved', {}), null);
 });
+
+test('the auto-reset schedule checks only the armed connected host', async () => {
+  const calls: unknown[] = [];
+  const { bb, harness } = createFakePluginHost({
+    sdk: { hosts: { list: async () => [
+      { id: 'host-armed', status: 'connected' },
+      { id: 'host-off', status: 'connected' },
+      { id: 'host-offline', status: 'disconnected' },
+    ] } } as never,
+    experimental_callHostRpc: async ({ method, input, hostId }) => {
+      assert.equal(method, 'codexReset');
+      calls.push({ hostId, input });
+      return { mode: hostId === 'host-armed' ? 'once' : 'off', trigger: 98, message: '', review: false };
+    },
+  });
+  try {
+    plugin(bb);
+    await harness.behavior.runSchedule('codex-auto-reset');
+    assert.deepEqual(calls, [
+      { hostId: 'host-armed', input: { command: 'status' } },
+      { hostId: 'host-off', input: { command: 'status' } },
+      { hostId: 'host-armed', input: { command: 'check' } },
+    ]);
+  } finally { await harness.lifecycle.dispose(); }
+});
