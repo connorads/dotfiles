@@ -46,10 +46,13 @@ BB launches `agy acp --process-per-session` so client-supplied HTTP MCP servers 
 Default uses Antigravity's native login. Isolated accounts use private homes and native file-backed OAuth storage.
 
 1. Run `mise install --locked agy` on the machine that runs the BB thread.
-2. Run `agy acp --login` in a terminal on that machine and complete Google sign-in.
-3. Run `bb-plugins apply` to register the managed provider.
-4. Run `bb provider models acp-antigravity --json` to check account model discovery.
+2. Install or update [Agent Switcher](../src/bb-plugins/README.md#setup), then run `bb-plugins apply` to register Antigravity.
+3. Open **Agent Usage** with `⌘⇧A` and select **Sign in** beside Antigravity on that machine.
+4. Open the Google link from the BB terminal and paste the returned code into that terminal.
 5. Open Agent Switcher with `⌘⇧M`, search **Antigravity** and choose an available model.
+
+The **Sign in** button is available before the first Google sign-in, even when usage is unavailable.
+Create isolated profiles using the account guide below before signing into them.
 
 Agent Usage reads Antigravity's native `/usage` JSON without sending a model prompt.
 The overlay shows each quota group, percentage used and reset time.
