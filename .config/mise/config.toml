@@ -35,11 +35,11 @@ packslip = "1"
 uv = "0.13"
 "rust" = "1"
 hk = "2"
-pkl = "0.32"
+pkl = "0.33"
 shfmt = "3"
 shellcheck = "0.11"
 bats = "1"
-rumdl = "0.2"
+rumdl = "0.3"
 gitleaks = "8"
 oxlint = "1"
 # oxlint's type-aware engine, shipped as a separate binary it shells out to.
@@ -60,7 +60,7 @@ aws = "2"
 codex = "latest"
 agy = "1.5.9"
 "aqua:x.ai/cli/grok" = "1.0.77"
-usage = "6"
+usage = "7"
 hcloud = "1"
 deno = "2"
 pandoc = "3"
@@ -79,7 +79,7 @@ age = "1"
 "http:bend" = { version = "2.0.25", strip_components = 1, bin_path = "bin", platforms = { macos-arm64 = { url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-darwin-arm64.tar.gz", checksum = "sha256:c5bb22ba029d5909da9c6db82aa037278a66d1cf8a5572f433879f7dcd866c31" }, linux-arm64 = { url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-linux-arm64.tar.gz", checksum = "sha256:c7cce7508fd13201d544180cca531a87a89c41829876c431cdfa0ea7f5308481" }, linux-x64 = { url = "https://github.com/bendlang/bend/releases/download/v2.0.25/bend-2.0.25-linux-x64.tar.gz", checksum = "sha256:91c0e2640f8d2e3e73fd3dd62ed4d178ce9a6f7ce8f8980b4dc4abf7a6f9ccd4" } } }
 "http:opencode" = { version = "2.2.5", strip_components = 1, bin_path = "bin", platforms = { macos-arm64 = { url = "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.2.5.tgz", checksum = "sha512:53019bd8c209a8b4a1e307eb92fa8d880a211b559fe6df7a371ef5d7742f9ad0a7e4b1a29a65d83744dbd5c843d2631145d3ef9d482e7af291770334b71658d5" }, linux-arm64 = { url = "https://registry.npmjs.org/@opencode/cli-linux-arm64/-/cli-linux-arm64-2.2.5.tgz", checksum = "sha512:3b8a8ecbf5916109a10a5301ff9a816a861fcda0cad7e3c945039f53cd22c728f9aee41b0b1ada1fe556d94c876fa4563a552fe357de73e8ac77ad8bbc2bb0b8" }, linux-x64 = { url = "https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.2.5.tgz", checksum = "sha512:0641c07d3a8db20feaa61c8736b9c7f831a43b166c1a36a63693390efc2812fcfb6403cdc3c9846cc5c64c20ce007fbffb8d04a9e89ee8a359059650c0f0a368" } } }
 "aqua:google/osv-scanner" = "2"
-"aqua:lindell/multi-gitter" = "0.63"
+"aqua:lindell/multi-gitter" = "0.64"
 # shenwei356/rush: parallel dispatcher for `bats --jobs` (lighter than GNU parallel)
 "aqua:shenwei356/rush" = "0"
 "aqua:XcodesOrg/xcodes" = { version = "2", os = ["macos"] }
@@ -90,14 +90,14 @@ age = "1"
 # staying unclaimed - name the real owner so the pin can't be repointed by
 # someone re-registering it.
 "github:herdrdev/herdr" = "0.9"
-"github:ahkohd/oyo" = "0.1.57"
+"github:ahkohd/oyo" = "0.1.72"
 "github:can1357/oh-my-pi" = "18"
 "github:tamnd/kage" = "0.3"
 # vercel-labs/fx (Zig coding-agent harness), not the registry's `fx`, which is
 # antonmedv's JSON viewer - a name clash, so spell the owner. Its release
 # workflow attests nothing, so the exact pin is the only control: pre-1.0 and
 # experimental, where every release is a breaking one. Bump by hand.
-"github:vercel-labs/fx" = "0.0.10"
+"github:vercel-labs/fx" = "0.0.17"
 # ripwire: ranked symbol map / call graph / blast radius over a repo. Install via
 # mise, never scripts/install.sh - that symlinks 18 bundled skills into
 # ~/.claude/skills and ~/.agents/skills unprompted, and hooks/ logs every matched
@@ -117,7 +117,7 @@ age = "1"
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
 # 0.1.19 shipped without npm provenance (ESRP publishing switch,
 # microsoft/playwright-cli#459). Bump only to a release with provenance.
-"npm:@playwright/cli" = "0.1.23"
+"npm:@playwright/cli" = "0.1.25"
 "npm:typescript" = "7"
 # Also pinned in ~/git/kb/mise.toml so that repo documents its own dependency.
 # aube blocks dependency build scripts by default and qmd's native deps need
@@ -165,7 +165,7 @@ age = "1"
 "npm:executor" = "1"
 "npm:firecrawl-cli" = "1"
 "npm:hunkdiff" = "0"
-"npm:hyperframes" = { version = "0.8", trust_policy_excludes = [
+"npm:hyperframes" = { version = "0.9", trust_policy_excludes = [
   "chromium-bidi@157.0.8090-0",
 ] }
 # Range "0.1" not "0": every release so far is 0.1.x, and on a 0.x package the
@@ -175,7 +175,7 @@ age = "1"
 "npm:node-gyp" = "13"
 "npm:obsidian-headless" = "0.0"
 "npm:playwright" = "1"
-"npm:rea-agents" = "6.8.0"
+"npm:rea-agents" = "6.9.0"
 "npm:portless" = "0"
 "npm:remobi" = "1"
 "npm:sharp-cli" = "6"

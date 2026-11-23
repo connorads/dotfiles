@@ -99,23 +99,23 @@ url = "https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanne
 url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/726165290"
 
 [[tools."aqua:lindell/multi-gitter"]]
-version = "0.63.1"
+version = "0.64.0"
 backend = "aqua:lindell/multi-gitter"
 
 [tools."aqua:lindell/multi-gitter"."platforms.linux-arm64"]
-checksum = "sha256:f4afde8bf0ab46a433901615e579f3c139ee0347162d615399d4e805e622c1ea"
-url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Linux_ARM64.tar.gz"
-url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833835"
+checksum = "sha256:2461cc6ff5cee579e337c90eb14a223f59b99bb6e2cb483d2f856b9549213608"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.64.0/multi-gitter_0.64.0_Linux_ARM64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/666804144"
 
 [tools."aqua:lindell/multi-gitter"."platforms.linux-x64"]
-checksum = "sha256:94711a96c75975be9cfd9f3bd1d94a371b85716ac40be35f50b7b4cd271caf8d"
-url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833834"
+checksum = "sha256:462c6bd7dc87596d5814ef6a933fd23eb7c7d0faa2ca002872ef8014cb941e1f"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.64.0/multi-gitter_0.64.0_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/666804211"
 
 [tools."aqua:lindell/multi-gitter"."platforms.macos-arm64"]
-checksum = "sha256:df3ea56fe2fb5684a4634e00de3c69082a64b09fd68a7cf1c4169ebab92de49b"
-url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Darwin_ARM64.tar.gz"
-url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833832"
+checksum = "sha256:bb7f6bdd0fdc7514211a5110b0048924d17b62fb91131af3434b73394d58d30f"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.64.0/multi-gitter_0.64.0_Darwin_ARM64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/666804198"
 
 [[tools."aqua:shenwei356/rush"]]
 version = "0.11.1"
@@ -329,23 +329,23 @@ url = "https://github.com/jdx/fnox/releases/download/v1.50.0/fnox-aarch64-apple-
 signer = "sigstore-oidc:https://github.com/jdx/fnox/.github/workflows/release.yml"
 
 [[tools."github:ahkohd/oyo"]]
-version = "0.1.57"
+version = "0.1.72"
 backend = "github:ahkohd/oyo"
 
 [tools."github:ahkohd/oyo"."platforms.linux-arm64"]
-checksum = "sha256:7e2cf5cb09f652e7008d0546bcf0453e005387e6087d138ea722e3ce77e9a3d2"
-url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776440"
+checksum = "sha256:daaef5a8a52402c3c37a5df5fe3e864b87fed2ea20eed26fe7bc3daca201fbfe"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.72/oy-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/719125761"
 
 [tools."github:ahkohd/oyo"."platforms.linux-x64"]
-checksum = "sha256:76f9095dd18aff8a540bfdda7737468a2900b26c7d976bbaa071341db02aa8b3"
-url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776437"
+checksum = "sha256:a7db570c249f99db741ed64b38096e8c012c61e7eb5e02fdc6f6fda8c70298e3"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.72/oy-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/719125758"
 
 [tools."github:ahkohd/oyo"."platforms.macos-arm64"]
-checksum = "sha256:28abd8543de0eec11457d6dcc27f2c545e022ee6430bfe7e8d5b14b3d0fa6e6f"
-url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
+checksum = "sha256:3c755944c27de999fe2de71c18287fe1789a3ef239a128dc4389c9c9c0d8ca5b"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.72/oy-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/719125757"
 
 [[tools."github:can1357/oh-my-pi"]]
 version = "18.22.2"
@@ -446,23 +446,23 @@ url = "https://github.com/tamnd/kage/releases/download/v0.3.12/kage_0.3.12_darwi
 url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/508439957"
 
 [[tools."github:vercel-labs/fx"]]
-version = "0.0.10"
+version = "0.0.17"
 backend = "github:vercel-labs/fx"
 
 [tools."github:vercel-labs/fx"."platforms.linux-arm64"]
-checksum = "sha256:27134fadb97e98e5c847070f96c211da1b2bfc9babf5573baa7537282362fbd8"
-url = "https://github.com/vercel-labs/fx/releases/download/v0.0.10/fx-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/562596288"
+checksum = "sha256:b4633b8987ec43f1b9454e4629f3b5a4f1e086aae36b84ae4fefeacd6a53761f"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.17/fx-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/748854099"
 
 [tools."github:vercel-labs/fx"."platforms.linux-x64"]
-checksum = "sha256:45bf4d88e786f549039a10ce1402831b9937e716956a6ef905a0d3cbe6bd97af"
-url = "https://github.com/vercel-labs/fx/releases/download/v0.0.10/fx-linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/562596292"
+checksum = "sha256:78c155d59fa59e42fd56d93037fd75041868c9c67865e8c7f0ca6dcdfac23e75"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.17/fx-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/748854097"
 
 [tools."github:vercel-labs/fx"."platforms.macos-arm64"]
-checksum = "sha256:b3f0121e46f8227690def72b920d9d1fc299f0b73dd7eb91382bd83674219876"
-url = "https://github.com/vercel-labs/fx/releases/download/v0.0.10/fx-macos-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/562596289"
+checksum = "sha256:5cacb5b3624a79db8fd4e31dcbc59d6a933d7e5ed4c397776d95df6b618296a9"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.17/fx-macos-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/748854096"
 
 [[tools.gitleaks]]
 version = "8.30.1"
@@ -628,7 +628,7 @@ backend = "npm:@opencode/browse"
 allow_low_downloads = "true"
 
 [[tools."npm:@playwright/cli"]]
-version = "0.1.23"
+version = "0.1.25"
 backend = "npm:@playwright/cli"
 
 [[tools."npm:@tobilu/qmd"]]
@@ -691,7 +691,7 @@ version = "0.25.0"
 backend = "npm:hunkdiff"
 
 [[tools."npm:hyperframes"]]
-version = "0.8.231"
+version = "0.9.70"
 backend = "npm:hyperframes"
 
 [tools."npm:hyperframes".options]
@@ -726,7 +726,7 @@ version = "0.18.1"
 backend = "npm:portless"
 
 [[tools."npm:rea-agents"]]
-version = "6.8.0"
+version = "6.9.0"
 backend = "npm:rea-agents"
 
 [[tools."npm:remobi"]]
@@ -838,23 +838,23 @@ version = "0.0.107"
 backend = "pipx:ty"
 
 [[tools.pkl]]
-version = "0.32.2"
+version = "0.33.1"
 backend = "aqua:apple/pkl"
 
 [tools.pkl."platforms.linux-arm64"]
-checksum = "sha256:e60744e17d4ddc0257a35260998b5f98387b5d6a5e868317cccfbebe8d962ae3"
-url = "https://github.com/apple/pkl/releases/download/0.32.2/pkl-linux-aarch64"
-url_api = "https://api.github.com/repos/apple/pkl/releases/assets/663850794"
+checksum = "sha256:4a752096dab13d7432e1f0a4f1219833df95e1e36ce0b8d424b0edb2cd5436f9"
+url = "https://github.com/apple/pkl/releases/download/0.33.1/pkl-linux-aarch64"
+url_api = "https://api.github.com/repos/apple/pkl/releases/assets/764390162"
 
 [tools.pkl."platforms.linux-x64"]
-checksum = "sha256:874c75484c79add77fb2346ea4ab2e8875eea35fb707894bf5457a2df5d03def"
-url = "https://github.com/apple/pkl/releases/download/0.32.2/pkl-linux-amd64"
-url_api = "https://api.github.com/repos/apple/pkl/releases/assets/663850808"
+checksum = "sha256:acbca9bb4f31139d09e295d03c9fb25f77edf5a74af4e772b56b32dc6dc17c44"
+url = "https://github.com/apple/pkl/releases/download/0.33.1/pkl-linux-amd64"
+url_api = "https://api.github.com/repos/apple/pkl/releases/assets/764390166"
 
 [tools.pkl."platforms.macos-arm64"]
-checksum = "sha256:466952f0b30c93dfa36393a5b3695159917ce4291e3c936a18a0a240cfbe98e9"
-url = "https://github.com/apple/pkl/releases/download/0.32.2/pkl-macos-aarch64"
-url_api = "https://api.github.com/repos/apple/pkl/releases/assets/663850972"
+checksum = "sha256:6f93ddf6524a5771bd4b6ebde11010c6dfee8e3a8906ffebaa8f52f8a0ba16b7"
+url = "https://github.com/apple/pkl/releases/download/0.33.1/pkl-macos-aarch64"
+url_api = "https://api.github.com/repos/apple/pkl/releases/assets/764390310"
 
 [[tools.pnpm]]
 version = "12.22.0"
@@ -920,25 +920,25 @@ url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/740496814
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.79"
+version = "0.3.5"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:466b22a4fae861e104a31bfda940adf2a96d77ed683d7ed19c261cf7abc36094"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.79/rumdl-v0.2.79-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/625384614"
+checksum = "sha256:3adec6780fe6e2295d634ff06601104e3e775005cdf98dd19b1817711f801502"
+url = "https://github.com/rvben/rumdl/releases/download/v0.3.5/rumdl-v0.3.5-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/764100346"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:82618d7c79c83b83781f7a30930402384fbf31d8b7ac071a63a3abccb0dbdef9"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.79/rumdl-v0.2.79-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/625384609"
+checksum = "sha256:1f7f569ce1978ec1ed21528234d01c9bd2041ed7265d2677f4d845177114f452"
+url = "https://github.com/rvben/rumdl/releases/download/v0.3.5/rumdl-v0.3.5-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/764100348"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:8c0ecf93a61bf612df5f6c6f22813d066a6f51a5680f3c12da49b93ed892aebb"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.79/rumdl-v0.2.79-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/625384611"
+checksum = "sha256:7caeb6c0264970479c0c0185c936463255b7b6048e675a647dfbebab337f91fe"
+url = "https://github.com/rvben/rumdl/releases/download/v0.3.5/rumdl-v0.3.5-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/764100347"
 provenance = "github-attestations"
 
 [[tools.rust]]
@@ -1007,22 +1007,22 @@ url = "https://github.com/crate-ci/typos/releases/download/v1.52.2/typos-v1.52.2
 url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/733789873"
 
 [[tools.usage]]
-version = "6.12.1"
+version = "7.4.0"
 backend = "packslip:github.com/jdx/usage"
 
 [tools.usage."platforms.linux-arm64"]
-checksum = "sha256:455668f6f7055c5c40b9046089910344adb499d7a3621aa25d332cde6a749b8f"
-url = "https://github.com/jdx/usage/releases/download/v6.12.1/usage-aarch64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:63ec67fd6bc8c54ad9e2775e95d6eea565565a30568d65c75be8423b3dd842ea"
+url = "https://github.com/jdx/usage/releases/download/v7.4.0/usage-aarch64-unknown-linux-gnu.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/usage/.github/workflows/publish-cli.yml"
 
 [tools.usage."platforms.linux-x64"]
-checksum = "sha256:db25b616258fce61af2e07f1aa1c7ed33c7303a8a38abade121920b1dca86488"
-url = "https://github.com/jdx/usage/releases/download/v6.12.1/usage-x86_64-unknown-linux-gnu.tar.gz"
+checksum = "sha256:c66011f163619cf3946182498eedd16966bf3d32a6c6cf28c73c8034dfe467d6"
+url = "https://github.com/jdx/usage/releases/download/v7.4.0/usage-x86_64-unknown-linux-gnu.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/usage/.github/workflows/publish-cli.yml"
 
 [tools.usage."platforms.macos-arm64"]
-checksum = "sha256:1f01fb6abe27e5e510778568ae8604720d42986bbeee9ac8cda52c659b84914f"
-url = "https://github.com/jdx/usage/releases/download/v6.12.1/usage-universal-apple-darwin.tar.gz"
+checksum = "sha256:606dbdda615111940c6b39e1cb64dbf4871839304146e8e40e7302312be095d6"
+url = "https://github.com/jdx/usage/releases/download/v7.4.0/usage-universal-apple-darwin.tar.gz"
 signer = "sigstore-oidc:https://github.com/jdx/usage/.github/workflows/publish-cli.yml"
 
 [[tools.uv]]
