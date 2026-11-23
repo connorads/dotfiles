@@ -35,12 +35,12 @@ const catalogue: Record<string, { name: string; models: string[] }> = {
   'acp-antigravity-profile-secondary': { name: 'Antigravity · Secondary', models: ['argon'] },
 };
 
-type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; connectors?: Record<string, boolean>;
+type Options = { selection?: Partial<ComposerSelection>; running?: boolean; favourites?: Favourite[]; single?: boolean; currentId?: string; connectors?: Record<string, boolean>;
   unsupported?: boolean; handoff?: boolean; newThread?: boolean; daybreak?: boolean; ultrafast?: boolean; chooseResult?: Promise<never>; conflict?: HistoryConflict };
 function render(options: Options = {}) {
   const selection = { providerId: 'claude-code', model: 'opus', reasoningLevel: 'low', environment: { type: 'host' as const, hostId: 'h', workspace: { type: 'personal' as const } }, ...options.selection };
   let saved = options.favourites ?? [sol, opus];
-  let currentId = 'summit';
+  let currentId = options.currentId ?? 'summit';
   let pendingId: string | null = null;
   let daybreak = options.daybreak ?? false;
   const connectors = options.connectors ?? {};
@@ -454,5 +454,14 @@ test('Antigravity refuses to change accounts during a running turn', async () =>
     await slot.findByText('Finish or stop the turn before changing Antigravity accounts.');
     expect(slot.inspection.composer.selection?.providerId).toBe('acp-antigravity');
     expect(slot.inspection.composer.submits).toEqual([]);
+  } finally { slot.lifecycle.unmount(); }
+});
+
+test('a thread bound to a removed Claude account shows a notice and keeps the remaining account chip selectable', async () => {
+  const slot = render({ single: true, currentId: 'retired' });
+  try {
+    await slot.findByText(/Account “retired” was removed on this machine/);
+    fireEvent.click(await slot.findByRole('button', { name: 'Summit' }));
+    await waitFor(() => expect(calls(slot, 'choose')).toEqual([{ threadId: 'thread-test', profileId: 'summit', replace: false }]));
   } finally { slot.lifecycle.unmount(); }
 });

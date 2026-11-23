@@ -576,10 +576,19 @@ bb claude-profiles overview [--refresh]
 bb claude-profiles header THREAD_ID
 bb claude-profiles import SESSION_ID|TMUX_PANE
 bb claude-profiles next [PROFILE]
+bb claude-profiles migrate FROM TO [--include-archived] [--rebind-missing] [--dry-run]
 ```
 
 `switch` queues the account while a turn runs, as the switcher does, and prints
 `currentId`, `pendingId` and `conflict`. The CLI never replaces a conflicting copy.
+`migrate` moves idle threads bound to `FROM` onto `TO`, validates the target once
+per host, updates the remembered new-thread account when it points to `FROM`, and
+skips archived threads unless `--include-archived` is passed. Pass
+`--rebind-missing` to also rebind threads whose native transcript already expired
+or was removed. Use it before
+removing a profile folder. If a bound profile folder was already removed, the
+switcher flags the missing account and allows switching without transfer only
+when the target already holds that session transcript.
 `overview` and `header` print the usage overlay and header data as JSON.
 `next` prints the remembered new-thread account and the profiles on the
 connected machine. With `PROFILE`, it first sets that account, as the switcher does

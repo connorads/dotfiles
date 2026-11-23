@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { accountChips, placement, quickRows, ring, searchGroups, stepEffort, type ProviderCatalog } from './view.ts';
+import { accountChips, missingAccount, placement, quickRows, ring, searchGroups, stepEffort, type ProviderCatalog } from './view.ts';
 
 const efforts = (...levels: string[]) => levels.map(reasoningEffort => ({ reasoningEffort }));
 const catalog: ProviderCatalog[] = [
@@ -64,13 +64,17 @@ test('the usage ring shows the fullest window and its tone', () => {
   expect(ring(undefined).tone).toBe('unknown');
 });
 
-test('the account row appears only for Claude with more than one account', () => {
+test('the account row appears only for Claude with more than one account, or when the current account is missing', () => {
   const profiles = [{ id: 'summit', label: 'Summit', configDir: '/s', key: 'S' }, { id: 'trove', label: 'Trove', configDir: '/t', key: 'T' }];
   const accounts = { profiles, currentId: 'summit', pendingId: null };
   expect(accountChips('codex', accounts)).toEqual([]);
   expect(accountChips('claude-code', { ...accounts, profiles: profiles.slice(0, 1) })).toEqual([]);
   expect(accountChips('claude-code', { ...accounts, pendingId: 'trove' })
     .map(c => [c.profile.key, c.selected, c.pending])).toEqual([['S', false, false], ['T', true, true]]);
+  const missing = { profiles: profiles.slice(0, 1), currentId: 'retired', pendingId: null };
+  expect(missingAccount(missing)).toBe('retired');
+  expect(missingAccount(accounts)).toBeNull();
+  expect(accountChips('claude-code', missing).map(c => [c.profile.id, c.selected])).toEqual([['summit', false]]);
 });
 
 test('the switcher opens beside its chip and stays inside the window', () => {

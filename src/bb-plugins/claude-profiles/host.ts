@@ -1,11 +1,10 @@
 import { experimental_defineHostEntry } from '@get-bb/plugin-sdk';
 import { homedir, tmpdir } from 'node:os';
-import { readdir, lstat } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
-import { hostContract, type Profile } from './contracts.ts';
+import { join } from 'node:path';
+import { hostContract } from './contracts.ts';
 import { readAccount } from './src/accounts/account.ts';
 import { checkLogin, classifyUsage, collectUsage, loginState } from './src/accounts/claude.ts';
-import { releaseSession, transferSession } from './src/accounts/handover.ts';
+import { listProfiles, releaseProfileSession, resolveProfile, rootPath, transferProfileSession } from './src/accounts/profiles.ts';
 import { stageFork, sweepForkStages, unstageFork } from './src/accounts/fork-stage.ts';
 import { materialise } from './src/accounts/materialise.ts';
 import { adoptSession, isSessionId, locateSession, paneSession } from './src/accounts/import.ts';
@@ -16,50 +15,18 @@ import { collectAntigravityUsage } from './src/accounts/usage/antigravity.ts';
 import { collect, readResetCredits } from './src/accounts/usage/reset-credits-host.ts';
 import { collectClaudeResets, readClaudeResets } from './src/accounts/usage/claude-resets-host.ts';
 
-function rootPath(root: string) {
-  const path = root.startsWith('~/') ? join(homedir(), root.slice(2)) : root;
-  if (!isAbsolute(path)) throw new Error('Profile root must be an absolute path or start with ~/.');
-  return path;
-}
-async function profiles(root: string): Promise<Profile[]> {
-  const directory = rootPath(root);
-  const result: Profile[] = [{ id: 'default', label: 'Default', configDir: null }];
-  const entries = await readdir(directory, { withFileTypes: true }).catch(error => {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
-    throw error;
-  });
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.isDirectory() && entry.name !== 'default' && !entry.name.startsWith('.')) {
-      result.push({ id: entry.name, label: entry.name, configDir: join(directory, entry.name) });
-    }
-  }
-  return result;
-}
-async function profile(root: string, id: string) {
-  const selected = (await profiles(root)).find(value => value.id === id);
-  if (!selected) throw new Error('Profile no longer exists. Refresh the list.');
-  const stat = await lstat(selected.configDir ?? join(homedir(), '.claude'));
-  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Profile directory must be a real directory.');
-  return selected;
-}
-async function handoverDirs(input: { root: string; sourceDir: string | null; profileId: string }) {
-  const selected = await profile(input.root, input.profileId);
-  const source = (await profiles(input.root)).find(value => value.configDir === input.sourceDir);
-  if (!source) throw new Error('Current profile is outside the configured profile root. Set the correct root before switching.');
-  return { source: source.configDir ?? join(homedir(), '.claude'), target: selected.configDir ?? join(homedir(), '.claude') };
-}
 export default experimental_defineHostEntry({
   contract: hostContract,
   handlers: {
-    profiles: input => profiles(input.root),
+    profiles: input => listProfiles(input.root),
     validate: async (input, context) => {
-      const selected = await profile(input.root, input.profileId);
+      const selected = await resolveProfile(input.root, input.profileId);
       await checkLogin(input.executable, selected.configDir, context.signal);
       return { authenticated: true as const };
     },
     usage: async (input, context): Promise<Usage> => {
       try {
-        const selected = await profile(input.root, input.profileId);
+        const selected = await resolveProfile(input.root, input.profileId);
         const [collected, account] = await Promise.all([
           collectUsage(input.executable, selected.configDir, tmpdir(), context.signal).catch((error): Usage => ({ status: 'error',
             windows: [], observedAt: null, message: error instanceof Error ? error.message : 'Claude quota request failed.' })),
@@ -73,30 +40,24 @@ export default experimental_defineHostEntry({
         message: error instanceof Error ? error.message : 'Claude quota request failed.' }; }
     },
     materialise: async (input, context) => {
-      const selected = await profile(input.root, input.profileId);
+      const selected = await resolveProfile(input.root, input.profileId);
       if (!selected.configDir) return { materialised: false };
       const script = join(homedir(), '.config', 'zsh', 'functions', 'claude-profile-materialise');
       return { materialised: await materialise(script, selected.configDir, context.signal) };
     },
-    transfer: async input => {
-      const { source, target } = await handoverDirs(input);
-      return transferSession(source, target, input.sessionId, { replace: input.replace });
-    },
-    release: async input => {
-      const { source, target } = await handoverDirs(input);
-      return releaseSession(source, target, input.sessionId);
-    },
+    transfer: input => transferProfileSession(input),
+    release: input => releaseProfileSession(input),
     locate: async input => {
-      const dirs = (await profiles(input.root)).map(value => ({ id: value.id, dir: value.configDir ?? join(homedir(), '.claude') }));
+      const dirs = (await listProfiles(input.root)).map(value => ({ id: value.id, dir: value.configDir ?? join(homedir(), '.claude') }));
       return isSessionId(input.ref) ? locateSession(dirs, input.ref) : paneSession(dirs, input.ref);
     },
     adopt: async input => {
-      const selected = await profile(input.root, input.profileId);
+      const selected = await resolveProfile(input.root, input.profileId);
       await adoptSession(selected.configDir ?? join(homedir(), '.claude'), input.sourceSessionId, input.sessionId);
       return { adopted: true as const };
     },
     stageFork: async input => {
-      const selected = await profile(input.root, input.profileId);
+      const selected = await resolveProfile(input.root, input.profileId);
       if (!selected.configDir) throw new Error('A fork on Default needs no staging.');
       return stageFork(join(homedir(), '.claude'), selected.configDir, input.sessionId, input.forkThreadId);
     },
@@ -108,7 +69,7 @@ export default experimental_defineHostEntry({
       command: input.accountId === 'default' ? ['agy'] : [join(homedir(), 'src/bb-plugins/claude-profiles/bin/agy-profile'), input.accountId] }),
     resetCredits: (input, { signal }) => readResetCredits(homedir(), input.refresh, () => collect(homedir(), signal)),
     claudeResets: async (input, { signal }) => {
-      await profile(input.root, input.profileId);
+      await resolveProfile(input.root, input.profileId);
       if (input.profileId !== 'default' && rootPath(input.root) !== join(homedir(), '.claude-profiles/code'))
         return { status: 'unavailable' as const, message: 'Reset collection requires the standard Claude profile root.' };
       return readClaudeResets(homedir(), input.profileId, input.refresh, () => collectClaudeResets(homedir(), input.profileId, signal));

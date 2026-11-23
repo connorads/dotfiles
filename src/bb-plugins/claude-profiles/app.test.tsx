@@ -144,3 +144,11 @@ test('a switcher reopened while an account change runs shows that change and sen
   release({ currentId: 'work', conflict: null });
   await waitFor(() => expect(slot.queryByText('Switching to Work…')).toBeNull());
 });
+
+test('the chip flags a bound account that was removed from the machine', async () => {
+  const { slot } = await render(thread, {
+    accounts: () => ({ supported: true, target: 'thread', profiles: profiles.slice(0, 1), currentId: 'retired', pendingId: null }),
+  });
+  const chip = await slot.findByRole('button', { name: /^Switch model: opus, high, retired account \(missing\)/ });
+  expect(chip.textContent).toContain('retired (missing)');
+});

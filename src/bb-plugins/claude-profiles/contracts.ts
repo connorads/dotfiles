@@ -28,7 +28,8 @@ export const hostContract = defineRpcContract({
   usage: { input: z.object({ ...rootInput, profileId: z.string(), executable: z.string() }), output: usageSchema },
   // Derives a profile's shared settings, memory, skills and commands from ~/.claude before Claude launches on it.
   materialise: { input: z.object({ ...rootInput, profileId: z.string() }), output: z.object({ materialised: z.boolean() }) },
-  transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string(), replace: z.boolean() }),
+  transfer: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string(), replace: z.boolean(),
+    allowMissing: z.boolean().optional() }),
     output: z.discriminatedUnion('status', [z.object({ status: z.literal('copied') }),
       z.object({ status: z.literal('diverged'), source: copySummarySchema, target: copySummarySchema })]) },
   release: { input: z.object({ ...rootInput, sourceDir: z.string().nullable(), profileId: z.string(), sessionId: z.string() }), output: z.object({ released: z.boolean() }) },
