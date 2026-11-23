@@ -620,6 +620,13 @@ allow_builds = '["node-pty", "sherpa-onnx-node"]'
 version = "0.9.1"
 backend = "npm:@kitlangton/ghui"
 
+[[tools."npm:@opencode/browse"]]
+version = "0.1.5"
+backend = "npm:@opencode/browse"
+
+[tools."npm:@opencode/browse".options]
+allow_low_downloads = "true"
+
 [[tools."npm:@playwright/cli"]]
 version = "0.1.23"
 backend = "npm:@playwright/cli"

@@ -111,6 +111,7 @@ age = "1"
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "npm:@elevenlabs/cli" = "1"
 "npm:@kitlangton/ghui" = "latest"
+"npm:@opencode/browse" = { version = "0.1", allow_low_downloads = true }
 # Reapply local generated-JS image paste patch after Pi updates. The script
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
