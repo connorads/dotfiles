@@ -248,6 +248,25 @@ importers:
         specifier: 'catalog:'
         version: 5.8.3
 
+  antigravity-sandbox:
+    dependencies:
+      '@get-bb/plugin-sdk':
+        specifier: 0.6.132
+        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.15.30
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
+
   automation-backup:
     dependencies:
       zod:
@@ -1565,6 +1584,22 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
+
+  worker-attention:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@get-bb/plugin-sdk':
+        specifier: 'catalog:'
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.15.30
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
 
   workflow-timers:
     dependencies:

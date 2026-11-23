@@ -1,0 +1,26 @@
+{
+  "name": "bb-plugin-worker-attention",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bb": ">=0.46", "bbPluginSdk": ">=0.6.37" },
+  "bb": {
+    "name": "Worker Attention",
+    "description": "Tell the origin thread and send a push notification when a hidden workflow worker waits for tool approval.",
+    "branding": { "icon": "BellRing" },
+    "server": "./server.ts",
+    "skills": []
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
+  },
+  "dependencies": { "zod": "catalog:" },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

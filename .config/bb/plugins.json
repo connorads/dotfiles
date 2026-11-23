@@ -31,6 +31,7 @@
   "shortcut-guide": true,
   "skill-loader": true,
   "terminal-tweaks": true,
+  "worker-attention": true,
   "workflow-timers": true,
   "workflows": true
 }
