@@ -1,6 +1,16 @@
 import { open, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { BoardMessage, MemberState, SwarmMember, SwarmPlan, SwarmSnapshot, WorkerLogResult, WorkerStep } from '../contracts.ts';
+import type {
+  BoardMessage,
+  MemberState,
+  SwarmMember,
+  SwarmPlan,
+  SwarmSnapshot,
+  SwarmStatus,
+  WorkerLogResult,
+  WorkerStep,
+} from '../contracts.ts';
+import { cleanBoardPreview, parseTimestampMs } from './format.ts';
 
 const accountPrefix = 'acp-antigravity-profile-';
 const accountNameRe = /^[a-z][a-z0-9-]{0,31}$/u;
@@ -78,6 +88,13 @@ export function extractMentions(text: string): string[] {
   return out;
 }
 
+function isBlockedPost(msg: BoardMessage | null): boolean {
+  if (!msg || msg.isDone) return false;
+  if (msg.isStall) return true;
+  const stripped = msg.text.replace(/^(?:@[a-z0-9][a-z0-9_-]{0,31}\s+)+/iu, '').trim();
+  return /^blocked\b/iu.test(stripped);
+}
+
 function parseBoard(raw: string): BoardMessage[] {
   const out: BoardMessage[] = [];
   for (const line of raw.split('\n')) {
@@ -143,16 +160,29 @@ interface RawStep {
   outputTokens: number | null;
 }
 
+function formatArgValue(v: unknown): string {
+  if (typeof v === 'string') {
+    const flat = v.replace(/\s+/gu, ' ').trim();
+    return flat.length > 72 ? `${flat.slice(0, 69)}…` : flat;
+  }
+  const serialized = JSON.stringify(v);
+  if (!serialized) return '';
+  return serialized.length > 72 ? `${serialized.slice(0, 69)}…` : serialized;
+}
+
 function summarizeArgs(args: unknown): string | null {
   if (!args || typeof args !== 'object') return null;
   const entries = Object.entries(args as Record<string, unknown>).slice(0, 3);
   if (entries.length === 0) return null;
-  const text = entries.map(([k, v]) => {
-    const val = typeof v === 'string' ? v : JSON.stringify(v);
-    const short = val && val.length > 64 ? `${val.slice(0, 61)}…` : val;
-    return `${k}: ${short ?? ''}`;
-  }).join(', ');
+  const text = entries.map(([k, v]) => `${k}: ${formatArgValue(v)}`).join(' · ');
   return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+}
+
+/** Strip repetitive agy tool-result timestamp headers so output previews lead with real content. */
+function cleanToolOutput(raw: string): string {
+  return raw
+    .replace(/^(?:Created At|Completed At):[^\n]*\n+/gim, '')
+    .trim();
 }
 
 function clip(value: unknown, max: number): string | null {
@@ -182,13 +212,18 @@ function parseTranscriptSteps(raw: string | null): { totalSteps: number; steps: 
           name: typeof c.name === 'string' ? c.name : 'tool',
           argsPreview: summarizeArgs(c.args),
         }));
-      const text = clip(obj.response ?? obj.content ?? obj.error ?? obj.message, 600);
-      const thinking = clip(obj.thinking, 280);
+      const type = typeof obj.type === 'string' ? obj.type : 'UNKNOWN';
+      const rawText = obj.error ?? obj.response ?? obj.content ?? obj.message;
+      const cleanedText = typeof rawText === 'string' && type === 'GENERIC'
+        ? cleanToolOutput(rawText) || rawText
+        : rawText;
+      const text = clip(cleanedText, 800);
+      const thinking = clip(obj.thinking, 400);
       steps.push({
         stepIndex,
         time: typeof obj.created_at === 'string' ? obj.created_at : null,
         source: typeof obj.source === 'string' ? obj.source : 'UNKNOWN',
-        type: typeof obj.type === 'string' ? obj.type : 'UNKNOWN',
+        type,
         status: typeof obj.status === 'string' ? obj.status : 'UNKNOWN',
         model: typeof obj.model === 'string' ? obj.model : null,
         toolCalls,
@@ -214,11 +249,16 @@ function deriveMemberRuntime(input: {
 }): { state: MemberState; activity: string | null; lastActiveAt: string | null } {
   const { name, killed, wakeMode, steps, messages } = input;
   const lastStep = steps.at(-1) ?? null;
-  const lastActiveAt = lastStep?.time ?? null;
-  const postedDone = messages.some(m => m.agent === name && m.isDone);
   const lastPost = [...messages].reverse().find(m => m.agent === name) ?? null;
+  const lastStepMs = parseTimestampMs(lastStep?.time);
+  const lastPostMs = parseTimestampMs(lastPost?.time);
+  const lastActiveAt = lastPostMs !== null && (lastStepMs === null || lastPostMs > lastStepMs)
+    ? lastPost!.time
+    : lastStep?.time ?? lastPost?.time ?? null;
+  const postedDone = messages.some(m => m.agent === name && m.isDone);
+  const latestBlocked = isBlockedPost(lastPost);
 
-  if (killed) return { state: 'killed', activity: 'Killed', lastActiveAt };
+  if (killed) return { state: 'killed', activity: 'Stopped', lastActiveAt };
 
   if (lastStep) {
     const statusUpper = lastStep.status.toUpperCase();
@@ -254,6 +294,9 @@ function deriveMemberRuntime(input: {
         const lastTool = planner.toolCalls.at(-1)?.name ?? 'tool';
         return { state: 'working', activity: `Running ${lastTool}`, lastActiveAt };
       }
+      if (latestBlocked && lastPost) {
+        return { state: 'blocked', activity: clip(cleanBoardPreview(lastPost.text), 90) ?? 'Blocked', lastActiveAt };
+      }
       if (postedDone) {
         return { state: 'done', activity: lastPost ? `Done · #${lastPost.seq}` : 'Done', lastActiveAt };
       }
@@ -268,8 +311,29 @@ function deriveMemberRuntime(input: {
     }
   }
 
+  if (latestBlocked && lastPost) {
+    return { state: 'blocked', activity: clip(cleanBoardPreview(lastPost.text), 90) ?? 'Blocked', lastActiveAt };
+  }
   if (postedDone) return { state: 'done', activity: lastPost ? `Done · #${lastPost.seq}` : 'Done', lastActiveAt };
   return { state: 'waiting', activity: wakeMode === 'any' ? 'Waiting for any post' : 'Waiting for @mentions', lastActiveAt };
+}
+
+function deriveSwarmStatus(input: {
+  active: boolean;
+  totalWorkers: number;
+  doneWorkers: number;
+  blockedWorkers: number;
+  killedWorkers: number;
+  errorWorkers: number;
+  coordinatorDone: boolean;
+}): SwarmStatus {
+  const { active, totalWorkers, doneWorkers, blockedWorkers, killedWorkers, errorWorkers, coordinatorDone } = input;
+  if (active) return 'working';
+  if (totalWorkers > 0 && doneWorkers === totalWorkers) return 'done';
+  if (errorWorkers > 0 || blockedWorkers > 0) return 'blocked';
+  if (totalWorkers > 0 && killedWorkers > 0 && doneWorkers < totalWorkers) return 'stopped';
+  if (totalWorkers === 0 && coordinatorDone) return 'done';
+  return 'waiting';
 }
 
 interface ParsedMembersFile {
@@ -355,8 +419,37 @@ export async function loadSwarmSnapshot(home: string, providerId: string, sessio
   const taskWorkers = memberList.filter(m => m.role === 'worker');
   const workingWorkers = taskWorkers.filter(m => m.state === 'working').length;
   const doneWorkers = taskWorkers.filter(m => m.state === 'done').length;
+  const blockedWorkers = taskWorkers.filter(m => m.state === 'blocked').length;
+  const killedWorkers = taskWorkers.filter(m => m.state === 'killed').length;
+  const waitingWorkers = taskWorkers.filter(m => m.state === 'waiting').length;
   const errorWorkers = taskWorkers.filter(m => m.state === 'error').length;
-  const coordinatorWorking = memberList.some(m => m.role === 'coordinator' && m.state === 'working');
+  const coordinator = memberList.find(m => m.role === 'coordinator');
+  const coordinatorWorking = coordinator?.state === 'working';
+  const coordinatorDone = coordinator?.state === 'done';
+  const active = workingWorkers > 0 || Boolean(coordinatorWorking);
+  const status = deriveSwarmStatus({
+    active,
+    totalWorkers: taskWorkers.length,
+    doneWorkers,
+    blockedWorkers,
+    killedWorkers,
+    errorWorkers,
+    coordinatorDone,
+  });
+
+  let lastActivityAt: string | null = null;
+  let lastActivityMs = -Infinity;
+  for (const candidate of [
+    ...memberList.map(m => m.lastActiveAt),
+    allMessages.at(-1)?.time ?? null,
+    typeof swarmMeta?.created_at === 'string' ? swarmMeta.created_at : null,
+  ]) {
+    const ms = parseTimestampMs(candidate);
+    if (ms !== null && ms > lastActivityMs) {
+      lastActivityMs = ms;
+      lastActivityAt = candidate;
+    }
+  }
 
   const plan = parsePlan(planRaw);
   const title = parsedMembers?.title ?? plan?.goalTitle ?? null;
@@ -379,8 +472,13 @@ export async function loadSwarmSnapshot(home: string, providerId: string, sessio
       totalWorkers: taskWorkers.length,
       workingWorkers,
       doneWorkers,
+      blockedWorkers,
+      killedWorkers,
+      waitingWorkers,
       errorWorkers,
-      active: workingWorkers > 0 || coordinatorWorking,
+      status,
+      lastActivityAt,
+      active,
     },
   };
 }

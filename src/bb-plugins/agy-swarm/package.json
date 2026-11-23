@@ -7,7 +7,7 @@
   "bb": {
     "name": "Antigravity Swarm",
     "description": "Live Swarm Board, Overview, and worker transcript inspector for Antigravity (agy) threads.",
-    "branding": { "icon": "Users" },
+    "branding": { "icon": "Bot" },
     "server": "./server.ts",
     "host": "./host.ts",
     "app": "./app.tsx",

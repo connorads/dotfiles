@@ -196,8 +196,10 @@ export function TextShimmer({ text, active, className }: { text: string; active:
   );
 }
 
+export type IndicatorState = 'working' | 'waiting' | 'blocked' | 'done' | 'killed' | 'stopped' | 'error';
+
 /** Phase-locked status indicator (all working pulses locked to startTime = 0, paused offscreen). */
-export function PhaseIndicator({ state }: { state: 'working' | 'waiting' | 'done' | 'killed' | 'error' }) {
+export function PhaseIndicator({ state }: { state: IndicatorState }) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -211,6 +213,47 @@ export function PhaseIndicator({ state }: { state: 'working' | 'waiting' | 'done
       {state === 'working' && <span className="agys-radar-ring" />}
       <span className="agys-status-core" />
     </span>
+  );
+}
+
+/** Crisp 14px inline refresh icon (avoids BB icon fallback to Zap). */
+export function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={spinning ? 'agys-spin' : undefined}
+      aria-hidden="true"
+    >
+      <path d="M13.5 8a5.5 5.5 0 1 1-1.45-3.73" />
+      <path d="M13.5 2.75v2.75h-2.75" />
+    </svg>
+  );
+}
+
+/** Rotating disclosure chevron for <details> summaries. */
+export function DisclosureChevron() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="agys-chevron"
+      aria-hidden="true"
+    >
+      <path d="M4.5 2.75L7.75 6L4.5 9.25" />
+    </svg>
   );
 }
 
@@ -273,6 +316,25 @@ export function SegmentedControl<T extends string>({
       return !xSpring.current.resting || !wSpring.current.resting;
     });
   }, [value, items.length]);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const thumb = thumbRef.current;
+      const activeBtn = btnRefs.current.get(value);
+      if (!thumb || !activeBtn) return;
+      const x = activeBtn.offsetLeft;
+      const w = activeBtn.offsetWidth;
+      xSpring.current.snap(x);
+      wSpring.current.snap(w);
+      thumb.style.transform = `translate3d(${x}px, 0, 0)`;
+      thumb.style.width = `${w}px`;
+      thumb.style.opacity = '1';
+    });
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [value]);
 
   return (
     <div ref={trackRef} className="agys-seg" role="tablist" aria-label={ariaLabel}>
