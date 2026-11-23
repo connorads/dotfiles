@@ -1,7 +1,8 @@
 # BB bundle patch registry
 
-The desktop registry prepares exact BB 0.47.1 and 0.48.1 bundles without compiling BB or a bundled plugin.
+The desktop registry prepares exact BB 0.47.1, 0.48.1 and 0.50.1 bundles without compiling BB or a bundled plugin.
 Desktop 0.48.1 has only a draft `session-options` manifest. Its `start-server.js` differs from the npm package the 0.48.1 activity recipe pins.
+Desktop 0.50.1 has draft manifests for all three sets. Its `start-server.js` differs from npm 0.50.1 only in two build-path comments, so one adapter serves both.
 The manager inspects explicit installations and verifies copied candidates.
 Its apply and restore commands admit only disposable copies beneath the operating system's canonical user temporary directory.
 They never reload plugins, restart servers or invoke an updater.
@@ -79,17 +80,22 @@ bb-patch prepare-package --package /absolute/mise/node_modules/bb-app \
   --set session-options-plus-activity
 ```
 
-Package preparation selects a separate session-options and activity recipe for npm BB `0.48.1`.
-Admission requires version `0.48.1` and these pristine SHA-256 digests:
+Package preparation selects separate session-options and activity recipes for npm BB `0.48.1` and `0.50.1`.
+Admission requires the exact version and these pristine SHA-256 digests:
 
-| File under `server/dist` | SHA-256 |
-| --- | --- |
-| `start-server.js` | `41ffbb6d40eafb1253242e529b1032a7043d29e0cf0eb1c03d6d3c11e2c0a1d7` |
-| `builtin-plugins/workflows/dist/server.js` | `013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b` |
+| Version | File under `server/dist` | SHA-256 |
+| --- | --- | --- |
+| `0.48.1` | `start-server.js` | `41ffbb6d40eafb1253242e529b1032a7043d29e0cf0eb1c03d6d3c11e2c0a1d7` |
+| `0.48.1` | `builtin-plugins/workflows/dist/server.js` | `013bd3bb37daf4b682f408dcff633dfec1ae49a851f72aab2fe1f5b40381341b` |
+| `0.50.1` | `start-server.js` | `c302794df54bab5c6db2be4baf5b73532bf1461f2e3e7675dac9f038832e232f` |
+| `0.50.1` | `builtin-plugins/workflows/dist/server.js` | `785a245a0e2267468f491e845fc51efb174a8fed8ab5aabf7ffc19f62407c6d9` |
 
 A digest mismatch retains every requested feature's stock bytes.
 The `0.48.1` session-options recipe is the `0.47.1` recipe with the release's minified bindings.
 Its harness, `scripts/test-bundle-0.48.1.mjs`, exports and calls those bindings.
+The `0.50.1` recipes carry the same behaviour with that release's bindings.
+Its plugin factory binds the workflow database to `r`, so the activity source queries `r`.
+Its harnesses are `scripts/test-bundle-0.50.1.mjs` and `scripts/test-activity-0.50.1.mjs`.
 Other versions try the existing `0.47.1` transformations and harnesses.
 Version `0.48.2` receives no `0.48.1` recipe by anchor matching.
 Each feature must pass syntax checks and its existing offline behaviour harness before publication.
@@ -99,7 +105,7 @@ Checks have a 60-second timeout. A timeout retains the stock feature.
 
 The JSON result reports `patched`, `partial` or `stock`, applied features, failures and before/after hashes.
 Its identity includes complete source and result trees, dependency location, Node version, recipe and harness digests.
-The `0.48.1` provenance includes both adapters because it reuses the pinned core transform.
+The `0.48.1` and `0.50.1` provenance includes the `0.47.1` adapter because each imports code from it.
 Changing shared preparation code changes identities for every version, including `0.48.0`; prepare fresh releases.
 Repeated preparation reruns checks and refuses changed runtime files in an existing release.
 The source package remains unchanged. Preparation never starts a server or activates a release.
@@ -123,16 +129,18 @@ python3 -B -m unittest discover -s scripts -p 'test_*.py'
 Independent synthetic registry and transaction fixtures run without `/Applications/bb.app`.
 Release tests skip explicitly unless `BB_PATCH_RELEASE_APP` names a verified disposable release copy.
 That copy needs the four guarded files, `Contents/Info.plist` and `Contents/MacOS/bb` from the same release.
+These release tests pin legacy 0.47.1 bytes. Later releases rehearse transactions through the manager API on such a copy.
 
 ```sh
 BB_PATCH_RELEASE_APP=/absolute/system-temporary-directory/release/bb.app python3 -B -m unittest discover -s scripts -p 'test_*.py'
 ```
 
 The session harness resolves Zod and SDK imports from the adjacent `workflow-timers` package.
+The 0.50.1 session harness substitutes an inert SDK module. The workspace SDK lacks that release's host-path exports.
 Workspace dependencies must already be installed. Node must provide `node:sqlite` for the activity harness.
 The activity harness executes copied core and plugin fragments together against synthetic SQLite records.
 It checks lifecycle counting, activation failure, invalidation, stale generations, source failures and progress publication.
-The separate `0.48.1` harness resolves minified bindings through unique esbuild function labels.
+The separate `0.48.1` and `0.50.1` activity harnesses resolve minified bindings through unique esbuild function labels.
 It checks late registration refusal, terminal sidebar notifications, RPC invalidation tags and pristine plugin fragment equivalence.
 These checks use copied fragments inside a synthetic API scaffold. They establish fragment behaviour alongside static caller audits.
 They do not establish activity counts or realtime notification delivery through a running server.
@@ -141,14 +149,17 @@ Syntax checks establish parsing only.
 The scoped `workflows-patch` hook runs independent tests and validates tracked input fingerprints.
 Copied-release behaviour remains an explicit check when release fixtures are absent.
 
-The opt-in npm `0.48.1` test prepares activity and combined copies from the installed source.
-It checks exact output hashes, session-options output, and unchanged source contents and metadata.
+The opt-in npm `0.48.1` and `0.50.1` tests prepare activity and combined copies from the installed source.
+They check exact output hashes, session-options output, and unchanged source contents and metadata.
 Set `BB_PATCH_NODE` to an installed Node executable with `node:sqlite`:
 
 ```sh
 BB_PATCH_PACKAGE_0481=/absolute/mise/node_modules/bb-app \
   BB_PATCH_NODE=/absolute/node/bin/node \
   python3 -B -m unittest discover -s scripts -p test_package_0_48_1.py
+BB_PATCH_PACKAGE_0501=/absolute/mise/node_modules/bb-app \
+  BB_PATCH_NODE=/absolute/node/bin/node \
+  python3 -B -m unittest discover -s scripts -p test_package_0_50_1.py
 ```
 
 An isolated server smoke check needs fresh temporary HOME and data directories, loopback ports, and no credentials or provider execution.

@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "session-options",
+  "status": "draft",
+  "installation": {
+    "kind": "desktop",
+    "platform": "darwin",
+    "arch": "arm64",
+    "version": "0.50.1"
+  },
+  "dist": "Contents/Resources/app.asar.unpacked/node_modules/bb-app/server/dist",
+  "patches": [
+    "session-options"
+  ],
+  "adapter": {
+    "path": "scripts/adapters/bb_0_50_1.py",
+    "sha256": "15048449d459827dd5906c47a7af58ec4d5e79e90718ece84b4901558d342c3d"
+  },
+  "files": [
+    {
+      "path": "start-server.js",
+      "pristine": "b354672935fee3bbb8e985f4d3baff305b02e923e41c684a949c5de4ceacc36e",
+      "intermediate": [
+        "b354672935fee3bbb8e985f4d3baff305b02e923e41c684a949c5de4ceacc36e"
+      ],
+      "final": "b354672935fee3bbb8e985f4d3baff305b02e923e41c684a949c5de4ceacc36e"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/server.js",
+      "pristine": "785a245a0e2267468f491e845fc51efb174a8fed8ab5aabf7ffc19f62407c6d9",
+      "intermediate": [
+        "706eab4b9ff8ad80afa9b899f53852d9adb5142f673bf0a536b90a2321a2c4fe"
+      ],
+      "final": "706eab4b9ff8ad80afa9b899f53852d9adb5142f673bf0a536b90a2321a2c4fe"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/app.js",
+      "pristine": "29daab715dbe0a22fbc29fc6f791a3094683b12d89140d5d9d4481b9b57e741e",
+      "intermediate": [
+        "4217016ae3c9bd79b539d4e43e98393c17a55697d4ef6a8cf7039eb7d51a5ce4"
+      ],
+      "final": "4217016ae3c9bd79b539d4e43e98393c17a55697d4ef6a8cf7039eb7d51a5ce4"
+    },
+    {
+      "path": "builtin-plugins/workflows/skills/workflows/references/authoring.md",
+      "pristine": "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3",
+      "intermediate": [
+        "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e"
+      ],
+      "final": "b0432d239a22b6c2d0ebf5c2221ad6690fe966221a64954cbca6164c15497e3e"
+    }
+  ],
+  "verification": {
+    "profiles": [
+      "session-options"
+    ],
+    "harnesses": {
+      "scripts/test-bundle-0.50.1.mjs": "f8efca9cd03d037b63c2761809cc71560ea244a6d23b02f71f6e51012af25a34"
+    }
+  },
+  "activation": "full-server-activation",
+  "installerWritesDatabase": false,
+  "runtimeRecordCompatibility": "Reads stock and historical session-options records; stock readers cannot preview every patched record.",
+  "integrityPolicy": "unresolved; disposable copies only",
+  "retireWhen": "Pristine upstream passes equivalent session-options behaviour tests."
+}
