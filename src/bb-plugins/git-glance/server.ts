@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { isAbsolute, relative } from 'node:path';
 import type { BbPluginApi } from '@get-bb/plugin-sdk';
-import { hostContract, hostSignals, rpcContract, subjectProject, type FetchHealth, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
+import { hostContract, hostSignals, rpcContract, subjectProject, type FetchHealth, type HostRepo, type OpMessage, type Snapshot, type SnapshotMessage } from './contracts.ts';
 import { checkoutKey, createLeases, type Checkout } from './src/leases.ts';
 import { finish, progress, start, type OpState } from './src/ops.ts';
 import { addPick, parsePicks, type Pick } from './src/recent-picks.ts';
@@ -197,7 +198,34 @@ export default function plugin(bb: BbPluginApi) {
     },
     recentPicks: async ({ threadId }) => {
       const base = await environment(threadId);
-      return { picks: base ? await recentPicks(base) : [] };
+      if (!base) return { picks: [], host: [] };
+      const [picks, knownPaths, projects] = await Promise.all([
+        recentPicks(base),
+        known(base.hostId),
+        bb.sdk.projects.list().catch(() => []),
+      ]);
+      const projectNames = new Map<string, string>();
+      for (const project of projects) {
+        for (const source of project.sources) {
+          if (source.hostId === base.hostId && !projectNames.has(source.path)) projectNames.set(source.path, project.name);
+        }
+      }
+      const seen = new Set<string>();
+      const host: HostRepo[] = [];
+      for (const path of knownPaths) {
+        if (seen.has(path)) continue;
+        seen.add(path);
+        const label = projectNames.get(path);
+        host.push(label ? { path, label, source: 'recent' } : { path, source: 'recent' });
+      }
+      for (const project of projects) {
+        for (const source of project.sources) {
+          if (source.hostId !== base.hostId || seen.has(source.path)) continue;
+          seen.add(source.path);
+          host.push({ path: source.path, label: project.name, source: 'project' });
+        }
+      }
+      return { picks, host };
     },
     repositories: async ({ threadId, path }) => {
       const base = await environment(threadId);
@@ -213,7 +241,14 @@ export default function plugin(bb: BbPluginApi) {
         const previous = await required(threadId);
         if (ops.get(checkoutKey(previous))?.state.status === 'running') throw new Error('Wait for the running Git operation before changing repository.');
         const target = path === null ? base : { ...base, ...(await host.call('select', { root: base.root, path, ...worktree === undefined ? {} : { worktree } }, { hostId: base.hostId })) };
-        if (path !== null) await rememberPick(base, worktree === undefined ? { path } : { path, worktree });
+        if (path !== null) {
+          const pickPath = (candidate: string) => {
+            if (!isAbsolute(candidate)) return candidate;
+            const rel = relative(base.root, candidate);
+            return rel === '..' || rel.startsWith('../') || isAbsolute(rel) ? candidate : (rel || '.');
+          };
+          await rememberPick(base, worktree === undefined ? { path: pickPath(target.root) } : { path: pickPath(path), worktree });
+        }
         return await remember(threadId, base, target);
       } finally { selecting.delete(threadId); }
     },

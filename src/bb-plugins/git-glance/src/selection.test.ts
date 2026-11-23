@@ -10,11 +10,28 @@ function setup(run: () => Promise<unknown> = async () => ({ ok: true, summary: '
     sdk: {
       threads: { get: async () => makeThreadResponse({ environmentId: 'env' }) },
       environments: { get: async () => ({ id: 'env', hostId: 'remote', path: base }) },
+      projects: {
+        list: async () => [
+          {
+            id: 'p1', kind: 'standard', name: 'Plugins', gitRemoteUrl: null, createdAt: 0, updatedAt: 0,
+            sources: [
+              { id: 's1', projectId: 'p1', hostId: 'remote', path: '/src/bb-plugins', isDefault: true, label: null, sortOrder: 0, createdAt: 0 },
+              { id: 's2', projectId: 'p1', hostId: 'other-host', path: '/other/host', isDefault: false, label: null, sortOrder: 1, createdAt: 0 },
+            ],
+          },
+          {
+            id: 'p2', kind: 'standard', name: 'App', gitRemoteUrl: null, createdAt: 0, updatedAt: 0,
+            sources: [
+              { id: 's3', projectId: 'p2', hostId: 'remote', path: '/work/app', isDefault: true, label: null, sortOrder: 0, createdAt: 0 },
+            ],
+          },
+        ],
+      },
     },
     experimental_callHostRpc: async ({ method, input, hostId }) => {
       assert.equal(hostId, 'remote');
       const args = input as { root: string; path?: string; worktree?: string };
-      if (method === 'select') return { root: args.worktree ?? `${args.root}/${args.path}` };
+      if (method === 'select') return { root: args.worktree ?? (args.path?.startsWith('/') ? args.path : `${args.root}/${args.path}`) };
       if (method === 'checkout') {
         if (args.root === '/missing') throw new Error('Checkout missing');
         return { root: args.root };
@@ -121,5 +138,26 @@ test('review target identifies the selected checkout and rejects stale selection
     await harness.behavior.callRpc('select', { threadId: 't', path: 'app' });
     assert.deepEqual(await harness.behavior.callRpc('reviewTarget', { threadId: 't', root: '/work/app' }), { hostId: 'remote', path: '/work/app' });
     await assert.rejects(harness.behavior.callRpc('reviewTarget', { threadId: 't', root: '/work' }), /selection changed/);
+  } finally { await harness.lifecycle.dispose(); }
+});
+
+test('recentPicks returns host-wide known checkouts and same-host projects, and normalises stored picks', async () => {
+  const { harness, watch, moveEnvironment } = setup();
+  try {
+    await watch();
+    await harness.behavior.callRpc('select', { threadId: 't', path: '/work/app' });
+    await harness.behavior.callRpc('select', { threadId: 't', path: '/Users/alex' });
+    const first = rpcContract.recentPicks.output.parse(await harness.behavior.callRpc('recentPicks', { threadId: 't' }));
+    assert.deepEqual(first.picks, [{ path: '/Users/alex' }, { path: 'app' }]);
+    assert.deepEqual(first.host, [
+      { path: '/Users/alex', source: 'recent' },
+      { path: '/work/app', label: 'App', source: 'recent' },
+      { path: '/src/bb-plugins', label: 'Plugins', source: 'project' },
+    ]);
+    // A thread on a fresh checkout still sees host-wide recent checkouts and projects.
+    moveEnvironment();
+    const fresh = rpcContract.recentPicks.output.parse(await harness.behavior.callRpc('recentPicks', { threadId: 't' }));
+    assert.deepEqual(fresh.picks, []);
+    assert.deepEqual(fresh.host.map(item => item.path), ['/Users/alex', '/work/app', '/src/bb-plugins']);
   } finally { await harness.lifecycle.dispose(); }
 });

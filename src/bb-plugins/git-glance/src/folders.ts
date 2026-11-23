@@ -1,6 +1,22 @@
-import { access, realpath, readdir } from 'node:fs/promises';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { access, realpath, readdir, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { git, resolveRepo, type Repo } from './repo.ts';
+
+function isOutside(parent: string, child: string) {
+  const rel = relative(parent, child);
+  return rel === '..' || rel.startsWith('../') || isAbsolute(rel);
+}
+
+async function resolveHome(home: string) {
+  return realpath(home).catch(() => resolve(home));
+}
+
+function expandPath(root: string, path: string, home: string) {
+  if (path === '~') return home;
+  if (path.startsWith('~/')) return join(home, path.slice(2));
+  return resolve(root, path);
+}
 
 async function worktrees(repo: Repo) {
   const output = await git(repo, ['worktree', 'list', '--porcelain', '-z']);
@@ -13,43 +29,61 @@ async function worktrees(repo: Repo) {
   });
 }
 
-async function folder(base: string, path: string) {
-  const root = await realpath(base);
-  const target = await realpath(resolve(root, path));
+async function folder(base: string, path: string, home = homedir()) {
+  const [root, homeDir] = await Promise.all([realpath(base), resolveHome(home)]);
+  const raw = expandPath(root, path, homeDir);
+  let target: string;
+  try {
+    target = await realpath(raw);
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException | null)?.code;
+    if (code === 'ENOENT') throw new Error(`Folder not found: ${path}`);
+    if (code === 'EACCES' || code === 'EPERM') throw new Error(`Permission denied: ${path}`);
+    throw cause;
+  }
+  const info = await stat(target);
+  if (!info.isDirectory()) throw new Error(`Not a folder: ${path}`);
   const rel = relative(root, target);
-  if (rel === '..' || rel.startsWith('../') || isAbsolute(rel)) throw new Error('Folder is outside the thread checkout.');
-  return { root, target, path: rel || '.' };
+  return { root, target, home: homeDir, path: isOutside(root, target) ? target : (rel || '.') };
 }
 
-export async function resolveCheckout(path: string) {
+export async function resolveCheckout(path: string, home = homedir()) {
   if (!isAbsolute(path)) throw new Error('Use an absolute checkout path.');
-  const root = await realpath(path);
-  const repo = await resolveRepo(root);
+  const [root, homeDir] = await Promise.all([realpath(path), resolveHome(home)]);
+  const repo = await resolveRepo(root, homeDir);
   if (!repo || repo.cwd !== root) throw new Error('The path is not a Git checkout root.');
   return root;
 }
 
-export async function selectFolder(base: string, path: string, worktree?: string) {
-  const { root, target } = await folder(base, path);
-  const repo = await resolveRepo(target);
+export async function selectFolder(base: string, path: string, worktree?: string, home = homedir()) {
+  const { target, home: homeDir } = await folder(base, path, home);
+  const repo = await resolveRepo(target, homeDir);
   if (!repo) throw new Error('Folder is not a git repository.');
   if (worktree !== undefined) {
     if (!(await worktrees(repo)).some(tree => tree.path === worktree)) throw new Error('Choose a registered worktree of this repository.');
-    const targetRepo = await resolveRepo(worktree);
+    const targetRepo = await resolveRepo(worktree, homeDir);
     if (!targetRepo || await realpath(targetRepo.commonDir) !== await realpath(repo.commonDir)) {
       throw new Error('The registered worktree is missing or belongs to another repository.');
     }
     return targetRepo.cwd;
   }
-  // An enclosing repository can sit above a thread's checkout; selecting it must
-  // not widen the folder browser's boundary.
-  const rel = relative(root, repo.cwd);
-  return rel === '..' || rel.startsWith('../') || isAbsolute(rel) ? target : repo.cwd;
+  return repo.cwd;
 }
 
-export async function browseFolders(base: string, path: string) {
-  const { target, path: rel } = await folder(base, path);
-  const entries = (await readdir(target, { withFileTypes: true }))
+const hasDotfilesHead = (homeDir: string) =>
+  access(join(homeDir, 'git', 'dotfiles', 'HEAD')).then(() => true, () => false);
+
+export async function browseFolders(base: string, path: string, home = homedir()) {
+  const { root, target, home: homeDir, path: rel } = await folder(base, path, home);
+  let rawEntries;
+  try {
+    rawEntries = await readdir(target, { withFileTypes: true });
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException | null)?.code;
+    if (code === 'EACCES' || code === 'EPERM') throw new Error(`Permission denied: ${target}`);
+    throw cause;
+  }
+  const entries = rawEntries
     .filter(entry => entry.isDirectory() && entry.name !== '.git')
     .sort((a, b) => a.name.localeCompare(b.name));
   const folders: { name: string; repository: boolean }[] = [];
@@ -57,14 +91,29 @@ export async function browseFolders(base: string, path: string) {
   for (const entry of entries) {
     const child = join(target, entry.name);
     const hasGit = await access(join(child, '.git')).then(() => true, () => false);
-    const repo = hasGit ? await resolveRepo(child) : null;
+    const repo = hasGit || child === homeDir ? await resolveRepo(child, homeDir) : null;
     const repository = repo?.cwd === child;
     // Dot-folders are tool state unless they are a repository, such as `.github`.
     if (repository || !entry.name.startsWith('.')) folders.push({ name: entry.name, repository });
   }
-  const repo = await resolveRepo(target);
-  return { root: target, path: rel, repository: repo?.cwd === target, folders,
-    worktrees: repo?.cwd === target && repo.kind === 'repo' ? await worktrees(repo) : [] };
+  const repo = await resolveRepo(target, homeDir);
+  const isTargetRepo = repo?.cwd === target;
+  const dotfiles = target === homeDir
+    ? repo?.kind === 'dotfiles'
+    : (await hasDotfilesHead(homeDir)) && (await resolveRepo(homeDir, homeDir))?.kind === 'dotfiles';
+  const parentDir = dirname(target);
+  return {
+    root: target,
+    base: root,
+    home: homeDir,
+    parent: parentDir !== target ? parentDir : null,
+    dotfiles,
+    path: rel,
+    repository: isTargetRepo,
+    repoKind: isTargetRepo ? repo.kind : null,
+    folders,
+    worktrees: isTargetRepo && repo.kind === 'repo' ? await worktrees(repo) : [],
+  };
 }
 
 const SKIPPED = new Set(['node_modules', 'Library']);
@@ -81,11 +130,14 @@ async function subfolders(root: string, rel: string) {
 
 /**
  * Lists repository roots below a folder, relative to it. The walk is breadth first and
- * never enters a repository, hidden folder or symlink; a hidden repository still counts. Depth is a fixed boundary;
- * `truncated` reports only the result or folder budget running out.
+ * never enters a repository, hidden folder or symlink; a hidden repository still counts.
+ * Deep walks stay within the thread checkout or Home so browsing `/` or `/Users` never crawls the system.
  */
-export async function findRepositories(base: string, path: string, { depth = 4, limit = 1000, folders = 50_000 } = {}) {
-  const { target } = await folder(base, path);
+export async function findRepositories(base: string, path: string, { depth = 4, limit = 1000, folders = 50_000, home = homedir() } = {}) {
+  const { root, target, home: homeDir } = await folder(base, path, home);
+  if (isOutside(root, target) && isOutside(homeDir, target)) {
+    return { repositories: [], truncated: false, skipped: true };
+  }
   const repositories: string[] = [];
   let visited = 0;
   let level = [''];
