@@ -369,6 +369,21 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: Workflows `app.js` call row renders duration only when `startedAt` and `finishedAt` are set; `server.js` `last_activity_at` writes.
 
+### Workflow worker approvals reach nobody
+
+- Found: 2026-11-23, worker-attention, SDK 0.6.37
+- Wanted: Know when a workflow worker is blocked on a tool approval, instead of the run showing "running" for hours.
+- Gap: Workers spawn with `visibility: "hidden"`, a `lifecycleOwnerThreadId` and no `parentThreadId`.
+  Push notifications skip non-visible threads. The child-needs-attention notice requires `parentThreadId`.
+  Favicon attention counts visible threads only. Workflows listens to idle, failed, archived and deleted, not `interaction.pending`.
+  Thread status has no blocked value; only `hasPendingInteraction` marks it.
+- Workaround: [worker-attention](../worker-attention/server.ts) listens to `interaction.pending`, and for hidden workflow workers
+  sends an explicit push notification and a message to the lifecycle owner thread.
+- Ask: Route pending interactions of hidden threads to their lifecycle owner (notice and push), and show a blocked state on workflow call rows and in `bb workflows status`.
+- Status: open
+- Category: sdk-gap
+- Evidence: push-notifications `sender.ts` visibility check; `thread-parent.ts` `isParentNotifiableChildThread`; Workflows `service.ts` spawn options; @thread:thr_h6mdjrw7ur
+
 ### Content scripts cannot call plugin RPC or realtime
 
 - Found: 2026-10-18, claude-profiles, SDK 0.6.37
@@ -1497,3 +1512,14 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Category: sdk-gap
 - Evidence: [Antigravity collector](../claude-profiles/src/accounts/usage/antigravity.ts),
   [inspection tests](../claude-profiles/src/accounts/usage/overview.test.ts).
+
+### ACP turn-1 `<system_instructions>` blocks native slash-command expansion
+
+- Found: 2026-11-23, agy-swarm, BB 0.50.1 (`provider-acp`), `agy 1.5.15`
+- Wanted: Start an Antigravity swarm directly from the New-thread composer by typing `/swarm <task>`.
+- Gap: `provider-acp` (`buildPromptContentBlocks` in `host.js`) prepends `pendingInstructions` as a leading `{ type: "text", text: "<system_instructions>..." }` block ahead of the user's turn-1 prompt, even when the ACP agent advertises `_meta.antigravity.systemPrompt.append: true`. `agy acp` concatenates the text blocks into `<system_instructions>...</system_instructions>/swarm ...`, so leading `/swarm` is not parsed as a slash command on turn 1. Separately, before a session starts, BB has no ACP `available_commands_update`, so custom ACP agents show no native slash commands in the New-thread `/` menu unless `nativeSkillRoots` is configured (and BB's skill scanner does not filter `disable-slash-command: true`).
+- Workaround: Configure `nativeSkillRoots` on `acp-antigravity` pointing to [agy-swarm/skills](../agy-swarm/skills/swarm/SKILL.md) so `/swarm` appears in the New-thread composer, and inject an Antigravity-scoped instruction in [agy-swarm/server.ts](../agy-swarm/server.ts) telling the model to treat turn-1 `/swarm` after `</system_instructions>` as an explicit `/swarm` invocation.
+- Ask: Pass system instructions via the agent's advertised system-prompt extension when supported (instead of prepending a text block to turn 1), cache ACP `available_commands_update` per provider for the New-thread composer, and honour `disable-slash-command: true` when scanning `nativeSkillRoots`.
+- Status: open
+- Category: provider
+- Evidence: `provider-acp/dist/host.js` (`buildPromptContentBlocks`), live `agy 1.5.15 acp` `initialize` (`_meta.antigravity.systemPrompt.append: true`) and turn-1 transcript inspection.

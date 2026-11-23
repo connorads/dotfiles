@@ -19,6 +19,16 @@ type TargetLookup =
 export default function plugin(bb: BbPluginApi) {
   const host = bb.hosts.experimental_client({ contract: hostContract });
 
+  bb.agents.configure(ctx => {
+    if (!isAntigravityProvider(ctx.provider.id)) return { tools: [], skills: [] };
+    return {
+      tools: [],
+      skills: [],
+      instructions:
+        'If the user starts their first message with /swarm (immediately following </system_instructions>), treat it as an explicit /swarm command: read <App Data Directory>/builtin/skills/native_swarm/SKILL.md and <App Data Directory>/builtin/skills/swarm_pane/SKILL.md and follow them to coordinate the swarm.',
+    };
+  });
+
   async function resolveTarget(threadId: string): Promise<TargetLookup> {
     const thread = await bb.sdk.threads.get({ threadId });
     const providerId = thread.providerId ?? null;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   definePluginApp,
   experimental_CollapsibleStackCard as CollapsibleStackCard,
@@ -8,7 +8,8 @@ import {
   useRpc,
 } from '@get-bb/plugin-sdk/app';
 import type { PluginComposerApi, PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { BoardMessage, SwarmMember, SwarmSnapshot, WorkerLogResult, rpcContract } from './contracts.ts';
+import type { BoardMessage, SwarmMember, SwarmSnapshot, WorkerLogResult, WorkerStep, rpcContract } from './contracts.ts';
+import { AnimatedNumber, CountSuffix, PhaseIndicator, SegmentedControl, TextShimmer } from './ui/primitives.tsx';
 import './app.css';
 
 type Rpc = PluginRpcClient<typeof rpcContract>;
@@ -39,17 +40,54 @@ function messageOf(error: unknown): string {
 
 function formatShortTime(value: string | null): string {
   if (!value) return '';
-  const match = value.match(/\d{2}:\d{2}:\d{2}/u);
+  const match = value.match(/\d{2}:\d{2}(?::\d{2})?/u);
   return match ? match[0] : value;
 }
 
-function renderMentionText(text: string) {
-  const parts = text.split(/(@[a-z0-9][a-z0-9_-]{0,31})/giu);
-  return parts.map((part, idx) =>
-    part.startsWith('@')
-      ? <span key={idx} className="agys-mention">{part}</span>
-      : <span key={idx}>{part}</span>,
-  );
+/** Compact human model label: "gemini-4-neon-high" -> "Neon · High". */
+function formatModel(raw: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/^gemini-/iu, '').replace(/^claude-/iu, '');
+  const parts = cleaned.split('-').filter(Boolean);
+  if (parts.length === 0) return raw;
+  const last = parts.at(-1)?.toLowerCase();
+  const levels = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+  if (last && levels.has(last) && parts.length > 1) {
+    const name = parts.slice(0, -1).map(s => s[0]!.toUpperCase() + s.slice(1)).join(' ');
+    const effort = last === 'xhigh' ? 'XHigh' : last[0]!.toUpperCase() + last.slice(1);
+    return `${name} · ${effort}`;
+  }
+  return parts.map(s => s[0]!.toUpperCase() + s.slice(1)).join(' ');
+}
+
+function formatStepLabel(type: string, source: string): string {
+  if (type === 'PLANNER_RESPONSE') return 'Planner';
+  if (type === 'GENERIC') return 'Tool output';
+  if (type === 'SYSTEM_MESSAGE') return 'System';
+  if (type === 'ERROR') return 'Error';
+  return source === 'SYSTEM' ? 'System' : type.toLowerCase().replaceAll('_', ' ');
+}
+
+function formatTokens(input: number | null, output: number | null): string | null {
+  if (input === null && output === null) return null;
+  const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  if (input !== null && output !== null) return `${k(input)} in · ${k(output)} out`;
+  return input !== null ? `${k(input)} in` : `${k(output!)} out`;
+}
+
+/** Clean inline formatting for board posts: strips leading [done]/[stall] markers, highlights @mentions & `code`. */
+function renderBoardText(raw: string) {
+  const cleaned = raw.replace(/(?:^|\s)\[(?:done|stall)\]\s*/giu, m => (m.startsWith(' ') ? ' ' : ''));
+  const tokens = cleaned.split(/(`[^`\n]+`|@[a-z0-9][a-z0-9_-]{0,31})/giu);
+  return tokens.map((tok, idx) => {
+    if (tok.startsWith('`') && tok.endsWith('`') && tok.length > 2) {
+      return <code key={idx} className="agys-inline-code">{tok.slice(1, -1)}</code>;
+    }
+    if (tok.startsWith('@')) {
+      return <span key={idx} className="agys-mention">{tok}</span>;
+    }
+    return <Fragment key={idx}>{tok}</Fragment>;
+  });
 }
 
 function useSwarmSnapshot(threadId: string, enabled: boolean) {
@@ -99,11 +137,9 @@ function useSwarmSnapshot(threadId: string, enabled: boolean) {
       busy.current = true;
       try {
         const fp = await rpc.call('fingerprint', { threadId });
-        if (fp !== printed.current) {
-          await reload();
-        }
+        if (fp !== printed.current) await reload();
       } catch {
-        // Keep last good state; manual refresh surfaces errors.
+        // Keep last good snapshot on transient poll errors.
       } finally {
         busy.current = false;
       }
@@ -115,22 +151,34 @@ function useSwarmSnapshot(threadId: string, enabled: boolean) {
 }
 
 function MemberRow({ member, task, onInspect }: { member: SwarmMember; task?: string; onInspect: (name: string) => void }) {
+  const model = formatModel(member.model);
+  const activity = member.activity ?? (member.state === 'waiting' ? 'Waiting for @mentions' : 'Idle');
   return (
-    <button type="button" className="agys-member-row" onClick={() => onInspect(member.name)}>
-      <span className="agys-dot" data-state={member.state} aria-hidden="true" />
-      <div className="agys-member-body">
-        <div className="agys-member-top">
-          <span className="agys-member-name">@{member.name}</span>
-          <span className="agys-pill" data-tone={member.state}>{member.state}</span>
-          {member.role !== 'worker' && <span className="agys-pill">{member.role}</span>}
-          {member.model && <span className="agys-pill">{member.model}</span>}
-          {member.workspaceMode !== 'inherit' && <span className="agys-pill">{member.workspaceMode}</span>}
-          {member.unreadCount > 0 && <span className="agys-pill">{member.unreadCount} unread</span>}
+    <button type="button" className="agys-row" onClick={() => onInspect(member.name)}>
+      <span className="agys-row-mark">
+        <PhaseIndicator state={member.state} />
+      </span>
+      <div className="agys-row-main">
+        <div className="agys-row-line">
+          <span className="agys-name">@{member.name}</span>
+          {member.role !== 'worker' && <span className="agys-tag">{member.role}</span>}
+          {member.workspaceMode !== 'inherit' && <span className="agys-tag">{member.workspaceMode}</span>}
+          {model && <span className="agys-model">{model}</span>}
         </div>
-        {task && <div className="agys-member-task">{task}</div>}
-        <div className="agys-member-activity">
-          {member.activity ?? 'Idle'}{member.stepCount > 0 ? ` · ${member.stepCount} steps` : ''}
+        {task && <div className="agys-row-task">{task}</div>}
+        <div className="agys-row-activity">
+          <TextShimmer text={activity} active={member.state === 'working'} />
         </div>
+      </div>
+      <div className="agys-row-aside">
+        {member.unreadCount > 0 && <span className="agys-tag" data-tone="working">{member.unreadCount} new</span>}
+        {member.stepCount > 0 && (
+          <span>
+            <AnimatedNumber value={member.stepCount} />{' '}
+            <CountSuffix count={member.stepCount} singular="step" plural="steps" />
+          </span>
+        )}
+        <span className="agys-row-chevron" aria-hidden="true">›</span>
       </div>
     </button>
   );
@@ -144,105 +192,188 @@ function OverviewView({
   onInspectWorker: (name: string) => void;
 }) {
   const byName = useMemo(() => new Map(snapshot.members.map(m => [m.name, m])), [snapshot.members]);
-  const pct = snapshot.summary.totalWorkers > 0
-    ? Math.round((snapshot.summary.doneWorkers / snapshot.summary.totalWorkers) * 100)
-    : 0;
-
   const assigned = new Set<string>();
   const threads = snapshot.plan?.threads ?? [];
   for (const t of threads) {
-    for (const taskOwner of t.tasks) assigned.add(taskOwner);
+    for (const owner of t.tasks) assigned.add(owner);
   }
   const unassigned = snapshot.members.filter(m => !assigned.has(m.name));
 
   return (
     <div>
-      {snapshot.summary.totalWorkers > 0 && (
-        <div className="agys-progress-wrap">
-          <div className="agys-subtitle">
-            {snapshot.summary.doneWorkers} of {snapshot.summary.totalWorkers} workers done
-            {snapshot.summary.workingWorkers > 0 ? ` · ${snapshot.summary.workingWorkers} working` : ''}
-            {snapshot.summary.errorWorkers > 0 ? ` · ${snapshot.summary.errorWorkers} error` : ''}
+      {threads.map(thread => (
+        <section key={thread.id} className="agys-group">
+          <div className="agys-group-head">
+            <h4 className="agys-group-title">{thread.title}</h4>
           </div>
-          <div className="agys-progress-track" aria-hidden="true">
-            <div className="agys-progress-fill" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      )}
-
-      {threads.length > 0 && (
-        <>
-          <h4 className="agys-section-title">Workstreams</h4>
-          {threads.map(thread => (
-            <section key={thread.id} className="agys-card">
-              <div className="agys-card-head">
-                <div className="agys-card-title">{thread.title}</div>
-                {thread.goal && <div className="agys-card-goal">{thread.goal}</div>}
-              </div>
-              <div>
-                {thread.tasks.map(name => {
-                  const member = byName.get(name);
-                  if (!member) return null;
-                  return <MemberRow key={name} member={member} task={snapshot.plan?.tasks[name]} onInspect={onInspectWorker} />;
-                })}
-              </div>
-            </section>
-          ))}
-        </>
-      )}
+          {thread.goal && <p className="agys-group-goal">{thread.goal}</p>}
+          {thread.tasks.map(name => {
+            const member = byName.get(name);
+            if (!member) return null;
+            return <MemberRow key={name} member={member} task={snapshot.plan?.tasks[name]} onInspect={onInspectWorker} />;
+          })}
+        </section>
+      ))}
 
       {unassigned.length > 0 && (
-        <>
-          <h4 className="agys-section-title">{threads.length > 0 ? 'Other members' : 'Roster'}</h4>
-          <section className="agys-card">
-            {unassigned.map(member => (
-              <MemberRow key={member.name} member={member} task={snapshot.plan?.tasks[member.name]} onInspect={onInspectWorker} />
-            ))}
-          </section>
-        </>
+        <section className="agys-group">
+          <div className="agys-group-head">
+            <h4 className="agys-group-title">{threads.length > 0 ? 'Coordination' : 'Roster'}</h4>
+          </div>
+          {unassigned.map(member => (
+            <MemberRow key={member.name} member={member} task={snapshot.plan?.tasks[member.name]} onInspect={onInspectWorker} />
+          ))}
+        </section>
       )}
     </div>
   );
 }
 
-function BoardView({ messages, channels }: { messages: BoardMessage[]; channels: string[] }) {
+function BoardView({
+  messages,
+  channels,
+  members,
+  scrollRef,
+}: {
+  messages: BoardMessage[];
+  channels: string[];
+  members: SwarmMember[];
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const [channel, setChannel] = useState<string>('all');
+  const [pinned, setPinned] = useState(true);
+  const [unseen, setUnseen] = useState(0);
+  const lastCount = useRef(messages.length);
+  const roles = useMemo(() => new Map(members.map(m => [m.name, m.role])), [members]);
+
   const filtered = useMemo(
     () => (channel === 'all' ? messages : messages.filter(m => m.channel === channel)),
     [channel, messages],
   );
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+      setPinned(nearBottom);
+      if (nearBottom) setUnseen(0);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [scrollRef]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    const delta = filtered.length - lastCount.current;
+    lastCount.current = filtered.length;
+    if (delta > 0) {
+      if (pinned && el) {
+        requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+      } else {
+        setUnseen(n => n + delta);
+      }
+    }
+  }, [filtered.length, pinned, scrollRef]);
+
+  const jumpToLatest = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setPinned(true);
+    setUnseen(0);
+  };
+
   return (
-    <div>
+    <>
       {channels.length > 1 && (
-        <div className="agys-channels" role="group" aria-label="Swarm channels">
-          <button type="button" className="agys-ch-btn" aria-pressed={channel === 'all'} onClick={() => setChannel('all')}>all</button>
+        <div className="agys-filter-strip" role="group" aria-label="Swarm channels">
+          <button type="button" className="agys-chip" aria-pressed={channel === 'all'} onClick={() => setChannel('all')}>
+            all
+          </button>
           {channels.map(ch => (
-            <button key={ch} type="button" className="agys-ch-btn" aria-pressed={channel === ch} onClick={() => setChannel(ch)}>
+            <button key={ch} type="button" className="agys-chip" aria-pressed={channel === ch} onClick={() => setChannel(ch)}>
               #{ch}
             </button>
           ))}
         </div>
       )}
+
       {filtered.length === 0 ? (
-        <p className="agys-empty">No board messages yet.</p>
+        <div className="agys-empty">
+          <p className="agys-empty-desc">No board posts yet.</p>
+        </div>
       ) : (
-        <div className="agys-feed">
+        <div className="agys-stream">
           {filtered.map(msg => (
             <article key={`${msg.seq}:${msg.agent}`} className="agys-post">
               <div className="agys-post-head">
                 <span className="agys-seq">#{msg.seq}</span>
-                <span className="agys-member-name">@{msg.agent}</span>
-                {msg.channel !== 'main' && <span className="agys-pill">#{msg.channel}</span>}
-                {msg.kind === 'brief' && <span className="agys-pill">brief</span>}
-                {msg.isDone && <span className="agys-pill" data-tone="done">done</span>}
-                {msg.isStall && <span className="agys-pill" data-tone="error">stall</span>}
-                {msg.time && <span>{formatShortTime(msg.time)}</span>}
+                <span className="agys-post-author" data-role={roles.get(msg.agent)}>@{msg.agent}</span>
+                {msg.channel !== 'main' && <span className="agys-tag">#{msg.channel}</span>}
+                {msg.kind === 'brief' && <span className="agys-tag">brief</span>}
+                {msg.isDone && <span className="agys-tag" data-tone="done">done</span>}
+                {msg.isStall && <span className="agys-tag" data-tone="error">stall</span>}
+                {msg.time && <span className="agys-post-time">{formatShortTime(msg.time)}</span>}
               </div>
-              <div className="agys-post-body">{renderMentionText(msg.text)}</div>
+              <div className="agys-post-body">{renderBoardText(msg.text)}</div>
             </article>
           ))}
         </div>
+      )}
+
+      {unseen > 0 && (
+        <button type="button" className="agys-jump-pill" onClick={jumpToLatest}>
+          <span>↓</span>
+          <AnimatedNumber value={unseen} />{' '}
+          <CountSuffix count={unseen} singular="new post" plural="new posts" />
+        </button>
+      )}
+    </>
+  );
+}
+
+function StepRow({ step }: { step: WorkerStep }) {
+  const tokens = formatTokens(step.inputTokens, step.outputTokens);
+  const label = formatStepLabel(step.type, step.source);
+  const failed = step.status.toUpperCase() === 'ERROR' || step.status.toUpperCase() === 'FAILED';
+
+  return (
+    <div className="agys-step">
+      <div className="agys-step-head">
+        <span className="agys-seq">#{step.stepIndex}</span>
+        <span className="agys-step-type">{label}</span>
+        {failed && <span className="agys-tag" data-tone="error">{step.status.toLowerCase()}</span>}
+        {step.time && <span>{formatShortTime(step.time)}</span>}
+        {tokens && <span className="agys-step-tokens">{tokens}</span>}
+      </div>
+
+      {step.toolCalls.length > 0 && (
+        <div className="agys-tool-list">
+          {step.toolCalls.map((call, idx) => (
+            <div key={idx} className="agys-tool-row">
+              <span className="agys-tool-name">{call.name}</span>
+              {call.argsPreview && <span className="agys-tool-args">{call.argsPreview}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {step.thinking && (
+        <details className="agys-step-details">
+          <summary>Thinking</summary>
+          <div className="agys-step-text">{step.thinking}</div>
+        </details>
+      )}
+
+      {step.text && (
+        step.type === 'GENERIC' && step.text.length > 160 ? (
+          <details className="agys-step-details">
+            <summary>Output ({step.text.length} chars)</summary>
+            <div className="agys-step-text">{step.text}</div>
+          </details>
+        ) : (
+          <div className="agys-step-text">{step.text}</div>
+        )
       )}
     </div>
   );
@@ -267,6 +398,7 @@ function WorkersView({
     : members.find(m => m.role === 'worker')?.name ?? members[0]?.name ?? null;
   const [log, setLog] = useState<WorkerLogResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showSystem, setShowSystem] = useState(false);
 
   useEffect(() => {
     if (!activeMember) return;
@@ -282,56 +414,64 @@ function WorkersView({
     return () => { cancelled = true; };
   }, [activeMember, refreshKey, rpc, threadId]);
 
-  if (!activeMember) return <p className="agys-empty">No members in this swarm yet.</p>;
+  if (!activeMember) {
+    return (
+      <div className="agys-empty">
+        <p className="agys-empty-desc">No members in this swarm yet.</p>
+      </div>
+    );
+  }
+
+  const visibleSteps = useMemo(() => {
+    if (!log || !log.ok) return [];
+    const base = showSystem ? log.steps : log.steps.filter(s => s.type !== 'SYSTEM_MESSAGE');
+    return [...base].reverse();
+  }, [log, showSystem]);
 
   return (
     <div>
-      <div className="agys-worker-picker" role="group" aria-label="Select swarm member">
+      <div className="agys-worker-bar" role="group" aria-label="Select swarm member">
         {members.map(m => (
           <button
             key={m.name}
             type="button"
-            className="agys-worker-btn"
+            className="agys-worker-pill"
             aria-pressed={m.name === activeMember}
             onClick={() => onSelect(m.name)}
           >
-            <span className="agys-dot" data-state={m.state} style={{ marginTop: 0 }} aria-hidden="true" />
-            @{m.name}
+            <PhaseIndicator state={m.state} />
+            <span>@{m.name}</span>
           </button>
         ))}
       </div>
 
-      {loading && !log && <p className="agys-empty">Loading transcript…</p>}
-      {log && !log.ok && <p className="agys-note agys-error">{log.reason}</p>}
-      {log && log.ok && log.steps.length === 0 && <p className="agys-empty">No steps recorded for @{log.member} yet.</p>}
-      {log && log.ok && log.steps.length > 0 && (
-        <div>
-          <p className="agys-subtitle" style={{ marginBottom: 8 }}>
-            Showing latest {log.steps.length} of {log.totalSteps} steps for @{log.member}
-          </p>
-          {[...log.steps].reverse().map(step => (
-            <div key={step.stepIndex} className="agys-step">
-              <div className="agys-step-head">
-                <span className="agys-seq">#{step.stepIndex}</span>
-                <span>{step.type}</span>
-                <span className="agys-pill">{step.status}</span>
-                {step.model && <span className="agys-pill">{step.model}</span>}
-                {step.time && <span>{formatShortTime(step.time)}</span>}
-              </div>
-              {step.toolCalls.length > 0 && (
-                <div className="agys-tool-list">
-                  {step.toolCalls.map((call, idx) => (
-                    <div key={idx} className="agys-tool-item">
-                      <strong>{call.name}</strong>{call.argsPreview ? `(${call.argsPreview})` : '()'}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {step.text && <div className="agys-step-text">{step.text}</div>}
-            </div>
-          ))}
+      {log && log.ok && (
+        <div className="agys-worker-subbar">
+          <span>
+            <AnimatedNumber value={visibleSteps.length} /> of <AnimatedNumber value={log.totalSteps} />{' '}
+            <CountSuffix count={log.totalSteps} singular="step" plural="steps" />
+          </span>
+          <button
+            type="button"
+            className="agys-toggle-sys"
+            aria-pressed={showSystem}
+            onClick={() => setShowSystem(v => !v)}
+          >
+            {showSystem ? 'Hide system' : 'Show system'}
+          </button>
         </div>
       )}
+
+      {loading && !log && (
+        <div className="agys-empty"><p className="agys-empty-desc">Loading transcript…</p></div>
+      )}
+      {log && !log.ok && <p className="agys-alert">{log.reason}</p>}
+      {log && log.ok && visibleSteps.length === 0 && (
+        <div className="agys-empty">
+          <p className="agys-empty-desc">No activity steps recorded for @{log.member} yet.</p>
+        </div>
+      )}
+      {visibleSteps.map(step => <StepRow key={step.stepIndex} step={step} />)}
     </div>
   );
 }
@@ -340,6 +480,7 @@ function SwarmPanel({ threadId }: { threadId: string }) {
   const composer = useComposer();
   const [tab, setTab] = useState<ViewTab>('overview');
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { snapshot, error, loading, reload } = useSwarmSnapshot(threadId, true);
 
   const inspectWorker = useCallback((name: string) => {
@@ -351,90 +492,143 @@ function SwarmPanel({ threadId }: { threadId: string }) {
     ? `${snapshot.boardHead}:${snapshot.members.map(m => `${m.name}:${m.stepCount}:${m.state}`).join(',')}`
     : '';
 
+  const segItems = useMemo(() => [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'board' as const, label: 'Board', ...(snapshot?.kind === 'swarm' ? { count: snapshot.boardHead } : {}) },
+    { id: 'workers' as const, label: 'Workers', ...(snapshot?.kind === 'swarm' ? { count: snapshot.members.length } : {}) },
+  ], [snapshot]);
+
+  const progressRatio = snapshot?.kind === 'swarm' && snapshot.summary.totalWorkers > 0
+    ? snapshot.summary.doneWorkers / snapshot.summary.totalWorkers
+    : 0;
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === '1') setTab('overview');
+    else if (e.key === '2') setTab('board');
+    else if (e.key === '3') setTab('workers');
+    else if (e.key === 'r') void reload();
+  };
+
   return (
-    <div className="agys-panel">
-      <div className="agys-toolbar">
-        <div className="agys-tabs" role="tablist" aria-label="Swarm board sections">
-          {(['overview', 'board', 'workers'] as const).map(id => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-            >
-              {id === 'overview' ? 'Overview' : id === 'board' ? `Board${snapshot?.kind === 'swarm' ? ` (${snapshot.boardHead})` : ''}` : 'Workers'}
-            </button>
-          ))}
-        </div>
-        <div className="agys-meta-bar">
-          {snapshot?.kind === 'swarm' && (
-            <span className="agys-pill" data-tone={snapshot.summary.active ? 'working' : 'done'}>
-              {snapshot.summary.active ? 'Live' : 'Idle'}
-            </span>
-          )}
+    <div className="agys-panel" tabIndex={-1} onKeyDown={onKeyDown}>
+      <header className="agys-head" data-refreshing={loading ? 'true' : undefined}>
+        {snapshot?.kind === 'swarm' && (
+          <div className="agys-head-top">
+            <div className="agys-head-titles">
+              <h3 className="agys-title">{snapshot.title ?? snapshot.plan?.goalTitle ?? 'Antigravity Swarm'}</h3>
+              {snapshot.plan?.goalLine && <p className="agys-subtitle">{snapshot.plan.goalLine}</p>}
+            </div>
+            <div className="agys-head-right">
+              {snapshot.summary.totalWorkers > 0 && (
+                <span className="agys-stat-summary">
+                  <strong><AnimatedNumber value={snapshot.summary.doneWorkers} /></strong>
+                  <span>/</span>
+                  <AnimatedNumber value={snapshot.summary.totalWorkers} />
+                  <span>done</span>
+                </span>
+              )}
+              <PhaseIndicator state={snapshot.summary.active ? 'working' : snapshot.summary.errorWorkers > 0 ? 'error' : 'done'} />
+            </div>
+          </div>
+        )}
+
+        <div className="agys-head-bar">
+          <SegmentedControl
+            items={segItems}
+            value={tab}
+            onChange={setTab}
+            ariaLabel="Swarm board sections"
+          />
           <button
             type="button"
-            className="agys-icon-btn"
+            className="agys-ghost-btn"
+            data-flush="end"
             aria-label="Refresh swarm board"
-            title="Refresh swarm board"
+            title="Refresh (r)"
             disabled={loading}
             onClick={() => void reload()}
           >
             <Icon name="RefreshCw" className="size-3.5" />
           </button>
         </div>
-      </div>
 
-      {snapshot?.kind === 'swarm' && (
-        <div className="agys-header-ctx">
-          <div className="agys-title-row">
-            <span className="agys-title">{snapshot.title ?? snapshot.plan?.goalTitle ?? 'Antigravity Swarm'}</span>
-          </div>
-          {snapshot.plan?.goalLine && <span className="agys-subtitle">{snapshot.plan.goalLine}</span>}
+        <div className="agys-head-progress" data-active={snapshot?.kind === 'swarm' && snapshot.summary.active ? 'true' : 'false'}>
+          <div
+            className="agys-head-progress-fill"
+            style={{ transform: `scaleX(${progressRatio})`, opacity: progressRatio > 0 ? 1 : 0 }}
+          />
+          <div className="agys-head-sweep" />
         </div>
-      )}
+      </header>
 
-      {error && <p role="alert" className="agys-note agys-error">{error}</p>}
+      {error && <p role="alert" className="agys-alert">{error}</p>}
 
-      <div className="agys-scroll">
-        {snapshot === null && !error && <p className="agys-empty">Loading swarm state…</p>}
-        {snapshot?.kind === 'unsupported' && (
-          <div className="agys-empty">
-            <p>Swarm Board supports Antigravity (<code>acp-antigravity</code>) threads.</p>
-          </div>
-        )}
-        {snapshot?.kind === 'no-session' && (
-          <div className="agys-empty">
-            <p>Send a message on this Antigravity thread to establish a session.</p>
-            <button type="button" className="agys-btn" onClick={() => insertSwarmPrefix(composer)}>
-              Insert /swarm
-            </button>
-          </div>
-        )}
-        {snapshot?.kind === 'none' && (
-          <div className="agys-empty">
-            <p>No swarm in this conversation yet. Start one with <code>/swarm &lt;task&gt;</code>.</p>
-            <button type="button" className="agys-btn" onClick={() => insertSwarmPrefix(composer)}>
-              Insert /swarm
-            </button>
-          </div>
-        )}
-        {snapshot?.kind === 'swarm' && (
-          <>
-            {tab === 'overview' && <OverviewView snapshot={snapshot} onInspectWorker={inspectWorker} />}
-            {tab === 'board' && <BoardView messages={snapshot.messages} channels={snapshot.channels} />}
-            {tab === 'workers' && (
-              <WorkersView
-                threadId={threadId}
-                members={snapshot.members}
-                selected={selectedWorker}
-                onSelect={setSelectedWorker}
-                refreshKey={refreshKey}
-              />
-            )}
-          </>
-        )}
+      <div className="agys-scroll-wrap">
+        <div ref={scrollRef} className="agys-scroll">
+          {snapshot === null && !error && (
+            <div className="agys-empty">
+              <p className="agys-empty-desc">
+                <TextShimmer text="Loading swarm state…" active />
+              </p>
+            </div>
+          )}
+          {snapshot?.kind === 'unsupported' && (
+            <div className="agys-empty">
+              <span className="agys-empty-mark"><Icon name="Users" className="size-4" /></span>
+              <p className="agys-empty-title">Antigravity threads only</p>
+              <p className="agys-empty-desc">
+                Switch to an <code className="agys-inline-code">acp-antigravity</code> thread to view its live swarm board.
+              </p>
+            </div>
+          )}
+          {snapshot?.kind === 'no-session' && (
+            <div className="agys-empty">
+              <span className="agys-empty-mark"><Icon name="Users" className="size-4" /></span>
+              <p className="agys-empty-title">Ready to start a swarm</p>
+              <p className="agys-empty-desc">
+                Start your first prompt with <code className="agys-inline-code">/swarm &lt;task&gt;</code> and workers will appear here live.
+              </p>
+              <button type="button" className="agys-btn" onClick={() => insertSwarmPrefix(composer)}>
+                Insert /swarm
+              </button>
+            </div>
+          )}
+          {snapshot?.kind === 'none' && (
+            <div className="agys-empty">
+              <span className="agys-empty-mark"><Icon name="Users" className="size-4" /></span>
+              <p className="agys-empty-title">No swarm in this conversation</p>
+              <p className="agys-empty-desc">
+                Send <code className="agys-inline-code">/swarm &lt;task&gt;</code> to spin up parallel workers on a shared board.
+              </p>
+              <button type="button" className="agys-btn" onClick={() => insertSwarmPrefix(composer)}>
+                Insert /swarm
+              </button>
+            </div>
+          )}
+          {snapshot?.kind === 'swarm' && (
+            <>
+              {tab === 'overview' && <OverviewView snapshot={snapshot} onInspectWorker={inspectWorker} />}
+              {tab === 'board' && (
+                <BoardView
+                  messages={snapshot.messages}
+                  channels={snapshot.channels}
+                  members={snapshot.members}
+                  scrollRef={scrollRef}
+                />
+              )}
+              {tab === 'workers' && (
+                <WorkersView
+                  threadId={threadId}
+                  members={snapshot.members}
+                  selected={selectedWorker}
+                  onSelect={setSelectedWorker}
+                  refreshKey={refreshKey}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -463,23 +657,21 @@ function SwarmBannerCard({ threadId }: { threadId: string }) {
         <div className="agys-stack-workers">
           {snapshot.members.filter(m => m.role !== 'coordinator').map(m => (
             <span key={m.name} className="agys-stack-worker">
-              <span className="agys-dot" data-state={m.state} style={{ marginTop: 0 }} aria-hidden="true" />
-              @{m.name}
+              <PhaseIndicator state={m.state} />
+              <span>@{m.name}</span>
             </span>
           ))}
         </div>
-        {lastPost && (
+        <div className="agys-stack-footer">
           <div className="agys-stack-last">
-            #{lastPost.seq} @{lastPost.agent}: {lastPost.text}
+            {lastPost ? `#${lastPost.seq} @${lastPost.agent}: ${lastPost.text}` : 'Board ready'}
           </div>
-        )}
-        <div className="agys-stack-actions">
           <button
             type="button"
-            className="agys-btn"
+            className="agys-btn-link"
             onClick={() => { panel.openTab({ tab: swarmTabRef, title: 'Swarm board' }); }}
           >
-            Open Swarm board
+            Open board ›
           </button>
         </div>
       </div>
