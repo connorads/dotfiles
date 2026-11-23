@@ -43,7 +43,7 @@ const matchCase = (original: string, replacement: string) =>
   : replacement
 
 export const toBritish = (text: string) =>
-  text.replace(/[A-Za-z]+/g, word => {
+  text.replace(/\bCVP Defense Access\b|[A-Za-z]+/g, word => {
     const uk = table.get(word.toLowerCase())
     return uk === undefined ? word : matchCase(word, uk)
   })
