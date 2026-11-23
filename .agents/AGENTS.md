@@ -32,7 +32,7 @@ for the named path and operation.
 ## Research
 
 Do not rely on memory when the answer can be checked quickly.
-Grep the local codebase first for implementation questions.
+Grep the local codebase first for implementation questions; verify checkout freshness against upstream before asserting current ownership, security posture, or deployed state.
 When actual behaviour or state is the question, observe the running system - telemetry, logs, live config, state - rather than inferring from code.
 Check online for external facts: docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, solutions.
 Grep `~/git/kb/notes/` alongside the web. Read `~/git/kb/index.md` for the domain map.
