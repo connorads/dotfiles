@@ -1,4 +1,5 @@
 {
+  "agy-swarm": true,
   "aws": true,
   "cache-hits": true,
   "caffeine": true,
