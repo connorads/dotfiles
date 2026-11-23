@@ -284,9 +284,15 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Workaround: the plugin stores the composer choice and claims it in a dispatch hook on
   first send: [routing.ts](../claude-profiles/src/accounts/routing.ts). Children and
   forks inherit the parent's account. A custom Send button was rejected because it
-  creates two submission paths. Agent- and CLI-spawned threads take the last click.
+  creates two submission paths. Parentless agent- and CLI-spawned threads take the last click.
+- Also (2026-11-20): `sdk.threads.spawn` accepts `pluginSubmission`, but `bb thread spawn`
+  and workflow `agent()` calls expose no way to set it, and claude-code lists no provider
+  options, so an agent cannot name a Claude account for a child. An agent ran `bb claude-profiles next PROFILE`, then spawned with
+  `--parent-self`. Both children inherited the parent's Default account. Every call
+  reported success. The parent then stopped them, switched them and restarted them.
 - Ask: `useComposer().experimental_setSubmissionData(json | null)`, carried by native
-  Send, Send-now, handover and queued re-dispatch.
+  Send, Send-now, handover and queued re-dispatch. A `bb thread spawn --plugin-data
+  <plugin>=<json>` flag and a workflow `agent()` option that set `pluginSubmission`.
 - Status: open. Core-patch experiment discarded; not deployed.
 - Category: sdk-gap
 - Evidence: @thread:thr_473r5is977, @thread:thr_kf4v4zdv28, commits `0648e5ed`, `b4378651`
