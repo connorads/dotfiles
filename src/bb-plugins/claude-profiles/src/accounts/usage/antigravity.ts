@@ -9,7 +9,8 @@ import type { Measurement } from '../usage-source.ts';
 const run = promisify(execFile);
 const fields = { plan: null, accountEmail: null, planLabel: null };
 const bucket = z.object({ id: z.string().min(1), name: z.string().min(1), window: z.string(),
-  remaining_fraction: z.number().min(0).max(1), reset_time: z.string().datetime({ offset: true }) });
+  disabled: z.boolean().optional(),
+  remaining_fraction: z.number().min(0).max(1), reset_time: z.string().datetime({ offset: true }).optional() });
 const reply = z.object({ status: z.literal('SUCCESS'), num_turns: z.literal(0),
   usage: z.object({ total_tokens: z.literal(0) }),
   command: z.object({ name: z.literal('usage'), data: z.object({
@@ -20,15 +21,17 @@ const reply = z.object({ status: z.literal('SUCCESS'), num_turns: z.literal(0),
 export function parseAntigravityUsage(value: unknown, observedAt = Date.now()): Measurement {
   const data = reply.parse(value);
   const ids = new Set<string>();
-  const windows = data.command.data.groups.flatMap(group => group.buckets.map(bucket => {
+  const windows = data.command.data.groups.flatMap(group => group.buckets.flatMap(bucket => {
     if (ids.has(bucket.id)) throw new Error('Duplicate Antigravity quota bucket.');
     ids.add(bucket.id);
+    if (bucket.disabled) return [];
     const kind = bucket.window === 'weekly' ? 'weekly' : bucket.window === '5h' ? 'five-hour' : 'custom';
     const period = kind === 'weekly' ? 'Weekly' : kind === 'five-hour' ? '5-hour' : bucket.name;
-    return { id: bucket.id, label: `${group.name} · ${period}`, kind,
+    return [{ id: bucket.id, label: `${group.name} · ${period}`, kind,
       usedPercent: Math.round((1 - bucket.remaining_fraction) * 1e6) / 1e4,
-      resetsAt: bucket.reset_time, model: null, cost: null } satisfies Extract<Measurement['usage'], { status: 'ok' }>['windows'][number];
+      resetsAt: bucket.reset_time ?? null, model: null, cost: null } satisfies Extract<Measurement['usage'], { status: 'ok' }>['windows'][number]];
   }));
+  if (windows.length === 0) throw new Error('Antigravity quota returned no active buckets.');
   return { accountKey: null, observedAt, usage: { status: 'ok', ...fields, windows } };
 }
 
