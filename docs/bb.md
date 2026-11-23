@@ -33,6 +33,9 @@ Before choosing files, check `bb plugin list --json` and
 `bb settings keyboard list --json`. The usage command is
 `plugin:claude-profiles/show-usage`.
 
+Agents read quota for every provider, Codex included, with
+`bb claude-profiles overview [--refresh]`. It prints the overlay data as JSON.
+
 The **Cost** plugin estimates API-price spend per thread and over time from provider logs.
 Read its [guide](../src/bb-plugins/cost/README.md).
 
