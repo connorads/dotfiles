@@ -38,6 +38,7 @@ typeset -g CLEANUP_HIBERNATE_DIR="${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME
 typeset -g CLEANUP_WORKTREE_ROOT="${CLEANUP_WORKTREE_ROOT:-$HOME/.trees}"
 typeset -g CLEANUP_BB_DIR="${CLEANUP_BB_DIR:-$HOME/.bb}"
 typeset -g CLEANUP_BB_THREAD_STORAGE_DAYS="${CLEANUP_BB_THREAD_STORAGE_DAYS:-7}"
+typeset -g CLEANUP_BB_PROPOSAL_LEDGER="${CLEANUP_BB_PROPOSAL_LEDGER:-$HOME/git/dream/ledger.json}"
 typeset -g CLEANUP_UV_CACHE_DIR=""
 typeset -g CLEANUP_PROBE_FAILED=0
 typeset -ga CLEANUP_PROBE_FAILED_TARGETS=()
@@ -126,7 +127,8 @@ Notes:
     opt-in only).
   - bb-thread-storage removes storage for BB threads archived >7d ago (override
     with CLEANUP_BB_THREAD_STORAGE_DAYS) and orphaned thr_* dirs (>1h old),
-    preserving live threads, pinned threads, and any top-level keep/ entry.
+    preserving live threads, pinned threads, pending proposal threads in
+    CLEANUP_BB_PROPOSAL_LEDGER, and any top-level keep/ entry.
   - cargo-target scans $CLEANUP_CARGO_ROOTS and reclaims Rust build dirs;
     rebuildable, but the next build recompiles from scratch.
   - claude-temp is opt-in. It removes scratch directories older than 60 minutes
@@ -274,13 +276,15 @@ _cleanup_bb_thread_storage_candidates() {
     return 1
   fi
 
-  python3 - "$ts_root" "$bb_db" "$CLEANUP_BB_THREAD_STORAGE_DAYS" <<'PY'
+  python3 - "$ts_root" "$bb_db" "$CLEANUP_BB_THREAD_STORAGE_DAYS" "$CLEANUP_BB_PROPOSAL_LEDGER" <<'PY'
+import json
 import os
+import re
 import sqlite3
 import sys
 import time
 
-ts_root, bb_db, days_raw = sys.argv[1], sys.argv[2], sys.argv[3]
+ts_root, bb_db, days_raw, ledger_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 days = int(days_raw)
 now_s = time.time()
 cutoff_s = now_s - days * 86400
@@ -304,8 +308,32 @@ except Exception as exc:
     sys.stderr.write(f"error: cannot read BB database {bb_db}: {exc}\n")
     sys.exit(1)
 
+protected_threads = set()
+if ledger_path and os.path.exists(ledger_path):
+    try:
+        with open(ledger_path, encoding="utf-8") as fh:
+            ledger = json.load(fh)
+        for obs in ledger.get("observations", []):
+            if obs.get("status") != "proposed":
+                continue
+            prop = obs.get("proposal") or {}
+            tid = prop.get("thread")
+            if isinstance(tid, str) and tid.startswith("thr_"):
+                protected_threads.add(tid)
+            for key in ("report", "patch"):
+                val = prop.get(key)
+                if isinstance(val, str):
+                    m = re.search(r"/thread-storage/(thr_[^/]+)/", val)
+                    if m:
+                        protected_threads.add(m.group(1))
+    except Exception as exc:
+        sys.stderr.write(f"error: cannot read proposal ledger {ledger_path}: {exc}\n")
+        sys.exit(1)
+
 for name in sorted(os.listdir(ts_root)):
     if not name.startswith("thr_"):
+        continue
+    if name in protected_threads:
         continue
     path = os.path.join(ts_root, name)
     if os.path.islink(path) or not os.path.isdir(path):

@@ -1280,3 +1280,46 @@ PY
   grep -F 'cannot read BB database' <<<"$output"
   [ -d "$HOME/.bb/thread-storage/thr_old_arch" ]
 }
+
+@test "bb-thread-storage preserves aged archived threads with pending proposals in ledger while removing resolved ones" {
+  setup_bb_thread_storage_fixture
+  mkdir -p "$HOME/git/dream" "$HOME/.bb/thread-storage/thr_old_pending" "$HOME/.bb/thread-storage/thr_old_applied"
+  printf 'report\n' >"$HOME/.bb/thread-storage/thr_old_pending/report.md"
+  printf 'done\n' >"$HOME/.bb/thread-storage/thr_old_applied/report.md"
+  python3 - "$HOME/.bb/bb.db" "$HOME/git/dream/ledger.json" <<'PY'
+import json, sqlite3, sys, time
+now_ms = int(time.time() * 1000)
+old_ms = now_ms - 10 * 86400 * 1000
+conn = sqlite3.connect(sys.argv[1])
+conn.executemany(
+    "INSERT INTO threads VALUES (?, ?, ?, ?)",
+    [("thr_old_pending", old_ms, None, None), ("thr_old_applied", old_ms, None, None)],
+)
+conn.commit()
+with open(sys.argv[2], "w", encoding="utf-8") as fh:
+    json.dump({
+        "observations": [
+            {"id": "1", "status": "proposed", "proposal": {"thread": "thr_old_pending", "report": "/tmp/thread-storage/thr_old_pending/report.md"}},
+            {"id": "2", "status": "applied", "proposal": {"thread": "thr_old_applied"}},
+        ]
+    }, fh)
+PY
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.bb/thread-storage/thr_old_pending/report.md" ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_old_applied" ]
+}
+
+@test "bb-thread-storage fails closed when proposal ledger is unreadable" {
+  setup_bb_thread_storage_fixture
+  mkdir -p "$HOME/git/dream"
+  printf '{broken json\n' >"$HOME/git/dream/ledger.json"
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -ne 0 ]
+  grep -F 'cannot read proposal ledger' <<<"$output"
+  [ -d "$HOME/.bb/thread-storage/thr_old_arch" ]
+}
