@@ -104,6 +104,10 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   and harness; 0.48.1 has a draft desktop session-options recipe. Until it is installed,
   select opencode's `openai/gpt-daybreak-red-latest` or `-blue-latest` models, which need
   no session option.
+- Also (2026-11-23, BB 0.50.1): stock 0.50.1 still rejects `sessionOptions` in `agent()`
+  and still omits plugin workflow runs from thread activity. The registry has 0.50.1
+  session-options and activity recipes for the desktop app and the npm `bb-app` package.
+  A deployed user server runs the patched package, so desktop updates do not replace it.
 - Also (2026-11-06): `agent()` has no permission-mode option. Workers inherit the origin's
   mode, so an `auto` origin fails every `acp-opencode` worker with
   `Permission mode "auto" is not supported`. The failure happens before a call record
