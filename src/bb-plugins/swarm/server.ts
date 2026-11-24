@@ -113,6 +113,7 @@ export default function plugin(bb: BbPluginApi) {
       + 'add starts a worker on a brief in this thread\'s workspace; the first add makes this thread the coordinator. '
       + 'post writes to the board, where @name or @all wakes members and a post without a mention wakes nobody. '
       + 'read shows the board and member states. close ends the swarm and archives every worker. '
+      + 'Workers have their own swarm_post and swarm_read tools, not this one. '
       + 'As coordinator, plan and review; leave the work to the workers.',
     presentation: { label: { pending: 'Working with the swarm', completed: 'Worked with the swarm' } },
     parameters: z.object({

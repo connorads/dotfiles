@@ -264,3 +264,19 @@ test('an idle coordinator is told at once when the limit blocks a wake', () => {
   const { effects } = run(setup.swarm, post(a, '@b here'), ended(a), ended(b));
   assert.deepEqual(wakes(effects).map(effect => effect.member), [coordinatorName]);
 });
+
+test('a long relayed reply is cut and points to the worker\'s thread', () => {
+  const { swarm } = run(fresh(), join(a), ended(a, 'x'.repeat(2000)));
+  const reply = swarm.entries.at(-1)!;
+  const text = reply.kind === 'reply' ? reply.text : '';
+  assert.equal(text.startsWith('x'.repeat(600)), true);
+  assert.match(text, /^x{600} \[cut; the full reply is in a's thread\]$/);
+});
+
+test('a mention inside code wakes nobody', () => {
+  const setup = run(fresh(), join(a), post(a, 'x'), ended(a));
+  const quoted = run(setup.swarm, post(coordinatorName, 'the brief said `@a go` and\n```\n@a again\n```'));
+  assert.deepEqual(quoted.effects, []);
+  const plain = run(quoted.swarm, post(coordinatorName, 'now @a go'));
+  assert.equal(wakes(plain.effects).length, 1);
+});

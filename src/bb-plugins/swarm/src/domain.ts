@@ -55,6 +55,8 @@ export interface Swarm {
 
 const reservedNames = new Set(['human', 'engine', 'all', coordinatorName]);
 const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+/** Fenced blocks and inline code: a mention quoted there is not addressed to anyone. */
+const codePattern = /```[\s\S]*?```|`[^`\n]*`/g;
 const mentionPattern = /(?<![\w@])@([a-z0-9]+(?:-[a-z0-9]+)*)/gi;
 
 export function parseMemberName(raw: string): MemberName | null {
@@ -106,7 +108,7 @@ export interface Mentions {
 /**
  * `@name` rings a member that has not left; `@all` rings every live member.
  * A failed member answers only to its own name, so a broadcast does not retry it.
- * The author is never rung.
+ * The author is never rung, and a mention inside code rings nobody.
  */
 export function parseMentions(text: string, author: Author, members: readonly Member[]): Mentions {
   const others = members.filter(member => member.name !== author);
@@ -114,7 +116,7 @@ export function parseMentions(text: string, author: Author, members: readonly Me
   const present = others.filter(member => member.run !== 'stopped').map(member => member.name);
   const known = new Set<MemberName>();
   const unknown = new Set<string>();
-  for (const match of text.matchAll(mentionPattern)) {
+  for (const match of text.replace(codePattern, ' ').matchAll(mentionPattern)) {
     const name = match[1]!.toLowerCase();
     if (name === 'all') live.forEach(member => known.add(member));
     else if (present.includes(name as MemberName)) known.add(name as MemberName);

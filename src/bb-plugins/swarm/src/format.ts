@@ -1,12 +1,15 @@
 import { isClosed, type Entry, type Member, type Swarm, type SwarmId } from './domain.ts';
 import type { SwarmError } from './engine.ts';
 
+/** A board listing is read on every catch-up, so it shows the start of a brief only. */
+const briefLimit = 160;
+
 export function formatEntry(entry: Entry): string {
   switch (entry.kind) {
     case 'post':
       return `#${entry.seq} ${entry.author}: ${entry.text}`;
     case 'joined':
-      return `#${entry.seq} engine: ${entry.member} joined. Brief: ${entry.brief}`;
+      return `#${entry.seq} engine: ${entry.member} joined. Brief: ${entry.brief.length > briefLimit ? `${entry.brief.slice(0, briefLimit)}…` : entry.brief}`;
     case 'reply':
       return `#${entry.seq} ${entry.member} (turn ended without a post; final reply relayed): ${entry.text || '(no reply)'}`;
     case 'failed':

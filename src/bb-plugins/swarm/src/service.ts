@@ -158,8 +158,11 @@ export function createService(deps: Deps) {
       const mentions = entry?.kind === 'post' ? entry.mentions : [];
       const notes = [
         `Posted #${entry?.seq}.`,
-        mentions.length ? `Mentioned: ${mentions.join(', ')}.` : 'Nobody was mentioned, so nobody will be woken.',
-        ...(unknown.length ? [`No live member is named ${unknown.map(name => `@${name}`).join(', ')}.`] : []),
+        mentions.length
+          ? `Mentioned: ${mentions.join(', ')}.`
+          : unknown.length
+            ? `Nobody was woken: no member is named ${unknown.map(name => `@${name}`).join(', ')}.`
+            : 'Nobody was mentioned, so nobody will be woken.',
       ];
       return { ok: true, text: notes.join(' ') };
     },

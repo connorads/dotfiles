@@ -41,6 +41,8 @@ export type SwarmError =
 
 export type Decision = { ok: true; swarm: Swarm; effects: Effect[] } | { ok: false; error: SwarmError };
 
+const relayLimit = 600;
+
 interface Draft {
   entries: Entry[];
   members: Member[];
@@ -116,7 +118,9 @@ export function decide(swarm: Swarm, input: Input): Decision {
       if (member.role === 'worker' && !posted) {
         const joined = draft.entries.find(entry => entry.kind === 'joined' && entry.member === member.name);
         const turn = joined?.seq === member.turnStart ? 'brief' : 'later';
-        const text = input.lastReply?.trim() ?? '';
+        const reply = input.lastReply?.trim() ?? '';
+        // The coordinator pays for every relayed character on each wake.
+        const text = reply.length > relayLimit ? `${reply.slice(0, relayLimit)} [cut; the full reply is in ${member.name}'s thread]` : reply;
         // The brief turn always reports, even empty, so the coordinator learns that the worker stopped.
         if (turn === 'brief' || text) append({ kind: 'reply', member: member.name, text, turn });
       }

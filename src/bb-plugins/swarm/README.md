@@ -43,7 +43,7 @@ Workers appear under the coordinator in the sidebar and share its workspace. The
 5. **Close.** Closing stops every worker. Archiving the coordinator thread closes the swarm.
 6. **Limits.** At the wake limit the swarm pauses and records it on the board. The coordinator gets one last wake to tell you.
 
-A wake lost while the plugin is unloaded is not re-sent. The stall notice covers it.
+A wake is lost if the plugin stops between saving a decision and sending it. It is not re-sent. Mention the member again.
 
 ## Develop
 

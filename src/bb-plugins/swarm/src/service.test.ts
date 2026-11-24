@@ -102,7 +102,8 @@ test('a post tells its author about mentions that wake nobody', async () => {
   const { add, service } = setup();
   await add('scout');
   assert.match(service.post(origin, 'thinking').text, /Nobody was mentioned/);
-  assert.match(service.post(origin, '@scuot go').text, /No live member is named @scuot/);
+  assert.match(service.post(origin, '@scuot go').text, /Nobody was woken: no member is named @scuot\./);
+  assert.doesNotMatch(service.post(origin, '@scout mail a@b.c about @mentions').text, /no member is named/);
   assert.equal(service.post('thr_stranger' as ThreadId, 'hi').ok, false);
 });
 
