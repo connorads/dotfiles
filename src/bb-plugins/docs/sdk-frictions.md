@@ -1407,6 +1407,7 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Builtin plugins ship source maps without sources. (2026-10-02 Claude transcript)
 - The feature-request form cannot be filled through `gh`, and screenshots need repo write access. (@thread:thr_x523wkg7m3)
 - Inline visualisations look plain next to T3 Code. (2026-10-12 Codex session)
+- `bb plugin enable` after `disable` did not start a `bb.background.service`; `bb plugin reload` did. Seen once, BB 0.50.1. (`swarm/server.ts`, @thread:thr_st5teksb3x)
 
 ### Native context detail has no public popup extension
 
