@@ -814,6 +814,10 @@ provenance = "github-attestations"
 version = "2.150.1"
 backend = "pipx:docling"
 
+[[tools."pipx:google-colab-cli"]]
+version = "0.8.0"
+backend = "pipx:google-colab-cli"
+
 [[tools."pipx:markitdown"]]
 version = "0.1.9"
 backend = "pipx:markitdown"

@@ -205,6 +205,7 @@ age = "1"
 # ty is for editor/LSP use; pyrefly owns the hk typecheck gate.
 "pipx:ty" = "0"
 "pipx:pyrefly" = "1"
+"pipx:google-colab-cli" = "0"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
 # Sandboxes build.rs for every cargo build via ~/.cargo/config.toml's linker
