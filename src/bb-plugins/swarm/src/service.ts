@@ -1,6 +1,7 @@
 import type { Board } from './board.ts';
 import {
   head,
+  isLive,
   memberByThread,
   openSwarm,
   parseMemberName,
@@ -22,7 +23,11 @@ export interface Agents {
   /** Starts a turn on an idle thread, or queues behind its running turn. */
   wake(threadId: ThreadId, text: string, sender: ThreadId | null): Promise<void>;
   stop(threadId: ThreadId): Promise<void>;
+  /** What the thread is doing now, for members whose events were missed. */
+  observe(threadId: ThreadId): Promise<Observed>;
 }
+
+export type Observed = { state: 'working' } | { state: 'idle'; lastReply: string | null } | { state: 'failed'; error: string } | { state: 'gone' };
 
 export interface SpawnRequest {
   swarmId: SwarmId;
@@ -169,14 +174,36 @@ export function createService(deps: Deps) {
     turnEnded: (threadId: ThreadId, lastReply: string | null) => lifecycle(threadId, member => ({ type: 'turnEnded', member, lastReply })),
     turnFailed: (threadId: ThreadId, error: string) => lifecycle(threadId, member => ({ type: 'turnFailed', member, error })),
 
-    /** The thread was archived or deleted. Losing the coordinator ends the swarm. */
-    threadGone(threadId: ThreadId): void {
-      const found = locate(threadId);
-      if (!found) return;
-      if (found.member.role === 'coordinator') apply(found.id, { type: 'close', by: 'human', summary: 'The coordinator thread is gone.' });
-      else apply(found.id, { type: 'gone', member: found.member.name });
+    threadGone,
+
+    /**
+     * Replays what happened to each live member while the plugin was not listening.
+     * A wake lost in that gap is not re-sent; the stall notice tells the coordinator.
+     */
+    async reconcile(): Promise<void> {
+      for (const id of board.open()) {
+        for (const member of board.load(id)?.members.filter(isLive) ?? []) {
+          try {
+            const observed = await agents.observe(member.threadId);
+            if (observed.state === 'gone') threadGone(member.threadId);
+            else if (observed.state === 'working') apply(id, { type: 'turnStarted', member: member.name });
+            else if (observed.state === 'idle') apply(id, { type: 'turnEnded', member: member.name, lastReply: observed.lastReply });
+            else apply(id, { type: 'turnFailed', member: member.name, error: observed.error });
+          } catch (error) {
+            deps.log(`swarm ${id}: could not observe ${member.name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      }
     },
   };
+
+  /** The thread was archived or deleted. Losing the coordinator ends the swarm. */
+  function threadGone(threadId: ThreadId): void {
+    const found = locate(threadId);
+    if (!found) return;
+    if (found.member.role === 'coordinator') apply(found.id, { type: 'close', by: 'human', summary: 'The coordinator thread is gone.' });
+    else apply(found.id, { type: 'gone', member: found.member.name });
+  }
 }
 
 export type Service = ReturnType<typeof createService>;

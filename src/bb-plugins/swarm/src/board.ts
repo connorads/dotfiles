@@ -50,6 +50,7 @@ export interface Board {
   save(id: SwarmId, previous: Swarm, next: Swarm): void;
   /** The open swarm this thread is a live member of. A thread is in at most one. */
   openFor(threadId: ThreadId): SwarmId | null;
+  open(): SwarmId[];
 }
 
 const name = z.string();
@@ -71,6 +72,7 @@ const memberRow = z.object({
   cursor: z.number(),
   turn_start: z.number(),
 });
+const idRow = z.object({ id: z.string() });
 const swarmRow = z.object({
   max_members: z.number(),
   max_wakes: z.number(),
@@ -150,7 +152,11 @@ export function createBoard(db: Sql): Board {
            WHERE members.thread_id = ? AND members.run != 'stopped' AND swarms.closed = 0 LIMIT 1`,
         )
         .get(threadId);
-      return row === undefined ? null : (z.object({ id: z.string() }).parse(row).id as SwarmId);
+      return row === undefined ? null : (idRow.parse(row).id as SwarmId);
+    },
+
+    open() {
+      return db.prepare('SELECT id FROM swarms WHERE closed = 0 ORDER BY created_at').all().map(row => idRow.parse(row).id as SwarmId);
     },
   };
 }

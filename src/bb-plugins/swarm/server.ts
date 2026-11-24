@@ -62,6 +62,13 @@ export default function plugin(bb: BbPluginApi) {
       await bb.sdk.threads.stop({ threadId });
       await bb.sdk.threads.archive({ threadId });
     },
+    async observe(threadId) {
+      const [thread] = await bb.sdk.threads.list({ threadIds: [threadId], archived: false });
+      if (!thread) return { state: 'gone' };
+      if (thread.status === 'error') return { state: 'failed', error: 'The turn failed while the swarm plugin was not running.' };
+      if (thread.status !== 'idle') return { state: 'working' };
+      return { state: 'idle', lastReply: (await bb.sdk.threads.output({ threadId })).output };
+    },
   };
 
   const service = createService({
@@ -132,4 +139,7 @@ export default function plugin(bb: BbPluginApi) {
   bb.events.on('thread.failed', ({ thread, error }) => service.turnFailed(thread.id as ThreadId, error ?? 'unknown error'));
   bb.events.on('thread.archived', ({ thread }) => service.threadGone(thread.id as ThreadId));
   bb.events.on('thread.deleted', ({ thread }) => service.threadGone(thread.id as ThreadId));
+
+  // Events fired while the plugin was unloaded are not replayed.
+  bb.background.service('reconcile', { start: () => service.reconcile() });
 }

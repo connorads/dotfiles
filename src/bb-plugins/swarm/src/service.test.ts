@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { createBoard, migrations } from './board.ts';
 import type { SwarmId, ThreadId } from './domain.ts';
-import { createService, type Agents, type SpawnRequest } from './service.ts';
+import { createService, type Agents, type Observed, type SpawnRequest } from './service.ts';
 
 const origin = 'thr_origin' as ThreadId;
 
@@ -14,6 +14,7 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
   const wakes: { threadId: ThreadId; text: string; sender: ThreadId | null }[] = [];
   const stopped: ThreadId[] = [];
   const logs: string[] = [];
+  const observed = new Map<string, Observed>();
   const agents: Agents = {
     async spawn(request) {
       spawned.push(request);
@@ -26,6 +27,9 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
     async stop(threadId) {
       stopped.push(threadId);
     },
+    async observe(threadId) {
+      return observed.get(threadId) ?? { state: 'working' };
+    },
   };
   let ids = 0;
   const service = createService({
@@ -37,7 +41,7 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
     log: message => logs.push(message),
   });
   const add = (name: string, threadId = origin) => service.add(threadId, { name, brief: `do ${name}`, provider: null, model: null });
-  return { service, spawned, wakes, stopped, logs, add, opened: () => ids };
+  return { service, spawned, wakes, stopped, logs, add, observed, opened: () => ids };
 }
 
 /** Lets effects started by the last call finish. */
@@ -140,4 +144,27 @@ test('a wake that cannot be delivered is recorded as a failed turn', async () =>
   await settled();
   assert.match(service.read(origin, 0).text, /scout \(failed\)/);
   assert.match(logs[0]!, /wake scout failed: thread unavailable/);
+});
+
+test('reconcile replays turns that ended, failed or vanished while the plugin was away', async () => {
+  const { add, service, observed, wakes } = setup({ maxMembers: 6 });
+  await Promise.all([add('done'), add('broken'), add('archived'), add('busy')]);
+  observed.set(origin, { state: 'idle', lastReply: null });
+  observed.set('thr_done', { state: 'idle', lastReply: 'finished the map' });
+  observed.set('thr_broken', { state: 'failed', error: 'quota' });
+  observed.set('thr_archived', { state: 'gone' });
+
+  await service.reconcile();
+  await settled();
+  assert.match(service.read(origin, 0).text, /coordinator \(working\), done \(idle\), broken \(failed\), archived \(stopped\), busy \(working\)/);
+  assert.equal(wakes.length, 1);
+  assert.match(wakes[0]!.text, /final reply relayed\): finished the map/);
+
+  // The wake started the coordinator's turn; a second pass over unchanged threads does nothing.
+  observed.set(origin, { state: 'working' });
+  const before = service.read(origin, 0).text;
+  await service.reconcile();
+  await settled();
+  assert.equal(wakes.length, 1);
+  assert.equal(service.read(origin, 0).text, before);
 });
