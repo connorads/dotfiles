@@ -36,7 +36,7 @@ export type DeviceStart = {
 
 /** `kind` decides what the UI offers: retry, sign in again, or nothing. */
 export class OAuthError extends Error {
-  readonly kind: "discovery" | "registration" | "unsupported" | "denied" | "expired" | "invalid-grant" | "network";
+  readonly kind: "discovery" | "registration" | "unsupported" | "denied" | "expired" | "invalid-grant" | "invalid-client" | "network";
 
   constructor(kind: OAuthError["kind"], message: string) {
     super(message);
@@ -216,8 +216,16 @@ export async function refresh(
   const response = await send(fetch, endpoints.token, { method: "POST", body: form });
   if (response.ok) return toTokens(await parse(response, TokenResponse, "network"), now);
   const parsed = TokenError.safeParse(await response.json().catch(() => null));
-  if (parsed.success && parsed.data.error === "invalid_grant") {
-    throw new OAuthError("invalid-grant", "Executor ended this sign-in. Sign in again.");
+  if (parsed.success) {
+    if (parsed.data.error === "invalid_grant") {
+      throw new OAuthError("invalid-grant", "Executor ended this sign-in. Sign in again.");
+    }
+    if (parsed.data.error === "invalid_client" || parsed.data.error === "unauthorized_client") {
+      throw new OAuthError("invalid-client", "Executor no longer recognizes this sign-in. Sign in again.");
+    }
+  }
+  if (response.status === 401) {
+    throw new OAuthError("invalid-grant", "Executor rejected this sign-in. Sign in again.");
   }
   throw new OAuthError("network", `Token refresh failed (HTTP ${response.status}).`);
 }

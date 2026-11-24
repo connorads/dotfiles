@@ -3,6 +3,7 @@ import {
   SdkError,
   SdkHttpError,
   StreamableHTTPClientTransport,
+  UnauthorizedError,
   type CallToolResult,
   type Tool,
 } from "@modelcontextprotocol/client";
@@ -39,9 +40,16 @@ export class ExecutorConnection {
   }
 
   async listTools(): Promise<Tool[]> {
-    const client = await this.#connected();
-    const { tools } = await client.listTools(undefined, { timeout: LIST_TIMEOUT_MS });
-    return tools;
+    try {
+      const client = await this.#connected();
+      const { tools } = await client.listTools(undefined, { timeout: LIST_TIMEOUT_MS });
+      return tools;
+    } catch (error) {
+      if (error instanceof UnauthorizedError || (error instanceof SdkError && error.code !== "REQUEST_TIMEOUT")) {
+        this.#drop();
+      }
+      throw error;
+    }
   }
 
   async instructions(): Promise<string | undefined> {
@@ -53,14 +61,18 @@ export class ExecutorConnection {
    * program, and a blind retry could repeat its side effects. The one retry
    * is a legacy session expiry (HTTP 404), where the server ran nothing.
    */
-  async callTool(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<CallToolResult> {
+  async callTool(name: string, args: Record<string, unknown>, signal: AbortSignal, timeoutMs = CALL_TIMEOUT_MS): Promise<CallToolResult> {
     try {
-      return await this.#call(name, args, signal);
+      return await this.#call(name, args, signal, timeoutMs);
     } catch (error) {
       if (signal.aborted) throw new CallCancelledError();
+      if (error instanceof UnauthorizedError) {
+        this.#drop();
+        throw error;
+      }
       if (error instanceof SdkHttpError && error.status === 404) {
         this.#drop();
-        return await this.#call(name, args, signal);
+        return await this.#call(name, args, signal, timeoutMs);
       }
       if (error instanceof SdkError && error.code !== "REQUEST_TIMEOUT") this.#drop();
       throw error;
@@ -73,11 +85,11 @@ export class ExecutorConnection {
     await client?.then((c) => c.close(), () => undefined);
   }
 
-  async #call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<CallToolResult> {
+  async #call(name: string, args: Record<string, unknown>, signal: AbortSignal, timeoutMs: number): Promise<CallToolResult> {
     const client = await this.#connected();
     const result = await client.callTool(
       { name, arguments: args },
-      { signal, timeout: CALL_TIMEOUT_MS, maxTotalTimeout: CALL_TIMEOUT_MS },
+      { signal, timeout: timeoutMs, maxTotalTimeout: timeoutMs },
     );
     return result as CallToolResult;
   }

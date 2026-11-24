@@ -19,11 +19,31 @@ afterEach(() => {
   resetDraft();
 });
 
-const connection = (id: string, name: string, extra: Partial<StateView['connections'][number]> = {}) =>
-  ({ id, name, url: `https://mcp.executor.sh/mcp?connection=${id}`, status: 'signed-in' as const, isDefault: false, ...extra });
+const connection = (id: string, name: string, extra: Partial<StateView['connections'][number]> = {}) => ({
+  id,
+  name,
+  url: `https://mcp.executor.sh/mcp?connection=${id}`,
+  host: 'mcp.executor.sh',
+  webUrl: 'https://app.executor.sh',
+  approvalMode: 'model' as const,
+  status: 'signed-in' as const,
+  isDefault: false,
+  health: { state: 'unknown' as const, checkedAt: null, message: null, apps: [], toolCount: null },
+  ...extra,
+});
 
 function stateOf(partial: Partial<StateView>): StateView {
-  return { connections: [], signIns: [], errors: {}, toolsReady: true, ...partial };
+  const connections = partial.connections ?? [];
+  const defaultConn = connections.find(c => c.isDefault);
+  return {
+    connections,
+    defaultChoice: defaultConn ? { kind: 'connection', id: defaultConn.id } : null,
+    projects: [],
+    signIns: [],
+    errors: {},
+    toolsReady: true,
+    ...partial,
+  };
 }
 
 // The store is shared by the whole file, so these run before any read succeeds.
@@ -195,7 +215,7 @@ it('chip: shows the mark with the default name or on its own without a connectio
   const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: configured });
   const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-chip', isCompactViewport: false } as never, { rpc: configured });
   const selected = await chip.findByRole('button', { name: 'Executor: Coding (default)' });
-  expect(selected.textContent).toBe('Coding');
+  expect(selected.textContent).toBe('Coding · default');
   expect(selected.querySelector('img')?.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
   overlay.unmount();
   chip.unmount();
@@ -930,4 +950,204 @@ it('draft: an add that ends after its popover closed keeps the pick made since; 
   fireEvent.click(slot.getByRole('button', { name: 'Close' }));
   await act(async () => fail(new Error('Executor is not reachable.')));
   expect((await slot.findByRole('alert')).textContent).toBe('Could not add Atlas. Executor is not reachable.');
+});
+
+it('chip: reflects live, degraded, reauth and unreachable health states', async () => {
+  let view = stateOf({
+    connections: [connection('cf', 'Cloudflare', {
+      isDefault: true,
+      health: { state: 'ok', checkedAt: Date.now(), message: null, apps: [{ app: 'Cloudflare MCP', account: 'Read only', ok: true, reason: null }], toolCount: 42 },
+    })],
+  });
+  const handlers = { state: () => view, threadChoice: () => ({ kind: 'default' }) };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-health', isCompactViewport: false } as never, { rpc: handlers });
+  const liveBtn = await chip.findByRole('button', { name: 'Executor: Cloudflare (default)' });
+  expect(liveBtn.querySelector('.bbp-chip-dot')?.getAttribute('data-tone')).toBe('ok');
+  expect(liveBtn.dataset['tone']).toBeUndefined();
+
+  view = stateOf({
+    connections: [connection('cf', 'Cloudflare', {
+      isDefault: true,
+      status: 'signed-out',
+      health: { state: 'reauth', checkedAt: Date.now(), message: 'Executor rejected this sign-in.', apps: [], toolCount: null },
+    })],
+    errors: { cf: 'Executor rejected this sign-in.' },
+  });
+  await overlay.emitRealtime('state', null);
+  const reauthBtn = await chip.findByRole('button', { name: 'Executor: Cloudflare (default), sign-in rejected' });
+  expect(reauthBtn.dataset['tone']).toBe('danger');
+  expect(reauthBtn.querySelector('.bbp-chip-dot')?.getAttribute('data-tone')).toBe('danger');
+
+  view = stateOf({
+    connections: [connection('cf', 'Cloudflare', {
+      isDefault: true,
+      status: 'signed-in',
+      health: { state: 'degraded', checkedAt: Date.now(), message: '1 app needs attention.', apps: [{ app: 'Notion', account: null, ok: false, reason: 'Reconnect' }], toolCount: 12 },
+    })],
+  });
+  await overlay.emitRealtime('state', null);
+  const degradedBtn = await chip.findByRole('button', { name: 'Executor: Cloudflare (default), app needs auth' });
+  expect(degradedBtn.dataset['tone']).toBe('warn');
+  expect(degradedBtn.querySelector('.bbp-chip-dot')?.getAttribute('data-tone')).toBe('warn');
+  overlay.unmount();
+});
+
+it('popover: inspector tray shows discovered apps, inline Sign in on reauth, Retry on offline and Check all', async () => {
+  const rich = stateOf({
+    connections: [
+      connection('rex', 'Rex', {
+        isDefault: true,
+        host: 'rex.connoradams.co.uk',
+        webUrl: 'https://rex.connoradams.co.uk',
+        health: {
+          state: 'ok',
+          checkedAt: Date.now(),
+          message: null,
+          apps: [{ app: 'GitHub', account: 'connorads', ok: true, reason: null }],
+          toolCount: 142,
+        },
+      }),
+      connection('cf', 'Cloudflare', {
+        status: 'signed-out',
+        health: { state: 'reauth', checkedAt: Date.now(), message: 'Executor rejected this sign-in.', apps: [], toolCount: null },
+      }),
+      connection('wed', 'Wedding', {
+        host: 'rex.connoradams.co.uk',
+        health: { state: 'unreachable', checkedAt: Date.now(), message: 'Could not reach host.', apps: [], toolCount: null },
+      }),
+    ],
+    errors: { cf: 'Executor rejected this sign-in.' },
+  });
+  const overlay = renderSlot(app.appOverlays[0]!, {}, {
+    rpc: {
+      state: () => rich,
+      threadChoice: () => ({ kind: 'connection', id: 'rex' }),
+      checkAll: () => null,
+      check: () => null,
+      signIn: () => null,
+    },
+  });
+  act(() => toggle('t-inspect', 'keyboard'));
+  expect(await overlay.findByText('GitHub')).toBeTruthy();
+  expect(overlay.getByText(/connorads/)).toBeTruthy();
+  expect(overlay.getAllByText(/Live · 142 tools/).length).toBeGreaterThan(0);
+
+  fireEvent.click(overlay.getByRole('button', { name: 'Check all' }));
+  await waitFor(() => expect(overlay.rpcCalls.some(c => c.method === 'checkAll' && (c.input as { force: boolean }).force)).toBe(true));
+
+  // Focus reauth row to inspect and use inline Sign in.
+  fireEvent.focus(overlay.getByRole('button', { name: /^2 Cloudflare/ }));
+  expect(await overlay.findByText('Sign-in needs renewal')).toBeTruthy();
+  fireEvent.click(overlay.getByRole('button', { name: 'Sign in' }));
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'cf', method: 'browser' }));
+
+  // Focus offline row and press r to retry check.
+  const wedRow = overlay.getByRole('button', { name: /^3 Wedding/ });
+  fireEvent.focus(wedRow);
+  expect(await overlay.findByText('Could not reach rex.connoradams.co.uk')).toBeTruthy();
+  fireEvent.keyDown(overlay.getByRole('dialog'), { key: 'r' });
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'check')?.input).toEqual({ id: 'wed', force: true }));
+});
+
+it('settings: supports Check, Reconnect, app pills and browser approval checkbox', async () => {
+  const rich = stateOf({
+    connections: [
+      connection('rex', 'Rex', {
+        isDefault: true,
+        health: {
+          state: 'ok',
+          checkedAt: Date.now(),
+          message: null,
+          apps: [{ app: 'Cloudflare MCP', account: 'Connor (Read only)', ok: true, reason: null }],
+          toolCount: 3772,
+        },
+      }),
+    ],
+  });
+  const slot = renderSlot(app.settingsSections[0]!, {}, {
+    rpc: {
+      state: () => rich,
+      check: () => null,
+      checkAll: () => null,
+      signIn: () => null,
+      add: () => ({ ok: true, id: 'browser-ops' }),
+    },
+  });
+  expect(await slot.findByText('Cloudflare MCP')).toBeTruthy();
+  expect(slot.getByText('1 live')).toBeTruthy();
+  fireEvent.click(slot.getByRole('button', { name: 'Check' }));
+  await waitFor(() => expect(slot.rpcCalls.find(c => c.method === 'check')?.input).toEqual({ id: 'rex', force: true }));
+  fireEvent.click(slot.getByRole('button', { name: 'Reconnect' }));
+  await waitFor(() => expect(slot.rpcCalls.find(c => c.method === 'signIn')?.input).toEqual({ id: 'rex', method: 'browser' }));
+
+  fireEvent.change(slot.getByRole('textbox', { name: 'Connection URL' }), { target: { value: 'https://mcp.executor.sh/mcp?connection=c_9' } });
+  fireEvent.click(slot.getByRole('checkbox'));
+  fireEvent.click(slot.getByRole('button', { name: 'Add and sign in' }));
+  await waitFor(() => expect(slot.rpcCalls.find(c => c.method === 'add')?.input).toEqual({
+    name: 'Connection 2',
+    url: 'https://mcp.executor.sh/mcp?connection=c_9&elicitation_mode=browser',
+  }));
+});
+
+it('project defaults: chip, draft, popover p shortcut and settings Projects table stay in sync', async () => {
+  let view = stateOf({
+    connections: [
+      connection('rex', 'Rex', { isDefault: true }),
+      connection('klimble', 'Klimble'),
+    ],
+    projects: [
+      { id: 'p-klimble', name: 'Klimble', choice: { kind: 'connection', id: 'klimble' } },
+      { id: 'p-other', name: 'Other', choice: null },
+    ],
+  });
+  const handlers = {
+    state: () => view,
+    threadChoice: () => ({ kind: 'default' }),
+    threadOwner: () => null,
+    setProjectChoice: (input: unknown) => {
+      const { projectId, choice } = input as { projectId: string; choice: { kind: string; id?: string } };
+      view = {
+        ...view,
+        projects: view.projects.map(p => p.id === projectId
+          ? { ...p, choice: choice.kind === 'default' ? null : choice as StateView['defaultChoice'] }
+          : p),
+      };
+      return null;
+    },
+    setDefault: (input: unknown) => {
+      const { choice } = input as { choice: StateView['defaultChoice'] };
+      view = { ...view, defaultChoice: choice };
+      return null;
+    },
+  };
+  const overlay = renderSlot(app.appOverlays[0]!, {}, { rpc: handlers });
+  const chip = renderSlot(app.threadHeaderActions[0]!, { threadId: 't-proj', projectId: 'p-klimble', isCompactViewport: false } as never, { rpc: handlers });
+  const btn = await chip.findByRole('button', { name: 'Executor: Klimble (project)' });
+  expect(btn.textContent).toBe('Klimble · project');
+
+  // Open popover for p-klimble: top row shows Project default -> Klimble, and p toggles project default.
+  fireEvent.click(btn);
+  expect(await overlay.findByRole('button', { name: /Project default.*Klimble/ })).toBeTruthy();
+  const resetBtn = overlay.getByRole('button', { name: /Klimble is Klimble's default/ });
+  fireEvent.click(resetBtn);
+  await waitFor(() => expect(overlay.rpcCalls.find(c => c.method === 'setProjectChoice')?.input).toEqual({
+    projectId: 'p-klimble',
+    choice: { kind: 'default' },
+  }));
+  await chip.findByRole('button', { name: 'Executor: Rex (default)' });
+  overlay.unmount();
+  chip.unmount();
+
+  // Settings shows Global default and Project defaults selects.
+  const settings = renderSlot(app.settingsSections[0]!, {}, { rpc: handlers });
+  const projSelect = await settings.findByRole('combobox', { name: 'Klimble default connection' });
+  fireEvent.change(projSelect, { target: { value: 'c:klimble' } });
+  await waitFor(() => expect(settings.rpcCalls.find(c => c.method === 'setProjectChoice')?.input).toEqual({
+    projectId: 'p-klimble',
+    choice: { kind: 'connection', id: 'klimble' },
+  }));
+  const globalSelect = settings.getByRole('combobox', { name: 'Global default' });
+  fireEvent.change(globalSelect, { target: { value: 'off' } });
+  await waitFor(() => expect(settings.rpcCalls.find(c => c.method === 'setDefault')?.input).toEqual({ choice: { kind: 'off' } }));
 });

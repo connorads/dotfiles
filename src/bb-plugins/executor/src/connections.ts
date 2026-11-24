@@ -13,8 +13,18 @@ export function approvalMode(url: string): ApprovalMode {
   return new URL(url).searchParams.get("elicitation_mode") === "browser" ? "browser" : "model";
 }
 
-/** A thread follows the default, names one connection, or turns Executor off. */
+/** A thread follows inheritance (`default`), names one connection, or turns Executor off. */
 export type ThreadChoice = { kind: "default" } | { kind: "connection"; id: string } | { kind: "off" };
+
+/** A project or global default names one connection or explicitly turns Executor off. */
+export type ScopedChoice = { kind: "connection"; id: string } | { kind: "off" };
+
+export type ResolutionSource = "thread" | "owner" | "project" | "default";
+
+export type ResolvedChoice =
+  | { kind: "connection"; connection: Connection; source: ResolutionSource }
+  | { kind: "off"; source: ResolutionSource }
+  | { kind: "unset"; source: ResolutionSource };
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -51,14 +61,75 @@ export function slugFor(name: string, taken: ReadonlySet<string>): string {
   return id;
 }
 
+/** The thread that started this one: its parent, else the origin of its BB workflow run. */
+export function ownerOf(thread: {
+  parentThreadId?: string | null;
+  originPluginId?: string | null;
+  lifecycleOwnerThreadId?: string | null;
+}): string | null {
+  if (thread.parentThreadId) return thread.parentThreadId;
+  return thread.originPluginId === "workflows" ? (thread.lifecycleOwnerThreadId ?? null) : null;
+}
+
 /** The connection a thread uses: its own choice while that exists, else the default. */
 export function resolveChoice(
   choice: ThreadChoice,
   defaultId: string | null,
   connections: readonly Connection[],
 ): { kind: "connection"; connection: Connection } | { kind: "off" } | { kind: "unset" } {
-  if (choice.kind === "off") return { kind: "off" };
-  const chosen = choice.kind === "connection" ? connections.find((c) => c.id === choice.id) : undefined;
-  const connection = chosen ?? connections.find((c) => c.id === defaultId);
-  return connection ? { kind: "connection", connection } : { kind: "unset" };
+  const resolved = resolveHierarchy({
+    thread: choice,
+    owner: null,
+    project: null,
+    globalDefault: defaultId ? { kind: "connection", id: defaultId } : null,
+    connections,
+  });
+  if (resolved.kind === "connection") return { kind: "connection", connection: resolved.connection };
+  return { kind: resolved.kind };
+}
+
+/**
+ * Resolves a thread's effective Executor connection across four levels:
+ * thread override → parent/workflow owner → project default → global default.
+ */
+export function resolveHierarchy({
+  thread,
+  owner,
+  project,
+  globalDefault,
+  connections,
+}: {
+  thread: ThreadChoice;
+  owner: ResolvedChoice | null;
+  project: ScopedChoice | null;
+  globalDefault: ScopedChoice | null;
+  connections: readonly Connection[];
+}): ResolvedChoice {
+  const byId = (id: string) => connections.find((c) => c.id === id);
+
+  if (thread.kind === "off") return { kind: "off", source: "thread" };
+  if (thread.kind === "connection") {
+    const found = byId(thread.id);
+    if (found) return { kind: "connection", connection: found, source: "thread" };
+  }
+
+  if (owner) {
+    if (owner.kind === "connection") return { kind: "connection", connection: owner.connection, source: "owner" };
+    if (owner.kind === "off") return { kind: "off", source: "owner" };
+    return { kind: "unset", source: "owner" };
+  }
+
+  if (project) {
+    if (project.kind === "off") return { kind: "off", source: "project" };
+    const found = byId(project.id);
+    if (found) return { kind: "connection", connection: found, source: "project" };
+  }
+
+  if (globalDefault) {
+    if (globalDefault.kind === "off") return { kind: "off", source: "default" };
+    const found = byId(globalDefault.id);
+    if (found) return { kind: "connection", connection: found, source: "default" };
+  }
+
+  return { kind: "unset", source: "default" };
 }
