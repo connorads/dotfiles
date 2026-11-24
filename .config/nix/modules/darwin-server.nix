@@ -145,6 +145,23 @@
     StandardErrorPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-server-error.log";
   };
 
+  launchd.daemons.bb-watchdog.serviceConfig = {
+    ProgramArguments = [
+      "/bin/zsh"
+      "-f"
+      "${config.home-manager.users.connorads.home.homeDirectory}/.config/zsh/functions/agents/bb-watchdog"
+    ];
+    UserName = "connorads";
+    GroupName = "staff";
+    EnvironmentVariables = {
+      HOME = config.home-manager.users.connorads.home.homeDirectory;
+      PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
+    };
+    StartInterval = 60;
+    StandardOutPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-watchdog.log";
+    StandardErrorPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-watchdog.log";
+  };
+
   # -- Services (later) --
   # Persistent container services aren't wanted yet. When they are, a boot
   # daemon to bring Colima up headlessly goes here, e.g.:

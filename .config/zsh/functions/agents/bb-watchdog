@@ -1,0 +1,47 @@
+#!/usr/bin/env zsh
+# bb-watchdog: capture evidence when the BB host daemon stops logging during work
+# Records only; never signals or restarts BB.
+emulate -L zsh
+zmodload zsh/stat zsh/datetime || return 1
+
+local data="$HOME/.bb" api=http://127.0.0.1:38886
+local state="$HOME/.local/state/bb-watchdog"
+local quiet_after=${BB_WATCHDOG_QUIET_SECONDS:-300}
+local capture_gap=${BB_WATCHDOG_CAPTURE_GAP_SECONDS:-1800}
+local pid log running reason now capture
+
+pid=$(pgrep -f 'host-daemon/dist/daemon-bundle\.mjs$' | head -1)
+[[ -n $pid ]] || return 0
+
+local -a logs=("$data"/logs/host-daemon.*.log(N.om))
+(($#logs)) || return 0
+log=$logs[1]
+now=$EPOCHSECONDS
+((now - $(zstat +mtime -- "$log") >= quiet_after)) || return 0
+
+# An idle daemon writes nothing, so silence only matters while work runs.
+if running=$(curl --fail --silent --max-time 5 "$api/api/v1/threads/running"); then
+  [[ $running != '[]' ]] || return 0
+  reason='daemon log quiet while threads run'
+else
+  reason='daemon log quiet and running-thread state unavailable'
+fi
+
+mkdir -p "$state" || return 1
+if [[ -f "$state/last-capture" ]] &&
+  ((now - $(zstat +mtime -- "$state/last-capture") < capture_gap)); then
+  return 0
+fi
+touch "$state/last-capture"
+
+capture="$state/$(date +%Y%m%d-%H%M%S)-$pid"
+mkdir -p "$capture" || return 1
+print -r -- "$reason; last log write $(zstat -F '%Y-%m-%dT%H:%M:%S' +mtime -- "$log")" >"$capture/reason.txt"
+print -r -- "$running" >"$capture/running.json"
+sample "$pid" 5 -file "$capture/sample.txt" >/dev/null 2>&1
+lsof -n -p "$pid" >"$capture/lsof.txt" 2>&1
+ps -axo pid,ppid,rss,vsz,%cpu,etime,command >"$capture/ps.txt" 2>&1
+vm_stat >"$capture/vm_stat.txt" 2>&1
+df -h / "$data" >"$capture/df.txt" 2>&1
+tail -n 50 "$log" >"$capture/daemon-log-tail.txt" 2>&1
+print -r -- "bb-watchdog: $reason; evidence in $capture"

@@ -124,6 +124,11 @@ sudo launchctl kickstart -k system/org.nixos.bb-server
 Verify remote BB access and an agent task after logout. Restarting WindowServer ends GUI services and desktop applications.
 It does not test the system daemon until that daemon owns the running BB instance.
 
+The `bb-watchdog` system daemon runs [bb-watchdog](../.config/zsh/functions/agents/bb-watchdog) every minute on the Mini.
+It records evidence when the host daemon log is silent for five minutes while threads run, or while thread state is unavailable.
+Each capture holds a five-second `sample` of every daemon thread, open files, processes, memory and disk state.
+Captures go to `~/.local/state/bb-watchdog/`, at most one per 30 minutes. The watchdog never signals or restarts BB.
+
 ### BB deployments on the Mini
 
 `bb-deploy` separates desired versions in the shared mise lock from the Mini's deployed versions.
