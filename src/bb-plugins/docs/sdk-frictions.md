@@ -1349,6 +1349,27 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
 - Evidence: installed `NewThreadComposer` project membership and effective-project
   calculation; Clone Repository live check and delayed-project-list test.
 
+### New-thread composer has no default project
+
+- Found: 2026-11-24, recent-threads (chronological sidebar), BB 0.50.1
+- Wanted: new threads start in a chosen project instead of Personal ("No project").
+- Gap: no setting names a default. The root composer keeps the last selection in
+  tab-scoped storage (`bb.root-compose.project-id`, fallback Personal). In
+  chronological mode the bundled thread-list's **Threads** header button calls
+  `toCompose({ projectId: personalProjectId })`, which overwrites that selection.
+  `thread.new` (Mod+N) copies the route's project, so it also picks Personal
+  from a Personal thread. Plugin `PluginCommandContext` has no `navigate`.
+- Workaround: none built. Candidates: a plugin command that calls
+  `useBbNavigate().toCompose({ projectId })` from a mounted component, or a
+  content script that intercepts the header button.
+- Ask: a `defaultProjectId` setting, or let the Threads header keep the current
+  selection like section headers do.
+- Status: open
+- Category: app-bug
+- Evidence: thread-list `ProjectList.tsx` `openRootComposeForProject` header
+  callback; `root-compose-selection.ts`; live session storage flipping between
+  a project and `proj_personal`.
+
 ### Workflow pre-call failures can disappear from call history
 
 - Found: 2026-10-31, built-in Workflows plugin
