@@ -48,6 +48,8 @@ export interface Deps {
   log(message: string): void;
   /** Tells open panels that a board changed. */
   changed(id: SwarmId): void;
+  /** The chat directive that renders this swarm's card. */
+  card(id: SwarmId): string;
 }
 
 export interface Outcome {
@@ -141,7 +143,10 @@ export function createService(deps: Deps) {
         await agents.stop(worker);
         return { ok: false, text: joined.refusal };
       }
-      return { ok: true, text: `${name} joined and is working on its brief (#${head(joined.swarm)}). End your turn to wait. A mention of @coordinator wakes you.` };
+      const joinedText = `${name} joined and is working on its brief (#${head(joined.swarm)}). End your turn to wait. A mention of @coordinator wakes you.`;
+      // The first worker's entry is #1. Its result carries the card, so later adds do not repeat it.
+      const card = head(joined.swarm) === 1 ? `\nPut this line on its own in your reply, exactly once, so the user sees the live board: ${deps.card(id)}` : '';
+      return { ok: true, text: joinedText + card };
     },
 
     post(threadId: ThreadId, text: string): Outcome {
@@ -193,6 +198,10 @@ export function createService(deps: Deps) {
       const id = board.latestFor(threadId);
       const swarm = id && board.load(id);
       return id && swarm ? viewBoard(id, swarm) : null;
+    },
+    viewById(id: SwarmId): BoardView | null {
+      const swarm = board.load(id);
+      return swarm ? viewBoard(id, swarm) : null;
     },
 
     humanRead(id: SwarmId, since: number | null): Outcome {

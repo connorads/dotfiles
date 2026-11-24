@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PluginCliError, cliCommand, defineCli, type BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
-import { changedChannel, rpcContract } from './contracts.ts';
+import { boardDirective, changedChannel, rpcContract } from './contracts.ts';
 import { createBoard, migrations } from './src/board.ts';
 import type { SwarmId, ThreadId } from './src/domain.ts';
 import { createService, type Agents, type Outcome } from './src/service.ts';
@@ -84,6 +84,7 @@ export default function plugin(bb: BbPluginApi) {
     },
     log: message => bb.log.warn(message),
     changed: swarmId => bb.realtime.publish(changedChannel, { swarmId }),
+    card: swarmId => `::${boardDirective}{id="${swarmId}"}`,
   });
 
   const result = ({ ok, text }: Outcome) => ({ content: [{ type: 'text' as const, text }], isError: !ok });
@@ -158,6 +159,7 @@ export default function plugin(bb: BbPluginApi) {
 
   bb.rpc.register(rpcContract, {
     board: ({ threadId }) => ({ board: service.view(threadId as ThreadId) }),
+    swarm: ({ swarmId }) => ({ board: service.viewById(swarmId as SwarmId) }),
     post: ({ swarmId, text }) => service.humanPost(swarmId as SwarmId, text),
     close: ({ swarmId }) => service.humanClose(swarmId as SwarmId, 'Closed from the board panel.'),
   });

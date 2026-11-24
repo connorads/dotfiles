@@ -19,16 +19,20 @@ const board = z.object({
       author: z.string(),
       tone: z.enum(['post', 'relay', 'engine', 'problem']),
       text: z.string(),
+      detail: z.string().nullable(),
     }),
   ),
 });
 const outcome = z.object({ ok: z.boolean(), text: z.string() });
 
 export const changedChannel = 'swarm-changed';
+export const boardDirective = 'swarm-board';
 
 export const rpcContract = defineRpcContract({
   /** The newest swarm the thread has been in, or null. */
   board: { input: z.object({ threadId: z.string() }).strict(), output: z.object({ board: board.nullable() }) },
+  /** One swarm by id, for a chat card that outlives newer swarms on its thread. */
+  swarm: { input: z.object({ swarmId: z.string() }).strict(), output: z.object({ board: board.nullable() }) },
   post: { input: z.object({ swarmId: z.string(), text: z.string() }).strict(), output: outcome },
   close: { input: z.object({ swarmId: z.string() }).strict(), output: outcome },
 });

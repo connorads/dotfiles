@@ -1,10 +1,328 @@
+/*
+ * Neutral chrome; colour is kept for member state. Depth comes from 0.5px rings,
+ * and the only motion is one compositor-only pulse on working marks.
+ */
+.swarm-panel,
+.swarm-card,
+.swarm-stack {
+  --swarm-working: var(--timeline-accent, oklch(71% 0.14 250));
+  --swarm-failed: var(--diff-removed, oklch(65% 0.19 24));
+  --swarm-hairline: var(--border-hairline, var(--border));
+  --swarm-well: var(--surface-recessed, color-mix(in oklch, var(--foreground) 4%, transparent));
+  --swarm-hover: color-mix(in oklch, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+/* ------------------------------- members -------------------------------- */
+
+.swarm-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swarm-roster li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border-radius: 6px;
+  background: var(--swarm-well);
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 530;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.swarm-roster li[data-run='stopped'] {
+  color: var(--muted-foreground);
+}
+
+.swarm-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 8px;
+  height: 8px;
+  flex: none;
+}
+
+.swarm-mark-core {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--muted-foreground);
+}
+
+.swarm-mark[data-run='working'] .swarm-mark-core {
+  background: var(--swarm-working);
+  box-shadow: none;
+}
+
+.swarm-mark[data-run='failed'] .swarm-mark-core {
+  background: var(--swarm-failed);
+  box-shadow: none;
+}
+
+.swarm-mark[data-run='stopped'] .swarm-mark-core {
+  opacity: 0.45;
+}
+
+.swarm-mark-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--swarm-working);
+  animation: swarm-pulse 1.8s cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+
+@keyframes swarm-pulse {
+  from {
+    opacity: 0.55;
+    transform: scale(0.75);
+  }
+
+  70%,
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swarm-mark-ring {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.swarm-summary {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* -------------------------------- entries ------------------------------- */
+
+.swarm-seq {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.swarm-author {
+  font-weight: 530;
+}
+
+.swarm-panel mark,
+.swarm-card mark,
+.swarm-stack mark {
+  background: none;
+  color: inherit;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.92em;
+  font-weight: 530;
+}
+
+.swarm-lines {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swarm-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.swarm-line .swarm-author {
+  flex: none;
+}
+
+.swarm-line-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-tone='engine'] .swarm-author {
+  color: var(--muted-foreground);
+  font-weight: 440;
+}
+
+[data-tone='problem'] .swarm-text,
+[data-tone='problem'] .swarm-line-text {
+  color: var(--swarm-failed);
+}
+
+/* ------------------------------- buttons -------------------------------- */
+
+.swarm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  height: 24px;
+  margin-inline-end: -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 12px;
+  cursor: default;
+}
+
+.swarm-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+.swarm-link:hover,
+.swarm-link:focus-visible {
+  background: var(--swarm-hover);
+  color: var(--foreground);
+}
+
+.swarm-button {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--foreground);
+  color: var(--background);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 530;
+  cursor: default;
+}
+
+.swarm-button:disabled {
+  opacity: 0.35;
+}
+
+.swarm-button[data-variant='quiet'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  color: var(--muted-foreground);
+  font-weight: 440;
+}
+
+.swarm-button[data-variant='quiet']:hover {
+  background: var(--swarm-hover);
+  color: var(--foreground);
+}
+
+/* ------------------------------ composer card --------------------------- */
+
+.swarm-stack {
+  display: grid;
+  gap: 8px;
+  padding: 9px 12px 4px;
+}
+
+.swarm-stack-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* -------------------------------- chat card ----------------------------- */
+
+.swarm-card {
+  display: block;
+  max-width: 560px;
+  margin: 6px 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--popover, var(--background));
+  box-shadow:
+    0 1px 2px -1px rgb(0 0 0 / 8%),
+    0 0 0 0.5px var(--swarm-hairline);
+}
+
+.swarm-card-note {
+  padding: 10px 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.swarm-card-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px 0;
+}
+
+.swarm-card-head svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-foreground);
+}
+
+.swarm-card-title {
+  font-weight: 530;
+}
+
+.swarm-card-body {
+  display: grid;
+  gap: 9px;
+  padding: 9px 12px 11px;
+}
+
+.swarm-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 0 12px;
+  box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
+  background: var(--swarm-well);
+}
+
+.swarm-card-count {
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------- panel -------------------------------- */
+
 .swarm-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  color: var(--foreground);
-  font-size: 13px;
+}
+
+.swarm-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  box-shadow: inset 0 -0.5px 0 var(--swarm-hairline);
 }
 
 .swarm-empty,
@@ -14,53 +332,11 @@
   padding: 12px 14px;
   color: var(--muted-foreground);
   font-size: 13px;
+  text-wrap-style: pretty;
 }
 
 .swarm-notice {
-  color: var(--destructive, var(--foreground));
-}
-
-.swarm-members {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 10px 14px;
-  list-style: none;
-  border-bottom: 1px solid var(--border);
-}
-
-.swarm-members li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-}
-
-.swarm-run {
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-
-.swarm-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--muted-foreground);
-}
-
-[data-run='working'] .swarm-dot {
-  background: var(--primary);
-}
-
-[data-run='failed'] .swarm-dot {
-  background: var(--destructive, var(--foreground));
-}
-
-[data-run='stopped'] {
-  opacity: 0.55;
+  color: var(--swarm-failed);
 }
 
 .swarm-feed {
@@ -79,95 +355,74 @@
 .swarm-entry-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  color: var(--muted-foreground);
-  font-size: 11px;
+  gap: 7px;
 }
 
 .swarm-entry-head time {
-  margin-left: auto;
+  margin-inline-start: auto;
+  color: var(--muted-foreground);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
-.swarm-seq {
-  font-family: var(--font-mono);
-}
-
-.swarm-author {
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .swarm-tag {
-  padding: 0 6px;
-  border: 1px solid var(--border);
+  padding: 0 5px;
   border-radius: 4px;
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  color: var(--muted-foreground);
+  font-size: 10.5px;
 }
 
 .swarm-text {
   margin: 2px 0 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  text-wrap-style: pretty;
 }
 
-.swarm-text mark {
-  background: none;
-  color: var(--primary);
-  font-weight: 600;
+.swarm-detail {
+  margin: 4px 0 0;
+  padding-inline-start: 9px;
+  box-shadow: inset 1.5px 0 0 var(--swarm-hairline);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  text-wrap-style: pretty;
 }
 
-[data-tone='engine'] .swarm-author,
 [data-tone='engine'] .swarm-text {
   color: var(--muted-foreground);
-  font-weight: 400;
-}
-
-[data-tone='problem'] .swarm-text {
-  color: var(--destructive, var(--foreground));
 }
 
 .swarm-compose {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+  box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
 }
 
 .swarm-compose textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--swarm-well);
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
   color: inherit;
   font: inherit;
   resize: vertical;
+  text-wrap-style: stable;
+}
+
+.swarm-compose textarea:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--ring, var(--foreground));
 }
 
 .swarm-actions {
   display: flex;
   justify-content: space-between;
-}
-
-.swarm-actions button {
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--primary);
-  color: var(--primary-foreground, var(--background));
-  font: inherit;
-  cursor: pointer;
-}
-
-.swarm-actions button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.swarm-actions .swarm-quiet {
-  background: transparent;
-  color: var(--muted-foreground);
 }

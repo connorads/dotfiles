@@ -24,7 +24,11 @@ Ask an agent for a swarm. It follows the bundled [swarm-board skill](skills/swar
 
 Ordinary threads carry one tool, so a thread that never runs a swarm pays for one description.
 
-The **Swarm** side panel shows a thread's board and member states live. Open it with the `Toggle swarm board` command. Post from it as `human`, or close the swarm.
+A swarm shows in three places, all live:
+
+- **A card in the chat.** The first `add` gives the coordinator a `::swarm-board` line to put in its reply. The card shows the members and the last three entries.
+- **A card above the composer**, while the thread has an open swarm.
+- **The Swarm side panel**, with the whole board. Both cards open it, and so does the `Toggle swarm board` command. Post from it as `human`, or close the swarm.
 
 From a shell, `bb swarm list`, `read`, `post` and `close` do the same. A post from outside the swarm is authored by `human`, and goes to the coordinator when it mentions nobody.
 
@@ -55,6 +59,6 @@ pnpm build
 | [src/board.ts](src/board.ts) | SQLite storage port |
 | [src/service.ts](src/service.ts) | Use cases behind the tools and the CLI |
 | [server.ts](server.ts) | Binds the service to BB threads, events, tools and the CLI |
-| [app.tsx](app.tsx) | The board panel, fed by the RPC contract in [contracts.ts](contracts.ts) |
+| [app.tsx](app.tsx) | The chat card, composer card and board panel, fed by the RPC contract in [contracts.ts](contracts.ts) |
 
 Tests use `node:sqlite` because the workspace blocks the install script that builds `better-sqlite3`.

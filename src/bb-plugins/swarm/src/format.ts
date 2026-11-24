@@ -80,17 +80,19 @@ export interface EntryView {
   author: string;
   tone: 'post' | 'relay' | 'engine' | 'problem';
   text: string;
+  /** Longer text that only the full board shows, such as a worker's brief. */
+  detail: string | null;
 }
 
 export function viewEntry(entry: Entry): EntryView {
-  const base = { seq: entry.seq, at: entry.at };
+  const base = { seq: entry.seq, at: entry.at, detail: null };
   switch (entry.kind) {
     case 'post':
       return { ...base, author: entry.author, tone: entry.author === 'engine' ? 'engine' : 'post', text: entry.text };
     case 'reply':
       return { ...base, author: entry.member, tone: 'relay', text: entry.text || '(no reply)' };
     case 'joined':
-      return { ...base, author: 'engine', tone: 'engine', text: `${entry.member} joined. Brief: ${entry.brief}` };
+      return { ...base, author: 'engine', tone: 'engine', text: `${entry.member} joined.`, detail: entry.brief };
     case 'failed':
       return { ...base, author: 'engine', tone: 'problem', text: `${entry.member}'s turn failed: ${entry.error}` };
     case 'left':
@@ -117,4 +119,12 @@ export function segments(text: string): { text: string; mark: boolean }[] {
     .split(/((?<![\w@#])[@#][a-z0-9]+(?:-[a-z0-9]+)*)/gi)
     .filter(part => part !== '')
     .map(part => ({ text: part, mark: /^[@#]/.test(part) && part.length > 1 }));
+}
+
+/** A one-line state for card titles, such as "2 working · 1 idle". */
+export function summarise(board: BoardView): string {
+  if (board.closed) return 'closed';
+  const count = (run: Member['run']) => board.members.filter(member => member.run === run).length;
+  const parts = (['working', 'idle', 'failed'] as const).flatMap(run => (count(run) ? [`${count(run)} ${run}`] : []));
+  return parts.join(' · ');
 }

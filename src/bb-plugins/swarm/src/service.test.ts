@@ -41,6 +41,7 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
     limits: async () => ({ maxMembers: options.maxMembers ?? 4, maxWakes: 50 }),
     log: message => logs.push(message),
     changed: id => changes.push(id),
+    card: id => `::card{id="${id}"}`,
   });
   const add = (name: string, threadId = origin) => service.add(threadId, { name, brief: `do ${name}`, provider: null, model: null });
   return { service, spawned, wakes, stopped, logs, changes, add, observed, opened: () => ids };
@@ -207,4 +208,14 @@ test('the panel view follows a thread\'s newest swarm and every change is announ
 
   service.close(origin, 'done');
   assert.equal(service.view(origin)!.closed, true);
+});
+
+test('only the first add asks the agent to show the board card', async () => {
+  const { add, service } = setup();
+  const first = await add('one');
+  const second = await add('two');
+  assert.match(first.text, /::card\{id="swarm-1"\}/);
+  assert.doesNotMatch(second.text, /::card/);
+  assert.equal(service.viewById('swarm-1' as SwarmId)!.members.length, 3);
+  assert.equal(service.viewById('missing' as SwarmId), null);
 });
