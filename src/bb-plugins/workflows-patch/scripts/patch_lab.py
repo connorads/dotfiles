@@ -15,7 +15,7 @@ import tempfile
 import time
 from functools import lru_cache
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 from bb_patch import canonical, durable_json
@@ -259,8 +259,17 @@ def activity_query_check(root, record):
         data=b"{}",
         headers={"Content-Type": "application/json"},
     )
-    with HTTP.open(request, timeout=10) as response:
-        response.read()
+    # Built-in plugins register after the health endpoint answers; until then enable returns 404.
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            with HTTP.open(request, timeout=10) as response:
+                response.read()
+            break
+        except HTTPError as error:
+            if error.code != 404 or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.5)
     deadline = time.monotonic() + 10
     workflow_db = None
     while time.monotonic() < deadline:
