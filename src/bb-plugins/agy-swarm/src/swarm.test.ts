@@ -4,6 +4,12 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  cleanBoardPreview,
+  formatRelativeTime,
+  groupWorkerSteps,
+  parseTimestampMs,
+} from './format.ts';
+import {
   antigravityAppDataRoot,
   extractMentions,
   isAntigravityProvider,
@@ -57,7 +63,7 @@ async function setupFixture() {
   // parser finished and parked in swarm_wait
   await writeFile(join(appData, 'brain', workerAId, '.system_generated', 'logs', 'transcript.jsonl'), [
     JSON.stringify({ step_index: 0, source: 'MODEL', type: 'PLANNER_RESPONSE', status: 'DONE', created_at: '2026-11-23T17:39:00Z', model: 'gemini-4-neon-high', tool_calls: [{ name: 'post_message', args: { text: '@verifier [done] Parser fixed' } }, { name: 'swarm_wait', args: { since: 1 } }] }),
-    JSON.stringify({ step_index: 1, source: 'MODEL', type: 'GENERIC', status: 'DONE', created_at: '2026-11-23T17:39:02Z', content: '{"status":"posted","seq":2}' }),
+    JSON.stringify({ step_index: 1, source: 'MODEL', type: 'GENERIC', status: 'DONE', created_at: '2026-11-23T17:39:02Z', content: 'Created At: 2026-11-23T17:39:02Z\nCompleted At: 2026-11-23T17:39:02Z\n{"status":"posted","seq":2}' }),
     JSON.stringify({ step_index: 2, source: 'MODEL', type: 'GENERIC', status: 'DONE', created_at: '2026-11-23T17:39:02Z', content: 'Waiting for @mentions.' }),
   ].join('\n') + '\n');
 
@@ -71,12 +77,14 @@ async function setupFixture() {
 
 test('resolves Default and isolated Antigravity appData roots and rejects invalid providers', () => {
   assert.equal(isAntigravityProvider('acp-antigravity'), true);
+  assert.equal(isAntigravityProvider('antigravity-sandbox'), true);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-secondary'), true);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-default'), false);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-../escape'), false);
   assert.equal(isAntigravityProvider('claude-code'), false);
 
   assert.equal(antigravityAppDataRoot('/Users/test', 'acp-antigravity'), '/Users/test/.gemini/antigravity-cli');
+  assert.equal(antigravityAppDataRoot('/Users/test', 'antigravity-sandbox'), '/Users/test/.gemini/antigravity-cli');
   assert.equal(
     antigravityAppDataRoot('/Users/test', 'acp-antigravity-profile-secondary'),
     '/Users/test/.local/share/agy-profiles/secondary/home/.gemini/antigravity-cli',
@@ -102,6 +110,10 @@ test('loads full swarm snapshot with derived worker states, plan, board, and cha
     assert.equal(snap.summary.totalWorkers, 2);
     assert.equal(snap.summary.doneWorkers, 1);
     assert.equal(snap.summary.workingWorkers, 1);
+    assert.equal(snap.summary.blockedWorkers, 0);
+    assert.equal(snap.summary.killedWorkers, 0);
+    assert.equal(snap.summary.status, 'working');
+    assert.equal(snap.summary.lastActivityAt, '2026-11-23T17:39:05Z');
     assert.equal(snap.summary.active, true);
 
     const parser = snap.members.find(m => m.name === 'parser');
@@ -119,20 +131,105 @@ test('loads full swarm snapshot with derived worker states, plan, board, and cha
   }
 });
 
-test('loads worker transcript log and refuses unknown members', async () => {
+test('derives blocked worker state and stopped swarm status instead of false green done', async () => {
+  const { home, coordId, workerAId, workerBId, swarmDir } = await setupFixture();
+  try {
+    // Make parser blocked (posted "Blocked ..." and parked) and verifier killed.
+    await writeFile(join(swarmDir, 'members.json'), JSON.stringify({
+      title: 'Sandbox build',
+      members: {
+        coordinator: {
+          conversation_id: coordId, role: 'coordinator', applied_model: 'gemini-4-neon-high',
+          workspace_mode: 'inherit', wake_mode: 'mentions', last_read_seq: 3, killed: false,
+        },
+        parser: {
+          conversation_id: workerAId, role: 'worker', applied_model: 'gemini-4-neon-high',
+          workspace_mode: 'share', wake_mode: 'mentions', last_read_seq: 3, killed: false,
+        },
+        verifier: {
+          conversation_id: workerBId, role: 'worker', applied_model: 'gemini-3.8-flash-high',
+          workspace_mode: 'inherit', wake_mode: 'mentions', last_read_seq: 1, killed: true,
+        },
+      },
+    }));
+    await writeFile(join(swarmDir, 'board.jsonl'), [
+      JSON.stringify({ seq: 1, agent: 'coordinator', text: '@parser Build sandbox', time: '2026-11-23 17:38:41', kind: 'brief' }),
+      JSON.stringify({ seq: 2, agent: 'parser', text: '@coordinator Blocked: all `write_file` calls timed out', time: '2026-11-23 17:40:00' }),
+    ].join('\n') + '\n');
+
+    const blockedSnap = await loadSwarmSnapshot(home, 'acp-antigravity', coordId);
+    assert.equal(blockedSnap.kind, 'swarm');
+    if (blockedSnap.kind !== 'swarm') assert.fail('expected swarm');
+    assert.equal(blockedSnap.members.find(m => m.name === 'parser')?.state, 'blocked');
+    assert.equal(blockedSnap.members.find(m => m.name === 'verifier')?.state, 'killed');
+    assert.equal(blockedSnap.summary.blockedWorkers, 1);
+    assert.equal(blockedSnap.summary.killedWorkers, 1);
+    assert.equal(blockedSnap.summary.status, 'blocked');
+
+    // Kill both workers (aborted swarm) -> status must be 'stopped', not 'done'.
+    await writeFile(join(swarmDir, 'members.json'), JSON.stringify({
+      title: 'Sandbox build',
+      members: {
+        coordinator: {
+          conversation_id: coordId, role: 'coordinator', applied_model: 'gemini-4-neon-high',
+          workspace_mode: 'inherit', wake_mode: 'mentions', last_read_seq: 3, killed: false,
+        },
+        parser: {
+          conversation_id: workerAId, role: 'worker', applied_model: 'gemini-4-neon-high',
+          workspace_mode: 'share', wake_mode: 'mentions', last_read_seq: 3, killed: true,
+        },
+        verifier: {
+          conversation_id: workerBId, role: 'worker', applied_model: 'gemini-3.8-flash-high',
+          workspace_mode: 'inherit', wake_mode: 'mentions', last_read_seq: 1, killed: true,
+        },
+      },
+    }));
+    const stoppedSnap = await loadSwarmSnapshot(home, 'acp-antigravity', coordId);
+    assert.equal(stoppedSnap.kind, 'swarm');
+    if (stoppedSnap.kind !== 'swarm') assert.fail('expected swarm');
+    assert.equal(stoppedSnap.summary.doneWorkers, 0);
+    assert.equal(stoppedSnap.summary.killedWorkers, 2);
+    assert.equal(stoppedSnap.summary.status, 'stopped');
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('loads worker transcript log, strips boilerplate timestamps, and pairs tool outputs with planner calls', async () => {
   const { home, coordId } = await setupFixture();
   try {
-    const log = await loadWorkerLog(home, 'acp-antigravity', coordId, 'verifier');
+    const log = await loadWorkerLog(home, 'acp-antigravity', coordId, 'parser');
     assert.equal(log.ok, true);
     if (!log.ok) assert.fail('expected ok');
-    assert.equal(log.totalSteps, 1);
-    assert.equal(log.steps[0]?.toolCalls[0]?.name, 'run_command');
+    assert.equal(log.totalSteps, 3);
+    assert.equal(log.steps[1]?.text, '{"status":"posted","seq":2}');
+
+    const grouped = groupWorkerSteps(log.steps, false);
+    assert.equal(grouped.length, 1);
+    assert.equal(grouped[0]?.toolCalls.length, 2);
+    assert.equal(grouped[0]?.toolCalls[0]?.name, 'post_message');
+    assert.equal(grouped[0]?.toolCalls[0]?.result?.text, '{"status":"posted","seq":2}');
+    assert.equal(grouped[0]?.toolCalls[1]?.name, 'swarm_wait');
+    assert.equal(grouped[0]?.toolCalls[1]?.result?.text, 'Waiting for @mentions.');
 
     const missing = await loadWorkerLog(home, 'acp-antigravity', coordId, 'ghost');
     assert.equal(missing.ok, false);
   } finally {
     await rm(home, { recursive: true, force: true });
   }
+});
+
+test('cleanBoardPreview and timestamp formatting helpers handle UTC board dates and markdown', () => {
+  assert.equal(
+    cleanBoardPreview('@coordinator [stall] Blocked on `write_file` in workspace'),
+    'Blocked on write_file in workspace',
+  );
+  const base = parseTimestampMs('2026-11-23 17:39:00');
+  assert.equal(base, Date.parse('2026-11-23T17:39:00Z'));
+  assert.equal(formatRelativeTime('2026-11-23 17:39:00', base! + 5_000), 'just now');
+  assert.equal(formatRelativeTime('2026-11-23 17:39:00', base! + 42_000), '42s ago');
+  assert.equal(formatRelativeTime('2026-11-23 17:39:00', base! + 5 * 60_000), '5m ago');
+  assert.equal(formatRelativeTime('2026-11-23 17:39:00', base! + 3 * 3600_000), '3h ago');
 });
 
 test('fingerprint changes when board.jsonl updates and returns null when no swarm exists', async () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseConnectionUrl, resolveChoice, slugFor } from "./connections.ts";
+import { ownerOf, parseConnectionUrl, resolveChoice, resolveHierarchy, slugFor } from "./connections.ts";
 import { parseVault, vaultSettingSchema } from "./credentials.ts";
 import { bbToolName } from "./tools.ts";
 
@@ -56,4 +56,36 @@ test("keeps browser delivery and scope, rejects unsupported modes", () => {
   assert.equal(browser.url.href, "https://executor.test/mcp?connection=c_1&elicitation_mode=browser");
   assert.ok(!parseConnectionUrl("https://executor.test/mcp?elicitation_mode=native").ok);
   assert.ok(!parseConnectionUrl("https://executor.test/mcp?elicitation_mode=typo").ok);
+});
+
+test("resolveHierarchy follows thread → owner → project → global default", () => {
+  const connections = [
+    { id: "rex", name: "Rex", url: "https://x/mcp?connection=rex" },
+    { id: "klimble", name: "Klimble", url: "https://x/mcp?connection=klimble" },
+    { id: "cf", name: "Cloudflare", url: "https://x/mcp?connection=cf" },
+  ];
+  const base = {
+    thread: { kind: "default" as const },
+    owner: null,
+    project: { kind: "connection" as const, id: "klimble" },
+    globalDefault: { kind: "connection" as const, id: "rex" },
+    connections,
+  };
+  assert.deepEqual(resolveHierarchy(base), { kind: "connection", connection: connections[1], source: "project" });
+  assert.deepEqual(resolveHierarchy({ ...base, project: { kind: "off" } }), { kind: "off", source: "project" });
+  assert.deepEqual(resolveHierarchy({ ...base, project: null }), { kind: "connection", connection: connections[0], source: "default" });
+  assert.deepEqual(resolveHierarchy({ ...base, project: null, globalDefault: { kind: "off" } }), { kind: "off", source: "default" });
+  assert.deepEqual(resolveHierarchy({ ...base, owner: { kind: "connection", connection: connections[2]!, source: "thread" } }), {
+    kind: "connection", connection: connections[2], source: "owner",
+  });
+  assert.deepEqual(resolveHierarchy({ ...base, owner: { kind: "off", source: "thread" } }), { kind: "off", source: "owner" });
+  assert.deepEqual(resolveHierarchy({ ...base, thread: { kind: "connection", id: "rex" }, owner: { kind: "off", source: "thread" } }), {
+    kind: "connection", connection: connections[0], source: "thread",
+  });
+});
+
+test("ownerOf finds parent threads and BB workflow origin threads", () => {
+  assert.equal(ownerOf({ parentThreadId: "thr_parent", originPluginId: null, lifecycleOwnerThreadId: null }), "thr_parent");
+  assert.equal(ownerOf({ parentThreadId: null, originPluginId: "workflows", lifecycleOwnerThreadId: "thr_origin" }), "thr_origin");
+  assert.equal(ownerOf({ parentThreadId: null, originPluginId: "other", lifecycleOwnerThreadId: "thr_origin" }), null);
 });

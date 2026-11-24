@@ -1,6 +1,6 @@
 # Cost
 
-Cost estimates what Claude Code, Codex and Pi requests would cost at API list prices.
+Cost estimates what Claude Code, Codex, Antigravity, OpenCode, Grok Build, Gemini CLI, Pi, omp and Hermes Agent requests would cost at API list prices.
 Subscription plans do not bill these amounts. The figures show usage in API terms.
 
 ## Use
@@ -46,15 +46,22 @@ Provider logs are the source, not BB events: each log line names its model, and 
 | --- | --- | --- | --- |
 | Claude Code | `<config dir>/projects/**/*.jsonl` | `assistant` line with `message.usage` | `message.id` + `requestId` |
 | Codex | `$CODEX_HOME/sessions/**`, `archived_sessions/` | `token_usage_record` line; model from the last `turn_context` | `response_id` |
-| Pi | `~/.pi/agent/sessions/**` | assistant `message` with `usage` | `responseId` |
+| Antigravity | `~/.gemini/antigravity-cli/brain/*/.system_generated/logs/transcript.jsonl` and `~/.local/share/agy-profiles/*/home/...` | `PLANNER_RESPONSE` line; workspace path from `conversation_summaries.db` | `<sessionId>:<step_index>` |
+| OpenCode | `$XDG_DATA_HOME/opencode/opencode.db` (`~/.local/share/opencode/opencode.db`) | `session_message` (v2) and `message` (v1) `assistant` rows with `tokens` | `id` |
+| Grok Build | `$GROK_HOME/sessions/*/*/usage.json` (`~/.grok/sessions/...`) | `turns[].modelUsage` entry; `cwd` from sibling `summary.json` | `<sessionId>:t<n>:<model>` |
+| Gemini CLI | `~/.gemini/tmp/*/chats/session-*.{jsonl,json}` | `gemini` / `message_update` entry with `tokens`; `cwd` from `.project_root` | `<sessionId>:<id>` |
+| Pi | `$PI_CODING_AGENT_DIR/sessions/**` (`~/.pi/agent/sessions/**`) | assistant `message` with `usage` | `responseId` |
+| omp | `$OMP_AGENT_DIR/sessions/**` (`~/.omp/agent/sessions/**`) | assistant `message` with `usage` | `responseId` |
+| Hermes Agent | `$HERMES_HOME/state.db` (`~/.hermes/state.db`) | `sessions` row with token counts | `id` |
 
 - A request seen twice counts once, and its larger copy wins. Claude Code rewrites lines as output streams in.
-  Forks and resumes repeat requests under the same keys.
-- Codex counts cached and written tokens inside `input_tokens`. The plugin subtracts them.
-- Each file keeps a byte cursor. The requests of a chunk and its cursor commit in one transaction, so a scan resumes where it stopped.
-- Each session keeps the working directory its log names, so usage outside BB groups by directory.
+  Forks, resumes and OpenCode v1→v2 migrations repeat requests under the same keys.
+- Codex, Grok Build and Gemini CLI count cached tokens inside input tokens; the plugin subtracts them.
+- OpenCode and Gemini CLI report reasoning/thought tokens outside output tokens; the plugin adds them to output so they price at the output rate.
+- Append-only JSONL files keep a byte cursor; SQLite databases and rewritten JSON files track `mtimeMs` (including `-wal` for SQLite) and incremental timestamps. Each chunk's requests and cursor commit in one transaction.
+- Each session keeps the working directory its log or metadata names, so usage outside BB groups by directory.
 - Turns are messages that start work. Claude Code turns are user lines with text, not tool results, command echoes or meta lines.
-  Codex turns are `task_started` events with no parent turn. Pi turns are user messages.
+  Codex turns are `task_started` events with no parent turn. Antigravity turns are `USER_INPUT` lines with `USER_EXPLICIT` source. OpenCode, Pi, omp, Gemini CLI and Hermes turns are user messages. Grok turns follow `turns[]`.
 - Peak context is the largest prompt any request sent: uncached input plus cache reads and writes.
 - Sessions map to threads through each thread's `thread/identity` events. Claude Code config directories come from threads' resolved environments and the `claudeConfigDirs` setting.
 
@@ -72,7 +79,7 @@ A tampered file can only change the estimates.
 
 ## Colours
 
-Each provider has one colour in fixed order: Claude Code, Codex, Pi. BB has no categorical chart palette, so the
+Each provider has one colour in fixed order: Claude Code, Codex, Antigravity, OpenCode, Grok Build, Gemini CLI, Pi, omp, Hermes Agent. BB has no categorical chart palette, so the
 plugin defines its own with `light-dark()`, checked with the dataviz palette validator against both surfaces.
 Token types use one ink at four strengths, so they never read as providers.
 

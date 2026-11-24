@@ -14,7 +14,18 @@ async function setup(options: { autoApprove?: boolean; guardDevice?: boolean } =
   const executor = fakeExecutor(options);
   let reloads = 0;
   const factory = () => createPlugin({ fetch: executor.fetch, sleep: instant, reload: () => reloads++ });
-  const first = createFakePluginHost({ pluginId: "executor", loopbackBaseUrl: "http://127.0.0.1:38886" });
+  const first = createFakePluginHost({
+    pluginId: "executor",
+    loopbackBaseUrl: "http://127.0.0.1:38886",
+    sdk: {
+      projects: {
+        list: async () => [
+          { id: "proj-klimble", name: "Klimble" } as never,
+          { id: "proj-untrusted", name: "Untrusted" } as never,
+        ],
+      },
+    },
+  });
   await factory()(first.bb);
   /** A reload hands back a new host; every helper follows the current one. */
   let host = first;
@@ -417,5 +428,172 @@ test("a failed browser refresh keeps cached browser tools and refreshed model to
     assert.equal(t.harness.inspection.registrations.agentTools.find(tool => tool.name === "executor_resume")?.description, "Refreshed while browser is unavailable.");
     await t.rpc("setThreadChoice", {threadId: "browser", choice: {kind: "connection", id: browser}});
     assert.ok((await t.tools("browser")).includes("executor_browser_resume"));
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("a 401 that persists after token refresh marks the connection signed-out with reauth health and error", async () => {
+  const t = await setup();
+  try {
+    const id = await t.connect("Cloudflare", "c_cf");
+    await t.reload();
+    t.executor.setRejectMcp(true);
+    const result = await t.harness.behavior.callAgentTool("executor_whoami", {}, { threadId: "thread-cf" });
+    assert.ok(typeof result !== "string" && result.isError);
+    assert.match((result.content[0] as { text: string }).text, /rejected the sign-in/);
+    const state = await t.state();
+    const conn = state.connections.find((c) => c.id === id);
+    assert.equal(conn?.status, "signed-out");
+    assert.equal(conn?.health.state, "reauth");
+    assert.match(state.errors[id] ?? "", /rejected this sign-in/);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("invalid_client on refresh revokes the grant, forgets the stale client and allows fresh browser sign-in", async () => {
+  const t = await setup();
+  try {
+    const id = await t.connect("Ops", "c_ops");
+    await t.reload();
+    t.executor.expireAccessTokens();
+    t.executor.setInvalidClientOnRefresh(true);
+    const failed = await t.harness.behavior.callAgentTool("executor_whoami", {}, { threadId: "thread-ops" });
+    assert.ok(typeof failed !== "string" && failed.isError);
+    const afterFail = await t.state();
+    assert.equal(afterFail.connections.find((c) => c.id === id)?.status, "signed-out");
+    assert.equal(afterFail.connections.find((c) => c.id === id)?.health.state, "reauth");
+    // Next sign-in registers a new client cleanly instead of reusing the forgotten one.
+    const clientsBefore = t.executor.clients.size;
+    t.executor.setInvalidClientOnRefresh(false);
+    await t.rpc("signIn", { id, method: "browser" });
+    const page = await t.approveInBrowser(id);
+    assert.equal(page.status, 200);
+    await t.waitFor((s) => s.connections.find((c) => c.id === id)?.status === "signed-in");
+    assert.equal(t.executor.clients.size, clientsBefore + 1);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("checkAll verifies auth, discovers apps and accounts, flags unavailableApps as degraded, and keeps grant when offline", async () => {
+  const t = await setup();
+  try {
+    const id = await t.connect("Cloudflare", "c_cf");
+    t.executor.setSearchInventory({
+      namespaces: [
+        { path: 'tools["cloudflare-mcp"]', app: "Cloudflare MCP", accounts: "service: acc_1 (Connor (Read only))" },
+        { path: "tools.notion", app: "Notion", accounts: "oauth: acc_2 (Team)" },
+      ],
+      unavailableApps: [],
+      remaining: 99,
+    });
+    await t.rpc("checkAll", { force: true });
+    const okState = (await t.state()).connections.find((c) => c.id === id);
+    assert.equal(okState?.health.state, "ok");
+    assert.equal(okState?.health.toolCount, 100);
+    assert.deepEqual(okState?.health.apps, [
+      { app: "Cloudflare MCP", account: "Connor (Read only)", ok: true, reason: null },
+      { app: "Notion", account: "Team", ok: true, reason: null },
+    ]);
+
+    // Non-forced checkAll within TTL skips redundant MCP calls.
+    const requestsBefore = t.executor.requests.length;
+    await t.rpc("checkAll", { force: false });
+    assert.equal(t.executor.requests.length, requestsBefore);
+
+    // Forced check detects an unavailable app as degraded.
+    t.executor.setSearchInventory({
+      namespaces: [{ path: "tools.notion", app: "Notion", accounts: "oauth: acc_2 (Team)" }],
+      unavailableApps: [{ app: "Notion", reason: "Re-authenticate in Executor" }],
+      remaining: 10,
+    });
+    await t.rpc("check", { id, force: true });
+    const degraded = (await t.state()).connections.find((c) => c.id === id);
+    assert.equal(degraded?.health.state, "degraded");
+    assert.equal(degraded?.health.apps[0]?.ok, false);
+    assert.equal(degraded?.health.apps[0]?.reason, "Re-authenticate in Executor");
+
+    // Offline server marks unreachable without deleting the saved grant.
+    t.executor.setOffline(true);
+    await t.rpc("check", { id, force: true });
+    const offline = (await t.state()).connections.find((c) => c.id === id);
+    assert.equal(offline?.status, "signed-in");
+    assert.equal(offline?.health.state, "unreachable");
+
+    // Recovers cleanly when the server comes back.
+    t.executor.setOffline(false);
+    t.executor.setSearchInventory({ namespaces: [{ path: "tools.notion", app: "Notion" }], unavailableApps: [], remaining: 5 });
+    await t.rpc("check", { id, force: true });
+    const back = (await t.state()).connections.find((c) => c.id === id);
+    assert.equal(back?.health.state, "ok");
+    assert.equal(back?.health.apps[0]?.ok, true);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("checkAll merges skills({}) apps with search({ limit: 1 }) apps so multi-app connections list every app", async () => {
+  const t = await setup();
+  try {
+    t.executor.setSkillsInventory({
+      skills: [
+        { name: "tools", app: { id: "app_11111111-1111-1111-1111-111111111111", name: "FreeAgent", slug: "freeagent" } },
+        { name: "tools", app: { id: "app_22222222-2222-2222-2222-222222222222", name: "PostHog", slug: "posthog" } },
+      ],
+      unavailableApps: [],
+    });
+    t.executor.setSearchInventory({
+      namespaces: [{ path: 'tools["cloudflare-mcp"]', app: "Cloudflare MCP", accounts: "service: acc_1 (Read only)" }],
+      unavailableApps: [],
+      remaining: 99,
+    });
+    const id = await t.connect("Rex", "c_rex");
+    await t.rpc("check", { id, force: true });
+    const conn = (await t.state()).connections.find((c) => c.id === id);
+    assert.equal(conn?.health.state, "ok");
+    assert.equal(conn?.health.toolCount, 100);
+    assert.deepEqual(conn?.health.apps.map((a) => a.app), ["Cloudflare MCP", "FreeAgent", "PostHog"]);
+  } finally { await t.harness.lifecycle.dispose(); }
+});
+
+test("project defaults override global default, support off, survive reload, and inherit into child/workflow threads", async () => {
+  const t = await setup();
+  try {
+    await t.connect("Rex", "c_rex");
+    const klimble = await t.connect("Klimble", "c_klimble");
+    const cf = await t.connect("Cloudflare", "c_cf");
+    await t.reload();
+
+    // Set Klimble project default to Klimble connection, and Untrusted project default to Off.
+    await t.rpc("setProjectChoice", { projectId: "proj-klimble", choice: { kind: "connection", id: klimble } });
+    await t.rpc("setProjectChoice", { projectId: "proj-untrusted", choice: { kind: "off" } });
+
+    const callWhoami = async (threadId: string, projectId: string) => {
+      const result = await t.harness.behavior.callAgentTool("executor_whoami", {}, { threadId, projectId });
+      assert.ok(typeof result !== "string" && !result.isError, JSON.stringify(result));
+      return JSON.parse((result.content[0] as { text: string }).text).connection as string;
+    };
+
+    assert.equal(await callWhoami("thr-k1", "proj-klimble"), "c_klimble");
+    assert.equal(await callWhoami("thr-other", "proj-other"), "c_rex");
+    const untrustedTools = (await t.harness.behavior.resolveAgentConfiguration(
+      makePluginAgentConfigurationContext({ thread: { id: "thr-u1" } as never, project: { id: "proj-untrusted" } as never }),
+    )).tools;
+    assert.deepEqual(untrustedTools, []);
+
+    // A workflow worker inherits its origin thread's explicit pick (Cloudflare), even over the project default.
+    await t.rpc("setThreadChoice", { threadId: "thr-parent", choice: { kind: "connection", id: cf } });
+    const hook = t.harness.inspection.registrations.hooks["message.dispatch"];
+    assert.ok(hook);
+    await hook(makeMessageDispatchHookContext({
+      thread: { id: "thr-worker", parentThreadId: null, originPluginId: "workflows", lifecycleOwnerThreadId: "thr-parent" } as never,
+      project: { id: "proj-klimble" } as never,
+    }));
+    assert.equal(await callWhoami("thr-worker", "proj-klimble"), "c_cf");
+    assert.deepEqual(await t.rpc("threadOwner", { threadId: "thr-worker", projectId: "proj-klimble" }), { kind: "connection", id: cf });
+
+    // Global default can be set to Off while project defaults still resolve.
+    await t.rpc("setDefault", { choice: { kind: "off" } });
+    await t.reload();
+    assert.equal(await callWhoami("thr-k1", "proj-klimble"), "c_klimble");
+    assert.equal(await callWhoami("thr-worker", "proj-klimble"), "c_cf");
+    const otherTools = (await t.harness.behavior.resolveAgentConfiguration(
+      makePluginAgentConfigurationContext({ thread: { id: "thr-other" } as never, project: { id: "proj-other" } as never }),
+    )).tools;
+    assert.deepEqual(otherTools, []);
   } finally { await t.harness.lifecycle.dispose(); }
 });

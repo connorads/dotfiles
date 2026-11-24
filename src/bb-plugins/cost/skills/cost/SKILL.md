@@ -5,7 +5,7 @@ description: Check agent usage at API prices, backfill usage history, or refresh
 
 # Cost
 
-The Cost plugin estimates what Claude Code, Codex and Pi requests would cost at API list prices.
+The Cost plugin estimates what Claude Code, Codex, Antigravity, OpenCode, Grok Build, Gemini CLI, Pi, omp and Hermes Agent requests would cost at API list prices.
 Figures are estimates for subscription users, not bills.
 
 - `bb cost backfill` reads every session log on every active host. It runs in the background and is safe to repeat.

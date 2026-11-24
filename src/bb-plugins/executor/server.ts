@@ -1,10 +1,10 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { rpcContract, STATE_CHANGED, THREAD_CHANGED, threadChoice } from "./contracts.ts";
 import { CallCancelledError } from "./src/connection.ts";
+import { ownerOf, type ApprovalMode } from "./src/connections.ts";
 import { CredentialStore, vaultSettingSchema } from "./src/credentials.ts";
 import type { FetchLike } from "./src/oauth.ts";
 import { describe, ExecutorService, UserFacingError, type ToolCache, type ToolCaches } from "./src/service.ts";
-import type { ApprovalMode } from "./src/connections.ts";
 import { bindTools, errorResult, toBbResult } from "./src/tools.ts";
 
 const MAX_INSTRUCTIONS = 4096;
@@ -80,6 +80,8 @@ async function load(bb: BbPluginApi, options: Options) {
     browser: agentInstructions(service.tools.browser?.instructions ?? null, "browser"),
   };
   bb.experimental_hooks.on("message.dispatch", async (ctx) => {
+    // Always capture project and parent/workflow owner so subthreads inherit their owner's connection.
+    await service.recordThreadContext(ctx.thread.id, ctx.project?.id ?? null, ownerOf(ctx.thread));
     const submission = ctx.experimental_submission;
     if (submission?.pluginId !== bb.pluginId) return { action: "proceed" };
     const data = submission.data;
@@ -91,19 +93,31 @@ async function load(bb: BbPluginApi, options: Options) {
     return { action: "proceed" };
   });
   bb.agents.configure((ctx) => {
-    const mode = service.modeFor(ctx.thread.id);
+    const mode = service.modeFor(ctx.thread.id, ctx.project?.id ?? null);
     return { tools: mode ? toolNames[mode] : [], skills: [], instructions: mode ? instructions[mode] : "" };
   });
 
   bb.rpc.register(rpcContract, {
-    state: async () => service.state(),
+    state: async () => {
+      let projects: Array<{ id: string; name: string }> = [];
+      try {
+        projects = (await bb.sdk.projects.list()).map((p) => ({ id: p.id, name: p.name }));
+      } catch {
+        projects = [];
+      }
+      return service.state(projects);
+    },
     add: async ({ name, url }) => service.add(name, url),
     remove: async ({ id }) => (await service.remove(id), null),
-    setDefault: async ({ id }) => (await service.setDefault(id), null),
+    setDefault: async (input) => (await service.setDefault("choice" in input ? input.choice : input.id), null),
+    setProjectChoice: async ({ projectId, choice }) => (await service.setProjectChoice(projectId, choice), null),
     signIn: async ({ id, method }) => (await service.signIn(id, method), null),
     cancelSignIn: async ({ id }) => (service.cancelSignIn(id), null),
     signOut: async ({ id }) => (await service.signOut(id), null),
+    check: async ({ id, force }) => (await service.check(id, { force }), null),
+    checkAll: async ({ force }) => (await service.checkAll({ force }), null),
     threadChoice: async ({ threadId }) => service.choiceFor(threadId),
+    threadOwner: async ({ threadId, projectId }) => service.ownerResolutionFor(threadId, projectId ?? null),
     setThreadChoice: async ({ threadId, choice }) => {
       await service.setThreadChoice(threadId, choice);
       bb.realtime.publish(THREAD_CHANGED, { threadId });
@@ -135,7 +149,7 @@ function registerTools(bb: BbPluginApi, service: ExecutorService, cache: ToolCac
       presentation: { label: { pending: `Running Executor ${upstream.name}`, completed: `Ran Executor ${upstream.name}` } },
       async execute(params, ctx) {
         try {
-          return toBbResult(await service.call(ctx.threadId, { name: upstream.name, mode }, asArguments(params), ctx.signal));
+          return toBbResult(await service.call(ctx.threadId, { name: upstream.name, mode }, asArguments(params), { signal: ctx.signal, projectId: ctx.projectId ?? null }));
         } catch (error) {
           if (error instanceof CallCancelledError || error instanceof UserFacingError) return errorResult(error.message);
           return errorResult(`Executor ${upstream.name} failed: ${describe(error)}`);

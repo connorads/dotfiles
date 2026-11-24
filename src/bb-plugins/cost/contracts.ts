@@ -5,17 +5,22 @@ import type { ProjectLine, Summary, ThreadCost } from './src/report.ts';
 import type { InsightPoint } from './src/insights.ts';
 
 const provider = z.enum(providers);
-const context = z.object({ sessionId: z.string().optional(), cwd: z.string().optional(), model: z.string().optional(),
-  speed: z.enum(['standard', 'fast']).optional(), skipLine: z.boolean().optional() });
+const context = z.object({
+  sessionId: z.string().optional(), cwd: z.string().optional(), model: z.string().optional(),
+  speed: z.enum(['standard', 'fast']).optional(), skipLine: z.boolean().optional(),
+  mtimeMs: z.number().optional(), sinceMs: z.number().optional(),
+});
 
 export const hostContract = defineRpcContract({
   /** Session logs on this host changed at or after `since`. */
   list: {
     input: z.object({ claudeConfigDirs: z.array(z.string()), since: z.number() }),
-    output: z.object({ files: z.array(z.object({ provider, path: z.string(), size: z.number(), mtimeMs: z.number() })) }),
+    output: z.object({
+      files: z.array(z.object({ provider, path: z.string(), size: z.number(), mtimeMs: z.number(), rewrite: z.boolean().optional() })),
+    }),
   },
   read: {
-    input: z.object({ provider, path: z.string(), offset: z.number().int().nonnegative(), context }),
+    input: z.object({ provider, path: z.string(), offset: z.number().int().nonnegative(), context, mtimeMs: z.number().optional() }),
     output: z.object({ offset: z.number(), context, records: z.array(z.custom<UsageRecord>()), turns: z.array(z.custom<Turn>()), sessions: z.record(z.string(), z.string()) }),
   },
 });

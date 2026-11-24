@@ -2,13 +2,14 @@
 // section and the command. State arrives by RPC; realtime only says "refetch".
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { PluginRpcClient } from '@get-bb/plugin-sdk/app';
-import type { ConnectionView, rpcContract, StateView } from './contracts.ts';
+import type { ConnectionView, OwnerResolutionView, rpcContract, ScopedChoiceView, StateView } from './contracts.ts';
 
 export type Rpc = PluginRpcClient<typeof rpcContract>;
 export type Choice = { kind: 'default' } | { kind: 'connection'; id: string } | { kind: 'off' };
+export type ResolutionSource = 'thread' | 'owner' | 'project' | 'default';
 export type Anchor = { top: number; right: number; bottom: number; left: number } | null;
 /** instant: opened by keyboard, so it appears without an entrance. */
-export type Open = { threadId: string | null; anchor: Anchor; instant: boolean } | null;
+export type Open = { threadId: string | null; projectId: string | null; anchor: Anchor; instant: boolean } | null;
 
 /**
  * A failed pick or add that may have outlived its popover, for a thread or, with a null threadId, the draft.
@@ -20,10 +21,25 @@ export type Unsaved = { threadId: string | null; message: string } | null;
  * saves: the pick whose save is in flight per thread, so a popover reopened mid-save waits for it too.
  */
 interface State {
-  view: StateView | null; loadError: string | null; choices: ReadonlyMap<string, Choice>; saves: ReadonlyMap<string, Choice>;
-  draft: Choice; open: Open; unsaved: Unsaved;
+  view: StateView | null;
+  loadError: string | null;
+  choices: ReadonlyMap<string, Choice>;
+  owners: ReadonlyMap<string, OwnerResolutionView | null>;
+  saves: ReadonlyMap<string, Choice>;
+  draft: Choice;
+  open: Open;
+  unsaved: Unsaved;
 }
-let state: State = { view: null, loadError: null, choices: new Map(), saves: new Map(), draft: { kind: 'default' }, open: null, unsaved: null };
+let state: State = {
+  view: null,
+  loadError: null,
+  choices: new Map(),
+  owners: new Map(),
+  saves: new Map(),
+  draft: { kind: 'default' },
+  open: null,
+  unsaved: null,
+};
 const listeners = new Set<() => void>();
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -34,6 +50,16 @@ export function setClient(rpc: Rpc) { client = rpc; }
 export function rpc(): Rpc {
   if (!client) throw new Error('Executor is still loading.');
   return client;
+}
+
+/** Remember each mounted thread's projectId and the active draft's projectId so keyboard ⌥E knows the project. */
+const threadProjects = new Map<string, string>();
+let activeDraftProject: string | null = null;
+export function rememberThreadProject(threadId: string, projectId: string | null | undefined) {
+  if (projectId) threadProjects.set(threadId, projectId);
+}
+export function setDraftProject(projectId: string | null) {
+  activeDraftProject = projectId;
 }
 
 export const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
@@ -49,6 +75,44 @@ export async function refresh() {
   } catch (cause) {
     if (read === reads) set({ loadError: message(cause) });
   }
+}
+
+/** Triggers a read-only server health probe. Never throws; results arrive via `state`. */
+export async function checkAll(force = false) {
+  if (!client) return;
+  try {
+    await client.call('checkAll', { force });
+    await refresh();
+  } catch { /* health checks are best-effort */ }
+}
+
+export async function checkOne(id: string, force = true) {
+  if (!client) return;
+  try {
+    await client.call('check', { id, force });
+    await refresh();
+  } catch { /* health checks are best-effort */ }
+}
+
+/** Loads whether a thread inherits from a parent/workflow owner thread. Best-effort. */
+export async function loadOwner(threadId: string, projectId?: string | null) {
+  if (!client) return;
+  try {
+    const owner = await client.call('threadOwner', { threadId, projectId: projectId ?? null });
+    const owners = new Map(state.owners);
+    owners.set(threadId, owner);
+    set({ owners });
+  } catch { /* older test harnesses may not mock threadOwner */ }
+}
+
+export async function setProjectChoice(projectId: string, choice: Choice) {
+  await rpc().call('setProjectChoice', { projectId, choice });
+  await refresh();
+}
+
+export async function setGlobalDefault(choice: ScopedChoiceView) {
+  await rpc().call('setDefault', { choice });
+  await refresh();
 }
 
 /** Picks per thread, so a read that started before a pick cannot overwrite it. */
@@ -124,24 +188,103 @@ export function resetDraft() { set({ draft: { kind: 'default' } }); }
 export function draftChoice() { return state.draft; }
 
 export type Resolved =
-  | { kind: 'connection'; id: string; name: string; status: ConnectionView['status']; viaDefault: boolean }
-  | { kind: 'off' }
-  | { kind: 'none' };
+  | { kind: 'connection'; id: string; name: string; status: ConnectionView['status']; connection: ConnectionView; source: ResolutionSource; viaDefault: boolean }
+  | { kind: 'off'; source: ResolutionSource }
+  | { kind: 'none'; source: ResolutionSource };
 
-/** Mirrors the server's resolveChoice so the chip names what the next call will use. */
-export function resolve(view: StateView | null, choice: Choice | undefined): Resolved {
-  if (choice?.kind === 'off') return { kind: 'off' };
-  const connections = view?.connections ?? [];
-  const chosen = choice?.kind === 'connection' ? connections.find(c => c.id === choice.id) : undefined;
-  const connection = chosen ?? connections.find(c => c.isDefault);
-  if (!connection) return { kind: 'none' };
-  return { kind: 'connection', id: connection.id, name: connection.name, status: connection.status, viaDefault: !chosen };
+/** Resolves the global default choice from `StateView`, tolerating older fixtures without `defaultChoice`. */
+export function globalDefaultOf(view: StateView | null): ScopedChoiceView | null {
+  if (!view) return null;
+  if (view.defaultChoice !== undefined) return view.defaultChoice;
+  const fallback = view.connections.find(c => c.isDefault);
+  return fallback ? { kind: 'connection', id: fallback.id } : null;
 }
 
-/** The chip label's note on a connection that cannot run tools yet. */
-export function statusNote(resolved: Resolved): string {
+/** Mirrors the server's 4-level hierarchy: thread → owner → project → global default. */
+export function resolve(
+  view: StateView | null,
+  choice: Choice | undefined,
+  context: { projectId?: string | null; owner?: OwnerResolutionView | null } = {},
+): Resolved {
+  const connections = view?.connections ?? [];
+  const byId = (id: string) => connections.find(c => c.id === id);
+
+  if (choice?.kind === 'off') return { kind: 'off', source: 'thread' };
+  if (choice?.kind === 'connection') {
+    const found = byId(choice.id);
+    if (found) return { kind: 'connection', id: found.id, name: found.name, status: found.status, connection: found, source: 'thread', viaDefault: false };
+  }
+
+  if (context.owner) {
+    if (context.owner.kind === 'off') return { kind: 'off', source: 'owner' };
+    if (context.owner.kind === 'connection') {
+      const found = byId(context.owner.id);
+      if (found) return { kind: 'connection', id: found.id, name: found.name, status: found.status, connection: found, source: 'owner', viaDefault: true };
+    }
+    return { kind: 'none', source: 'owner' };
+  }
+
+  const projectChoice = context.projectId
+    ? view?.projects?.find(p => p.id === context.projectId)?.choice ?? null
+    : null;
+  if (projectChoice) {
+    if (projectChoice.kind === 'off') return { kind: 'off', source: 'project' };
+    const found = byId(projectChoice.id);
+    if (found) return { kind: 'connection', id: found.id, name: found.name, status: found.status, connection: found, source: 'project', viaDefault: true };
+  }
+
+  const globalDefault = globalDefaultOf(view);
+  if (globalDefault) {
+    if (globalDefault.kind === 'off') return { kind: 'off', source: 'default' };
+    const found = byId(globalDefault.id);
+    if (found) return { kind: 'connection', id: found.id, name: found.name, status: found.status, connection: found, source: 'default', viaDefault: true };
+  }
+
+  return { kind: 'none', source: 'default' };
+}
+
+export function sourceTag(source: ResolutionSource): string | null {
+  if (source === 'thread') return null;
+  if (source === 'owner') return 'parent';
+  return source;
+}
+
+export type HealthKind = 'ok' | 'degraded' | 'reauth' | 'unreachable' | 'signed-out' | 'signing-in' | 'checking' | 'error' | 'unknown';
+
+export function healthKind(connection: ConnectionView, error?: string): HealthKind {
+  if (connection.status === 'signing-in') return 'signing-in';
+  if (connection.status === 'signed-out') {
+    return connection.health?.state === 'reauth' ? 'reauth' : 'signed-out';
+  }
+  const h = connection.health?.state ?? 'unknown';
+  if (h === 'checking') return 'checking';
+  if (h === 'reauth') return 'reauth';
+  if (h === 'unreachable') return 'unreachable';
+  if (h === 'degraded') return 'degraded';
+  if (error) return 'error';
+  if (h === 'ok') return 'ok';
+  return 'unknown';
+}
+
+export function dotStateFor(kind: HealthKind): 'ok' | 'warn' | 'danger' | 'checking' | 'muted' {
+  if (kind === 'ok') return 'ok';
+  if (kind === 'checking' || kind === 'signing-in') return 'checking';
+  if (kind === 'reauth' || kind === 'unreachable' || kind === 'error') return 'danger';
+  if (kind === 'degraded' || kind === 'signed-out') return 'warn';
+  return 'muted';
+}
+
+/** The chip label's note on a connection that cannot run tools cleanly. */
+export function statusNote(resolved: Resolved, error?: string): string {
   if (resolved.kind !== 'connection') return '';
-  return resolved.status === 'signed-out' ? ', signed out' : resolved.status === 'signing-in' ? ', signing in' : '';
+  const kind = healthKind(resolved.connection, error);
+  if (kind === 'reauth') return ', sign-in rejected';
+  if (kind === 'signed-out') return ', signed out';
+  if (kind === 'signing-in') return ', signing in';
+  if (kind === 'unreachable') return ', offline';
+  if (kind === 'degraded') return ', app needs auth';
+  if (kind === 'error') return ', error';
+  return '';
 }
 
 const chipSelector = '[data-executor-chip]';
@@ -150,12 +293,25 @@ export function visibleChip(): HTMLElement | null {
   return Array.from(document.querySelectorAll<HTMLElement>(chipSelector)).find(chip => chip.getClientRects().length > 0) ?? null;
 }
 
-export function toggle(threadId: string | null, via: 'pointer' | 'keyboard', from?: HTMLElement) {
+export function toggle(threadId: string | null, via: 'pointer' | 'keyboard', from?: HTMLElement, projectId?: string | null) {
   if (state.open) { close(); return; }
+  const resolvedProject = projectId !== undefined
+    ? projectId
+    : threadId ? (threadProjects.get(threadId) ?? null) : activeDraftProject;
   const box = (from ?? visibleChip())?.getBoundingClientRect();
-  set({ open: { threadId, anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null, instant: via === 'keyboard' } });
+  set({
+    open: {
+      threadId,
+      projectId: resolvedProject,
+      anchor: box ? { top: box.top, right: box.right, bottom: box.bottom, left: box.left } : null,
+      instant: via === 'keyboard',
+    },
+  });
   void refresh();
-  if (threadId) void loadChoice(threadId);
+  if (threadId) {
+    void loadChoice(threadId);
+    void loadOwner(threadId, resolvedProject);
+  }
 }
 /** Closing clears only the closed popover's thread's failure: another thread's chip may still be explaining one. */
 export function close() { set({ open: null, unsaved: state.unsaved?.threadId === state.open?.threadId ? null : state.unsaved }); }
@@ -174,4 +330,14 @@ export function useNow(intervalMs: number, active = true) {
 export function countdown(expiresAt: number, now: number): string {
   const secs = Math.max(0, Math.round((expiresAt - now) / 1000));
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+export function timeAgo(at: number, now: number): string {
+  const secs = Math.max(0, Math.round((now - at) / 1000));
+  if (secs < 15) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  return `${hours}h ago`;
 }

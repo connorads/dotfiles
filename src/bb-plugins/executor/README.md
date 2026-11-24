@@ -60,8 +60,12 @@ flowchart LR
   it: a self-hosted Executor behind an access proxy may keep
   `device-authorization` behind sign-in, which leaves only the browser flow.
   Executor API keys are not used: they ignore connection limits.
-- **Thread choice**: kept in plugin storage. This selector is a routing preference,
-  not a security boundary. An agent with BB CLI or RPC access can change it.
+- **Choice inheritance**: threads resolve in this order: the thread's own pick,
+  then its parent or BB workflow origin thread, then its project default, then
+  the global default (which can also be Off). Press `p` in the `⌥E` popover or
+  use **Project defaults** in Settings → Executor to bind a project (for example
+  Klimble) to its own scoped connection. No CLI switch command is exposed so
+  agents stay within the human-configured connection.
   Connections with the same approval mode share tool schemas. Model and browser
   modes use separate tool names, schemas and instructions. Turning a thread off
   also removes the tools from its next session.
@@ -72,8 +76,16 @@ flowchart LR
   browser). Refresh tokens rotate, and each new one is saved before any other
   refresh. Access tokens refresh a minute before they expire.
 - A 401 means Executor ran nothing, so the plugin refreshes and retries once.
+  A second 401 (or `invalid_grant` / `invalid_client` on refresh) revokes the
+  local grant immediately, marks the connection as needing re-authentication,
+  and surfaces a one-click **Sign in** action in the popover and Settings.
   Any other failure is never retried, because a retry could repeat side
   effects. Calls time out after 330 s, above Executor's 5-minute program limit.
+- Live health checks verify signed-in connections read-only (`listTools`, plus
+  `search({ limit: 1 })` when exposed) to surface live status dots, connected
+  apps and accounts, `unavailableApps` warnings, and offline states without
+  wiping saved grants. Results cache for two minutes and refresh on demand with
+  **Check all** or `c`.
 - Tool schemas and instructions are cached separately for model and browser
   approval modes. The plugin reloads when either changes, including changes
   that keep the same tool names. Loading never waits on the network.

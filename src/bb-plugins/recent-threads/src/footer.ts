@@ -1,16 +1,20 @@
-const selector = 'button[data-testid="plugin-sidebar-footer-item-recent-threads-toggle"]';
+const selectorFor = (itemId: string) =>
+  `button[data-testid="plugin-sidebar-footer-item-recent-threads-${itemId}"]`;
 
 // Footer action items expose no persistent active state in the SDK, so decorate
-// the host button to mirror whether chronological mode is currently active.
+// the host buttons to mirror whether each view is currently active.
 export function mountChrome(document: Document, actions: {
-  active(): boolean;
+  items: Record<string, () => boolean>;
   subscribe(update: () => void): () => void;
 }) {
+  const buttons = (itemId: string) => Array.from(document.querySelectorAll(selectorFor(itemId)));
   const update = () => {
-    const isActive = actions.active();
-    for (const button of Array.from(document.querySelectorAll(selector))) {
-      button.setAttribute('aria-pressed', String(isActive));
-      button.classList.toggle('rt-active', isActive);
+    for (const [itemId, active] of Object.entries(actions.items)) {
+      const isActive = active();
+      for (const button of buttons(itemId)) {
+        button.setAttribute('aria-pressed', String(isActive));
+        button.classList.toggle('rt-active', isActive);
+      }
     }
   };
   const observer = new MutationObserver(update);
@@ -20,9 +24,11 @@ export function mountChrome(document: Document, actions: {
   return () => {
     observer.disconnect();
     unsubscribe();
-    for (const button of Array.from(document.querySelectorAll(selector))) {
-      button.classList.remove('rt-active');
-      button.removeAttribute('aria-pressed');
+    for (const itemId of Object.keys(actions.items)) {
+      for (const button of buttons(itemId)) {
+        button.classList.remove('rt-active');
+        button.removeAttribute('aria-pressed');
+      }
     }
   };
 }

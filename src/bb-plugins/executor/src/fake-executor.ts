@@ -37,14 +37,37 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
   let instructions: string | undefined;
   let extraResumeField = false;
   let browserOffline = false;
+  let allOffline = false;
+  let rejectMcp = false;
+  let invalidClientOnRefresh = false;
+  let searchInventory: {
+    namespaces?: Array<{ path: string; app: string; accounts?: string }>;
+    unavailableApps?: Array<string | { app: string; name?: string; reason?: string }>;
+    remaining?: number;
+  } | null = null;
+  let skillsInventory: {
+    skills?: Array<{ name: string; app: { id: string; name: string; slug: string } }>;
+    unavailableApps?: Array<string | { app: string; name?: string; reason?: string }>;
+  } | null = null;
   let effects = 0;
   let approval: { answer?: "accept" | "decline" } | undefined;
   const pending = () => structured({ status: "approval-required", requestId: "apr_fixture", approvalUrl: `${FAKE_ORIGIN}/approve/apr_fixture` });
 
   const handler = createMcpHandler(() => {
     const server = new McpServer({ name: "fake-executor", version: "0.0.0" }, { instructions: instructions ?? (browserMode ? "Show approvalUrl. Resume with requestId only." : FAKE_INSTRUCTIONS) });
-    server.registerTool("search", { description: "Find tools.", inputSchema: z.object({ query: z.string() }) },
-      async ({ query }) => structured({ items: [{ path: `tools.linear.${query}` }] }));
+    if (skillsInventory) {
+      server.registerTool("skills", { description: "List skills.", inputSchema: z.object({ app: z.string().optional() }) },
+        async () => structured({ skills: skillsInventory?.skills ?? [], unavailableApps: skillsInventory?.unavailableApps ?? [] }));
+    }
+    server.registerTool("search", { description: "Find tools.", inputSchema: z.object({ query: z.string().optional(), limit: z.number().optional() }) },
+      async ({ query }) => structured({
+        items: [{ path: `tools.linear.${query ?? "issues"}` }],
+        ...(searchInventory ? {
+          namespaces: searchInventory.namespaces ?? [],
+          unavailableApps: searchInventory.unavailableApps ?? [],
+          remaining: searchInventory.remaining ?? 0,
+        } : {}),
+      }));
     server.registerTool("execute", { description: "Run a program.", inputSchema: z.object({ code: z.string() }) },
       async ({ code }, ctx) => {
         if (browserMode && code === "needs-approval") {
@@ -105,6 +128,7 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
       return issue({ clientId: code.clientId, resource: code.resource });
     }
     if (form.get("grant_type") === "refresh_token") {
+      if (invalidClientOnRefresh) return oauth(401, { error: "invalid_client" });
       const grant = refreshTokens.get(form.get("refresh_token") ?? "");
       if (!grant || grant.clientId !== form.get("client_id")) return oauth(400, { error: "invalid_grant" });
       refreshTokens.delete(form.get("refresh_token")!);
@@ -158,6 +182,8 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
       return new Response(null, { status: 200 });
     }
     if (url.origin === FAKE_ORIGIN && url.pathname === "/mcp") {
+      if (allOffline) throw new TypeError("fetch failed");
+      if (rejectMcp) return new Response("unauthorized", { status: 401 });
       const bearer = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
       const grant = accessTokens.get(bearer);
       // A grant serves only the URL it was issued for, as Executor's deliveryRefusal does.
@@ -202,6 +228,11 @@ export function fakeExecutor(options: { autoApprove?: boolean; guardDevice?: boo
     setInstructions(value: string) { instructions = value; },
     addResumeField() { extraResumeField = true; },
     setBrowserOffline() { browserOffline = true; },
+    setOffline(value: boolean) { allOffline = value; },
+    setRejectMcp(value: boolean) { rejectMcp = value; },
+    setInvalidClientOnRefresh(value: boolean) { invalidClientOnRefresh = value; },
+    setSearchInventory(value: typeof searchInventory) { searchInventory = value; },
+    setSkillsInventory(value: typeof skillsInventory) { skillsInventory = value; },
     authorize,
     requests,
     clients,

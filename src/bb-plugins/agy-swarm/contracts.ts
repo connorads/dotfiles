@@ -1,8 +1,11 @@
 import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 
-export const memberStateSchema = z.enum(['working', 'waiting', 'done', 'killed', 'error']);
+export const memberStateSchema = z.enum(['working', 'waiting', 'blocked', 'done', 'killed', 'error']);
 export type MemberState = z.infer<typeof memberStateSchema>;
+
+export const swarmStatusSchema = z.enum(['working', 'blocked', 'done', 'stopped', 'waiting']);
+export type SwarmStatus = z.infer<typeof swarmStatusSchema>;
 
 export const swarmMemberSchema = z.object({
   name: z.string(),
@@ -69,7 +72,12 @@ export const swarmSnapshotSchema = z.discriminatedUnion('kind', [
       totalWorkers: z.number().int().nonnegative(),
       workingWorkers: z.number().int().nonnegative(),
       doneWorkers: z.number().int().nonnegative(),
+      blockedWorkers: z.number().int().nonnegative(),
+      killedWorkers: z.number().int().nonnegative(),
+      waitingWorkers: z.number().int().nonnegative(),
       errorWorkers: z.number().int().nonnegative(),
+      status: swarmStatusSchema,
+      lastActivityAt: z.string().nullable(),
       active: z.boolean(),
     }),
   }),

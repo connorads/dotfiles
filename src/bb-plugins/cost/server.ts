@@ -5,7 +5,7 @@ import { parseLiteLlm, priceSourceUrl } from './src/prices.ts';
 import { groupProjects, localDay, summarise, threadCost, type ProjectRef } from './src/report.ts';
 import { downsample, foldThreads, growth, requestCosts, rootOf, type InsightPoint } from './src/insights.ts';
 import type { UsageRow } from './src/ledger.ts';
-import type { Provider } from './src/records.ts';
+import { canonicalProvider, type Provider } from './src/records.ts';
 export { rpcContract } from './contracts.ts';
 
 const day = 86_400_000;
@@ -80,6 +80,11 @@ export default function plugin(bb: BbPluginApi) {
     const cursors = store().cursors(hostId);
     const pending = files.flatMap(file => {
       const saved = cursors.get(file.path);
+      if (file.rewrite) {
+        if (saved && saved.context.mtimeMs === file.mtimeMs && saved.size === file.size) return [];
+        // Keep saved watermarks (such as SQLite `sinceMs`) while resetting offset so the source is scanned once.
+        return [{ ...file, cursor: { size: file.size, offset: 0, context: saved?.context ?? {} } }];
+      }
       // A file smaller than its cursor was replaced, so it is read again; its requests keep their keys.
       const cursor: FileCursor = saved && saved.offset <= file.size ? saved : { size: 0, offset: 0, context: {} };
       return cursor.offset < file.size ? [{ ...file, cursor }] : [];
@@ -88,16 +93,27 @@ export default function plugin(bb: BbPluginApi) {
     progress.bytes += pending.reduce((sum, file) => sum + file.size - file.cursor.offset, 0);
     let changed = false;
     for (const file of pending) {
+      if (signal?.aborted) break;
       let cursor = file.cursor;
-      while (cursor.offset < file.size && !signal?.aborted) {
-        const result = await host.call('read', { provider: file.provider, path: file.path, offset: cursor.offset, context: cursor.context },
+      if (file.rewrite) {
+        const result = await host.call('read', { provider: file.provider, path: file.path, offset: 0, context: cursor.context, mtimeMs: file.mtimeMs },
           { hostId, timeoutMs: 60_000 });
-        if (result.offset === cursor.offset) break;
-        progress.bytesDone += result.offset - cursor.offset;
+        progress.bytesDone += file.size;
         progress.records += result.records.length;
-        cursor = { size: file.size, offset: result.offset, context: result.context };
+        cursor = { size: file.size, offset: file.size, context: { ...result.context, mtimeMs: file.mtimeMs } };
         store().ingest(hostId, file.path, { cursor, records: result.records, turns: result.turns, sessions: result.sessions });
         changed ||= result.records.length > 0;
+      } else {
+        while (cursor.offset < file.size && !signal?.aborted) {
+          const result = await host.call('read', { provider: file.provider, path: file.path, offset: cursor.offset, context: cursor.context },
+            { hostId, timeoutMs: 60_000 });
+          if (result.offset === cursor.offset) break;
+          progress.bytesDone += result.offset - cursor.offset;
+          progress.records += result.records.length;
+          cursor = { size: file.size, offset: result.offset, context: result.context };
+          store().ingest(hostId, file.path, { cursor, records: result.records, turns: result.turns, sessions: result.sessions });
+          changed ||= result.records.length > 0;
+        }
       }
       progress.filesDone += 1;
     }
@@ -237,18 +253,21 @@ export default function plugin(bb: BbPluginApi) {
       const lines = summarise(store().rowsSince(from), cards, localDay(windowStart(days)), localDay(new Date())).threads;
       const lengths = store().lengths(from);
       const info = store().threads(lines.flatMap(line => line.threadId ? [line.threadId] : []));
-      const describe = (threadId: string) => {
+      const describe = (threadId: string, fallback?: Provider) => {
         const value = info.get(threadId) ?? store().threads([threadId]).get(threadId);
-        return value ? { title: value.title, provider: value.provider as Provider } : undefined;
+        if (!value) return undefined;
+        const provider = canonicalProvider(value.provider) ?? fallback;
+        return provider ? { title: value.title, provider } : undefined;
       };
       const points: InsightPoint[] = lines.flatMap(line => {
         if (!line.threadId) return [];
         const length = lengths.get(line.threadId) ?? { requests: line.requests, turns: 0, peakContext: 0 };
-        const meta = describe(line.threadId);
-        return [{ threadId: line.threadId, title: meta?.title ?? 'Untitled thread', provider: meta?.provider ?? line.providers[0] ?? 'claude-code',
+        const fallback = line.providers[0] ?? 'claude-code';
+        const meta = describe(line.threadId, fallback);
+        return [{ threadId: line.threadId, title: meta?.title ?? 'Untitled thread', provider: meta?.provider ?? fallback,
           usd: line.usd, ...length, subThreads: 0 }];
       });
-      return { points: group ? foldThreads(points, store().parents(), describe) : points };
+      return { points: group ? foldThreads(points, store().parents(), id => describe(id)) : points };
     },
     series: async ({ threadId }) => {
       const costs = requestCosts(store().threadRequests(threadId), store().prices()?.cards ?? {});

@@ -8,7 +8,7 @@ import {
 } from '@get-bb/plugin-sdk/app';
 import { viewSchema, type RecentView, type rpcContract } from './contracts.ts';
 import { mountChrome } from './src/footer.ts';
-import { isRecentMode } from './src/mode.ts';
+import { isArchivedOnly, isRecentMode } from './src/mode.ts';
 import './app.css';
 
 // Commands and footer actions run outside React, so bridge the RPC client and
@@ -35,13 +35,15 @@ function refresh(rpcClient: Rpc | null = client) {
   void rpcClient.call('view', {}).then(receive, report);
 }
 
-function toggle() {
+function run(method: 'toggle' | 'toggleArchived') {
   if (!client) {
     report(new Error('Recent Threads is still loading.'));
     return;
   }
-  void client.call('toggle', {}).then(receive, report);
+  void client.call(method, {}).then(receive, report);
 }
+const toggle = () => run('toggle');
+const toggleArchived = () => run('toggleArchived');
 
 function StateBridge() {
   const rpcClient = useRpc<typeof rpcContract>();
@@ -81,10 +83,20 @@ export default definePluginApp(app => {
     icon: 'Clock',
     onActivate: toggle,
   });
+  app.experimental_sidebarFooter.register({
+    kind: 'action',
+    id: 'archived',
+    label: 'Archived threads',
+    icon: 'Archive',
+    onActivate: toggleArchived,
+  });
   app.contentScripts.register({
     id: 'footer-chrome',
     mount: () => mountChrome(document, {
-      active: () => view !== null && isRecentMode(view.mode),
+      items: {
+        toggle: () => view !== null && isRecentMode(view.mode),
+        archived: () => view !== null && isArchivedOnly(view.lifecycles),
+      },
       subscribe,
     }),
   });
@@ -93,5 +105,10 @@ export default definePluginApp(app => {
     title: 'Toggle recent threads view',
     defaultShortcut: { key: 'r', alt: true },
     run: toggle,
+  });
+  app.commands.register({
+    id: 'archived',
+    title: 'Toggle archived threads view',
+    run: toggleArchived,
   });
 });

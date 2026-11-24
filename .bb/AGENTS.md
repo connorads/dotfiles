@@ -27,6 +27,11 @@ If the user is waiting for a first push or another result before the run ends, p
 In the prompt for the worker doing that step, tell it to run `bb thread tell <origin> --mode auto "<result>"` as soon as the step succeeds.
 Use `--send-at` only if the user asks for a timed check or there is a specific risk the run could stall without reporting it.
 
+Workflow workers are hidden threads, so nobody sees their approval prompts and a blocked worker stalls the run.
+Keep steps that need approval out of workers: archiving, deleting, merging, and pushing to repos other than the one being built.
+Run those steps from the origin thread after the workflow ends, or in a `bb thread spawn --parent-self` child thread.
+The `worker-attention` plugin sends a push notification and tells the origin thread when a worker blocks anyway.
+
 For BB SDK gaps, app bugs, provider issues and CLI problems, read `~/src/bb-plugins/docs/sdk-frictions.md`.
 Search for an existing entry and extend it rather than adding a duplicate.
 Record the gap, workaround, evidence and smallest upstream request.
