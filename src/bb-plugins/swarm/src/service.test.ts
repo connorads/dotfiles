@@ -219,3 +219,14 @@ test('only the first add asks the agent to show the board card', async () => {
   assert.equal(service.viewById('swarm-1' as SwarmId)!.members.length, 3);
   assert.equal(service.viewById('missing' as SwarmId), null);
 });
+
+test('the coordinator\'s wake lists posts that did not mention it under their own heading', async () => {
+  const { add, service, wakes } = setup();
+  await Promise.all([add('one'), add('two')]);
+  service.turnEnded(origin, null);
+  service.post('thr_one' as ThreadId, 'a note for nobody');
+  service.post('thr_two' as ThreadId, '@coordinator done');
+  await settled();
+  assert.equal(wakes[0]!.sender, 'thr_two');
+  assert.match(wakes[0]!.text, /#4 two: @coordinator done\nAlso on the board, with no mention of you:\n#3 one: a note for nobody/);
+});

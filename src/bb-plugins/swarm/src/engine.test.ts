@@ -106,7 +106,8 @@ test('a quiet board gets one stall notice, then silence', () => {
   assert.equal(notice.kind === 'post' && notice.author, 'engine');
   assert.deepEqual(wakes(quiet.effects).map(effect => effect.member), [coordinatorName]);
 
-  assert.match(notice.kind === 'post' ? notice.text : '', /did not mention you: #2\./);
+  const wake = quiet.effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && wake.also.map(entry => entry.seq), [2]);
 
   const again = run(quiet.swarm, ended(coordinatorName));
   assert.deepEqual(again.effects, []);
@@ -173,4 +174,23 @@ test('the wake limit pauses the swarm and is recorded once', () => {
 test('posts are refused when empty or from an unknown member', () => {
   assert.equal(refuse(fresh(), post(coordinatorName, '  ')), 'empty-text');
   assert.equal(refuse(fresh(), post(a, 'hi')), 'unknown-member');
+});
+
+test('a wake also gives the coordinator the posts that did not mention it', () => {
+  const setup = run(fresh(), join(a), join(b), ended(coordinatorName), post(a, 'a note for nobody'));
+  assert.deepEqual(setup.effects, []);
+  const { swarm, effects } = run(setup.swarm, post(b, '@coordinator done'));
+  const wake = effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && [wake.entries.map(entry => entry.seq), wake.also.map(entry => entry.seq)], [[4], [3]]);
+
+  // The note reached the coordinator, so a quiet board is not a stall.
+  const quiet = run(swarm, ended(a), ended(b), ended(coordinatorName));
+  assert.deepEqual(quiet.effects, []);
+  assert.deepEqual(kinds(quiet.swarm.entries), ['joined', 'joined', 'post', 'post']);
+});
+
+test('a worker is woken with its mentions only', () => {
+  const { effects } = run(fresh(), join(a), join(b), post(a, 'x'), ended(a), post(b, 'a note for nobody'), post(coordinatorName, '@a go'));
+  const wake = effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && [wake.entries.map(entry => entry.seq), wake.also], [[5], []]);
 });

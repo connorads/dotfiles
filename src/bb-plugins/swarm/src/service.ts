@@ -89,7 +89,7 @@ export function createService(deps: Deps) {
     try {
       if (effect.type === 'stop') return await agents.stop(effect.threadId);
       const member = swarm.members.find(candidate => candidate.name === effect.member)!;
-      await agents.wake(effect.threadId, formatWake(member, effect.entries), senderOf(swarm, effect));
+      await agents.wake(effect.threadId, formatWake(member, effect.entries, effect.also), senderOf(swarm, effect));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       deps.log(`swarm ${id}: ${effect.type} ${effect.member} failed: ${reason}`);

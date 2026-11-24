@@ -1,4 +1,5 @@
 import {
+  ambient,
   concerns,
   coordinatorName,
   head,
@@ -26,7 +27,8 @@ export type Input = { at: number } & (
 );
 
 export type Effect =
-  | { type: 'wake'; member: MemberName; threadId: ThreadId; entries: Entry[] }
+  /** `entries` are the reason for the wake. `also` are entries the member must see but was not woken for. */
+  | { type: 'wake'; member: MemberName; threadId: ThreadId; entries: Entry[]; also: Entry[] }
   | { type: 'stop'; member: MemberName; threadId: ThreadId };
 
 export type SwarmError =
@@ -140,22 +142,18 @@ function settle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq
   const coordinator = draft.members.find(member => member.role === 'coordinator');
   const exhausted = draft.entries.some(entry => entry.kind === 'exhausted');
   if (exhausted || coordinator?.run !== 'idle' || draft.members.some(member => member.run === 'working')) return;
-  // A stall: everyone is idle while posts sit on the board that never reached the coordinator.
-  const unseen = draft.entries.filter(
-    entry => entry.seq > coordinator.cursor && entry.kind === 'post' && entry.author !== coordinator.name && entry.author !== 'engine',
-  );
-  if (unseen.length === 0) return;
-  const numbers = unseen.map(entry => `#${entry.seq}`).join(', ');
+  // A stall: everyone is idle while entries sit on the board that never reached the coordinator.
+  if (!draft.entries.some(entry => entry.seq > coordinator.cursor && ambient(entry, coordinator))) return;
   append({
     kind: 'post',
     author: 'engine',
-    text: `@${coordinatorName} Every member is idle. These posts did not mention you: ${numbers}. Read the board, then assign work, ask the human, or close the swarm.`,
+    text: `@${coordinatorName} Every member is idle. Assign work, ask the human, or close the swarm.`,
     mentions: [coordinatorName],
   });
   wakeIdle(draft, maxWakes, append);
 }
 
-/** Sends each idle member its unread entries in one wake. Returns whether anything was due. */
+/** Sends each idle member its unread mentions in one wake. Returns whether anything was due. */
 function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq): boolean {
   let due = false;
   for (const member of draft.members) {
@@ -167,11 +165,13 @@ function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => S
       if (!draft.entries.some(entry => entry.kind === 'exhausted')) append({ kind: 'exhausted', maxWakes });
       continue;
     }
+    const also = draft.entries.filter(entry => entry.seq > member.cursor && ambient(entry, member));
     draft.wakes += 1;
     member.run = 'working';
+    // Everything up to the head is now delivered: the reasons in `unread`, the rest in `also`.
     member.cursor = head(draft);
     member.turnStart = member.cursor;
-    draft.effects.push({ type: 'wake', member: member.name, threadId: member.threadId, entries: unread });
+    draft.effects.push({ type: 'wake', member: member.name, threadId: member.threadId, entries: unread, also });
   }
   return due;
 }

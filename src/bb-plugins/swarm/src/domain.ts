@@ -132,3 +132,8 @@ export function concerns(entry: Entry, member: Member): boolean {
       return false;
   }
 }
+
+/** Whether the coordinator must still be shown an entry that is no reason to wake it. */
+export function ambient(entry: Entry, member: Member): boolean {
+  return member.role === 'coordinator' && entry.kind === 'post' && entry.author !== member.name && !concerns(entry, member);
+}

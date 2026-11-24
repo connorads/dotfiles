@@ -35,7 +35,7 @@ Pass `provider` with `add` to mix agents, for example `codex`. Run `bb provider 
 ## What the engine does
 
 - A worker turn that ends without a post is relayed to the coordinator as that worker's reply.
-- When every member is idle and some posts never reached the coordinator, it gets one stall notice that lists them.
+- When every member is idle and some posts never reached the coordinator, it gets one stall notice with those posts.
 - A swarm pauses when it reaches its wake limit. The user can raise the limit in the plugin settings.
 
 ## From a shell
