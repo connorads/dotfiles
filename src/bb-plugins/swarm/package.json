@@ -3,13 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": { "bb": ">=0.49", "bbPluginSdk": ">=0.6.132" },
+  "bb": {
+    "name": "Swarm",
+    "description": "Agent threads from any provider coordinate through one shared board. A mention wakes a member.",
+    "branding": { "icon": "Bot" },
+    "server": "./server.ts",
+    "skills": []
+  },
   "scripts": {
     "test": "node --experimental-strip-types --test src/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "bb plugin build",
+    "dev": "bb plugin dev"
   },
   "dependencies": { "zod": "catalog:" },
   "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.132",
+    "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "hono": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:"
   }
 }
