@@ -1,5 +1,7 @@
 # The BB system service uses local mise deployment pins
 
+> Activation's export backup is superseded by [0026](./0026-bb-deploy-snapshots-data-with-apfs-clones.md).
+
 The Mini's Nix daemon resolves BB and Node from a local mise configuration containing exact versions.
 Git synchronises desired versions. Deployment selects installed versions only after native-module verification.
 Startup requires no installation. BB's in-app updater is disabled for declarative server launchers.

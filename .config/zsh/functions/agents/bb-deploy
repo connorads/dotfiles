@@ -27,8 +27,8 @@ prepare | adopt | activate | status) ;;
 esac
 
 local root="$HOME/.config/bb/deployment"
-local api=http://127.0.0.1:38886
-local node_dir bb_dir node_version bb_version running backup package_root deployment_service=system
+local api=http://127.0.0.1:38886 data="$HOME/.bb"
+local node_dir bb_dir node_version bb_version running snapshot package_root deployment_service=system
 if [[ $action == status ]]; then
   local selection
   for selection in current candidate previous; do
@@ -99,6 +99,43 @@ if (db.prepare('SELECT 1 AS ok').get().ok !== 1) process.exit(1);
 db.close();
 for (const name of ['node-pty', '@parcel/watcher', 'fs-native-extensions']) requireBB(name);
 JS
+}
+
+_bb_deploy_launchctl() {
+  if [[ $deployment_service == user ]]; then
+    launchctl "$@"
+  else
+    sudo -n launchctl "$@"
+  fi
+}
+
+_bb_deploy_service() {
+  if [[ $deployment_service == user ]]; then
+    print -r -- "gui/$(id -u) $HOME/Library/LaunchAgents/org.nix-community.home.bb-server.plist org.nix-community.home.bb-server"
+  else
+    print -r -- 'system /Library/LaunchDaemons/org.nixos.bb-server.plist org.nixos.bb-server'
+  fi
+}
+
+# Cloning SQLite files while BB writes them can capture an inconsistent database.
+_bb_deploy_stop() {
+  local domain plist label deadline=$((SECONDS + 60))
+  read -r domain plist label <<<"$(_bb_deploy_service)"
+  _bb_deploy_launchctl bootout "$domain/$label" || return 1
+  while ((SECONDS < deadline)); do
+    if ! curl --silent --max-time 2 "$api/health" >/dev/null &&
+      ! lsof -t -- "$data/bb.db" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+_bb_deploy_start() {
+  local domain plist label
+  read -r domain plist label <<<"$(_bb_deploy_service)"
+  _bb_deploy_launchctl bootstrap "$domain" "$plist"
 }
 
 if [[ $action == prepare ]]; then
@@ -219,17 +256,30 @@ JS
       return 1
     }
   fi
-  local backups="$HOME/.local/state/bb-deploy/backups"
-  mkdir -p "$backups" || return 1
-  backup="$backups/$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
-  curl --fail --silent --show-error --connect-timeout 3 --max-time 300 \
-    --request POST --output "$backup" "$api/api/v1/server/export" || return 1
-  tar -tzf "$backup" >/dev/null || return 1
-  _bb_deploy_idle || return $?
-  mkdir -p "$root/previous" || return 1
-  cp "$root/current/mise.toml" "$root/previous/mise.toml" || return 1
-  mise trust "$root/previous/mise.toml" || return 1
-  _bb_deploy_resolve "$root/previous" || return 1
+  local snapshots="$HOME/.local/state/bb-deploy/snapshots"
+  mkdir -p "$snapshots" || return 1
+  # A clone across volumes degrades to a full copy of a multi-gigabyte database.
+  if [[ $(/usr/bin/stat -f %d "$data") != $(/usr/bin/stat -f %d "$snapshots") ]]; then
+    print -u2 'bb-deploy: snapshots must share the BB data volume; deployment deferred'
+    return 1
+  fi
+  snapshot="$snapshots/$(date +%Y%m%d-%H%M%S)-$$"
+  _bb_deploy_stop || {
+    print -u2 'bb-deploy: BB did not stop; restarting the deployed release'
+    _bb_deploy_start
+    return 1
+  }
+  {
+    /bin/cp -cR "$data" "$snapshot" &&
+      mkdir -p "$root/previous" &&
+      cp "$root/current/mise.toml" "$root/previous/mise.toml" &&
+      mise trust "$root/previous/mise.toml" &&
+      _bb_deploy_resolve "$root/previous"
+  } || {
+    print -u2 'bb-deploy: snapshot failed; restarting the deployed release'
+    _bb_deploy_start
+    return 1
+  }
 fi
 
 mkdir -p "$root/current" || return 1
@@ -242,11 +292,10 @@ if [[ $action == adopt ]]; then
   return 0
 fi
 
-if [[ $deployment_service == user ]]; then
-  launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.bb-server" || return 1
-else
-  sudo -n launchctl kickstart -k system/org.nixos.bb-server || return 1
-fi
+_bb_deploy_start || {
+  print -u2 "bb-deploy: BB did not start; snapshot $snapshot"
+  return 1
+}
 local deadline=$((SECONDS + 30)) health hosts primary_host
 while ((SECONDS < deadline)); do
   health=$(curl --fail --silent --max-time 2 "$api/health") &&
@@ -256,11 +305,11 @@ while ((SECONDS < deadline)); do
     primary_host=$(_bb_deploy_api system/config | jq -er '.primaryHostId | strings | select(length > 0)') &&
     hosts=$(_bb_deploy_api hosts) &&
     print -r -- "$hosts" | jq -e --arg id "$primary_host" 'any(.[]; .id == $id and .status == "connected")' >/dev/null && {
-    print -r -- "bb-deploy: BB $bb_version deployed; backup $backup"
+    print -r -- "bb-deploy: BB $bb_version deployed; snapshot $snapshot"
     return 0
   }
   sleep 1
 done
-print -u2 "bb-deploy: health verification failed; current pins retained, backup $backup"
+print -u2 "bb-deploy: health verification failed; snapshot $snapshot"
 print -u2 'bb-deploy: inspect BB logs before recovery; database migrations can prevent binary rollback'
 return 1

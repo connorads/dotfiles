@@ -137,9 +137,9 @@ flowchart LR
   Install[Install desired versions] --> Prepare[Verify candidate]
   Prepare --> Idle{BB idle?}
   Idle -->|No or unknown| Defer[Keep current pins]
-  Idle -->|Yes| Backup[Export and validate backup]
-  Backup --> Recheck[Check tasks again]
-  Recheck --> Promote[Promote pins and restart]
+  Idle -->|Yes| Stop[Stop BB service]
+  Stop --> Snapshot[Clone ~/.bb]
+  Snapshot --> Promote[Promote pins and start]
   Promote --> Verify[Verify server version and local daemon]
 ```
 
@@ -166,23 +166,34 @@ Activation returns 75 when tasks are running or their state is unavailable.
 Retry activation explicitly. No scheduled process activates pending releases.
 Unchanged pins require no restart.
 The task check covers BB's `starting` and `active` threads, including hidden threads.
-It cannot prevent new work arriving between the final check and restart, or detect every plugin background operation.
+It cannot prevent new work arriving between the final check and the stop, or detect every plugin background operation.
 
-Activation exports BB through its server API and validates the archive with `tar` before changing pins.
-The export API requires BB's server-move experiment. An unavailable export blocks activation.
-Backups stay private under `~/.local/state/bb-deploy/backups/`. They can contain credentials and conversation data.
-The command retains backups without deleting them. Review storage usage before each update.
-BB snapshots its databases individually. This is not a demonstrated atomic snapshot across plugin databases and other files.
+Activation stops the BB service and waits until no process holds `~/.bb/bb.db`.
+It then clones `~/.bb` into `~/.local/state/bb-deploy/snapshots/<time>-<pid>/` with APFS `cp -c`, and starts the candidate.
+A clone takes no space when created. It grows as the new release rewrites data, up to the size of `~/.bb`.
+A stop or snapshot failure restarts the deployed release with unchanged pins.
+Snapshots must share a volume with `~/.bb`, and they contain credentials and conversation data.
+The command keeps snapshots. Move each one to Trash after its release has run correctly.
+A snapshot is a rollback copy on the same disk, not a disaster-recovery backup.
 
 The health check requires the selected BB version, a healthy HTTP server and its connected primary execution daemon.
 It does not prove provider authentication or task execution. Verify a provider task after activation.
-If verification fails, current pins remain selected and previous pins remain available.
+If verification fails, the candidate stays selected as current, and previous pins remain available.
 Inspect `~/Library/Logs/bb-server{,-error}.log` before recovery.
 Never select an older executable against a migrated database without checking compatibility.
-Use BB's supported import procedure with a verified backup when database restoration is necessary.
+
+To roll back to the previous release with its pre-update data:
+
+1. Stop BB with `sudo launchctl bootout system/org.nixos.bb-server`.
+2. Move `~/.bb` aside, then move the snapshot directory to `~/.bb`.
+3. Copy `~/.config/bb/deployment/previous/mise.toml` over `current/mise.toml`, then run `mise trust` on it.
+4. Start BB with `sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.bb-server.plist`.
+
+Work done after the update is lost on rollback.
 
 Deployment commands use an exclusive directory lock. After an interrupted command, confirm no deployment is running before removing its empty `.lock` directory.
 The ownership decision and rejected alternatives are recorded in [ADR 0024](./adr/0024-bb-service-uses-local-mise-deployment-pins.md).
+The snapshot decision is recorded in [ADR 0026](./adr/0026-bb-deploy-snapshots-data-with-apfs-clones.md).
 
 ### BB user-server deployments
 

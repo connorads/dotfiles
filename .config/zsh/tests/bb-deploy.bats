@@ -55,6 +55,14 @@ EOF
   write_stub launchctl <<'EOF'
 #!/usr/bin/env bash
 echo "launchctl $*" >>"$TEST_LOG"
+case "$1" in
+  bootout) [ "${BOOTOUT_EXIT:-0}" = 0 ] || exit "$BOOTOUT_EXIT"; touch "$HOME/service-stopped" ;;
+  bootstrap) rm -f "$HOME/service-stopped" ;;
+esac
+EOF
+  write_stub lsof <<'EOF'
+#!/usr/bin/env bash
+exit 1
 EOF
   write_stub curl <<'EOF'
 #!/usr/bin/env bash
@@ -62,28 +70,22 @@ echo "curl $*" >>"$TEST_LOG"
 case "$*" in
   *'/threads/running')
     [ "${IDLE_EXIT:-0}" = 0 ] || exit "$IDLE_EXIT"
-    if [ -f "$HOME/tasks-started" ]; then echo '[{"id":"new-task"}]'; exit 0; fi
     echo "${RUNNING_JSON:-[]}"
     ;;
   *'/system/app-update') printf '{"current":{"version":"%s"}}\n' "${LIVE_VERSION:-0.46.1}" ;;
   *'/system/config') echo '{"primaryHostId":"host-local"}' ;;
   *'/hosts') echo '[{"id":"host-local","status":"connected"}]' ;;
-  *'/health') echo '{"ok":true}' ;;
-  *'/server/export')
-    [ "${BACKUP_EXIT:-0}" = 0 ] || exit "$BACKUP_EXIT"
-    while [ "$#" -gt 0 ]; do
-      if [ "$1" = --output ]; then shift; tar -czf "$1" -C "$HOME" backup-fixture; fi
-      shift
-    done
-    [ "${AFTER_BACKUP_BUSY:-0}" = 0 ] || touch "$HOME/tasks-started"
-    ;;
+  *'/health') [ ! -f "$HOME/service-stopped" ] || exit 7; echo '{"ok":true}' ;;
 esac
 EOF
-  echo 'backup data' >"$HOME/backup-fixture"
+  mkdir -p "$HOME/.bb"
+  echo 'database fixture' >"$HOME/.bb/bb.db"
   write_stub sudo <<'EOF'
 #!/usr/bin/env bash
 echo "sudo $*" >>"$TEST_LOG"
-exit "${SUDO_EXIT:-0}"
+[ "${SUDO_EXIT:-0}" = 0 ] || exit "$SUDO_EXIT"
+[ "$1" = -n ] && shift
+exec "$@"
 EOF
 }
 
@@ -187,7 +189,8 @@ render_launcher() {
   grep -q '^BB_DEPLOY_SERVICE = "user"' "$DEPLOY_ROOT/candidate/mise.toml"
   run zsh --no-rcs "$DEPLOY" activate
   [ "$status" -eq 0 ]
-  grep -q '^launchctl kickstart -k gui/[0-9]*/org.nix-community.home.bb-server$' "$TEST_LOG"
+  grep -q '^launchctl bootout gui/[0-9]*/org.nix-community.home.bb-server$' "$TEST_LOG"
+  grep -q "^launchctl bootstrap gui/[0-9]* $HOME/Library/LaunchAgents/org.nix-community.home.bb-server.plist$" "$TEST_LOG"
   ! grep -q '^sudo ' "$TEST_LOG"
 }
 
@@ -273,13 +276,13 @@ render_launcher() {
   [ -d "$DEPLOY_ROOT/.lock" ]
 }
 
-@test "busy tasks defer activation before backup or privilege checks" {
+@test "busy tasks defer activation before stopping BB or privilege checks" {
   older_deployment
   export RUNNING_JSON='[{"id":"hidden-task","hostId":"host-local"}]'
   run zsh --no-rcs "$DEPLOY" activate
   [ "$status" -eq 75 ]
   ! grep -q '^sudo ' "$TEST_LOG"
-  ! grep -q '/server/export' "$TEST_LOG"
+  ! grep -q bootout "$TEST_LOG"
 }
 
 @test "unavailable or malformed task state defers activation" {
@@ -293,23 +296,42 @@ render_launcher() {
   [ "$status" -eq 75 ]
 }
 
-@test "failed backup leaves selection unchanged and never restarts" {
+@test "BB that does not stop keeps deployed pins and restarts their release" {
   older_deployment
   cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
-  export BACKUP_EXIT=22
+  export BOOTOUT_EXIT=5
   run zsh --no-rcs "$DEPLOY" activate
   [ "$status" -ne 0 ]
   cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
-  ! grep -q kickstart "$TEST_LOG"
+  grep -q 'launchctl bootstrap system /Library/LaunchDaemons/org.nixos.bb-server.plist' "$TEST_LOG"
+  [ -z "$(ls -A "$HOME/.local/state/bb-deploy/snapshots")" ]
 }
 
-@test "activation retains pins, validates backup, and restarts the system daemon" {
+@test "failed snapshot keeps deployed pins and restarts their release" {
   older_deployment
+  cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
+  chmod 000 "$HOME/.bb/bb.db"
+  run zsh --no-rcs "$DEPLOY" activate
+  chmod 600 "$HOME/.bb/bb.db"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'snapshot failed'* ]]
+  cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
+  [ "$(grep -c '^launchctl bootstrap ' "$TEST_LOG")" -eq 1 ]
+}
+
+@test "activation stops BB, snapshots its data, then starts the new pins" {
+  older_deployment
+  cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected-previous"
   run zsh --no-rcs "$DEPLOY" activate
   [ "$status" -eq 0 ]
-  [ -f "$DEPLOY_ROOT/previous/mise.toml" ]
-  grep -q 'kickstart -k system/org.nixos.bb-server' "$TEST_LOG"
-  find "$HOME/.local/state/bb-deploy/backups" -name '*.tar.gz' | grep -q .
+  cmp "$HOME/expected-previous" "$DEPLOY_ROOT/previous/mise.toml"
+  cmp "$DEPLOY_ROOT/candidate/mise.toml" "$DEPLOY_ROOT/current/mise.toml"
+  snapshot=$(find "$HOME/.local/state/bb-deploy/snapshots" -mindepth 1 -maxdepth 1 -type d)
+  cmp "$HOME/.bb/bb.db" "$snapshot/bb.db"
+  [[ "$output" == *"snapshot $snapshot"* ]]
+  stop_line=$(grep -n 'launchctl bootout system/org.nixos.bb-server$' "$TEST_LOG" | head -1 | cut -d: -f1)
+  start_line=$(grep -n 'launchctl bootstrap system /Library/LaunchDaemons/org.nixos.bb-server.plist$' "$TEST_LOG" | tail -1 | cut -d: -f1)
+  [ "$stop_line" -lt "$start_line" ]
 }
 
 @test "unchanged deployment never restarts BB" {
@@ -319,16 +341,6 @@ render_launcher() {
   ! grep -q '^sudo ' "$TEST_LOG"
 }
 
-@test "task arriving during backup defers before changing deployed pins" {
-  older_deployment
-  cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
-  export AFTER_BACKUP_BUSY=1
-  run zsh --no-rcs "$DEPLOY" activate
-  [ "$status" -eq 75 ]
-  cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
-  ! grep -q kickstart "$TEST_LOG"
-}
-
 @test "missing sudo authentication leaves deployed pins unchanged" {
   older_deployment
   cp "$DEPLOY_ROOT/current/mise.toml" "$HOME/expected"
@@ -336,7 +348,7 @@ render_launcher() {
   run zsh --no-rcs "$DEPLOY" activate
   [ "$status" -ne 0 ]
   cmp "$HOME/expected" "$DEPLOY_ROOT/current/mise.toml"
-  ! grep -q '/server/export' "$TEST_LOG"
+  ! grep -q bootout "$TEST_LOG"
 }
 
 @test "unknown command fails before modifying deployment state" {
