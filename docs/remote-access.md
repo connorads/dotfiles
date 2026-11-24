@@ -227,7 +227,8 @@ Initial handover requires a maintenance window:
 1. Install a quarantined BB version compatible with the existing data. Never select an older executable without compatibility evidence.
 2. Run `bb-deploy prepare --user`, then `bb-deploy adopt`. Adoption requires the running version to match the candidate.
 3. In the desktop Server menu, save `http://127.0.0.1:38886` as a custom server target.
-4. Export and validate a backup, then stop the desktop-owned server when no work is running.
+4. Quit the desktop when no work is running. Wait until nothing answers on port 38886 or holds `~/.bb/bb.db`.
+   Clone `~/.bb` into `~/.local/state/bb-deploy/snapshots/` with `cp -cR`, as [ADR 0026](./adr/0026-bb-deploy-snapshots-data-with-apfs-clones.md) describes.
 5. Enable `server.enabled` in the private service configuration and activate the Nix user-service configuration.
 6. Open the desktop and verify the saved target, provider task execution and native features.
 
