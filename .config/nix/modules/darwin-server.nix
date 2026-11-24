@@ -137,6 +137,10 @@
     RunAtLoad = true;
     KeepAlive.SuccessfulExit = false;
     ThrottleInterval = 10;
+    # launchd's default of 256 open files reaches Node itself: libuv cannot
+    # create a thread's kqueue at the limit, and Node does not raise it.
+    SoftResourceLimits.NumberOfFiles = 32768;
+    HardResourceLimits.NumberOfFiles = 32768;
     StandardOutPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-server.log";
     StandardErrorPath = "${config.home-manager.users.connorads.home.homeDirectory}/Library/Logs/bb-server-error.log";
   };
