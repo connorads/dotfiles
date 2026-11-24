@@ -31,12 +31,40 @@ export function parseLiteLlm(raw: unknown): RateCards {
   return cards;
 }
 
-/** Find a model's card under the names logs use: dated, suffixed with a context tag, or without a provider prefix. */
+const providerPrefixes = [
+  'anthropic', 'openai', 'gemini', 'xai', 'zai', 'moonshot', 'deepseek', 'minimax', 'mistral', 'opencode_go', 'dashscope',
+] as const;
+
+/** Strip reasoning-effort tags (`-high`, `-tiered-high`) and Grok's `-build` suffix when an exact card is absent. */
+const stripVariant = (name: string) =>
+  name.replace(/-(?:tiered-)?(?:minimal|low|medium|high|xhigh|max)$/, '').replace(/-build$/, '');
+
+function lookupStem(cards: RateCards, stem: string): RateCard | undefined {
+  if (cards[stem]) return cards[stem];
+  for (const prefix of providerPrefixes) {
+    const card = cards[`${prefix}/${stem}`];
+    if (card) return card;
+  }
+  return undefined;
+}
+
+/** Find a model's card under the names logs use: dated, suffixed with a context/effort tag, or with/without a provider prefix. */
 export function findCard(cards: RateCards, model: string): RateCard | undefined {
+  if (cards[model]) return cards[model];
   const base = model.toLowerCase().replace(/\[[^\]]*\]$/, '');
+  if (cards[base]) return cards[base];
   const undated = base.replace(/-\d{8}$/, '');
-  for (const name of [model, base, undated, `anthropic/${undated}`, `openai/${undated}`]) {
-    const card = cards[name];
+  const bare = undated.includes('/') ? undated.slice(undated.lastIndexOf('/') + 1) : undated;
+  // Try exact/undated stems across all prefixes before stripping variant suffixes so models like `qwen3.8-max` stay exact.
+  const stems = [undated, ...(bare !== undated ? [bare] : [])];
+  for (const stem of stems) {
+    const card = lookupStem(cards, stem);
+    if (card) return card;
+  }
+  for (const stem of stems) {
+    const stripped = stripVariant(stem);
+    if (stripped === stem) continue;
+    const card = lookupStem(cards, stripped);
     if (card) return card;
   }
   return undefined;

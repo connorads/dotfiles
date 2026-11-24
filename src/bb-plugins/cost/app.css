@@ -3,14 +3,26 @@
 :root {
   --cost-claude-code: light-dark(oklch(64% .15 45), oklch(66% .14 45));
   --cost-codex: light-dark(oklch(55% .13 255), oklch(63% .13 255));
+  --cost-antigravity: light-dark(oklch(56% .15 295), oklch(67% .14 295));
+  --cost-opencode: light-dark(oklch(56% .14 132), oklch(67% .13 132));
+  --cost-grok: light-dark(oklch(56% .16 15), oklch(65% .15 15));
+  --cost-gemini: light-dark(oklch(57% .13 210), oklch(68% .12 210));
   --cost-pi: light-dark(oklch(60% .12 165), oklch(66% .12 165));
+  --cost-omp: light-dark(oklch(57% .15 335), oklch(67% .14 335));
+  --cost-hermes: light-dark(oklch(63% .14 88), oklch(72% .13 88));
   --cost-ink: var(--foreground);
   --cost-hair: color-mix(in oklch, var(--foreground) 9%, transparent);
   --cost-ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
 [data-provider="claude-code"] { --cost-series: var(--cost-claude-code); }
 [data-provider="codex"] { --cost-series: var(--cost-codex); }
+[data-provider="antigravity"] { --cost-series: var(--cost-antigravity); }
+[data-provider="opencode"] { --cost-series: var(--cost-opencode); }
+[data-provider="grok"] { --cost-series: var(--cost-grok); }
+[data-provider="gemini"] { --cost-series: var(--cost-gemini); }
 [data-provider="pi"] { --cost-series: var(--cost-pi); }
+[data-provider="omp"] { --cost-series: var(--cost-omp); }
+[data-provider="hermes"] { --cost-series: var(--cost-hermes); }
 /* Token types are one ink at four strengths: a second categorical palette would collide with the providers. */
 [data-part="output"] { --cost-part: color-mix(in oklch, var(--cost-ink) 88%, transparent); }
 [data-part="input"] { --cost-part: color-mix(in oklch, var(--cost-ink) 62%, transparent); }

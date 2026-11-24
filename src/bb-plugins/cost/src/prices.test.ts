@@ -20,10 +20,29 @@ test('a price file keeps chat models and rejects one too small to be real', () =
   assert.throws(() => parseLiteLlm('nope'), /not a JSON object/);
 });
 
-test('model names from logs find their card without date, context tag or provider prefix', () => {
-  assert.equal(findCard(cards, 'claude-opus-5-5-20261001'), cards['claude-opus-5-5']);
-  assert.equal(findCard(cards, 'claude-opus-5-5[1m]'), cards['claude-opus-5-5']);
-  assert.equal(findCard(cards, 'codex-auto-review'), undefined);
+test('model names from logs find their card without date, context tag, effort suffix or provider prefix', () => {
+  const extended = parseLiteLlm({
+    ...filler,
+    'claude-opus-5-5': opus,
+    'gemini/gemini-4-neon': { mode: 'chat', input_cost_per_token: 3e-6, output_cost_per_token: 1.5e-5, cache_read_input_token_cost: 1.5e-7 },
+    'gemini/gemini-4-hydrogen': { mode: 'chat', input_cost_per_token: 1.5e-6, output_cost_per_token: 7.5e-6 },
+    'xai/grok-4.7': { mode: 'chat', input_cost_per_token: 2e-6, output_cost_per_token: 6e-6 },
+    'zai/glm-5.2': { mode: 'chat', input_cost_per_token: 1.4e-6, output_cost_per_token: 4.4e-6 },
+    'moonshot/kimi-k3': { mode: 'chat', input_cost_per_token: 3e-6, output_cost_per_token: 1.5e-5 },
+    'dashscope/qwen3.8-max': { mode: 'chat', input_cost_per_token: 2e-6, output_cost_per_token: 8e-6 },
+    'dashscope/qwen3.8': { mode: 'chat', input_cost_per_token: 1e-6, output_cost_per_token: 4e-6 },
+  });
+  assert.equal(findCard(extended, 'claude-opus-5-5-20261001'), extended['claude-opus-5-5']);
+  assert.equal(findCard(extended, 'claude-opus-5-5[1m]'), extended['claude-opus-5-5']);
+  assert.equal(findCard(extended, 'claude-opus-5-5-medium'), extended['claude-opus-5-5']);
+  assert.equal(findCard(extended, 'gemini-4-neon-high'), extended['gemini/gemini-4-neon']);
+  assert.equal(findCard(extended, 'gemini-4-hydrogen-tiered-high'), extended['gemini/gemini-4-hydrogen']);
+  assert.equal(findCard(extended, 'grok-4.7-build'), extended['xai/grok-4.7']);
+  assert.equal(findCard(extended, 'glm-5.2'), extended['zai/glm-5.2']);
+  assert.equal(findCard(extended, 'opencode-go/kimi-k3'), extended['moonshot/kimi-k3']);
+  // An exact `-max` model keeps its own card rather than falling back to the un-suffixed base model.
+  assert.equal(findCard(extended, 'qwen3.8-max'), extended['dashscope/qwen3.8-max']);
+  assert.equal(findCard(extended, 'codex-auto-review'), undefined);
 });
 
 test('Claude prices 5-minute and 1-hour cache writes separately, and fast mode doubles every rate', () => {

@@ -45,7 +45,17 @@ export const dateLabel = (at: number) => new Date(at).toLocaleDateString('en-GB'
 /** Short model names for tight rows: `claude-opus-5-5-20261001` reads as `opus-5-5`. */
 export const shortModel = (model: string) => model.replace(/^claude-/, '').replace(/-\d{8}$/, '');
 
-export const providerName: Record<string, string> = { 'claude-code': 'Claude Code', codex: 'Codex', pi: 'Pi' };
+export const providerName: Record<string, string> = {
+  'claude-code': 'Claude Code',
+  codex: 'Codex',
+  antigravity: 'Antigravity',
+  opencode: 'OpenCode',
+  grok: 'Grok',
+  gemini: 'Gemini CLI',
+  pi: 'Pi',
+  omp: 'omp',
+  hermes: 'Hermes',
+};
 
 /** The last path segment names a project directory. */
 export const folder = (path: string) => path.split('/').filter(Boolean).pop() ?? path;
