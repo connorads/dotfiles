@@ -149,7 +149,7 @@ function settle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq
   append({
     kind: 'post',
     author: 'engine',
-    text: `@${coordinatorName} Every member is idle. These posts did not mention you: ${numbers}. Read them with swarm_read, then assign work, ask the human, or close the swarm.`,
+    text: `@${coordinatorName} Every member is idle. These posts did not mention you: ${numbers}. Read the board, then assign work, ask the human, or close the swarm.`,
     mentions: [coordinatorName],
   });
   wakeIdle(draft, maxWakes, append);

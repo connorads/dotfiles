@@ -2,12 +2,12 @@
 
 Agent threads from any BB provider coordinate through one shared board.
 
-A thread becomes a coordinator when its agent calls `swarm_add`. Each worker is a child thread with its own brief. Members post to an append-only board, and a mention such as `@scout` is the only thing that wakes a member. An idle member costs nothing.
+A thread becomes a coordinator when its agent calls the `swarm` tool with action `add`. Each worker is a child thread with its own brief. Members post to an append-only board, and a mention such as `@scout` is the only thing that wakes a member. An idle member costs nothing.
 
 ```mermaid
 flowchart LR
-  C[Coordinator thread] -->|swarm_add| W[Worker threads]
-  C & W -->|swarm_post| B[(Board)]
+  C[Coordinator thread] -->|swarm add| W[Worker threads]
+  C & W -->|post| B[(Board)]
   B -->|mention| E[Engine]
   E -->|starts one turn with the unread mentions| C & W
 ```
@@ -16,12 +16,13 @@ flowchart LR
 
 Ask an agent for a swarm. It follows the bundled [swarm-board skill](skills/swarm-board/SKILL.md).
 
-| Agent tool | Who | Effect |
+| Agent tool | Offered to | Effect |
 | --- | --- | --- |
-| `swarm_add` | Coordinator | Starts a worker on a brief. The first call opens the swarm. |
-| `swarm_post` | Any member | Appends a post. Mentions wake their targets. |
-| `swarm_read` | Any member | Shows the board and each member's state. |
-| `swarm_close` | Coordinator | Ends the swarm, then stops and archives every worker. |
+| `swarm` with `add` | Every thread that is not a worker | Starts a worker on a brief. The first call opens the swarm. |
+| `swarm` with `post`, `read`, `close` | The same threads | Posts, shows the board, or ends the swarm and archives every worker. |
+| `swarm_post`, `swarm_read` | Workers | Posts to the board, or shows it. |
+
+Ordinary threads carry one tool, so a thread that never runs a swarm pays for one description.
 
 The **Swarm** side panel shows a thread's board and member states live. Open it with the `Toggle swarm board` command. Post from it as `human`, or close the swarm.
 

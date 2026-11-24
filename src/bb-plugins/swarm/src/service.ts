@@ -66,7 +66,7 @@ type Command = Extract<Input, { type: 'join' | 'post' | 'close' }>;
 type Lifecycle = Exclude<Input, Command>;
 type Unstamped<I> = I extends unknown ? Omit<I, 'at'> : never;
 
-const notInSwarm: Outcome = { ok: false, text: 'This thread is not in an open swarm. swarm_add starts one.' };
+const notInSwarm: Outcome = { ok: false, text: 'This thread is not in an open swarm. The swarm tool with action "add" starts one.' };
 
 export function createService(deps: Deps) {
   const { board, agents } = deps;
@@ -118,7 +118,7 @@ export function createService(deps: Deps) {
       let found = locate(threadId);
       if (!found) {
         const limits = await deps.limits();
-        // A parallel swarm_add from the same thread may have opened one while limits loaded.
+        // A parallel add from the same thread may have opened one while limits loaded.
         if (!board.openFor(threadId)) board.create(deps.newId(), openSwarm(threadId, limits), deps.now());
         found = locate(threadId);
         if (!found) return notInSwarm;

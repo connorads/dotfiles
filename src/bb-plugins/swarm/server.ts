@@ -5,9 +5,10 @@ import { changedChannel, rpcContract } from './contracts.ts';
 import { createBoard, migrations } from './src/board.ts';
 import type { SwarmId, ThreadId } from './src/domain.ts';
 import { createService, type Agents, type Outcome } from './src/service.ts';
+import { route, type SwarmCall } from './src/tool.ts';
 
-const memberTools = ['swarm_post', 'swarm_read'];
-const coordinatorTools = ['swarm_add', 'swarm_close', ...memberTools];
+const workerTools = ['swarm_post', 'swarm_read'];
+const coordinatorTools = ['swarm'];
 
 const memberInstructions = [
   'You are a member of a swarm. Members coordinate through one shared board.',
@@ -87,27 +88,48 @@ export default function plugin(bb: BbPluginApi) {
 
   const result = ({ ok, text }: Outcome) => ({ content: [{ type: 'text' as const, text }], isError: !ok });
 
+  const coordinatorCall = async (threadId: ThreadId, call: SwarmCall): Promise<Outcome> => {
+    const routed = route(call);
+    switch (routed.action) {
+      case 'add':
+        return service.add(threadId, routed.request);
+      case 'post':
+        return service.post(threadId, routed.text);
+      case 'read':
+        return service.read(threadId, routed.since);
+      case 'close':
+        return service.close(threadId, routed.summary);
+      case 'invalid':
+        return { ok: false, text: routed.text };
+    }
+  };
+
+  // One tool for ordinary threads keeps the cost on threads that never run a swarm small.
   bb.agents.registerTool({
-    name: 'swarm_add',
+    name: 'swarm',
     description:
-      'Add a worker agent to a swarm. The first call makes this thread the coordinator of a new swarm. '
-      + 'Use it only when the user asks for a swarm. The worker starts on its brief at once, in this thread\'s workspace. '
-      + 'Give each worker work that no other member owns. As coordinator, plan and review; leave the work to the workers.',
-    presentation: { label: { pending: 'Adding a swarm worker', completed: 'Added a swarm worker' } },
+      'Coordinate a swarm: worker agents that report through one shared board. Use it only when the user asks for a swarm. '
+      + 'add starts a worker on a brief in this thread\'s workspace; the first add makes this thread the coordinator. '
+      + 'post writes to the board, where @name or @all wakes members and a post without a mention wakes nobody. '
+      + 'read shows the board and member states. close ends the swarm and archives every worker. '
+      + 'As coordinator, plan and review; leave the work to the workers.',
+    presentation: { label: { pending: 'Working with the swarm', completed: 'Worked with the swarm' } },
     parameters: z.object({
-      name: z.string().describe('Short unique name: lowercase letters, digits and hyphens. Other members mention it as @name.'),
-      brief: z.string().describe('Everything the worker needs: the goal, what it owns, what done means. It sees nothing else of this thread.'),
-      provider: z.string().optional().describe('BB provider id, such as "codex". Defaults to this thread\'s provider.'),
-      model: z.string().optional().describe('Model id for that provider. Defaults to the provider\'s default.'),
+      action: z.enum(['add', 'post', 'read', 'close']),
+      name: z.string().optional().describe('add: short unique worker name in lowercase letters, digits and hyphens.'),
+      brief: z.string().optional().describe('add: everything the worker needs, as it sees nothing else of this thread. State the goal, what it owns and what done means.'),
+      provider: z.string().optional().describe('add: BB provider id, such as "codex". Defaults to this thread\'s provider.'),
+      model: z.string().optional().describe('add: model id for that provider.'),
+      text: z.string().optional().describe('post: the post. close: the outcome in one or two sentences.'),
+      since: z.number().int().min(0).optional().describe('read: return entries after this number. Defaults to the last 20.'),
     }),
-    execute: async ({ name, brief, provider, model }, ctx) =>
-      result(await service.add(ctx.threadId as ThreadId, { name, brief, provider: provider ?? null, model: model ?? null })),
+    execute: async (call, ctx) => result(await coordinatorCall(ctx.threadId as ThreadId, call)),
   });
 
   bb.agents.registerTool({
     name: 'swarm_post',
     description:
-      'Post to the swarm board. A mention such as @name or @all wakes that member with the post; a post without a mention wakes nobody. '
+      'Post to the swarm board. A mention such as @coordinator wakes that member with the post; a post without a mention wakes nobody. '
       + 'Refer to earlier entries by number, such as #12.',
     presentation: { label: { pending: 'Posting to the swarm board', completed: 'Posted to the swarm board' } },
     parameters: z.object({ text: z.string().min(1) }),
@@ -122,17 +144,9 @@ export default function plugin(bb: BbPluginApi) {
     execute: async ({ since }, ctx) => result(service.read(ctx.threadId as ThreadId, since ?? null)),
   });
 
-  bb.agents.registerTool({
-    name: 'swarm_close',
-    description: 'Close the swarm when its goal is met or abandoned. Stops and archives every worker. Coordinator only.',
-    presentation: { label: { pending: 'Closing the swarm', completed: 'Closed the swarm' } },
-    parameters: z.object({ summary: z.string().describe('One or two sentences on the outcome.') }),
-    execute: async ({ summary }, ctx) => result(service.close(ctx.threadId as ThreadId, summary)),
-  });
-
   bb.agents.configure(context =>
     typeof context.pluginMetadata.member === 'string'
-      ? { tools: memberTools, skills: [], instructions: memberInstructions }
+      ? { tools: workerTools, skills: [], instructions: memberInstructions }
       : { tools: coordinatorTools, skills: [] },
   );
 
@@ -157,7 +171,7 @@ export default function plugin(bb: BbPluginApi) {
     if (!id) {
       throw new PluginCliError(open.length ? 'More than one swarm is open.' : 'No swarm is open.', {
         code: 'swarm_not_selected',
-        hint: open.length ? 'Pass --swarm <id>. Run `bb swarm list` for the ids.' : 'An agent starts one with the swarm_add tool.',
+        hint: open.length ? 'Pass --swarm <id>. Run `bb swarm list` for the ids.' : 'An agent starts one with the swarm tool.',
       });
     }
     return { id, member: id === own ? (threadId as ThreadId) : null };
