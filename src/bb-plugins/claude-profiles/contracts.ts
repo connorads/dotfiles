@@ -2,6 +2,7 @@ import { defineRpcContract } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { usageSchema } from './src/accounts/quota.ts';
 import { measurementSchema, resourceSchema } from './src/accounts/usage-source.ts';
+import { codexResetContract, codexResetHostContract } from './src/accounts/usage/codex-reset.ts';
 import { usageContract, usageHostContract } from './src/accounts/usage/contract.ts';
 import { ampReadingSchema } from './src/accounts/usage/amp-reading.ts';
 import { modelsContract } from './src/models/contract.ts';
@@ -48,6 +49,7 @@ export const hostContract = defineRpcContract({
   grokUsage: { input: z.object({}), output: measurementSchema },
   antigravityUsage: { input: z.object({ accountId: z.string().default('default') }), output: measurementSchema },
   ...usageHostContract,
+  ...codexResetHostContract,
 });
 // A null thread is the new-thread composer: its choice is remembered and claimed by the next Claude thread's first send.
 // A handoff draft composes in its non-Claude source thread. Its send creates a new Claude thread, so it targets that same choice.
@@ -68,7 +70,7 @@ export const accountsContract = defineRpcContract({
   // Threads on Default are omitted: the sidebar badges only named accounts.
   threadAccounts: { input: z.object({}), output: z.array(threadAccountSchema) },
 });
-export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract, ...connectorsContract });
+export const rpcContract = defineRpcContract({ ...accountsContract, ...modelsContract, ...usageContract, ...codexResetContract, ...connectorsContract });
 export const usageSourceContract = defineRpcContract({
   'provider-usage.v1.listResources': {
     input: z.object({}), output: z.object({ resources: z.array(resourceSchema) }),

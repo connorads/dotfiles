@@ -7,6 +7,7 @@ import { initialGuard, profileApplied, reviewLaunch, type Guard } from './src/ac
 import type { Usage } from './src/accounts/quota.ts';
 import { createQuotaCache } from './src/accounts/quota-cache.ts';
 import { newThreadAccount, startingThread } from './src/accounts/routing.ts';
+import { codexResetContract } from './src/accounts/usage/codex-reset.ts';
 import { registerUsage } from './src/accounts/usage/server.ts';
 import { createLogin } from './src/accounts/usage/login.ts';
 import { decodeResourceId, measurement } from './src/accounts/usage-source.ts';
@@ -499,6 +500,19 @@ export default function plugin(bb: BbPluginApi) {
     try { return measurement(await hostUsage(hostId, config, profileId, refresh)); }
     catch { return measurement({ status: 'error', windows: [], observedAt: null, message: 'Could not reach this profile host.' }); }
   }
+  bb.rpc.register(codexResetContract, {
+    'codexReset.status': ({ hostId }) => host.call('codexReset', { command: 'status' }, { hostId }),
+    'codexReset.set': ({ hostId, action }) => host.call('codexReset', { command: 'set', action }, { hostId, timeoutMs: 50_000 }),
+  });
+  bb.background.schedule('codex-auto-reset', '*/5 * * * *', async () => {
+    const machines = (await bb.sdk.hosts.list()).filter(machine => machine.status === 'connected');
+    await Promise.all(machines.map(async machine => {
+      const options = { hostId: machine.id, timeoutMs: 50_000 };
+      // Check only hosts with an armed local controller. Recheck mode under the CLI's lock.
+      const status = await host.call('codexReset', { command: 'status' }, options).catch(() => null);
+      if (status && status.mode !== 'off') await host.call('codexReset', { command: 'check' }, options);
+    }));
+  });
   const usageReader = registerUsage(bb, {
     antigravityLabels: async () => parseAntigravityLabels((await settings.get()).antigravityAccountLabels),
     login: createLogin({ terminals: bb.sdk.terminals, config: () => settings.get(), hosts: () => bb.sdk.hosts.list(),

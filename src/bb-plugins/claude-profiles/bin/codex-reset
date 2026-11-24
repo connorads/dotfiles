@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""Arm and check automatic reset-credit redemption for one local Codex login."""
+
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import select
+import subprocess
+import sys
+import tempfile
+import time
+from uuid import uuid4
+
+
+class Codex:
+    def __enter__(self):
+        self.process = subprocess.Popen(
+            ['codex', 'app-server'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, bufsize=0,
+        )
+        self.buffer = b''
+        self.request_id = 0
+        return self
+
+    def __exit__(self, *_):
+        self.process.kill()
+        self.process.communicate()
+
+    def send(self, method, params, request_id=None):
+        request = {'method': method, 'params': params}
+        if request_id is not None:
+            request['id'] = request_id
+        self.process.stdin.write(json.dumps(request).encode() + b'\n')
+
+    def request(self, method, params):
+        self.request_id += 1
+        self.send(method, params, self.request_id)
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            line, newline, rest = self.buffer.partition(b'\n')
+            if newline:
+                self.buffer = rest
+                response = json.loads(line)
+                if response.get('id') == self.request_id:
+                    result = response.get('result')
+                    if isinstance(result, dict):
+                        return result
+                    raise ValueError('Codex rejected the request')
+                continue
+            readable, _, _ = select.select([self.process.stdout], [], [], max(0, deadline - time.monotonic()))
+            if not readable:
+                break
+            chunk = os.read(self.process.stdout.fileno(), 65536)
+            if not chunk or len(self.buffer) + len(chunk) > 1024 * 1024:
+                break
+            self.buffer += chunk
+        raise ValueError('Codex did not return a usable response')
+
+    def usage(self):
+        self.request('initialize', {'clientInfo': {'name': 'codex-reset', 'version': '1'},
+                                    'capabilities': {'experimentalApi': True}})
+        self.send('initialized', None)
+        return self.request('account/rateLimits/read', None)
+
+
+def trigger_arg(value):
+    if value == 'blocked':
+        return value
+    if value.isascii() and value.isdecimal() and len(value) <= 3 and 1 <= int(value) <= 100:
+        return int(value)
+    raise argparse.ArgumentTypeError('use blocked or a whole percentage from 1 to 100')
+
+
+def matches(usage, trigger):
+    if trigger == 'blocked':
+        allowed = usage.get('ordinaryUsageAllowed')
+        return not allowed if isinstance(allowed, bool) else None
+    limits = usage.get('rateLimitsByLimitId') or {}
+    ordinary = limits.get('codex') or usage.get('rateLimits') or {}
+    if ordinary.get('limitId') not in (None, 'codex'):
+        return None
+    usage_percent = [window['usedPercent'] for key in ('primary', 'secondary')
+                     if isinstance(window := ordinary.get(key), dict)
+                     and window.get('windowDurationMins') in (300, 10080)
+                     and type(window.get('usedPercent')) is int and 0 <= window['usedPercent'] <= 100]
+    return max(usage_percent) >= trigger if usage_percent else None
+
+
+def save(path, state):
+    with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, delete=False) as file:
+        temporary = Path(file.name)
+        json.dump(state, file)
+        file.flush()
+        os.fsync(file.fileno())
+    temporary.replace(path)
+
+
+def update(path, state, args):
+    if args.command == 'status':
+        return state
+    if args.command == 'off':
+        state = {key: state[key] for key in ('trigger', 'lastReset') if key in state}
+        state.update(mode='off', message='Disarmed.')
+        save(path, state)
+        return state
+    if state.get('pending'):
+        return {**state, 'mode': 'off', 'message': 'Reset outcome unknown. Check your credits, then choose Off before rearming.'}
+    if args.command == 'check' and state['mode'] == 'off' and not args.dry_run:
+        return state
+
+    trigger = args.trigger if args.trigger is not None else state['trigger']
+    with Codex() as codex:
+        try:
+            usage = codex.usage()
+        except (OSError, ValueError):
+            if args.command != 'check' or args.dry_run:
+                raise
+            state = {**state, 'message': 'Usage check failed. Check the Codex login.'}
+            save(path, state)
+            return state
+        account = usage.get('accountId')
+        if not isinstance(account, str) or not account:
+            raise ValueError('Codex did not identify a signed-in account')
+        if args.command == 'arm':
+            if (state['mode'], state['trigger'], state.get('account')) == (args.mode, trigger, account):
+                return state
+            state = {key: state[key] for key in ('lastReset',) if key in state}
+            state.update(mode=args.mode, trigger=trigger, account=account, message='Armed. Waiting for the next check.')
+            save(path, state)
+            return state
+        if state['mode'] != 'off' and account != state.get('account'):
+            state = {**state, 'mode': 'off', 'message': 'Codex account changed. Arm again for the current account.'}
+            if not args.dry_run:
+                save(path, state)
+            return state
+        credits = (usage.get('rateLimitResetCredits') or {}).get('availableCount')
+        reached = matches(usage, trigger)
+        if reached is None:
+            message = 'Codex did not report the selected trigger.'
+        elif not reached:
+            state = {**state, 'waiting': False}
+            message = 'Waiting for the usage trigger.'
+        elif state.get('waiting'):
+            message = 'Waiting for usage to recover after the previous reset.'
+        elif type(credits) is not int or credits <= 0:
+            message = 'No available reset credit reported.'
+        elif args.dry_run:
+            message = 'Would redeem one reset credit.'
+        else:
+            request_id = str(uuid4())
+            save(path, {**state, 'pending': request_id})
+            try:
+                reply = codex.request('account/rateLimitResetCredit/consume', {'idempotencyKey': request_id})
+                outcome = reply.get('outcome')
+            except (OSError, ValueError):
+                outcome = None
+            if outcome in ('reset', 'alreadyRedeemed'):
+                state = {**state, 'mode': 'off' if state['mode'] == 'once' else 'always', 'waiting': True}
+                message = f'Redeemed one credit at {time.strftime("%Y-%m-%d %H:%M %Z")}.'
+                state['lastReset'] = message
+            elif outcome in ('nothingToReset', 'noCredit'):
+                message = 'Codex reported no eligible reset.'
+            else:
+                state = {**state, 'mode': 'off', 'pending': request_id}
+                message = 'Reset outcome unknown. Check your credits, then choose Off before rearming.'
+        result = {**state, 'message': message}
+        if not args.dry_run:
+            save(path, result)
+        return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    commands.add_parser('status')
+    commands.add_parser('off')
+    arm = commands.add_parser('arm')
+    arm.add_argument('mode', choices=('once', 'always'))
+    arm.add_argument('--trigger', type=trigger_arg, default=98)
+    check = commands.add_parser('check')
+    check.add_argument('--dry-run', action='store_true')
+    check.add_argument('--trigger', type=trigger_arg, help='override the trigger for a dry run')
+    args = parser.parse_args()
+    if args.command == 'check' and args.trigger is not None and not args.dry_run:
+        parser.error('--trigger on check requires --dry-run')
+    directory = Path.home() / '.local/state/codex-reset'
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path = directory / 'state.json'
+    with (directory / 'lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            state = json.loads(path.read_text())
+        except FileNotFoundError:
+            state = {'mode': 'off', 'trigger': 98, 'message': 'Disarmed.'}
+        current = update(path, state, args)
+        view = {key: current[key] for key in ('mode', 'trigger', 'message', 'lastReset') if key in current}
+        view['review'] = bool(current.get('pending'))
+        if view['review']:
+            view['mode'] = 'off'
+            view['message'] = 'Reset outcome unknown. Check your credits, then choose Off before rearming.'
+        print(json.dumps(view))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except BlockingIOError:
+        sys.exit('A reset check is in progress. Try again shortly.')
+    except (OSError, ValueError):
+        sys.exit('Could not read reset state or reach the Codex login.')

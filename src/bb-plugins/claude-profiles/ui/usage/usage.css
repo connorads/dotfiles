@@ -144,6 +144,13 @@
 .au-resets-expiry { color: var(--au-subtle); font-variant-numeric: tabular-nums; }
 .au-resets-note { grid-column: 2 / -1; font-size: var(--text-xs, 12px); color: var(--au-subtle); overflow-wrap: anywhere; }
 .au-resets-foot { grid-column: 1 / -1; margin: 0; }
+.au-auto-reset { margin-top: 6px; }
+.au-auto-reset .au-login-button { min-height: 44px; }
+.au-auto-reset-controls { display: grid; gap: 8px; margin-top: 8px; font-size: var(--text-xs, 12px); }
+.au-auto-reset-controls p { margin: 0; }
+.au-auto-reset-controls label, .au-auto-reset-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.au-auto-reset-controls select, .au-auto-reset-controls input { min-height: 44px; padding: 4px 8px; background: var(--background); border: 1px solid var(--border); border-radius: 6px; color: var(--foreground); }
+.au-auto-reset-controls input { width: 5em; }
 .au-resets-note[data-stale] { color: var(--warning-text, var(--warning)); }
 
 /* Narrow cards put the reading on one line and give the bar the full width below it. */

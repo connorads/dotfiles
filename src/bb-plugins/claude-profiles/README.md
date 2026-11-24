@@ -329,6 +329,27 @@ them by reset type and expiry; Codex groups its reset credits by expiry. Deadlin
 within three days show in amber. Hover over an expiry for its date and local time.
 Held Claude resets stay visible when they are paused or cannot be used yet.
 
+Open **Auto-reset** beneath Codex's saved credits. Choose a usage threshold or
+**Codex blocks usage**, then choose **Arm once** or **Always**. The percentage
+trigger applies to either the five-hour or weekly window. **Arm once** disarms
+after one confirmed redemption. **Always** waits for the trigger to clear
+before spending another credit. Choose **Off** to disarm.
+
+BB checks armed hosts every five minutes while Agent Switcher is loaded. Arm
+only one host for a given Codex account. The controller uses that host's Codex
+CLI login and pauses if it cannot confirm a redemption. Check the credit balance,
+then choose **Off** to clear the pending result before arming again.
+
+Use the same controller from the host terminal. Replace `~/src/bb-plugins/claude-profiles/bin/`
+with the checkout path if needed.
+
+```sh
+~/src/bb-plugins/claude-profiles/bin/codex-reset status
+~/src/bb-plugins/claude-profiles/bin/codex-reset check --dry-run --trigger 98
+~/src/bb-plugins/claude-profiles/bin/codex-reset arm once --trigger 98
+~/src/bb-plugins/claude-profiles/bin/codex-reset off
+```
+
 Claude adds limits without notice, often under internal codenames. A Claude account
 lists **Unread usage fields** when Claude reports a field with a value that
 [quota.ts](src/accounts/quota.ts) neither reads nor ignores on purpose. A limit may be
