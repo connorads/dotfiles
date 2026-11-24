@@ -117,14 +117,14 @@
     ConfigDataInstall = false;
   };
 
+  # `command` waits for the encrypted /nix volume; a bare store path fails at boot with EX_CONFIG.
+  launchd.daemons.bb-server.command = "${
+    import ./bb-service-launcher.nix {
+      inherit pkgs;
+      deployedServer = true;
+    }
+  } server";
   launchd.daemons.bb-server.serviceConfig = {
-    ProgramArguments = [
-      "${import ./bb-service-launcher.nix {
-        inherit pkgs;
-        deployedServer = true;
-      }}"
-      "server"
-    ];
     UserName = "connorads";
     GroupName = "staff";
     EnvironmentVariables = {
