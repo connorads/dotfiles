@@ -214,3 +214,31 @@ test('a later silent turn with no reply leaves no entry', () => {
   assert.deepEqual(kinds(swarm.entries), ['joined', 'post', 'post']);
   assert.deepEqual(effects, []);
 });
+
+const failed = (name: MemberName): Step => ({ type: 'turnFailed', member: name, error: 'quota' });
+
+test('a failed member is retried by its own mention, not by @all or by mentions from before it failed', () => {
+  const setup = run(fresh(), join(a), join(b), post(coordinatorName, '@a one more thing'), failed(a));
+  assert.deepEqual(setup.effects, []);
+
+  const broadcast = run(setup.swarm, post(coordinatorName, '@all status please'));
+  assert.deepEqual(wakes(broadcast.effects), []);
+
+  const retry = run(broadcast.swarm, post(coordinatorName, '@a try again'));
+  const wake = retry.effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && [wake.member, wake.entries.map(entry => entry.seq)], [a, [6]]);
+  assert.equal(member(retry.swarm, a).run, 'working');
+});
+
+test('close also stops a failed worker', () => {
+  const { effects } = run(fresh(), join(a), failed(a), { type: 'close', by: coordinatorName, summary: 'done' });
+  assert.deepEqual(effects, [{ type: 'stop', member: a, threadId: thread('a') }]);
+});
+
+test('a failed coordinator that is retried also gets the reports it missed', () => {
+  const setup = run(fresh(), join(a), join(b), failed(coordinatorName), ended(a, 'result from a'));
+  assert.deepEqual(setup.effects, []);
+  const { effects } = run(setup.swarm, post(b, '@coordinator are you there?'));
+  const wake = effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && [wake.entries.map(entry => entry.kind), wake.also.map(entry => entry.kind)], [['post'], ['reply']]);
+});

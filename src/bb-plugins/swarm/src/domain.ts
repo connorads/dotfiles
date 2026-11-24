@@ -103,15 +103,21 @@ export interface Mentions {
   unknown: string[];
 }
 
-/** `@name` rings a live member; `@all` rings every live member. The author is never rung. */
+/**
+ * `@name` rings a member that has not left; `@all` rings every live member.
+ * A failed member answers only to its own name, so a broadcast does not retry it.
+ * The author is never rung.
+ */
 export function parseMentions(text: string, author: Author, members: readonly Member[]): Mentions {
-  const live = members.filter(member => isLive(member) && member.name !== author).map(member => member.name);
+  const others = members.filter(member => member.name !== author);
+  const live = others.filter(isLive).map(member => member.name);
+  const present = others.filter(member => member.run !== 'stopped').map(member => member.name);
   const known = new Set<MemberName>();
   const unknown = new Set<string>();
   for (const match of text.matchAll(mentionPattern)) {
     const name = match[1]!.toLowerCase();
     if (name === 'all') live.forEach(member => known.add(member));
-    else if (live.includes(name as MemberName)) known.add(name as MemberName);
+    else if (present.includes(name as MemberName)) known.add(name as MemberName);
     else if (name !== author) unknown.add(name);
   }
   return { known: [...known], unknown: [...unknown] };

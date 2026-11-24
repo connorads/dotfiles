@@ -230,3 +230,12 @@ test('the coordinator\'s wake lists posts that did not mention it under their ow
   assert.equal(wakes[0]!.sender, 'thr_two');
   assert.match(wakes[0]!.text, /#4 two: @coordinator done\nAlso on the board, with no mention of you:\n#3 one: a note for nobody/);
 });
+
+test('reconcile notices a failed member that a person restarted', async () => {
+  const { add, service, observed } = setup();
+  await add('scout');
+  service.turnFailed('thr_scout' as ThreadId, 'quota');
+  observed.set('thr_scout', { state: 'working' });
+  await service.reconcile();
+  assert.match(service.read(origin, 0).text, /scout \(working\)/);
+});

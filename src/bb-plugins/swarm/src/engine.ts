@@ -94,7 +94,7 @@ export function decide(swarm: Swarm, input: Input): Decision {
       if (closed) return refused({ code: 'closed' });
       if (input.by !== 'human' && find(input.by)?.role !== 'coordinator') return refused({ code: 'not-coordinator', by: input.by });
       for (const member of draft.members) {
-        if (member.role !== 'worker' || !isLive(member)) continue;
+        if (member.role !== 'worker' || member.run === 'stopped') continue;
         member.run = 'stopped';
         draft.effects.push({ type: 'stop', member: member.name, threadId: member.threadId });
       }
@@ -126,7 +126,8 @@ export function decide(swarm: Swarm, input: Input): Decision {
       const member = find(input.member);
       if (closed || !member || member.run !== 'working') return unchanged;
       member.run = 'failed';
-      append({ kind: 'failed', member: member.name, error: input.error });
+      // Drop what was pending, so only a mention made after the failure retries the member.
+      member.cursor = append({ kind: 'failed', member: member.name, error: input.error });
       break;
     }
     case 'gone': {
@@ -163,15 +164,20 @@ function settle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq
 function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq): boolean {
   let due = false;
   for (const member of draft.members) {
-    if (member.run !== 'idle') continue;
-    const unread = draft.entries.filter(entry => entry.seq > member.cursor && concerns(entry, member));
+    if (member.run !== 'idle' && member.run !== 'failed') continue;
+    const unread = draft.entries.filter(
+      entry => entry.seq > member.cursor && (member.run === 'failed' ? entry.kind === 'post' && entry.mentions.includes(member.name) : concerns(entry, member)),
+    );
     if (unread.length === 0) continue;
     due = true;
     if (draft.wakes >= maxWakes) {
       if (!draft.entries.some(entry => entry.kind === 'exhausted')) append({ kind: 'exhausted', maxWakes });
       continue;
     }
-    const also = draft.entries.filter(entry => entry.seq > member.cursor && ambient(entry, member));
+    // A failed coordinator is woken by its name alone, so what else concerns it rides along here.
+    const also = draft.entries.filter(
+      entry => entry.seq > member.cursor && !unread.includes(entry) && (ambient(entry, member) || concerns(entry, member)),
+    );
     draft.wakes += 1;
     member.run = 'working';
     // Everything up to the head is now delivered: the reasons in `unread`, the rest in `also`.

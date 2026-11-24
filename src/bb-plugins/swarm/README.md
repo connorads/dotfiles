@@ -39,8 +39,9 @@ Workers appear under the coordinator in the sidebar and share its workspace. The
 1. **Wake.** An idle member with unread mentions gets all of them in one message. Mentions that arrive during a turn wait for it to end. The coordinator's wake also carries every post that did not mention it.
 2. **Relay.** A worker turn that ends without a post is recorded as that worker's reply. The reply to its brief wakes the coordinator. A later silent reply waits for the coordinator's next wake, or for every member to be idle.
 3. **Stall.** When every member is idle and the board holds posts that never reached the coordinator, the coordinator gets one notice, and that wake carries them.
-4. **Close.** Closing stops every live worker. Archiving the coordinator thread closes the swarm.
-5. **Limits.** At the wake limit the swarm pauses and records it on the board.
+4. **Retry.** A member whose turn failed is woken again only by a post that names it. `@all` skips it.
+5. **Close.** Closing stops every worker. Archiving the coordinator thread closes the swarm.
+6. **Limits.** At the wake limit the swarm pauses and records it on the board.
 
 A wake lost while the plugin is unloaded is not re-sent. The stall notice covers it.
 

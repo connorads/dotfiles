@@ -1,7 +1,6 @@
 import type { Board } from './board.ts';
 import {
   head,
-  isLive,
   memberByThread,
   openSwarm,
   parseMemberName,
@@ -223,7 +222,7 @@ export function createService(deps: Deps) {
      */
     async reconcile(): Promise<void> {
       for (const id of board.open()) {
-        for (const member of board.load(id)?.members.filter(isLive) ?? []) {
+        for (const member of board.load(id)?.members.filter(candidate => candidate.run !== 'stopped') ?? []) {
           try {
             const observed = await agents.observe(member.threadId);
             if (observed.state === 'gone') threadGone(member.threadId);
