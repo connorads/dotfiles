@@ -2,9 +2,10 @@
 
 Spoken commands, recorded through Hex, control the focused BB window. Open
 **Voice monitor** from the command palette for activity and command help.
-The Voice chip appears during capture, briefly shows results and failures,
-and stays visible while the monitor is open. New drafts show it beside the
-composer actions. Settings → Handsfree controls spoken feedback.
+The Voice chip in the thread header appears only for command-key recordings.
+It briefly shows their results and failures, and stays visible while the
+monitor is open. Option-key dictation never shows the chip; its history stays
+in Activity. Settings → Handsfree controls spoken feedback.
 
 ## Command pedal
 
@@ -162,7 +163,9 @@ Handsfree readout without stopping an agent.
 
 Activity reads the latest 256 KiB of Hex's
 `~/Library/Application Support/hex/logs/live.ndjson` on the BB server every
-750 ms. It shows the last capture state, transcript, and fifty native attempts.
+750 ms while the monitor is open or a command recording is in progress. The
+command key announces each recording to BB, which starts the reads. Reads stop
+once the result has shown, or 75 seconds after the key press. It shows the last capture state, transcript, and fifty native attempts.
 Recording and transcription feedback expires after thirty seconds without a
 state update. This file records events; its presence does not prove Hex is running.
 Each attempt exposes the heard text and result. Command recordings appear as
@@ -170,7 +173,7 @@ Each attempt exposes the heard text and result. Command recordings appear as
 Missing or unreadable logs show `Hex diagnostics unavailable on this BB server`.
 Until the first reply arrives, Activity shows `Loading Hex diagnostics…`.
 
-The monitor opens beside the header or draft control. It is an in-app surface.
+The monitor opens beside the header chip, or at the top left of a new draft. It is an in-app surface.
 A detached desktop window requires support from BB's desktop window API.
 Navigation requests report the observed destination when the selected thread changes.
 The header confirms only spoken navigation. Clicks and shortcuts log their destination in Activity.

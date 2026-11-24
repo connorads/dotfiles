@@ -91,6 +91,8 @@ function VoiceCard() {
   const [diagnosticsLoaded, setDiagnosticsLoaded] = useState(false);
   const [now, setNow] = useState(Date.now);
   const diagnosticStart = useRef(Date.now());
+  // Hex logs every dictation; the chip follows only recordings the command pedal announced through `capture`.
+  const [watch, setWatch] = useState<{ start: number; until: number } | null>(null);
   const observedThread = useRef(context.threadId);
   const activeRequest = useRef<string | null>(null);
   const navigationRequest = useRef<{ requestId: string; expires: number; threadId?: string } | null>(null);
@@ -128,7 +130,9 @@ function VoiceCard() {
     };
   }, []);
 
+  const polling = expanded || watch !== null;
   useEffect(() => {
+    if (!polling) return;
     let active = true;
     let timer: number | undefined;
     const poll = async () => {
@@ -141,7 +145,15 @@ function VoiceCard() {
     };
     void poll();
     return () => { active = false; window.clearTimeout(timer); };
-  }, [rpc]);
+  }, [rpc, polling]);
+
+  useEffect(() => {
+    if (!watch) return;
+    const last = diagnostics.attempts.filter(entry => !entry.unmatched && entry.at >= watch.start).at(-1);
+    const until = last ? Math.min(watch.until, last.at + (last.problem ? 8000 : 4000)) : watch.until;
+    if (now >= until) setWatch(null);
+    else if (until !== watch.until) setWatch({ ...watch, until });
+  }, [watch, diagnostics, now]);
 
   useEffect(() => {
     diagnosticStart.current = Date.now();
@@ -151,14 +163,14 @@ function VoiceCard() {
 
   useEffect(() => {
     const last = diagnostics.attempts.filter(entry => !entry.unmatched).at(-1);
-    const newer = last && last.at >= diagnosticStart.current && last.at > (history.at(-1)?.at ?? 0);
+    const newer = watch && last && last.at >= Math.max(diagnosticStart.current, watch.start) && last.at > (history.at(-1)?.at ?? 0);
     const diagnosticFeedback = newer && now - last.at < (last.problem ? 8000 : 4000);
     const state = diagnostics.state;
-    const capture = state && now - state.at < 30_000 && (state.state === 'dictating' || state.state === 'transcribing');
+    const capture = watch && state && now - state.at < 30_000 && (state.state === 'dictating' || state.state === 'transcribing');
     const label = busy ? 'Working…' : capture ? state.state === 'dictating' ? 'Voice · Recording' : 'Voice · Transcribing'
       : diagnosticFeedback ? `Voice · ${last.result}` : feedback ? message : 'Voice';
     publishVoiceHeader({ label, problem: !busy && !capture && (diagnosticFeedback ? last.problem : feedback && problem), expanded });
-  }, [busy, feedback, problem, message, expanded, diagnostics, now, history]);
+  }, [busy, feedback, problem, message, expanded, diagnostics, now, history, watch]);
 
   useEffect(() => {
     if (!feedback || busy) return;
@@ -385,6 +397,8 @@ function VoiceCard() {
       case 'capture': {
         const token = crypto.randomUUID();
         capturedChoice.current = { token, capture: captureTarget() };
+        // Recordings cancel after sixty seconds; the margin covers transcription.
+        setWatch({ start: Date.now(), until: Date.now() + 75_000 });
         return { ok: true, message: 'Recording target captured.', context: contextKey, choiceTarget: token };
       }
       case 'list': return { ok: true, message: 'Choices loaded.', candidates: await list(command.kind), context: contextKey };
@@ -501,7 +515,7 @@ function VoiceCard() {
       if (spokenFeedback && !['list', 'capture', 'notice', 'feedback', 'read', 'stop-reading', 'state', 'heard'].includes(command.action)) {
         try { speak(reply.message); } catch { reply.message += ' Speech output is unavailable on this device.'; }
       }
-      if (command.action !== 'list') {
+      if (command.action !== 'list' && command.action !== 'capture') {
         setMessage(reply.message);
         setFeedback(true);
         setProblem(!reply.ok || reply.outcome === 'no-match' || command.action === 'notice' && !!command.problem);
@@ -645,7 +659,6 @@ function VoiceCard() {
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'voice', component: VoiceCard });
   registerThreadHeaderChip(app, { id: 'voice', title: 'Voice monitor', component: VoiceHeader });
-  app.composer.customize({ id: 'voice', scopes: ['new-thread'], actions: [{ id: 'voice', component: VoiceHeader }] });
   app.commands.register({
     id: 'monitor', title: 'Voice monitor',
     run: () => { window.dispatchEvent(new Event('handsfree:open')); },

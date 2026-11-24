@@ -775,13 +775,15 @@ test.each(['t2', null])('changing the focused destination to %s clears failures 
 });
 
 test('native diagnostic failures expire after eight seconds and remain in Activity', async () => {
-  vi.useFakeTimers();
-  const at = Date.now();
+  let at: number | null = null;
   const view = await render('idle', undefined, undefined, { diagnostics: () => ({
     available: true, state: null, transcript: null,
-    attempts: [{ at, kind: 'command', heard: 'next question', command: 'bb-submit-answer',
+    attempts: at === null ? [] : [{ at, kind: 'command', heard: 'next question', command: 'bb-submit-answer',
       result: 'Native command failed', problem: true, unmatched: false, context: 'bb' }],
   }) });
+  vi.useFakeTimers();
+  await view.slot.behavior.emitRealtime('command', { requestId: 'capture', command: { action: 'capture' } });
+  at = Date.now();
   await act(async () => { await vi.advanceTimersByTimeAsync(750); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*Native command failed/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(7500); });
@@ -798,6 +800,7 @@ test('monitor shows actual Hex transcription and details without marking backgro
     transcript: { at: now, phase: 'updated', latency: 120, text: 'go to access thread' },
     attempts: [{ at: now, kind: 'command', heard: 'background conversation', command: null,
       result: 'Unmatched speech', problem: false, unmatched: true, context: 'bb' }] }) });
+  await view.command({ action: 'capture' });
   await waitFor(() => expect(view.slot.getByRole('button', { name: /Voice monitor.*Transcribing/ })).toBeTruthy());
   expect(view.slot.queryByRole('dialog')).toBeNull();
   fireEvent.click(view.slot.getByRole('button', { name: /Voice monitor/ }));
@@ -821,10 +824,11 @@ test('voice monitor command opens Activity and exposes native failure details', 
 
 
 test('capture feedback expires and polling stops when the controller unmounts', async () => {
-  vi.useFakeTimers();
-  const now = Date.now();
   const read = vi.fn(() => ({ available: true, state: { at: now, state: 'dictating' as const }, transcript: null, attempts: [] }));
   const view = await render('idle', undefined, undefined, { diagnostics: read });
+  vi.useFakeTimers();
+  await view.slot.behavior.emitRealtime('command', { requestId: 'capture', command: { action: 'capture' } });
+  const now = Date.now();
   await act(async () => { await vi.advanceTimersByTimeAsync(750); });
   expect(view.slot.getByRole('button', { name: /Voice monitor.*Recording/ })).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
@@ -835,6 +839,39 @@ test('capture feedback expires and polling stops when the controller unmounts', 
   expect(read.mock.calls.length).toBe(count);
 });
 
+
+test('plain Hex dictation shows no chip and leaves Hex unpolled', async () => {
+  const read = vi.fn(() => ({ available: true, state: { at: Date.now(), state: 'transcribing' as const }, transcript: null,
+    attempts: [{ at: Date.now(), kind: 'dictation' as const, heard: 'dictated text', command: null, result: 'Pasted', problem: false, unmatched: false, context: '' }] }));
+  const view = await render('idle', undefined, undefined, { diagnostics: read });
+  vi.useFakeTimers();
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(read).not.toHaveBeenCalled();
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
+});
+
+test('a command recording polls Hex until its result expires, then stops', async () => {
+  let at: number | null = null;
+  const read = vi.fn(() => ({ available: true, state: null, transcript: null,
+    attempts: at === null ? [] : [{ at, kind: 'dictation' as const, heard: 'next thread', command: null, result: 'Printed', problem: false, unmatched: false, context: '' }] }));
+  const view = await render('idle', undefined, undefined, { diagnostics: read });
+  vi.useFakeTimers();
+  await view.slot.behavior.emitRealtime('command', { requestId: 'capture', command: { action: 'capture' } });
+  await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+  at = Date.now();
+  await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+  expect(view.slot.getByRole('button', { name: /Voice monitor.*Printed/ })).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(4500); });
+  expect(view.slot.queryByRole('button', { name: /^Voice monitor\./ })).toBeNull();
+  const count = read.mock.calls.length;
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(read.mock.calls.length).toBe(count);
+});
+
+test('the chip stays out of the composer', async () => {
+  const app = await loadPluginApp(() => import('./app.tsx'));
+  expect(app.composerCustomizations).toEqual([]);
+});
 
 test('opening a project draft requests host focus without claiming completion', async () => {
   const view = await render();
