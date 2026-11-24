@@ -18,11 +18,9 @@
   ...
 }:
 {
+  # `command` waits for the encrypted /nix volume; a bare store path fails at boot with EX_CONFIG.
+  launchd.daemons.memory-trace.command = "${pkgs.python3}/bin/python3 ${config.home-manager.users.connorads.home.homeDirectory}/.config/tmux/memory_trace.py";
   launchd.daemons.memory-trace.serviceConfig = {
-    ProgramArguments = [
-      "${pkgs.python3}/bin/python3"
-      "${config.home-manager.users.connorads.home.homeDirectory}/.config/tmux/memory_trace.py"
-    ];
     UserName = "connorads";
     GroupName = "staff";
     EnvironmentVariables.HOME = config.home-manager.users.connorads.home.homeDirectory;
