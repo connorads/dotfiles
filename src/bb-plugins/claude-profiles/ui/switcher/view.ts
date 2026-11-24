@@ -123,9 +123,14 @@ export function ring(usage: Usage | undefined): { percent: number | null; tone: 
 }
 
 export type AccountChip = { profile: KeyedProfile; selected: boolean; pending: boolean };
-// The account row exists only when the current model's provider offers a choice of accounts.
+export function missingAccount(accounts: { profiles: readonly KeyedProfile[]; currentId: string } | null): string | null {
+  if (!accounts) return null;
+  return accounts.profiles.some(profile => profile.id === accounts.currentId) ? null : accounts.currentId;
+}
+// The account row appears when more than one account exists, or when the current binding is missing and needs switching away.
 export function accountChips(providerId: string | undefined, accounts: { profiles: readonly KeyedProfile[]; currentId: string; pendingId: string | null } | null): AccountChip[] {
-  if ((providerId !== 'claude-code' && (providerId === undefined || antigravityAccountId(providerId) === null)) || !accounts || accounts.profiles.length < 2) return [];
+  if ((providerId !== 'claude-code' && (providerId === undefined || antigravityAccountId(providerId) === null)) || !accounts) return [];
+  if (accounts.profiles.length < 2 && missingAccount(accounts) === null) return [];
   const shown = accounts.pendingId ?? accounts.currentId;
   return accounts.profiles.map(profile => ({ profile, selected: profile.id === shown, pending: profile.id === accounts.pendingId }));
 }

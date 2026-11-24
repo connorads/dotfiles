@@ -116,12 +116,27 @@ const commitLookupSchema = z.object({
 });
 export type CommitLookup = z.infer<typeof commitLookupSchema>;
 
-const folderList = z.object({ root, path: z.string(), repository: z.boolean(),
+const folderList = z.object({
+  root,
+  base: root,
+  home: root,
+  parent: root.nullable(),
+  dotfiles: z.boolean(),
+  path: z.string(),
+  repository: z.boolean(),
+  repoKind: z.enum(['repo', 'dotfiles']).nullable(),
   folders: z.array(z.object({ name: z.string(), repository: z.boolean() })),
-  worktrees: z.array(z.object({ path: root, branch: z.string().nullable() })) });
+  worktrees: z.array(z.object({ path: root, branch: z.string().nullable() })),
+});
 export type FolderList = z.infer<typeof folderList>;
-const repositoryList = z.object({ repositories: z.array(z.string()), truncated: z.boolean() });
+const repositoryList = z.object({ repositories: z.array(z.string()), truncated: z.boolean(), skipped: z.boolean().optional() });
 export type RepositoryList = z.infer<typeof repositoryList>;
+export const hostRepoSchema = z.object({
+  path: root,
+  label: z.string().min(1).optional(),
+  source: z.enum(['recent', 'project']),
+});
+export type HostRepo = z.infer<typeof hostRepoSchema>;
 
 export const reviewSchema = z.object({ head: z.string().nullable(), index: z.string(), count: z.number(), blocked: z.string().nullable(), draftKey: z.string() });
 export type CommitReview = z.infer<typeof reviewSchema>;
@@ -168,7 +183,7 @@ export const rpcContract = defineRpcContract({
   cancelMessage: { input: z.object({ ...thread, requestId: z.string().min(1).max(100) }), output: z.object({}) },
   folders: { input: z.object({ ...thread, path: z.string() }), output: folderList },
   repositories: { input: z.object({ ...thread, path: z.string() }), output: repositoryList },
-  recentPicks: { input: z.object(thread), output: z.object({ picks: z.array(pickSchema) }) },
+  recentPicks: { input: z.object(thread), output: z.object({ picks: z.array(pickSchema), host: z.array(hostRepoSchema) }) },
   select: { input: z.object({ ...thread, path: z.string().nullable(), worktree: root.optional() }), output: z.object({}) },
   watch: { input: z.object(holder), output: z.object({ root: root.nullable(), selected: z.boolean(), snapshot: snapshotSchema, op: opStateSchema.nullable(), fetch: fetchHealthSchema }) },
   unwatch: { input: z.object(holder), output: z.object({}) },

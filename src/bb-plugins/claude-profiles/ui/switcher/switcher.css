@@ -99,6 +99,8 @@
 @keyframes sw-appear { from { opacity: 0; } }
 .sw-error { margin: 6px 4px 0; padding: 6px 8px; border-radius: 8px; font-size: 12px; color: var(--destructive-text, var(--destructive));
   background: color-mix(in oklch, var(--destructive) 10%, transparent); }
+.sw-missing { margin: 6px 4px 0; padding: 6px 8px; border-radius: 8px; font-size: 12px; color: var(--warning-text, var(--warning));
+  background: color-mix(in oklch, var(--warning) 10%, transparent); }
 .sw-conflict { margin: 6px 4px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
 .sw-conflict p, .sw-conflict ul { margin: 0 0 6px; }
 .sw-conflict ul { padding-left: 16px; color: var(--muted-foreground); }

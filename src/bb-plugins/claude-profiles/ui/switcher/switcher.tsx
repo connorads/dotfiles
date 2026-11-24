@@ -7,7 +7,7 @@ import type { Usage } from '../../src/accounts/quota.ts';
 import type { Effort, Favourite, Setup } from '../../src/models/contract.ts';
 import { createController, type Controller } from './controller.ts';
 import { close, open, openedState, reanchor, subscribe, type Anchor } from './store.ts';
-import { accountChips, modelOf, placement, quickRows, ring, searchGroups, stepEffort, tierLabel, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
+import { accountChips, missingAccount, modelOf, placement, quickRows, ring, searchGroups, stepEffort, tierLabel, type AccountChip, type ProviderCatalog, type Result, type Row } from './view.ts';
 import './switcher.css';
 import { antigravityAccountId } from '../../src/accounts/antigravity-account.ts';
 import { BrandIcon } from '../usage/brand-icon.tsx';
@@ -223,6 +223,7 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
   const groups = searchGroups(catalog, favourites, query, id => composer.scope.kind === 'thread' && id === providerId);
   const results = groups.flatMap(group => group.results);
   const chips = accounts?.supported ? accountChips(providerId, accounts) : [];
+  const missingId = providerId === 'claude-code' && accounts?.supported && !accounts.pendingId ? missingAccount(accounts) : null;
   const tiers = (currentModel?.supportedServiceTiers ?? []).filter(tier => tier.id !== 'default');
   const singleTier = tiers.length === 1 ? tiers[0] : undefined;
   const activeTier = current.serviceTier ?? 'default';
@@ -439,6 +440,11 @@ export function Switcher({ composer, onClose, anchor = null }: { composer: Plugi
           {chip.pending && <span className="sw-next">next turn</span>}
         </button>)}
       </div>}
+      {missingId && <p role="status" className="sw-missing">
+        {accounts?.target === 'next'
+          ? `Remembered account “${missingId}” was removed. Choose another account.`
+          : `Account “${missingId}” was removed on this machine. Restore its folder to move history before switching.`}
+      </p>}
       {providerId === 'claude-code' && accounts && !accounts.supported && <p className="sw-empty" role="status">
         Account choice opens after the first message. New Claude threads start on your remembered account.</p>}
       <button type="button" className="sw-search-row" aria-label="All models" aria-keyshortcuts="/" onClick={openSearch}>

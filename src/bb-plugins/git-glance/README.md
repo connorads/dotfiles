@@ -149,28 +149,35 @@ with progress, a result line and cancel.
 ## Repository discovery
 
 When the checkout has no repository, the header chip offers **Choose repo**, and
-the pop-up opens straight to a folder browser rooted at the thread checkout.
+the pop-up opens straight to a folder browser starting at the thread checkout.
 The repository name in Git status opens the same browser.
 
-- Search finds repositories in subfolders of the displayed folder, up to four levels down.
+- Quick jumps return to **Thread folder**, open **Home**, step **Up** one folder,
+  or select **Dotfiles** directly when `~/git/dotfiles` is present.
+- Search finds repositories in subfolders of the displayed folder, up to four levels down
+  (within the thread checkout or Home), alongside dotfiles, host-wide recent checkouts and
+  same-host BB projects under **Elsewhere on this host**.
   Name matches rank above path matches. `Enter` selects the top match; `↑`/`↓` move between rows.
+- Typing a path starting with `~` or `/` opens that folder directly on `Enter`.
 - `→` on a folder or repository row opens it. `←`, or `Backspace` in an empty search,
-  goes up one folder and focuses the row just left. Inside a repository, `Enter` on an
-  empty search uses it.
-- The search skips symlinks, `node_modules` and `Library`, and never enters a repository or a hidden folder.
+  goes up one folder (including above the thread checkout) and focuses the row just left.
+  Inside a repository, `Enter` on an empty search uses it.
+- Deep subfolder search skips symlinks, `node_modules` and `Library`, never enters a repository or a hidden folder,
+  and pauses outside the thread checkout and Home so browsing `/` never crawls the host.
   It stops after 1,000 repositories or 50,000 folders, and then says so.
 - With an empty search, the browser lists the current folder's immediate subfolders.
-- At the thread folder, an empty search lists the last eight picks under **Recent**, so `Enter` reopens the latest.
-  Every thread on the same checkout shares the list. A recent pick reruns the same checks as a new one.
+- At the thread folder, an empty search lists the last eight picks under **Recent**, so `Enter` reopens the latest,
+  and surfaces dotfiles, host-wide recent checkouts and same-host BB projects under **Elsewhere on this host**.
+  Every thread on the same checkout shares the **Recent** list. A recent pick reruns the same checks as a new one.
 - Git rows select a repository. Their arrow browses inside it.
-- Ordinary folders open for deeper browsing. Breadcrumbs return to an ancestor.
-- **Use this repository** selects the displayed folder's repository.
+- Ordinary folders open for deeper browsing. Clickable ancestor breadcrumbs jump directly to any parent folder.
+- **Use this repository** (or **Use dotfiles** at Home) selects the displayed folder's repository.
 - **Use thread checkout** restores the thread's default repository.
 - Selection is saved per thread and checkout. It changes Git Glance's reads,
   watches and actions; the thread's working directory stays the same.
 - The selected path appears above the branch. Selection waits for running Git
   operations to finish. Stale actions fail instead of targeting another repo.
-- Browsing stays inside the checkout and omits symlink directories and `.git`.
+- Browsing stays on the thread's host and omits symlink directories and `.git`.
   Browsing and search show a hidden folder only when it is a repository, such as `.github`.
 - Browse a repository with its row's arrow to list its registered checkouts and worktrees.
   Each entry shows its branch and full path. Detached worktrees show **Detached HEAD**.

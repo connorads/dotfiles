@@ -1192,3 +1192,134 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: --volumes requires Docker cleanup"* ]]
 }
+
+setup_bb_thread_storage_fixture() {
+  local bb_dir="$HOME/.bb"
+  local ts="$bb_dir/thread-storage"
+  mkdir -p \
+    "$ts/thr_live" \
+    "$ts/thr_recent_arch" \
+    "$ts/thr_old_arch" \
+    "$ts/thr_old_pinned" \
+    "$ts/thr_old_keep/keep" \
+    "$ts/thr_old_keep/scratch" \
+    "$ts/thr_orphan_old" \
+    "$ts/thr_orphan_fresh" \
+    "$ts/not-a-thread-dir"
+
+  printf 'live\n' >"$ts/thr_live/a.txt"
+  printf 'recent\n' >"$ts/thr_recent_arch/a.txt"
+  printf 'old\n' >"$ts/thr_old_arch/video.mp4"
+  printf 'pinned\n' >"$ts/thr_old_pinned/a.txt"
+  printf 'saved\n' >"$ts/thr_old_keep/keep/report.md"
+  printf 'junk\n' >"$ts/thr_old_keep/scratch/clip.mp4"
+  printf 'junk\n' >"$ts/thr_old_keep/temp.png"
+  printf 'orphan old\n' >"$ts/thr_orphan_old/a.txt"
+  printf 'orphan fresh\n' >"$ts/thr_orphan_fresh/a.txt"
+  printf 'loose\n' >"$ts/loose-note.json"
+  touch -t 202001010000 "$ts/thr_orphan_old" "$ts/thr_orphan_old/a.txt"
+
+  python3 - "$bb_dir/bb.db" <<'PY'
+import sqlite3, sys, time
+now_ms = int(time.time() * 1000)
+day_ms = 86400 * 1000
+conn = sqlite3.connect(sys.argv[1])
+conn.execute(
+    "CREATE TABLE threads (id TEXT PRIMARY KEY, archived_at INTEGER, pinned_at INTEGER, deleted_at INTEGER)"
+)
+rows = [
+    ("thr_live", None, None, None),
+    ("thr_recent_arch", now_ms - 2 * day_ms, None, None),
+    ("thr_old_arch", now_ms - 10 * day_ms, None, None),
+    ("thr_old_pinned", now_ms - 10 * day_ms, now_ms - 12 * day_ms, None),
+    ("thr_old_keep", now_ms - 10 * day_ms, None, None),
+]
+conn.executemany("INSERT INTO threads VALUES (?, ?, ?, ?)", rows)
+conn.commit()
+PY
+}
+
+@test "bb-thread-storage removes aged archived and old orphaned dirs while preserving live, pinned, keep/ and non-thread entries" {
+  setup_bb_thread_storage_fixture
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_old_arch" ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_orphan_old" ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_old_keep/scratch" ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_old_keep/temp.png" ]
+  [ -f "$HOME/.bb/thread-storage/thr_old_keep/keep/report.md" ]
+  [ -d "$HOME/.bb/thread-storage/thr_live" ]
+  [ -d "$HOME/.bb/thread-storage/thr_recent_arch" ]
+  [ -d "$HOME/.bb/thread-storage/thr_old_pinned" ]
+  [ -d "$HOME/.bb/thread-storage/thr_orphan_fresh" ]
+  [ -d "$HOME/.bb/thread-storage/not-a-thread-dir" ]
+  [ -f "$HOME/.bb/thread-storage/loose-note.json" ]
+}
+
+@test "bb-thread-storage dry-run reports candidates without deleting them" {
+  setup_bb_thread_storage_fixture
+
+  run zsh --no-rcs "$CLEANUP" --dry-run --json --bb-thread-storage
+
+  [ "$status" -eq 0 ]
+  grep -F '"id":"bb-thread-storage"' <<<"$output"
+  grep -F '"default":true' <<<"$output"
+  grep -F '4 path(s)' <<<"$output"
+  [ -d "$HOME/.bb/thread-storage/thr_old_arch" ]
+}
+
+@test "bb-thread-storage fails closed when bb.db is unreadable or missing" {
+  setup_bb_thread_storage_fixture
+  printf 'corrupt\n' >"$HOME/.bb/bb.db"
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -ne 0 ]
+  grep -F 'cannot read BB database' <<<"$output"
+  [ -d "$HOME/.bb/thread-storage/thr_old_arch" ]
+}
+
+@test "bb-thread-storage preserves aged archived threads with pending proposals in ledger while removing resolved ones" {
+  setup_bb_thread_storage_fixture
+  mkdir -p "$HOME/git/dream" "$HOME/.bb/thread-storage/thr_old_pending" "$HOME/.bb/thread-storage/thr_old_applied"
+  printf 'report\n' >"$HOME/.bb/thread-storage/thr_old_pending/report.md"
+  printf 'done\n' >"$HOME/.bb/thread-storage/thr_old_applied/report.md"
+  python3 - "$HOME/.bb/bb.db" "$HOME/git/dream/ledger.json" <<'PY'
+import json, sqlite3, sys, time
+now_ms = int(time.time() * 1000)
+old_ms = now_ms - 10 * 86400 * 1000
+conn = sqlite3.connect(sys.argv[1])
+conn.executemany(
+    "INSERT INTO threads VALUES (?, ?, ?, ?)",
+    [("thr_old_pending", old_ms, None, None), ("thr_old_applied", old_ms, None, None)],
+)
+conn.commit()
+with open(sys.argv[2], "w", encoding="utf-8") as fh:
+    json.dump({
+        "observations": [
+            {"id": "1", "status": "proposed", "proposal": {"thread": "thr_old_pending", "report": "/tmp/thread-storage/thr_old_pending/report.md"}},
+            {"id": "2", "status": "applied", "proposal": {"thread": "thr_old_applied"}},
+        ]
+    }, fh)
+PY
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.bb/thread-storage/thr_old_pending/report.md" ]
+  [ ! -e "$HOME/.bb/thread-storage/thr_old_applied" ]
+}
+
+@test "bb-thread-storage fails closed when proposal ledger is unreadable" {
+  setup_bb_thread_storage_fixture
+  mkdir -p "$HOME/git/dream"
+  printf '{broken json\n' >"$HOME/git/dream/ledger.json"
+
+  run zsh --no-rcs "$CLEANUP" --yes --bb-thread-storage
+
+  [ "$status" -ne 0 ]
+  grep -F 'cannot read proposal ledger' <<<"$output"
+  [ -d "$HOME/.bb/thread-storage/thr_old_arch" ]
+}

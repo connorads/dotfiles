@@ -98,6 +98,7 @@ def sha(value):
 RELEASE_ADAPTERS = {
     "0.47.1": "scripts/adapters/bb_0_47_1.py",
     "0.48.1": "scripts/adapters/bb_0_48_1.py",
+    "0.50.1": "scripts/adapters/bb_0_50_1.py",
 }
 # Minified bindings differ per release, so each release names its own harness per profile.
 RELEASE_HARNESSES = {
@@ -106,6 +107,10 @@ RELEASE_HARNESSES = {
         "activity": "scripts/test-activity.mjs",
     },
     "0.48.1": {"session-options": "scripts/test-bundle-0.48.1.mjs"},
+    "0.50.1": {
+        "session-options": "scripts/test-bundle-0.50.1.mjs",
+        "activity": "scripts/test-activity-0.50.1.mjs",
+    },
 }
 
 

@@ -1,0 +1,52 @@
+#!/usr/bin/env zsh
+# disk-janitor: run scheduled cleanup and transcript backup, alerting on failure or low disk
+emulate -L zsh
+
+local low_gb=${DISK_JANITOR_LOW_GB:-40}
+local log_path=${DISK_JANITOR_LOG:-$HOME/.cache/disk-janitor.log}
+local cleanup_bin=${DISK_JANITOR_CLEANUP_BIN:-cleanup}
+local backup_bin=${DISK_JANITOR_BACKUP_BIN:-transcript-backup}
+
+_disk_janitor_notify() {
+  local title=$1 body=$2
+  if [[ -n ${DISK_JANITOR_NOTIFY_BIN:-} ]]; then
+    "$DISK_JANITOR_NOTIFY_BIN" "$title" "$body"
+  elif [[ -x /usr/bin/osascript ]]; then
+    /usr/bin/osascript -e 'on run argv' \
+      -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
+      -e 'end run' -- "$title" "$body"
+  fi
+}
+
+_disk_janitor_available_kb() {
+  local probe_path=$HOME
+  [[ -d /System/Volumes/Data ]] && probe_path=/System/Volumes/Data
+  command df -kP "$probe_path" 2>/dev/null |
+    awk 'NR == 2 && $4 ~ /^[0-9]+$/ { print $4; exit }'
+}
+
+print -r -- "=== disk-janitor $(date -u +%FT%TZ) ==="
+
+local cleanup_rc=0 backup_rc=0
+"$cleanup_bin" --yes || cleanup_rc=$?
+"$backup_bin" || backup_rc=$?
+
+local avail_kb avail_gb
+avail_kb=$(_disk_janitor_available_kb)
+if [[ $avail_kb == <-> ]]; then
+  avail_gb=$((avail_kb / 1048576))
+  print -r -- "disk-janitor: ${avail_gb}G free (cleanup=${cleanup_rc}, transcript-backup=${backup_rc})"
+else
+  print -r -- "disk-janitor: free space unavailable (cleanup=${cleanup_rc}, transcript-backup=${backup_rc})"
+fi
+
+if ((cleanup_rc != 0 || backup_rc != 0)); then
+  _disk_janitor_notify "Disk janitor failed" "See $log_path"
+  return 1
+fi
+
+if [[ $avail_kb == <-> ]] && ((avail_gb < low_gb)); then
+  _disk_janitor_notify "Low disk space" "${avail_gb}G free after cleanup"
+fi
+
+return 0

@@ -18,6 +18,18 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 TESTS_DIR=.config/zsh/tests
 
+# Apple Bash can dispatch the suites, but some tests require Bash 5.
+if ((BASH_VERSINFO[0] < 5)); then
+	for bin_dir in "/etc/profiles/per-user/${USER:-${LOGNAME:-}}/bin" \
+		/run/current-system/sw/bin "$HOME/.nix-profile/bin" \
+		/nix/var/nix/profiles/default/bin /opt/homebrew/bin; do
+		if [[ -x $bin_dir/bash ]] && "$bin_dir/bash" -c '((BASH_VERSINFO[0] >= 5))'; then
+			export PATH="$bin_dir:$PATH"
+			break
+		fi
+	done
+fi
+
 # Whether a tool can actually RUN, not merely resolve. `command -v` is not
 # enough: mise plants a shim on PATH for every tool in its registry, so the name
 # resolves on a machine where no version is set - and the shim then exits 1
@@ -41,7 +53,7 @@ fi
 # A staged suite runs itself. A staged script runs the suite named after it,
 # plus any suite that names it - `-w` so a short stem like `rl` matches
 # `rl-kill` but not `curl`. The exact up route avoids ordinary-word matches.
-suites=$(
+select_suites() {
 	for f in "$@"; do
 		case $f in
 		"$TESTS_DIR"/*.bats)
@@ -109,8 +121,10 @@ suites=$(
 			echo "$TESTS_DIR/py-tests.bats"
 			;;
 		esac
-	done | sort -u
-)
+	done
+}
+
+suites=$(select_suites "$@" | sort -u)
 
 if [[ -z $suites ]]; then
 	exit 0

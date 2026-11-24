@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from adapters import bb_0_48_1
+from adapters import bb_0_48_1, bb_0_50_1
 from adapters.bb_0_47_1 import transform
 from bb_patch import FILES, ROOT, SETS, digest
 
@@ -22,6 +22,18 @@ EXACT_RECIPES = {
         "harnesses": {
             "session-options": "scripts/test-bundle-0.48.1.mjs",
             "activity": "scripts/test-activity-0.48.1.mjs",
+        },
+    },
+    "0.50.1": {
+        "module": bb_0_50_1,
+        "pristine": {
+            "start-server.js": "c302794df54bab5c6db2be4baf5b73532bf1461f2e3e7675dac9f038832e232f",
+            "builtin-plugins/workflows/dist/server.js": "785a245a0e2267468f491e845fc51efb174a8fed8ab5aabf7ffc19f62407c6d9",
+        },
+        "recipe": ("scripts/adapters/bb_0_47_1.py", "scripts/adapters/bb_0_50_1.py"),
+        "harnesses": {
+            "session-options": "scripts/test-bundle-0.50.1.mjs",
+            "activity": "scripts/test-activity-0.50.1.mjs",
         },
     },
 }

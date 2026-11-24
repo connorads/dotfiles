@@ -33,6 +33,9 @@ Before choosing files, check `bb plugin list --json` and
 `bb settings keyboard list --json`. The usage command is
 `plugin:claude-profiles/show-usage`.
 
+Agents read quota for every provider, Codex included, with
+`bb claude-profiles overview [--refresh]`. It prints the overlay data as JSON.
+
 The **Cost** plugin estimates API-price spend per thread and over time from provider logs.
 Read its [guide](../src/bb-plugins/cost/README.md).
 
@@ -51,7 +54,7 @@ Default uses Antigravity's native login. Isolated accounts use private homes and
 4. Open the Google link from the BB terminal and paste the returned code into that terminal.
 5. Open Agent Switcher with `⌘⇧M`, search **Antigravity** and choose an available model.
 
-The **Sign in** button is available before the first Google sign-in, even when usage is unavailable.
+The **Sign in** button appears when Antigravity reports that its account needs authentication.
 Create isolated profiles using the account guide below before signing into them.
 
 Agent Usage reads Antigravity's native `/usage` JSON without sending a model prompt.

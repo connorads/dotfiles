@@ -521,3 +521,76 @@ test('the auto-reset schedule checks only the armed connected host', async () =>
     ]);
   } finally { await harness.lifecycle.dispose(); }
 });
+
+test('migrate moves idle threads between accounts, validates once per host, and respects archived and dry-run flags', async () => {
+  const threads: Record<string, ReturnType<typeof makeThreadResponse>> = {
+    t1: makeThreadResponse({ id: 't1', providerId: 'claude-code', status: 'idle', environmentId: 'e1', archivedAt: null }),
+    t2: makeThreadResponse({ id: 't2', providerId: 'claude-code', status: 'error', environmentId: null, archivedAt: 100, queuedMessageCount: 1 }),
+    t3: makeThreadResponse({ id: 't3', providerId: 'claude-code', status: 'active', environmentId: 'e1', archivedAt: null }),
+    t4: makeThreadResponse({ id: 't4', providerId: 'claude-code', status: 'pending', environmentId: 'e1', archivedAt: 200, queuedMessageCount: 1 }),
+  };
+  const hostCalls: { method: string; input: unknown }[] = [];
+  const { bb, harness } = createFakePluginHost({
+    sdk: {
+      threads: {
+        get: async ({ threadId }: { threadId: string }) => {
+          const found = threads[threadId];
+          if (!found) throw new Error('Not found');
+          return found;
+        },
+        stop: async ({ threadId }: { threadId: string }) => threads[threadId],
+        events: {
+          list: async ({ threadId, types }: { threadId: string; types: string[] }) => types.includes('turn/started')
+            ? [{ type: 'turn/completed', seq: 9, threadId, data: {} }]
+            : types.includes('thread/identity')
+            ? [{ type: 'thread/identity', seq: 3, threadId, data: { providerThreadId: `session-${threadId}` } }]
+            : [{ type: 'provider.env-resolved', seq: 7, threadId, data: { entries: [
+              { name: 'CLAUDE_CONFIG_DIR', source: { plugin: 'claude-profiles' }, value: work.configDir }] } }],
+        },
+      },
+      environments: { get: async () => ({ id: 'e1', hostId: 'h1' }) },
+      hosts: { list: async () => [{ id: 'h1', status: 'connected' }] },
+      plugins: { list: async () => [] },
+    } as never,
+    experimental_callHostRpc: async call => {
+      hostCalls.push({ method: call.method, input: call.input });
+      if (call.method === 'profiles') return [{ id: 'default', label: 'Default', configDir: null }, work];
+      if (call.method === 'validate') return { authenticated: true };
+      if (call.method === 'transfer') return { status: 'copied' };
+      if (call.method === 'release') return { released: true };
+      throw new Error(`Unexpected host call ${call.method}`);
+    },
+  });
+  plugin(bb);
+  await bb.storage.kv.set('thread:t1', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('thread:t2', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('thread:t3', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('thread:t4', { hostId: 'h1', profile: work });
+  await bb.storage.kv.set('next-thread-profile', 'work');
+
+  const dry = await harness.behavior.runCli(['migrate', 'work', 'default', '--dry-run']);
+  assert.equal(dry.exitCode, 0);
+  assert.deepEqual(JSON.parse(dry.stdout), {
+    from: 'work', to: 'default', dryRun: true, nextUpdated: true, archivedSkipped: 2,
+    migrated: ['t1'], conflicts: [], skipped: [{ threadId: 't3', reason: 'Thread is active or has queued messages.' }], failed: [],
+  });
+  assert.equal(hostCalls.filter(call => call.method === 'transfer').length, 0);
+  assert.equal(await bb.storage.kv.get('next-thread-profile'), 'work');
+
+  const run = await harness.behavior.runCli(['migrate', 'work', 'default', '--include-archived']);
+  assert.equal(run.exitCode, 0);
+  assert.deepEqual(JSON.parse(run.stdout), {
+    from: 'work', to: 'default', dryRun: false, nextUpdated: true, archivedSkipped: 0,
+    migrated: ['t1', 't2', 't4'], conflicts: [], skipped: [{ threadId: 't3', reason: 'Thread is active or has queued messages.' }], failed: [],
+  });
+  assert.equal(hostCalls.filter(call => call.method === 'validate').length, 1);
+  assert.equal(hostCalls.filter(call => call.method === 'transfer').length, 3);
+  assert.equal((await bb.storage.kv.get<{ profile: { id: string } }>('thread:t1'))?.profile.id, 'default');
+  assert.equal((await bb.storage.kv.get<{ profile: { id: string } }>('thread:t2'))?.profile.id, 'default');
+  assert.equal((await bb.storage.kv.get<{ profile: { id: string } }>('thread:t3'))?.profile.id, 'work');
+  assert.equal((await bb.storage.kv.get<{ profile: { id: string } }>('thread:t4'))?.profile.id, 'default');
+  assert.equal(await bb.storage.kv.get('next-thread-profile'), 'default');
+
+  assert.equal((await harness.behavior.runCli(['migrate', 'work', 'work'])).exitCode, 1);
+  assert.equal((await harness.behavior.runCli(['migrate', 'work', 'default', '--bogus'])).exitCode, 1);
+});

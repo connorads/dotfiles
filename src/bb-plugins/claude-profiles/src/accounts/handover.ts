@@ -105,11 +105,11 @@ async function changes(source: Snapshot, target: Snapshot, sourceProject: string
 }
 
 const sessionIdPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-/** The one project directory in a profile that holds this session's transcript. */
-async function sessionProject(profile: string, sessionId: string) {
+async function findSessionProjects(profile: string, sessionId: string, allowMissingProjects = false) {
   if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
   await directory(profile);
   const projects = join(profile, 'projects');
+  if (allowMissingProjects && !(await stat(projects))) return [];
   await directory(projects);
   const matches: string[] = [];
   for (const entry of await readdir(projects, { withFileTypes: true })) {
@@ -118,10 +118,10 @@ async function sessionProject(profile: string, sessionId: string) {
     if (value?.isSymbolicLink()) throw new Error('Refusing a symlink transcript.');
     if (value?.isFile()) matches.push(entry.name);
   }
-  const project = matches[0];
-  if (matches.length !== 1 || !project) throw new Error('Native session not found uniquely in the current profile.');
-  await directory(join(projects, project));
-  return project;
+  return matches;
+}
+export async function hasSession(profile: string, sessionId: string): Promise<boolean> {
+  return (await findSessionProjects(profile, sessionId, true)).length === 1;
 }
 
 export type CopySummary = { prompts: number; modifiedAt: string; lastPrompt: string | null };
@@ -183,11 +183,18 @@ async function setAside(target: string, project: string, sessionId: string, now:
  * as diverged and kept, unless `replace` moves it aside first.
  */
 export async function transferSession(source: string, target: string, sessionId: string,
-  options: { replace?: boolean; now?: Date } = {}): Promise<Transfer> {
+  options: { replace?: boolean; allowMissing?: boolean; now?: Date } = {}): Promise<Transfer> {
   if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
   if (source === target) return { status: 'copied' };
-  const project = await sessionProject(source, sessionId);
+  const matches = await findSessionProjects(source, sessionId, Boolean(options.allowMissing));
   await directory(target);
+  if (matches.length === 0) {
+    if (await hasSession(target, sessionId) || options.allowMissing) return { status: 'copied' };
+    throw new Error('Native session not found uniquely in the current profile.');
+  }
+  const project = matches[0];
+  if (matches.length !== 1 || !project) throw new Error('Native session not found uniquely in the current profile.');
+  await directory(join(source, 'projects', project));
   const sourceProject = join(source, 'projects', project);
   const content = await snapshot(sourceProject, sessionId);
   const main = `${sessionId}.jsonl`;
@@ -271,7 +278,11 @@ export async function transferSession(source: string, target: string, sessionId:
 export async function releaseSession(source: string, target: string, sessionId: string): Promise<{ released: boolean }> {
   if (!sessionIdPattern.test(sessionId)) throw new Error('Invalid native session ID.');
   if (source === target) return { released: false };
-  const project = await sessionProject(source, sessionId);
+  const matches = await findSessionProjects(source, sessionId, true);
+  if (matches.length === 0) return { released: false };
+  const project = matches[0];
+  if (matches.length !== 1 || !project) throw new Error('Native session not found uniquely in the current profile.');
+  await directory(join(source, 'projects', project));
   const sourceProject = join(source, 'projects', project);
   const targetProject = join(target, 'projects', project);
   const content = await snapshot(sourceProject, sessionId);

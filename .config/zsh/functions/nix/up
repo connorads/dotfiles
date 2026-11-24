@@ -179,6 +179,44 @@ _up_update_mise() {
   _up_install_mise
 }
 
+_up_check_agy() (
+  cd "$HOME" || return $?
+  local pin=$1 failed=0 machine local_name
+  local probe='
+    source_name=$1
+    expected=$2
+    if [ -n "${3:-}" ] && [ "$(hostname)" != "$3" ]; then
+      printf "%s: terminal is on a different machine\n" "$source_name" >&2
+      exit 1
+    fi
+    if [ "${AGY_CLI_DISABLE_AUTO_UPDATE:-}" != true ]; then
+      printf "%s: AGY_CLI_DISABLE_AUTO_UPDATE must be true\n" "$source_name" >&2
+      exit 1
+    fi
+    actual=$(agy --version) || exit $?
+    if [ "$actual" != "$expected" ]; then
+      printf "%s: agy reports %s, expected %s\n" "$source_name" "$actual" "$expected" >&2
+      exit 1
+    fi
+    printf "%s: agy %s with updater disabled\n" "$source_name" "$actual"
+  '
+
+  env -u AGY_CLI_DISABLE_AUTO_UPDATE zsh -c "$probe" agy-check zsh "$pin" || failed=1
+  if command -v bb &>/dev/null; then
+    machine=$(bb machine list --json | jq -er '
+      map(select(.type == "persistent" and .machineProviderId == null))
+      | select(length == 1) | .[0].id
+    ') || {
+      print -u2 'BB: cannot resolve the local server machine'
+      return 1
+    }
+    local_name=$(hostname) || return $?
+    bb terminal run --machine "$machine" --cwd "$HOME" --timeout 5s -- \
+      /bin/sh -c "$probe" agy-check BB "$pin" "$local_name" || failed=1
+  fi
+  return $failed
+)
+
 _up_failure_excerpt() {
   local name=$1
   [[ -n $up_phase_diagnosis ]] && print -u2 "!! $name failed - $up_phase_diagnosis"
@@ -854,6 +892,13 @@ else
   _up_run advisory pins "conditional and range pins" pin-audit
   local flagged=$(($(grep -c 'pin-audit: FLAG ' "$up_log")))
   ((flagged)) && up_phase_details[-1]+="; $flagged flagged"
+fi
+
+local agy_pin
+if agy_pin=$(_up_mise current agy 2>/dev/null) &&
+  [[ $agy_pin =~ '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$' ]]; then
+  _up_run advisory "Antigravity runtime" "check updater protection and mise pin $agy_pin" _up_check_agy "$agy_pin" ||
+    _up_next "See the Antigravity runtime warning and the self-updater instructions in ~/docs/telemetry.md"
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then

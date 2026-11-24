@@ -445,16 +445,20 @@
 }
 @media (max-width: 520px) { .gg-keys { display: none; } .gg-blocks { display: none; } }
 
-.gg-folder-picker { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.gg-folder-picker { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.gg-folder-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; }
+.gg-folder-jumps .gg-ghost { border: 1px solid var(--border); background: var(--surface-recessed, transparent); }
+.gg-folder-jumps .gg-ghost[data-active] { background: var(--state-active, var(--accent)); color: var(--foreground); border-color: var(--border-hairline, var(--border)); }
+.gg-folder-jumps .gg-ghost:disabled { cursor: default; }
 .gg-breadcrumbs { display: flex; flex-wrap: wrap; gap: 4px; color: var(--muted-foreground); font-size: 12px; }
 .gg-breadcrumbs button:hover { color: var(--foreground); text-decoration: underline; }
 .gg-folder-search { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: transparent; color: var(--foreground); font: inherit; }
 .gg-folder-search:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 .gg-folder-path { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; margin: 0; }
 .gg-worktree-path { display: block; }
-.gg-folder-results { display: flex; flex-direction: column; gap: 8px; }
+.gg-folder-results { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .gg-folder-parent { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11px; }
-.gg-folder-list { max-height: 340px; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
+.gg-folder-list { list-style: none; padding: 0; margin: 0; }
 .gg-folder-list li { display: flex; }
 .gg-folder-list button { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 5px; text-align: left; }
 .gg-folder-list button:first-child { flex: 1; min-width: 0; }

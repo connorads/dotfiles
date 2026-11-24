@@ -88,6 +88,12 @@ it, then reload them.
 pop-up uses the package's `ChipPopover`;
 [ADR 0003](docs/adr/0003-shared-chip-popover.md) records why.
 
+## Antigravity Swarm
+
+[Antigravity Swarm](agy-swarm/README.md) adds a live Swarm Board side panel (`⌘⇧S`),
+composer status card and `/swarm` launcher for Antigravity (`agy`) threads, covering
+both Default and isolated Antigravity accounts.
+
 ## Agent Switcher
 
 [Agent Switcher](claude-profiles/README.md) chooses the model, saved effort and

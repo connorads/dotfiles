@@ -32,7 +32,7 @@ for the named path and operation.
 ## Research
 
 Do not rely on memory when the answer can be checked quickly.
-Grep the local codebase first for implementation questions.
+Grep the local codebase first for implementation questions; verify checkout freshness against upstream before asserting current ownership, security posture, or deployed state.
 When actual behaviour or state is the question, observe the running system - telemetry, logs, live config, state - rather than inferring from code.
 Check online for external facts: docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, solutions.
 Grep `~/git/kb/notes/` alongside the web. Read `~/git/kb/index.md` for the domain map.
@@ -78,6 +78,9 @@ Restate what each step needs; don't assume the reader is holding earlier context
 Verify every change before moving on; writing code is not enough.
 Run the existing checks first: tests, typecheck, lint/format, hooks (`hk`) or app-specific smoke checks.
 If no automated checks exist, still verify manually: run the command, start the app, curl the endpoint, or use browser automation.
+When behaviour depends on hardware, people or external services, first give agents a local stand-in to drive: an emulator, a local instance, a simulator or a fake.
+Build that harness before features, so agents can run the whole journey themselves.
+List what the harness cannot see. Put the work into the real environment early to close that gap.
 Scale verification to risk: config tweak -> smoke test; user-facing feature -> relevant automated suite plus manual confirmation when coverage is thin.
 When validating a hypothesis (mine, a ticket's, a report's), isolate the claim it stands or falls on and run the cheapest observation that discriminates it from the rival explanation; evidence consistent with every explanation verifies nothing.
 When writing plans, include how each step will be verified.

@@ -9,7 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from adapters import bb_0_47_1, bb_0_48_1
+import test_adapter_0_50_1 as adapter_0501
+from adapters import bb_0_47_1, bb_0_48_1, bb_0_50_1
 from bb_patch import FILES, digest
 from package_candidate import DEFAULT_HARNESSES, EXACT_RECIPES, prepare_package
 
@@ -112,6 +113,42 @@ class PackageCandidateTests(unittest.TestCase):
         self.assertEqual(
             set(result["provenance"]["tests"]),
             {"scripts/test-bundle-0.48.1.mjs", "scripts/test-activity-0.48.1.mjs"},
+        )
+
+    def test_exact_050_1_selects_its_recipe(self):
+        (self.package / "package.json").write_text('{"version":"0.50.1"}')
+        (self.package / "server/dist" / FILES[0]).write_text(adapter_0501.CORE_ANCHORS)
+        (self.package / "server/dist" / FILES[1]).write_text(adapter_0501.SYNTHETIC_PLUGIN)
+        pristine = {
+            name: digest((self.package / "server/dist" / name).read_bytes()) for name in FILES[:2]
+        }
+        with (
+            patch.dict(EXACT_RECIPES["0.50.1"]["pristine"], pristine),
+            patch("package_candidate._check_candidate") as check,
+        ):
+            result = self.prepare()
+        self.assertEqual(result["status"], "patched", result.get("warning"))
+        self.assertEqual(
+            check.call_args.kwargs["harnesses"],
+            {
+                "session-options": "scripts/test-bundle-0.50.1.mjs",
+                "activity": "scripts/test-activity-0.50.1.mjs",
+            },
+        )
+        for name in FILES:
+            original = (self.package / "server/dist" / name).read_bytes()
+            self.assertEqual(
+                (Path(result["package"]) / "server/dist" / name).read_bytes(),
+                bb_0_50_1.transform("activity", name, original),
+            )
+        self.assertEqual(
+            set(result["provenance"]["recipe"]),
+            {
+                "scripts/package_candidate.py",
+                "scripts/bb_patch.py",
+                "scripts/adapters/bb_0_47_1.py",
+                "scripts/adapters/bb_0_50_1.py",
+            },
         )
 
     def test_048_1_session_options_without_anchors_retains_stock(self):

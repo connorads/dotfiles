@@ -50,6 +50,14 @@ the mise-installed binary in place, bypassing the lockfile and the isolated-prof
 version check. The variable must reach every launch path, so it lives here rather
 than in mise's `[env]`, which only shims apply.
 
+`up` checks the updater setting and actual `agy` version in a fresh zsh and,
+when BB is installed, a fresh local BB terminal. It warns if either path is
+unprotected or runs a version different from the mise pin.
+
+1. If protection is missing, apply the Nix configuration and run `telemetry-bb-sync`.
+2. Once both launch paths have protection, restore a drifted binary with
+   `cd ~ && mise install --force --locked agy`.
+
 ## Grok CLI
 
 Mise owns Grok Build and pins its release in

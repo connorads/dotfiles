@@ -15,3 +15,7 @@ test("words that only look American stay", () => {
 test("British text passes through unchanged", () => {
   expect(toBritish("colour analyse organisation")).toBe("colour analyse organisation")
 })
+
+test("official product spelling survives British spelling conversion", () => {
+  expect(toBritish("Use CVP Defense Access for defense.")).toBe("Use CVP Defense Access for defence.")
+})

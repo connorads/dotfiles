@@ -176,6 +176,10 @@ EOF
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
+if [ "$*" = "current agy" ]; then
+  printf '%s\n' "${AGY_PIN:-}"
+  exit 0
+fi
 if [[ "$*" == 'config get --file '*env.BB_DEPLOY_SERVICE ]]; then
   echo "${BB_DEPLOY_SERVICE:-system}"
   exit 0
@@ -227,6 +231,64 @@ fi
 [ "$1" = "commit" ] && [ -n "${DOTFILES_FAIL_COMMIT:-}" ] && exit 1
 exit 0
 EOF
+}
+
+stub_agy_runtime() {
+  export AGY_PIN=1.5.9
+  export AGY_CLI_DISABLE_AUTO_UPDATE=true
+  printf 'export AGY_CLI_DISABLE_AUTO_UPDATE=true\n' >"$HOME/.zshenv"
+  write_stub agy <<'EOF'
+#!/bin/sh
+echo "agy ${AGY_RUNTIME:-zsh} $*" >>"$TEST_LOG"
+printf '%s\n' "${AGY_VERSION:-$AGY_PIN}"
+EOF
+  write_stub bb <<'EOF'
+#!/bin/sh
+case "$1 $2" in
+  'machine list')
+    printf '%s\n' '[{"id":"host_air","type":"persistent","machineProviderId":null},{"id":"host_remote","type":"persistent","machineProviderId":"manual"}]'
+    ;;
+  'terminal run')
+    [ "$4" = host_air ] || exit 1
+    while [ "$1" != "--" ]; do shift; done
+    shift
+    exec env AGY_RUNTIME=bb AGY_VERSION="${BB_AGY_VERSION:-$AGY_PIN}" \
+      AGY_CLI_DISABLE_AUTO_UPDATE="${BB_AGY_UPDATER:-true}" "$@"
+    ;;
+esac
+EOF
+}
+
+@test "up verifies protected pinned Antigravity from a fresh shell and BB terminal" {
+  stub_agy_runtime
+  run zsh --no-rcs "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"zsh: agy 1.5.9 with updater disabled"* &&
+    "$output" == *"BB: agy 1.5.9 with updater disabled"* ]] || return 1
+  grep -qFx 'agy zsh --version' "$TEST_LOG"
+  grep -qFx 'agy bb --version' "$TEST_LOG"
+}
+
+@test "up reports missing Antigravity updater protection without starting the binary" {
+  stub_agy_runtime
+  : >"$HOME/.zshenv"
+  export BB_AGY_UPDATER=false
+  run zsh --no-rcs "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"zsh: AGY_CLI_DISABLE_AUTO_UPDATE must be true"* &&
+    "$output" == *"BB: AGY_CLI_DISABLE_AUTO_UPDATE must be true"* &&
+    "$output" == *"Antigravity runtime"*"exit 1"* ]] || return 1
+  ! grep -q '^agy ' "$TEST_LOG"
+}
+
+@test "up reports Antigravity version drift separately for the shell and BB" {
+  stub_agy_runtime
+  export AGY_VERSION=1.5.13 BB_AGY_VERSION=1.5.14
+  run zsh --no-rcs "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"zsh: agy reports 1.5.13, expected 1.5.9"* &&
+    "$output" == *"BB: agy reports 1.5.14, expected 1.5.9"* &&
+    "$output" == *"Antigravity runtime"*"exit 1"* ]]
 }
 
 @test "up Air refuses an unapproved Nix build before sudo and leaves its lock uncommitted" {

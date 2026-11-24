@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "activity",
+  "status": "draft",
+  "installation": {
+    "kind": "desktop",
+    "platform": "darwin",
+    "arch": "arm64",
+    "version": "0.50.1"
+  },
+  "dist": "Contents/Resources/app.asar.unpacked/node_modules/bb-app/server/dist",
+  "patches": [
+    "activity"
+  ],
+  "adapter": {
+    "path": "scripts/adapters/bb_0_50_1.py",
+    "sha256": "15048449d459827dd5906c47a7af58ec4d5e79e90718ece84b4901558d342c3d"
+  },
+  "files": [
+    {
+      "path": "start-server.js",
+      "pristine": "b354672935fee3bbb8e985f4d3baff305b02e923e41c684a949c5de4ceacc36e",
+      "intermediate": [
+        "c60f6dcfd28de649996bd060aa1e0e62c333ad194cd0f41b15853d84f6d124db"
+      ],
+      "final": "c60f6dcfd28de649996bd060aa1e0e62c333ad194cd0f41b15853d84f6d124db"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/server.js",
+      "pristine": "785a245a0e2267468f491e845fc51efb174a8fed8ab5aabf7ffc19f62407c6d9",
+      "intermediate": [
+        "3fb7481c8b874c0e409be81523326e5736ad2bdd9e23ee0ee14d099bbea7dc3a"
+      ],
+      "final": "3fb7481c8b874c0e409be81523326e5736ad2bdd9e23ee0ee14d099bbea7dc3a"
+    },
+    {
+      "path": "builtin-plugins/workflows/dist/app.js",
+      "pristine": "29daab715dbe0a22fbc29fc6f791a3094683b12d89140d5d9d4481b9b57e741e",
+      "intermediate": [
+        "29daab715dbe0a22fbc29fc6f791a3094683b12d89140d5d9d4481b9b57e741e"
+      ],
+      "final": "29daab715dbe0a22fbc29fc6f791a3094683b12d89140d5d9d4481b9b57e741e"
+    },
+    {
+      "path": "builtin-plugins/workflows/skills/workflows/references/authoring.md",
+      "pristine": "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3",
+      "intermediate": [
+        "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3"
+      ],
+      "final": "9dad0aaf6866f2c3a19a39163a64e886ff667c9b4c5a2c0199b3e519a4b71fa3"
+    }
+  ],
+  "verification": {
+    "profiles": [
+      "activity"
+    ],
+    "harnesses": {
+      "scripts/test-activity-0.50.1.mjs": "55390c90680158c49c1700a977e37bac5572fa4dfd2f94f85e5a2d9ad93d0c9d"
+    }
+  },
+  "activation": "full-server-activation",
+  "installerWritesDatabase": false,
+  "runtimeRecordCompatibility": "Stock Workflows record semantics; session-options records require the independent session-options reader.",
+  "integrityPolicy": "unresolved; disposable copies only",
+  "retireWhen": "Pristine upstream passes equivalent activity lifecycle and composition tests."
+}

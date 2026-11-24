@@ -58,7 +58,8 @@ export default function plugin(bb: BbPluginApi) {
     return { thread, environment, config: await settings.get() };
   }
   function requireIdle(thread: Awaited<ReturnType<typeof bb.sdk.threads.get>>, allowQueued = false) {
-    if (!['idle', 'error'].includes(thread.status) || thread.activeBackgroundAgentCount || (!allowQueued && thread.queuedMessageCount)) {
+    const idleStatus = ['idle', 'error'].includes(thread.status) || (Boolean(thread.archivedAt) && thread.status === 'pending');
+    if (!idleStatus || thread.activeBackgroundAgentCount || (!allowQueued && thread.queuedMessageCount)) {
       throw new Error('Finish or stop the turn and clear queued messages before switching profiles.');
     }
   }
@@ -172,7 +173,7 @@ export default function plugin(bb: BbPluginApi) {
     const thread = await bb.sdk.threads.get({ threadId });
     if (await quiet(threadId, thread) && !thread.queuedMessageCount) {
       await bb.storage.kv.delete(pendingKey(threadId));
-      const result = await select(threadId, profileId, false, replace);
+      const result = await select(threadId, profileId, { replace });
       return 'conflict' in result
         ? { currentId: (await bb.storage.kv.get<Selection>(key(threadId)))?.profile.id ?? 'default', conflict: result.conflict }
         : { currentId: result.profile.id, conflict: null };
@@ -195,7 +196,7 @@ export default function plugin(bb: BbPluginApi) {
     if (!await quiet(threadId, await bb.sdk.threads.get({ threadId }))) return;
     applying.add(threadId);
     try {
-      const result = await select(threadId, pending.profileId, true);
+      const result = await select(threadId, pending.profileId, { allowQueued: true });
       if ('conflict' in result) throw new Error(conflictMessage(result.conflict));
       await bb.storage.kv.delete(pendingKey(threadId));
     } catch (error) {
@@ -292,18 +293,28 @@ export default function plugin(bb: BbPluginApi) {
   }
   const conflictMessage = (conflict: HistoryConflict) =>
     `${conflict.label} has a different copy of this conversation. Choose ${conflict.label} in the switcher to compare and replace it.`;
-  async function select(threadId: string, profileId: string, allowQueued = false, replace = false): Promise<Selection | { conflict: HistoryConflict }> {
+  async function select(threadId: string, profileId: string,
+    options: { allowQueued?: boolean; replace?: boolean; allowMissing?: boolean; skipValidate?: boolean; fallbackHostId?: string } = {}): Promise<Selection | { conflict: HistoryConflict }> {
+    const { allowQueued = false, replace = false, allowMissing = false } = options;
     if (connectors.changing || switching.has(threadId)) throw new Error('Claude session settings are changing.');
     switching.add(threadId);
     try {
-      const { thread, environment, config } = await context(threadId);
+      const thread = await bb.sdk.threads.get({ threadId });
+      if (thread.providerId !== 'claude-code') throw new Error('This thread does not use Claude Code.');
+      const hostId = thread.environmentId
+        ? (await bb.sdk.environments.get({ environmentId: thread.environmentId })).hostId
+        : options.fallbackHostId ?? null;
+      if (!hostId) throw new Error('Send the first message before choosing a profile.');
+      const config = await settings.get();
       requireIdle(thread, allowQueued);
-      const profiles = await host.call('profiles', { root: config.profileRoot }, { hostId: environment.hostId });
+      const profiles = await host.call('profiles', { root: config.profileRoot }, { hostId });
       const profile = profiles.find(value => value.id === profileId);
       if (!profile) throw new Error('Profile does not exist.');
       const selected = await bb.storage.kv.get<Selection>(key(threadId));
-      if (selected?.hostId === environment.hostId && selected.profile.configDir === profile.configDir) return selected;
-      await host.call('validate', { root: config.profileRoot, executable: config.executable, profileId }, { hostId: environment.hostId });
+      if (selected?.hostId === hostId && selected.profile.configDir === profile.configDir) return selected;
+      if (!options.skipValidate) {
+        await host.call('validate', { root: config.profileRoot, executable: config.executable, profileId }, { hostId });
+      }
       const [identities, environments] = await Promise.all([
         bb.sdk.threads.events.list({ threadId, types: ['thread/identity'], order: 'desc', limit: '1' }),
         bb.sdk.threads.events.list({ threadId, types: ['provider.env-resolved'], order: 'desc', limit: '1' }),
@@ -315,17 +326,19 @@ export default function plugin(bb: BbPluginApi) {
       if (directoryEntry && typeof directoryEntry.value !== 'string') throw new Error('Current profile directory is masked. Cannot safely identify the source transcript.');
       const sourceDir = directoryEntry && typeof directoryEntry.value === 'string'
         ? directoryEntry.value || null : selected?.profile.configDir ?? null;
-      await bb.sdk.threads.stop({ threadId });
-      requireIdle(await bb.sdk.threads.get({ threadId }), allowQueued);
+      if (thread.environmentId) {
+        await bb.sdk.threads.stop({ threadId });
+        requireIdle(await bb.sdk.threads.get({ threadId }), allowQueued);
+      }
       await connectors.invalidate(threadId);
       if (identity?.type === 'thread/identity') {
         const transfer = await host.call('transfer', { root: config.profileRoot, sourceDir, profileId,
-          sessionId: identity.data.providerThreadId, replace }, { hostId: environment.hostId });
+          sessionId: identity.data.providerThreadId, replace, ...(allowMissing ? { allowMissing: true } : {}) }, { hostId });
         if (transfer.status === 'diverged') {
           return { conflict: { profileId, label: profile.label, source: transfer.source, target: transfer.target } };
         }
       }
-      const value: Selection = { hostId: environment.hostId, profile };
+      const value: Selection = { hostId, profile };
       await bb.storage.kv.set(key(threadId), value);
       // Launches before the switch ran under the old profile, so only later launches are reviewed.
       await bb.storage.kv.set(guardKey(threadId), { checkedSeq: resolved?.seq ?? 0, notice: null } satisfies Guard);
@@ -333,7 +346,7 @@ export default function plugin(bb: BbPluginApi) {
       if (identity?.type === 'thread/identity') {
         try {
           await host.call('release', { root: config.profileRoot, sourceDir, profileId, sessionId: identity.data.providerThreadId },
-            { hostId: environment.hostId });
+            { hostId });
         } catch (error) {
           bb.log.warn(`Kept the ${threadId} history copy in the previous account: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -342,6 +355,80 @@ export default function plugin(bb: BbPluginApi) {
       bb.realtime.publish('profiles-changed', { threadId });
       return value;
     } finally { switching.delete(threadId); }
+  }
+  async function migrateProfiles(fromId: string, toId: string, options: { includeArchived: boolean; rebindMissing: boolean; dryRun: boolean }) {
+    if (fromId === toId) throw new Error('Source and target accounts must differ.');
+    const config = await settings.get();
+    const entries = (await bb.storage.kv.list('thread:')).sort();
+    const bound: { threadId: string; selected: Selection }[] = [];
+    for (const entry of entries) {
+      const selected = await bb.storage.kv.get<Selection>(entry);
+      if (selected?.profile.id === fromId) bound.push({ threadId: entry.slice('thread:'.length), selected });
+    }
+    let nextUpdated = false;
+    if ((await bb.storage.kv.get<string>(nextKey)) === fromId) {
+      if (!(await localProfiles())?.some(profile => profile.id === toId)) throw new Error('Profile does not exist.');
+      if (!options.dryRun) await chooseNext(toId);
+      nextUpdated = true;
+    }
+    const hostProfiles = new Map<string, Profile[]>();
+    const hostValidation = new Map<string, string | null>();
+    const migrated: string[] = [];
+    const conflicts: { threadId: string; label: string }[] = [];
+    const skipped: { threadId: string; reason: string }[] = [];
+    const failed: { threadId: string; error: string }[] = [];
+    let archivedSkipped = 0;
+    for (const { threadId, selected } of bound) {
+      let thread: Awaited<ReturnType<typeof bb.sdk.threads.get>>;
+      try { thread = await bb.sdk.threads.get({ threadId }); }
+      catch { skipped.push({ threadId, reason: 'Thread no longer exists.' }); continue; }
+      if (thread.providerId !== 'claude-code') { skipped.push({ threadId, reason: 'Thread does not use Claude Code.' }); continue; }
+      if (thread.archivedAt && !options.includeArchived) { archivedSkipped += 1; continue; }
+      const allowQueued = Boolean(thread.archivedAt);
+      const idle = thread.archivedAt && thread.status === 'pending'
+        ? !thread.activeBackgroundAgentCount
+        : await quiet(threadId, thread);
+      if (!idle || (!allowQueued && thread.queuedMessageCount)) {
+        skipped.push({ threadId, reason: 'Thread is active or has queued messages.' });
+        continue;
+      }
+      const hostId = thread.environmentId
+        ? (await bb.sdk.environments.get({ environmentId: thread.environmentId })).hostId
+        : selected.hostId;
+      let profiles = hostProfiles.get(hostId);
+      if (!profiles) {
+        try {
+          profiles = await host.call('profiles', { root: config.profileRoot }, { hostId });
+          hostProfiles.set(hostId, profiles);
+        } catch (error) {
+          failed.push({ threadId, error: error instanceof Error ? error.message : String(error) });
+          continue;
+        }
+      }
+      if (!profiles.some(profile => profile.id === toId)) {
+        failed.push({ threadId, error: `Profile ${toId} does not exist on host ${hostId}.` });
+        continue;
+      }
+      if (options.dryRun) { migrated.push(threadId); continue; }
+      if (!hostValidation.has(hostId)) {
+        try {
+          await host.call('validate', { root: config.profileRoot, executable: config.executable, profileId: toId }, { hostId });
+          hostValidation.set(hostId, null);
+        } catch (error) {
+          hostValidation.set(hostId, error instanceof Error ? error.message : String(error));
+        }
+      }
+      const validationError = hostValidation.get(hostId);
+      if (validationError) { failed.push({ threadId, error: validationError }); continue; }
+      try {
+        const result = await select(threadId, toId, { allowQueued, allowMissing: options.rebindMissing, skipValidate: true, fallbackHostId: selected.hostId });
+        if ('conflict' in result) conflicts.push({ threadId, label: result.conflict.label });
+        else migrated.push(threadId);
+      } catch (error) {
+        failed.push({ threadId, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return { from: fromId, to: toId, dryRun: options.dryRun, nextUpdated, archivedSkipped, migrated, conflicts, skipped, failed };
   }
   // BB has no API to bind a thread to an existing session, so a stub thread's own session takes over the history.
   async function importSession(ref: string) {
@@ -531,10 +618,26 @@ export default function plugin(bb: BbPluginApi) {
     'provider-usage.v1.getResource': input => readResource(input.resourceId, input.refresh),
   }, { experimental_discoverable: true, experimental_description: 'Claude, Grok and Antigravity quota through native CLI authentication.' });
   const usageText = 'Usage: bb claude-profiles list THREAD | switch THREAD PROFILE | usage THREAD PROFILE | overview [--refresh] | header THREAD'
-    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off] | next [PROFILE]';
+    + ' | import SESSION-ID|TMUX-PANE | connectors THREAD [account|off] | next [PROFILE]'
+    + ' | migrate FROM TO [--include-archived] [--rebind-missing] [--dry-run]';
   bb.cli.register({ name: 'claude-profiles', summary: 'Choose a Claude profile for an idle thread, read quota and usage',
     async run(argv) {
       try {
+        if (argv[0] === 'migrate') {
+          const [, fromId, toId, ...flags] = argv;
+          if (!fromId || !toId || fromId.startsWith('-') || toId.startsWith('-')) throw new Error(usageText);
+          let includeArchived = false;
+          let rebindMissing = false;
+          let dryRun = false;
+          for (const flag of flags) {
+            if (flag === '--include-archived') includeArchived = true;
+            else if (flag === '--rebind-missing') rebindMissing = true;
+            else if (flag === '--dry-run') dryRun = true;
+            else throw new Error(usageText);
+          }
+          const result = await migrateProfiles(fromId, toId, { includeArchived, rebindMissing, dryRun });
+          return { exitCode: result.failed.length || result.conflicts.length ? 1 : 0, stdout: JSON.stringify(result, null, 2) + '\n' };
+        }
         if (argv[0] === 'connectors') {
           const [, threadId, value] = argv;
           if (!threadId || argv.length > 3 || (value !== undefined && value !== 'account' && value !== 'off')) throw new Error(usageText);

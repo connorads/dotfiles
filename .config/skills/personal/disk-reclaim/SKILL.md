@@ -177,12 +177,14 @@ Inspect backup-tool logs before proposing abandoned staging archives.
 Verify retained originals or a verified archive can reproduce their contents.
 Preserve keys and the only surviving copy.
 
-`transcript-backup` owns Claude and Codex transcript pruning. Check
-`~/.cache/transcript-backup.log` and redirect its `--dry-run` file listing to
-private storage; report the summary. It archives idle sessions, verifies remote
-storage and prunes unchanged originals. Hibernated sessions are protected.
-Do not add manual transcript deletion or silently lower `cleanupPeriodDays`.
-Resume support and cost reporting can depend on that history.
+`transcript-backup` owns Claude and Codex transcript pruning (run daily by
+`disk-janitor`, logging to `~/.cache/disk-janitor.log`, with live BB threads
+and hibernated sessions protected). Check `~/.cache/disk-janitor.log` and
+redirect `transcript-backup --dry-run` file listing to private storage; report
+the summary. It archives idle sessions, verifies remote storage and prunes
+unchanged originals. Do not add manual transcript deletion or silently lower
+`cleanupPeriodDays`. Resume support and cost reporting can depend on that
+history.
 
 ### Applications, runtimes and downloads
 

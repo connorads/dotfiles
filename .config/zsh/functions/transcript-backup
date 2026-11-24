@@ -3,16 +3,20 @@
 emulate -L zsh
 setopt err_return pipe_fail extended_glob
 
-local days=30 dry_run=0 prune=1
-while (( $# )); do
+local days=${TRANSCRIPT_BACKUP_DAYS:-14} dry_run=0 prune=1
+while (($#)); do
   case $1 in
-    --dry-run) dry_run=1 ;;
-    --no-prune) prune=0 ;;
-    -h|--help)
-      print "usage: transcript-backup [--dry-run] [--no-prune]"
-      print "Backs up Claude and Codex sessions idle for ${days}+ days, then deletes originals that verify."
-      return 0 ;;
-    *) print -u2 "transcript-backup: unknown option: $1"; return 2 ;;
+  --dry-run) dry_run=1 ;;
+  --no-prune) prune=0 ;;
+  -h | --help)
+    print "usage: transcript-backup [--dry-run] [--no-prune]"
+    print "Backs up Claude and Codex sessions idle for ${days}+ days, then deletes originals that verify."
+    return 0
+    ;;
+  *)
+    print -u2 "transcript-backup: unknown option: $1"
+    return 2
+    ;;
   esac
   shift
 done
@@ -20,14 +24,22 @@ done
 local cfg=${XDG_CONFIG_HOME:-$HOME/.config}/transcript-backup
 local recipients=${TRANSCRIPT_BACKUP_RECIPIENTS:-$cfg/recipients.txt}
 local hib_dir=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}
+local bb_db=${TRANSCRIPT_BACKUP_BB_DB:-$HOME/.bb/bb.db}
 local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/transcript-backup
 local uuid_re='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+local codex_uuid_re='([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
 
 local tool
 for tool in age zstd rclone jq tar shasum; do
-  command -v $tool >/dev/null || { print -u2 "transcript-backup: $tool not found"; return 1 }
+  command -v $tool >/dev/null || {
+    print -u2 "transcript-backup: $tool not found"
+    return 1
+  }
 done
-[[ -s $recipients ]] || { print -u2 "transcript-backup: no age recipients at $recipients"; return 1 }
+[[ -s $recipients ]] || {
+  print -u2 "transcript-backup: no age recipients at $recipients"
+  return 1
+}
 
 # Hibernated sessions will be resumed; fail closed if any record is unreadable.
 local -A protected
@@ -37,8 +49,38 @@ for rec in $hib_dir/*.json(N.); do
     print -u2 "transcript-backup: cannot read hibernation record $rec"
     return 1
   }
-  protected[$sid]=1
+  protected[${sid:l}]=1
 done
+
+# Unarchived BB threads may stay open indefinitely; protect their Claude and
+# Codex sessions too. Fail closed if bb.db exists but cannot be queried.
+if [[ -e $bb_db ]]; then
+  command -v python3 >/dev/null || {
+    print -u2 "transcript-backup: python3 not found (needed to read $bb_db)"
+    return 1
+  }
+  local bb_sids
+  bb_sids=$(
+    python3 - "$bb_db" <<'PY'
+import sqlite3, sys
+try:
+    conn = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True, timeout=5.0)
+    for (sid,) in conn.execute(
+        "SELECT DISTINCT e.provider_thread_id FROM threads t "
+        "JOIN events e ON e.thread_id = t.id "
+        "WHERE t.archived_at IS NULL AND t.deleted_at IS NULL "
+        "AND e.provider_thread_id IS NOT NULL AND e.provider_thread_id != ''"
+    ):
+        print(sid)
+except Exception as exc:
+    sys.stderr.write(f"transcript-backup: cannot read BB database {sys.argv[1]}: {exc}\n")
+    sys.exit(1)
+PY
+  ) || return 1
+  while IFS= read -r sid; do
+    [[ -n $sid ]] && protected[${sid:l}]=1
+  done <<<"$bb_sids"
+fi
 
 # A Claude session is <project>/<uuid>.jsonl plus its <uuid>/ sidecar dir.
 # A Codex session is one rollout file. Anything touched within $days stays.
@@ -47,21 +89,24 @@ local f id
 for f in $HOME/.claude/projects/*/*.jsonl(N.) $HOME/.claude-profiles/*/*/projects/*/*.jsonl(N.); do
   id=${f:t:r}
   [[ $id =~ $uuid_re ]] || continue
-  (( ${+protected[$id]} )) && continue
+  ((${+protected[${id:l}]})) && continue
   unit=($f)
   [[ -d ${f:r} ]] && unit+=(${f:r}/**/*(N.))
   recent=(${^unit}(Nm-$days))
-  (( $#recent )) && continue
+  (($#recent)) && continue
   files+=($unit)
   if [[ -d ${f:r} ]]; then sidecars+=(${f:r}); fi
 done
 for f in ${CODEX_HOME:-$HOME/.codex}/{sessions,archived_sessions}/**/rollout-*.jsonl(N.); do
+  if [[ ${f:t:r} =~ $codex_uuid_re ]] && ((${+protected[${match[1]:l}]})); then
+    continue
+  fi
   recent=($f(Nm-$days))
-  (( $#recent )) && continue
+  (($#recent)) && continue
   files+=($f)
 done
 
-if (( ! $#files )); then
+if ((! $#files)); then
   print "transcript-backup: nothing to back up"
   return 0
 fi
@@ -72,14 +117,15 @@ local -a rel
 local total=0
 for f in $files; do
   zstat -H st -- $f
-  size[$f]=$st[size]; mtime[$f]=$st[mtime]
-  total=$(( total + st[size] ))
+  size[$f]=$st[size]
+  mtime[$f]=$st[mtime]
+  total=$((total + st[size]))
   rel+=(${f#$HOME/})
 done
 
-if (( dry_run )); then
+if ((dry_run)); then
   print -l -- $rel
-  print "transcript-backup: ${#files} files, $(( total / 1048576 ))M would be backed up"
+  print "transcript-backup: ${#files} files, $((total / 1048576))M would be backed up"
   return 0
 fi
 
@@ -123,18 +169,19 @@ fi
 
 mkdir -p $state_dir
 print -r -- "$(date -u +%FT%TZ)"$'\037'"$name"$'\037'"$sha"$'\037'"${#files}"$'\037'"$total" >>$state_dir/ledger
-print "transcript-backup: uploaded $name (${#files} files, $(( total / 1048576 ))M)"
+print "transcript-backup: uploaded $name (${#files} files, $((total / 1048576))M)"
 
-(( prune )) || return 0
+((prune)) || return 0
 
 # Delete only what is byte-for-byte the file we archived: a session resumed
 # since selection has a new size or mtime and stays.
 local deleted=0 kept=0
 for f in $files; do
   if zstat -H st -- $f 2>/dev/null && [[ $st[size] == $size[$f] && $st[mtime] == $mtime[$f] ]]; then
-    rm -f -- $f; deleted=$(( deleted + 1 ))
+    rm -f -- $f
+    deleted=$((deleted + 1))
   else
-    kept=$(( kept + 1 ))
+    kept=$((kept + 1))
   fi
 done
 local d

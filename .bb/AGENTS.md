@@ -20,6 +20,8 @@ Use BB's supplied skills and `bb guide` for platform commands.
 For a requested workflow or multi-agent run in BB, use a BB workflow, not the provider's built-in workflow tool.
 BB workflow workers are separate threads that can use plugin tools and appear in the run card.
 
+When spawning subthreads with `bb thread spawn`, omit `--permission-mode` by default so BB inherits `auto` for Codex and Claude Code and automatically adapts `auto` to `full` for ACP providers (such as `acp-antigravity`). Never pass `--permission-mode accept-edits` to an ACP provider (including for read-only reviews), because ACP providers lack a BB-managed sandboxed auto mode and `accept-edits` stalls on manual approvals.
+
 BB automatically notifies the origin thread when the workflow ends.
 If the user is waiting for a first push or another result before the run ends, pass the origin thread ID through `args`.
 In the prompt for the worker doing that step, tell it to run `bb thread tell <origin> --mode auto "<result>"` as soon as the step succeeds.

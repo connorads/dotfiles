@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 // Isolation relies on undocumented agy storage behaviour, so only a release checked
 // by hand may launch. The agy-pin-lockstep hk step holds mise's pin to this value.
-export const verifiedAgyVersion = '1.5.9';
+export const verifiedAgyVersion = '1.5.15';
 export function agyVersionProblem(installed: string, pinned: string) {
   if (installed === verifiedAgyVersion) return undefined;
   if (pinned === verifiedAgyVersion)

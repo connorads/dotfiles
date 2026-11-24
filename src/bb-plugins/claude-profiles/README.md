@@ -84,8 +84,8 @@ access; Go plan and workspace settings apply.
 
 ### Antigravity accounts
 
-Antigravity offers **Default** and registered isolated accounts in the account row.
-Default keeps the native login and configuration. Isolated accounts use private homes.
+Antigravity starts with **Default**, which uses the native login and configuration.
+Register an isolated account to add it to the account row. Isolated accounts use private homes.
 Choosing an account preserves the selected model and draft. It sends no prompt.
 Account changes require an idle thread. BB performs its normal provider handoff when the account route changes.
 Native Antigravity conversation continuity across account routes is not guaranteed.
@@ -118,7 +118,7 @@ Account shortcut letters stay stable when labels change.
 
 The account row shows a stable letter and a ring for the fullest quota window.
 Agent Usage groups the accounts under Antigravity and caches each account separately.
-In BB, open **Agent Usage** with `⌘⇧A` and select **Sign in** beside the Antigravity account.
+In BB, open **Agent Usage** with `⌘⇧A`. An account that needs authentication offers **Sign in**.
 Open the Google sign-in link shown in the terminal. Paste the code Google gives you back into that terminal.
 The selected account uses its own launcher. Agent Usage refreshes when sign-in finishes.
 
@@ -597,10 +597,19 @@ bb claude-profiles overview [--refresh]
 bb claude-profiles header THREAD_ID
 bb claude-profiles import SESSION_ID|TMUX_PANE
 bb claude-profiles next [PROFILE]
+bb claude-profiles migrate FROM TO [--include-archived] [--rebind-missing] [--dry-run]
 ```
 
 `switch` queues the account while a turn runs, as the switcher does, and prints
 `currentId`, `pendingId` and `conflict`. The CLI never replaces a conflicting copy.
+`migrate` moves idle threads bound to `FROM` onto `TO`, validates the target once
+per host, updates the remembered new-thread account when it points to `FROM`, and
+skips archived threads unless `--include-archived` is passed. Pass
+`--rebind-missing` to also rebind threads whose native transcript already expired
+or was removed. Use it before
+removing a profile folder. If a bound profile folder was already removed, the
+switcher flags the missing account and allows switching without transfer only
+when the target already holds that session transcript.
 `overview` and `header` print the usage overlay and header data as JSON.
 `next` prints the remembered new-thread account and the profiles on the
 connected machine. With `PROFILE`, it first sets that account, as the switcher does

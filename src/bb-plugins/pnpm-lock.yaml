@@ -189,8 +189,8 @@ catalogs:
       specifier: 5.5.0
       version: 5.5.0
     hono:
-      specifier: 4.11.9
-      version: 4.11.9
+      specifier: 4.13.19
+      version: 4.13.19
     jsdom:
       specifier: 26.1.0
       version: 26.1.0
@@ -204,8 +204,8 @@ catalogs:
       specifier: 5.8.3
       version: 5.8.3
     vitest:
-      specifier: 4.0.18
-      version: 4.0.18
+      specifier: 4.1.12
+      version: 4.1.12
     zod:
       specifier: 4.6.7
       version: 4.6.7
@@ -213,6 +213,40 @@ catalogs:
 importers:
 
   .: {}
+
+  agy-swarm:
+    dependencies:
+      '@get-bb/plugin-sdk':
+        specifier: 0.6.132
+        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: 'catalog:'
+        version: 7.6.13
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.15.30
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.0.12
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.0.4(@types/react@19.0.12)
+      hono:
+        specifier: 'catalog:'
+        version: 4.13.19
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.4(react@19.2.4)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
 
   automation-backup:
     dependencies:
@@ -222,7 +256,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -231,7 +265,7 @@ importers:
         version: 22.15.30
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
@@ -247,7 +281,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -268,7 +302,7 @@ importers:
         version: 12.10.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -283,7 +317,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   cache-hits:
     dependencies:
@@ -296,7 +330,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -314,7 +348,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -329,7 +363,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   caffeine:
     dependencies:
@@ -342,7 +376,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -357,7 +391,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -369,7 +403,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -393,7 +427,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   chip:
     devDependencies:
@@ -423,7 +457,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   claude-connectors:
     dependencies:
@@ -436,7 +470,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -454,7 +488,7 @@ importers:
         version: 12.10.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -472,7 +506,7 @@ importers:
         version: link:../chip
       '@get-bb/plugin-sdk':
         specifier: 0.6.132
-        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -509,7 +543,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -530,7 +564,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   clone-repository:
     dependencies:
@@ -540,7 +574,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -555,7 +589,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -570,7 +604,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   composed-replies-prototype:
     dependencies:
@@ -589,7 +623,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -607,7 +641,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -622,13 +656,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   composer-keys:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -655,7 +689,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   context-inspector:
     dependencies:
@@ -665,7 +699,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -692,7 +726,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   cost:
     dependencies:
@@ -705,7 +739,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -723,7 +757,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -738,7 +772,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   diff-viewer:
     dependencies:
@@ -748,7 +782,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -760,7 +794,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -782,7 +816,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@modelcontextprotocol/server':
         specifier: 2.3.1
         version: 2.3.1
@@ -815,7 +849,7 @@ importers:
         version: 2.1.1
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -833,13 +867,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   external-links:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -851,13 +885,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   file-history:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -869,13 +903,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   file-links:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 0.6.104
-        version: 0.6.104(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.104(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -887,7 +921,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -896,7 +930,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -909,7 +943,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -924,7 +958,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -940,7 +974,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -967,7 +1001,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   git-glance:
     dependencies:
@@ -980,7 +1014,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -992,7 +1026,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1004,7 +1038,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   handsfree:
     dependencies:
@@ -1017,7 +1051,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 0.6.132
-        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1038,7 +1072,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1053,7 +1087,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   lazygit:
     dependencies:
@@ -1063,7 +1097,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -1075,7 +1109,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1094,7 +1128,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -1103,7 +1137,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1119,7 +1153,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1149,13 +1183,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   mobile-home-spacing:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@playwright/test':
         specifier: 1.64.0
         version: 1.64.0
@@ -1170,7 +1204,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -1189,7 +1223,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1216,7 +1250,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   preferences:
     dependencies:
@@ -1226,7 +1260,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -1235,7 +1269,7 @@ importers:
         version: 22.15.30
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
@@ -1248,7 +1282,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1272,7 +1306,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1287,7 +1321,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   repo-tasks:
     dependencies:
@@ -1297,7 +1331,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -1315,7 +1349,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1331,7 +1365,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/better-sqlite3':
         specifier: 'catalog:'
         version: 7.6.13
@@ -1343,7 +1377,7 @@ importers:
         version: 19.0.12
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -1359,7 +1393,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1386,7 +1420,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   skill-loader:
     dependencies:
@@ -1396,7 +1430,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1411,7 +1445,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1426,13 +1460,13 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   terminal-tweaks:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -1448,7 +1482,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1466,7 +1500,7 @@ importers:
         version: 19.0.4(@types/react@19.0.12)
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1481,7 +1515,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   vox-recorder:
     dependencies:
@@ -1494,7 +1528,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/react':
         specifier: 'catalog:'
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1515,7 +1549,7 @@ importers:
         version: 5.5.0
       hono:
         specifier: 'catalog:'
-        version: 4.11.9
+        version: 4.13.19
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
@@ -1530,7 +1564,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
   workflow-timers:
     dependencies:
@@ -1540,7 +1574,7 @@ importers:
     devDependencies:
       '@get-bb/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 22.15.30
@@ -1558,7 +1592,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@types/node@22.15.30)(jsdom@26.1.0)
+        version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
 packages:
 
@@ -2302,34 +2336,34 @@ packages:
   '@types/react@19.0.12':
     resolution: {integrity: sha512-V6Ar115dBDrjbtXSrS+/Oruobc+qVbbUxDFC1RSbRqLt5SYvxxyIDrSC85RWml54g+jfNeEMZhEj7wW07ONQhA==}
 
-  '@vitest/expect@4.0.18':
-    resolution: {integrity: sha512-8sCWUyckXXYvx4opfzVY03EOiYVxyNrHS5QxX3DAIi5dpJAAkyJezHCP77VMX4HKA2LDT/Jpfo8i2r5BE3GnQQ==}
+  '@vitest/expect@4.1.12':
+    resolution: {integrity: sha512-vFlTt+YEu9WBpNjdGayNmlMVzrWPi1+sv853/7t2FU7hpO5gAFBKHzQmkCq5Xjpr+evegF2994LQT3hF3mRlqQ==}
 
-  '@vitest/mocker@4.0.18':
-    resolution: {integrity: sha512-HhVd0MDnzzsgevnOWCBj5Otnzobjy5wLBe4EdeeFGv8luMsGcYqDuFRMcttKWZA5vVO8RFjexVovXvAM4JoJDQ==}
+  '@vitest/mocker@4.1.12':
+    resolution: {integrity: sha512-fKShNpKZzupWZuY0z7egydvL0sqW4INEZBEExMBMAa6izlENEVHwoXgdaTCaBZ5fwlr4xf2o1wXC83n9RpO+NA==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^6.0.0 || ^7.0.0-0
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       msw:
         optional: true
       vite:
         optional: true
 
-  '@vitest/pretty-format@4.0.18':
-    resolution: {integrity: sha512-P24GK3GulZWC5tz87ux0m8OADrQIUVDPIjjj65vBXYG17ZeU3qD7r+MNZ1RNv4l8CGU2vtTRqixrOi9fYk/yKw==}
+  '@vitest/pretty-format@4.1.12':
+    resolution: {integrity: sha512-XW9O8+Mxx4VpCtkYdMJLZQQwsVryP9wk7cPKDxtXFfwSak6yRh5+2fep/Y0XF/ElBvJHq8bcYdi6aeuai0opZA==}
 
-  '@vitest/runner@4.0.18':
-    resolution: {integrity: sha512-rpk9y12PGa22Jg6g5M3UVVnTS7+zycIGk9ZNGN+m6tZHKQb7jrP7/77WfZy13Y/EUDd52NDsLRQhYKtv7XfPQw==}
+  '@vitest/runner@4.1.12':
+    resolution: {integrity: sha512-NKlVKCr5QnCe8jijdMnmkpHHU+WTqiLFR6G0pHji9uRjXK9xJl1k1nTw6F3pOOj2PDcsDt2GKQMI7wIsaT491w==}
 
-  '@vitest/snapshot@4.0.18':
-    resolution: {integrity: sha512-PCiV0rcl7jKQjbgYqjtakly6T1uwv/5BQ9SwBLekVg/EaYeQFPiXcgrC2Y7vDMA8dM1SUEAEV82kgSQIlXNMvA==}
+  '@vitest/snapshot@4.1.12':
+    resolution: {integrity: sha512-ko1y1Qgb/slzQ9mr+b89Cuqud8WG1TKtsPD8r7ZUBdvVOGt85Af2HwCqHujrhwJq95hs/9RM7fcAPg57o1vlzw==}
 
-  '@vitest/spy@4.0.18':
-    resolution: {integrity: sha512-cbQt3PTSD7P2OARdVW3qWER5EGq7PHlvE+QfzSC0lbwO+xnt7+XH06ZzFjFRgzUX//JmpxrCu92VdwvEPlWSNw==}
+  '@vitest/spy@4.1.12':
+    resolution: {integrity: sha512-RGq9x4JNGNTZHEJxvN0oSiJjeSCExm0n2gZKKJZHY9cX5AVA6M7VJILBT3ZJ/tJ/0J9uWT7fETV9/btoi//vSg==}
 
-  '@vitest/utils@4.0.18':
-    resolution: {integrity: sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA==}
+  '@vitest/utils@4.1.12':
+    resolution: {integrity: sha512-Q3awXrwOfEV+qc3WmO5ONyE0yO7Q1gQ9/oyHxGLZ/pl7N3NO/ZztqQwKLuwMkV+CA1JYSIeO3gkHnRDIo4AVaA==}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -2391,6 +2425,9 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
+  convert-source-map@2.0.0:
+    resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
   cron-parser@5.5.0:
     resolution: {integrity: sha512-oML4lKUXxizYswqmxuOCpgFS8BNUJpIu6k/2HVHyaL8Ynnf3wdf9tkns0yRdJLSIjkJ+b0DXHMZEHGpMwjnPww==}
     engines: {node: '>=18'}
@@ -2451,8 +2488,8 @@ packages:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
-  es-module-lexer@1.7.0:
-    resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
+  es-module-lexer@2.3.2:
+    resolution: {integrity: sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw==}
 
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
@@ -2505,8 +2542,8 @@ packages:
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
-  hono@4.11.9:
-    resolution: {integrity: sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ==}
+  hono@4.13.19:
+    resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -2767,8 +2804,8 @@ packages:
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
-  std-env@3.10.0:
-    resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
+  std-env@4.3.0:
+    resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
 
   string_decoder@1.3.0:
     resolution: {integrity: sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==}
@@ -2900,20 +2937,23 @@ packages:
       yaml:
         optional: true
 
-  vitest@4.0.18:
-    resolution: {integrity: sha512-hOQuK7h0FGKgBAas7v0mSAsnvrIgAvWmRFjmzpJ7SwFHH3g1k2u37JtYwOwmEKhK6ZO3v9ggDBBm0La1LCK4uQ==}
+  vitest@4.1.12:
+    resolution: {integrity: sha512-5eWdz2yb3ajxWF3C8C4TjkXl7FGm3n2E/VlazALrQHzK7nYMSGFnCZto0bbPNl77AwkOZVLk0YnBAejUu0NiWA==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
       '@types/node': ^20.0.0 || ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 4.0.18
-      '@vitest/browser-preview': 4.0.18
-      '@vitest/browser-webdriverio': 4.0.18
-      '@vitest/ui': 4.0.18
+      '@vitest/browser-playwright': 4.1.12
+      '@vitest/browser-preview': 4.1.12
+      '@vitest/browser-webdriverio': ^4.1.11
+      '@vitest/coverage-istanbul': 4.1.12
+      '@vitest/coverage-v8': 4.1.12
+      '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -2926,6 +2966,10 @@ packages:
       '@vitest/browser-preview':
         optional: true
       '@vitest/browser-webdriverio':
+        optional: true
+      '@vitest/coverage-istanbul':
+        optional: true
+      '@vitest/coverage-v8':
         optional: true
       '@vitest/ui':
         optional: true
@@ -3108,7 +3152,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@get-bb/plugin-sdk@0.6.104(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@get-bb/plugin-sdk@0.6.104(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@tanstack/react-query': 5.106.1(@types/react@19.0.12)(react@19.2.4)
       cross-spawn: 7.0.6
@@ -3119,11 +3163,11 @@ snapshots:
       '@types/react': 19.0.12
       better-sqlite3: 12.10.0
       cron-parser: 5.5.0
-      hono: 4.11.9
+      hono: 4.13.19
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@get-bb/plugin-sdk@0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@get-bb/plugin-sdk@0.6.132(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@tanstack/react-query': 5.106.1(@types/react@19.0.12)(react@19.2.4)
       cross-spawn: 7.0.6
@@ -3134,11 +3178,11 @@ snapshots:
       '@types/react': 19.0.12
       better-sqlite3: 12.10.0
       cron-parser: 5.5.0
-      hono: 4.11.9
+      hono: 4.13.19
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@get-bb/plugin-sdk@0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.11.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@get-bb/plugin-sdk@0.6.37(@testing-library/react@16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/better-sqlite3@7.6.13)(@types/react@19.0.12)(better-sqlite3@12.10.0)(cron-parser@5.5.0)(hono@4.13.19)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       cross-spawn: 7.0.6
       zod: 4.6.7
@@ -3148,7 +3192,7 @@ snapshots:
       '@types/react': 19.0.12
       better-sqlite3: 12.10.0
       cron-parser: 5.5.0
-      hono: 4.11.9
+      hono: 4.13.19
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
@@ -3506,43 +3550,45 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@vitest/expect@4.0.18':
+  '@vitest/expect@4.1.12':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
-      '@vitest/spy': 4.0.18
-      '@vitest/utils': 4.0.18
+      '@vitest/spy': 4.1.12
+      '@vitest/utils': 4.1.12
       chai: 6.3.0
       tinyrainbow: 3.2.0
 
-  '@vitest/mocker@4.0.18(vite@7.3.7(@types/node@22.15.30))':
+  '@vitest/mocker@4.1.12(vite@7.3.7(@types/node@22.15.30))':
     dependencies:
-      '@vitest/spy': 4.0.18
+      '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.7(@types/node@22.15.30)
 
-  '@vitest/pretty-format@4.0.18':
+  '@vitest/pretty-format@4.1.12':
     dependencies:
       tinyrainbow: 3.2.0
 
-  '@vitest/runner@4.0.18':
+  '@vitest/runner@4.1.12':
     dependencies:
-      '@vitest/utils': 4.0.18
+      '@vitest/utils': 4.1.12
       pathe: 2.0.3
 
-  '@vitest/snapshot@4.0.18':
+  '@vitest/snapshot@4.1.12':
     dependencies:
-      '@vitest/pretty-format': 4.0.18
+      '@vitest/pretty-format': 4.1.12
+      '@vitest/utils': 4.1.12
       magic-string: 0.30.21
       pathe: 2.0.3
 
-  '@vitest/spy@4.0.18': {}
+  '@vitest/spy@4.1.12': {}
 
-  '@vitest/utils@4.0.18':
+  '@vitest/utils@4.1.12':
     dependencies:
-      '@vitest/pretty-format': 4.0.18
+      '@vitest/pretty-format': 4.1.12
+      convert-source-map: 2.0.0
       tinyrainbow: 3.2.0
 
   agent-base@7.1.4: {}
@@ -3599,6 +3645,8 @@ snapshots:
 
   clsx@2.1.1: {}
 
+  convert-source-map@2.0.0: {}
+
   cron-parser@5.5.0:
     dependencies:
       luxon: 3.7.2
@@ -3647,7 +3695,7 @@ snapshots:
 
   entities@6.0.1: {}
 
-  es-module-lexer@1.7.0: {}
+  es-module-lexer@2.3.2: {}
 
   esbuild@0.28.2:
     optionalDependencies:
@@ -3707,7 +3755,7 @@ snapshots:
 
   github-from-package@0.0.0: {}
 
-  hono@4.11.9: {}
+  hono@4.13.19: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
@@ -3984,7 +4032,7 @@ snapshots:
 
   stackback@0.0.2: {}
 
-  std-env@3.10.0: {}
+  std-env@4.3.0: {}
 
   string_decoder@1.3.0:
     dependencies:
@@ -4077,22 +4125,22 @@ snapshots:
       '@types/node': 22.15.30
       fsevents: 2.3.3
 
-  vitest@4.0.18(@types/node@22.15.30)(jsdom@26.1.0):
+  vitest@4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30)):
     dependencies:
-      '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.7(@types/node@22.15.30))
-      '@vitest/pretty-format': 4.0.18
-      '@vitest/runner': 4.0.18
-      '@vitest/snapshot': 4.0.18
-      '@vitest/spy': 4.0.18
-      '@vitest/utils': 4.0.18
-      es-module-lexer: 1.7.0
+      '@vitest/expect': 4.1.12
+      '@vitest/mocker': 4.1.12(vite@7.3.7(@types/node@22.15.30))
+      '@vitest/pretty-format': 4.1.12
+      '@vitest/runner': 4.1.12
+      '@vitest/snapshot': 4.1.12
+      '@vitest/spy': 4.1.12
+      '@vitest/utils': 4.1.12
+      es-module-lexer: 2.3.2
       expect-type: 1.4.0
       magic-string: 0.30.21
       obug: 2.2.1
       pathe: 2.0.3
       picomatch: 4.0.7
-      std-env: 3.10.0
+      std-env: 4.3.0
       tinybench: 2.9.0
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
@@ -4103,17 +4151,7 @@ snapshots:
       '@types/node': 22.15.30
       jsdom: 26.1.0
     transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   w3c-xmlserializer@5.0.0:
     dependencies:

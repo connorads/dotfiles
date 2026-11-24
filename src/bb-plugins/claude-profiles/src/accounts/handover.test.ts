@@ -1,15 +1,20 @@
-import { test } from 'node:test';
+import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
-import { mkdtemp, mkdir, readFile, readdir, writeFile, symlink, truncate } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile, symlink, truncate } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { releaseSession, transferSession } from './handover.ts';
 
 const sessionId = '68fe2a7c-6970-42b4-a246-77aa535bd3ba';
+const fixtureRoots: string[] = [];
+afterEach(async () => {
+  await Promise.all(fixtureRoots.splice(0).map(root => rm(root, { recursive: true, force: true })));
+});
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'claude-profile-test-'));
+  fixtureRoots.push(root);
   const source = join(root, 'source');
   const target = join(root, 'target');
   await mkdir(join(source, 'projects', 'workspace'), { recursive: true });
