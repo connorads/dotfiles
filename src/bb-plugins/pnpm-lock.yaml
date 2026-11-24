@@ -1481,6 +1481,15 @@ importers:
         specifier: 'catalog:'
         version: 4.1.12(@types/node@22.15.30)(jsdom@26.1.0)(vite@7.3.7(@types/node@22.15.30))
 
+  swarm:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.15.30
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+
   terminal-tweaks:
     devDependencies:
       '@get-bb/plugin-sdk':
