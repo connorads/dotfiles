@@ -15,8 +15,11 @@ export type Author = MemberName | 'human' | 'engine';
 export type EntryBody =
   | { kind: 'post'; author: Author; text: string; mentions: readonly MemberName[] }
   | { kind: 'joined'; member: MemberName; brief: string }
-  /** A worker's turn ended without a post, so the engine relayed its final reply. */
-  | { kind: 'reply'; member: MemberName; text: string }
+  /**
+   * A worker's turn ended without a post, so the engine relayed its final reply.
+   * `brief` is the turn its brief started; any turn after that is `later`.
+   */
+  | { kind: 'reply'; member: MemberName; text: string; turn: 'brief' | 'later' }
   | { kind: 'failed'; member: MemberName; error: string }
   /** The member's thread is gone: archived, deleted or stopped outside the swarm. */
   | { kind: 'left'; member: MemberName }
@@ -123,6 +126,8 @@ export function concerns(entry: Entry, member: Member): boolean {
       // A human post that names nobody goes to the coordinator.
       return entry.author === 'human' && entry.mentions.length === 0 && member.role === 'coordinator';
     case 'reply':
+      // A later silent turn is often a worker with nothing to add, so it does not earn a wake.
+      return member.role === 'coordinator' && entry.turn === 'brief';
     case 'failed':
     case 'left':
       return member.role === 'coordinator' && entry.member !== member.name;
@@ -135,5 +140,6 @@ export function concerns(entry: Entry, member: Member): boolean {
 
 /** Whether the coordinator must still be shown an entry that is no reason to wake it. */
 export function ambient(entry: Entry, member: Member): boolean {
-  return member.role === 'coordinator' && entry.kind === 'post' && entry.author !== member.name && !concerns(entry, member);
+  if (member.role !== 'coordinator' || concerns(entry, member)) return false;
+  return entry.kind === 'reply' || (entry.kind === 'post' && entry.author !== member.name);
 }

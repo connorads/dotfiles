@@ -194,3 +194,23 @@ test('a worker is woken with its mentions only', () => {
   const wake = effects[0]!;
   assert.deepEqual(wake.type === 'wake' && [wake.entries.map(entry => entry.seq), wake.also], [[5], []]);
 });
+
+test('a later silent turn is recorded without a wake and reaches the coordinator when everyone is idle', () => {
+  const setup = run(fresh(), join(a), join(b), post(a, '@coordinator first result'), ended(a), post(coordinatorName, '@a try again'), ended(coordinatorName), ended(coordinatorName));
+  const silent = run(setup.swarm, ended(a, 'second result'));
+  const reply = silent.swarm.entries.at(-1)!;
+  assert.deepEqual(reply.kind === 'reply' && [reply.text, reply.turn], ['second result', 'later']);
+  assert.deepEqual(silent.effects, []);
+
+  const idle = run(silent.swarm, post(b, 'done'), ended(b));
+  const wake = idle.effects[0]!;
+  assert.equal(wake.type === 'wake' && wake.member, coordinatorName);
+  assert.deepEqual(wake.type === 'wake' && wake.also.map(entry => entry.kind), ['reply', 'post']);
+});
+
+test('a later silent turn with no reply leaves no entry', () => {
+  const setup = run(fresh(), join(a), post(a, '@coordinator done'), ended(a), post(coordinatorName, '@a thanks'));
+  const { swarm, effects } = run(setup.swarm, ended(a, '  '));
+  assert.deepEqual(kinds(swarm.entries), ['joined', 'post', 'post']);
+  assert.deepEqual(effects, []);
+});

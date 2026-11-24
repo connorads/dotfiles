@@ -113,7 +113,13 @@ export function decide(swarm: Swarm, input: Input): Decision {
       if (closed || !member || member.run !== 'working') return unchanged;
       member.run = 'idle';
       const posted = draft.entries.some(entry => entry.seq > member.turnStart && entry.kind === 'post' && entry.author === member.name);
-      if (member.role === 'worker' && !posted) append({ kind: 'reply', member: member.name, text: input.lastReply?.trim() ?? '' });
+      if (member.role === 'worker' && !posted) {
+        const joined = draft.entries.find(entry => entry.kind === 'joined' && entry.member === member.name);
+        const turn = joined?.seq === member.turnStart ? 'brief' : 'later';
+        const text = input.lastReply?.trim() ?? '';
+        // The brief turn always reports, even empty, so the coordinator learns that the worker stopped.
+        if (turn === 'brief' || text) append({ kind: 'reply', member: member.name, text, turn });
+      }
       break;
     }
     case 'turnFailed': {

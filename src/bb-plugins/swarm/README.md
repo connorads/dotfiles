@@ -37,7 +37,7 @@ Workers appear under the coordinator in the sidebar and share its workspace. The
 ## Rules the engine applies
 
 1. **Wake.** An idle member with unread mentions gets all of them in one message. Mentions that arrive during a turn wait for it to end. The coordinator's wake also carries every post that did not mention it.
-2. **Relay.** A worker turn that ends without a post is posted to the coordinator as that worker's reply.
+2. **Relay.** A worker turn that ends without a post is recorded as that worker's reply. The reply to its brief wakes the coordinator. A later silent reply waits for the coordinator's next wake, or for every member to be idle.
 3. **Stall.** When every member is idle and the board holds posts that never reached the coordinator, the coordinator gets one notice, and that wake carries them.
 4. **Close.** Closing stops every live worker. Archiving the coordinator thread closes the swarm.
 5. **Limits.** At the wake limit the swarm pauses and records it on the board.

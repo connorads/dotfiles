@@ -60,7 +60,8 @@ const name = z.string();
 const entryBody = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('post'), author: name, text: z.string(), mentions: z.array(name) }),
   z.object({ kind: z.literal('joined'), member: name, brief: z.string() }),
-  z.object({ kind: z.literal('reply'), member: name, text: z.string() }),
+  // Rows written before `turn` existed were all relayed with a wake.
+  z.object({ kind: z.literal('reply'), member: name, text: z.string(), turn: z.enum(['brief', 'later']).default('brief') }),
   z.object({ kind: z.literal('failed'), member: name, error: z.string() }),
   z.object({ kind: z.literal('left'), member: name }),
   z.object({ kind: z.literal('exhausted'), maxWakes: z.number() }),
