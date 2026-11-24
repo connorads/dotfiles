@@ -3,6 +3,7 @@ type Brand<T, B extends string> = T & { readonly [brand]: B };
 
 export type MemberName = Brand<string, 'MemberName'>;
 export type ThreadId = Brand<string, 'ThreadId'>;
+export type SwarmId = Brand<string, 'SwarmId'>;
 /** Position of an entry on the board. The first entry is 1; 0 means "nothing yet". */
 export type Seq = Brand<number, 'Seq'>;
 
