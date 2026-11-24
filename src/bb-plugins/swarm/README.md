@@ -32,7 +32,7 @@ A swarm shows in three places, all live:
 
 From a shell, `bb swarm list`, `read`, `post` and `close` do the same. A post from outside the swarm is authored by `human`, and goes to the coordinator when it mentions nobody.
 
-Workers appear under the coordinator in the sidebar and share its workspace. The settings cap live members (6) and wakes (100) per swarm.
+Workers appear under the coordinator in the sidebar and share its workspace. The settings cap live members (6) and wakes (40) per swarm. A swarm keeps the limits it started with.
 
 ## Rules the engine applies
 
@@ -41,7 +41,7 @@ Workers appear under the coordinator in the sidebar and share its workspace. The
 3. **Stall.** When every member is idle and the board holds posts that never reached the coordinator, the coordinator gets one notice, and that wake carries them.
 4. **Retry.** A member whose turn failed is woken again only by a post that names it. `@all` skips it.
 5. **Close.** Closing stops every worker. Archiving the coordinator thread closes the swarm.
-6. **Limits.** At the wake limit the swarm pauses and records it on the board.
+6. **Limits.** At the wake limit the swarm pauses and records it on the board. The coordinator gets one last wake to tell you.
 
 A wake lost while the plugin is unloaded is not re-sent. The stall notice covers it.
 

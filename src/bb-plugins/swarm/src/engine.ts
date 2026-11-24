@@ -160,9 +160,13 @@ function settle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq
   wakeIdle(draft, maxWakes, append);
 }
 
-/** Sends each idle member its unread mentions in one wake. Returns whether anything was due. */
+/**
+ * Sends each idle member its unread mentions in one wake. Returns whether anything was due.
+ * At the wake limit nothing is sent, except one wake that tells the coordinator the swarm is paused.
+ */
 function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq): boolean {
   let due = false;
+  let paused = false;
   for (const member of draft.members) {
     if (member.run !== 'idle' && member.run !== 'failed') continue;
     const unread = draft.entries.filter(
@@ -170,8 +174,11 @@ function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => S
     );
     if (unread.length === 0) continue;
     due = true;
-    if (draft.wakes >= maxWakes) {
-      if (!draft.entries.some(entry => entry.kind === 'exhausted')) append({ kind: 'exhausted', maxWakes });
+    if (draft.wakes >= maxWakes && !unread.some(entry => entry.kind === 'exhausted')) {
+      if (!draft.entries.some(entry => entry.kind === 'exhausted')) {
+        append({ kind: 'exhausted', maxWakes });
+        paused = true;
+      }
       continue;
     }
     // A failed coordinator is woken by its name alone, so what else concerns it rides along here.
@@ -180,10 +187,12 @@ function wakeIdle(draft: Draft, maxWakes: number, append: (body: EntryBody) => S
     );
     draft.wakes += 1;
     member.run = 'working';
-    // Everything up to the head is now delivered: the reasons in `unread`, the rest in `also`.
+    // This wake delivers everything up to the head: the reasons in `unread`, the rest in `also`.
     member.cursor = head(draft);
     member.turnStart = member.cursor;
     draft.effects.push({ type: 'wake', member: member.name, threadId: member.threadId, entries: unread, also });
   }
+  // The coordinator may have been passed before the limit was recorded.
+  if (paused) wakeIdle(draft, maxWakes, append);
   return due;
 }

@@ -137,8 +137,9 @@ export function concerns(entry: Entry, member: Member): boolean {
     case 'failed':
     case 'left':
       return member.role === 'coordinator' && entry.member !== member.name;
-    case 'joined':
     case 'exhausted':
+      return member.role === 'coordinator';
+    case 'joined':
     case 'closed':
       return false;
   }

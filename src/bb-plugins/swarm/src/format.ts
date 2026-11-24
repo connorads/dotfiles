@@ -14,7 +14,7 @@ export function formatEntry(entry: Entry): string {
     case 'left':
       return `#${entry.seq} engine: ${entry.member} left the swarm.`;
     case 'exhausted':
-      return `#${entry.seq} engine: wake limit of ${entry.maxWakes} reached. The swarm is paused.`;
+      return `#${entry.seq} engine: wake limit of ${entry.maxWakes} reached. The swarm is paused and wakes nobody else. Tell the user what is unfinished. They can close this swarm and start another.`;
     case 'closed':
       return `#${entry.seq} engine: swarm closed. ${entry.summary}`;
   }

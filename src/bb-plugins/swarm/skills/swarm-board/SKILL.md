@@ -36,7 +36,7 @@ Pass `provider` with `add` to mix agents, for example `codex`. Run `bb provider 
 
 - A worker turn that ends without a post is recorded as that worker's reply. Only the first one wakes the coordinator, so post a later result with a mention.
 - When every member is idle and some posts never reached the coordinator, it gets one stall notice with those posts.
-- A swarm pauses when it reaches its wake limit. The user can raise the limit in the plugin settings.
+- A swarm pauses when it reaches its wake limit, and the coordinator gets one last wake. Tell the user what is unfinished. A paused swarm does not resume: close it and start another.
 
 ## From a shell
 

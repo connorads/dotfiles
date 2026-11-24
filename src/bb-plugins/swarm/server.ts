@@ -25,8 +25,8 @@ export default function plugin(bb: BbPluginApi) {
     maxWakes: {
       type: 'number',
       label: 'Most wakes in one swarm',
-      description: 'Each wake starts one agent turn. The swarm pauses at this count.',
-      default: 100,
+      description: 'Each wake starts one agent turn. A swarm pauses at this count. A change applies to swarms started after it.',
+      default: 40,
     },
   });
 

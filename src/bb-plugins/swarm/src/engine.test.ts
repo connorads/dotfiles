@@ -242,3 +242,25 @@ test('a failed coordinator that is retried also gets the reports it missed', () 
   const wake = effects[0]!;
   assert.deepEqual(wake.type === 'wake' && [wake.entries.map(entry => entry.kind), wake.also.map(entry => entry.kind)], [['post'], ['reply']]);
 });
+
+test('at the wake limit the coordinator gets one last wake that says so', () => {
+  const setup = run(fresh({ maxMembers: 4, maxWakes: 1 }), join(a), post(a, 'x'), ended(a), post(coordinatorName, '@a one'), post(a, 'y'), ended(a));
+  const blocked = run(setup.swarm, post(coordinatorName, '@a two'));
+  assert.deepEqual(blocked.effects, []);
+
+  const last = run(blocked.swarm, ended(coordinatorName));
+  const wake = last.effects[0]!;
+  assert.deepEqual(wake.type === 'wake' && [wake.member, wake.entries.map(entry => entry.kind)], [coordinatorName, ['exhausted']]);
+
+  const after = run(last.swarm, post(coordinatorName, '@a three'), ended(coordinatorName), post('human', 'carry on'));
+  assert.deepEqual(after.effects, []);
+  assert.equal(kinds(after.swarm.entries).filter(kind => kind === 'exhausted').length, 1);
+});
+
+test('an idle coordinator is told at once when the limit blocks a wake', () => {
+  const setup = run(fresh({ maxMembers: 4, maxWakes: 1 }), join(a), join(b), post(a, 'x'), ended(a), post(b, '@a help'), ended(coordinatorName));
+  assert.equal(setup.swarm.wakes, 1);
+  // b's turn ends with a mention waiting for it, which the limit blocks.
+  const { effects } = run(setup.swarm, post(a, '@b here'), ended(a), ended(b));
+  assert.deepEqual(wakes(effects).map(effect => effect.member), [coordinatorName]);
+});
