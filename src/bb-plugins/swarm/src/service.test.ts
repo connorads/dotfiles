@@ -168,3 +168,24 @@ test('reconcile replays turns that ended, failed or vanished while the plugin wa
   assert.equal(wakes.length, 1);
   assert.equal(service.read(origin, 0).text, before);
 });
+
+test('a human reads, posts to and closes a swarm from outside it', async () => {
+  const { add, service, wakes, stopped } = setup();
+  await add('scout');
+  service.turnEnded(origin, null);
+  const [open] = service.list();
+  assert.match(open!.roster, /coordinator \(idle\), scout \(working\)/);
+  assert.equal(service.swarmOf(origin), open!.id);
+
+  assert.match(service.humanPost(open!.id, 'narrow it to the last month').text, /Posted #2 as human/);
+  await settled();
+  assert.equal(wakes[0]!.threadId, origin);
+  assert.equal(wakes[0]!.sender, null);
+  assert.match(service.humanRead(open!.id, null).text, /#2 human: narrow it to the last month/);
+
+  assert.equal(service.humanClose(open!.id, 'enough').ok, true);
+  await settled();
+  assert.deepEqual(stopped, ['thr_scout']);
+  assert.deepEqual(service.list(), []);
+  assert.equal(service.humanPost(open!.id, 'more').ok, false);
+});

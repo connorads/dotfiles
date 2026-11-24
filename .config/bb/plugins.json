@@ -31,6 +31,7 @@
   "run-in-terminal": true,
   "shortcut-guide": true,
   "skill-loader": true,
+  "swarm": true,
   "terminal-tweaks": true,
   "worker-attention": true,
   "workflow-timers": true,

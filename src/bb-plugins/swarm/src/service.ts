@@ -14,7 +14,7 @@ import {
   type ThreadId,
 } from './domain.ts';
 import { decide, type Effect, type Input } from './engine.ts';
-import { explain, formatBoard, formatBrief, formatWake } from './format.ts';
+import { explain, formatBoard, formatBrief, formatRoster, formatWake } from './format.ts';
 
 /** The agent threads a swarm runs on. */
 export interface Agents {
@@ -175,6 +175,28 @@ export function createService(deps: Deps) {
     turnFailed: (threadId: ThreadId, error: string) => lifecycle(threadId, member => ({ type: 'turnFailed', member, error })),
 
     threadGone,
+
+    /** Open swarms, for a caller that is not a member. */
+    list(): { id: SwarmId; roster: string }[] {
+      return board.open().flatMap(id => {
+        const swarm = board.load(id);
+        return swarm ? [{ id, roster: formatRoster(swarm.members) }] : [];
+      });
+    },
+    swarmOf: (threadId: ThreadId): SwarmId | null => board.openFor(threadId),
+
+    humanRead(id: SwarmId, since: number | null): Outcome {
+      const swarm = board.load(id);
+      return swarm ? { ok: true, text: formatBoard(swarm, since ?? 0) } : { ok: false, text: `No swarm has the id ${id}.` };
+    },
+    humanPost(id: SwarmId, text: string): Outcome {
+      const posted = apply(id, { type: 'post', author: 'human', text });
+      return 'refusal' in posted ? { ok: false, text: posted.refusal } : { ok: true, text: `Posted #${head(posted.swarm)} as human.` };
+    },
+    humanClose(id: SwarmId, summary: string): Outcome {
+      const closed = apply(id, { type: 'close', by: 'human', summary });
+      return 'refusal' in closed ? { ok: false, text: closed.refusal } : { ok: true, text: 'Swarm closed. Every worker was stopped.' };
+    },
 
     /**
      * Replays what happened to each live member while the plugin was not listening.

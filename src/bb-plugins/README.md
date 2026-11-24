@@ -94,6 +94,11 @@ pop-up uses the package's `ChipPopover`;
 composer status card and `/swarm` launcher for Antigravity (`agy`) threads, covering
 both Default and isolated Antigravity accounts.
 
+## Swarm
+
+[Swarm](swarm/README.md) lets agent threads from any provider coordinate through one shared
+board. An agent starts one with the `swarm_add` tool, and `bb swarm` reads and posts from a shell.
+
 ## Agent Switcher
 
 [Agent Switcher](claude-profiles/README.md) chooses the model, saved effort and

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { BbPluginApi } from '@get-bb/plugin-sdk';
+import { PluginCliError, cliCommand, defineCli, type BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { createBoard, migrations } from './src/board.ts';
 import type { SwarmId, ThreadId } from './src/domain.ts';
@@ -139,6 +139,61 @@ export default function plugin(bb: BbPluginApi) {
   bb.events.on('thread.failed', ({ thread, error }) => service.turnFailed(thread.id as ThreadId, error ?? 'unknown error'));
   bb.events.on('thread.archived', ({ thread }) => service.threadGone(thread.id as ThreadId));
   bb.events.on('thread.deleted', ({ thread }) => service.threadGone(thread.id as ThreadId));
+
+  const swarmOption = { swarm: { type: 'string' as const, description: 'Swarm id from `bb swarm list`. Defaults to this thread\'s swarm, or the only open one.' } };
+  /** The swarm a command acts on, and the calling thread when it is a member of it. */
+  const target = (swarm: string | undefined, threadId: string | undefined) => {
+    const own = threadId ? service.swarmOf(threadId as ThreadId) : null;
+    const open = service.list();
+    const id = (swarm as SwarmId | undefined) ?? own ?? (open.length === 1 ? open[0]!.id : null);
+    if (!id) {
+      throw new PluginCliError(open.length ? 'More than one swarm is open.' : 'No swarm is open.', {
+        code: 'swarm_not_selected',
+        hint: open.length ? 'Pass --swarm <id>. Run `bb swarm list` for the ids.' : 'An agent starts one with the swarm_add tool.',
+      });
+    }
+    return { id, member: id === own ? (threadId as ThreadId) : null };
+  };
+  const printed = ({ ok, text }: Outcome) => (ok ? { exitCode: 0, stdout: text } : { exitCode: 1, stderr: text });
+
+  bb.cli.register(
+    defineCli({
+      name: 'swarm',
+      summary: 'Read, post to and close swarm boards',
+      commands: {
+        list: cliCommand({
+          summary: 'List open swarms and their members',
+          run: async () => ({
+            exitCode: 0,
+            stdout: service.list().map(({ id, roster }) => `${id}  ${roster}`).join('\n') || 'No swarm is open.',
+          }),
+        }),
+        read: cliCommand({
+          summary: 'Print a swarm board',
+          options: { ...swarmOption, since: { type: 'integer' as const, min: 0, max: Number.MAX_SAFE_INTEGER, description: 'Print entries after this number. Defaults to all of them.' } },
+          run: async ({ options }, ctx) => printed(service.humanRead(target(options.swarm, ctx.threadId).id, options.since ?? null)),
+        }),
+        post: cliCommand({
+          summary: 'Post to a swarm board; a member thread posts as itself, anyone else as human',
+          positionals: [{ name: 'text', description: 'The post. @name wakes a member; a human post with no mention goes to the coordinator.', required: true, variadic: true }],
+          options: swarmOption,
+          run: async ({ positionals, options }, ctx) => {
+            const { id, member } = target(options.swarm, ctx.threadId);
+            const text = positionals.text.join(' ');
+            return printed(member ? service.post(member, text) : service.humanPost(id, text));
+          },
+        }),
+        close: cliCommand({
+          summary: 'Close a swarm and stop its workers',
+          options: { ...swarmOption, summary: { type: 'string' as const, default: 'Closed from the CLI.', description: 'Outcome in one or two sentences.' } },
+          run: async ({ options }, ctx) => {
+            const { id, member } = target(options.swarm, ctx.threadId);
+            return printed(member ? service.close(member, options.summary) : service.humanClose(id, options.summary));
+          },
+        }),
+      },
+    }),
+  );
 
   // Events fired while the plugin was unloaded are not replayed.
   bb.background.service('reconcile', { start: () => service.reconcile() });
