@@ -106,9 +106,17 @@ test('a quiet board gets one stall notice, then silence', () => {
   assert.equal(notice.kind === 'post' && notice.author, 'engine');
   assert.deepEqual(wakes(quiet.effects).map(effect => effect.member), [coordinatorName]);
 
+  assert.match(notice.kind === 'post' ? notice.text : '', /did not mention you: #2\./);
+
   const again = run(quiet.swarm, ended(coordinatorName));
   assert.deepEqual(again.effects, []);
   assert.equal(again.swarm.entries.length, quiet.swarm.entries.length);
+});
+
+test('no stall is declared when the coordinator has seen every post', () => {
+  const { swarm, effects } = run(fresh(), join(a), ended(coordinatorName), post(a, '@coordinator done'), post(coordinatorName, 'noted'), ended(a), ended(coordinatorName));
+  assert.deepEqual(effects, []);
+  assert.deepEqual(kinds(swarm.entries), ['joined', 'post', 'post']);
 });
 
 test('a stall is not declared while a member is still working', () => {

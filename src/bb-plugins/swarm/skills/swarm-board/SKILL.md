@@ -35,7 +35,7 @@ Pass `provider` to `swarm_add` to mix agents, for example `codex`. Run `bb provi
 ## What the engine does
 
 - A worker turn that ends without a post is relayed to the coordinator as that worker's reply.
-- When every member is idle and nothing is unread, the coordinator gets one stall notice.
+- When every member is idle and some posts never reached the coordinator, it gets one stall notice that lists them.
 - A swarm pauses when it reaches its wake limit. The user can raise the limit in the plugin settings.
 
 ## From a shell

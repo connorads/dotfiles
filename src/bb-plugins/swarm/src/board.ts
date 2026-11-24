@@ -41,6 +41,7 @@ export const migrations = [
     PRIMARY KEY (swarm_id, name)
   )`,
   `CREATE INDEX members_thread ON members (thread_id)`,
+  `ALTER TABLE swarms DROP COLUMN stall_notice_at`,
 ];
 
 export interface Board {
@@ -79,7 +80,6 @@ const swarmRow = z.object({
   max_members: z.number(),
   max_wakes: z.number(),
   wakes: z.number(),
-  stall_notice_at: z.number().nullable(),
 });
 
 export function createBoard(db: Sql): Board {
@@ -106,14 +106,14 @@ export function createBoard(db: Sql): Board {
   return {
     create(id, swarm, at) {
       transaction(() => {
-        db.prepare('INSERT INTO swarms (id, created_at, max_members, max_wakes, wakes, stall_notice_at, closed) VALUES (?, ?, ?, ?, ?, ?, 0)')
-          .run(id, at, swarm.limits.maxMembers, swarm.limits.maxWakes, swarm.wakes, swarm.stallNoticeAt);
+        db.prepare('INSERT INTO swarms (id, created_at, max_members, max_wakes, wakes, closed) VALUES (?, ?, ?, ?, ?, 0)')
+          .run(id, at, swarm.limits.maxMembers, swarm.limits.maxWakes, swarm.wakes);
         writeMembers(id, swarm.members);
       });
     },
 
     load(id) {
-      const row = db.prepare('SELECT max_members, max_wakes, wakes, stall_notice_at FROM swarms WHERE id = ?').get(id);
+      const row = db.prepare('SELECT max_members, max_wakes, wakes FROM swarms WHERE id = ?').get(id);
       if (row === undefined) return null;
       const swarm = swarmRow.parse(row);
       const entries = db.prepare('SELECT seq, at, body FROM entries WHERE swarm_id = ? ORDER BY seq').all(id).map(raw => {
@@ -132,7 +132,6 @@ export function createBoard(db: Sql): Board {
         members,
         limits: { maxMembers: swarm.max_members, maxWakes: swarm.max_wakes },
         wakes: swarm.wakes,
-        stallNoticeAt: swarm.stall_notice_at,
       } as Swarm;
     },
 
@@ -142,8 +141,7 @@ export function createBoard(db: Sql): Board {
           insertEntry.run(id, seq, at, JSON.stringify(body));
         }
         writeMembers(id, next.members);
-        db.prepare('UPDATE swarms SET wakes = ?, stall_notice_at = ?, closed = ? WHERE id = ?')
-          .run(next.wakes, next.stallNoticeAt, isClosed(next) ? 1 : 0, id);
+        db.prepare('UPDATE swarms SET wakes = ?, closed = ? WHERE id = ?').run(next.wakes, isClosed(next) ? 1 : 0, id);
       });
     },
 

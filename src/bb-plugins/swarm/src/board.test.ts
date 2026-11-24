@@ -44,10 +44,13 @@ test('every kind of entry and member change survives a save', () => {
   current = apply(board, current, { type: 'turnStarted', at: 6, member: a });
   current = apply(board, current, { type: 'turnEnded', at: 7, member: a, lastReply: 'done' });
   current = apply(board, current, { type: 'turnEnded', at: 8, member: coordinatorName, lastReply: null });
+  current = apply(board, current, { type: 'turnStarted', at: 9, member: a });
+  current = apply(board, current, { type: 'post', at: 9, author: a, text: 'a note for nobody' });
+  current = apply(board, current, { type: 'turnEnded', at: 9, member: a, lastReply: null });
   current = apply(board, current, { type: 'turnEnded', at: 9, member: coordinatorName, lastReply: null });
   current = apply(board, current, { type: 'gone', at: 10, member: a });
   current = apply(board, current, { type: 'close', at: 11, by: 'human', summary: 'enough' });
-  assert.deepEqual(current.entries.map(entry => entry.kind), ['joined', 'post', 'failed', 'reply', 'post', 'left', 'closed']);
+  assert.deepEqual(current.entries.map(entry => entry.kind), ['joined', 'post', 'failed', 'reply', 'post', 'post', 'left', 'closed']);
   assert.deepEqual(board.load(id), current);
 });
 

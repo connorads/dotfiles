@@ -39,14 +39,10 @@ export type SwarmError =
 
 export type Decision = { ok: true; swarm: Swarm; effects: Effect[] } | { ok: false; error: SwarmError };
 
-const stallNotice =
-  `@${coordinatorName} Every member is idle and nothing is unread. Assign work with a mention, ask the human, or close the swarm.`;
-
 interface Draft {
   entries: Entry[];
   members: Member[];
   wakes: number;
-  stallNoticeAt: Seq | null;
   effects: Effect[];
 }
 
@@ -59,7 +55,6 @@ export function decide(swarm: Swarm, input: Input): Decision {
     entries: [...swarm.entries],
     members: swarm.members.map(member => ({ ...member })),
     wakes: swarm.wakes,
-    stallNoticeAt: swarm.stallNoticeAt,
     effects: [],
   };
   const append = (body: EntryBody): Seq => {
@@ -142,10 +137,21 @@ export function decide(swarm: Swarm, input: Input): Decision {
 
 function settle(draft: Draft, maxWakes: number, append: (body: EntryBody) => Seq): void {
   if (wakeIdle(draft, maxWakes, append)) return;
-  const live = draft.members.filter(isLive);
+  const coordinator = draft.members.find(member => member.role === 'coordinator');
   const exhausted = draft.entries.some(entry => entry.kind === 'exhausted');
-  if (exhausted || live.some(member => member.run === 'working') || head(draft) === draft.stallNoticeAt) return;
-  draft.stallNoticeAt = append({ kind: 'post', author: 'engine', text: stallNotice, mentions: [coordinatorName] });
+  if (exhausted || coordinator?.run !== 'idle' || draft.members.some(member => member.run === 'working')) return;
+  // A stall: everyone is idle while posts sit on the board that never reached the coordinator.
+  const unseen = draft.entries.filter(
+    entry => entry.seq > coordinator.cursor && entry.kind === 'post' && entry.author !== coordinator.name && entry.author !== 'engine',
+  );
+  if (unseen.length === 0) return;
+  const numbers = unseen.map(entry => `#${entry.seq}`).join(', ');
+  append({
+    kind: 'post',
+    author: 'engine',
+    text: `@${coordinatorName} Every member is idle. These posts did not mention you: ${numbers}. Read them with swarm_read, then assign work, ask the human, or close the swarm.`,
+    mentions: [coordinatorName],
+  });
   wakeIdle(draft, maxWakes, append);
 }
 

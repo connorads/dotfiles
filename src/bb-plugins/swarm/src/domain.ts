@@ -48,8 +48,6 @@ export interface Swarm {
   members: readonly Member[];
   limits: Limits;
   wakes: number;
-  /** Board head left by the last stall notice, so one quiet board gets one notice. */
-  stallNoticeAt: Seq | null;
 }
 
 const reservedNames = new Set(['human', 'engine', 'all', coordinatorName]);
@@ -78,7 +76,6 @@ export function openSwarm(coordinatorThreadId: ThreadId, limits: Limits): Swarm 
     ],
     limits,
     wakes: 0,
-    stallNoticeAt: null,
   };
 }
 
