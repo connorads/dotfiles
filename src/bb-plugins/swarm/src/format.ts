@@ -1,4 +1,4 @@
-import type { Entry, Member, Swarm } from './domain.ts';
+import { isClosed, type Entry, type Member, type Swarm, type SwarmId } from './domain.ts';
 import type { SwarmError } from './engine.ts';
 
 export function formatEntry(entry: Entry): string {
@@ -64,4 +64,57 @@ export function explain(error: SwarmError): string {
     case 'empty-text':
       return 'The post has no text.';
   }
+}
+
+/** What the board panel shows. Plain JSON, so it crosses the RPC boundary as it is. */
+export interface BoardView {
+  id: string;
+  closed: boolean;
+  members: { name: string; role: 'coordinator' | 'worker'; run: Member['run']; threadId: string }[];
+  entries: EntryView[];
+}
+
+export interface EntryView {
+  seq: number;
+  at: number;
+  author: string;
+  tone: 'post' | 'relay' | 'engine' | 'problem';
+  text: string;
+}
+
+export function viewEntry(entry: Entry): EntryView {
+  const base = { seq: entry.seq, at: entry.at };
+  switch (entry.kind) {
+    case 'post':
+      return { ...base, author: entry.author, tone: entry.author === 'engine' ? 'engine' : 'post', text: entry.text };
+    case 'reply':
+      return { ...base, author: entry.member, tone: 'relay', text: entry.text || '(no reply)' };
+    case 'joined':
+      return { ...base, author: 'engine', tone: 'engine', text: `${entry.member} joined. Brief: ${entry.brief}` };
+    case 'failed':
+      return { ...base, author: 'engine', tone: 'problem', text: `${entry.member}'s turn failed: ${entry.error}` };
+    case 'left':
+      return { ...base, author: 'engine', tone: 'engine', text: `${entry.member} left the swarm.` };
+    case 'exhausted':
+      return { ...base, author: 'engine', tone: 'problem', text: `Wake limit of ${entry.maxWakes} reached. The swarm is paused.` };
+    case 'closed':
+      return { ...base, author: 'engine', tone: 'engine', text: `Swarm closed. ${entry.summary}` };
+  }
+}
+
+export function viewBoard(id: SwarmId, swarm: Swarm): BoardView {
+  return {
+    id,
+    closed: isClosed(swarm),
+    members: swarm.members.map(({ name, role, run, threadId }) => ({ name, role, run, threadId })),
+    entries: swarm.entries.map(viewEntry),
+  };
+}
+
+/** Splits a post so the panel can mark its mentions and entry references. */
+export function segments(text: string): { text: string; mark: boolean }[] {
+  return text
+    .split(/((?<![\w@#])[@#][a-z0-9]+(?:-[a-z0-9]+)*)/gi)
+    .filter(part => part !== '')
+    .map(part => ({ text: part, mark: /^[@#]/.test(part) && part.length > 1 }));
 }

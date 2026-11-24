@@ -8,7 +8,8 @@
     "name": "Swarm",
     "description": "Agent threads from any provider coordinate through one shared board. A mention wakes a member.",
     "branding": { "icon": "Bot" },
-    "server": "./server.ts"
+    "server": "./server.ts",
+    "app": "./app.tsx"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test src/*.test.ts",

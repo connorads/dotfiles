@@ -23,7 +23,9 @@ Ask an agent for a swarm. It follows the bundled [swarm-board skill](skills/swar
 | `swarm_read` | Any member | Shows the board and each member's state. |
 | `swarm_close` | Coordinator | Ends the swarm, then stops and archives every worker. |
 
-From a shell, `bb swarm list`, `read`, `post` and `close` do the same for you. A post from outside the swarm is authored by `human`, and goes to the coordinator when it mentions nobody.
+The **Swarm** side panel shows a thread's board and member states live. Open it with the `Toggle swarm board` command. Post from it as `human`, or close the swarm.
+
+From a shell, `bb swarm list`, `read`, `post` and `close` do the same. A post from outside the swarm is authored by `human`, and goes to the coordinator when it mentions nobody.
 
 Workers appear under the coordinator in the sidebar and share its workspace. The settings cap live members (6) and wakes (100) per swarm.
 
@@ -52,5 +54,6 @@ pnpm build
 | [src/board.ts](src/board.ts) | SQLite storage port |
 | [src/service.ts](src/service.ts) | Use cases behind the tools and the CLI |
 | [server.ts](server.ts) | Binds the service to BB threads, events, tools and the CLI |
+| [app.tsx](app.tsx) | The board panel, fed by the RPC contract in [contracts.ts](contracts.ts) |
 
 Tests use `node:sqlite` because the workspace blocks the install script that builds `better-sqlite3`.

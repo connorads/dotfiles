@@ -14,6 +14,7 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
   const wakes: { threadId: ThreadId; text: string; sender: ThreadId | null }[] = [];
   const stopped: ThreadId[] = [];
   const logs: string[] = [];
+  const changes: SwarmId[] = [];
   const observed = new Map<string, Observed>();
   const agents: Agents = {
     async spawn(request) {
@@ -39,9 +40,10 @@ function setup(options: { maxMembers?: number; failWakes?: boolean } = {}) {
     newId: () => `swarm-${++ids}` as SwarmId,
     limits: async () => ({ maxMembers: options.maxMembers ?? 4, maxWakes: 50 }),
     log: message => logs.push(message),
+    changed: id => changes.push(id),
   });
   const add = (name: string, threadId = origin) => service.add(threadId, { name, brief: `do ${name}`, provider: null, model: null });
-  return { service, spawned, wakes, stopped, logs, add, observed, opened: () => ids };
+  return { service, spawned, wakes, stopped, logs, changes, add, observed, opened: () => ids };
 }
 
 /** Lets effects started by the last call finish. */
@@ -188,4 +190,21 @@ test('a human reads, posts to and closes a swarm from outside it', async () => {
   assert.deepEqual(stopped, ['thr_scout']);
   assert.deepEqual(service.list(), []);
   assert.equal(service.humanPost(open!.id, 'more').ok, false);
+});
+
+test('the panel view follows a thread\'s newest swarm and every change is announced', async () => {
+  const { add, service, changes } = setup();
+  assert.equal(service.view(origin), null);
+  await add('scout');
+  service.post('thr_scout' as ThreadId, 'see #1, @coordinator');
+  service.turnEnded('thr_scout' as ThreadId, null);
+  service.turnEnded('thr_scout' as ThreadId, null);
+  assert.equal(changes.length, 3);
+
+  const view = service.view('thr_scout' as ThreadId)!;
+  assert.deepEqual(view.members.map(member => `${member.name}:${member.run}`), ['coordinator:working', 'scout:idle']);
+  assert.deepEqual(view.entries.map(entry => `${entry.author}/${entry.tone}`), ['engine/engine', 'scout/post']);
+
+  service.close(origin, 'done');
+  assert.equal(service.view(origin)!.closed, true);
 });

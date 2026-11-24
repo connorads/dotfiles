@@ -1,0 +1,173 @@
+.swarm-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.swarm-empty,
+.swarm-closed,
+.swarm-notice {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.swarm-notice {
+  color: var(--destructive, var(--foreground));
+}
+
+.swarm-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.swarm-members li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.swarm-run {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.swarm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+}
+
+[data-run='working'] .swarm-dot {
+  background: var(--primary);
+}
+
+[data-run='failed'] .swarm-dot {
+  background: var(--destructive, var(--foreground));
+}
+
+[data-run='stopped'] {
+  opacity: 0.55;
+}
+
+.swarm-feed {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.swarm-entry {
+  padding: 8px 14px;
+}
+
+.swarm-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.swarm-entry-head time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.swarm-seq {
+  font-family: var(--font-mono);
+}
+
+.swarm-author {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.swarm-tag {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.swarm-text {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.swarm-text mark {
+  background: none;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+[data-tone='engine'] .swarm-author,
+[data-tone='engine'] .swarm-text {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+[data-tone='problem'] .swarm-text {
+  color: var(--destructive, var(--foreground));
+}
+
+.swarm-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.swarm-compose textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.swarm-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.swarm-actions button {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground, var(--background));
+  font: inherit;
+  cursor: pointer;
+}
+
+.swarm-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.swarm-actions .swarm-quiet {
+  background: transparent;
+  color: var(--muted-foreground);
+}

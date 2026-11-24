@@ -14,7 +14,7 @@ import {
   type ThreadId,
 } from './domain.ts';
 import { decide, type Effect, type Input } from './engine.ts';
-import { explain, formatBoard, formatBrief, formatRoster, formatWake } from './format.ts';
+import { explain, formatBoard, formatBrief, formatRoster, formatWake, viewBoard, type BoardView } from './format.ts';
 
 /** The agent threads a swarm runs on. */
 export interface Agents {
@@ -46,6 +46,8 @@ export interface Deps {
   limits(): Promise<Limits>;
   /** Reports a failure nobody is waiting on, such as a wake that could not be sent. */
   log(message: string): void;
+  /** Tells open panels that a board changed. */
+  changed(id: SwarmId): void;
 }
 
 export interface Outcome {
@@ -76,6 +78,7 @@ export function createService(deps: Deps) {
     const decision = decide(swarm, { ...input, at: deps.now() } as Input);
     if (!decision.ok) return { refusal: explain(decision.error) };
     board.save(id, swarm, decision.swarm);
+    if (decision.swarm !== swarm) deps.changed(id);
     for (const effect of decision.effects) void perform(id, decision.swarm, effect);
     return { swarm: decision.swarm };
   }
@@ -184,6 +187,13 @@ export function createService(deps: Deps) {
       });
     },
     swarmOf: (threadId: ThreadId): SwarmId | null => board.openFor(threadId),
+
+    /** The newest swarm this thread has been in, for the board panel. */
+    view(threadId: ThreadId): BoardView | null {
+      const id = board.latestFor(threadId);
+      const swarm = id && board.load(id);
+      return id && swarm ? viewBoard(id, swarm) : null;
+    },
 
     humanRead(id: SwarmId, since: number | null): Outcome {
       const swarm = board.load(id);

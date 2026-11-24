@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PluginCliError, cliCommand, defineCli, type BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
+import { changedChannel, rpcContract } from './contracts.ts';
 import { createBoard, migrations } from './src/board.ts';
 import type { SwarmId, ThreadId } from './src/domain.ts';
 import { createService, type Agents, type Outcome } from './src/service.ts';
@@ -81,6 +82,7 @@ export default function plugin(bb: BbPluginApi) {
       return { maxMembers, maxWakes };
     },
     log: message => bb.log.warn(message),
+    changed: swarmId => bb.realtime.publish(changedChannel, { swarmId }),
   });
 
   const result = ({ ok, text }: Outcome) => ({ content: [{ type: 'text' as const, text }], isError: !ok });
@@ -139,6 +141,12 @@ export default function plugin(bb: BbPluginApi) {
   bb.events.on('thread.failed', ({ thread, error }) => service.turnFailed(thread.id as ThreadId, error ?? 'unknown error'));
   bb.events.on('thread.archived', ({ thread }) => service.threadGone(thread.id as ThreadId));
   bb.events.on('thread.deleted', ({ thread }) => service.threadGone(thread.id as ThreadId));
+
+  bb.rpc.register(rpcContract, {
+    board: ({ threadId }) => ({ board: service.view(threadId as ThreadId) }),
+    post: ({ swarmId, text }) => service.humanPost(swarmId as SwarmId, text),
+    close: ({ swarmId }) => service.humanClose(swarmId as SwarmId, 'Closed from the board panel.'),
+  });
 
   const swarmOption = { swarm: { type: 'string' as const, description: 'Swarm id from `bb swarm list`. Defaults to this thread\'s swarm, or the only open one.' } };
   /** The swarm a command acts on, and the calling thread when it is a member of it. */

@@ -64,4 +64,15 @@ test('a thread finds its open swarm until it leaves or the swarm closes', () => 
 
   apply(board, left, { type: 'close', at: 4, by: coordinatorName, summary: 'done' });
   assert.equal(board.openFor(coordinatorThread), null);
+  assert.deepEqual(board.open(), []);
+});
+
+test('a thread keeps its newest swarm after it closes', () => {
+  const { board, swarm } = setup();
+  apply(board, swarm, { type: 'close', at: 2, by: coordinatorName, summary: 'done' });
+  assert.equal(board.latestFor(coordinatorThread), id);
+  board.create('swarm-2' as SwarmId, openSwarm(coordinatorThread, { maxMembers: 4, maxWakes: 50 }), 3);
+  assert.equal(board.latestFor(coordinatorThread), 'swarm-2');
+  assert.deepEqual(board.open(), ['swarm-2']);
+  assert.equal(board.latestFor(workerThread), null);
 });
