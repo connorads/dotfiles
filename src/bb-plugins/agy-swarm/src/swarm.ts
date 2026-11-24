@@ -24,14 +24,16 @@ const maxBoardMessages = 400;
 
 export function isAntigravityProvider(providerId: string | null | undefined): boolean {
   if (!providerId) return false;
-  if (providerId === 'acp-antigravity') return true;
+  if (providerId === 'acp-antigravity' || providerId === 'antigravity-sandbox') return true;
   if (!providerId.startsWith(accountPrefix)) return false;
   const id = providerId.slice(accountPrefix.length);
   return id !== 'default' && accountNameRe.test(id);
 }
 
 export function antigravityAppDataRoot(home: string, providerId: string): string | null {
-  if (providerId === 'acp-antigravity') return join(home, '.gemini', 'antigravity-cli');
+  if (providerId === 'acp-antigravity' || providerId === 'antigravity-sandbox') {
+    return join(home, '.gemini', 'antigravity-cli');
+  }
   if (!providerId.startsWith(accountPrefix)) return null;
   const id = providerId.slice(accountPrefix.length);
   if (id === 'default' || !accountNameRe.test(id)) return null;

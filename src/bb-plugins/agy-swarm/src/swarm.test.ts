@@ -77,12 +77,14 @@ async function setupFixture() {
 
 test('resolves Default and isolated Antigravity appData roots and rejects invalid providers', () => {
   assert.equal(isAntigravityProvider('acp-antigravity'), true);
+  assert.equal(isAntigravityProvider('antigravity-sandbox'), true);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-secondary'), true);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-default'), false);
   assert.equal(isAntigravityProvider('acp-antigravity-profile-../escape'), false);
   assert.equal(isAntigravityProvider('claude-code'), false);
 
   assert.equal(antigravityAppDataRoot('/Users/test', 'acp-antigravity'), '/Users/test/.gemini/antigravity-cli');
+  assert.equal(antigravityAppDataRoot('/Users/test', 'antigravity-sandbox'), '/Users/test/.gemini/antigravity-cli');
   assert.equal(
     antigravityAppDataRoot('/Users/test', 'acp-antigravity-profile-secondary'),
     '/Users/test/.local/share/agy-profiles/secondary/home/.gemini/antigravity-cli',
