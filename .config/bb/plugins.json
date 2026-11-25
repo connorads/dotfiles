@@ -1,6 +1,7 @@
 {
   "agy-swarm": true,
   "antigravity-sandbox": true,
+  "audio-preview": true,
   "aws": true,
   "cache-hits": true,
   "caffeine": true,

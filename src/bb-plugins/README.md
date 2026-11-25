@@ -119,6 +119,9 @@ to the repository's BB project.
 
 ## File navigation
 
+[Audio Preview](audio-preview/README.md) previews audio files in BB's file
+panel with waveform scrubbing, playback controls and same-folder take switching.
+
 [File Links](file-links/README.md) resolves missing Markdown file links against
 the workspace and project captures. Duplicate matches require a choice.
 
