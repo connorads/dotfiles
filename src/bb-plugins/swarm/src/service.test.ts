@@ -229,7 +229,7 @@ test('the coordinator\'s wake lists posts that did not mention it under their ow
   service.post('thr_two' as ThreadId, '@coordinator done');
   await settled();
   assert.equal(wakes[0]!.sender, 'thr_two');
-  assert.match(wakes[0]!.text, /#4 two: @coordinator done\nAlso on the board, with no mention of you:\n#3 one: a note for nobody/);
+  assert.match(wakes[0]!.text, /#4 two: @coordinator done\nAlso on the board, not addressed to you \(first line only; read the board for the rest\):\n#3 one: a note for nobody/);
 });
 
 test('reconcile notices a failed member that a person restarted', async () => {
@@ -239,4 +239,24 @@ test('reconcile notices a failed member that a person restarted', async () => {
   observed.set('thr_scout', { state: 'working' });
   await service.reconcile();
   assert.match(service.read(origin, 0).text, /scout \(working\)/);
+});
+
+test('a wake shows posts between other members as one line each', async () => {
+  const { add, service, wakes } = setup();
+  await Promise.all([add('one'), add('two')]);
+  service.turnEnded(origin, null);
+  service.post('thr_one' as ThreadId, `@two review this:\n\n## Draft\n${'long text '.repeat(200)}`);
+  service.post('thr_two' as ThreadId, '@coordinator review done');
+  await settled();
+  const text = wakes.find(wake => wake.threadId === origin)!.text;
+  assert.match(text, /#3 one to two: review this: Draft long text/);
+  assert.equal(text.length < 700, true);
+});
+
+test('a board read reports the wakes used', async () => {
+  const { add, service } = setup();
+  await add('scout');
+  service.turnEnded(origin, null);
+  service.post('thr_scout' as ThreadId, '@coordinator done');
+  assert.match(service.read(origin, 0).text, /^Members: .*\nWakes: 1 of 50\n/);
 });
