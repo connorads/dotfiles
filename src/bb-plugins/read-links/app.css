@@ -1,0 +1,15 @@
+.bb-read-link {
+  cursor: pointer;
+  border-radius: 3px;
+  text-decoration: underline dotted;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+}
+.bb-read-link:hover {
+  color: var(--primary);
+  text-decoration-color: currentColor;
+}
+.bb-read-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}

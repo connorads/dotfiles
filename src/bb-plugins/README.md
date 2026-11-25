@@ -125,6 +125,9 @@ panel with waveform scrubbing, playback controls and same-folder take switching.
 [File Links](file-links/README.md) resolves missing Markdown file links against
 the workspace and project captures. Duplicate matches require a choice.
 
+[Read Links](read-links/README.md) opens files from timeline read rows in the
+side preview. Click the file name in "Read file", "Viewed image" or shell read rows.
+
 [File History](file-history/README.md) adds Previous file and Next file controls
 to thread file previews. Mouse Back and Forward use file history while the
 pointer is over the file panel.

@@ -27,6 +27,7 @@
   "nix-mise-environment": true,
   "patch-health": true,
   "preferences": true,
+  "read-links": true,
   "recent-threads": true,
   "repo-tasks": true,
   "run-in-terminal": true,

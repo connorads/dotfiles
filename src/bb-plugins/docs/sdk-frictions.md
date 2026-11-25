@@ -154,6 +154,30 @@ When BB ships a fix, set the status, then delete the workaround in its own commi
   BB file reads returned `ENOENT` for workspace-relative candidates and succeeded for the absolute worktree destination.
   Checked with a synthetic description here; private file names and workspace paths are omitted.
 
+### Timeline read rows cannot open the file they read
+
+- Found: 2026-11-25, read-links, bb 0.50.1, SDK 0.6.104
+- Wanted: Click the file name in a "Read file" or "Viewed image" row to open that file in the side preview.
+- Gap: `TimelineTitleAction` has only `open-file-diff`, which file-change rows set. Read, image-view
+  and read-intent command titles carry no action. `experimental_timelineRenderer` covers plugin
+  extension kinds and generic tools, not core `fileRead` or `command` rows.
+  `useBbNavigate().experimental_openFilePreview` returns false from an `experimental_appOverlay`.
+  SDK 0.6.104 has no `experimental_threadHeaderAction`, the slot earlier per-thread openers used.
+  Claude Code shell commands record an empty `cwd`, and the read-intent parser drops a leading `cd`,
+  so relative shell reads have no recoverable base directory.
+- Workaround: [Read Links](../read-links/README.md) maps rendered row IDs to paths from
+  `threads.timeline`, decorates the file-name segment through a content script, and opens it with
+  the navigator of a hidden `experimental_messageMetadata` component in the same pane.
+  A host entry supplies the home directory for `~/` paths.
+- Ask: Add an `open-file-preview` title action to read, image-view and read-intent rows, routed
+  through the existing local-file link opener. Record the effective `cwd` for shell commands.
+  Let overlays and content scripts open previews in the focused surface.
+- Status: open. Live click, `~/` expansion and streamed-row checks pass on BB 0.50.1.
+- Category: sdk-gap
+- Evidence: BB source `timeline-row-title.ts` and `ThreadDetailView.tsx` (0.46.0 checkout); installed
+  0.50.1 bundle has only `open-file-diff`. Overlay `experimental_openFilePreview` returned false and
+  the message-metadata navigator returned true in a live browser test.
+
 ### Split chat viewport has no keyboard focus target
 
 - Found: 2026-10-23, fork, installed desktop frontend, SDK 0.6.49
