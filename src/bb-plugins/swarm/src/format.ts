@@ -74,8 +74,25 @@ export function explain(error: SwarmError): string {
 export interface BoardView {
   id: string;
   closed: boolean;
-  members: { name: string; role: 'coordinator' | 'worker'; run: Member['run']; threadId: string }[];
+  wakes: number;
+  maxWakes: number;
+  members: MemberView[];
   entries: EntryView[];
+}
+
+/** What a member's thread runs on. BB owns these facts; the server fills them in at view time. */
+export interface MemberDetail {
+  provider: { id: string; name: string; logoUrl: string | null; glyph: string | null } | null;
+  model: string | null;
+  reasoning: string | null;
+  account: string | null;
+}
+
+export interface MemberView extends MemberDetail {
+  name: string;
+  role: 'coordinator' | 'worker';
+  run: Member['run'];
+  threadId: string;
 }
 
 export interface EntryView {
@@ -112,7 +129,9 @@ export function viewBoard(id: SwarmId, swarm: Swarm): BoardView {
   return {
     id,
     closed: isClosed(swarm),
-    members: swarm.members.map(({ name, role, run, threadId }) => ({ name, role, run, threadId })),
+    wakes: swarm.wakes,
+    maxWakes: swarm.limits.maxWakes,
+    members: swarm.members.map(({ name, role, run, threadId }) => ({ name, role, run, threadId, provider: null, model: null, reasoning: null, account: null })),
     entries: swarm.entries.map(viewEntry),
   };
 }
@@ -131,4 +150,34 @@ export function summarise(board: BoardView): string {
   const count = (run: Member['run']) => board.members.filter(member => member.run === run).length;
   const parts = (['working', 'idle', 'failed'] as const).flatMap(run => (count(run) ? [`${count(run)} ${run}`] : []));
   return parts.join(' · ');
+}
+
+const codeSpans = /(```[\s\S]*?```|`[^`\n]*`)/g;
+
+/** Markdown for a post with its mentions in bold. Mentions inside code stay as written. */
+export function emphasiseMentions(text: string): string {
+  return text
+    .split(codeSpans)
+    .map((part, index) => (index % 2 === 1 ? part : part.replace(/(?<![\w@*])@[a-z0-9]+(?:-[a-z0-9]+)*/gi, mention => `**${mention}**`)))
+    .join('');
+}
+
+/** A short age such as "now", "4m", "2h" or "3d". */
+export function age(at: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - at) / 1000));
+  if (seconds < 45) return 'now';
+  if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))}m`;
+  if (seconds < 86_400) return `${Math.round(seconds / 3600)}h`;
+  return `${Math.round(seconds / 86_400)}d`;
+}
+
+/** One plain line of a post for a row preview: Markdown marks removed, whitespace collapsed. */
+export function preview(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s{0,3}(#{1,6}|[-*+]|>|\d+\.)\s+/gm, '')
+    .replace(/(\*\*|__|`|~~)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

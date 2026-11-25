@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { PluginCliError, cliCommand, defineCli, type BbPluginApi } from '@get-bb/plugin-sdk';
 import { z } from 'zod';
 import { boardDirective, changedChannel, rpcContract } from './contracts.ts';
+import { createDetails } from './details.ts';
 import { createBoard, migrations } from './src/board.ts';
 import type { SwarmId, ThreadId } from './src/domain.ts';
 import { createService, type Agents, type Outcome } from './src/service.ts';
@@ -158,9 +159,11 @@ export default function plugin(bb: BbPluginApi) {
   bb.events.on('thread.archived', ({ thread }) => service.threadGone(thread.id as ThreadId));
   bb.events.on('thread.deleted', ({ thread }) => service.threadGone(thread.id as ThreadId));
 
+  const enrich = createDetails(bb);
+
   bb.rpc.register(rpcContract, {
-    board: ({ threadId }) => ({ board: service.view(threadId as ThreadId) }),
-    swarm: ({ swarmId }) => ({ board: service.viewById(swarmId as SwarmId) }),
+    board: async ({ threadId }) => ({ board: await enrich(service.view(threadId as ThreadId)) }),
+    swarm: async ({ swarmId }) => ({ board: await enrich(service.viewById(swarmId as SwarmId)) }),
     post: ({ swarmId, text }) => service.humanPost(swarmId as SwarmId, text),
     close: ({ swarmId }) => service.humanClose(swarmId as SwarmId, 'Closed from the board panel.'),
   });

@@ -10,41 +10,26 @@
   --swarm-hairline: var(--border-hairline, var(--border));
   --swarm-well: var(--surface-recessed, color-mix(in oklch, var(--foreground) 4%, transparent));
   --swarm-hover: color-mix(in oklch, var(--foreground) 6%, transparent);
+  --swarm-press: color-mix(in oklch, var(--foreground) 10%, transparent);
   color: var(--foreground);
   font-size: 13px;
 }
 
-/* ------------------------------- members -------------------------------- */
-
-.swarm-roster {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.swarm-roster li {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 8px 0 6px;
-  border-radius: 6px;
-  background: var(--swarm-well);
-  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  font-weight: 530;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
+.swarm-panel button,
+.swarm-card button,
+.swarm-stack button {
+  font: inherit;
   cursor: default;
 }
 
-.swarm-roster li[data-run='stopped'] {
-  color: var(--muted-foreground);
+.swarm-panel :focus-visible,
+.swarm-card :focus-visible,
+.swarm-stack :focus-visible {
+  outline: 1.5px solid var(--ring, var(--foreground));
+  outline-offset: 1px;
 }
+
+/* ------------------------------ state mark ------------------------------ */
 
 .swarm-mark {
   position: relative;
@@ -104,76 +89,122 @@
   }
 }
 
-.swarm-summary {
+/* ------------------------------ shared text ----------------------------- */
+
+.swarm-summary,
+.swarm-seq,
+.swarm-hint,
+.swarm-panel time,
+.swarm-card time {
   color: var(--muted-foreground);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* -------------------------------- entries ------------------------------- */
-
 .swarm-seq {
-  color: var(--muted-foreground);
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
 }
 
-.swarm-author {
+.swarm-author,
+.swarm-member-name {
   font-weight: 530;
+  letter-spacing: -0.005em;
 }
 
-.swarm-panel mark,
-.swarm-card mark,
-.swarm-stack mark {
-  background: none;
-  color: inherit;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.92em;
-  font-weight: 530;
-}
-
-.swarm-lines {
-  display: grid;
-  gap: 3px;
+.swarm-runtime {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.swarm-runtime-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.swarm-runtime-part + .swarm-runtime-part::before {
+  content: '·';
+  margin-inline-end: 5px;
+  opacity: 0.6;
+}
+
+/* ------------------------------ member rows ----------------------------- */
+
+.swarm-members {
+  display: grid;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.swarm-line {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
-  font-size: 12px;
+.swarm-member {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-areas:
+    'mark name runtime'
+    '. last last';
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 1px;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
 }
 
-.swarm-line .swarm-author {
-  flex: none;
+.swarm-member:hover {
+  background: var(--swarm-hover);
 }
 
-.swarm-line-text {
+.swarm-member:active {
+  background: var(--swarm-press);
+}
+
+.swarm-member .swarm-mark {
+  grid-area: mark;
+}
+
+.swarm-member .swarm-member-name {
+  grid-area: name;
+}
+
+.swarm-member .swarm-runtime {
+  grid-area: runtime;
+  justify-self: end;
+}
+
+.swarm-member-last {
+  grid-area: last;
   min-width: 0;
   overflow: hidden;
   color: var(--muted-foreground);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-[data-tone='engine'] .swarm-author {
+.swarm-member-last:empty {
+  display: none;
+}
+
+.swarm-member[data-run='stopped'] .swarm-member-name {
   color: var(--muted-foreground);
-  font-weight: 440;
 }
 
-[data-tone='problem'] .swarm-text,
-[data-tone='problem'] .swarm-line-text {
-  color: var(--swarm-failed);
+.swarm-members li + li {
+  box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
 }
 
-/* ------------------------------- buttons -------------------------------- */
+/* -------------------------------- buttons ------------------------------- */
 
 .swarm-link {
   display: inline-flex;
@@ -187,9 +218,7 @@
   border-radius: 5px;
   background: transparent;
   color: var(--muted-foreground);
-  font: inherit;
   font-size: 12px;
-  cursor: default;
 }
 
 .swarm-link svg {
@@ -197,8 +226,7 @@
   height: 12px;
 }
 
-.swarm-link:hover,
-.swarm-link:focus-visible {
+.swarm-link:hover {
   background: var(--swarm-hover);
   color: var(--foreground);
 }
@@ -210,10 +238,8 @@
   border-radius: 6px;
   background: var(--foreground);
   color: var(--background);
-  font: inherit;
   font-size: 12px;
   font-weight: 530;
-  cursor: default;
 }
 
 .swarm-button:disabled {
@@ -232,27 +258,53 @@
   color: var(--foreground);
 }
 
-/* ------------------------------ composer card --------------------------- */
-
-.swarm-stack {
-  display: grid;
-  gap: 8px;
-  padding: 9px 12px 4px;
+.swarm-button[data-variant='danger'] {
+  background: var(--swarm-failed);
+  color: var(--background);
 }
 
-.swarm-stack-foot {
+.swarm-chip {
+  height: 20px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--swarm-well);
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  color: var(--muted-foreground);
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 11px !important;
+}
+
+.swarm-chip:hover {
+  background: var(--swarm-hover);
+  color: var(--foreground);
+}
+
+.swarm-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-width: 0;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+/* ------------------------------ composer card --------------------------- */
+
+.swarm-stack {
+  display: grid;
+  padding-top: 2px;
+}
+
+.swarm-stack .swarm-foot {
+  box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
 }
 
 /* -------------------------------- chat card ----------------------------- */
 
 .swarm-card {
   display: block;
-  max-width: 560px;
+  max-width: 620px;
   margin: 6px 0;
   overflow: hidden;
   border-radius: 10px;
@@ -272,7 +324,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 12px 0;
+  padding: 9px 12px 7px;
 }
 
 .swarm-card-head svg {
@@ -285,26 +337,17 @@
   font-weight: 530;
 }
 
-.swarm-card-body {
-  display: grid;
-  gap: 9px;
-  padding: 9px 12px 11px;
+.swarm-card-wakes {
+  margin-inline-start: auto;
+}
+
+.swarm-card .swarm-members {
+  box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
 }
 
 .swarm-card-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
-  padding: 0 12px;
   box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
   background: var(--swarm-well);
-}
-
-.swarm-card-count {
-  color: var(--muted-foreground);
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
 }
 
 /* --------------------------------- panel -------------------------------- */
@@ -317,12 +360,62 @@
 }
 
 .swarm-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px 7px;
   box-shadow: inset 0 -0.5px 0 var(--swarm-hairline);
+}
+
+.swarm-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.swarm-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.swarm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 26px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 12.5px !important;
+  font-weight: 440;
+  white-space: nowrap;
+}
+
+.swarm-tab:hover {
+  background: var(--swarm-hover);
+  color: var(--foreground);
+}
+
+.swarm-tab[aria-selected='true'] {
+  background: var(--swarm-well);
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  color: var(--foreground);
+  font-weight: 530;
+}
+
+.swarm-count {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 440;
+}
+
+.swarm-panel-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
 }
 
 .swarm-empty,
@@ -336,33 +429,39 @@
 }
 
 .swarm-notice {
+  padding: 0;
   color: var(--swarm-failed);
+  font-size: 12px;
 }
+
+/* ---------------------------------- feed -------------------------------- */
 
 .swarm-feed {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 4px 0;
+  padding: 6px 0 10px;
   overflow-y: auto;
   list-style: none;
 }
 
-.swarm-entry {
-  padding: 8px 14px;
+.swarm-post {
+  padding: 9px 14px 7px;
 }
 
-.swarm-entry-head {
+.swarm-post-head {
   display: flex;
   align-items: baseline;
   gap: 7px;
+  margin-bottom: 2px;
 }
 
-.swarm-entry-head time {
+.swarm-post-head time {
   margin-inline-start: auto;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+}
+
+.swarm-post[data-author='human'] {
+  background: var(--swarm-well);
 }
 
 .swarm-tag {
@@ -373,35 +472,107 @@
   font-size: 10.5px;
 }
 
-.swarm-text {
-  margin: 2px 0 0;
-  line-height: 1.45;
+.swarm-markdown {
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
   text-wrap-style: pretty;
 }
 
-.swarm-detail {
-  margin: 4px 0 0;
-  padding-inline-start: 9px;
-  box-shadow: inset 1.5px 0 0 var(--swarm-hairline);
+.swarm-markdown > :first-child {
+  margin-top: 0;
+}
+
+.swarm-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.swarm-event {
+  padding: 4px 14px;
   color: var(--muted-foreground);
   font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  text-wrap-style: pretty;
 }
 
-[data-tone='engine'] .swarm-text {
-  color: var(--muted-foreground);
+.swarm-event-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
+
+.swarm-event-line::before {
+  content: '';
+  width: 5px;
+  height: 0.5px;
+  flex: none;
+  align-self: center;
+  background: var(--muted-foreground);
+}
+
+.swarm-event-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.swarm-event-line time {
+  margin-inline-start: auto;
+}
+
+.swarm-event[data-tone='problem'] .swarm-event-text {
+  color: var(--swarm-failed);
+}
+
+.swarm-brief {
+  margin: 3px 0 2px 13px;
+}
+
+.swarm-brief summary {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  list-style: none;
+  cursor: default;
+}
+
+.swarm-brief summary::-webkit-details-marker {
+  display: none;
+}
+
+.swarm-brief summary::after {
+  content: ' ›';
+}
+
+.swarm-brief[open] summary::after {
+  content: ' ⌄';
+}
+
+.swarm-brief summary:hover {
+  background: var(--swarm-hover);
+  color: var(--foreground);
+}
+
+.swarm-brief .swarm-markdown {
+  margin-top: 5px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--swarm-well);
+  box-shadow: inset 0 0 0 0.5px var(--swarm-hairline);
+  color: var(--foreground);
+  font-size: 12.5px;
+}
+
+/* -------------------------------- compose ------------------------------- */
 
 .swarm-compose {
   display: grid;
-  gap: 8px;
-  padding: 10px 14px 12px;
+  gap: 7px;
+  padding: 9px 12px 11px;
   box-shadow: inset 0 0.5px 0 var(--swarm-hairline);
+}
+
+.swarm-mentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .swarm-compose textarea {
@@ -424,5 +595,47 @@
 
 .swarm-actions {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.swarm-hint {
+  margin-inline-start: auto;
+}
+
+/* ------------------------------ member detail --------------------------- */
+
+.swarm-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.swarm-detail-head {
+  display: grid;
+  gap: 5px;
+  padding: 10px 14px;
+  box-shadow: inset 0 -0.5px 0 var(--swarm-hairline);
+}
+
+.swarm-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swarm-detail-title .swarm-link {
+  margin-inline-start: auto;
+}
+
+.swarm-detail-head .swarm-brief {
+  margin-inline-start: -6px;
+}
+
+.swarm-chat {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }

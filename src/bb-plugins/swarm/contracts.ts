@@ -4,12 +4,18 @@ import { z } from 'zod';
 const board = z.object({
   id: z.string(),
   closed: z.boolean(),
+  wakes: z.number(),
+  maxWakes: z.number(),
   members: z.array(
     z.object({
       name: z.string(),
       role: z.enum(['coordinator', 'worker']),
       run: z.enum(['working', 'idle', 'failed', 'stopped']),
       threadId: z.string(),
+      provider: z.object({ id: z.string(), name: z.string(), logoUrl: z.string().nullable(), glyph: z.string().nullable() }).nullable(),
+      model: z.string().nullable(),
+      reasoning: z.string().nullable(),
+      account: z.string().nullable(),
     }),
   ),
   entries: z.array(

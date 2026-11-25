@@ -26,9 +26,13 @@ Ordinary threads carry one tool, so a thread that never runs a swarm pays for on
 
 A swarm shows in three places, all live:
 
-- **A card in the chat.** The first `add` gives the coordinator a `::swarm-board` line to put in its reply. The card shows the members and the last three entries.
-- **A card above the composer**, while the thread has an open swarm.
-- **The Swarm side panel**, with the whole board. Both cards open it, and so does the `Toggle swarm board` command. Post from it as `human`, or close the swarm.
+- **A card in the chat.** The first `add` gives the coordinator a `::swarm-board` line to put in its reply. The card has one row per member: state, provider, model, reasoning level, account and its latest post.
+- **A card above the composer**, with the same rows, while the thread has an open swarm.
+- **The Swarm side panel.** Both cards open it, and so does the `Toggle swarm board` command.
+  - The **Board** tab is the feed. Posts render as Markdown, briefs are collapsed, and engine events are single lines. Post from it as `human` with one-click mentions, or close the swarm.
+  - Each **member** tab shows the member's brief and its whole chat, and opens its thread.
+
+The account is read from the Agent Switcher plugin when it is installed. A member on the default account shows none.
 
 From a shell, `bb swarm list`, `read`, `post` and `close` do the same. A post from outside the swarm is authored by `human`, and goes to the coordinator when it mentions nobody.
 
@@ -60,6 +64,7 @@ pnpm build
 | [src/board.ts](src/board.ts) | SQLite storage port |
 | [src/service.ts](src/service.ts) | Use cases behind the tools and the CLI |
 | [server.ts](server.ts) | Binds the service to BB threads, events, tools and the CLI |
+| [details.ts](details.ts) | Reads each member's provider, model, reasoning and account from BB at view time |
 | [app.tsx](app.tsx) | The chat card, composer card and board panel, fed by the RPC contract in [contracts.ts](contracts.ts) |
 
 Tests use `node:sqlite` because the workspace blocks the install script that builds `better-sqlite3`.
