@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { definePluginApp, useRealtime, useRealtimeConnectionState, useRpc } from '@get-bb/plugin-sdk/app';
+import { registerThreadHeaderChip } from '@bb-plugins/chip/header';
 import { CHANGED, type rpcContract } from './contracts.ts';
 import { DraftChip, HeaderChip } from './chip.tsx';
 import { ConnectorsPopover } from './popover.tsx';
@@ -37,7 +38,7 @@ function Settings() {
 
 export default definePluginApp(app => {
   app.slots.experimental_appOverlay({ id: 'popover', component: Overlay });
-  app.slots.experimental_threadHeaderAction({ id: 'chip', title: 'Claude connectors', component: HeaderChip });
+  registerThreadHeaderChip(app, { id: 'chip', title: 'Claude connectors', component: HeaderChip });
   app.slots.settingsSection({ id: 'connectors', component: Settings });
   app.composer.customize({ id: 'connectors', scopes: ['new-thread'], actions: [{ id: 'connectors', component: DraftChip }] });
   app.commands.register({
