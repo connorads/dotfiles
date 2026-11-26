@@ -26,6 +26,16 @@ A **content skill**, not a tool: rules and snippets. Wiring them into git hooks 
 - A bug just happened → "what rule would have caught this mechanically?" (Adding a new rule).
 - Unfamiliar stack → the picks table.
 
+## Scale Rule
+
+Match the gate stack to the codebase, not the catalogue ceiling:
+
+- **Small single-package app or library (< ~20 source files, one module boundary):** strict compiler flags (`tsconfig.json` / `basedpyright` / `clippy`) and the core stack linter (`oxlint` / `ruff` / `golangci-lint`) with a minimal rule list. Skip dead-code scanners (`knip`, `vulture`), graph architecture tests (`ts-morph`, `import-linter`), split test tsconfigs, and `isolatedDeclarations` unless publishing a library.
+- **Substantial or multi-module repo:** add the formatter check, type-aware lint, dead-code gate, and transitive boundary tests from the stack reference.
+- **High-churn or multi-team repo / published package:** add contract-compat gates, complexity/duplication reporting, and pre-push/CI audits.
+
+A gate that costs more build or repair time than the bug class it prevents fails the trade-off.
+
 ## Picks by stack
 
 The table names the defaults. The **Read** column is where each pick is justified, its traps listed and its hk tier map kept - read it before configuring anything.

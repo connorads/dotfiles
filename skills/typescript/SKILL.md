@@ -110,7 +110,9 @@ boolean behaviour flags. See `references/modeling.md`.
 ### Records, entities, and collections
 
 `interface` for object shapes, `type` for unions and mapped types; a class only
-for nominality through a `#private` field; brands for primitives; `readonly` is
+for nominality through a `#private` field; brands for primitives that can be
+confused at call sites (distinct IDs, validated formats, units) rather than
+wrapping every field; `readonly` is
 compile-only and `Object.freeze` is its shallow runtime half. JS objects have no
 structural value equality, so entities compare and key by branded id.
 See `references/modeling.md`.

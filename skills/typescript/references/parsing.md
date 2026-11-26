@@ -93,6 +93,12 @@ Construct branded values **only** through their parser. The `as` inside it, with
 its `// SAFETY:` note, is the one sanctioned spot; an `as` at a call site mints an
 unchecked value. Candidates: ids, parsed strings, constrained numbers, units.
 
+Brand selectively. A brand earns its constructor when two primitives can be
+swapped silently (`EventId` vs `HoldId`, cents vs percentage) or when downstream
+code relies on a parsed invariant (`EmailAddress`, `IsoUtcTimestamp`). Leave
+unambiguous local fields (display names, memos, small-scope counts) as plain
+primitives.
+
 ## Push optionality and partiality outward
 
 Two moves make a partial function total: constrain the input to a parsed or
